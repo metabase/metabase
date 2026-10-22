@@ -355,7 +355,7 @@
      [:content-verification :official-collections]
      (deferred-tru "Content Management or Official Collections")))
   (let [context (some-> context search.config/normalized-context)
-        models (if (seq models) models search.config/all-models)
+        models (if (seq models) models search.config/default-models)
         engine (parse-engine search-engine)
         fvalue (fn [filter-key] (search.config/filter-default engine context filter-key))
         ctx    (cond-> {:archived?                           (boolean (or archived (fvalue :archived)))

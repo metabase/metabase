@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import type {
   CardType,
-  DataApp,
   DependencyId,
   DependencyType,
   RecentItem,
@@ -12,10 +11,7 @@ import type {
 } from "metabase-types/api";
 
 import { getDependencyType, getNodeIconWithType } from "../../../../utils";
-import {
-  type EntrySearchModel,
-  SEARCH_MODEL_TO_GROUP_TYPE,
-} from "../constants";
+import { SEARCH_MODEL_TO_GROUP_TYPE } from "../constants";
 
 import { BROWSE_OPTION_VALUE } from "./constants";
 import type { EntrySelectOption } from "./types";
@@ -84,32 +80,12 @@ function getSearchOptions(searchResults: SearchResult[]): EntrySelectOption[] {
 
 function getRecentOptions(
   recentItems: RecentItem[],
-  searchModels: EntrySearchModel[],
+  searchModels: SearchModel[],
 ): EntrySelectOption[] {
   return getItemOptions(
     recentItems.filter((item) => searchModels.includes(item.model)),
     (item) => (item.model === "table" ? item.display_name : item.name),
   );
-}
-
-function getDataAppOptions(
-  dataApps: DataApp[],
-  searchQuery: string,
-): EntrySelectOption[] {
-  const query = searchQuery.toLowerCase();
-  return dataApps
-    .filter((app) =>
-      [app.display_name, app.name].some((text) =>
-        text.toLowerCase().includes(query),
-      ),
-    )
-    .map((app) => ({
-      type: "item",
-      value: getOptionValue(app.id, "data-app"),
-      label: app.display_name,
-      icon: getNodeIconWithType("data-app"),
-      entry: { id: app.id, type: "data-app" },
-    }));
 }
 
 function getBrowseOption(): EntrySelectOption {
@@ -121,28 +97,15 @@ function getBrowseOption(): EntrySelectOption {
   };
 }
 
-export function getIndexedSearchModels(
-  searchModels: EntrySearchModel[],
-): SearchModel[] {
-  return searchModels.flatMap((model) => (model === "data-app" ? [] : model));
-}
-
 export function getSelectOptions(
   searchResults: SearchResult[],
   recentItems: RecentItem[],
-  dataApps: DataApp[],
-  searchModels: EntrySearchModel[],
-  searchQuery: string,
+  searchModels: SearchModel[],
+  isSearchEnabled: boolean,
 ): EntrySelectOption[] {
-  // data apps come after the index results: their list can arrive later, and adding rows below
-  // keeps the rows under the pointer in place
-  const options =
-    searchQuery.length > 0
-      ? [
-          ...getSearchOptions(searchResults),
-          ...getDataAppOptions(dataApps, searchQuery),
-        ]
-      : getRecentOptions(recentItems, searchModels);
+  const options = isSearchEnabled
+    ? getSearchOptions(searchResults)
+    : getRecentOptions(recentItems, searchModels);
 
   return [...options, getBrowseOption()];
 }

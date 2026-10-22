@@ -1,6 +1,6 @@
-import type { EntrySearchModel } from "../../constants";
+import type { SearchModel } from "metabase-types/api";
 
 export type SearchModelItem = {
-  value: EntrySearchModel;
+  value: SearchModel;
   label: string;
 };

@@ -454,6 +454,10 @@
   [_]
   [:id :name :description :created_at :updated_at])
 
+(defmethod columns-for-model "data-app"
+  [_]
+  [:id :name :display_name :description :created_at :updated_at])
+
 (mu/defn- select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
@@ -561,6 +565,13 @@
 (defmethod search-query-for-model "transform"
   [_model search-ctx]
   (base-query-for-model "transform" search-ctx))
+
+(defmethod search-query-for-model "data-app"
+  [model search-ctx]
+  (-> (base-query-for-model model search-ctx)
+      (sql.helpers/where (search.permissions/permitted-data-apps-clause
+                          search-ctx
+                          (search.config/column-with-model-alias model :id)))))
 
 (defmethod search-query-for-model "database"
   [model search-ctx]

@@ -3,6 +3,7 @@
    [clojure.math.combinatorics :as math.combo]
    [clojure.test :refer :all]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.config.core :as config]
    [metabase.models.resolution]
    [metabase.search.config :as search.config]
    [metabase.search.filter :as search.filter]
@@ -143,19 +144,20 @@
                 [:= nil :search_index.exploration_id]
                 [:in
                  :search_index.model
-                 #{"dashboard"
-                   "table"
-                   "segment"
-                   "collection"
-                   "measure"
-                   "transform"
-                   "document"
-                   "exploration"
-                   "database"
-                   "action"
-                   "indexed-entity"
-                   "metric"
-                   "card"}]
+                 (cond-> #{"dashboard"
+                           "table"
+                           "segment"
+                           "collection"
+                           "measure"
+                           "transform"
+                           "document"
+                           "exploration"
+                           "database"
+                           "action"
+                           "indexed-entity"
+                           "metric"
+                           "card"}
+                   config/ee-available? (conj "data-app"))]
                 [:< [:cast :search_index.model_created_at :date] #t "2024-10-02"]
                 [:in :search_index.model_id ["1" "2" "3" "4"]]
                 [:< [:cast :search_index.last_edited_at :date] #t "2024-10-03"]

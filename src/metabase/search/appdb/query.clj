@@ -8,14 +8,18 @@
    [metabase.search.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]))
 
+(defn- model-id-col
+  "The `model_id` of the search index row as an integer."
+  []
+  [:cast :search_index.model_id (case (mdb/db-type)
+                                  :mysql :signed
+                                  :integer)])
+
 (defn add-table-where-clauses
   "Add a `WHERE` clause to the query to only return tables the current user has access to.
    Also adds any CTEs required for permission filtering."
   [search-ctx qry]
-  (let [model-id-col [:cast :search_index.model_id (case (mdb/db-type)
-                                                     :mysql :signed
-                                                     :integer)]
-        {:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx model-id-col)]
+  (let [{:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx (model-id-col))]
     (cond-> qry
       (seq with) (update :with (fnil into []) with)
       true       (sql.helpers/where
@@ -25,6 +29,14 @@
                    [:and
                     [:= :search_index.model "table"]
                     clause]]))))
+
+(defn add-data-app-where-clauses
+  "Add a `WHERE` clause to the query to only return data apps the current user can read."
+  [search-ctx qry]
+  (sql.helpers/where qry [:or
+                          [:= :search_index.model nil]
+                          [:!= :search_index.model "data-app"]
+                          (search.permissions/permitted-data-apps-clause search-ctx (model-id-col))]))
 
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
@@ -52,6 +64,7 @@
   (concat
    [[:collection-permissions (partial add-collection-join-and-where-clauses search-ctx)]
     [:table-permissions      (partial add-table-where-clauses search-ctx)]
+    [:data-app-permissions   (partial add-data-app-where-clauses search-ctx)]
     [:transform-source-type  #(sql.helpers/where % (search.filter/transform-source-type-where-clause
                                                     search-ctx
                                                     :search_index.model

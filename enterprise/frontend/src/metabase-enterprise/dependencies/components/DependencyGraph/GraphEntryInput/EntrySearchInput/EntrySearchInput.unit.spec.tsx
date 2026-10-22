@@ -1,36 +1,16 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
-  setupListDataAppsEndpoint,
   setupRecentViewsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
-import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { DataApp, DependencyEntry } from "metabase-types/api";
-import {
-  createMockDataApp,
-  createMockSearchResult,
-  createMockTokenFeatures,
-} from "metabase-types/api/mocks";
+import type { DependencyEntry, SearchResult } from "metabase-types/api";
+import { createMockSearchResult } from "metabase-types/api/mocks";
 
-import { type EntrySearchModel, SEARCH_MODELS } from "../constants";
+import { SEARCH_MODELS } from "../constants";
 
 import { EntrySearchInput } from "./EntrySearchInput";
-
-const BIRD_APP = createMockDataApp({
-  id: 7,
-  name: "sightings",
-  display_name: "Bird sightings",
-});
-
-const OWL_APP = createMockDataApp({
-  id: 8,
-  name: "parliament",
-  display_name: "Owls",
-});
 
 const BIRD_CARD = createMockSearchResult({
   id: 3,
@@ -38,61 +18,42 @@ const BIRD_CARD = createMockSearchResult({
   model: "card",
 });
 
+const BIRD_APP = createMockSearchResult({
+  id: 7,
+  name: "Bird sightings",
+  model: "data-app",
+});
+
 type SetupOpts = {
-  searchModels?: EntrySearchModel[];
-  dataApps?: DataApp[];
-  hasDataApps?: boolean;
+  searchResults?: SearchResult[];
 };
 
-function setup({
-  searchModels = SEARCH_MODELS,
-  dataApps = [BIRD_APP, OWL_APP],
-  hasDataApps = true,
-}: SetupOpts = {}) {
+function setup({ searchResults = [BIRD_CARD, BIRD_APP] }: SetupOpts = {}) {
   setupRecentViewsEndpoints([]);
-  setupSearchEndpoints([BIRD_CARD]);
-  setupListDataAppsEndpoint(dataApps);
+  setupSearchEndpoints(searchResults);
   const onEntryChange = jest.fn<void, [DependencyEntry]>();
 
-  const renderInput = (searchModels: EntrySearchModel[]) => (
+  renderWithProviders(
     <EntrySearchInput
-      searchModels={searchModels}
+      searchModels={SEARCH_MODELS}
       isGraphFetching={false}
       onEntryChange={onEntryChange}
-      onSearchModelsChange={jest.fn<void, [EntrySearchModel[]]>()}
+      onSearchModelsChange={jest.fn()}
       onPickerOpen={jest.fn<void, []>()}
-    />
+    />,
   );
 
-  const { rerender } = renderWithProviders(renderInput(searchModels), {
-    storeInitialState: createMockState({
-      settings: mockSettings({
-        "token-features": createMockTokenFeatures({
-          "data-apps": hasDataApps,
-        }),
-      }),
-    }),
-  });
-
-  return {
-    onEntryChange,
-    setSearchModels: (searchModels: EntrySearchModel[]) =>
-      rerender(renderInput(searchModels)),
-  };
-}
-
-async function search(text: string) {
-  await userEvent.type(
-    screen.getByPlaceholderText("Pick an item to see its dependencies"),
-    text,
-  );
+  return { onEntryChange };
 }
 
 describe("EntrySearchInput", () => {
-  it("finds the data apps whose display name matches, after the search results", async () => {
+  it("finds data apps in the search index, and picks one as the entry", async () => {
     const { onEntryChange } = setup();
 
-    await search("bird");
+    await userEvent.type(
+      screen.getByPlaceholderText("Pick an item to see its dependencies"),
+      "bird",
+    );
 
     await screen.findByRole("option", { name: /Bird sightings/ });
     expect(
@@ -106,74 +67,7 @@ describe("EntrySearchInput", () => {
     expect(onEntryChange).toHaveBeenCalledWith({ id: 7, type: "data-app" });
   });
 
-  it("finds a data app by its slug", async () => {
-    setup();
-
-    await search("parliament");
-
-    expect(
-      await screen.findByRole("option", { name: /Owls/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("doesn't search the index when data apps are the only kind picked", async () => {
-    setup({ searchModels: ["data-app"] });
-
-    await search("bird");
-
-    expect(
-      await screen.findByRole("option", { name: /Bird sightings/ }),
-    ).toBeInTheDocument();
-    expect(fetchMock.callHistory.called("path:/api/search")).toBe(false);
-  });
-
-  it("drops the search results once data apps are the only kind picked", async () => {
-    const { setSearchModels } = setup();
-
-    await search("bird");
-    expect(
-      await screen.findByRole("option", { name: /Bird counts/ }),
-    ).toBeInTheDocument();
-
-    setSearchModels(["data-app"]);
-
-    expect(
-      screen.queryByRole("option", { name: /Bird counts/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("option", { name: /Bird sightings/ }),
-    ).toBeInTheDocument();
-  });
-
-  it("doesn't list data apps when they aren't picked", async () => {
-    setup({ searchModels: ["card"] });
-
-    await search("bird");
-
-    expect(
-      await screen.findByRole("option", { name: /Bird counts/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("option", { name: /Bird sightings/ }),
-    ).not.toBeInTheDocument();
-    expect(fetchMock.callHistory.called("path:/api/apps")).toBe(false);
-  });
-
-  it("doesn't list data apps without the data apps feature", async () => {
-    setup({ hasDataApps: false });
-
-    await search("bird");
-
-    expect(
-      await screen.findByRole("option", { name: /Bird counts/ }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("option", { name: /Bird sightings/ }),
-    ).not.toBeInTheDocument();
-    expect(fetchMock.callHistory.called("path:/api/apps")).toBe(false);
-  });
-
-  it("offers a data apps filter when the user has data apps", async () => {
+  it("offers a data apps filter when the search finds data apps", async () => {
     setup();
 
     await userEvent.click(screen.getByRole("button", { name: "Filter" }));
@@ -181,11 +75,10 @@ describe("EntrySearchInput", () => {
     expect(
       await screen.findByRole("checkbox", { name: "Data apps" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Questions" })).toBeChecked();
   });
 
-  it("offers no data apps filter when the user has no data apps", async () => {
-    setup({ dataApps: [] });
+  it("offers no data apps filter when the search finds none", async () => {
+    setup({ searchResults: [BIRD_CARD] });
 
     await userEvent.click(screen.getByRole("button", { name: "Filter" }));
 
