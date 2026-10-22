@@ -342,6 +342,16 @@
                        [:body :error])))
         (is (= 1 (count @(:attempts @#'api.oauth/token-ip-throttler))))))))
 
+(deftest exchange-provisioning-refusal-throttling-test
+  (testing "a verified JWT refused because user provisioning is off doesn't count toward the token limits"
+    (with-jwt-bearer-setup!
+      (mt/with-temporary-setting-values [jwt-user-provisioning-enabled? false]
+        (dotimes [_ (:attempts-threshold @#'api.oauth/token-ip-throttler)]
+          (is (= "invalid_grant"
+                 (get-in (token-response 400 {:assertion (assertion {:email "jwt-bearer-unprovisioned@metabase.com"})})
+                         [:body :error])))))
+      (is (=? {:access_token string?} (token! "jwt-bearer-after-refusals@metabase.com"))))))
+
 (deftest token-drives-mcp-test
   (testing "MCP calls run as the user named in the JWT, and usage and audit rows belong to that user"
     (with-jwt-bearer-setup!
