@@ -2,22 +2,65 @@
   background-color: var(--mb-color-background_page-tertiary);
 }
 
-/* wells on the left, fields on the right, each half the panel and each scrolling on its own */
+/* wells on the left, fields on the right, each half the panel and each scrolling on its own.
+   Halves are in container units, so the field list keeps its width while it slides away */
 .columns {
   display: flex;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+  container-type: inline-size;
+}
+
+.wellsColumn {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* lines up with the wells' insets, and with the field list card's bottom edge */
+.wellsFooter {
+  flex-shrink: 0;
+  padding: 0 var(--mantine-spacing-md) var(--mantine-spacing-lg)
+    var(--mantine-spacing-lg);
+}
+
+/* the field list's half of the panel, collapsing to nothing; the card inside keeps its width and
+   rides the drawer's left edge out past the panel's right edge */
+.fieldListDrawer {
+  display: flex;
+  flex: 0 0 50cqw;
+  /* below the card's width, which is what lets it collapse */
+  min-width: 0;
+  transition: flex-basis 200ms ease-out;
+
+  &:not([data-open]) {
+    flex-basis: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 }
 
 /* the tray's 16px margins around it, and a 12px gap from the wells */
 .fieldListCard {
   --field-list-gutter: var(--mantine-spacing-xs);
 
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 0 0 auto;
+  width: calc(50cqw - var(--mantine-spacing-lg));
   min-height: 0;
   margin: var(--mantine-spacing-lg) var(--mantine-spacing-lg)
     var(--mantine-spacing-lg) 0;
+  visibility: visible;
+  transition: visibility 0s;
+}
+
+/* out of the tab order once it's slid away, but only after the slide */
+.fieldListDrawer:not([data-open]) .fieldListCard {
+  visibility: hidden;
+  transition: visibility 0s linear 200ms;
 }
 
 .fieldList {
@@ -168,16 +211,17 @@
   opacity: 0.4;
 }
 
-/* as tall as the panel, scrolling once the cards outgrow it */
+/* as tall as the column above the footer, scrolling once the cards outgrow it */
 .wells {
   flex: 1 1 0;
   min-width: 0;
+  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: var(--mantine-spacing-md);
   padding: var(--mantine-spacing-lg) var(--mantine-spacing-md)
-    var(--mantine-spacing-lg) var(--mantine-spacing-lg);
+    var(--mantine-spacing-sm) var(--mantine-spacing-lg);
 }
 
 /* the whole card is the well's input: it takes the hover and focus rings an input border would */

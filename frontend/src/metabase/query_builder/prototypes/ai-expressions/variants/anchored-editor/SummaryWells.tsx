@@ -247,7 +247,7 @@ export function SummaryWells({
     <Box className={S.wells} data-testid="summary-wells">
       <SummaryWell
         wellId="values"
-        title={t`Values`}
+        title={isPivot ? t`Values` : t`Summarize by`}
         definition={definition}
         draggedItem={draggedItem}
       >
@@ -284,7 +284,7 @@ export function SummaryWells({
       </SummaryWell>
       <SummaryWell
         wellId="columns"
-        title={isPivot ? t`Columns` : t`Breakouts`}
+        title={isPivot ? t`Columns` : t`Group by`}
         definition={definition}
         draggedItem={draggedItem}
         action={<PivotToggle isPivot={isPivot} onToggle={handleTogglePivot} />}

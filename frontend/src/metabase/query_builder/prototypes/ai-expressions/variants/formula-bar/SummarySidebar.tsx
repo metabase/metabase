@@ -10,9 +10,10 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMount, useUpdateEffect } from "react-use";
+import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { Box } from "metabase/ui";
+import { ActionIcon, Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
@@ -219,6 +220,10 @@ export function SummarySidebar({
     }
   };
 
+  const [isFieldListOpen, setIsFieldListOpen] = useState(true);
+  const { rows, columns, values } = definition;
+  const hasItems = rows.length > 0 || columns.length > 0 || values.length > 0;
+
   // the seed controls hand over a new array per click, applied once; skipped on mount, where it's left over
   useUpdateEffect(() => {
     if (seededValues == null) {
@@ -265,22 +270,62 @@ export function SummarySidebar({
     >
       <SidebarContent className={S.sidebar} data-testid="summary-sidebar">
         <Box className={S.columns}>
-          <SummaryWells
-            base={base}
-            definition={definition}
-            summaryQuery={summaryQuery}
-            itemLabels={itemLabels}
-            draggedItem={draggedItem}
-            workspaceTopSlot={workspaceTopSlot}
-            onChange={handleChange}
-          />
-          <SummaryFieldList
-            base={base}
-            onSwap={(item) =>
-              handleFieldClick(swapItem(base, definition, item))
-            }
-            onAdd={(item) => handleFieldClick(addItem(base, definition, item))}
-          />
+          <Box className={S.wellsColumn}>
+            <SummaryWells
+              base={base}
+              definition={definition}
+              summaryQuery={summaryQuery}
+              itemLabels={itemLabels}
+              draggedItem={draggedItem}
+              workspaceTopSlot={workspaceTopSlot}
+              onChange={handleChange}
+            />
+            <Flex
+              className={S.wellsFooter}
+              align="center"
+              justify="space-between"
+            >
+              <Button
+                variant="subtle"
+                size="compact-sm"
+                disabled={!hasItems}
+                onClick={() =>
+                  handleChange({ rows: [], columns: [], values: [] })
+                }
+              >
+                {t`Clear all`}
+              </Button>
+              <Tooltip
+                label={isFieldListOpen ? t`Hide fields` : t`Show fields`}
+              >
+                <ActionIcon
+                  variant="subtle"
+                  aria-label={isFieldListOpen ? t`Hide fields` : t`Show fields`}
+                  aria-expanded={isFieldListOpen}
+                  onClick={() => setIsFieldListOpen(!isFieldListOpen)}
+                >
+                  <Icon
+                    name={isFieldListOpen ? "sidebar_open" : "sidebar_closed"}
+                  />
+                </ActionIcon>
+              </Tooltip>
+            </Flex>
+          </Box>
+          {/* slides out to the right; the wells widen into the space it leaves */}
+          <Box
+            className={S.fieldListDrawer}
+            data-open={isFieldListOpen || undefined}
+          >
+            <SummaryFieldList
+              base={base}
+              onSwap={(item) =>
+                handleFieldClick(swapItem(base, definition, item))
+              }
+              onAdd={(item) =>
+                handleFieldClick(addItem(base, definition, item))
+              }
+            />
+          </Box>
         </Box>
       </SidebarContent>
       {createPortal(
