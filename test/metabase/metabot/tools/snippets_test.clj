@@ -20,10 +20,11 @@
 
 (deftest missing-snippet-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (is (= {:class :recoverable
-            :code  :metabase.metabot.tools.recoverable.common/not-found
-            :text  (not-found-message Integer/MAX_VALUE)}
-           (unavailable-snippet Integer/MAX_VALUE #{})))))
+    (doseq [snippet-id [Integer/MAX_VALUE 0 -1]]
+      (is (= {:class :recoverable
+              :code  :metabase.metabot.tools.recoverable.common/not-found
+              :text  (not-found-message snippet-id)}
+             (unavailable-snippet snippet-id #{}))))))
 
 (deftest unreadable-snippet-test
   (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name    "Private snippet"

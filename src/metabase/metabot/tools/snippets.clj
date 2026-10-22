@@ -59,7 +59,8 @@
      :args        [:map {:closed true} [:snippet_id :int]]})
   (handle [_ {snippet-id :snippet_id} _ctx]
     (let [snippet (tools/with-entity {:kind :snippet :id snippet-id}
-                    (or (snippets/get-native-query-snippet snippet-id)
+                    (or (when (pos-int? snippet-id)
+                          (snippets/get-native-query-snippet snippet-id))
                         (recoverable.common/not-found! {:kind :snippet :id snippet-id})))]
       {:output (format-snippet-details-output snippet)})))
 
