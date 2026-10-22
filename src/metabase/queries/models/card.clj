@@ -995,9 +995,41 @@
     :dashboard-question
     (:type card)))
 
+(defn- data-app-card-error
+  "An error for a card in a data app's collection that breaks the collection's rule in `message`."
+  [message]
+  (ex-info (str "A card in a data app's collection " message) {:status-code 400}))
+
+(defn- check-data-app-card-query
+  "Throws unless `dataset_query` is MBQL with no source card, reading only published tables and Library metrics, and
+  returns the IDs of those metrics; a load skips the tables, whose published state it may load later."
+  [{:keys [dataset_query]}]
+  (if-let [database-id (:database dataset_query)]
+    (let [query      (lib/query (lib-be/application-database-metadata-provider database-id) dataset_query)
+          metric-ids (set (lib/all-metric-ids query))
+          card-ids   (set/difference (set (lib/all-source-card-ids query)) metric-ids)
+          table-ids  (set/union (set (lib/all-source-table-ids query))
+                                (set (lib/all-implicitly-joined-table-ids query)))]
+      (when (lib/any-native-stage? query)
+        (throw (data-app-card-error "must be built with the query builder, not SQL")))
+      (when (seq card-ids)
+        (throw (data-app-card-error (str "must start from a table published to the Library, not card "
+                                         (str/join ", " (sort card-ids))))))
+      (when-let [outside (seq (when (seq metric-ids)
+                                (set/difference metric-ids (queries.db/library-metric-ids metric-ids))))]
+        (throw (data-app-card-error (str "can use only metrics from the Library, not metric "
+                                         (str/join ", " (sort outside))))))
+      (when-let [unpublished (seq (when (and (seq table-ids) (not mi/*deserializing?*))
+                                    (queries.db/unpublished-table-names table-ids)))]
+        (throw (data-app-card-error (str "can read only tables published to the Library, not "
+                                         (str/join ", " (sort unpublished))))))
+      metric-ids)
+    #{}))
+
 (defn- check-data-app-card
   "Throws unless `card`, when it is in a data app's collection, is a question or metric that is not archived, public
-  or embedded, reading no card outside the collection, which is what a remote-sync pull of the app accepts."
+  or embedded, whose query reads only the Library, and that references no card outside the collection but those
+  Library metrics."
   [{:keys [collection_id] :as card}]
   (when (and (some? collection_id)
              (perms/data-app-collection? collection_id))
@@ -1008,19 +1040,17 @@
               (:enable_embedding card)
               (:embedding_params card)
               (:embedding_type card))
-      (throw (ex-info "A card in a data app's collection must be a question or metric that is not archived, public or embedded"
-                      {:status-code 400})))
-    (let [card-ids (into #{}
-                         (keep (fn [path]
-                                 (let [{:keys [model id]} (last path)]
-                                   (when (= "Card" model) id))))
-                         (serdes/serialization-dependencies "Card" card))
-          outside  (when (seq card-ids)
-                     (queries.db/card-ids-outside-collection card-ids collection_id))]
+      (throw (data-app-card-error "must be a question or metric that is not archived, public or embedded")))
+    (let [metric-ids (check-data-app-card-query card)
+          card-ids   (into #{}
+                           (keep (fn [path]
+                                   (let [{:keys [model id]} (last path)]
+                                     (when (and (= "Card" model) (not (metric-ids id))) id))))
+                           (serdes/serialization-dependencies "Card" card))
+          outside    (when (seq card-ids)
+                       (queries.db/card-ids-outside-collection card-ids collection_id))]
       (when (seq outside)
-        (throw (ex-info (str "A card in a data app's collection can read only the app's own cards, not card "
-                             (str/join ", " (sort outside)))
-                        {:status-code 400}))))))
+        (throw (data-app-card-error (str "can read only the app's own cards, not card " (str/join ", " (sort outside)))))))))
 
 (t2/define-before-insert :model/Card
   [card]

@@ -16,9 +16,10 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private external-dependency-models
-  "Models a resource may reference outside the app. A snippet, segment or measure must already exist or come with the
-  same pull; a database, table or field is never a dependency, as a load stubs one that is missing."
-  #{"Database" "Table" "Field" "NativeQuerySnippet" "Segment" "Measure"})
+  "Models a resource may reference outside the app. A snippet, segment, measure or card must already exist or come with
+  the same pull, and a card outside the app is a Library metric, which loading the card checks; a database, table or
+  field is never a dependency, as a load stubs one that is missing."
+  #{"Database" "Table" "Field" "NativeQuerySnippet" "Segment" "Measure" "Card"})
 
 (def ^:private card-types #{"question" "metric"})
 
@@ -115,7 +116,7 @@
       [nil (problem path (tru "{0} is malformed: {1}" path (ex-message e)))])))
 
 (defn- dependency-problems
-  [collection-entity-id card-entity-ids {:keys [path] :as file}]
+  [collection-entity-id {:keys [path] :as file}]
   (let [[deps malformed] (dependencies file)]
     (if malformed
       [malformed]
@@ -123,7 +124,6 @@
             :let [{:keys [model id]} (leaf dependency)]
             :when (case model
                     "Collection" (not= id collection-entity-id)
-                    "Card"       (not (contains? card-entity-ids id))
                     (not (contains? external-dependency-models model)))]
         (problem path (tru "{0} references {1} {2}, which is not one of the app''s resources." path model id))))))
 
@@ -156,12 +156,14 @@
              (tru "{0} {1} is defined by more than one file: {2}." model entity-id (str/join ", " (map :path files))))))
 
 (defn- external-dependency-problems
-  "`defined` holds the `[model entity-id]` of each dependency that the same pull loads from outside `data_apps/`."
-  [defined resources]
+  "`defined` holds the `[model entity-id]` of each dependency that the same pull loads from outside `data_apps/`, and
+  `card-entity-ids` the app's own cards."
+  [defined card-entity-ids resources]
   (for [{:keys [path] :as file} resources
         dependency (first (dependencies file))
         :let [{:keys [model id]} (leaf dependency)]
         :when (and (contains? external-dependency-models model)
+                   (not (and (= "Card" model) (contains? card-entity-ids id)))
                    (not (contains? defined [model id]))
                    (nil? (serdes/load-find-local dependency)))]
     (problem path (tru "{0} references {1} {2}, which does not exist on this instance." path model id))))
@@ -316,9 +318,9 @@
           (concat
            (mapcat model-problems resources)
            (mapcat numeric-reference-problems resources)
-           (mapcat (partial dependency-problems collection-entity-id card-entity-ids) resources)
+           (mapcat (partial dependency-problems collection-entity-id) resources)
            (ownership-problems app-entity-id (:path manifest) collection-entity-id resources)
-           (external-dependency-problems defined resources)))))))
+           (external-dependency-problems defined card-entity-ids resources)))))))
 
 (defn- shared-collection-problems
   "Two apps can't name one collection: only one of them would own it."

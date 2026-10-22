@@ -100,14 +100,11 @@
     (testing "a public card"
       (refused (edit-file (shop (question-resources)) question-path #(assoc % :public_uuid "8e2a9c55-6b0f-4b43-a1c4-fb5c0c1b2b0a"))
                "must not be public or embedded"))
-    (testing "a card that reads a card outside the app"
-      (mt/with-temp [:model/Card {other-id :id} {:dataset_query {:database (mt/id)
-                                                                 :type     :query
-                                                                 :query    {:source-table (mt/id :venues)}}}]
-        (let [other-eid (t2/select-one-fn :entity_id :model/Card :id other-id)]
-          (refused (edit-file (shop (question-resources)) question-path
-                              #(update % :dataset_query assoc :stages [{:lib/type "mbql.stage/mbql" :source-card other-eid}]))
-                   (str "references Card " other-eid)))))
+    (testing "a card that reads a card that doesn't exist; loading the card refuses one that does but is no Library
+              metric"
+      (refused (edit-file (shop (question-resources)) question-path
+                          #(update % :dataset_query assoc :stages [{:lib/type "mbql.stage/mbql" :source-card "nowhereCardEntityId00"}]))
+               "references Card nowhereCardEntityId00, which does not exist on this instance"))
     (testing "a file whose serdes/meta doesn't identify what it holds"
       (refused (edit-file (shop (question-resources)) question-path #(assoc % :serdes/meta [{:model "Card" :id "someOtherEntityId0001"}]))
                "must hold a single Card whose serdes/meta ID is its entity_id"))

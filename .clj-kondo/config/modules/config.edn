@@ -2219,6 +2219,7 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
+                    :model/Table
                     :model/Timeline
                     :model/User}}
 

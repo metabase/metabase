@@ -14,7 +14,6 @@
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.actions.core :as actions]
    [metabase.collections.models.collection :as collection]
-   [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
@@ -75,7 +74,9 @@
        (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-enabled true remote-sync-transforms false]
          ;; the cleanup deletes without hooks, so what a pull loads into an app's collection is listed too
          (mt/with-model-cleanup [:model/DataApp :model/Action :model/Card :model/Collection :model/PermissionsGroup]
-           ~@body)))))
+           ;; a card in an app's collection reads only tables published to the Library
+           (data-apps.tu/with-published-tables! [(mt/id :venues) (mt/id :checkins)]
+             ~@body))))))
 
 (deftest pull-imports-and-prunes-data-apps-test
   (with-data-apps-sync
@@ -219,9 +220,9 @@
              (testing "each query is a saved question in the collection"
                (is (=? {:type :question :name "VenuesList" :collection_id collection-id}
                        (t2/select-one :model/Card :entity_id question-eid))))
-             (testing "the metric a query uses is copied"
-               (is (=? {:type :metric :collection_id collection-id}
-                       (t2/select-one :model/Card :entity_id (copy-eid "metric" :model/Card metric-id)))))
+             (testing "a query aggregates the Library metric itself, which stays in the Library"
+               (is (not= collection-id (t2/select-one-fn :collection_id :model/Card :id metric-id)))
+               (is (not (t2/exists? :model/Card :collection_id collection-id :type :metric))))
              (testing "the action is copied into the collection, on no model"
                (is (=? {:type :query :collection_id collection-id :model_id nil}
                        (t2/select-one :model/Action :entity_id (copy-eid "action" :model/Action action-id)))))
@@ -328,7 +329,7 @@
   (some #(str/starts-with? (last (str/split % #"/")) stem) (resource-files mock)))
 
 (deftest pull-reaches-permission-warnings-test
-  (testing "once the jobs run after a pull, the warnings list the tables the app's native question and action name"
+  (testing "once the jobs run after a pull, the warnings list the tables the app's question and action name"
     (with-data-apps-sync
       (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
         (mt/with-no-data-perms-for-all-users!
@@ -343,15 +344,7 @@
                              shop-collection-name shop-collection-eid
                              [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                              [action-id])
-                  path      (some #(when (str/includes? % question-eid) %) (keys resources))
-                  parsed    (yaml/parse-string (get resources path))
-                  native    (assoc parsed :dataset_query {:database (:database (:dataset_query parsed))
-                                                          :lib/type "mbql/query"
-                                                          :stages   [{:lib/type "mbql.stage/native"
-                                                                      :native   "select * from Venues"}]})
-                  src       (test-helpers/versioned-source
-                             :trees {"v0" (shop-tree (assoc resources path (yaml/generate-string native)))}
-                             :current "v0")
+                  src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources)} :current "v0")
                   result    (import-at! src "v0" :force? true)]
               (is (= :success (:status result)) (:message result))
               (mt/with-temp [:model/PermissionsGroup group {}]
@@ -497,31 +490,16 @@
               (mt/user-http-request :crowberto :put 200 (str "card/" other-id) {:archived true}))))))))
 
 (deftest a-pull-moves-cards-out-of-an-apps-collection-test
-  (testing "a pull whose commit moves a card and the card that reads it out of an app's collection succeeds: the load
-            moves the card read first, while its reader is still in the collection"
+  (testing "a pull whose commit moves a card out of an app's collection, into an ordinary synced collection, succeeds"
     (with-data-apps-sync
-      (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})
-            mp   (mt/metadata-provider)]
+      (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})]
         (is (= :success (:status (import-at! mock "main" :force? true))))
-        (let [card-id    (t2/select-one-pk :model/Card :entity_id question-eid)
-              reader     (first (t2/insert-returning-instances!
-                                 :model/Card
-                                 {:name                   "Reads VenuesList"
-                                  :display                "table"
-                                  :visualization_settings {}
-                                  :creator_id             (mt/user->id :crowberto)
-                                  :database_id            (mt/id)
-                                  :collection_id          (shop-collection-id)
-                                  :dataset_query          (lib/query mp (lib.metadata/card mp card-id))}))
-              _          (events/publish-event! :event/card-create {:object reader :user-id (mt/user->id :crowberto)})
-              _          (is (= :success (:status (export! mock))))
-              synced-eid "shopCardsMovedOutColl"
+        (let [synced-eid "shopCardsMovedOutColl"
               synced-dir (str "collections/" synced-eid "_moved_out/")
-              moved-eids #{question-eid (:entity_id reader)}
-              ;; the commit an author pushes: both cards' files in an ordinary synced collection
+              ;; the commit an author pushes: the card's file in an ordinary synced collection
               moved-out  (reduce-kv (fn [tree path content]
                                       (let [entity (yaml/parse-string content)]
-                                        (if (contains? moved-eids (:entity_id entity))
+                                        (if (= question-eid (:entity_id entity))
                                           (assoc tree
                                                  (str synced-dir "cards/" (last (str/split path #"/")))
                                                  (yaml/generate-string (assoc entity :collection_id synced-eid)))
@@ -530,31 +508,10 @@
                                      (test-helpers/generate-collection-yaml synced-eid "Moved out" :is-remote-synced true)}
                                     (get @(:files-atom mock) "main"))
               src        (test-helpers/versioned-source :trees {"v1" moved-out} :current "v1")]
-          (is (= 2 (count (filter #(str/starts-with? % (str synced-dir "cards/")) (keys moved-out)))))
           (let [result (import-at! src "v1" :force? true)]
             (is (= :success (:status result)) (:message result)))
-          (is (= #{(t2/select-one-pk :model/Collection :entity_id synced-eid)}
-                 (t2/select-fn-set :collection_id :model/Card :entity_id [:in moved-eids]))))))))
-
-(deftest deleting-an-app-deletes-cards-that-read-each-other-test
-  (testing "deleting the app deletes its collection with every card in it, readers and read"
-    (with-data-apps-sync
-      (let [mock (test-helpers/create-mock-source :initial-files {"main" (shop-tree (question-resources))})
-            mp   (mt/metadata-provider)]
-        (is (= :success (:status (import-at! mock "main" :force? true))))
-        (let [card-id       (t2/select-one-pk :model/Card :entity_id question-eid)
-              collection-id (shop-collection-id)
-              reader-id     (t2/insert-returning-pk! :model/Card
-                                                     {:name                   "Reads VenuesList"
-                                                      :display                "table"
-                                                      :visualization_settings {}
-                                                      :creator_id             (mt/user->id :crowberto)
-                                                      :database_id            (mt/id)
-                                                      :collection_id          collection-id
-                                                      :dataset_query          (lib/query mp (lib.metadata/card mp card-id))})]
-          (mt/user-http-request :crowberto :delete 204 "ee/apps/shop")
-          (is (not (t2/exists? :model/Collection :id collection-id)))
-          (is (not (t2/exists? :model/Card :id [:in [card-id reader-id]]))))))))
+          (is (= (t2/select-one-pk :model/Collection :entity_id synced-eid)
+                 (t2/select-one-fn :collection_id :model/Card :entity_id question-eid))))))))
 
 (deftest a-pull-of-the-commit-already-imported-is-skipped-test
   (testing "a pull that would load nothing isn't failed by the state of the instance"
@@ -676,43 +633,23 @@
           (is (=? {:name "Someone else's" :collection_id elsewhere}
                   (t2/select-one :model/Card :id foreign-id))))))))
 
-(deftest pull-loads-a-snippet-with-the-card-that-uses-it-test
-  (testing "a resource may use a snippet that the same pull brings"
+(deftest a-pull-refuses-a-native-question-in-an-apps-collection-test
+  (testing "a question in an app's collection is built with the query builder, so a pull refuses one in SQL"
     (with-data-apps-sync
-      (mt/with-model-cleanup [:model/NativeQuerySnippet]
-        (let [snippet-eid "appSnippetEntityId000"
-              resources   (question-resources)
-              path        (some #(when (str/includes? % question-eid) %) (keys resources))
-              parsed      (yaml/parse-string (get resources path))
-              native      (assoc parsed :dataset_query
-                                 {:database (:database (:dataset_query parsed))
-                                  :lib/type "mbql/query"
-                                  :stages   [{:lib/type      "mbql.stage/native"
-                                              :native        "SELECT * FROM venues {{snippet: Remote Snippet}}"
-                                              :template-tags {"snippet: Remote Snippet"
-                                                              {:type         "snippet"
-                                                               :name         "snippet: Remote Snippet"
-                                                               :id           "7f2c2a0e-6c1e-4b53-9d0a-0d5a3a1d1c11"
-                                                               :display-name "Snippet: Remote Snippet"
-                                                               :snippet-name "Remote Snippet"
-                                                               :snippet-id   snippet-eid}}}]})
-              tree        (merge (shop-tree (assoc resources path (yaml/generate-string native)))
-                                 {"snippets/remote_snippet.yaml"
-                                  (test-helpers/generate-snippet-yaml snippet-eid "Remote Snippet" "WHERE 1 = 1")})
-              src         (test-helpers/versioned-source :trees {"v0" tree} :current "v0")
-              result      (import-at! src "v0" :force? true)]
-          (is (= :success (:status result)) (:message result))
-          (is (t2/exists? :model/NativeQuerySnippet :entity_id snippet-eid))
-          (is (=? {:query_type :native} (t2/select-one :model/Card :entity_id question-eid)))
-          (testing "a snippet that nothing defines is still refused"
-            (let [src (test-helpers/versioned-source
-                       :trees {"v0" (shop-tree (assoc resources path
-                                                      (yaml/generate-string
-                                                       (assoc-in native [:dataset_query :stages 0 :template-tags
-                                                                         "snippet: Remote Snippet" :snippet-id]
-                                                                 "nowhereSnippetEid0000"))))}
-                       :current "v0")]
-              (is (= :error (:status (import-at! src "v0" :force? true)))))))))))
+      (let [resources (question-resources)
+            path      (some #(when (str/includes? % question-eid) %) (keys resources))
+            parsed    (yaml/parse-string (get resources path))
+            native    (assoc parsed :dataset_query {:database (:database (:dataset_query parsed))
+                                                    :lib/type "mbql/query"
+                                                    :stages   [{:lib/type "mbql.stage/native"
+                                                                :native   "SELECT * FROM venues"}]})
+            src       (test-helpers/versioned-source
+                       :trees {"v0" (shop-tree (assoc resources path (yaml/generate-string native)))}
+                       :current "v0")
+            result    (import-at! src "v0" :force? true)]
+        (is (= :error (:status result)))
+        (is (str/includes? (:message result) "must be built with the query builder"))
+        (is (not (t2/exists? :model/Card :entity_id question-eid)))))))
 
 (deftest pull-loads-a-resource-on-a-database-not-connected-yet-test
   (testing "a resource whose database isn't connected yet loads as a card's does, against a stub database and an
@@ -810,35 +747,58 @@
           (mt/user-http-request :crowberto :get 200 (str "card/" card-id))
           (mt/user-http-request :crowberto :put 200 (str "card/" card-id) {:description "edited in the root"}))))))
 
-(deftest a-card-in-an-apps-collection-reads-only-the-apps-cards-test
-  (testing "a card there can't read a card outside the app's collection: the export would write a file every pull refuses"
+(deftest a-card-in-an-apps-collection-reads-only-the-library-test
+  (testing "a card there is a query builder question on tables published to the Library, aggregating only Library
+            metrics, and based on no other card, whether it is saved or changed"
     (with-data-apps-sync
-      (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources))} :current "v0")
-            mp  (mt/metadata-provider)]
-        (is (= :success (:status (import-at! src "v0" :force? true))))
-        (mt/with-temp [:model/Card {other-id :id} {:name          "Elsewhere"
-                                                   :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
-                       :model/Card {own-id :id}   {:name          "Own"
-                                                   :collection_id (shop-collection-id)
-                                                   :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}]
-          (let [card-id       (t2/select-one-pk :model/Card :entity_id question-eid)
-                collection-id (shop-collection-id)
-                reading       (fn [id] (lib/query mp (lib.metadata/card mp id)))
-                save!         (fn [query]
-                                (mt/with-temp [:model/Card _ {:name "Saved" :collection_id collection-id :dataset_query query}]))]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can read only the app's own cards"
-                                  (save! (reading other-id))))
-            (let [query-before (t2/select-one-fn :dataset_query :model/Card :id card-id)]
-              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can read only the app's own cards"
-                                    (t2/update! :model/Card card-id {:dataset_query (reading other-id)})))
-              (is (= query-before (t2/select-one-fn :dataset_query :model/Card :id card-id))))
-            (testing "one of the app's own cards is fine"
-              (save! (reading own-id))
-              (t2/update! :model/Card card-id {:dataset_query (reading own-id)}))
-            (testing "as is a card elsewhere reading the card outside"
-              (mt/user-http-request :crowberto :post 200 "card"
-                                    {:name "Saved" :type "question" :display "table" :visualization_settings {}
-                                     :dataset_query (lib/->legacy-MBQL (reading other-id))}))))))))
+      (data-apps.tu/do-with-sources!
+       (fn [{library-metric-id :metric-id}]
+         (let [src (test-helpers/versioned-source :trees {"v0" (shop-tree (question-resources))} :current "v0")
+               mp  (mt/metadata-provider)]
+           (is (= :success (:status (import-at! src "v0" :force? true))))
+           (mt/with-temp [:model/Card {other-metric-id :id} {:name          "Venue count elsewhere"
+                                                             :type          :metric
+                                                             :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                                (lib/aggregate (lib/count)))}]
+             (let [card-id       (t2/select-one-pk :model/Card :entity_id question-eid)
+                   collection-id (shop-collection-id)
+                   mp            (mt/metadata-provider)
+                   venues        (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                   save!         (fn [query]
+                                   (mt/with-temp [:model/Card _ {:name "Saved" :collection_id collection-id :dataset_query query}]))
+                   refused?      (fn [message query]
+                                   (let [query-before (t2/select-one-fn :dataset_query :model/Card :id card-id)]
+                                     (and (is (thrown-with-msg? clojure.lang.ExceptionInfo message (save! query)))
+                                          (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                                                (t2/update! :model/Card card-id {:dataset_query query})))
+                                          (is (= query-before (t2/select-one-fn :dataset_query :model/Card :id card-id))))))]
+               (testing "a table published to the Library, and a Library metric, are fine"
+                 (save! venues)
+                 (save! (lib/aggregate venues (lib.metadata/metric mp library-metric-id)))
+                 (t2/update! :model/Card card-id {:dataset_query (lib/aggregate venues (lib/count))}))
+               (testing "a table that isn't published is refused"
+                 (refused? #"can read only tables published to the Library, not USERS"
+                           (lib/query mp (lib.metadata/table mp (mt/id :users)))))
+               (testing "so is one joined explicitly"
+                 (refused? #"can read only tables published to the Library, not CATEGORIES"
+                           (lib/join venues (lib.metadata/table mp (mt/id :categories)))))
+               (testing "or through a foreign key"
+                 (refused? #"can read only tables published to the Library, not CATEGORIES"
+                           (lib/breakout venues (some #(when (= (mt/id :categories :name) (:id %)) %)
+                                                      (lib/breakoutable-columns venues)))))
+               (testing "as is SQL"
+                 (refused? #"must be built with the query builder"
+                           (lib/native-query mp "SELECT * FROM venues")))
+               (testing "a card as the source, even the app's own"
+                 (refused? #"must start from a table published to the Library"
+                           (lib/query mp (lib.metadata/card mp card-id))))
+               (testing "and a metric outside the Library"
+                 (refused? #"can use only metrics from the Library"
+                           (lib/aggregate venues (lib.metadata/metric mp other-metric-id))))
+               (testing "a card elsewhere can still read any of them"
+                 (mt/user-http-request :crowberto :post 200 "card"
+                                       {:name "Saved" :type "question" :display "table" :visualization_settings {}
+                                        :dataset_query (lib/->legacy-MBQL (lib/query mp (lib.metadata/card mp card-id)))}))))))))))
 
 (deftest a-card-in-an-apps-collection-cant-take-embedding-settings-test
   (testing "embedding parameters would make the export write a file every pull refuses, with embedding itself left off"
