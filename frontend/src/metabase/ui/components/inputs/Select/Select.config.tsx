@@ -36,7 +36,7 @@ export const selectOverrides = {
       section: S.SelectInputSection,
       dropdown: CS.dropdown,
       options: cx(CS.options, S.SelectOptions),
-      option: CS.option,
+      option: cx(CS.option, S.SelectItems_Item),
       group: CS.group,
       groupLabel: CS.groupLabel,
       empty: CS.empty,

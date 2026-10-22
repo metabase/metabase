@@ -71,7 +71,7 @@
 }
 
 .option[data-combobox-disabled] {
-  cursor: default;
+  cursor: not-allowed;
   opacity: 1;
   color: var(--mb-color-text-disabled);
   background-color: var(--mb-color-background_surface-disabled);

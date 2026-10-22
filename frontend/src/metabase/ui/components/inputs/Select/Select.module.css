@@ -81,6 +81,14 @@
   max-height: rem(500px);
 }
 
+/* As before the dropdown restyle: disabled Select and MultiSelect options
+   don't react to the mouse (no hover, no clicks). Call sites that show a
+   tooltip on a disabled option turn mouse events back on for the icon
+   (DisplayValuesPicker) or the option (TagMultiSelect). */
+.SelectItems_Item[data-combobox-disabled] {
+  pointer-events: none;
+}
+
 .SelectClearButton {
   --cb-icon-size: var(--input-section-icon-size);
 
