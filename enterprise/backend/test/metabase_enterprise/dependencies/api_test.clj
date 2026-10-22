@@ -3147,7 +3147,7 @@
                            ["data-app" app-id "card" card-id]))))))))
 
 (deftest ^:synchronized graph-data-app-dependents-test
-  (testing "GET /api/ee/dependencies/graph/dependents lists the data apps a user can read, disabled ones too"
+  (testing "GET /api/ee/dependencies/graph/dependents lists the data apps a user can read"
     (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
                    {:name "birds" :display_name "Birds" :bundle_path "birds.js" :enabled false}
                    :model/Card {card-id :id} (data-app-card collection-id)
@@ -3162,12 +3162,15 @@
                                                          :dependent-types "data-app")
                                    (into #{} (map :id))))]
           (mt/with-premium-features #{:dependencies :data-apps}
-            (testing "an admin sees every app"
+            (testing "an admin sees every app, disabled ones too"
               (is (= #{app-id} (dependent-ids :crowberto))))
-            (testing "a user sees the apps assigned to one of their groups, not the apps whose collection they can read"
+            (testing "a user sees the enabled apps assigned to one of their groups, not the apps whose collection they
+                     can read"
               (is (= #{} (dependent-ids :rasta)))
               (perms/add-user-to-group! (mt/user->id :rasta) group-id)
               (t2/insert! :model/DataAppGroupAssignment {:data_app_id app-id :permission_group_id group-id})
+              (is (= #{} (dependent-ids :rasta)))
+              (t2/update! :model/DataApp app-id {:enabled true})
               (is (= #{app-id} (dependent-ids :rasta)))))
           (mt/with-premium-features #{:dependencies}
             (testing "without the data apps feature, the dependents list has no data apps, even for an admin"
