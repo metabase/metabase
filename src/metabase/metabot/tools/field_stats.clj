@@ -3,7 +3,6 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib.core :as lib]
-   [metabase.lib.walk :as lib.walk]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.core :as tools]
@@ -48,14 +47,8 @@
       false
       (let [query (binding [qp.i/*skip-middleware-because-app-db-access* true]
                     (request/as-admin (qp.preprocess/preprocess query)))
-            table-ids (set (lib/all-source-table-ids query))
-            native? (volatile! false)]
-        (lib.walk/walk-stages query
-                              (fn [_query _path stage]
-                                (when (= (:lib/type stage) :mbql.stage/native)
-                                  (vreset! native? true))
-                                nil))
-        (or @native?
+            table-ids (set (lib/all-source-table-ids query))]
+        (or (lib/any-native-stage? query)
             (not= table-ids (metabot.perms/data-accessible-table-ids table-ids))
             (boolean (seq (metabot.perms/row-restricted-table-ids table-ids))))))
     (catch Exception e
