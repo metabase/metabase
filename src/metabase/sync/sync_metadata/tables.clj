@@ -77,6 +77,8 @@
     ;; Liquibase
     #"^databasechangelog$"
     #"^databasechangeloglock$"
+    #"^databasechangelog_version$"
+    #"^databasechangelog_first_run$"
     ;; Lobos
     #"^lobos_migrations$"
     ;; MSSQL

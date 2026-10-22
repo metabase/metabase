@@ -47,5 +47,5 @@ databaseChangeLog:
 
   - includeAll:
       path: migrations
-      endsWithFilter: "_update_migrations.yaml"
-      maxDepth: 1
+      endsWithFilter: ".yaml"
+      maxDepth: 2
