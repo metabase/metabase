@@ -441,20 +441,21 @@
                                                  :fields       [[:field "s" {:base-type :type/Text}]]
                                                  :limit        3}})]
         (testing (format "Honey SQL =\n%s" (u/pprint-to-str hsql))
-          (is (= [["SELECT"
+          (is (= [["WITH \"__mb_stage_0\" AS ("
+                   "  SELECT"
+                   "    \"public\".\"table\".\"field\" \"field\","
+                   "    SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
+                   "  FROM"
+                   "    \"public\".\"table\""
+                   ")"
+                   "SELECT"
                    "  *"
                    "FROM"
                    "  ("
                    "    SELECT"
                    "      \"__mb_source\".\"s\" \"s\""
                    "    FROM"
-                   "      ("
-                   "        SELECT"
-                   "          \"public\".\"table\".\"field\" \"field\","
-                   "          SUBSTR(\"public\".\"table\".\"field\", 2) \"s\""
-                   "        FROM"
-                   "          \"public\".\"table\""
-                   "      ) \"__mb_source\""
+                   "      \"__mb_stage_0\" \"__mb_source\""
                    "  )"
                    "WHERE"
                    "  rownum <= 3"]]
@@ -657,6 +658,21 @@
         (mt/with-native-query-testing-context query
           (is (= [42M]
                  (mt/first-row (qp/process-query query)))))))))
+
+(deftest ^:parallel native-source-with-cte-test
+  (mt/test-driver :oracle
+    (testing "Oracle does not accept WITH inside a CTE, so a native source that starts with WITH uses subselects"
+      (let [sql   (str "WITH n AS (SELECT 1 \"x\" FROM dual UNION ALL SELECT 2 \"x\" FROM dual) "
+                       "SELECT \"x\" FROM n")
+            mp    (lib.tu/metadata-provider-with-cards-for-queries
+                   (mt/metadata-provider)
+                   [(lib/native-query (mt/metadata-provider) sql)])
+            query (-> (lib/query mp (lib.metadata/card mp 1))
+                      (lib/aggregate (lib/count)))]
+        (mt/with-native-query-testing-context query
+          (is (not (str/includes? (:query (qp.compile/compile query)) "__mb_stage")))
+          (is (= [[2]]
+                 (mt/formatted-rows [int] (qp/process-query query)))))))))
 
 (deftest ^:parallel escape-alias-test
   (testing "Oracle should strip double quotes and null characters from identifiers"

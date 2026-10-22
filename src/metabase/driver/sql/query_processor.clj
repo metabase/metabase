@@ -2271,8 +2271,9 @@
 (defmulti nested-ctes?
   "Whether the database accepts a `WITH` clause inside a subquery, a `JOIN`, or the body of another CTE. Default is
   `true`. A driver that only accepts a `WITH` clause at the start of a statement can return `false`. Then all CTEs
-  of a compiled query are moved to one `WITH` clause at the top, and a query compiled with
-  [[metabase.driver/*compile-nested-query*]] bound to `true` uses subselects for its stages."
+  of a compiled query are moved to one `WITH` clause at the top. A query compiled with
+  [[metabase.driver/*compile-nested-query*]] bound to `true`, or a query with native SQL that contains `WITH`, uses
+  subselects for its stages."
   {:added "0.65.0", :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -2378,8 +2379,13 @@
            (not driver/*compile-nested-query*))))
 
 (defn- stages->honeysql [driver stages level]
-  (let [stages (mapv #(assoc % ::cte-level level) stages)]
-    (if (and (use-ctes? driver)
+  (let [subselects? (or (::subselects? (first stages))
+                        (::subselects? *inner-query*))
+        stages      (mapv #(cond-> (assoc % ::cte-level level)
+                             subselects? (assoc ::subselects? true))
+                          stages)]
+    (if (and (not subselects?)
+             (use-ctes? driver)
              (> (count stages) 1))
       (stages->honeysql-ctes driver stages level)
       (stages->honeysql-subselects driver stages))))
@@ -2426,15 +2432,20 @@
             (cons stage (mapcat (comp all-stages :stages) (:joins stage))))
           stages))
 
-(defn- native-sql-cte-level
+(defn- stage-native-sql
   [stage]
   (let [sql (or (:persisted-info/native stage)
                 (when (= (:lib/type stage) :mbql.stage/native)
                   (:native stage)))]
     (when (string? sql)
-      (when-let [levels (seq (for [[_ level] (re-seq (re-pattern (str stage-cte-prefix #"\d+(?:_(\d+))?")) sql)]
-                               (if level (parse-long level) 0)))]
-        (apply max levels)))))
+      sql)))
+
+(defn- native-sql-cte-level
+  [stage]
+  (when-let [sql (stage-native-sql stage)]
+    (when-let [levels (seq (for [[_ level] (re-seq (re-pattern (str stage-cte-prefix #"\d+(?:_(\d+))?")) sql)]
+                             (if level (parse-long level) 0)))]
+      (apply max levels))))
 
 (defn- top-level-cte-level
   "The CTE nesting level for the top-level stages of query. Normally 0, but we check if there are any CTEs
@@ -2444,6 +2455,12 @@
     (inc (apply max levels))
     0))
 
+(defn- native-sql-with?
+  "Whether the native SQL of any stage in `stages` or their joins contains `WITH`."
+  [stages]
+  (boolean (some #(some->> (stage-native-sql %) (re-find #"(?i)\bWITH\b"))
+                 (all-stages stages))))
+
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver :- :keyword
@@ -2452,7 +2469,10 @@
     (binding [driver/*driver* driver]
       (let [stages (preprocess driver query)
             level  (top-level-cte-level stages)
-            hoist? (not (nested-ctes? driver))]
+            hoist? (not (nested-ctes? driver))
+            ;; native SQL can not be hoisted, and its `WITH` would be inside a CTE body
+            stages (cond->> stages
+                     (and hoist? (native-sql-with? stages)) (mapv #(assoc % ::subselects? true)))]
         (binding [*last-cte-level* (when hoist? (atom level))]
           (log/trace "Compiling MBQL query")
           (u/prog1 (cond-> (stages->honeysql driver stages level)
