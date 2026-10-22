@@ -1,9 +1,10 @@
 import type { SegmentedControlProps as MantineSegmentedControlProps } from "@mantine/core";
 import { SegmentedControl as MantineSegmentedControl } from "@mantine/core";
-import type { FocusEvent, KeyboardEvent, ReactElement, ReactNode } from "react";
+import type { FocusEvent, KeyboardEvent, ReactElement, Ref } from "react";
 
 import type { IconName } from "metabase-types/api";
 
+import { useIsTruncated } from "../../../hooks/use-is-truncated";
 import { Icon } from "../../icons";
 import { Tooltip } from "../../overlays/Tooltip";
 
@@ -88,20 +89,19 @@ export function SegmentedControl<Value extends string = string>({
   };
 
   const items = data.map((item) => {
-    const label = <SegmentedControlItemLabel content={item} />;
-
+    const { onMouseEnter, onMouseLeave, opened } = tooltip.getTargetProps(
+      item.value,
+    );
     return {
       value: item.value,
       disabled: item.disabled,
-      label: item.withTooltip ? (
-        <SegmentedControlItemTooltip
-          label={item.ariaLabel}
-          {...tooltip.getTargetProps(item.value)}
-        >
-          {label}
-        </SegmentedControlItemTooltip>
-      ) : (
-        label
+      label: (
+        <SegmentedControlItemBody
+          content={item}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          opened={opened}
+        />
       ),
     };
   });
@@ -113,68 +113,90 @@ export function SegmentedControl<Value extends string = string>({
       onChange={handleChange}
       onFocus={handleFocus}
       onBlur={handleBlur}
-      onKeyDown={tooltip.hasTooltipItems ? handleKeyDown : onKeyDown}
+      onKeyDown={handleKeyDown}
     />
   );
 }
 
-type SegmentedControlItemTooltipProps = {
-  label: string;
+type SegmentedControlItemBodyProps = {
+  content: SegmentedControlItemContent;
   opened: boolean;
   onMouseEnter: () => void;
   onMouseLeave: () => void;
-  children: ReactNode;
 };
 
-function SegmentedControlItemTooltip({
-  label,
+function SegmentedControlItemBody({
+  content,
   opened,
   onMouseEnter,
   onMouseLeave,
-  children,
-}: SegmentedControlItemTooltipProps) {
+}: SegmentedControlItemBodyProps) {
+  const hasLabel = content.label !== undefined;
+  const { ref: labelTextRef, isTruncated } = useIsTruncated<HTMLSpanElement>({
+    disabled: !hasLabel,
+    ignoreHeightTruncation: true,
+  });
+  const hasTooltip = hasLabel ? isTruncated : (content.withTooltip ?? false);
+
   return (
-    <Tooltip label={label} opened={opened}>
+    <Tooltip
+      label={content.label ?? content.ariaLabel}
+      opened={hasTooltip && opened}
+      disabled={!hasTooltip}
+    >
       <span
-        className={S.SegmentedControlTooltipTarget}
+        className={S.SegmentedControlItemBody}
         // The tooltip repeats the accessible name, so it mustn't also describe it.
         aria-describedby={undefined}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
       >
-        {children}
+        {hasLabel ? (
+          <>
+            {content.icon !== undefined && (
+              <SegmentedControlItemIcon
+                icon={content.icon}
+                size={LABELLED_ICON_SIZE}
+              />
+            )}
+            <SegmentedControlItemLabelText
+              label={content.label}
+              textRef={labelTextRef}
+            />
+          </>
+        ) : (
+          <SegmentedControlItemIcon
+            icon={content.icon}
+            size={ICON_ONLY_SIZE}
+            ariaLabel={content.ariaLabel}
+          />
+        )}
       </span>
     </Tooltip>
   );
 }
 
-type SegmentedControlItemLabelProps = {
-  content: SegmentedControlItemContent;
+type SegmentedControlItemLabelTextProps = {
+  label: string;
+  textRef: Ref<HTMLSpanElement>;
 };
 
-function SegmentedControlItemLabel({
-  content,
-}: SegmentedControlItemLabelProps) {
-  if (content.label === undefined) {
-    return (
-      <SegmentedControlItemIcon
-        icon={content.icon}
-        size={ICON_ONLY_SIZE}
-        ariaLabel={content.ariaLabel}
-      />
-    );
-  }
-
+function SegmentedControlItemLabelText({
+  label,
+  textRef,
+}: SegmentedControlItemLabelTextProps) {
   return (
-    <>
-      {content.icon !== undefined && (
-        <SegmentedControlItemIcon
-          icon={content.icon}
-          size={LABELLED_ICON_SIZE}
-        />
-      )}
-      {content.label}
-    </>
+    <span className={S.SegmentedControlLabelText}>
+      <span ref={textRef} className={S.SegmentedControlLabelTextVisible}>
+        {label}
+      </span>
+      {/* Gives the segment its width, see the CSS. Its text comes from CSS, so the label isn't in the DOM twice. */}
+      <span
+        className={S.SegmentedControlLabelTextSizer}
+        data-label={label}
+        aria-hidden
+      />
+    </span>
   );
 }
 

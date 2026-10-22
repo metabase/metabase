@@ -29,6 +29,17 @@ const TOOLTIP_DATA: SegmentedControlItem<Value>[] = [
   },
 ];
 
+// Mantine renders each segment as a radio input followed by its <label>.
+const getSegment = (name: string) => {
+  const radio = screen.getByRole("radio", { name });
+  const label =
+    radio instanceof HTMLInputElement ? radio.labels?.[0] : undefined;
+  if (!label) {
+    throw new Error(`No label for the "${name}" segment`);
+  }
+  return label;
+};
+
 const setup = ({ data, value = "code" }: SetupOpts) => {
   const onChange = jest.fn();
 
@@ -59,8 +70,8 @@ describe("SegmentedControl", () => {
       ],
     });
 
-    const label = screen.getByText("Code");
-    const icon = within(label).getByRole("img", { hidden: true });
+    const segment = getSegment("Code");
+    const icon = within(segment).getByRole("img", { hidden: true });
 
     expect(icon).toHaveClass("Icon-embed");
     expect(icon).toHaveAttribute("aria-hidden", "true");
@@ -114,9 +125,7 @@ describe("SegmentedControl", () => {
       ],
     });
 
-    expect(
-      within(screen.getByText("Code")).getByTestId("custom-icon"),
-    ).toBeInTheDocument();
+    expect(within(getSegment("Code")).getByTestId("custom-icon")).toBeVisible();
     expect(screen.getByRole("radio", { name: "Code" })).toBeInTheDocument();
   });
 
@@ -320,6 +329,70 @@ describe("SegmentedControl", () => {
       await waitFor(() =>
         expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
       );
+    });
+  });
+
+  describe("truncated labels", () => {
+    const LONG_LABEL = "Only when the value is above the goal line";
+    const SEGMENT_TEXT_WIDTH = 100;
+    const CHARACTER_WIDTH = 7;
+
+    let elementRectSpy: jest.SpyInstance;
+    let rangeRectSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      jest.mocked(isFocusVisible).mockReturnValue(false);
+      // jsdom has no layout: give every label the same width, and its text a width that grows with its length.
+      elementRectSpy = jest
+        .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+        .mockReturnValue(new DOMRect(0, 0, SEGMENT_TEXT_WIDTH, 16));
+      rangeRectSpy = jest
+        .spyOn(Range.prototype, "getBoundingClientRect")
+        .mockImplementation(function (this: Range) {
+          const textLength = this.startContainer.textContent?.length ?? 0;
+          return new DOMRect(0, 0, textLength * CHARACTER_WIDTH, 16);
+        });
+    });
+
+    afterEach(() => {
+      elementRectSpy.mockRestore();
+      rangeRectSpy.mockRestore();
+    });
+
+    const LONG_LABEL_DATA: SegmentedControlItem<Value>[] = [
+      { value: "code", label: "Code" },
+      { value: "preview", label: LONG_LABEL, icon: "eye_filled" },
+    ];
+
+    it("should show the full label as a tooltip on hover only when it's truncated", async () => {
+      setup({ data: LONG_LABEL_DATA });
+
+      await userEvent.hover(screen.getByText("Code"));
+      await expect(
+        screen.findByRole("tooltip", {}, { timeout: 500 }),
+      ).rejects.toThrow();
+
+      await userEvent.hover(screen.getByText(LONG_LABEL));
+      expect(
+        await screen.findByRole("tooltip", { name: LONG_LABEL }),
+      ).toBeInTheDocument();
+    });
+
+    it("should show the full label as a tooltip on keyboard focus only when it's truncated", async () => {
+      jest.mocked(isFocusVisible).mockReturnValue(true);
+      setup({ data: LONG_LABEL_DATA });
+
+      await userEvent.tab();
+      expect(screen.getByRole("radio", { name: "Code" })).toHaveFocus();
+      await expect(
+        screen.findByRole("tooltip", {}, { timeout: 500 }),
+      ).rejects.toThrow();
+
+      await userEvent.keyboard("{ArrowRight}");
+      expect(screen.getByRole("radio", { name: LONG_LABEL })).toHaveFocus();
+      expect(
+        await screen.findByRole("tooltip", { name: LONG_LABEL }),
+      ).toBeInTheDocument();
     });
   });
 });
