@@ -1,11 +1,14 @@
-import type { KeyboardEvent, Ref } from "react";
+import cx from "classnames";
+import type { KeyboardEvent, ReactNode, Ref } from "react";
 import { useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { Checkbox, Combobox, Flex, Icon, useCombobox } from "metabase/ui";
 
 import S from "./KeyboardFilterRow.module.css";
-import type { SuggestionGroup } from "./types";
+import type { SuggestionGroup, SuggestionOption } from "./types";
+
+const DEFAULT_DROPDOWN_WIDTH = 280;
 
 interface SuggestionInputProps {
   inputRef?: Ref<HTMLInputElement>;
@@ -14,6 +17,13 @@ interface SuggestionInputProps {
   placeholder: string;
   /** Options show checkboxes, and the dropdown stays open after a click. */
   isMultiSelect?: boolean;
+  /** Options are a grid of tiles instead of a list. */
+  isTiles?: boolean;
+  /** Number of option columns in the list. */
+  columns?: number;
+  dropdownWidth?: number;
+  /** Content above the options, like presets or a map. */
+  header?: ReactNode;
   /** Shown when no option matches the text. */
   emptyMessage?: string;
   onTextChange: (text: string) => void;
@@ -39,6 +49,10 @@ export function SuggestionInput({
   text,
   placeholder,
   isMultiSelect = false,
+  isTiles = false,
+  columns = 1,
+  dropdownWidth = DEFAULT_DROPDOWN_WIDTH,
+  header,
   emptyMessage = t`No results`,
   onTextChange,
   onOptionSubmit,
@@ -52,15 +66,18 @@ export function SuggestionInput({
     return groups
       .map((group) => ({
         ...group,
-        options: group.options.filter((option) =>
-          option.label.toLowerCase().includes(searchText),
+        options: group.options.filter(
+          (option) =>
+            option.label.toLowerCase().includes(searchText) ||
+            option.description?.toLowerCase().includes(searchText),
         ),
       }))
       .filter((group) => group.options.length > 0);
   }, [groups, text]);
 
   const hasOptions = filteredGroups.length > 0;
-  const hasSuggestions = groups.some((group) => group.options.length > 0);
+  const hasSuggestions =
+    header != null || groups.some((group) => group.options.length > 0);
 
   // In a single select, Enter picks the first match. In a multi select, Enter
   // with no highlighted option adds the typed text, so nothing is highlighted
@@ -94,11 +111,49 @@ export function SuggestionInput({
     }
   };
 
+  const renderOption = (option: SuggestionOption) => {
+    if (isTiles) {
+      return (
+        <Combobox.Option
+          key={option.value}
+          value={option.value}
+          className={S.tile}
+          aria-pressed={option.isChecked ?? false}
+        >
+          <OptionLabel option={option} />
+        </Combobox.Option>
+      );
+    }
+    return (
+      <Combobox.Option
+        key={option.value}
+        value={option.value}
+        active={option.isChecked}
+      >
+        {isMultiSelect ? (
+          <Checkbox
+            className={S.optionCheckbox}
+            classNames={{
+              body: S.optionCheckboxBody,
+              labelWrapper: S.optionCheckboxLabelWrapper,
+            }}
+            checked={option.isChecked ?? false}
+            label={<OptionLabel option={option} />}
+            readOnly
+            tabIndex={-1}
+          />
+        ) : (
+          <OptionLabel option={option} />
+        )}
+      </Combobox.Option>
+    );
+  };
+
   return (
     <Combobox
       store={combobox}
       position="bottom-start"
-      width={280}
+      width={dropdownWidth}
       withinPortal={false}
       classNames={{ groupLabel: S.groupLabel, option: S.option }}
       onOptionSubmit={(value) => {
@@ -127,32 +182,27 @@ export function SuggestionInput({
       </Combobox.Target>
       {hasSuggestions && (
         <Combobox.Dropdown>
+          {header != null && (
+            // Clicks in the header keep the focus in the input.
+            <div
+              className={S.dropdownHeader}
+              onMouseDown={(event) => event.preventDefault()}
+            >
+              {header}
+            </div>
+          )}
           <Combobox.Options className={S.options}>
             {hasOptions ? (
               filteredGroups.map((group, groupIndex) => (
                 <Combobox.Group key={groupIndex} label={group.label}>
-                  {group.options.map((option) => (
-                    <Combobox.Option
-                      key={option.value}
-                      value={option.value}
-                      active={option.isChecked}
-                    >
-                      {isMultiSelect ? (
-                        <Checkbox
-                          className={S.optionCheckbox}
-                          checked={option.isChecked ?? false}
-                          label={option.label}
-                          readOnly
-                          tabIndex={-1}
-                        />
-                      ) : (
-                        <Flex align="center" gap="sm">
-                          {option.icon && <Icon name={option.icon} />}
-                          {option.label}
-                        </Flex>
-                      )}
-                    </Combobox.Option>
-                  ))}
+                  <div
+                    className={cx({ [S.optionGrid]: isTiles || columns > 1 })}
+                    style={{
+                      gridTemplateColumns: `repeat(${isTiles ? 2 : columns}, minmax(0, 1fr))`,
+                    }}
+                  >
+                    {group.options.map(renderOption)}
+                  </div>
                 </Combobox.Group>
               ))
             ) : (
@@ -162,5 +212,20 @@ export function SuggestionInput({
         </Combobox.Dropdown>
       )}
     </Combobox>
+  );
+}
+
+function OptionLabel({ option }: { option: SuggestionOption }) {
+  return (
+    <Flex align="center" gap="sm" miw={0}>
+      {option.icon && <Icon name={option.icon} />}
+      {option.leftSection}
+      <span className={S.optionLabel} title={option.label}>
+        {option.label}
+      </span>
+      {option.description && (
+        <span className={S.optionDescription}>{option.description}</span>
+      )}
+    </Flex>
   );
 }

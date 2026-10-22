@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type * as Lib from "metabase-lib";
 import type { IconName } from "metabase-types/api";
 
@@ -5,6 +7,10 @@ export type SuggestionOption = {
   value: string;
   label: string;
   icon?: IconName;
+  /** Shown before the label, like a flag. */
+  leftSection?: ReactNode;
+  /** Shown after the label in grey, like a state code. */
+  description?: string;
   isChecked?: boolean;
 };
 
@@ -27,6 +33,12 @@ export type DraftOperator = {
   label: string;
   valueKind: ValueKind;
   isNumeric: boolean;
+  /** For number operators: the operator, for the histogram slider. */
+  numberOperator?: Lib.NumberFilterOperator;
+  /** The label of a value, like a country name for a country code. */
+  formatValue?: (value: string) => string | null;
+  /** The values to pick from, when the column has a fixed set of them. */
+  options?: { value: string; label: string }[];
   getFilterClause: (values: string[]) => Lib.ExpressionClause | undefined;
 };
 

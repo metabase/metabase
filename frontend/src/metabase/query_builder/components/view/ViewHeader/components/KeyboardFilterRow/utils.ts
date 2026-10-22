@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
+import { getCountryName } from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/countries";
+import { getStateName } from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/states";
 import { getFilterClause as getBooleanFilterClause } from "metabase/querying/filters/components/FilterPicker/BooleanFilterPicker/utils";
 import { OPERATORS as NUMBER_OPERATORS } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/constants";
 import {
@@ -106,22 +108,42 @@ export function changeDraftColumn(
     : { column: newColumn, values: [] };
 }
 
-const BOOLEAN_OPERATORS = [
-  { key: "true", label: () => t`is true` },
-  { key: "false", label: () => t`is false` },
-  { key: "is-null", label: () => t`is empty` },
-  { key: "not-null", label: () => t`is not empty` },
-] as const;
+function getBooleanOperators(column: Lib.ColumnMetadata): DraftOperator[] {
+  return [
+    {
+      key: "=",
+      label: t`is`,
+      valueKind: "single",
+      isNumeric: false,
+      options: [
+        { value: "true", label: t`True` },
+        { value: "false", label: t`False` },
+      ],
+      getFilterClause: ([value]) =>
+        value === "true" || value === "false"
+          ? getBooleanFilterClause(column, value)
+          : undefined,
+    },
+    {
+      key: "is-null",
+      label: t`is empty`,
+      valueKind: "none",
+      isNumeric: false,
+      getFilterClause: () => getBooleanFilterClause(column, "is-null"),
+    },
+    {
+      key: "not-null",
+      label: t`is not empty`,
+      valueKind: "none",
+      isNumeric: false,
+      getFilterClause: () => getBooleanFilterClause(column, "not-null"),
+    },
+  ];
+}
 
 function getOperators(column: Lib.ColumnMetadata): DraftOperator[] | undefined {
   if (Lib.isBoolean(column)) {
-    return BOOLEAN_OPERATORS.map(({ key, label }) => ({
-      key,
-      label: label(),
-      valueKind: "none",
-      isNumeric: false,
-      getFilterClause: () => getBooleanFilterClause(column, key),
-    }));
+    return getBooleanOperators(column);
   }
 
   if (Lib.isTime(column) || Lib.isDateOrDateTime(column)) {
@@ -138,6 +160,7 @@ function getOperators(column: Lib.ColumnMetadata): DraftOperator[] | undefined {
         label: displayName,
         valueKind: getNumberValueKind(operator),
         isNumeric: true,
+        numberOperator: operator,
         getFilterClause: (values) => {
           const numbers = values.map(parseNumber);
           return numbers.every((value) => value != null)
@@ -156,6 +179,11 @@ function getOperators(column: Lib.ColumnMetadata): DraftOperator[] | undefined {
         valueKind:
           STRING_OPERATORS[operator].type === "empty" ? "none" : "multi",
         isNumeric: false,
+        formatValue: Lib.isCountry(column)
+          ? getCountryName
+          : Lib.isState(column)
+            ? getStateName
+            : undefined,
         getFilterClause: (values) =>
           getStringFilterClause(operator, column, values, {}),
       }),
@@ -207,6 +235,9 @@ export function getDraftFilterClause({
 }
 
 export function isValidValue(operator: DraftOperator, value: string) {
+  if (operator.options != null) {
+    return operator.options.some((option) => option.value === value);
+  }
   return (
     value.length > 0 && (!operator.isNumeric || parseNumber(value) != null)
   );
@@ -245,11 +276,13 @@ export function getDraftStateFromFilter(
 
   const booleanParts = Lib.booleanFilterParts(query, stageIndex, filter);
   if (booleanParts != null) {
-    const key =
-      booleanParts.operator === "="
-        ? String(booleanParts.values[0] ?? true)
-        : booleanParts.operator;
-    return getDraftState(query, stageIndex, booleanParts.column, key, []);
+    return getDraftState(
+      query,
+      stageIndex,
+      booleanParts.column,
+      booleanParts.operator,
+      booleanParts.values.map(String),
+    );
   }
 
   return undefined;
@@ -272,6 +305,14 @@ function getDraftState(
 }
 
 export function formatDraftValue(operator: DraftOperator, value: string) {
+  const option = operator.options?.find((option) => option.value === value);
+  if (option != null) {
+    return option.label;
+  }
+  const label = operator.formatValue?.(value);
+  if (label != null) {
+    return label;
+  }
   const number = operator.isNumeric ? parseNumber(value) : null;
   return number != null ? formatNumber(number) : value;
 }

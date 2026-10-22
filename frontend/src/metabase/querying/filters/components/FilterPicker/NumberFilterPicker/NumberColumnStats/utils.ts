@@ -58,24 +58,44 @@ export function getStatsBase(
   }
   newQuery = Lib.limit(newQuery, stageIndex, null);
 
-  let newStageIndex = stageIndex;
-  if (
+  const hasSummary =
     Lib.aggregations(newQuery, stageIndex).length > 0 ||
-    Lib.breakouts(newQuery, stageIndex).length > 0
-  ) {
-    newQuery = Lib.appendStage(newQuery);
-    newStageIndex = stageIndex + 1;
+    Lib.breakouts(newQuery, stageIndex).length > 0;
+  if (!hasSummary) {
+    return findStatsColumn(newQuery, stageIndex, column);
   }
 
-  const newColumn = Lib.findMatchingColumn(
-    newQuery,
-    newStageIndex,
-    column,
-    Lib.expressionableColumns(newQuery, newStageIndex),
+  // A filter on a summarized stage can use the summary columns, which are in
+  // the next stage, or the columns from before the summary.
+  return (
+    findStatsColumn(Lib.appendStage(newQuery), stageIndex + 1, column) ??
+    findStatsColumn(removeSummary(newQuery, stageIndex), stageIndex, column)
   );
-  return newColumn != null
-    ? { query: newQuery, stageIndex: newStageIndex, column: newColumn }
-    : null;
+}
+
+function findStatsColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+): StatsBase | null {
+  const newColumn = Lib.findMatchingColumn(
+    query,
+    stageIndex,
+    column,
+    Lib.expressionableColumns(query, stageIndex),
+  );
+  return newColumn != null ? { query, stageIndex, column: newColumn } : null;
+}
+
+function removeSummary(query: Lib.Query, stageIndex: number): Lib.Query {
+  let newQuery = query;
+  for (const breakout of Lib.breakouts(newQuery, stageIndex)) {
+    newQuery = Lib.removeClause(newQuery, stageIndex, breakout);
+  }
+  for (const aggregation of Lib.aggregations(newQuery, stageIndex)) {
+    newQuery = Lib.removeClause(newQuery, stageIndex, aggregation);
+  }
+  return newQuery;
 }
 
 function findAggregationOperator(

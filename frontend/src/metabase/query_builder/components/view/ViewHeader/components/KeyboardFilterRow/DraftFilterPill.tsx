@@ -1,6 +1,6 @@
 import { useClickOutside } from "@mantine/hooks";
 import { skipToken } from "@reduxjs/toolkit/query/react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { Fragment, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
@@ -14,13 +14,15 @@ import {
   canListFieldValues,
   canSearchFieldValues,
 } from "metabase/querying/filters/components/FilterPicker/FilterValuePicker/utils";
+import { HistogramSlider } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/HistogramSlider";
+import { useNumberColumnStats } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberColumnStats";
 import { Icon, Popover } from "metabase/ui";
+import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
-import type { FieldValue } from "metabase-types/api";
 
 import S from "./KeyboardFilterRow.module.css";
 import { SuggestionInput } from "./SuggestionInput";
-import type { DraftOperator, DraftState, SuggestionGroup } from "./types";
+import type { DraftOperator, DraftState } from "./types";
 import {
   changeDraftColumn,
   formatDraftValue,
@@ -32,6 +34,7 @@ import {
   getPillOperatorLabel,
   isValidValue,
 } from "./utils";
+import { type ValueAndLabel, useValueWidget } from "./value-widgets";
 
 const SEARCH_LIMIT = 20;
 
@@ -382,6 +385,10 @@ export function DraftFilterPill({
       )}
       {step === "value" && operator != null && isFixedValueCount(operator) && (
         <FixedValuesInput
+          query={query}
+          stageIndex={stageIndex}
+          column={column?.column}
+          filter={filter}
           operator={operator}
           values={values}
           onChange={setFixedValues}
@@ -401,6 +408,9 @@ export function DraftFilterPill({
             text={text}
             onTextChange={handleTextChange}
             onToggleValue={toggleValue}
+            onValuesChange={(newValues) =>
+              updateDraft({ ...draft, values: newValues })
+            }
             onRemoveValue={removeValue}
             onKeyDown={handleKeyDown}
           />
@@ -489,6 +499,7 @@ interface ValueInputProps {
   text: string;
   onTextChange: (text: string) => void;
   onToggleValue: (value: string) => void;
+  onValuesChange: (values: string[]) => void;
   onRemoveValue: (index: number) => void;
   onKeyDown: (
     event: KeyboardEvent<HTMLInputElement>,
@@ -506,27 +517,30 @@ function ValueInput({
   text,
   onTextChange,
   onToggleValue,
+  onValuesChange,
   onRemoveValue,
   onKeyDown,
 }: ValueInputProps) {
-  const fieldValues = useFieldValues(query, column, text);
+  const { fieldValues, isListed } = useFieldValues(query, column, text);
+  const widget = useValueWidget({
+    column,
+    operator,
+    fieldValues,
+    isListed,
+    values,
+    onValuesChange,
+    onToggleValue,
+  });
   const labels = useMemo(
-    () => new Map(fieldValues.map(([value, label]) => [String(value), label])),
-    [fieldValues],
+    () =>
+      new Map(
+        widget.groups.flatMap((group) =>
+          group.options.map((option) => [option.value, option.label]),
+        ),
+      ),
+    [widget.groups],
   );
   const isMultiSelect = operator.valueKind === "multi";
-  const groups = useMemo<SuggestionGroup[]>(
-    () => [
-      {
-        options: fieldValues.map(([value, label]) => ({
-          value: String(value),
-          label,
-          isChecked: values.includes(String(value)),
-        })),
-      },
-    ],
-    [fieldValues, values],
-  );
   const isRange = operator.valueKind === "range";
 
   return (
@@ -542,7 +556,11 @@ function ValueInput({
       )}
       <SuggestionInput
         inputRef={inputRef}
-        groups={groups}
+        groups={widget.groups}
+        header={widget.header}
+        isTiles={widget.isTiles}
+        columns={widget.columns}
+        dropdownWidth={widget.dropdownWidth}
         text={text}
         placeholder={getValuePlaceholder(operator, values)}
         isMultiSelect={isMultiSelect}
@@ -591,10 +609,17 @@ function ValueTokens({
 }
 
 function isFixedValueCount(operator: DraftOperator) {
-  return operator.valueKind === "single" || operator.valueKind === "range";
+  return (
+    operator.isNumeric &&
+    (operator.valueKind === "single" || operator.valueKind === "range")
+  );
 }
 
 interface FixedValuesInputProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata | undefined;
+  filter: Lib.FilterClause | undefined;
   operator: DraftOperator;
   values: string[];
   onChange: (values: string[]) => void;
@@ -606,6 +631,10 @@ interface FixedValuesInputProps {
  * the user edits each value in place.
  */
 function FixedValuesInput({
+  query,
+  stageIndex,
+  column,
+  filter,
   operator,
   values,
   onChange,
@@ -619,7 +648,7 @@ function FixedValuesInput({
   const firstEmptyIndex = paddedValues.findIndex((value) => value === "");
   const placeholders = count === 2 ? [t`Min`, t`Max`] : [t`Number`];
 
-  return paddedValues.map((value, index) => (
+  const inputs = paddedValues.map((value, index) => (
     <Fragment key={index}>
       {index === 1 && <span className={S.conjunction}>{t`and`}</span>}
       <input
@@ -639,6 +668,91 @@ function FixedValuesInput({
       />
     </Fragment>
   ));
+
+  if (column == null) {
+    return inputs;
+  }
+
+  return (
+    <NumberHistogramPopover
+      query={query}
+      stageIndex={stageIndex}
+      column={column}
+      filter={filter}
+      operator={operator}
+      values={paddedValues}
+      onChange={onChange}
+    >
+      {inputs}
+    </NumberHistogramPopover>
+  );
+}
+
+interface NumberHistogramPopoverProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
+  filter: Lib.FilterClause | undefined;
+  operator: DraftOperator;
+  values: string[];
+  onChange: (values: string[]) => void;
+  children: ReactNode;
+}
+
+/**
+ * Prototype: the histogram and the slider from the filter widgets prototype,
+ * under the number inputs. It shows for the fast prototype tables only.
+ */
+function NumberHistogramPopover({
+  query,
+  stageIndex,
+  column,
+  filter,
+  operator,
+  values,
+  onChange,
+  children,
+}: NumberHistogramPopoverProps) {
+  const { result } = useNumberColumnStats({
+    query,
+    stageIndex,
+    column,
+    filter,
+  });
+  const { numberOperator } = operator;
+
+  return (
+    <Popover
+      opened={result != null && numberOperator != null}
+      position="bottom-start"
+      withinPortal={false}
+      shadow="md"
+    >
+      <Popover.Target>
+        <span className={S.fixedValues}>{children}</span>
+      </Popover.Target>
+      {result != null && numberOperator != null && (
+        <Popover.Dropdown
+          className={S.histogramDropdown}
+          // Clicks on the histogram keep the focus in the input.
+          onMouseDown={(event) => event.preventDefault()}
+        >
+          <HistogramSlider
+            operator={numberOperator}
+            histogram={result.histogram}
+            min={result.range.min}
+            max={result.range.max}
+            step={result.step}
+            values={values.map((value) => {
+              const number = parseNumber(value);
+              return typeof number === "number" ? number : null;
+            })}
+            onChange={(newValues) => onChange(newValues.map(String))}
+          />
+        </Popover.Dropdown>
+      )}
+    </Popover>
+  );
 }
 
 function getValuePlaceholder(operator: DraftOperator, values: string[]) {
@@ -648,13 +762,11 @@ function getValuePlaceholder(operator: DraftOperator, values: string[]) {
   return operator.isNumeric ? t`Number` : t`Value`;
 }
 
-type ValueAndLabel = [FieldValue[0], string];
-
 function useFieldValues(
   query: Lib.Query,
   column: Lib.ColumnMetadata,
   text: string,
-): ValueAndLabel[] {
+): { fieldValues: ValueAndLabel[]; isListed: boolean } {
   const fieldInfo = useMemo(
     () => Lib.fieldValuesSearchInfo(query, column),
     [query, column],
@@ -681,6 +793,16 @@ function useFieldValues(
 
   return useMemo(() => {
     const rows = listedValues?.values ?? foundValues ?? [];
-    return rows.map(([value, label]) => [value, String(label ?? value)]);
+    return {
+      fieldValues: rows
+        .filter(([value]) => value != null)
+        .map(
+          ([value, label]): ValueAndLabel => [
+            String(value),
+            String(label ?? value),
+          ],
+        ),
+      isListed: listedValues != null,
+    };
   }, [listedValues, foundValues]);
 }
