@@ -10,6 +10,8 @@
    [metabase.agent-lib.representations.repair :as repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization.resolve :as serdes.resolve]
@@ -4038,3 +4040,18 @@
   (testing "a numeric id of no real field is left for the resolver to report"
     (binding [serdes.resolve/*numeric-ids-allowed?* true]
       (is (nil? (repair-error (first-orders-filtering (join-ref "First" 999))))))))
+
+;;; ============================================================
+;;; Post-resolve check - temporal buckets on non-temporal columns
+;;; ============================================================
+
+(deftest temporal-unit-on-non-temporal-column-quotes-the-column-name-test
+  (testing "the column's display name reaches the message quoted"
+    (let [orders-query (lib/query mp-odd-column-name (lib.metadata/table mp-odd-column-name 10))
+          bucketed     (lib/with-temporal-bucket (lib/ref (lib.metadata/field mp-odd-column-name 101)) :month)]
+      (is (= (str quoted-odd-column-name " is a Text column, so it cannot be bucketed by month. Compare it to a "
+                  "plain value, or bucket a date / datetime column instead.")
+             (try (repair/assert-temporal-buckets-on-temporal-columns!
+                   (lib/filter orders-query (lib/= bucketed "2025-01-01")))
+                  nil
+                  (catch clojure.lang.ExceptionInfo e (ex-message e))))))))

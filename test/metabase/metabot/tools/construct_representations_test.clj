@@ -2110,7 +2110,7 @@
                   (is (= :temporal-unit-on-non-temporal-column (:error d))))))))
         (testing "the message names a custom column as such"
           (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo #"`Label` is a Text custom column"
+               clojure.lang.ExceptionInfo #"\"Label\" is a Text custom column"
                (construct/execute-representations-query
                 (query-data {"lib/type" "mbql/query"
                              "database" "Sample"
@@ -2121,7 +2121,7 @@
                                           "aggregation"  [["count" {}]]}]}))))
           (is (thrown-with-msg?
                ;; Text, not the `Integer` the extraction bucket stamped on `effective-type`
-               clojure.lang.ExceptionInfo #"`Label` is a Text custom column"
+               clojure.lang.ExceptionInfo #"\"Label\" is a Text custom column"
                (construct/execute-representations-query
                 (query-data {"lib/type" "mbql/query"
                              "database" "Sample"
@@ -2132,7 +2132,7 @@
                                                                          "effective-type" "type/Integer"} "Label"]]
                                           "aggregation"  [["count" {}]]}]}))))
           (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo #"`Status` is a Text column"
+               clojure.lang.ExceptionInfo #"\"Status\" is a Text column"
                (construct/execute-representations-query
                 (query-data {"lib/type" "mbql/query"
                              "database" "Sample"

@@ -3526,13 +3526,13 @@
     (when (and column-type
                (not= column-type :type/*)
                (not (isa? column-type :type/Temporal)))
-      (let [column-name (lib/display-name query stage-number bare-ref)
+      (let [column-name (quoting/quoted (lib/display-name query stage-number bare-ref))
             type-name   (name column-type)
             unit-name   (name temporal-unit)]
         (throw (ex-info (if (= :expression (nth clause 0))
-                          (tru "`{0}` is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+                          (tru "{0} is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
                                column-name type-name unit-name)
-                          (tru "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+                          (tru "{0} is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
                                column-name type-name unit-name))
                         {:agent-error?  true
                          :error         :temporal-unit-on-non-temporal-column
