@@ -16,6 +16,7 @@ import {
 } from "metabase/current-user";
 import { getHasDatabaseWithActionsEnabled } from "metabase/databases/utils/predicates";
 import { openEmbedJsWizard } from "metabase/embedding/store/embed-setup-modal";
+import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { openDiagnostics } from "metabase/redux/app";
 import type { ModalName } from "metabase/redux/store/modal";
@@ -248,12 +249,14 @@ export const useCommandPaletteBasicActions = ({
           dispatch(openEmbedJsWizard());
         },
       });
+    }
 
+    if (isAdmin && PLUGIN_DATA_APPS.isEnabled) {
       actions.push({
         id: "navigate-data-apps",
         section: "basic",
         icon: "app",
-        perform: () => navigate(Urls.dataAppsSettings()),
+        perform: () => navigate(Urls.dataStudioDataApps()),
       });
     }
 

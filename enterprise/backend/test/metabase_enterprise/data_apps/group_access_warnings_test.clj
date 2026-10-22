@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.group-access :as group-access]
+   [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -13,70 +14,93 @@
 (set! *warn-on-reflection* true)
 
 (defn- do-with-app-reading!
-  "Call `f` with a data app whose resource collection holds a card that reads `table-ids`."
+  "Call `f` with a data app whose resource collection holds a venues question that the dependency graph says reads
+  `table-ids`."
   [table-ids f]
-  (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                 :model/Card card {:collection_id (:resource_collection_id app)}]
-    (mt/with-model-cleanup [:model/Dependency]
-      (when (seq table-ids)
-        (t2/insert! :model/Dependency
-                    (for [table-id table-ids]
-                      {:from_entity_type :card :from_entity_id (:id card)
-                       :to_entity_type :table :to_entity_id table-id})))
-      (f app))))
+  (data-apps.tu/with-published-tables! [(mt/id :venues)]
+    (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                   :model/Card card {:collection_id (:resource_collection_id app) :dataset_query (data-apps.tu/venues-query)}]
+      (mt/with-model-cleanup [:model/Dependency]
+        (when (seq table-ids)
+          (t2/insert! :model/Dependency
+                      (for [table-id table-ids]
+                        {:from_entity_type :card :from_entity_id (:id card)
+                         :to_entity_type :table :to_entity_id table-id})))
+        (f app)))))
 
 (defmacro ^{:private true :clj-kondo/lint-as 'clojure.core/let} with-app-reading!
   "Bind `app-sym` to a data app whose resource collection reads `table-ids`, and run `body`."
   [[app-sym table-ids] & body]
   `(do-with-app-reading! ~table-ids (fn [~app-sym] ~@body)))
 
+(defn- do-with-query-action!
+  "Call `f` with a query action running `sql` in the collection with `collection-id`."
+  [collection-id sql f]
+  (mt/with-temp [:model/Action {action-id :id} {:type :query :name "Run" :collection_id collection-id}
+                 :model/QueryAction _ {:action_id     action-id
+                                       :database_id   (mt/id)
+                                       :dataset_query (lib/native-query (mt/metadata-provider) sql)}]
+    (f)))
+
 (deftest group-permission-warnings-walk-the-dependency-graph-test
-  (testing "the warnings list the tables a native card, a card on another card, and a query action read"
+  (testing "the warnings list the tables a question reads, the tables only a Library metric it aggregates reads, and the
+            tables a query action writes"
     (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
       (mt/with-no-data-perms-for-all-users!
         (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
-          (let [mp (mt/metadata-provider)]
-            (mt/with-temp [:model/DataApp {collection-id :resource_collection_id :as app}
-                           {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                           :model/Card {base-id :id} {:collection_id collection-id
-                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
-                           :model/Card _ {:collection_id collection-id
-                                          :dataset_query (lib/native-query mp "SELECT * FROM VENUES")}
-                           :model/PermissionsGroup group {}]
-              (mt/with-temp [:model/Card _ {:collection_id collection-id
-                                            :dataset_query (lib/query mp (lib.metadata/card mp base-id))}
-                             :model/Action {action-id :id} {:type :query :name "Delete" :collection_id collection-id}
-                             :model/QueryAction _ {:action_id     action-id
-                                                   :database_id   (mt/id)
-                                                   :dataset_query (lib/native-query mp "DELETE FROM CHECKINS WHERE ID = 1")}]
-                (deps.test/synchronously-run-dependency-job!)
-                (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-                (group-access/add-groups! app [(:id group)])
-                (is (=? [{:group_id       (:id group)
-                          :missing_tables [{:id (mt/id :checkins)} {:id (mt/id :orders)} {:id (mt/id :venues)}]}]
-                        (group-access/permission-warnings app)))))))))))
+          (data-apps.tu/with-published-tables! [(mt/id :orders) (mt/id :venues)]
+            (data-apps.tu/do-with-library!
+             (fn [{:keys [metrics-id]}]
+               (let [mp (mt/metadata-provider)]
+                 (mt/with-temp [:model/Card {metric-id :id} {:name          "Venue categories"
+                                                             :type          :metric
+                                                             :collection_id metrics-id
+                                                             :dataset_query (let [venues (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+                                                                              ;; CATEGORIES is reached only through this metric
+                                                                              (lib/aggregate venues (lib/distinct (some #(when (= (mt/id :categories :name) (:id %)) %)
+                                                                                                                        (lib/visible-columns venues)))))}
+                                :model/DataApp {collection-id :resource_collection_id :as app}
+                                {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                                :model/Card _ {:collection_id collection-id
+                                               :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :orders)))}
+                                :model/PermissionsGroup group {}]
+                   (let [mp (mt/metadata-provider)]
+                     (mt/with-temp [:model/Card _ {:collection_id collection-id
+                                                   :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                      (lib/aggregate (lib.metadata/metric mp metric-id)))}]
+                       (do-with-query-action!
+                        collection-id "DELETE FROM CHECKINS WHERE ID = 1"
+                        (fn []
+                          (deps.test/synchronously-run-dependency-job!)
+                          (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+                          (group-access/add-groups! app [(:id group)])
+                          (is (=? [{:group_id       (:id group)
+                                    :missing_tables [{:id (mt/id :categories)} {:id (mt/id :checkins)}
+                                                     {:id (mt/id :orders)} {:id (mt/id :venues)}]}]
+                                  (group-access/permission-warnings app)))))))))))))))))
 
 (deftest group-permission-warnings-include-tables-in-optional-clauses-test
-  (testing "the tables an optional clause names count, whether or not its parameter is set"
+  (testing "the tables an optional clause of a query action names count, whether or not its parameter is set"
     (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
       (mt/with-no-data-perms-for-all-users!
         (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
-          (doseq [sql ["SELECT * FROM VENUES [[WHERE ID IN (SELECT VENUE_ID FROM CHECKINS WHERE ID = {{id}})]]"
-                       "SELECT * FROM VENUES v [[JOIN CHECKINS c ON c.VENUE_ID = v.ID AND c.ID = {{id}}]]"]]
+          (doseq [sql ["UPDATE VENUES SET NAME = 'x' [[WHERE ID IN (SELECT VENUE_ID FROM CHECKINS WHERE ID = {{id}})]]"
+                       "UPDATE VENUES v SET NAME = 'x' WHERE v.ID IN (SELECT v2.ID FROM VENUES v2 [[JOIN CHECKINS c ON c.VENUE_ID = v2.ID AND c.ID = {{id}}]])"]]
             (testing sql
               (mt/with-temp [:model/DataApp {collection-id :resource_collection_id :as app}
                              {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                             :model/Card _ {:collection_id collection-id
-                                            :dataset_query (lib/native-query (mt/metadata-provider) sql)}
                              :model/PermissionsGroup group {}]
-                (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-                (group-access/add-groups! app [(:id group)])
-                (deps.test/synchronously-run-dependency-job!)
-                (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)} {:id (mt/id :venues)}]}]
-                        (group-access/permission-warnings app)))))))))))
+                (do-with-query-action!
+                 collection-id sql
+                 (fn []
+                   (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+                   (group-access/add-groups! app [(:id group)])
+                   (deps.test/synchronously-run-dependency-job!)
+                   (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)} {:id (mt/id :venues)}]}]
+                           (group-access/permission-warnings app)))))))))))))
 
 (deftest group-permission-warnings-follow-snippet-edit-test
-  (testing "after a snippet edit and the jobs, the warnings list the tables of the snippet's new SQL"
+  (testing "after a snippet edit and the jobs, the warnings list the tables of the snippet's new SQL in a query action"
     (mt/test-helpers-set-global-values!
       (mt/with-premium-features #{:data-apps :advanced-permissions :dependencies}
         (mt/with-no-data-perms-for-all-users!
@@ -84,17 +108,17 @@
             (mt/with-temp [:model/NativeQuerySnippet snippet {:name "birds source" :content "VENUES"}
                            :model/DataApp {collection-id :resource_collection_id :as app}
                            {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                           :model/Card _ {:collection_id collection-id
-                                          :dataset_query (lib/native-query (mt/metadata-provider)
-                                                                           "SELECT * FROM {{snippet: birds source}}")}
                            :model/PermissionsGroup group {}]
-              (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
-              (group-access/add-groups! app [(:id group)])
-              (deps.test/synchronously-run-dependency-job!)
-              (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "CHECKINS"})
-              (deps.test/synchronously-run-dependency-job!)
-              (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)}]}]
-                      (group-access/permission-warnings app))))))))))
+              (do-with-query-action!
+               collection-id "DELETE FROM {{snippet: birds source}} WHERE ID = 1"
+               (fn []
+                 (perms/set-database-permission! (:id group) (mt/id) :perms/view-data :blocked)
+                 (group-access/add-groups! app [(:id group)])
+                 (deps.test/synchronously-run-dependency-job!)
+                 (t2/update! :model/NativeQuerySnippet (:id snippet) {:content "CHECKINS"})
+                 (deps.test/synchronously-run-dependency-job!)
+                 (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)}]}]
+                         (group-access/permission-warnings app))))))))))))
 
 (deftest group-permission-warnings-exclude-inactive-tables-test
   (mt/with-premium-features #{:data-apps :advanced-permissions}
