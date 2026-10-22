@@ -7,7 +7,7 @@ dependencies:
     message: >
       Metabase requires the Oracle JDBC driver in order to connect to Oracle databases, but we can't ship it as part
       of Metabase due to licensing restrictions. See
-      https://metabase.com/docs/latest/administration-guide/databases/oracle.html for more details.
+      https://www.metabase.com/docs/latest/databases/connections/oracle for more details.
 driver:
   name: oracle
   display-name: Oracle
