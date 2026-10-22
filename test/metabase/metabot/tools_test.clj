@@ -301,6 +301,33 @@
         (is (= {:class :unrecoverable :code :internal}
                (construct-tool-failure-for-thrown e)))))))
 
+(deftest construct-notebook-query-tool-malformed-clauses-test
+  (testing "the model can retry after a malformed stage or clause"
+    (let [orders   {:lib/type     "mbql.stage/mbql"
+                    :source-table [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]}
+          post-agg (assoc orders :aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]])]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [[label stages] {"a number as `aggregation`"
+                                [(assoc orders :aggregation 42)]
+                                "an empty aggregation clause used in `order-by`"
+                                [(assoc orders :aggregation [[]] :order-by [["desc" {} []]])]
+                                "a number as `joins`"
+                                [(assoc orders :joins 42)]
+                                "a post-aggregation filter with a number as `order-by`"
+                                [(assoc post-agg :order-by 42)]
+                                "a post-aggregation filter with a number as `fields`"
+                                [(assoc post-agg :fields 42)]
+                                "a number as a later stage"            [orders 42]
+                                "an aggregation list as a later stage" [orders [["count" {}]]]}]
+          (testing label
+            (is (=? {:class :recoverable
+                     :code  :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query
+                     :text  #"^Representations query has an invalid structure\."}
+                    (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                                            {:query       {:lib/type "mbql/query" :stages stages}
+                                             :title       "Orders"
+                                             :description "Orders by count."})))))))))
+
 (deftest ->entries-test
   (testing "an entry carries what the adapters and the system message read"
     (let [entries (agent-tools/->entries [#'agent-tools/create-sql-query-tool
