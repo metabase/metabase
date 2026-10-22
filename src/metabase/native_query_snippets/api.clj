@@ -23,7 +23,7 @@
    (list-native-query-snippets false))
   ([archived :- ms/BooleanValue]
    (let [snippets (native-query-snippets.db/snippets-by-archived archived)]
-     (t2/hydrate (filter mi/can-read? snippets) :creator :is_remote_synced :can_write))))
+     (t2/hydrate (filter mi/can-read? snippets) :can_write :creator :is_remote_synced))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen

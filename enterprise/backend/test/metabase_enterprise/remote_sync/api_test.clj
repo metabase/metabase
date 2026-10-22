@@ -1040,17 +1040,15 @@
        (is (false? (remote-sync.object/dirty?)))
        (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action")))))))
 
-(deftest push-tracks-archiving-an-action-test
-  (testing "GHY-4722: archiving an action removes its file on the next push, and unarchiving it writes the file back"
+(deftest push-tracks-deleting-an-action-test
+  (testing "deleting a model's action removes its file on the next push"
     (do-with-pushed-model-actions!
      (fn [{:keys [model push! repo-file]}]
        (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")]
-         (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived true})
+         (is (some? (repo-file "collections/main/synced/rename_venue.yaml")))
+         (mt/user-http-request :crowberto :delete 204 (str "action/" action-id))
          (is (remote-sync.task/successful? (push!)))
-         (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
-         (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived false})
-         (is (remote-sync.task/successful? (push!)))
-         (is (some? (repo-file "collections/main/synced/rename_venue.yaml"))))))))
+         (is (nil? (repo-file "collections/main/synced/rename_venue.yaml"))))))))
 
 (deftest push-tracks-moving-an-action-between-models-test
   (testing "GHY-4722: moving an action to a model outside the synced collections removes its file on the next push, and moving it back writes the file again"
