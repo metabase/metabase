@@ -1,14 +1,13 @@
 import type { DefinedAction } from "./types";
 
 /**
- * Defines a source-controlled data app action. `action` names the generated
- * action the app runs. `copiedActionEntityId` is the entity ID of the action's
- * copy in the app's collection under `collections/data_apps/`, which a production build runs.
+ * Defines a data app action. `action.id` is the action's entity ID or its
+ * numeric id. The typed schema Metabase generates for an app holds one
+ * definition per action in the app's collection.
  */
 export function defineAction<
   const TDefinition extends {
-    action: { id: number; parameters: readonly unknown[] };
-    copiedActionEntityId?: string;
+    action: { id: number | string; parameters: readonly unknown[] };
   },
 >(definition: TDefinition): TDefinition & DefinedAction {
   // `DefinedAction` has no runtime member, so the object is returned as is; the

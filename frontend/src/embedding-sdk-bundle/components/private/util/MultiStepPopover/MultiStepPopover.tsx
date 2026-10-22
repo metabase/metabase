@@ -5,7 +5,11 @@ import {
   isValidElement,
 } from "react";
 
-import { Popover, type PopoverProps } from "metabase/ui";
+import {
+  Popover,
+  type PopoverProps,
+  useStablePopoverPosition,
+} from "metabase/ui";
 
 type StepValue = string | number;
 
@@ -33,6 +37,7 @@ const MultiStepPopoverContent = ({
   currentStep,
   onClose,
   children,
+  position = "bottom-start",
   ...popoverProps
 }: MultiStepPopoverProps &
   Omit<PopoverProps, "children" | "onClose" | "opened">) => {
@@ -46,17 +51,24 @@ const MultiStepPopoverContent = ({
   };
 
   const currentStepContent = findChild(
-    (child): child is ReactElement<StepProps> =>
-      child.type === Step && child.props.value === currentStep,
+    (child): child is ReactElement<StepProps> => {
+      // A `child.type === Step` match guarantees the element carries StepProps.
+      const props = child.props as StepProps;
+      return child.type === Step && props.value === currentStep;
+    },
   )?.props.children;
 
   const targetElement = findChild(
-    (child): child is ReactElement => child.type === Target,
+    (child): child is ReactElement<PropsWithChildren> => child.type === Target,
   )?.props.children;
+
+  const stablePositionProps = useStablePopoverPosition(position);
 
   return (
     <Popover
-      position="bottom-start"
+      position={stablePositionProps.position}
+      middlewares={stablePositionProps.middlewares}
+      onClose={stablePositionProps.onClose}
       opened={currentStep !== null}
       onDismiss={onClose}
       {...popoverProps}
