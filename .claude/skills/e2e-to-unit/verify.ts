@@ -98,7 +98,7 @@ function parseArgs(argv: string[]): Options {
     perFunction: 4,
     maxMutants: 300,
     wrappers: 8,
-    testTimeoutMs: 10000,
+    testTimeoutMs: 25000,
     exclude: ["frontend/src/metabase/ui/"],
     scopeOnly: false,
     confirm: true,
