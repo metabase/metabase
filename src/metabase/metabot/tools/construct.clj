@@ -24,6 +24,7 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -667,7 +668,10 @@
                                             columns)))]
     (let [fields          (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
           queryable-tables (metabot.perms/queryable-table-ids (into #{} (keep :table-id) fields))
-          fields          (filter #(contains? queryable-tables (:table-id %)) fields)]
+          fields          (->> fields
+                               (filter #(contains? queryable-tables (:table-id %)))
+                               entity-details/permission-filter-columns
+                               (filter :fk-target-field-id))]
       (when (seq fields)
         (format "Use `source-field` %s to reach %s directly."
                 (str/join " or " (map #(pr-str (nth (field-ref-for-error metadata-provider [:field {} (:id %)]) 2)) fields))
@@ -688,8 +692,11 @@
                   " "
                   (or (direct-source-field-hint metadata-provider columns table-id table-name)
                       (if (and fk-table-name
-                               (= 1 (count (filter #(= table-id (:target-table-id %))
-                                                   (resolve.mp/outbound-fks-from-table metadata-provider fk-table-id)))))
+                               (= 1 (count (->> (resolve.mp/outbound-fks-from-table metadata-provider fk-table-id)
+                                                (map :source-field)
+                                                entity-details/permission-filter-columns
+                                                (keep :fk-target-field-id)
+                                                (filter #(= table-id (:table-id (fetch-field metadata-provider %))))))))
                         (format "%s has a foreign key to %s: join %s explicitly on %s%s and leave out `source-field`, so the field is reached through that join."
                                 fk-table-name table-name fk-table-name (pr-str source-field)
                                 (if source-field-join-alias
@@ -770,8 +777,15 @@
                                                         (qp-source-field-problem pmbql-query contexts))]
       (let [[_ {:keys [source-field]} target] field-ref
             mp          (lib.metadata/->metadata-provider query)
-            table-id    (when (pos-int? target) (:table-id (fetch-field mp target)))
-            fk-field    (fetch-field mp source-field)
+            field-ids   (into #{} (filter pos-int?) [source-field target])
+            fields      (->> (lib.metadata/bulk-metadata mp :metadata/column field-ids)
+                             entity-details/permission-filter-columns
+                             (into {} (map (juxt :id identity))))
+            _visible    (when-not (every? fields field-ids)
+                          (throw (ex-info "The implicit field reference cannot be resolved with the fields available to you. Use a visible foreign key or an explicit join."
+                                          {:agent-error? true :status-code 400 :error :wrong-source-field})))
+            table-id    (:table-id (get fields target))
+            fk-field    (get fields source-field)
             fk-table-id (some->> (:fk-target-field-id fk-field) (fetch-field mp) :table-id)
             field-ref   (field-ref-for-error mp field-ref)]
         (if (and table-id fk-field (not= table-id fk-table-id))
