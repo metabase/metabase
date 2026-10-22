@@ -43,7 +43,7 @@ describe("fetchDataAppBundleCode", () => {
 
     const [url, init] = fetchMock.mock.calls[0];
 
-    expect(url).toContain("/api/apps/my%20app/bundle");
+    expect(url).toContain("/api/ee/apps/my%20app/bundle");
     expect(init).toEqual({ cache: "no-store" });
   });
 
@@ -122,7 +122,7 @@ describe("instantiateDataAppBundle", () => {
     await instantiate();
 
     expect(mockedCreateSandbox).toHaveBeenCalledWith(
-      expect.objectContaining({ realmHostUrl: "/api/apps/sandbox-host" }),
+      expect.objectContaining({ realmHostUrl: "/api/ee/apps/sandbox-host" }),
     );
   });
 

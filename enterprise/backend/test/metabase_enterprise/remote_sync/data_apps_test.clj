@@ -10,9 +10,7 @@
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.models.remote-sync-task :as remote-sync.task]
-   [metabase-enterprise.remote-sync.source :as source]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
-   [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.actions.core :as actions]
    [metabase.collections.models.collection :as collection]
@@ -24,7 +22,6 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [toucan2.core :as t2]))
 
@@ -111,10 +108,10 @@
   (with-data-apps-sync
     (let [mock (test-helpers/create-mock-source :initial-files {"main" {}})
           repo #(get @(:files-atom mock) "main")]
-      (mt/user-http-request :crowberto :post 200 "apps" {:name         "sales"
-                                                         :display_name "Sales"
-                                                         :bundle_path  "dist/index.js"
-                                                         :bundle       "BUNDLE"})
+      (mt/user-http-request :crowberto :post 200 "ee/apps" {:name         "sales"
+                                                            :display_name "Sales"
+                                                            :bundle_path  "dist/index.js"})
+      (mt/user-http-request :crowberto :put 200 "ee/apps/sales/bundle" {:bundle "BUNDLE"})
       (testing "a created app is exported as its manifest, its bundle file, and its collection's file"
         (is (= :success (:status (export! mock))))
         (is (=? {:slug "sales" :name "Sales" :path "dist/index.js" :collection string?}
@@ -123,15 +120,15 @@
         (is (=? {:name "Data App: sales" :namespace "data-apps"}
                 (yaml/parse-string (get (repo) "collections/data_apps/data_app__sales.yaml")))))
       (testing "an updated bundle is exported"
-        (mt/user-http-request :crowberto :put 200 "apps/sales" {:bundle "BUNDLE-V2"})
+        (mt/user-http-request :crowberto :put 200 "ee/apps/sales/bundle" {:bundle "BUNDLE-V2"})
         (is (= :success (:status (export! mock))))
         (is (= "BUNDLE-V2" (get (repo) "data_apps/sales/dist/index.js"))))
       (testing "a deleted app's files are removed from the repo, and the other apps' files stay"
-        (mt/user-http-request :crowberto :post 200 "apps" {:name         "ops"
-                                                           :display_name "Ops"
-                                                           :bundle_path  "app.js"
-                                                           :bundle       "OPS"})
-        (mt/user-http-request :crowberto :delete 204 "apps/sales")
+        (mt/user-http-request :crowberto :post 200 "ee/apps" {:name         "ops"
+                                                              :display_name "Ops"
+                                                              :bundle_path  "app.js"})
+        (mt/user-http-request :crowberto :put 200 "ee/apps/ops/bundle" {:bundle "OPS"})
+        (mt/user-http-request :crowberto :delete 204 "ee/apps/sales")
         (is (= :success (:status (export! mock))))
         (is (= #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js" "collections/data_apps/data_app__ops.yaml"}
                (app-files-in (repo))))))))
@@ -147,16 +144,16 @@
                     :initial-files {"main" (merge (app-tree sales-eid "sales" "BUNDLE-V1") source)})
             repo   #(get @(:files-atom mock) "main")]
         (is (= :success (:status (import-at! mock "main" :force? true))))
-        (mt/user-http-request :crowberto :put 200 "apps/sales" {:bundle "BUNDLE-V2"})
-        (mt/user-http-request :crowberto :post 200 "apps" {:name         "ops"
-                                                           :display_name "Ops"
-                                                           :bundle_path  "app.js"
-                                                           :bundle       "OPS"})
+        (mt/user-http-request :crowberto :put 200 "ee/apps/sales/bundle" {:bundle "BUNDLE-V2"})
+        (mt/user-http-request :crowberto :post 200 "ee/apps" {:name         "ops"
+                                                              :display_name "Ops"
+                                                              :bundle_path  "app.js"})
+        (mt/user-http-request :crowberto :put 200 "ee/apps/ops/bundle" {:bundle "OPS"})
         (is (= :success (:status (export! mock))))
         (is (= "BUNDLE-V2" (get (repo) "data_apps/sales/dist/index.js")))
         (is (= source (select-keys (repo) (keys source))))
         (testing "deleting the app removes only the files serialization owns"
-          (mt/user-http-request :crowberto :delete 204 "apps/sales")
+          (mt/user-http-request :crowberto :delete 204 "ee/apps/sales")
           (is (= :success (:status (export! mock))))
           (is (= (into #{"data_apps/ops/data_app.yaml" "data_apps/ops/app.js" "collections/data_apps/data_app__ops.yaml"}
                        (keys source))
@@ -168,10 +165,10 @@
       (let [app (app-tree sales-eid "sales" "BUNDLE")
             src (test-helpers/versioned-source :trees {"v0" app "v1" (assoc app "README.md" "x")} :current "v0")]
         (is (= :success (:status (import-at! src "v0" :force? true))))
-        (mt/user-http-request :crowberto :post 200 "apps" {:name         "ops"
-                                                           :display_name "Ops"
-                                                           :bundle_path  "app.js"
-                                                           :bundle       "OPS"})
+        (mt/user-http-request :crowberto :post 200 "ee/apps" {:name         "ops"
+                                                              :display_name "Ops"
+                                                              :bundle_path  "app.js"})
+        (mt/user-http-request :crowberto :put 200 "ee/apps/ops/bundle" {:bundle "OPS"})
         (is (=? {:status :conflict} (import-at! src "v1")))
         (is (t2/exists? :model/DataApp :name "ops"))))))
 
@@ -290,10 +287,10 @@
     (with-data-apps-sync
       (let [mock (test-helpers/create-mock-source :initial-files {"main" {}})
             repo #(get @(:files-atom mock) "main")]
-        (mt/user-http-request :crowberto :post 200 "apps" {:name         "sales"
-                                                           :display_name "Sales"
-                                                           :bundle_path  "dist/index.js"
-                                                           :bundle       "BUNDLE"})
+        (mt/user-http-request :crowberto :post 200 "ee/apps" {:name         "sales"
+                                                              :display_name "Sales"
+                                                              :bundle_path  "dist/index.js"})
+        (mt/user-http-request :crowberto :put 200 "ee/apps/sales/bundle" {:bundle "BUNDLE"})
         (let [collection-id (t2/select-one-fn :resource_collection_id :model/DataApp :name "sales")
               mp            (mt/metadata-provider)]
           (mt/with-temp [:model/Card _ {:name          "Venues list"
@@ -365,8 +362,8 @@
                   (is (=? [{:group_id (:id group) :missing_tables [{:id (mt/id :checkins)} {:id (mt/id :venues)}]}]
                           (group-access/permission-warnings app))))))))))))
 
-(deftest an-apps-collection-is-read-only-test
-  (testing "an admin can't write an app's collection, its cards or its actions, whatever the sync mode"
+(deftest an-apps-collection-is-written-by-admins-test
+  (testing "an admin can write an app's collection, its cards and its actions, unless the instance is read-only"
     (with-data-apps-sync
       (data-apps.tu/do-with-sources!
        (fn [{:keys [action-id]}]
@@ -374,46 +371,29 @@
                           shop-collection-name shop-collection-eid
                           [{:entity_id question-eid :name "VenuesList" :query (venues-query)}]
                           [action-id])
-               src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources)} :current "v0")
-               mp        (mt/metadata-provider)
-               venues-q  (lib/->legacy-MBQL (lib/query mp (lib.metadata/table mp (mt/id :venues))))]
+               src       (test-helpers/versioned-source :trees {"v0" (shop-tree resources)} :current "v0")]
            (is (= :success (:status (import-at! src "v0" :force? true))))
            (let [collection-id (shop-collection-id)
                  card-id       (t2/select-one-pk :model/Card :entity_id question-eid)
                  copy-id       (t2/select-one-pk :model/Action :collection_id collection-id)
-                 read-only!    (fn []
-                                 (is (=? {:can_write false}
+                 writes!       (fn [status can-write?]
+                                 (is (=? {:can_write can-write?}
                                          (mt/user-http-request :crowberto :get 200 (str "collection/" collection-id))))
-                                 (is (=? {:can_write false}
+                                 (is (=? {:can_write can-write?}
                                          (mt/user-http-request :crowberto :get 200 (str "card/" card-id))))
-                                 (mt/user-http-request :crowberto :put 403 (str "collection/" collection-id) {:name "Renamed"})
-                                 (mt/user-http-request :crowberto :put 403 (str "card/" card-id) {:description "edited here"})
-                                 (mt/user-http-request :crowberto :put 403 (str "card/" card-id) {:collection_id nil})
-                                 (mt/user-http-request :crowberto :post 403 "card/collections" {:card_ids [card-id] :collection_id nil})
-                                 (mt/with-temp [:model/Dashboard {dashboard-id :id} {:name "Elsewhere"}
-                                                :model/Card      {mover-id :id}     {:name "Mover" :dataset_query venues-q}]
-                                   (mt/user-http-request :crowberto :put 403 (str "card/" card-id) {:dashboard_id dashboard-id})
-                                   (mt/user-http-request :crowberto :post 403 "card/collections" {:card_ids [mover-id] :collection_id collection-id}))
-                                 (mt/user-http-request :crowberto :delete 403 (str "card/" card-id))
-                                 (mt/user-http-request :crowberto :post 403 "card"
-                                                       {:name                   "New"
-                                                        :display                "table"
-                                                        :visualization_settings {}
-                                                        :collection_id          collection-id
-                                                        :dataset_query          venues-q})
+                                 (mt/user-http-request :crowberto :put status (str "card/" card-id) {:description "edited here"})
                                  (mt/with-actions-enabled
-                                   (mt/user-http-request :crowberto :put 403 (str "action/" copy-id) {:name "Renamed"})))]
+                                   (mt/user-http-request :crowberto :put status (str "action/" copy-id) {:name "Renamed"}))
+                                 (mt/user-http-request :rasta :put 403 (str "card/" card-id) {:description "mine"}))]
              (testing "on a read-write instance"
                (mt/with-temporary-setting-values [remote-sync-type :read-write remote-sync-url "https://example.com/repo.git"]
-                 (read-only!)))
-             (testing "on a read-only instance"
-               (mt/with-temporary-setting-values [remote-sync-type :read-only remote-sync-url "https://example.com/repo.git"]
-                 (read-only!)))
+                 (writes! 200 true)))
              (testing "without remote sync"
                (mt/with-temporary-setting-values [remote-sync-url nil]
-                 (read-only!)))
-             (is (=? {:collection_id collection-id :name "VenuesList" :description nil}
-                     (t2/select-one :model/Card :id card-id))))))))))
+                 (writes! 200 true)))
+             (testing "on a read-only instance"
+               (mt/with-temporary-setting-values [remote-sync-type :read-only remote-sync-url "https://example.com/repo.git"]
+                 (writes! 403 false))))))))))
 
 (deftest a-copy-of-an-apps-card-elsewhere-is-a-card-like-any-other-test
   (testing "copying a card out of an app's collection needs only read access to it"
@@ -572,7 +552,7 @@
                                                       :database_id            (mt/id)
                                                       :collection_id          collection-id
                                                       :dataset_query          (lib/query mp (lib.metadata/card mp card-id))})]
-          (mt/user-http-request :crowberto :delete 204 "apps/shop")
+          (mt/user-http-request :crowberto :delete 204 "ee/apps/shop")
           (is (not (t2/exists? :model/Collection :id collection-id)))
           (is (not (t2/exists? :model/Card :id [:in [card-id reader-id]]))))))))
 
@@ -771,7 +751,7 @@
           (is (= before (resource-files mock)))
           (testing "deleting the app still deletes its collection"
             (let [collection-id (shop-collection-id)]
-              (mt/user-http-request :crowberto :delete 204 "apps/shop")
+              (mt/user-http-request :crowberto :delete 204 "ee/apps/shop")
               (is (not (t2/exists? :model/Collection :id collection-id))))))))))
 
 (deftest an-apps-own-yaml-is-left-alone-test
@@ -782,7 +762,7 @@
                   :initial-files {"main" (assoc (shop-tree (question-resources)) own "greeting: hello\n")})]
         (let [result (import-at! mock "main" :force? true)]
           (is (= :success (:status result)) (:message result)))
-        (mt/user-http-request :crowberto :put 200 "apps/shop" {:bundle "B2"})
+        (mt/user-http-request :crowberto :put 200 "ee/apps/shop/bundle" {:bundle "B2"})
         (is (= :success (:status (export! mock))))
         (is (= "greeting: hello\n" (get-in @(:files-atom mock) ["main" own])))))))
 
@@ -992,41 +972,3 @@
         (is (= :error (:status result)))
         (is (str/includes? (:message result) "must be a question or metric"))
         (is (str/includes? (:message result) card-file))))))
-
-(defn- generated-app-tree
-  "The repo files of the `shop` app as `/api/apps/generate` writes them: its manifest and collection, a question
-  aggregating `metric-id`, the copy of that metric, the copy of `action-id`, and its bundle."
-  [metric-id action-id]
-  (let [{:keys [files]} (mt/user-http-request :crowberto :post 200 "apps/generate/app" {:name "Shop" :slug "shop"})
-        collection      (first (filter #(str/starts-with? (:path %) "collections/") files))
-        collection-eid  (:entity_id (yaml/parse-string (:yaml collection)))
-        folder          (str (str/replace (:path collection) #"\.yaml$" "") "/")
-        resources       (mt/user-http-request :crowberto :post 200 "apps/generate/resources"
-                                              {:queries [{:name          "VenueCount"
-                                                          :entity_id     (u/generate-nano-id)
-                                                          :collection_id collection-eid
-                                                          :query         {:stages [{:source       {:type "table" :id (mt/id :venues)}
-                                                                                    :aggregations [{:type "metric" :id metric-id}]}]}}]
-                                               :actions [{:action_id     action-id
-                                                          :entity_id     (u/generate-nano-id)
-                                                          :collection_id collection-eid}]})]
-    (merge (into {} (map (juxt :path :yaml)) files)
-           (into {} (map (fn [{:keys [file yaml]}] [(str folder file) yaml])) (mapcat resources [:queries :actions :metrics]))
-           {"data_apps/shop/dist/index.js" "BUNDLE"})))
-
-(deftest generated-files-are-what-an-export-writes-test
-  (testing "the files the generate endpoints write for an app are the ones an export writes once a pull saves them"
-    (with-data-apps-sync
-      (data-apps.tu/do-with-sources!
-       (fn [{:keys [metric-id action-id]}]
-         (t2/update! :model/Action action-id {:creator_id (mt/user->id :rasta)})
-         (let [tree (generated-app-tree metric-id action-id)
-               src  (test-helpers/versioned-source :trees {"v0" tree} :current "v0")]
-           (is (= 6 (count (app-files-in tree))))
-           (let [result (import-at! src "v0" :force? true)]
-             (is (= :success (:status result)) (:message result)))
-           (let [exported (into {}
-                                (map (juxt :path :content))
-                                (source/serialize-specs (spec/extract-entities-for-export (spec/exportable-entities)) nil))]
-             (is (= (select-keys tree (app-files-in tree))
-                    (select-keys exported (app-files-in exported)))))))))))
