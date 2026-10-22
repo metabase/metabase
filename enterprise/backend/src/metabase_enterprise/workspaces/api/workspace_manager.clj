@@ -170,7 +170,7 @@
   descriptions and semantic types, referencing each other by this instance's ids."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
-  (api/check-404 (ws.metadata/build-workspace-metadata id)))
+  (ws.metadata/build-workspace-metadata id))
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 

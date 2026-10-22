@@ -37,22 +37,21 @@
 
 (defn build-workspace-metadata
   "The `table_metadata.json` document for the databases of the workspace with `workspace-id`: their active, visible
-  tables in the workspace's input schemas and those tables' active, non-sensitive fields, with the parent's curated
-  values (descriptions, semantic types). Nil when the workspace does not exist."
+  tables in the workspace's input schemas and those tables' active, visible fields, with the parent's curated values
+  (descriptions, semantic types)."
   [workspace-id]
-  (when (ws.db/workspace-exists? workspace-id)
-    (let [wsds      (ws.db/workspace-databases workspace-id)
-          dbs-by-id (if-let [ids (seq (map :database_id wsds))]
-                      (ws.db/database-id->database (vec ids))
-                      {})
-          tables    (into []
-                          (mapcat (fn [wsd]
-                                    (let [db (get dbs-by-id (:database_id wsd))]
-                                      (ws.db/metadata-tables (:id db) (input-schemas db wsd)))))
-                          wsds)
-          fields    (if-let [table-ids (seq (map :id tables))]
-                      (ws.db/metadata-fields (vec table-ids))
-                      [])]
-      {:databases (mapv (comp format-database dbs-by-id :database_id) wsds)
-       :tables    (mapv format-table tables)
-       :fields    (mapv format-field fields)})))
+  (let [wsds      (ws.db/workspace-databases workspace-id)
+        dbs-by-id (if-let [ids (seq (map :database_id wsds))]
+                    (ws.db/database-id->database (vec ids))
+                    {})
+        tables    (into []
+                        (mapcat (fn [wsd]
+                                  (let [db (get dbs-by-id (:database_id wsd))]
+                                    (ws.db/metadata-tables (:id db) (input-schemas db wsd)))))
+                        wsds)
+        fields    (if-let [table-ids (seq (map :id tables))]
+                    (ws.db/metadata-fields (vec table-ids))
+                    [])]
+    {:databases (mapv (comp format-database dbs-by-id :database_id) wsds)
+     :tables    (mapv format-table tables)
+     :fields    (mapv format-field fields)}))

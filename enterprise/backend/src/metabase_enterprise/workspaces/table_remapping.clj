@@ -604,7 +604,7 @@
 
 (defn- transform-target-specs
   "The `{:from-spec :to-spec}` storage specs for remapping transform `target` on workspaced
-   database `db-id`. Pure: reads the workspace config and the database row, records nothing.
+   database `db-id`. Read-only: reads the workspace config and the database row, records nothing.
    Throws when the database is not workspaced."
   [db-id target]
   (let [workspace-ns (ws/db-workspace-namespace db-id)]

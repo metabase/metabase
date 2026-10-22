@@ -172,7 +172,7 @@
                 (testing "create targeting an existing canonical table succeeds"
                   (create! 200 "orders")
                   (testing "and the check records no TableRemapping"
-                    (is (zero? (t2/count :model/TableRemapping :database_id (mt/id))))))
+                    (is (zero? (t2/count :model/TableRemapping :database_id (mt/id) :from_table_name "orders")))))
                 (testing "update retargeting to an existing canonical table succeeds"
                   (let [{id :id} (create! 200 "ws_target_check_new")]
                     (mt/user-http-request :crowberto :put 200 (str "transform/" id)

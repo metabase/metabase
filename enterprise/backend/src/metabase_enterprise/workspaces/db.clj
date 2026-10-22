@@ -101,8 +101,8 @@
               :order-by [:id]}))
 
 (mu/defn metadata-fields
-  "The active, non-sensitive Fields of the Tables with ids in `table-ids`, as users see them (user-set values merged
-  in)."
+  "The active Fields of the Tables with ids in `table-ids` whose visibility is normal or details-only (not hidden,
+  sensitive or retired), as users see them (user-set values merged in)."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Field :id :table_id :name :description :base_type :database_type :effective_type
               :semantic_type :coercion_strategy :nfc_path :parent_id :fk_target_field_id]
@@ -110,7 +110,7 @@
               :where    [:and
                          [:in :table_id table-ids]
                          [:= :active true]
-                         [:not= :visibility_type "sensitive"]]
+                         [:in :visibility_type ["normal" "details-only"]]]
               :order-by [:id]}))
 
 ;;; ------------------------------------------------- Workspace ------------------------------------------------
