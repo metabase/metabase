@@ -28,8 +28,6 @@
    [malli.transform :as mtx]
    [metabase.util.malli.registry :as mr]))
 
-;;; ------------------------------------------------------------ enums ------------------------------------------------------------
-
 (mr/def ::aggregation-type
   "`measures[].agg`. Mirrors `dbt_semantic_interfaces.type_enums.AggregationType`."
   [:enum :sum :min :max :count_distinct :sum_boolean :average :percentile :median :count])
@@ -51,8 +49,6 @@
   and are not modelled here."
   [:enum :nanosecond :microsecond :millisecond :second :minute :hour :day :week :month :quarter :year])
 
-;;; ----------------------------------------------------------- filters -----------------------------------------------------------
-
 (mr/def ::where-filter
   "One filter clause. The template is unrendered Jinja such as `{{ Dimension('order__status') }} = 'Shipped'`
   (QRES-3)."
@@ -68,21 +64,19 @@
   "`filter` as it appears on a metric or a metric input measure."
   [:maybe ::where-filter-intersection])
 
-;;; ------------------------------------------------------ semantic models ------------------------------------------------------
-
 (mr/def ::aggregation-params
   "`measures[].agg_params`, only present for `agg: percentile`."
   [:map
-   [:percentile {:optional true} [:maybe number?]]
-   [:use_discrete_percentile {:optional true} [:maybe :boolean]]
+   [:percentile                 {:optional true} [:maybe number?]]
+   [:use_discrete_percentile    {:optional true} [:maybe :boolean]]
    [:use_approximate_percentile {:optional true} [:maybe :boolean]]])
 
 (mr/def ::non-additive-dimension
   "`measures[].non_additive_dimension`, for semi-additive measures such as account balances. No Metabase equivalent;
   the converter should report it."
   [:map
-   [:name :string]
-   [:window_choice [:enum :min :max]]
+   [:name             :string]
+   [:window_choice    [:enum :min :max]]
    [:window_groupings {:optional true} [:sequential :string]]])
 
 (mr/def ::measure
@@ -90,108 +84,115 @@
   measure name is the column. Note dbt consumes `create_metric: true` when it generates the manifest: the generated
   metric lands in `metrics` and the measure reads `create_metric: false`, so iterate `metrics`, not measures."
   [:map
-   [:name :string]
-   [:agg ::aggregation-type]
-   [:label [:maybe :string]]
-   [:description [:maybe :string]]
-   [:expr [:maybe :string]]
-   [:create_metric {:optional true} :boolean]
-   [:agg_params [:maybe ::aggregation-params]]
+   [:name                   :string]
+   [:agg                    ::aggregation-type]
+   [:label                  [:maybe :string]]
+   [:description            [:maybe :string]]
+   [:expr                   [:maybe :string]]
+   [:create_metric          {:optional true} :boolean]
+   [:agg_params             [:maybe ::aggregation-params]]
    [:non_additive_dimension [:maybe ::non-additive-dimension]]
-   [:agg_time_dimension [:maybe :string]]])
+   [:agg_time_dimension     [:maybe :string]]])
 
 (mr/def ::entity
   "A join key. `expr` is the column; `nil` means the entity name is the column."
   [:map
-   [:name :string]
-   [:type ::entity-type]
-   [:label [:maybe :string]]
+   [:name        :string]
+   [:type        ::entity-type]
+   [:label       [:maybe :string]]
    [:description [:maybe :string]]
-   [:role [:maybe :string]]
-   [:expr [:maybe :string]]])
+   [:role        [:maybe :string]]
+   [:expr        [:maybe :string]]])
+
+(mr/def ::dimenstion-type-params.validity-params
+  [:map
+   [:is_start :boolean]
+   [:is_end   :boolean]])
 
 (mr/def ::dimension-type-params
   "`dimensions[].type_params`, only present for `type: time`."
   [:map
    [:time_granularity ::time-granularity]
-   [:validity_params {:optional true} [:maybe [:map
-                                               [:is_start :boolean]
-                                               [:is_end :boolean]]]]])
+   [:validity_params  {:optional true} [:maybe ::dimenstion-type-params.validity-params]]])
 
 (mr/def ::dimension
   "A categorical or time dimension. `expr` is a column or SQL; `nil` means the dimension name is the column."
   [:map
-   [:name :string]
-   [:type ::dimension-type]
-   [:label [:maybe :string]]
-   [:description [:maybe :string]]
+   [:name         :string]
+   [:type         ::dimension-type]
+   [:label        [:maybe :string]]
+   [:description  [:maybe :string]]
    [:is_partition {:optional true} :boolean]
-   [:type_params [:maybe ::dimension-type-params]]
-   [:expr [:maybe :string]]])
+   [:type_params  [:maybe ::dimension-type-params]]
+   [:expr         [:maybe :string]]])
 
 (mr/def ::node-relation
   "The physical table a semantic model is built on, already resolved from `ref()` plus the profile and `+schema` /
   `+alias` configs. This is the source for serdes portable table refs."
   [:map
-   [:database [:maybe :string]]
-   [:schema_name :string]
-   [:alias :string]
+   [:database      [:maybe :string]]
+   [:schema_name   :string]
+   [:alias         :string]
    [:relation_name {:optional true} [:maybe :string]]])
 
 (mr/def ::depends-on
   "Resolved lineage. For a metric, `nodes` holds its semantic model's unique ID; for a semantic model, the model
   node's unique ID (the key into `nodes`, which is where column `data_type`s live)."
   [:map
-   [:nodes [:sequential :string]]
+   [:nodes  [:sequential :string]]
    [:macros {:optional true} [:sequential :string]]])
+
+(mr/def ::semantic-model.defaults
+  [:map
+   [:agg_time_dimension [:maybe :string]]])
+
+(mr/def ::semantic-model.config
+  [:map
+   [:enabled {:optional true} :boolean]])
 
 (mr/def ::semantic-model
   "One entry of the top-level `semantic_models` map. `model` is the raw `ref('x')` string; use `node_relation` and
   `depends_on` instead."
   [:map
-   [:unique_id :string]
-   [:name :string]
-   [:label [:maybe :string]]
-   [:description [:maybe :string]]
-   [:model :string]
-   [:node_relation ::node-relation]
-   [:defaults [:maybe [:map
-                       [:agg_time_dimension [:maybe :string]]]]]
+   [:unique_id      :string]
+   [:name           :string]
+   [:label          [:maybe :string]]
+   [:description    [:maybe :string]]
+   [:model          :string]
+   [:node_relation  ::node-relation]
+   [:defaults       [:maybe ::semantic-model.defaults]]
    [:primary_entity {:optional true} [:maybe :string]]
-   [:entities [:sequential ::entity]]
-   [:dimensions [:sequential ::dimension]]
-   [:measures [:sequential ::measure]]
-   [:depends_on ::depends-on]
-   [:config {:optional true} [:map
-                              [:enabled {:optional true} :boolean]]]])
-
-;;; ----------------------------------------------------------- metrics -----------------------------------------------------------
+   [:entities       [:sequential ::entity]]
+   [:dimensions     [:sequential ::dimension]]
+   [:measures       [:sequential ::measure]]
+   [:depends_on     ::depends-on]
+   [:config         {:optional true} ::semantic-model.config]])
 
 (mr/def ::time-window
   "`count` + `granularity`, e.g. `{:count 7 :granularity \"day\"}`. Used by cumulative `window` and derived
   `offset_window`. `granularity` stays a string because custom granularities are allowed here."
   [:map
-   [:count :int]
+   [:count       :int] ; TODO (Cam 2026-10-22) should this be `pos-int?` or `nat-int?`
    [:granularity :string]])
 
 (mr/def ::metric-input-measure
   "`type_params.measure` of a simple metric: which measure it aggregates plus per-metric overrides. `filter` and
   `fill_nulls_with` may be set here *or* on the metric itself; honour either."
   [:map
-   [:name :string]
-   [:filter ::filter]
-   [:alias [:maybe :string]]
+   [:name              :string]
+   [:filter            ::filter]
+   [:alias             [:maybe :string]]
    [:join_to_timespine {:optional true} :boolean]
-   [:fill_nulls_with [:maybe :int]]])
+   [:fill_nulls_with   [:maybe :int]]])
 
 (mr/def ::metric-input
   "A reference to another metric, used by ratio (`numerator` / `denominator`) and derived (`metrics`) metrics.
   `offset_window` shifts the input's time series (period-over-period); see the project's known-risks note."
   [:map
-   [:name :string]
-   [:filter ::filter]
-   [:alias [:maybe :string]]
-   [:offset_window {:optional true} [:maybe ::time-window]]
+   [:name            :string]
+   [:filter          ::filter]
+   [:alias           [:maybe :string]]
+   [:offset_window   {:optional true} [:maybe ::time-window]]
    [:offset_to_grain {:optional true} [:maybe :string]]])
 
 (mr/def ::metric-aggregation-params
@@ -199,20 +200,21 @@
   metric carries its own aggregation instead of pointing at a measure. All keys are optional because the exact shape
   is unverified on a real 1.12-spec manifest; QRES-6 confirms it. On the legacy spec this is `nil`."
   [:map
-   [:semantic_model {:optional true} [:maybe :string]]
-   [:agg {:optional true} [:maybe ::aggregation-type]]
-   [:expr {:optional true} [:maybe :string]]
-   [:agg_params {:optional true} [:maybe ::aggregation-params]]
-   [:agg_time_dimension {:optional true} [:maybe :string]]
+   [:semantic_model         {:optional true} [:maybe :string]]
+   [:agg                    {:optional true} [:maybe ::aggregation-type]]
+   [:expr                   {:optional true} [:maybe :string]]
+   [:agg_params             {:optional true} [:maybe ::aggregation-params]]
+   [:agg_time_dimension     {:optional true} [:maybe :string]]
    [:non_additive_dimension {:optional true} [:maybe ::non-additive-dimension]]])
 
 (mr/def ::cumulative-type-params
   "`type_params.cumulative_type_params` (QRES-5)."
   [:map
-   [:window [:maybe ::time-window]]
+   [:window        [:maybe ::time-window]]
    [:grain_to_date [:maybe :string]]
-   [:period_agg {:optional true} [:maybe [:enum :first :last :average]]]])
+   [:period_agg    {:optional true} [:maybe [:enum :first :last :average]]]])
 
+;; TODO (Cam 2026-10-22) make this a `:multi` schema with separate schemas based on `:type`
 (mr/def ::metric-type-params
   "`metrics[].type_params`. Which keys are populated depends on `type`:
 
@@ -224,61 +226,63 @@
 
   `input_measures` is dbt's flattened list of every measure the metric transitively depends on."
   [:map
-   [:measure [:maybe ::metric-input-measure]]
-   [:input_measures {:optional true} [:sequential ::metric-input-measure]]
-   [:numerator [:maybe ::metric-input]]
-   [:denominator [:maybe ::metric-input]]
-   [:expr [:maybe :string]]
-   [:window [:maybe ::time-window]]
-   [:grain_to_date [:maybe :string]]
-   [:metrics [:maybe [:sequential ::metric-input]]]
-   [:conversion_type_params [:maybe :map]]
-   [:cumulative_type_params [:maybe ::cumulative-type-params]]
+   [:measure                   [:maybe ::metric-input-measure]]
+   [:input_measures            {:optional true} [:sequential ::metric-input-measure]]
+   [:numerator                 [:maybe ::metric-input]]
+   [:denominator               [:maybe ::metric-input]]
+   [:expr                      [:maybe :string]]
+   [:window                    [:maybe ::time-window]]
+   [:grain_to_date             [:maybe :string]]
+   [:metrics                   [:maybe [:sequential ::metric-input]]]
+   [:conversion_type_params    [:maybe :map]]
+   [:cumulative_type_params    [:maybe ::cumulative-type-params]]
    [:metric_aggregation_params {:optional true} [:maybe ::metric-aggregation-params]]
-   [:fill_nulls_with [:maybe :int]]
-   [:join_to_timespine {:optional true} :boolean]])
+   [:fill_nulls_with           [:maybe :int]]
+   [:join_to_timespine         {:optional true} :boolean]])
+
+(mr/def ::metric.config
+  [:map
+   [:enabled {:optional true} :boolean]])
 
 (mr/def ::metric
   "One entry of the top-level `metrics` map. `meta` is free-form user metadata; the flexanalytics project puts
   `format` (percent, decimal places) and `synonyms` there."
   [:map
-   [:unique_id :string]
-   [:name :string]
-   [:label [:maybe :string]]
-   [:description [:maybe :string]]
-   [:type ::metric-type]
-   [:type_params ::metric-type-params]
-   [:filter ::filter]
+   [:unique_id        :string]
+   [:name             :string]
+   [:label            [:maybe :string]]
+   [:description      [:maybe :string]]
+   [:type             ::metric-type]
+   [:type_params      ::metric-type-params]
+   [:filter           ::filter]
    [:time_granularity {:optional true} [:maybe :string]]
-   [:meta {:optional true} [:maybe :map]]
-   [:depends_on ::depends-on]
-   [:config {:optional true} [:map
-                              [:enabled {:optional true} :boolean]]]])
-
-;;; ------------------------------------------------------------ nodes ------------------------------------------------------------
+   [:meta             {:optional true} [:maybe :map]]
+   [:depends_on       ::depends-on]
+   [:config           {:optional true} ::metric.config]])
 
 (mr/def ::column
   "One entry of a node's `columns` map. `data_type` comes from the project's `schema.yml` and is often absent, in
   which case base types have to come from Metabase's own synced metadata."
   [:map
-   [:name :string]
+   [:name        :string]
    [:description [:maybe :string]]
-   [:data_type [:maybe :string]]])
+   [:data_type   [:maybe :string]]])
 
 (mr/def ::node
   "One entry of the top-level `nodes` map. `nodes` mixes models, seeds, snapshots, tests and operations; all of them
   carry these relation fields, but the converter only cares about `resource_type :model`. See `::model-node`."
   [:map
-   [:unique_id :string]
+   [:unique_id     :string]
    [:resource_type :keyword]
-   [:name :string]
-   [:database [:maybe :string]]
-   [:schema :string]
-   [:alias :string]
+   [:name          :string]
+   [:database      [:maybe :string]]
+   [:schema        :string]
+   [:alias         :string]
    [:relation_name {:optional true} [:maybe :string]]
-   [:description [:maybe :string]]
-   [:columns [:map-of :string ::column]]])
+   [:description   [:maybe :string]]
+   [:columns       [:map-of :string ::column]]])
 
+;; TODO (Cam 2026-10-22) this doesn't appear to be used anywhere
 (mr/def ::model-node
   "A `::node` whose `resource_type` is `:model`."
   [:and
@@ -286,27 +290,23 @@
    [:map
     [:resource_type [:= :model]]]])
 
-;;; ----------------------------------------------------------- manifest -----------------------------------------------------------
-
 (mr/def ::metadata
   "`metadata`. Only v12 has been tested; v10 and v11 share this structure for the parts we read but are unverified."
   [:map
    [:dbt_schema_version [:re #"^https://schemas\.getdbt\.com/dbt/manifest/v1[0-2]\.json$"]]
-   [:dbt_version :string]
-   [:project_name {:optional true} :string]
-   [:adapter_type {:optional true} :string]
-   [:generated_at {:optional true} :string]])
+   [:dbt_version        :string]
+   [:project_name       {:optional true} :string]
+   [:adapter_type       {:optional true} :string]
+   [:generated_at       {:optional true} :string]])
 
 (mr/def ::manifest
   "The subset of `target/manifest.json` the converter reads. Other top-level sections (`macros`, `sources`, `docs`,
   `saved_queries`, …) are present in a real manifest and pass through untouched."
   [:map
-   [:metadata ::metadata]
-   [:nodes [:map-of :string ::node]]
+   [:metadata        ::metadata]
+   [:nodes           [:map-of :string ::node]]
    [:semantic_models [:map-of :string ::semantic-model]]
-   [:metrics [:map-of :string ::metric]]])
-
-;;; ----------------------------------------------------------- decoding -----------------------------------------------------------
+   [:metrics         [:map-of :string ::metric]]])
 
 (def ^:private transformer
   (mtx/transformer
