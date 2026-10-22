@@ -10,7 +10,7 @@ import { UserStep } from "./components/UserStep";
 import { reducer } from "./reducers";
 
 describe("setup reducer", () => {
-  it("should pre-fill the user form from the URL query params (infra-frontend#1109)", () => {
+  it("should pre-fill user info for hosted instances (infra-frontend#1109)", () => {
     const state = createMockState({
       settings: mockSettings({ "is-hosted?": true }),
       setup: reducer(undefined, selectStep("user_info")),

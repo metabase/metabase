@@ -33,7 +33,7 @@ describe("setup (EE build, only `hosting` feature to simulate starter plan on cl
     expectSectionsToHaveLabelsInOrder();
   });
 
-  it("should not show a step number in the embedding use case, as it has only one step", async () => {
+  it("should not show step numbers in cloud embedding use case", async () => {
     await setupPremium({ step: "user_info", isEmbeddingUseCase: true });
 
     expect(screen.getByText("What should we call you?")).toBeInTheDocument();

@@ -55,7 +55,7 @@ describe("setup (OSS)", () => {
     expect(screen.getByTestId("step-number")).toHaveTextContent("1");
   });
 
-  it("should not offer the sample database when 'has-sample-database?' is false", async () => {
+  it("should not show 'Sample Database' if env var is explicitly set to false during setup", async () => {
     await setup({ settings: { "has-sample-database?": false } });
     await skipWelcomeScreen();
     await submitUserInfoStep();
