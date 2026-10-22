@@ -1,0 +1,16 @@
+## Actions belong to models only: turning a model into a question now deletes its actions, so the ones left on cards that
+## are no longer models go too (their dashboard cards and query_action/implicit_action rows cascade).
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.1y8qok
+      author: ranquild
+      comment: Delete the actions of cards that are not models
+      changes:
+        - sql:
+            sql: >-
+              DELETE FROM action
+              WHERE EXISTS (SELECT 1 FROM report_card
+                            WHERE report_card.id = action.model_id
+                              AND report_card.type <> 'model');
+      rollback: # nothing to do; the deleted actions cannot be restored

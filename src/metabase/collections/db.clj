@@ -411,17 +411,9 @@
               {:archived true, :archived_directly false}))
 
 (mu/defn actions-archived-with-collections
-  "The Actions archived along with the Collections with `collection-ids` whose model, if any, is not archived."
+  "The Actions archived along with the Collections with `collection-ids`."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]
-  (t2/select :model/Action {:select    [:action.*]
-                            :from      [[(t2/table-name :model/Action) :action]]
-                            :left-join [[(t2/table-name :model/Card) :model]
-                                        [:= :model.id :action.model_id]]
-                            :where     [:and
-                                        [:in :action.collection_id collection-ids]
-                                        [:= :action.archived true]
-                                        [:= :action.archived_directly false]
-                                        [:or [:= :action.model_id nil] [:= :model.archived false]]]}))
+  (t2/select :model/Action :collection_id [:in collection-ids] :archived true :archived_directly false))
 
 (mu/defn unarchive-actions!
   "Unarchive the Actions with `action-ids`, returning the number updated."

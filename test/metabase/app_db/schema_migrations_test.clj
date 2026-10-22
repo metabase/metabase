@@ -3678,6 +3678,68 @@
         (is (= #{implicit-id} (t2/select-pks-set :action)))
         (is (= #{other-button} (t2/select-pks-set :report_dashboardcard :id [:in [http-button other-button]])))))))
 
+(deftest delete-actions-of-non-models-test
+  (testing "v65.1y8qok: the actions of cards that are not models, and their dashboard buttons, are deleted"
+    (impl/test-migrations ["v65.1y8qok"] [migrate!]
+      (let [user-id        (t2/insert-returning-pk! :core_user {:first_name  "Action"
+                                                                :last_name   "Owner"
+                                                                :email       "non-model-action-owner@metabase.com"
+                                                                :password    "superstrong"
+                                                                :entity_id   (u/generate-nano-id)
+                                                                :date_joined :%now})
+            db-id          (t2/insert-returning-pk! :metabase_database {:name       "Actions DB"
+                                                                        :engine     "h2"
+                                                                        :details    "{}"
+                                                                        :created_at :%now
+                                                                        :updated_at :%now})
+            dash-id        (t2/insert-returning-pk! :report_dashboard {:name       "Buttons"
+                                                                       :creator_id user-id
+                                                                       :parameters "[]"
+                                                                       :entity_id  (u/generate-nano-id)
+                                                                       :created_at :%now
+                                                                       :updated_at :%now})
+            insert-card!   (fn [card-type]
+                             (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                                    :entity_id              (u/generate-nano-id)
+                                                                    :type                   card-type
+                                                                    :display                "table"
+                                                                    :dataset_query          "{}"
+                                                                    :visualization_settings "{}"
+                                                                    :creator_id             user-id
+                                                                    :database_id            db-id
+                                                                    :created_at             :%now
+                                                                    :updated_at             :%now}))
+            insert-action! (fn [model-id]
+                             (t2/insert-returning-pk! :action {:name       "Action"
+                                                               :entity_id  (u/generate-nano-id)
+                                                               :type       "query"
+                                                               :model_id   model-id
+                                                               :created_at :%now
+                                                               :updated_at :%now}))
+            insert-button! (fn [action-id]
+                             (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id           dash-id
+                                                                             :action_id              action-id
+                                                                             :parameter_mappings     "[]"
+                                                                             :visualization_settings "{}"
+                                                                             :entity_id              (u/generate-nano-id)
+                                                                             :size_x                 4
+                                                                             :size_y                 4
+                                                                             :row                    0
+                                                                             :col                    0
+                                                                             :created_at             :%now
+                                                                             :updated_at             :%now}))
+            model-action   (insert-action! (insert-card! "model"))
+            no-model       (insert-action! nil)
+            question       (insert-action! (insert-card! "question"))
+            metric         (insert-action! (insert-card! "metric"))
+            kept-button    (insert-button! model-action)
+            deleted-button (insert-button! question)]
+        (t2/insert! :query_action {:action_id question :database_id db-id :dataset_query "{}"})
+        (migrate!)
+        (is (= #{model-action no-model} (t2/select-pks-set :action :id [:in [model-action no-model question metric]])))
+        (is (= #{kept-button} (t2/select-pks-set :report_dashboardcard :id [:in [kept-button deleted-button]])))
+        (is (not (t2/exists? :query_action :action_id question)))))))
+
 (deftest timeline-event-entity-ids-test
   (testing "v65.h1c4r5 thru v65.lpm4z3: existing timeline events get distinct portable IDs, other data unchanged"
     (impl/test-migrations ["v65.h1c4r5" "v65.lpm4z3"] [migrate!]

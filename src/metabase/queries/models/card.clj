@@ -586,16 +586,10 @@
                  (= (:type old-card-info) :model)
                  (not (query/supports-implicit-actions? (:dataset_query changes))))
         (disable-implicit-action-for-model! id))
-      ;; Changing from a Model to a Question: archive associated actions
-      (when (and (= (:type changes) :question)
-                 (= (:type old-card-info) :model))
-        (queries.db/delete-dashcards-for-model-actions! id)
-        (queries.db/archive-explicit-actions-for-model! id)
-        (queries.db/delete-implicit-actions-for-model! id))
-      (when (contains? changes :archived)
-        (if (:archived changes)
-          (queries.db/archive-actions-of-model! id)
-          (collection/unarchive-writable-actions! (queries.db/actions-archived-with-model id))))
+      (when (or (:archived changes)
+                (and (= (:type changes) :question)
+                     (= (:type old-card-info) :model)))
+        (queries.db/delete-actions-of-model! id))
       ;; Make sure any native query template tags match the DB in the query.
       (check-field-filter-fields-are-from-correct-database changes)
       ;; Make sure the Collection is in the default Collection namespace (e.g. as opposed to the Snippets Collection

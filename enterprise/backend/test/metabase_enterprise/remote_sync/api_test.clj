@@ -2406,11 +2406,11 @@
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
 
 (deftest archiving-a-synced-model-with-actions-test
-  (testing "a model in a synced collection can be archived although it has actions, which are archived with it"
+  (testing "a model in a synced collection can be archived although it has actions, which are deleted with it"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :is_remote_synced true :location "/"}
                      :model/Card       {model-id :id}  {:type :model :collection_id synced-id
                                                         :dataset_query (mt/mbql-query venues)}
                      :model/Action     {action-id :id} {:type :query :name "Rename" :model_id model-id}]
         (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
-        (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))))))
+        (is (not (t2/exists? :model/Action :id action-id)))))))

@@ -4303,7 +4303,7 @@
   (string? (:message response)))
 
 (deftest dashcard-archived-action-execution-test
-  (testing "A dashcard can't run an archived action until an admin unarchives its model"
+  (testing "A dashcard can't run an archived action until an admin unarchives it"
     (mt/test-driver :h2
       (mt/with-actions-test-data-and-actions-enabled
         (mt/with-actions [{:keys [action-id model-id]} {}]
@@ -4312,10 +4312,10 @@
                                                                   :action_id    action-id
                                                                   :card_id      model-id}]
             (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
-              (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
+              (t2/update! :model/Action action-id {:archived true :archived_directly true})
               (is (= "Not found."
                      (mt/user-http-request :crowberto :post 404 execute-path {:parameters {"id" 1}})))
-              (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived false})
+              (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived false})
               (is (partial= {:rows-affected 1}
                             (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1}}))))))))))
 

@@ -1795,7 +1795,7 @@
       (when (:is_remote_synced updated-collection)
         (check-remote-synced-dependents updated-collection)))))
 
-(defn unarchive-writable-actions!
+(defn- unarchive-writable-actions!
   "Unarchive the `actions` the current user can write, leaving the others archived for an admin to restore."
   [actions]
   (when-let [action-ids (seq (keep #(when (:can_write %) (:id %)) (t2/hydrate actions :can_write)))]

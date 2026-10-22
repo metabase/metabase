@@ -367,15 +367,10 @@
    collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/update! :model/Action :model_id [:in model-ids] {:collection_id collection-id}))
 
-(mu/defn archive-actions-of-model!
-  "Archive the unarchived Actions of the Card with `model-id` along with it, returning the number updated."
+(mu/defn delete-actions-of-model!
+  "Delete the Actions of the Card with `model-id`, returning the number deleted."
   [model-id :- ms/PositiveInt]
-  (t2/update! :model/Action {:model_id model-id, :archived false} {:archived true, :archived_directly false}))
-
-(mu/defn actions-archived-with-model
-  "The Actions of the Card with `model-id` archived along with it."
-  [model-id :- ms/PositiveInt]
-  (t2/select :model/Action :model_id model-id :archived true :archived_directly false))
+  (t2/delete! :model/Action :model_id model-id))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
@@ -386,25 +381,6 @@
   "Delete the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:set ::lib.schema.id/action]]
   (t2/delete! :model/Action :id [:in action-ids]))
-
-(mu/defn delete-dashcards-for-model-actions!
-  "Delete the DashboardCards of the Actions of the model Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (if-let [action-ids (not-empty (t2/select-pks-set :model/Action :model_id model-id))]
-    (t2/delete! :model/DashboardCard :action_id [:in action-ids])
-    0))
-
-(mu/defn archive-explicit-actions-for-model!
-  "Archive the unarchived non-implicit Actions of the model Card with `model-id` directly, returning the number
-  updated."
-  [model-id :- ms/PositiveInt]
-  (t2/update! :model/Action {:model_id model-id, :type [:not= :implicit], :archived false}
-              {:archived true, :archived_directly true}))
-
-(mu/defn delete-implicit-actions-for-model!
-  "Delete the implicit Actions of the model Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (t2/delete! :model/Action :model_id model-id :type :implicit))
 
 (mu/defn delete-card-moderation-reviews!
   "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
