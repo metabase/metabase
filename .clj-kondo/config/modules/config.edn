@@ -2209,6 +2209,7 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
+                    :model/Table
                     :model/Timeline
                     :model/User}}
 
@@ -3813,7 +3814,7 @@
 
   enterprise/data-apps
   {:team "Embedding"
-   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.core metabase-enterprise.data-apps.init}
+   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{actions
            api
            api-scope
@@ -3837,7 +3838,6 @@
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Field
                     :model/Permissions
                     :model/Table}
    :model-exports #{:model/DataApp}}
@@ -4281,7 +4281,6 @@
            task.history
            util
            warehouse-schema-overlay
-           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}
@@ -4558,6 +4557,8 @@
            lib.schema
            models
            premium-features
+           query-processor
+           request
            revisions
            run-tracking
            sql-tools

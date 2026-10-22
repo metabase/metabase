@@ -1182,16 +1182,19 @@
 
 (deftest card-in-a-data-apps-collection-is-admin-only-test
   (testing "Only administrators write a card in a collection of the data apps namespace"
-    (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
-                   :model/Card       card                {:collection_id collection-id}]
-      (mt/with-test-user :crowberto
-        (is (true? (mi/can-write? card)))
-        (is (true? (mi/can-write? :model/Card (:id card))))
-        (is (true? (:can_write (t2/hydrate card :can_write))))
-        (is (true? (mi/can-create? :model/Card {:collection_id collection-id}))))
-      (mt/with-test-user :rasta
-        (is (false? (mi/can-write? card)))
-        (is (false? (mi/can-create? :model/Card {:collection_id collection-id})))))))
+    ;; created as a load creates it, which doesn't check that the table is published
+    (binding [mi/*deserializing?* true]
+      (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}
+                     :model/Card       card                {:collection_id collection-id
+                                                            :dataset_query (mt/mbql-query venues)}]
+        (mt/with-test-user :crowberto
+          (is (true? (mi/can-write? card)))
+          (is (true? (mi/can-write? :model/Card (:id card))))
+          (is (true? (:can_write (t2/hydrate card :can_write))))
+          (is (true? (mi/can-create? :model/Card {:collection_id collection-id}))))
+        (mt/with-test-user :rasta
+          (is (false? (mi/can-write? card)))
+          (is (false? (mi/can-create? :model/Card {:collection_id collection-id}))))))))
 
 (deftest ^:parallel breakouts->identifier->action-fn-test
   (are [b1 b2 expected-identifier->action] (=? expected-identifier->action

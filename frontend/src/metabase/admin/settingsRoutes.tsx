@@ -9,7 +9,6 @@ import {
 import type { State } from "metabase/redux/store";
 import { Outlet, Route, type RouteComponent, redirect } from "metabase/router";
 import { getSetting } from "metabase/settings";
-import * as Urls from "metabase/urls";
 
 /**
  * The admin settings pages, in one chunk. Every loader names it, so the section
@@ -133,18 +132,6 @@ const customVisualizationsDevelopment = () =>
     Component: CustomVisualizationsDevelopmentPage,
   }));
 
-const dataAppsManage = () =>
-  import(
-    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
-  ).then(({ DataAppsManagePage }) => ({ Component: DataAppsManagePage }));
-
-const dataAppGroupsManage = () =>
-  import(
-    /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/DataAppsSettingsPage"
-  ).then(({ DataAppGroupsManagePage }) => ({
-    Component: DataAppGroupsManagePage,
-  }));
-
 const uploadSettings = () =>
   import(
     /* webpackChunkName: "admin-settings" */ "./settings/components/SettingsPages/UploadSettingsPage"
@@ -245,15 +232,6 @@ export const getSettingsRoutes = (
         {devModeEnabled && (
           <Route path="development" lazy={customVisualizationsDevelopment} />
         )}
-      </Route>
-      <Route
-        path={
-          Urls.DATA_APP_URL_SEGMENT
-        } /* do not allow users with "Settings access" permissions to access data apps pages */
-        element={<IsAdmin />}
-      >
-        <Route index lazy={dataAppsManage} />
-        <Route path=":slug/groups" lazy={dataAppGroupsManage} />
       </Route>
       <Route path="uploads" lazy={uploadSettings} />
       <Route
