@@ -895,18 +895,26 @@
 
 (defn- error-in-query?
   "Whether `e`, raised while reading rows, is the database rejecting the query.
-  A canceled or timed-out statement, a failed connection and a rolled-back transaction are not. A cancel that
-  [[driver/query-canceled?]] recognizes is never one. Otherwise the SQLState class decides when it can: `08`
-  (connection exception), `40` (transaction rollback) and `57` (operator intervention) are not errors in the query,
-  while `0A` and the `2x`, `3x` and `4x` classes are. For any other SQLState, or none,
-  [[connection-or-timeout-exception-classes]] decide."
+  A canceled or timed-out statement, a failed connection and a rolled-back transaction are not. It is never one when
+  the query processor canceled the statement, which its query timeout does too, or when [[driver/query-canceled?]]
+  recognizes a cancel. Otherwise the SQLState class decides when it can: `08` (connection exception), `40`
+  (transaction rollback) and `57` (operator intervention) are not errors in the query, while `0A` and the `2x`, `3x`
+  and `4x` classes are. For any other SQLState, or none, [[connection-or-timeout-exception-classes]] decide."
   [driver ^SQLException e]
   (let [sql-state (str (.getSQLState e))]
     (cond
-      (driver/query-canceled? driver e)    false
-      (re-find #"^(?:08|40|57)" sql-state) false
-      (re-find #"^(?:0A|[234])" sql-state) true
-      :else                                (not-any? #(instance? % e) connection-or-timeout-exception-classes))))
+      (or (some-> (driver-api/canceled-chan) a/poll!)
+          (driver/query-canceled? driver e))
+      false
+
+      (re-find #"^(?:08|40|57)" sql-state)
+      false
+
+      (re-find #"^(?:0A|[234])" sql-state)
+      true
+
+      :else
+      (not-any? #(instance? % e) connection-or-timeout-exception-classes))))
 
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."

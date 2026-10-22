@@ -1,5 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.sql-jdbc.execute-test
   (:require
+   [clojure.core.async :as a]
    [clojure.test :refer :all]
    [malli.error :as me]
    [metabase.config.core :as config]
@@ -11,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
@@ -379,5 +381,12 @@
                    (SQLException. "Terminating connection due to administrator command" "57P01")]]
           (testing (ex-message e)
             (is (= :qp (error-type e)))))
+        (testing "when the query processor canceled the statement, whatever the driver reports"
+          (mt/with-dynamic-fn-redefs [sql-jdbc.execute/wire-up-canceled-chan-to-cancel-Statement! (constantly nil)
+                                      sql-jdbc.execute/row-thunk
+                                      (fn [& _]
+                                        #(do (a/offer! qp.pipeline/*canceled-chan* ::canceled)
+                                             (throw (SQLException. "Query was canceled"))))]
+            (is (= :qp (:error_type (qp/process-query query))))))
         (with-redefs [driver/query-canceled? (constantly true)]
           (is (= :qp (error-type (SQLException. "Query execution was interrupted" "70100" 1317)))))))))
