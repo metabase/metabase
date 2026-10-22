@@ -4,6 +4,7 @@
    [clojure.string :as str])
   (:import
    (java.io ByteArrayOutputStream File OutputStream)
+   (java.util.zip Deflater)
    (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveInputStream TarArchiveOutputStream)
    (org.apache.commons.compress.compressors.gzip GzipCompressorInputStream GzipCompressorOutputStream GzipParameters)))
 
@@ -60,11 +61,13 @@
 
 (defn tgz-bytes
   "A tar+gzip archive of `files`, a map of `/`-separated path to byte array, as bytes. The archive is deterministic:
-   entries in path order, mode 0644, no timestamps, so the same files always make the same bytes."
+   entries in path order, mode 0644, no timestamps, so the same files always make the same bytes. It is compressed
+   as hard as gzip can, so repacking an archive that was within a size limit stays within it."
   ^bytes [files]
   (let [baos (ByteArrayOutputStream.)]
     (with-open [tar (-> baos
-                        (GzipCompressorOutputStream. (GzipParameters.))
+                        (GzipCompressorOutputStream. (doto (GzipParameters.)
+                                                       (.setCompressionLevel Deflater/BEST_COMPRESSION)))
                         (TarArchiveOutputStream. 512 "UTF-8"))]
       (.setLongFileMode tar TarArchiveOutputStream/LONGFILE_POSIX)
       (.setBigNumberMode tar TarArchiveOutputStream/BIGNUMBER_POSIX)

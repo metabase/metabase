@@ -148,6 +148,15 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid path"
                               (u.compress/tgz-bytes {path (.getBytes "x" "UTF-8")})))))))
 
+(deftest ^:parallel tgz-bytes-compresses-at-the-maximum-level-test
+  (testing "the gzip header's XFL byte says maximum compression, so a repack is no larger than the upload it came from"
+    (let [words  ["heatmap" "render" "column" "settings" "value" "format" "row" "series"]
+          random (java.util.Random. 7)
+          script (.getBytes ^String (apply str (repeatedly 20000 #(str (nth words (.nextInt random (count words))) " "))) "UTF-8")
+          bytes  (u.compress/tgz-bytes {"dist/index.js" script})]
+      ;; https://www.ietf.org/rfc/rfc1952.txt, section 2.3.1: XFL = 2 for maximum compression, 4 for fastest
+      (is (= 2 (aget bytes 8))))))
+
 (deftest ^:parallel untgz-files-test
   (testing "dot segments in file names are normalized"
     (doseq [path ["./dist/index.js" "././dist/./index.js"]]
