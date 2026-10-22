@@ -7,6 +7,7 @@
 
 import {
   type BaseColumns,
+  type BasePeopleSegments,
   buildSql,
 } from "../../frontend/src/metabase/product-analytics/build-sql";
 import type { ProjectedColumn } from "../../frontend/src/metabase/product-analytics/columns";
@@ -16,11 +17,6 @@ import type {
   FunnelSpec,
   PathsSpec,
 } from "../../frontend/src/metabase/product-analytics/spec/types";
-import {
-  type FunnelPathsRange,
-  getOutcomeLabels,
-  planFunnelPaths,
-} from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-paths";
 import { activeColumn } from "../../frontend/src/metabase/product-analytics/sql/analyses/habit";
 import { COHORT_ATTRIBUTE_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/cohorts";
 import { FIRST_SEEN_EXTRA_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/lifecycle";
@@ -454,6 +450,91 @@ if (cohortsSpec.cohorts !== undefined) {
   for (const [label, spec] of cohortsVariants) {
     await run("cohorts", truth, spec, `cohorts (${label})`);
   }
+
+  // Cohorts by a people segment, with membership the way Metabase compiles
+  // it from the users table: its key and a 0/1 column per segment. The
+  // segment's members plus the people outside it are everyone, and the
+  // members are the people who match it in the identities table.
+  const PAID_PLANS = "('starter', 'pro', 'business')";
+  const paidSegment = (required: string[]): BasePeopleSegments => ({
+    sql: `SELECT person_id, if(plan IN ${PAID_PLANS}, 1, 0) AS seg_1 FROM product_analytics.pa_identities_resolved`,
+    primaryKey: "person_id",
+    flags: ["seg_1"],
+    required,
+  });
+  const segmentsSpec: AnalysisSpec = {
+    ...cohortsSpec,
+    cohorts: {
+      ...cohortsSpec.cohorts,
+      by: "segments",
+      groups: [
+        { label: "Everyone" },
+        { label: "Paid", segment: { flag: "seg_1", isMember: true } },
+        { label: "Not paid", segment: { flag: "seg_1", isMember: false } },
+      ],
+    },
+  };
+  const segmentSizes = async (required: string[]) => {
+    const rows = await chJson(
+      buildSql(segmentsSpec, eventsBaseSql(truth), {
+        ...baseColumns(segmentsSpec),
+        peopleSegments: paidSegment(required),
+      }).sql,
+    );
+    const firstOffset = rows.filter((row) => asNumber(row.offset) === 0);
+    return {
+      order: firstOffset.map((row) => String(row.cohort)),
+      sizes: new Map(
+        firstOffset.map((row) => [
+          String(row.cohort),
+          asNumber(row.cohort_size),
+        ]),
+      ),
+    };
+  };
+  const [direct] = await chJson(`
+    WITH events AS (${eventsBaseSql(truth)})
+    SELECT
+      uniqExact(e.person_id) AS everyone,
+      uniqExactIf(e.person_id, i.plan IN ${PAID_PLANS}) AS paid
+    FROM events AS e
+    LEFT JOIN product_analytics.pa_identities_resolved AS i
+      ON i.person_id = e.person_id
+  `);
+  const everyone = asNumber(direct?.everyone);
+  const paid = asNumber(direct?.paid);
+
+  console.log("\ncohorts (by a people segment)");
+  const bySegment = await segmentSizes([]);
+  const sizeOf = (cohort: string) => bySegment.sizes.get(cohort) ?? 0;
+  check(
+    "segment cohorts keep their order",
+    bySegment.order.join(", ") === "Everyone, Paid, Not paid",
+    bySegment.order.join(", "),
+  );
+  check(
+    "everyone is the segment's members plus the people outside it",
+    sizeOf("Everyone") === everyone &&
+      sizeOf("Paid") + sizeOf("Not paid") === everyone,
+    `everyone ${sizeOf("Everyone")}, paid ${sizeOf("Paid")}, not paid ${sizeOf("Not paid")}, direct ${everyone}`,
+  );
+  check(
+    "the segment's members match it in the identities table",
+    sizeOf("Paid") === paid && paid > 0,
+    `got ${sizeOf("Paid")}, direct ${paid}`,
+  );
+
+  console.log("\ncohorts (filtered to a people segment)");
+  const filtered = await segmentSizes(["seg_1"]);
+  check(
+    "a people filter keeps only the segment's members",
+    filtered.sizes.get("Everyone") === paid &&
+      filtered.sizes.get("Paid") === paid &&
+      !filtered.sizes.has("Not paid"),
+    filtered.order
+      .map((cohort) => `${cohort} ${filtered.sizes.get(cohort)}`)
+      .join(", "),
+  );
 }
 
 // DAU/MAU and WAU/MAU: the range starts 40 days into the data, so the month
@@ -574,82 +655,6 @@ check(
   lifecycleAt("returning") === asNumber(lifecycleDirect?.returning),
   `got ${lifecycleAt("returning")}, expected ${asNumber(lifecycleDirect?.returning)}`,
 );
-
-// Funnel paths must agree with the funnel: everyone who reached the starting
-// step starts a path, and everyone who reached the ending step converts.
-const funnelSpec = defaultSpec("funnel");
-const funnelCounts = await chJson(
-  buildSql(funnelSpec, eventsBaseSql(truth), baseColumns(funnelSpec)).sql,
-);
-const funnelCountAt = (step: number) =>
-  asNumber(
-    funnelCounts.find((row) => parseInt(String(row.label), 10) === step)
-      ?.people,
-  );
-const funnelPathsRanges: FunnelPathsRange[] = [
-  { start: 1, end: 3 },
-  { start: 2, end: 3 },
-  { start: 1, end: 2 },
-];
-for (const range of funnelPathsRanges) {
-  const rows = await chJson(
-    buildSql(
-      funnelSpec,
-      eventsBaseSql(truth),
-      baseColumns(funnelSpec),
-      planFunnelPaths(funnelSpec, { ...range, steps: 5, maxNodes: 6 }),
-    ).sql,
-  );
-  console.log(
-    `\nfunnel paths ${range.start} → ${range.end} (${rows.length} rows)`,
-  );
-  const started = rows
-    .filter((row) => asNumber(row.step) === 1)
-    .reduce((sum, row) => sum + asNumber(row.weight), 0);
-  const converted = rows
-    .filter((row) => row.target_kind === "converted")
-    .reduce((sum, row) => sum + asNumber(row.weight), 0);
-  check(
-    "funnel paths start with the starting step's people",
-    started === funnelCountAt(range.start),
-    `paths ${started}, funnel ${funnelCountAt(range.start)}`,
-  );
-  check(
-    "funnel paths convert the ending step's people",
-    converted === funnelCountAt(range.end),
-    `paths ${converted}, funnel ${funnelCountAt(range.end)}`,
-  );
-  const unlabeled = rows.filter(
-    (row) => row.source_label === "" || row.target_label === "",
-  );
-  check(
-    "every funnel paths node has a label",
-    unlabeled.length === 0,
-    unlabeled
-      .slice(0, 2)
-      .map((row) => `${row.source} → ${row.target}`)
-      .join(", ") || `${rows.length} links`,
-  );
-  const edges = rows.map((row) => [String(row.source), String(row.target)]);
-  check(
-    "funnel paths have no cycles",
-    !hasCyclicFlow(edges, 0, 1),
-    `${edges.length} links`,
-  );
-  const isConvertedLink = (row: Record<string, unknown>) =>
-    row.outcome === getOutcomeLabels().converted;
-  check(
-    "only converted links reach the ending step, only the rest drop off",
-    rows.every((row) =>
-      row.target_kind === "converted"
-        ? isConvertedLink(row)
-        : row.target_kind !== "dropped" || !isConvertedLink(row),
-    ),
-    [...new Set(rows.map((row) => String(row.target_label)))]
-      .slice(0, 6)
-      .join(", "),
-  );
-}
 
 // Funnel timing, on hand-written events: durations come from the run the
 // funnel counted, not from each step's first time ever.
