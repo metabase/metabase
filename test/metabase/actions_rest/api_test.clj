@@ -191,7 +191,7 @@
                 (mt/with-temp [:model/Card model {:type          :model
                                                   :dataset_query (mt/native-query {:query "select * from checkins limit 1"})}]
                   (let [action   (cross-db-action (:id model) test-data-id)
-                        response (mt/user-http-request :rasta :post 400 "action" action)]
+                        response (mt/user-http-request :crowberto :post 400 "action" action)]
                     (testing "Checks both databases for actions enabled"
                       (is (= "Actions are not enabled."
                              response))))))))))
@@ -418,55 +418,39 @@
               (is (=? {:specific-errors {:model_id ["missing required key, received: nil"]}}
                       (mt/user-http-request :crowberto :post 400 "action" {:type "implicit" :name "test"}))))))))))
 
-(deftest native-query-action-requires-native-permission-test
-  (testing "creating or updating a native query action requires native query permission on the database"
+(deftest only-admins-write-model-actions-test
+  (testing "only admins can create, update, or delete an action of a model, whatever their permissions on the model"
     (mt/with-actions-enabled
       (mt/with-actions-test-data-tables #{"users"}
         (mt/with-model-cleanup [:model/Action]
-          (perms.test-util/with-restored-data-perms!
-            (mt/with-temp [:model/Card {model-id :id}
-                           {:type          :model
-                            :dataset_query (mt/mbql-query users)
-                            ;; personal collection so a non-admin has write permission on the model
-                            :collection_id (:id (collection/user->personal-collection (mt/user->id :rasta)))}]
-              (let [native-action   {:name          "native example"
-                                     :type          "query"
-                                     :model_id      model-id
-                                     :database_id   (mt/id)
-                                     :dataset_query (lib/native-query (mt/metadata-provider)
-                                                                      "update users set name = 'foo' where id = {{x}}")
-                                     :parameters    [{:id "x" :type "number"}]}
-                    implicit-action {:name       "implicit example"
-                                     :type       "implicit"
-                                     :model_id   model-id
-                                     :kind       "row/create"
-                                     :parameters [{:id "id" :type "number"}]}
-                    set-native!     (fn [level]
-                                      (perms/set-database-permission! (perms/all-users-group) (mt/id)
-                                                                      :perms/create-queries level))]
-                (testing "without native permission, creating a native query action is rejected"
-                  (set-native! :query-builder)
-                  (is (= "You don't have permissions to do that."
-                         (mt/user-http-request :rasta :post 403 "action" native-action))))
-                (testing "an implicit (non-native) action is unaffected by native permission"
-                  (is (=? {:type "implicit"}
-                          (mt/user-http-request :rasta :post 200 "action" implicit-action))))
-                (testing "with native permission, creating a native query action succeeds"
-                  (set-native! :query-builder-and-native)
-                  (let [created (mt/user-http-request :rasta :post 200 "action" native-action)]
-                    (is (=? {:type "query"} created))
-                    (testing "without native permission, updating to a native query is rejected"
-                      (set-native! :query-builder)
-                      (is (= "You don't have permissions to do that."
-                             (mt/user-http-request :rasta :put 403 (str "action/" (:id created))
-                                                   {:dataset_query (lib/native-query (mt/metadata-provider)
-                                                                                     "update users set name = 'bar' where id = {{x}}")}))))
-                    (testing "with native permission, updating to a native query succeeds"
-                      (set-native! :query-builder-and-native)
-                      (is (=? {:type "query"}
-                              (mt/user-http-request :rasta :put 200 (str "action/" (:id created))
-                                                    {:dataset_query (lib/native-query (mt/metadata-provider)
-                                                                                      "update users set name = 'baz' where id = {{x}}")}))))))))))))))
+          (mt/with-temp [:model/Card {model-id :id}
+                         {:type          :model
+                          :dataset_query (mt/mbql-query users)
+                          :collection_id (:id (collection/user->personal-collection (mt/user->id :rasta)))}]
+            (let [native-action   {:name          "native example"
+                                   :type          "query"
+                                   :model_id      model-id
+                                   :database_id   (mt/id)
+                                   :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                    "update users set name = 'foo' where id = {{x}}")
+                                   :parameters    [{:id "x" :type "number"}]}
+                  implicit-action {:name       "implicit example"
+                                   :type       "implicit"
+                                   :model_id   model-id
+                                   :kind       "row/create"
+                                   :parameters [{:id "id" :type "number"}]}]
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "action" native-action)))
+              (is (= "You don't have permissions to do that."
+                     (mt/user-http-request :rasta :post 403 "action" implicit-action)))
+              (let [path (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" native-action)))]
+                (is (=? {:can_write false} (mt/user-http-request :rasta :get 200 path)))
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :put 403 path {:name "Renamed"})))
+                (is (= "You don't have permissions to do that."
+                       (mt/user-http-request :rasta :delete 403 path)))
+                (is (=? {:name "Renamed"} (mt/user-http-request :crowberto :put 200 path {:name "Renamed"})))
+                (mt/user-http-request :crowberto :delete 204 path)))))))))
 
 (defn- model-less-query-action
   "A POST body for a query action on the categories table with no model, in the Collection with `collection-id`."
@@ -509,27 +493,22 @@
                        mt/rows
                        ffirst)))))))))
 
-(deftest action-without-model-collection-perms-test
-  (testing "creating or moving an action without a model requires write permission on its data actions collection"
+(deftest only-admins-write-actions-without-model-test
+  (testing "only admins can create or update an action without a model, whatever their permissions on its collection"
     (mt/with-actions-test-data-and-actions-enabled
       (perms.test-util/with-restored-perms!
         (mt/with-model-cleanup [:model/Action]
-          (mt/with-temp [:model/Collection {locked-id :id}   {:namespace "data-actions"}
-                         :model/Collection {writable-id :id} {:namespace "data-actions"}]
-            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) writable-id)
+          (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
+            (perms/grant-collection-readwrite-permissions! (perms/all-users-group) (data-actions-root))
             (is (= "You don't have permissions to do that."
-                   (mt/user-http-request :rasta :post 403 "action" (model-less-query-action locked-id))))
-            (testing "the data actions root needs its own permission"
+                   (mt/user-http-request :rasta :post 403 "action" (model-less-query-action coll-id))))
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request :rasta :post 403 "action" (model-less-query-action nil))))
+            (let [path (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action coll-id))))]
               (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :post 403 "action" (model-less-query-action nil))))
-              (perms/grant-collection-readwrite-permissions! (perms/all-users-group) (data-actions-root))
-              (is (=? {:collection_id nil}
-                      (mt/user-http-request :rasta :post 200 "action" (model-less-query-action nil)))))
-            (let [created (mt/user-http-request :rasta :post 200 "action" (model-less-query-action writable-id))]
-              (is (=? {:collection_id writable-id} created))
-              (is (= "You don't have permissions to do that."
-                     (mt/user-http-request :rasta :put 403 (str "action/" (:id created)) {:collection_id locked-id})))
-              (is (= writable-id (t2/select-one-fn :collection_id :model/Action :id (:id created)))))))))))
+                     (mt/user-http-request :rasta :put 403 path {:collection_id nil})))
+              (is (=? {:collection_id coll-id} (mt/user-http-request :rasta :get 200 path))))))))))
 
 (deftest list-actions-without-model-test
   (testing "the action list includes actions without a model, filtered by data actions collection permissions"
@@ -675,16 +654,16 @@
       (mt/with-model-cleanup [:model/Action]
         (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
           (perms/grant-collection-readwrite-permissions! (perms/all-users-group) coll-id)
-          (let [spoofed {:creator_id        (mt/user->id :crowberto)
-                         :made_public_by_id (mt/user->id :crowberto)
+          (let [spoofed {:creator_id        (mt/user->id :rasta)
+                         :made_public_by_id (mt/user->id :rasta)
                          :public_uuid       (str (random-uuid))}
                 stored  #(t2/select-one [:model/Action :creator_id :made_public_by_id :public_uuid] :id %)
-                created (mt/user-http-request :rasta :post 200 "action"
+                created (mt/user-http-request :crowberto :post 200 "action"
                                               (merge (model-less-query-action coll-id) spoofed))]
-            (is (= {:creator_id (mt/user->id :rasta) :made_public_by_id nil :public_uuid nil}
+            (is (= {:creator_id (mt/user->id :crowberto) :made_public_by_id nil :public_uuid nil}
                    (into {} (stored (:id created)))))
-            (mt/user-http-request :rasta :put 200 (str "action/" (:id created)) (assoc spoofed :name "Renamed"))
-            (is (= {:creator_id (mt/user->id :rasta) :made_public_by_id nil :public_uuid nil}
+            (mt/user-http-request :crowberto :put 200 (str "action/" (:id created)) (assoc spoofed :name "Renamed"))
+            (is (= {:creator_id (mt/user->id :crowberto) :made_public_by_id nil :public_uuid nil}
                    (into {} (stored (:id created)))))))))))
 
 (deftest update-checks-actions-enabled-test

@@ -4290,6 +4290,23 @@
 (defn- has-valid-action-execution-error-message? [response]
   (string? (:message response)))
 
+(deftest dashcard-archived-action-execution-test
+  (testing "A dashcard can't run an archived action until an admin unarchives its model"
+    (mt/test-driver :h2
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [{:keys [action-id model-id]} {}]
+          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                         :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
+                                                                  :action_id    action-id
+                                                                  :card_id      model-id}]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
+              (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :post 404 execute-path {:parameters {"id" 1}})))
+              (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived false})
+              (is (partial= {:rows-affected 1}
+                            (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1}}))))))))))
+
 (deftest dashcard-query-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-and-actions-enabled

@@ -424,6 +424,18 @@
       (t2/update! :model/Action :id [:in action-ids] {:archived false})
       0)))
 
+(mu/defn items-archived-with-collections
+  "The instances of `model` (Cards or Actions) in the Collections with `collection-ids` that archiving them archives
+  along with them, or with `archived? false` that unarchiving them restores."
+  [model          :- [:enum :model/Card :model/Action]
+   collection-ids :- [:sequential ::lib.schema.id/collection]
+   archived?      :- :boolean]
+  (t2/select model {:where [:and
+                            [:in :collection_id collection-ids]
+                            (if archived?
+                              [:= :archived false]
+                              [:and [:= :archived true] [:= :archived_directly false]])]}))
+
 (mu/defn delete-actions-in-collections!
   "Delete the Actions in the Collections with `collection-ids`, returning the number deleted."
   [collection-ids :- [:sequential ::lib.schema.id/collection]]

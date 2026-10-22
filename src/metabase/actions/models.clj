@@ -201,14 +201,6 @@
           :when       database-id]
     (actions/check-actions-enabled-for-database (actions.db/database database-id))))
 
-(defn- native-query-permitted?
-  "Whether the current user may author the query of `action`: a native one needs native query permission."
-  [{query :dataset_query, :keys [database_id]}]
-  (or (not (and (seq query) (lib/native? query)))
-      (= :query-builder-and-native
-         (perms/full-database-permission-for-user api/*current-user-id* :perms/create-queries
-                                                  (or (:database query) database_id)))))
-
 (defn- effective-collection-id
   "The id of the Collection `action` goes in, its model's when it has one; throws a 404 when either does not exist."
   [{model-id :model_id, collection-id :collection_id}]
@@ -242,16 +234,23 @@
       ((get-method mi/can-create? :perms/use-parent-collection-perms) :model/Action action)
       (mi/current-user-has-full-permissions? ((get-method mi/perms-objects-set :model/Action) action :write)))))
 
+(defmethod mi/can-write? :model/Action
+  ([action]
+   (and (mi/superuser?)
+        (mi/current-user-has-full-permissions? :write action)))
+  ([model pk]
+   (and (mi/superuser?)
+        (mi/current-user-has-full-permissions? :write model pk))))
+
 (defmethod mi/can-create? :model/Action
   [_model action]
-  (and (collection-writable? action)
-       (native-query-permitted? action)))
+  (and (mi/superuser?)
+       (collection-writable? action)))
 
 (defmethod mi/can-update? :model/Action
   [action changes]
   (and (mi/can-write? action)
-       (collection-writable? (merge action changes))
-       (native-query-permitted? changes)))
+       (collection-writable? (merge action changes))))
 
 (def ^:private action-columns
   "The columns that are common to all Action types."
@@ -610,10 +609,10 @@
       (m/assoc-some dashcard :action action))))
 
 (defn dashcard->action
-  "Get the action associated with a dashcard if exists, return `nil` otherwise."
+  "Get the unarchived action associated with a dashcard if exists, return `nil` otherwise."
   [dashcard-or-dashcard-id]
-  (some->> (actions.db/dashcard-action-id (u/the-id dashcard-or-dashcard-id))
-           (select-action :id)))
+  (when-let [action-id (actions.db/dashcard-action-id (u/the-id dashcard-or-dashcard-id))]
+    (select-action :id action-id :archived false)))
 
 ;;; ------------------------------------------------ Serialization ---------------------------------------------------
 

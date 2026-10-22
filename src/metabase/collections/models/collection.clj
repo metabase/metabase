@@ -1758,6 +1758,14 @@
   [_seed-table-ids]
   nil)
 
+(defn- check-can-write-items-archived-with!
+  "Throws a 403 unless the current user can write every Card and Action that archiving the Collections with
+  `collection-ids` changes, or with `archived? false` that unarchiving them changes."
+  [collection-ids archived?]
+  (doseq [model [:model/Card :model/Action]]
+    (api/check-403 (every? :can_write (t2/hydrate (collections.db/items-archived-with-collections model collection-ids archived?)
+                                                  :can_write)))))
+
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
   [collection :- CollectionWithLocationAndIDOrRoot]
@@ -1773,6 +1781,7 @@
           affected-collection-ids (cons (u/the-id collection)
                                         (collections.db/not-yet-archived-collection-ids-with-location-like
                                          (str (children-location collection) "%")))]
+      (check-can-write-items-archived-with! affected-collection-ids true)
       (collections.db/update-collection! (u/the-id collection)
                                          {:archive_operation_id archive-operation-id
                                           :archived_directly    true
@@ -1831,6 +1840,7 @@
       ;; Restoring to original location, use `can_restore` for a single source of truth
       (api/check-403
        (:can_restore (t2/hydrate collection :can_restore))))
+    (check-can-write-items-archived-with! affected-collection-ids false)
     (t2/with-transaction [_conn]
       (collections.db/update-collection! (u/the-id collection)
                                          {:location             new-location

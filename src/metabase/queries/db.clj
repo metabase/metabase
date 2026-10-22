@@ -375,6 +375,16 @@
     (t2/update! :model/Action {:model_id model-id, :archived false} {:archived true, :archived_directly false})
     (t2/update! :model/Action {:model_id model-id, :archived true, :archived_directly false} {:archived false})))
 
+(mu/defn card-has-actions?
+  "Whether the Card with `card-id` has any Action, archived ones included."
+  [card-id :- ::lib.schema.id/card]
+  (t2/exists? :model/Action :model_id card-id))
+
+(mu/defn card-ids-with-actions
+  "The IDs among `card-ids` of the Cards that have any Action, archived ones included."
+  [card-ids :- [:set ::lib.schema.id/card]]
+  (t2/select-fn-set :model_id [:model/Action :model_id] :model_id [:in card-ids]))
+
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
   [model-id :- ms/PositiveInt]

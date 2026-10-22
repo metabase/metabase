@@ -865,6 +865,25 @@
                 (action-events-during! #(update-model! model-id {:archived false}))))
          (is (= {implicit [false false], query [false false], archived [true true]} (archived-state))))))))
 
+(deftest card-with-actions-is-admin-only-test
+  (testing "Only an admin can write a Card that has any Action, archived ones included"
+    (do-with-model-actions!
+     (fn [{:keys [model-id implicit query]}]
+       (mt/with-temp [:model/Card {plain-id :id} {:type :model :dataset_query (mt/mbql-query venues)}]
+         (let [can-write  #(mi/can-write? :model/Card %)
+               hydrated   #(into {} (map (juxt :id :can_write))
+                                 (t2/hydrate (t2/select :model/Card :id [:in [model-id plain-id]]) :can_write))]
+           (mt/with-test-user :crowberto
+             (is (true? (can-write model-id)))
+             (is (= {model-id true, plain-id true} (hydrated))))
+           (mt/with-test-user :rasta
+             (is (false? (can-write model-id)))
+             (is (true? (can-write plain-id)))
+             (is (= {model-id false, plain-id true} (hydrated)))
+             (t2/delete! :model/Action :id [:in [implicit query]])
+             (testing "an archived Action is enough"
+               (is (false? (can-write model-id)))))))))))
+
 (deftest model-actions-follow-model-collection-test
   (testing "the actions of a model are kept in the model's collection"
     (mt/with-temp [:model/Collection {coll-1 :id} {}

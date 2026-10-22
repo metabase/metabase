@@ -156,6 +156,15 @@
     (:id card)                    (queries.db/card-document-id (:id card))
     :else                         ::not-adjudicable))
 
+(defn- has-actions?
+  "Whether `card` has any Action, archived ones included, read from `::has-actions?` when the `:can_write` hydration
+  computed it for a whole page."
+  [card]
+  (cond
+    (contains? card ::has-actions?) (::has-actions? card)
+    (:id card)                      (queries.db/card-has-actions? (:id card))
+    :else                           false))
+
 (defn- parent-document-permits?
   "Whether the parent Document of `card`, if it has one, grants `read-or-write` to the current user.
 
@@ -202,9 +211,22 @@
           ;; Is a direct descendant of audit collection
           (= (:collection_id instance) (:id (audit/default-audit-collection)))))
     (mi/current-user-has-full-permissions? (mi/perms-objects-set instance :write))
-    (parent-document-permits? instance :write)))
+    (parent-document-permits? instance :write)
+    (or (mi/superuser?) (not (has-actions? instance)))))
   ([_ pk]
    (mi/can-write? (queries.db/card pk))))
+
+(methodical/defmethod t2/batched-hydrate [:model/Card :can_write]
+  "Hydrates `:can_write` like other collection-based models, looking up which `cards` have Actions in one query."
+  [model k cards]
+  (let [card-ids     (into #{} (keep :id) cards)
+        with-actions (if (or (mi/superuser?) (empty? card-ids))
+                       #{}
+                       (queries.db/card-ids-with-actions card-ids))]
+    (for [card (next-method model k (for [card cards]
+                                      (cond-> card
+                                        (:id card) (assoc ::has-actions? (contains? with-actions (:id card))))))]
+      (some-> card (dissoc ::has-actions?)))))
 
 (defn model?
   "Returns true if `card` is a model."
