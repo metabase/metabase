@@ -5,7 +5,11 @@ import _ from "underscore";
 import { getDashboard, useUpdateCardMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { QuestionMoveConfirmModal } from "metabase/common/collections/components/QuestionMoveConfirmModal";
-import type { MoveDestination } from "metabase/common/collections/types";
+import type {
+  MoveCollectionDestination,
+  MoveDashboardDestination,
+  MoveDestination,
+} from "metabase/common/collections/types";
 import {
   canonicalCollectionId,
   getEntityTypeFromCardType,
@@ -29,10 +33,19 @@ interface MoveCardModalProps {
   onClose: () => void;
 }
 
-type ConfirmationTypes =
-  | "dashboard-to-dashboard"
-  | "dashboard-to-collection"
-  | "collection-to-dashboard";
+type ConfirmationState =
+  | {
+      type: "dashboard-to-dashboard";
+      destination: MoveDashboardDestination;
+    }
+  | {
+      type: "dashboard-to-collection";
+      destination: MoveCollectionDestination;
+    }
+  | {
+      type: "collection-to-dashboard";
+      destination: MoveDashboardDestination;
+    };
 
 export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
   const dispatch = useDispatch();
@@ -40,12 +53,8 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
 
   const [updateCard] = useUpdateCardMutation();
 
-  const [confirmMoveState, setConfirmMoveState] = useState<{
-    type: ConfirmationTypes;
-    destination: MoveDestination;
-    affectedDashboards?: any[];
-    isLoading?: boolean;
-  } | null>(null);
+  const [confirmMoveState, setConfirmMoveState] =
+    useState<ConfirmationState | null>(null);
   const [deleteOldDashcardsState, setDeleteOldDashcardsState] = useState<
     boolean | undefined
   >();
@@ -58,8 +67,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
   ) => {
     const update =
       destination.model === "dashboard"
-        ? // Unjustified type cast. FIXME
-          { dashboard_id: destination.id as number }
+        ? { dashboard_id: destination.id }
         : {
             dashboard_id: null,
             collection_id: canonicalCollectionId(destination.id),
@@ -108,7 +116,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
 
         onClose();
       })
-      .catch((e) => {
+      .catch((e: unknown) => {
         setErrorMessage(getErrorMessage(e));
         if (destination.model !== "dashboard") {
           // we want this error to bubble up to the modal if we're not
@@ -126,14 +134,13 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
 
   const handleChooseMoveLocation = async (destination: MoveDestination) => {
     const wasDq = _.isNumber(card.dashboard_id);
-    const isDq = destination.model === "dashboard";
     const dashCount = card.dashboard_count ?? 0;
 
-    if (wasDq && !isDq) {
+    if (wasDq && destination.model === "collection") {
       setConfirmMoveState({ type: "dashboard-to-collection", destination });
-    } else if (wasDq && isDq) {
+    } else if (wasDq && destination.model === "dashboard") {
       setConfirmMoveState({ type: "dashboard-to-dashboard", destination });
-    } else if (!wasDq && isDq && dashCount > 0) {
+    } else if (!wasDq && destination.model === "dashboard" && dashCount > 0) {
       //Find out if any other dashboards will be affected
       setConfirmMoveState({
         type: "collection-to-dashboard",
@@ -149,9 +156,15 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
       <ConfirmModal
         data-testid="dashboard-to-collection-move-confirmation"
         opened
-        onConfirm={() => {
-          handleMove(confirmMoveState?.destination, deleteOldDashcardsState);
-          onClose();
+        onConfirm={async () => {
+          try {
+            await handleMove(
+              confirmMoveState.destination,
+              deleteOldDashcardsState,
+            );
+          } catch {
+            // handleMove stores the error for the open confirmation modal.
+          }
         }}
         onClose={onClose}
         title={
@@ -195,6 +208,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
         }
         confirmButtonProps={{ color: "brand", variant: "filled" }}
         confirmButtonText={t`Done`}
+        errorMessage={errorMessage}
       />
     );
   }
@@ -205,6 +219,7 @@ export const MoveCardModal = ({ card, onClose }: MoveCardModalProps) => {
         opened
         data-testid="dashboard-to-dashboard-move-confirmation"
         onConfirm={() => handleMove(confirmMoveState.destination, true)}
+        errorMessage={errorMessage}
         onClose={onClose}
         title={
           <Title fz="1.25rem" lh={1.5}>
