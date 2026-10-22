@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { Box, Group, Icon, Text } from "metabase/ui";
+import { Box, Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExpressionBar } from "./ExpressionBar";
@@ -15,9 +15,9 @@ type StagedExpressionBarProps = {
 
 /**
  * The expression bar with its trailing segment. Stage `stageIndex` is the
- * expression over the rows; once the stage has a summary, a divider and a
- * second segment follow for the filters on that summary (the next stage).
- * Those can only be AND-ed, since an OR across a summary is not one query.
+ * expression over the rows; once the stage has a summary, a second segment
+ * follows for the filters on that summary (the next stage). Those can only
+ * be AND-ed, since an OR across a summary is not one query.
  */
 export function StagedExpressionBar({
   query,
@@ -38,41 +38,39 @@ export function StagedExpressionBar({
   const handleSummaryChange = (nextQuery: Lib.Query) =>
     onChange(Lib.dropEmptyStages(nextQuery));
 
+  if (!hasSummary) {
+    return (
+      <ExpressionBar
+        query={query}
+        stageIndex={stageIndex}
+        onChange={onChange}
+        hasInlineActions
+      />
+    );
+  }
+
   return (
-    <Group gap="sm" align="flex-start" w="100%" wrap="nowrap">
-      <Box style={{ flex: "1 1 60%", minWidth: 0 }}>
+    <Group gap={0} align="flex-start" w="100%" wrap="nowrap">
+      <Box className={S.rowsSegment}>
         <ExpressionBar
           query={query}
           stageIndex={stageIndex}
           onChange={onChange}
+          className={S.rowsSegmentBar}
           hasInlineActions
         />
       </Box>
-      {hasSummary && (
-        <>
-          <Group
-            className={S.segmentDivider}
-            gap="xs"
-            wrap="nowrap"
-            title={t`Filters after summarizing apply to the summary rows, so they can only be AND-ed with the expression on the left.`}
-          >
-            <Icon name="sum" c="text-secondary" />
-            <Text size="sm" c="text-secondary" style={{ whiteSpace: "nowrap" }}>
-              {t`then on the summary`}
-            </Text>
-          </Group>
-          <Box style={{ flex: "1 1 40%", minWidth: 0 }}>
-            <ExpressionBar
-              query={summaryQuery}
-              stageIndex={summaryStageIndex}
-              onChange={handleSummaryChange}
-              allowOr={false}
-              placeholder={t`Filter the summary, e.g. Count…`}
-              hasInlineActions
-            />
-          </Box>
-        </>
-      )}
+      <Box className={S.summarySegment}>
+        <ExpressionBar
+          query={summaryQuery}
+          stageIndex={summaryStageIndex}
+          onChange={handleSummaryChange}
+          className={S.summarySegmentBar}
+          allowOr={false}
+          placeholder={t`Filter the summary…`}
+          hasInlineActions
+        />
+      </Box>
     </Group>
   );
 }

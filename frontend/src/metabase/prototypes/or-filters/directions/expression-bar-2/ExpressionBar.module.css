@@ -194,10 +194,44 @@
   animation: caret-blink-shadow 1s steps(1) infinite;
 }
 
-/* Between the row expression and the summary segment; sits on the bar's text line. */
-.segmentDivider {
-  min-height: 2.125rem;
-  padding: 0 0.25rem;
-  font-family: var(--mantine-font-family-monospace);
-  cursor: help;
+/*
+ * The two stage segments read as one bar: the rows segment hugs its tokens,
+ * the summary segment takes the rest, and a dashed hairline marks the stage
+ * boundary between them.
+ */
+.rowsSegment {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.summarySegment {
+  flex: 1 1 auto;
+  min-width: 10rem;
+}
+
+.rowsSegmentBar {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.summarySegmentBar {
+  margin-left: -1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left-style: dashed;
+}
+
+/* The active segment's border paints over the shared edge. */
+.summarySegmentBar:focus-within,
+.rowsSegmentBar:focus-within {
+  position: relative;
+  z-index: 1;
+}
+
+/* In the hugging segment the end input sizes to what is typed, so the stage boundary follows the last token. */
+.rowsSegmentBar .input {
+  field-sizing: content;
+  flex-grow: 0;
+  min-width: 4rem;
 }

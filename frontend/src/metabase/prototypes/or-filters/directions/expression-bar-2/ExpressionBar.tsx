@@ -64,6 +64,8 @@ type ExpressionBarProps = {
    */
   allowOr?: boolean;
   placeholder?: string;
+  /** Extra class on the bar box, for joining it with a neighbouring segment. */
+  className?: string;
   /** Cancel/Apply live inside the bar instead of a trailing "+" button. */
   hasInlineActions?: boolean;
   /** Renders Cancel/Apply elsewhere, e.g. in a modal footer. */
@@ -85,6 +87,7 @@ export function ExpressionBar({
   onChange,
   allowOr = true,
   placeholder = t`Type a column, "and", "or", "("…`,
+  className,
   hasInlineActions = false,
   renderActions,
 }: ExpressionBarProps) {
@@ -373,7 +376,7 @@ export function ExpressionBar({
   return (
     <Stack gap="xs" w="100%">
       <Box
-        className={cx(S.bar, { [S.barInvalid]: !parsed.ok })}
+        className={cx(S.bar, className, { [S.barInvalid]: !parsed.ok })}
         onClick={handleBarClick}
       >
         {/* One keyed array holds the input so React moves it instead of remounting it. */}
