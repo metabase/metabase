@@ -319,8 +319,8 @@
         (mt/with-temp [:model/Database _ {:name "ws-test-db" :engine :postgres}]
           (reset! (lock-atom) false)
           (mt/with-dynamic-fn-redefs [advanced-config.file/config-from-disk
-                        (constantly {:version 1
-                                     :config  {:workspace (workspace-section "ws-test-db")}})]
+                                      (constantly {:version 1
+                                                   :config  {:workspace (workspace-section "ws-test-db")}})]
             (advanced-config.file/boot-initialize!))
           (is (true? (ws/workspace-locked-by-config?))))))))
 
@@ -329,8 +329,8 @@
     (mt/with-empty-h2-app-db!
       (reset! (lock-atom) false)
       (mt/with-dynamic-fn-redefs [advanced-config.file/config-from-disk
-                    (constantly {:version 1
-                                 :config  {:settings {}}})]
+                                  (constantly {:version 1
+                                               :config  {:settings {}}})]
         (advanced-config.file/boot-initialize!))
       (is (false? (ws/workspace-locked-by-config?))))))
 

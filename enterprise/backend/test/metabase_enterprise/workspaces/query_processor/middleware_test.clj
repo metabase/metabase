@@ -254,7 +254,7 @@
     (mt/with-premium-features #{:workspaces}
       (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
         (mt/with-dynamic-fn-redefs [qp.middleware.enterprise/currently-db-routed? (constantly false)
-                      perms/impersonation-enforced-for-db?          (constantly true)]
+                                    perms/impersonation-enforced-for-db?          (constantly true)]
           (binding [api/*current-user-id* 1]
             (let [next-called? (atom false)
                   mock-qp      (fn [_ _] (reset! next-called? true) :ok)
@@ -278,10 +278,10 @@
       (with-remappings (mt/id) {["PUBLIC" "VENUES"] ["mb_iso_abc" "VENUES"]}
         (let [impersonation-checked? (atom false)]
           (mt/with-dynamic-fn-redefs [qp.middleware.enterprise/currently-db-routed? (constantly false)
-                        perms/impersonation-enforced-for-db?
-                        (fn [_db]
-                          (reset! impersonation-checked? true)
-                          (throw (ex-info "must not be called without a current user" {})))]
+                                      perms/impersonation-enforced-for-db?
+                                      (fn [_db]
+                                        (reset! impersonation-checked? true)
+                                        (throw (ex-info "must not be called without a current user" {})))]
             (binding [api/*current-user-id* nil
                       driver/*driver*       :h2]
               (let [captured (atom nil)
