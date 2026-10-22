@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { RouteObject } from "react-router";
 
 import { act, render, screen, waitFor } from "__support__/ui";
@@ -205,6 +206,41 @@ describe("a route whose chunk fails to load", () => {
       await screen.findByTestId("chunk-error", undefined, { timeout: 5000 }),
     ).toBeInTheDocument();
     expect(redirect).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The recovery wraps each `lazy`, and the chunk wait caches the component it
+ * stands up against the wrapper it is handed. A wrapper per route would give
+ * each of the dozen query builder routes a component type of its own, and
+ * react-router renders `route.Component` without a key.
+ */
+describe("routes that share a chunk", () => {
+  it("keep one mount across them", async () => {
+    const mount = jest.fn();
+
+    function CountedPage() {
+      useEffect(() => mount(), []);
+      return <span data-testid="split">split</span>;
+    }
+
+    const load = jest.fn(async () => ({ Component: CountedPage }));
+    renderRoutesWithFallback(
+      [
+        { path: "/one", lazy: load },
+        { path: "/two", lazy: load },
+      ],
+      "/one",
+    );
+    expect(await screen.findByTestId("split")).toBeInTheDocument();
+
+    await act(async () => {
+      navigate("/two");
+    });
+
+    expect(await screen.findByTestId("split")).toBeInTheDocument();
+    expect(mount).toHaveBeenCalledTimes(1);
+    expect(load).toHaveBeenCalledTimes(1);
   });
 });
 
