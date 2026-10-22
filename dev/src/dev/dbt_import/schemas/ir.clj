@@ -1,8 +1,6 @@
 (ns dev.dbt-import.schemas.ir
   "The intermediate representation (IR) between parsing a semantic layer and emitting Metabase content.
 
-(set! *warn-on-reflection* true)
-
   Deliberately small and mostly free of dbt vocabulary: a semantic model is a physical table plus the entities,
   dimensions and measures declared on it, and a metric is one aggregation over one semantic model. Another semantic
   layer would need only a new parser into this shape.
