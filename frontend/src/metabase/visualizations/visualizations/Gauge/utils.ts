@@ -5,43 +5,51 @@ import type { GoalValueResult, ResolvedGoalSegment } from "metabase/viz-core";
 import type { GaugeRange } from "./types";
 
 /**
- * Places a warning halfway between the known bounds around each run of
- * consecutive bounds that failed to resolve, once per spot on the arc.
- * `boundResults` follow the order of `getGoalSegmentBounds`.
+ * Places a warning for each segment with a bound that failed to resolve,
+ * halfway between its known bound and the closest known bound past it on the
+ * arc, once per spot on the arc. A segment with no known bound gets a warning
+ * past the last known bound. `boundResults` follow the order of `getGoalSegmentBounds`.
  */
 export function getGaugeWarningValues(
   boundResults: GoalValueResult[],
   [rangeMin, rangeMax]: GaugeRange,
 ): number[] {
-  const { values, previousValue, hasPendingError } = boundResults.reduce<{
-    values: number[];
-    previousValue: number;
-    hasPendingError: boolean;
-  }>(
-    (acc, { value, error }) => {
-      if (error != null) {
-        return { ...acc, hasPendingError: true };
-      }
-
-      if (value == null) {
-        return acc;
-      }
-
-      return {
-        values: acc.hasPendingError
-          ? [...acc.values, (acc.previousValue + value) / 2]
-          : acc.values,
-        previousValue: value,
-        hasPendingError: false,
-      };
-    },
-    { values: [], previousValue: rangeMin, hasPendingError: false },
+  const knownValues = boundResults.flatMap(({ value }) =>
+    value != null ? [value] : [],
   );
-  const lastValues = hasPendingError
-    ? [...values, (previousValue + rangeMax) / 2]
-    : values;
+  const values = _.chunk(boundResults, 2).flatMap(getSegmentWarningValues);
 
-  return _.uniq(lastValues.map(clampToRange));
+  return _.uniq(values.map(clampToRange));
+
+  function getSegmentWarningValues([min, max]: GoalValueResult[]): number[] {
+    if (min.error == null && max.error == null) {
+      return [];
+    }
+
+    if (min.value != null) {
+      return [(min.value + getClosestKnownValueAbove(min.value)) / 2];
+    }
+
+    if (max.value != null) {
+      return [(getClosestKnownValueBelow(max.value) + max.value) / 2];
+    }
+
+    return [(getLastKnownValue() + rangeMax) / 2];
+  }
+
+  function getClosestKnownValueAbove(value: number) {
+    const valuesAbove = knownValues.filter((known) => known > value);
+    return valuesAbove.length > 0 ? Math.min(...valuesAbove) : rangeMax;
+  }
+
+  function getClosestKnownValueBelow(value: number) {
+    const valuesBelow = knownValues.filter((known) => known < value);
+    return valuesBelow.length > 0 ? Math.max(...valuesBelow) : rangeMin;
+  }
+
+  function getLastKnownValue() {
+    return knownValues.length > 0 ? Math.max(...knownValues) : rangeMin;
+  }
 
   function clampToRange(value: number) {
     return Math.min(Math.max(value, rangeMin), rangeMax);

@@ -15,7 +15,7 @@ describe("getGaugeWarningValues", () => {
   it("has no warnings when every bound resolves", () => {
     expect(
       getGaugeWarningValues(
-        [{ value: 0 }, { value: 50 }, { value: null }],
+        [{ value: 0 }, { value: 50 }, { value: 50 }, { value: null }],
         [0, 50],
       ),
     ).toEqual([]);
@@ -62,6 +62,35 @@ describe("getGaugeWarningValues", () => {
         [0, 50],
       ),
     ).toEqual([50]);
+  });
+
+  it("places a warning next to the known bound of its own segment regardless of segment order", () => {
+    // [50, failed] [0, 50]: the failed segment continues past 50, not inside [0, 50]
+    expect(
+      getGaugeWarningValues(
+        [{ value: 50 }, FAILED, { value: 0 }, { value: 50 }],
+        [0, 100],
+      ),
+    ).toEqual([75]);
+  });
+
+  it("places a warning past the last known bound when no bound of the segment is known", () => {
+    // [failed, failed] [0, 20]
+    expect(
+      getGaugeWarningValues(
+        [
+          FAILED,
+          { value: null, error: OTHER_ERROR },
+          { value: 0 },
+          { value: 20 },
+        ],
+        [0, 100],
+      ),
+    ).toEqual([60]);
+  });
+
+  it("places a warning in the middle of the arc when no bound is known", () => {
+    expect(getGaugeWarningValues([FAILED, FAILED], [0, 100])).toEqual([50]);
   });
 
   it("ignores bounds left empty", () => {
