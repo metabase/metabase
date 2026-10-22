@@ -28,11 +28,18 @@ export interface TestReport {
   rows: FunctionRow[];
 }
 
+export interface CleanRerunWarning {
+  tests: string[];
+  /** Mutant verdicts that reported `unmeasured` because of those tests. */
+  mutants: number;
+}
+
 export interface VerifyReport {
   runId: string;
   sha: string;
   unitSpecs: string[];
   mutantCount: number;
+  cleanRerunWarning?: CleanRerunWarning;
   tests: TestReport[];
 }
 
@@ -115,6 +122,15 @@ export function renderMarkdown(report: VerifyReport): string {
     "The e2e share column is the fraction of all e2e tests that fire the function. A low share means the function is specific to the deleted test, so an open row there matters most.",
   );
   lines.push("");
+  const warning = report.cleanRerunWarning;
+  if (warning && warning.tests.length > 0) {
+    lines.push(
+      `**${warning.tests.length} test(s) failed their clean rerun and voided ${warning.mutants} mutant verdict(s).** A test that does not pass twice in one file confirms nothing, so every mutant it alone witnessed reports as \`unmeasured\`. Fix these, then rerun: ${warning.tests
+        .map((test) => `\`${cell(test)}\``)
+        .join(", ")}.`,
+    );
+    lines.push("");
+  }
   for (const test of report.tests) {
     lines.push(`### ${cell(test.title)}`);
     lines.push("");

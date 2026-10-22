@@ -30,7 +30,12 @@ export type PassResults = Map<string, Map<number, Observation>>;
 export type MutantVerdict =
   | { status: "caught"; by: string[] }
   | { status: "survived"; ranBy: number }
-  | { status: "unmeasured"; reason: string };
+  | {
+      status: "unmeasured";
+      reason: string;
+      /** Tests whose failed clean rerun is why this mutant has no verdict. */
+      cleanRerunTests?: string[];
+    };
 
 const ASSERTION_RE =
   /expect\(|Expected|Received|toHave|toBe|toEqual|toMatch|toContain|Unable to find|TestingLibraryElementError|AssertionError|toThrow|Found multiple elements/;
@@ -45,6 +50,13 @@ const TIMEOUT_RE = /Exceeded timeout of|Async callback was not invoked/;
 const TOP_FRAME_RE = /^\s+at (?:[^\n(]*\()?([^\s()]+?):\d+:\d+\)?\s*$/m;
 
 const SPEC_FILE_RE = /\.spec\.[jt]sx?$/;
+
+/**
+ * A test that passed on clean code in the fast pass but not in the
+ * confirmation pass. It cannot confirm anything, so it voids every mutant it
+ * was the only witness for.
+ */
+export const CLEAN_RERUN_NOTE = "fails on a clean rerun";
 
 export function classifyFailure(messages: string[]): Observation {
   const text = messages.join("\n");
@@ -76,6 +88,7 @@ export function judgeMutant(
 ): MutantVerdict {
   const caughtBy: string[] = [];
   const reasons: string[] = [];
+  const cleanRerunTests: string[] = [];
   let ranBy = 0;
   for (const [test, byMutant] of fast) {
     const clean = byMutant.get(0);
@@ -111,7 +124,8 @@ export function judgeMutant(
     ) {
       reasons.push(`${test}: not rerun`);
     } else if (confirmedClean.outcome !== "passed") {
-      reasons.push(`${test}: fails on a clean rerun`);
+      reasons.push(`${test}: ${CLEAN_RERUN_NOTE}`);
+      cleanRerunTests.push(test);
     } else if (
       confirmedBroken.outcome === "failed" &&
       confirmedBroken.observed
@@ -125,7 +139,11 @@ export function judgeMutant(
     return { status: "caught", by: caughtBy };
   }
   if (reasons.length > 0) {
-    return { status: "unmeasured", reason: reasons.join("; ") };
+    return {
+      status: "unmeasured",
+      reason: reasons.join("; "),
+      ...(cleanRerunTests.length > 0 && { cleanRerunTests }),
+    };
   }
   if (ranBy === 0) {
     return { status: "unmeasured", reason: "no test ran it on clean code" };

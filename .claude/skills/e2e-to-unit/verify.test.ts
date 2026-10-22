@@ -18,6 +18,7 @@ import {
   wrapperSource,
 } from "./verify/jest";
 import {
+  CLEAN_RERUN_NOTE,
   type PassResults,
   classifyFailure,
   collectPass,
@@ -34,6 +35,7 @@ import {
   parseSource,
   splitByShare,
 } from "./verify/mutants";
+import { type VerifyReport, renderMarkdown } from "./verify/report";
 
 describe("deleted tests from a diff", () => {
   it("reads removed it() titles with their spec", () => {
@@ -421,6 +423,70 @@ describe("judge", () => {
       ],
     ]);
     expect(judgeMutant(1, fast, null).status).toBe("unmeasured");
+  });
+
+  it("names the test whose failed clean rerun voided a mutant", () => {
+    const fast = pass([
+      [
+        "Thing \u203a renders",
+        { 0: observation("passed"), 1: observation("failed", true) },
+      ],
+    ]);
+    const flaky = pass([
+      [
+        "Thing \u203a renders",
+        { 0: observation("failed", true), 1: observation("failed", true) },
+      ],
+    ]);
+    const verdict = judgeMutant(1, fast, flaky);
+    expect(verdict).toEqual({
+      status: "unmeasured",
+      reason: `Thing \u203a renders: ${CLEAN_RERUN_NOTE}`,
+      cleanRerunTests: ["Thing \u203a renders"],
+    });
+  });
+
+  it("leaves the voiding tests off a verdict no rerun broke", () => {
+    const fast = pass([
+      [
+        "Thing \u203a renders",
+        { 0: observation("passed"), 1: observation("failed", false) },
+      ],
+    ]);
+    const verdict = judgeMutant(1, fast, null);
+    expect(verdict.status).toBe("unmeasured");
+    expect(
+      verdict.status === "unmeasured" ? verdict.cleanRerunTests : [],
+    ).toBeUndefined();
+  });
+});
+
+describe("the clean-rerun warning in the report", () => {
+  const report = (
+    cleanRerunWarning: VerifyReport["cleanRerunWarning"],
+  ): VerifyReport => ({
+    runId: "1",
+    sha: "abcdef1234",
+    unitSpecs: ["a.unit.spec.tsx"],
+    mutantCount: 2,
+    cleanRerunWarning,
+    tests: [],
+  });
+
+  it("leads with the voided count and the test names", () => {
+    const markdown = renderMarkdown(
+      report({ tests: ["Thing \u203a renders"], mutants: 89 }),
+    );
+    expect(markdown).toContain("1 test(s) failed their clean rerun");
+    expect(markdown).toContain("voided 89 mutant verdict(s)");
+    expect(markdown).toContain("Thing \u203a renders");
+  });
+
+  it("says nothing when every rerun was clean", () => {
+    expect(renderMarkdown(report(undefined))).not.toContain("clean rerun");
+    expect(renderMarkdown(report({ tests: [], mutants: 0 }))).not.toContain(
+      "clean rerun",
+    );
   });
 });
 

@@ -68,6 +68,7 @@ import {
   writeSchemata,
 } from "./verify/mutants";
 import {
+  type CleanRerunWarning,
   type FunctionRow,
   type FunctionStatus,
   type TestReport,
@@ -481,6 +482,7 @@ function judgeFunctions(
   fast: PassResults,
   confirm: PassResults | null,
 ) {
+  const cleanRerunVoids = new Map<string, number>();
   for (const scoped of functions) {
     if (scoped.status !== "pending") {
       continue;
@@ -489,6 +491,14 @@ function judgeFunctions(
       mutant,
       verdict: judgeMutant(mutant.id, fast, confirm),
     }));
+    for (const { verdict } of verdicts) {
+      if (verdict.status !== "unmeasured") {
+        continue;
+      }
+      for (const test of verdict.cleanRerunTests ?? []) {
+        cleanRerunVoids.set(test, (cleanRerunVoids.get(test) ?? 0) + 1);
+      }
+    }
     const caught = verdicts.filter(
       ({ verdict }) => verdict.status === "caught",
     );
@@ -530,6 +540,7 @@ function judgeFunctions(
         .join("; ");
     }
   }
+  return { cleanRerunVoids };
 }
 
 function toReport(
@@ -538,6 +549,7 @@ function toReport(
   functions: ScopedFunction[],
   reports: TestReport[],
   mutantCount: number,
+  cleanRerunWarning?: CleanRerunWarning,
 ): VerifyReport {
   for (const scoped of functions) {
     const row: FunctionRow = {
@@ -557,6 +569,7 @@ function toReport(
     sha: index.sha,
     unitSpecs: options.unitSpecs,
     mutantCount,
+    cleanRerunWarning,
     tests: reports,
   };
 }
@@ -617,6 +630,7 @@ async function main() {
   }
 
   let mutantCount = 0;
+  let cleanRerunWarning: CleanRerunWarning | undefined;
   if (pending.length > 0 && options.unitSpecs.length > 0) {
     const files = [...new Set(pending.map((scoped) => scoped.file))];
     const executed = timed("coverage pass", () =>
@@ -639,7 +653,26 @@ async function main() {
       mutantCount = [...byFile.values()].flat().length;
       if (mutantCount > 0) {
         const { fast, confirm } = runMutants(repoRoot, byFile, options);
-        judgeFunctions(functions, fast, confirm);
+        const { cleanRerunVoids } = judgeFunctions(functions, fast, confirm);
+        if (cleanRerunVoids.size > 0) {
+          // Worst offender first: one test can be the only witness for most of
+          // the budget, and that is the one worth fixing before a rerun.
+          const ranked = [...cleanRerunVoids].sort(
+            ([aTest, aCount], [bTest, bCount]) =>
+              bCount - aCount || aTest.localeCompare(bTest),
+          );
+          const mutants = ranked.reduce((total, [, count]) => total + count, 0);
+          cleanRerunWarning = {
+            tests: ranked.map(([test]) => test),
+            mutants,
+          };
+          log(
+            `WARNING: ${ranked.length} test(s) failed their clean rerun and voided ${mutants} mutant verdict(s). Fix these, then rerun:`,
+          );
+          for (const [test, count] of ranked) {
+            log(`  ${count} verdict(s): ${test}`);
+          }
+        }
       }
     }
   }
@@ -652,7 +685,14 @@ async function main() {
     }
   }
 
-  const report = toReport(index, options, functions, reports, mutantCount);
+  const report = toReport(
+    index,
+    options,
+    functions,
+    reports,
+    mutantCount,
+    cleanRerunWarning,
+  );
   const markdown = renderMarkdown(report);
   if (options.out) {
     fs.mkdirSync(path.dirname(options.out), { recursive: true });
