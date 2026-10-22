@@ -66,7 +66,7 @@ describe("command palette", () => {
     expect(screen.getByTestId("command-palette")).toBeInTheDocument();
   });
 
-  it("should not open with the keyboard shortcut in full app embedding", async () => {
+  it("should not be accessible when doing full app embedding", async () => {
     const isWithinIframeSpy = jest
       .spyOn(iframeUtils, "isWithinIframe")
       .mockReturnValue(true);

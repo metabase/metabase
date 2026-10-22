@@ -177,7 +177,7 @@ describe("SearchBar", () => {
       ).toBeInTheDocument();
     });
 
-    it("should not show the trigger in full app embedding", async () => {
+    it("should not be accessible when doing full app embedding", async () => {
       const isWithinIframeSpy = jest
         .spyOn(iframeUtils, "isWithinIframe")
         .mockReturnValue(true);
