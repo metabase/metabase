@@ -21,7 +21,7 @@ export function GoalWarningIcon({ source, onClick }: GoalWarningIconProps) {
         onClick={onClick}
       >
         <Icon
-          c="error"
+          c="feedback-negative"
           display="block"
           name="warning"
           size={GOAL_WARNING_ICON_SIZE}
