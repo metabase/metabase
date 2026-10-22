@@ -63,8 +63,8 @@
                    clojure.lang.ExceptionInfo
                    #"Dashboard does not have a parameter with ID"
                    (#'qp.dashboard/resolve-params-for-query dashboard-id card-id dashcard-id
-                                             [{:id "_PRICE_", :value 4}
-                                              {:id (apply str (repeat 40 "z")), :value 3}])))
+                                                            [{:id "_PRICE_", :value 4}
+                                                             {:id (apply str (repeat 40 "z")), :value 3}])))
               (is (empty? (filter #(= (apply str (repeat 40 "z")) (:id %)) @stored))))
             (testing "known ids are still stored"
               (reset! stored [])
