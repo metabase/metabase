@@ -58,6 +58,8 @@
   data-app-embed-prefix
   data-app-url-segment
   data-app?
+  embedded-data-app-prefix
+  embedded-data-app?
   device-info
   embed-sdk-eajs-entrypoint?
   embed?

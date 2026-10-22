@@ -3,10 +3,13 @@ import * as ReactDOM from "react-dom";
 import * as ReactDOMClient from "react-dom/client";
 import * as ReactDOMServer from "react-dom/server";
 import * as ReactJsxRuntime from "react/jsx-runtime";
+import { match } from "ts-pattern";
+import { t } from "ttag";
 import { pick } from "underscore";
 
 import * as sdkExports from "embedding-sdk-package";
 import * as dataAppExports from "embedding-sdk-package/data-app";
+import { api } from "metabase/api/client";
 import {
   NEAR_MEMBRANE_SANDBOX_HOST_URL,
   getSubpathSafeUrl,
@@ -79,14 +82,15 @@ export class DataAppBundleError extends Error {
  */
 export const fetchDataAppBundleCode = async (
   name: string,
+  { embedded = false }: { embedded?: boolean } = {},
 ): Promise<FetchedDataAppBundle> => {
-  const url = getSubpathSafeUrl(
-    `/api/apps/${encodeURIComponent(name)}/bundle?t=${Date.now()}`,
-  );
-
   let res: Response;
   try {
-    res = await fetch(url, { cache: "no-store" });
+    res = await api.fetch({
+      method: "GET",
+      url: `/api/apps/${encodeURIComponent(name)}/bundle`,
+      cache: "no-store",
+    });
   } catch (e) {
     throw new DataAppBundleError(
       `Failed to reach the server for data-app bundle: ${
@@ -96,10 +100,21 @@ export const fetchDataAppBundleCode = async (
   }
 
   if (!res.ok) {
-    throw new DataAppBundleError(
-      `Failed to fetch data-app bundle: HTTP ${res.status}`,
-      res.status,
-    );
+    const message = match({ embedded, status: res.status })
+      .with(
+        { embedded: true, status: 403 },
+        () => t`You don't have access to this data app.`,
+      )
+      .with(
+        { embedded: true, status: 404 },
+        () =>
+          t`Data app "${name}" was not found or is disabled. Check the app name in path.`,
+      )
+      .otherwise(
+        ({ status }) => `Failed to fetch data app bundle: HTTP ${status}`,
+      );
+
+    throw new DataAppBundleError(message, res.status);
   }
 
   return {

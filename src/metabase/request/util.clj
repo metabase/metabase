@@ -48,18 +48,25 @@
   "apps")
 
 (def data-app-embed-prefix
-  "URL prefix the BE serves the internal data-app iframe entrypoint at."
+  "URL prefix for the data app iframe runtime."
   (str "/embed/" data-app-url-segment))
 
+(def embedded-data-app-prefix
+  "URL prefix for the SSO-embedded data app runtime."
+  "/embed/embedded-apps")
+
 (def ^:private data-app-uri-regex
-  (re-pattern (str "^" data-app-embed-prefix "/.*$")))
+  (re-pattern (str "^(?:" data-app-embed-prefix "|" embedded-data-app-prefix ")/.*$")))
 
 (defn data-app?
-  "Is this ring request the internal data-app iframe entrypoint (`/embed/apps/...`)?
-   It is only ever framed by the same-origin Metabase app, so it gets
-   `frame-ancestors 'self'` rather than the open embedding `*`."
+  "Is this request for an internal or SSO-embedded data app document?"
   [{:keys [uri]}]
-  (re-matches data-app-uri-regex uri))
+  (when uri (re-matches data-app-uri-regex uri)))
+
+(defn embedded-data-app?
+  "Whether the request targets the dedicated SSO embedding route."
+  [{:keys [uri]}]
+  (boolean (and uri (str/starts-with? uri (str embedded-data-app-prefix "/")))))
 
 (defn embed-sdk-eajs-entrypoint?
   "Is this ring request the modular embedding (EAJS) entrypoint page, served by `index/embed-sdk`?

@@ -222,3 +222,11 @@
       (mt/with-dynamic-fn-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
         (req.util/geocode-ip-addresses ["8.8.8.8"])
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/errors)))))))
+
+(deftest ^:parallel embedded-data-app-route-test
+  (doseq [uri ["/embed/embedded-apps/sales" "/embed/embedded-apps/sales/orders"]]
+    (is (req.util/data-app? {:uri uri}))
+    (is (req.util/embedded-data-app? {:uri uri})))
+  (doseq [uri ["/embed/apps/sales" "/embed/apps/sales/embed/embedded-apps/other" "/embed/embedded-apps-else/sales"]]
+    (is (not (req.util/embedded-data-app? {:uri uri :params {:modular "true"}}))))
+  (is (false? (req.util/embedded-data-app? {}))))

@@ -548,10 +548,10 @@
 
 (defn- data-app-iframe-request?
   [request]
-  (str/starts-with? (:uri request) (str request/data-app-embed-prefix "/")))
+  (boolean (request/data-app? request)))
 
 (def ^:private data-app-slug-regex
-  (re-pattern (str "/(?:embed/)?" request/data-app-url-segment "/([^/]+).*")))
+  (re-pattern (str "(?:/" request/data-app-url-segment "|" request/data-app-embed-prefix "|" request/embedded-data-app-prefix ")/([^/]+).*")))
 
 (defn- data-app-slug
   "Slug of the data-app document being served, parsed from the top-level
@@ -655,6 +655,7 @@
                  ;; than the open embedding `*`. Check it before the broader
                  ;; `embed?`, which `/embed/apps/...` also matches.
                  :frame-ancestors             (cond
+                                                (request/embedded-data-app? request)              :any
                                                 (request/data-app? request)                       :self
                                                 ((some-fn request/public? request/embed?) request) :any
                                                 :else                                              :none)
@@ -669,10 +670,12 @@
                  ;; its slug, and let them probe which slugs exist. A signed-out
                  ;; request still gets the data-app policy with an empty allowlist,
                  ;; not the broader instance-wide one.
-                 :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
-                                                (if (:metabase-user-id request)
-                                                  (drop-instance-origin (data-app-connect-src-hosts slug))
-                                                  []))
+                 :data-app-connect-hosts      (if (request/embedded-data-app? request)
+                                                ["http:" "https:"]
+                                                (when-let [slug (data-app-slug request)]
+                                                  (if (:metabase-user-id request)
+                                                    (drop-instance-origin (data-app-connect-src-hosts slug))
+                                                    [])))
                  ;; Data apps and the EAJS embed page both render custom viz icons as blob: <img> URLs
                  :allow-blob-img?             (or (data-app-iframe-request? request)
                                                   (request/embed-sdk-eajs-entrypoint? request)))
