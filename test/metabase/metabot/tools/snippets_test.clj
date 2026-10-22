@@ -48,8 +48,7 @@
           (is (= :metabase.metabot.tools.recoverable.common/not-found (:code error)))
           (is (= (str (not-found-message 7)
                       (when (contains? tool-names "list_snippets")
-                        (str "\n"
-                             "Call `list_snippets` to find an available snippet and use an id from the results.")))
+                        "\nCall `list_snippets` to find the entity you want and use an id from the results."))
                  (:text error))))))))
 
 (deftest ^:parallel nil-snippet-test

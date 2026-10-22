@@ -18,6 +18,12 @@
   [:enum :card :chart :collection :dashboard :database :document :field :metric :model :query :question
    :segment :measure :snippet :table :timeline :transform])
 
+(def ^:private finder-tools
+  "The tool that lists entities of each kind `search` does not return. [[not-found!]] offers it as
+  the recovery step, and `search` for a kind missing here."
+  {:snippet  "list_snippets"
+   :timeline "list_timelines"})
+
 (defrecoverable not-found!
   "The entity does not exist, or the current user cannot read it."
   {:payload     [:map {:closed true}
@@ -36,11 +42,9 @@
                     (str (str/capitalize (name kind)) " " id)
                     "The entity referenced here")
                   " was not found. It may not exist, or you may not have access to it.")
-   :recovery [(if (= kind :snippet)
-                {:uses #{"list_snippets"}
-                 :text "Call `list_snippets` to find an available snippet and use an id from the results."}
-                {:uses #{"search"}
-                 :text "Call `search` to find the entity you want and use an id from the results."})]})
+   :recovery (let [finder (get finder-tools kind "search")]
+               [{:uses #{finder}
+                 :text (str "Call `" finder "` to find the entity you want and use an id from the results.")}])})
 
 (defrecoverable unknown-query-id!
   "The requested query is absent from the conversation."
