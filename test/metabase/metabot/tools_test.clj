@@ -158,10 +158,10 @@
           (is (some? args)))))))
 
 (deftest search-tool-test
-  (testing "search-tool var has valid metadata"
-    (let [m (meta #'agent-tools/search-tool)]
-      (is (= "search" (:tool-name m)))
-      (is (some? (:schema m))))))
+  (testing "search declares its name and argument schema"
+    (let [declared (tools.legacy/declaration-of #'agent-tools/search-tool)]
+      (is (= "search" (:name declared)))
+      (is (some? (:args declared))))))
 
 (deftest construct-notebook-query-tool-test
   (testing "construct_notebook_query evaluates a representations query and creates a chart"
