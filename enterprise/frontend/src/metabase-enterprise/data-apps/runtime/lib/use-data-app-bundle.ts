@@ -1,4 +1,5 @@
 import { type ComponentType, useEffect, useState } from "react";
+import { t } from "ttag";
 
 import type { DataAppMetabaseProviderProps } from "metabase-enterprise/data-apps/sandbox/types";
 
@@ -17,14 +18,14 @@ export interface LoadedApp {
 }
 
 /**
- * Loads a data-app bundle by name and supervises it: fetches the bundle code,
- * instantiates it inside the Near-Membrane sandbox, and watches for uncaught
- * crashes. Any failure is reported up to the host `AppView` (which owns the
- * themed failure screen); the returned `failed` flag only gates what the iframe
- * renders in the meantime (the bundle vs. a neutral loader).
+ * Loads a data-app bundle in the near-membrane sandbox and watches for crashes.
+ *
+ * Embedded apps install CSP before creating the sandbox. Errors are
+ * reported to the host's `DataAppView` for internal data apps.
  */
 export const useDataAppBundle = (
   name: string,
+  { embedded = false }: { embedded?: boolean } = {},
 ): {
   data: LoadedApp | null;
   failed: boolean;
@@ -39,10 +40,16 @@ export const useDataAppBundle = (
     setFailed(false);
 
     const load = async () => {
-      const { code, allowedHosts } = await fetchDataAppBundleCode(name);
+      const { code, allowedHosts, contentSecurityPolicy } =
+        await fetchDataAppBundleCode(name);
 
       if (cancelled) {
         return;
+      }
+
+      // Install CSP before creating the sandbox or evaluating any bundle code.
+      if (embedded) {
+        installContentSecurityPolicy(contentSecurityPolicy);
       }
 
       const { component, providerProps } = await instantiateDataAppBundle(
@@ -74,7 +81,7 @@ export const useDataAppBundle = (
     return () => {
       cancelled = true;
     };
-  }, [name]);
+  }, [name, embedded]);
 
   useEffect(() => {
     // The bundle runs in a Near-Membrane sandbox that can throw errors which
@@ -104,3 +111,23 @@ export const useDataAppBundle = (
 
   return { data, failed };
 };
+
+/**
+ * CSP contains allowed hosts which we don't want to expose without auth.
+ * We do client-side auth first, then fetch and inject the CSP next.
+ */
+function installContentSecurityPolicy(policy: string | null | undefined) {
+  if (!policy?.trim()) {
+    console.error("CSP is missing from the data app bundle's response.");
+
+    throw new Error(
+      t`Something went wrong while loading this app. Try refreshing the page.`,
+    );
+  }
+
+  const meta = document.createElement("meta");
+  meta.httpEquiv = "Content-Security-Policy";
+  meta.content = policy;
+
+  document.head.appendChild(meta);
+}
