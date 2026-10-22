@@ -473,7 +473,7 @@
             {:table-schema "s", :table-name "t2", :name "c", :database-type "bigint", :base-type :type/BigInteger, :database-position 0}
             {:table-schema "s", :table-name "t3", :name "c", :database-type "string", :base-type :type/Text, :database-position 0}]
            (into []
-                 ((#'athena/column-rows->fields-xf))
+                 (#'athena/column-rows->fields-xf)
                  [{:table-schema "s", :table-name "t1", :name "id", :database-type "int", :database-position 0, :field-comment "ID"}
                   {:table-schema "s", :table-name "t1", :name "data", :database-type "struct<name:string>", :database-position 1, :field-comment ""}
                   {:table-schema "s", :table-name "t1", :name "tags", :database-type "array<string>", :database-position 2}
