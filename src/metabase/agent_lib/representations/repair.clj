@@ -2048,6 +2048,8 @@
           (throw (ex-info
                   (tru "Detected a post-aggregation filter alongside `order-by:`, `limit:`, or `fields:` in the same stage. MBQL 5 requires the filter in a separate stage, but those trailing clauses cannot be safely relocated — they may reference pre-aggregation columns that don''t survive the split. Please author this as two stages explicitly: stage 0 with `source-table`, `aggregation`, `breakout`, and any pre-aggregation `filters`; stage 1 with the post-aggregation `filters`, plus `order-by` / `limit` / `fields` that reference the aggregation''s output via cross-stage `[\"field\", (empty opts), \"<column-name>\"]` refs.")
                   {:agent-error? true
+                   :status-code  400
+                   :error-code   :post-agg-filter-with-trailing-clauses
                    :error        :post-agg-filter-with-trailing-clauses
                    :stage        stage}))
 
@@ -2065,17 +2067,22 @@
             (throw (ex-info
                     (tru "Detected a post-aggregation filter (a filter referencing an aggregation from the same stage). MBQL 5 requires this in a separate stage. Auto-fix is unsafe here — either an aggregation''s output column name cannot be derived (e.g. a `metric` reference or unknown head), or two aggregations in this stage would produce the same column name (e.g. two `sum` aggregations on different fields, which lib disambiguates as `sum` / `sum_2` based on field order). Please refactor to multi-stage manually: put the aggregations in stage 0, and the filter in stage 1 referencing the column via a cross-stage `[\"field\", (empty opts), \"<column-name>\"]` clause. Use an explicit aggregation with a `name` opts override (e.g. `[\"sum\", (opts with key \"name\" → \"sum_total\"), …]`) if you need stable cross-stage names.")
                     {:agent-error? true
+                     :status-code  400
+                     :error-code   :post-agg-filter-needs-multi-stage
                      :error        :post-agg-filter-needs-multi-stage
                      :stage        stage}))))))))
 
 (defn- split-post-agg-filters*
   "Top-level pass: walk every stage in the query, expanding any post-agg-filter stage
   in-place to `[stage0 stage1]`. Re-runs are no-ops (idempotent: split stages no longer
-  match the trigger)."
+  match the trigger). Split failures carry the unsplit query as `:query` in their ex-data."
   [query]
   (if-not (and (map? query) (vector? (get query "stages")))
     query
-    (update query "stages" #(into [] (mapcat split-post-agg-filter-stage) %))))
+    (try
+      (update query "stages" #(into [] (mapcat split-post-agg-filter-stage) %))
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e) (assoc (ex-data e) :query query) e))))))
 
 ;;; ============================================================
 ;;; Pass 3 -- auto-wire `source-field` for implicit joins

@@ -671,15 +671,25 @@
 (defn- as-agent-input-error
   "Return database failures unchanged; wrap other exceptions as agent-input errors.
 
+  A structural error in a partially repaired query takes precedence over advice to split it.
   The wrapper sets `:agent-error?` for tool callers and defaults `:status-code` to 400 for HTTP
   callers. Existing status codes are preserved."
   [^clojure.lang.ExceptionInfo e]
-  (if (database-error? e)
-    e
-    (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
-          data   (cond-> base
-                   (nil? (:status-code base)) (assoc :status-code 400))]
-      (ex-info (ex-message e) data e))))
+  (let [e (if-let [query (when (#{:post-agg-filter-with-trailing-clauses
+                                  :post-agg-filter-needs-multi-stage} (:error (ex-data e)))
+                           (:query (ex-data e)))]
+            (try
+              (repr/validate-query query)
+              e
+              (catch clojure.lang.ExceptionInfo validation-error
+                validation-error))
+            e)]
+    (if (database-error? e)
+      e
+      (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
+            data   (cond-> base
+                     (nil? (:status-code base)) (assoc :status-code 400))]
+        (ex-info (ex-message e) data e)))))
 
 (defn- not-runnable-problem
   "What is wrong at a Malli schema `error`, phrased for the LLM, or nil when there is nothing to add

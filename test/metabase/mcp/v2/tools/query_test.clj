@@ -1000,6 +1000,10 @@
                                     [(assoc post-agg :order-by 42)]]
                                    ["a post-aggregation filter with a number as `fields`" "[0] \"fields\":"
                                     [(assoc post-agg :fields 42)]]
+                                   ["a post-aggregation filter with a string as `limit`" "[0] \"limit\":"
+                                    [(assoc post-agg :limit "x")]]
+                                   ["a later post-aggregation filter with a number as `fields`" "[1] \"fields\":"
+                                    [orders (assoc (dissoc post-agg :source-table) :fields 42)]]
                                    ["a number as a later stage" "[1]" [orders 42]]
                                    ["an aggregation list as a later stage" "[1]" [orders [["count" {}]]]]]]
         (testing label
@@ -1007,6 +1011,17 @@
                                                                 {:query {:lib/type "mbql/query" :stages stages}}))
                                 (str "\"Representations query has an invalid structure.\" "
                                      "Invalid at \"stages\": " path " "))))))))
+
+(deftest ^:parallel post-aggregation-errors-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (doseq [clauses [{:aggregation [["count"]]
+                      :filters [[">" ["aggregation" 0] 1]]
+                      :limit 5}
+                     {:aggregation [["count" {}] ["count" {}]]
+                      :filters [[">" {} ["aggregation" {} 0] 1]]}]]
+      (is (re-find #"MBQL 5 requires"
+                   (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
+                                                   {:query (numeric-orders-query clauses)})))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest repair-forgiven-shortcuts-still-execute-test
