@@ -11,12 +11,6 @@ import { createOrdersQuantityField } from "metabase-types/api/mocks/presets";
 
 import { setup } from "./setup";
 
-function getShownListboxes() {
-  return screen
-    .queryAllByRole("listbox")
-    .filter((listbox) => !listbox.closest('[data-hidden="true"]'));
-}
-
 describe("TableSection", () => {
   it("should render the link to explore this table in the query builder", () => {
     const table = createMockTable();
@@ -164,20 +158,16 @@ describe("TableSection", () => {
       expect(
         screen.getByPlaceholderText("Give this table a description"),
       ).toHaveAttribute("readonly");
-      await userEvent.click(
+      expect(
         screen.getByPlaceholderText("Pick someone, or type an email"),
-      );
-      expect(getShownListboxes()).toHaveLength(0);
-      await userEvent.click(
+      ).toBeDisabled();
+      expect(
         screen.getByPlaceholderText("Select visibility layer"),
-      );
-      expect(getShownListboxes()).toHaveLength(0);
-      await userEvent.click(screen.getByPlaceholderText("Select entity type"));
-      expect(getShownListboxes()).toHaveLength(0);
-      await userEvent.click(
+      ).toBeDisabled();
+      expect(screen.getByPlaceholderText("Select entity type")).toBeDisabled();
+      expect(
         screen.getByPlaceholderText("Select a data source"),
-      );
-      expect(getShownListboxes()).toHaveLength(0);
+      ).toBeDisabled();
 
       await userEvent.click(
         screen.getByRole("button", { name: "More actions" }),

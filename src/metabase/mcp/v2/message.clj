@@ -6,7 +6,8 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.quoting :as quoting])
   (:import
    (java.util Locale)
    (java.util.regex Matcher)))
@@ -44,44 +45,6 @@
   "Mark string `s` as server-controlled text that [[render]] interpolates into a message without cleaning."
   [s :- :string]
   (->Raw s))
-
-(def ^:private escaped-categories
-  "Unicode general categories escaped by [[clean]]: invisible, line-breaking, and unassigned code points."
-  (into #{} (map long) [Character/CONTROL
-                        Character/FORMAT
-                        Character/LINE_SEPARATOR
-                        Character/PARAGRAPH_SEPARATOR
-                        Character/PRIVATE_USE
-                        Character/SURROGATE
-                        Character/UNASSIGNED]))
-
-(def ^:private double-quote-look-alikes
-  "Code points escaped by [[clean]] because they could read as the `\"` closing a quoted value. Best-effort: a
-   list of known look-alikes, not every character that might pass for a double quote."
-  ;; Single quotes are kept: they can't close a double-quoted value, and names carrying them must survive being copied
-  ;; back.
-  #{0x00AB 0x00BB 0x02BA 0x02DD 0x02EE 0x05F4 0x201C 0x201D 0x201E 0x201F 0x2032 0x2033 0x2034 0x2035 0x2036 0x2037
-    0x2057 0x275D 0x275E 0x2760 0x2E42 0x3003 0x301D 0x301E 0x301F 0xFF02 0x1F676 0x1F677 0x1F678})
-
-(defn- escaped-code-point?
-  [code-point]
-  (or (contains? escaped-categories (long (Character/getType (int code-point))))
-      (contains? double-quote-look-alikes (long code-point))))
-
-(defn- escape-code-points
-  "`s` with every code point matching `escaped?` written as `\\uXXXX` escapes of its UTF-16 code units."
-  [^String s escaped?]
-  (let [sb (StringBuilder.)]
-    (loop [i 0]
-      (when (< i (.length s))
-        (let [code-point (.codePointAt s (int i))
-              width      (Character/charCount code-point)]
-          (if (escaped? code-point)
-            (dotimes [j width]
-              (.append sb (format "\\u%04x" (int (.charAt s (int (+ i j)))))))
-            (.appendCodePoint sb code-point))
-          (recur (+ i width)))))
-    (str sb)))
 
 (defn- unquoted?
   "Whether [[clean]] returns `x` unchanged."
@@ -124,7 +87,7 @@
   [x :- ::value]
   (if (unquoted? x)
     x
-    (escape-code-points (printed (quoted-text x)) escaped-code-point?)))
+    (quoting/quoted (quoted-text x))))
 
 ;;; ---------------------------------------------------- Data ------------------------------------------------------
 
@@ -133,7 +96,7 @@
   ;; JSON text holds no raw ASCII control character outside a string (the encoder escapes those inside one), so every
   ;; escaped code point sits inside a string, where `\uXXXX` decodes back to it.
   (and (>= (long code-point) 0x7F)
-       (contains? escaped-categories (long (Character/getType (int code-point))))))
+       (quoting/invisible-code-point? code-point)))
 
 (mr/def ::json-value
   "Any value JSON can encode."
@@ -143,7 +106,7 @@
   "`x` encoded as JSON text, with every invisible, line-breaking, and unassigned code point written as `\\uXXXX`
    escapes. Decodes to the same value as plain JSON encoding."
   [x :- ::json-value]
-  (escape-code-points (json/encode x) json-escaped-code-point?))
+  (quoting/escape-code-points (json/encode x) json-escaped-code-point?))
 
 (defrecord Data [value boundary])
 
