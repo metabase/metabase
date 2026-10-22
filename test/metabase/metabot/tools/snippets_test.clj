@@ -64,7 +64,7 @@
            [[{:id 7 :name "Birds & \"nests\"" :description "a < b"}
              {:id 8 :name "Owls" :description nil}]
             (str "<snippets>\n"
-                 "<snippet id=\"7\" name=\"Birds & \"nests\"\">a < b</snippet>\n"
+                 "<snippet id=\"7\" name=\"Birds &amp; &quot;nests&quot;\">a &lt; b</snippet>\n"
                  "<snippet id=\"8\" name=\"Owls\"></snippet>\n"
                  "</snippets>")]]]
     (mt/with-dynamic-fn-redefs [snippets/list-native-query-snippets (constantly items)]
@@ -73,14 +73,14 @@
 
 (deftest ^:parallel snippet-details-output-test
   (doseq [[fields expected]
-          [[{:description "a < b & c" :content "SELECT '<owl>'\nWHERE 1 < 2"}
-            (str "<description>a < b & c</description>\n"
+          [[{:description "a < b & \"c\"" :content "SELECT '<owl>'\nWHERE 1 < 2"}
+            (str "<description>a &lt; b &amp; \"c\"</description>\n"
                  "<content>\nSELECT '<owl>'\nWHERE 1 < 2\n</content>\n")]
            [{:description nil :content nil} ""]
            [{:description "" :content ""} "<description></description>\n<content>\n\n</content>\n"]]]
     (mt/with-dynamic-fn-redefs [snippets/get-native-query-snippet
                                 (fn [id] (assoc fields :id id :name "Birds & \"nests\""))]
-      (is (= {:output (str "<snippet id=\"7\" name=\"Birds & \"nests\"\">\n" expected "</snippet>")}
+      (is (= {:output (str "<snippet id=\"7\" name=\"Birds &amp; &quot;nests&quot;\">\n" expected "</snippet>")}
              (test-util/call-tool tools.snippets/get-snippet-details-tool {:snippet_id 7}))))))
 
 (deftest ^:parallel unexpected-snippet-errors-test

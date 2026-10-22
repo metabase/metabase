@@ -4,6 +4,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.native-query-snippets.core :as snippets]))
 
 (set! *warn-on-reflection* true)
@@ -13,8 +14,8 @@
   (if (seq snippets)
     (str "<snippets>\n"
          (str/join "\n" (map (fn [{:keys [id name description]}]
-                               (str "<snippet id=\"" id "\" name=\"" name "\">"
-                                    (when description description)
+                               (str "<snippet id=\"" id "\" name=\"" (llm-shape/escape-xml name) "\">"
+                                    (llm-shape/escape-xml-content description)
                                     "</snippet>"))
                              snippets))
          "\n</snippets>")
@@ -22,8 +23,9 @@
 
 (defn- format-snippet-details-output
   [{:keys [id name description content]}]
-  (str "<snippet id=\"" id "\" name=\"" name "\">\n"
-       (when description (str "<description>" description "</description>\n"))
+  (str "<snippet id=\"" id "\" name=\"" (llm-shape/escape-xml name) "\">\n"
+       (when description (str "<description>" (llm-shape/escape-xml-content description) "</description>\n"))
+       ;; Not escaped: the model reuses this SQL, and `&lt;` in place of `<` would break it.
        (when content (str "<content>\n" content "\n</content>\n"))
        "</snippet>"))
 
