@@ -2,6 +2,9 @@
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase-enterprise.workspaces.settings :as ws.settings]
+   [metabase.settings.core :as setting]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -30,3 +33,13 @@
     (is (true? (ws/workspace-mode?)))
     (ws/clear-instance-workspace!)
     (is (false? (ws/workspace-mode?)))))
+
+(deftest allow-data-studio-in-iframe-test
+  (testing "off by default"
+    (is (false? (ws.settings/allow-data-studio-in-iframe))))
+  (testing "MB_ALLOW_DATA_STUDIO_IN_IFRAME turns it on"
+    (mt/with-temp-env-var-value! [mb-allow-data-studio-in-iframe "true"]
+      (is (true? (ws.settings/allow-data-studio-in-iframe)))))
+  (testing "the frontend reads it from a signed-in user's session properties"
+    (mt/with-temp-env-var-value! [mb-allow-data-studio-in-iframe "true"]
+      (is (true? (:allow-data-studio-in-iframe (setting/user-readable-values-map #{:public :authenticated})))))))
