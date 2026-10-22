@@ -1,3 +1,4 @@
+import { getOverflowAncestors } from "@floating-ui/dom";
 import type { FloatingPosition, PopoverProps } from "@mantine/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -69,29 +70,25 @@ export function useStablePopoverPosition(
   );
 
   useEffect(() => {
-    if (!isOpen) {
+    const reference = referenceRef.current;
+    if (!isOpen || !reference) {
       return;
     }
 
     const resetPreferredSide = () => rememberPosition(undefined);
-
-    const handleScroll = (event: Event) => {
-      const movesTrigger =
-        event.target instanceof Node &&
-        event.target.contains(referenceRef.current);
-      if (movesTrigger) {
-        resetPreferredSide();
-      }
-    };
+    const scrollAncestors = getOverflowAncestors(reference);
 
     window.addEventListener("resize", resetPreferredSide);
-    document.addEventListener("scroll", handleScroll, {
-      capture: true,
-      passive: true,
-    });
+    scrollAncestors.forEach((ancestor) =>
+      ancestor.addEventListener("scroll", resetPreferredSide, {
+        passive: true,
+      }),
+    );
     return () => {
       window.removeEventListener("resize", resetPreferredSide);
-      document.removeEventListener("scroll", handleScroll, { capture: true });
+      scrollAncestors.forEach((ancestor) =>
+        ancestor.removeEventListener("scroll", resetPreferredSide),
+      );
     };
   }, [isOpen, rememberPosition]);
 
