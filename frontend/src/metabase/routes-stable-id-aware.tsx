@@ -49,10 +49,6 @@ export const EntityIdRedirect = ({
   const params = useParams();
   const { pathname, search, hash } = useLocation();
   const [searchParams] = useSearchParams();
-  const hashParams = useMemo(
-    () => new URLSearchParams(hash.replace(/^#/, "")),
-    [hash],
-  );
 
   const paramsWithValues: ParamWithValue[] = useMemo(() => {
     // add the value from the params, the query or the hash
@@ -60,14 +56,17 @@ export const EntityIdRedirect = ({
       const value = match(config.type)
         .with("param", () => params[config.name])
         .with("search", () => searchParams.get(config.name) ?? undefined)
-        .with("hash", () => hashParams.get(config.name) ?? undefined)
+        .with("hash", () => {
+          const hashValue = parseHashOptions(hash)[config.name];
+          return typeof hashValue === "string" ? hashValue : undefined;
+        })
         .exhaustive();
       return {
         ...config,
         value,
       };
     });
-  }, [parametersToTranslate, params, searchParams, hashParams]);
+  }, [parametersToTranslate, params, searchParams, hash]);
 
   const entityIdsToTranslate = useMemo(() => {
     // formats the entity ids in the format {resourceType: [entityId1, entityId2]}
@@ -151,8 +150,7 @@ function handleResults({
   let notFound = false;
   let nextPathname = pathname;
   let nextSearch = search;
-  let hashOptions = parseHashOptions(hash);
-  let isHashChanged = false;
+  let nextHash = hash;
 
   for (const { name, type, value } of paramsWithValues) {
     if (!isBaseEntityID(value)) {
@@ -163,10 +161,11 @@ function handleResults({
     if (type === "hash") {
       // the hash only points inside the page, so an unknown entity id is
       // dropped instead of showing a 404 for the whole page
-      hashOptions = id
-        ? { ...hashOptions, [name]: String(id) }
-        : _.omit(hashOptions, name);
-      isHashChanged = true;
+      const hashOptions = parseHashOptions(nextHash);
+      const hashString = stringifyHashOptions(
+        id ? { ...hashOptions, [name]: String(id) } : _.omit(hashOptions, name),
+      );
+      nextHash = hashString ? `#${hashString}` : "";
     } else if (!id) {
       notFound = true;
     } else if (type === "param") {
@@ -176,12 +175,6 @@ function handleResults({
       shouldRedirect = true;
       nextSearch = nextSearch.replace(value, String(id));
     }
-  }
-
-  let nextHash = hash;
-  if (isHashChanged) {
-    const hashString = stringifyHashOptions(hashOptions);
-    nextHash = hashString ? `#${hashString}` : "";
   }
 
   return {
