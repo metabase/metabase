@@ -138,7 +138,8 @@
              (testing "the same row on a collection no app owns goes in"
                (insert! "sparrows" free-id)
                (is (t2/exists? :model/DataApp :name "sparrows")))
-             (is (thrown? Exception (insert! "finches" collection-id)))
+             (is (thrown? Exception (t2/with-transaction [_conn]
+                                      (insert! "finches" collection-id))))
              (is (not (t2/exists? :model/DataApp :name "finches"))))))))))
 
 (deftest data-apps-collection-is-root-collection-of-its-namespace-test

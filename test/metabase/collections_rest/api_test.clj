@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
+   [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -1920,27 +1921,30 @@
 
 (deftest data-app-collection-items-test
   (testing "GET /api/collection/:id/items lists the actions and questions of a data app collection"
-    (mt/with-temp [:model/Collection   {app-coll-id :id}    {:namespace "data-apps", :name "Data app collection"}
-                   :model/Collection   {actions-coll-id :id} {:namespace "data-actions", :name "Data actions folder"}
-                   :model/Card         _                    {:name "App question", :collection_id app-coll-id}
-                   :model/Action       {in-app :id}         {:type :query, :name "In app", :collection_id app-coll-id}
-                   :model/QueryAction  _                    {:action_id     in-app
+    (mt/with-temp [:model/Collection  {app-coll-id :id}     {:namespace "data-apps", :name "Data app collection"}
+                   :model/Collection  {actions-coll-id :id} {:namespace "data-actions", :name "Data actions folder"}
+                   :model/Action      {in-app :id}          {:type :query, :name "In app", :collection_id app-coll-id}
+                   :model/QueryAction _                     {:action_id     in-app
                                                              :database_id   (mt/id)
                                                              :dataset_query (mt/native-query {:query "DELETE FROM venues"})}
-                   :model/Action       {in-folder :id}      {:type :query, :name "In folder", :collection_id actions-coll-id}
-                   :model/QueryAction  _                    {:action_id     in-folder
+                   :model/Action      {in-folder :id}       {:type :query, :name "In folder", :collection_id actions-coll-id}
+                   :model/QueryAction _                     {:action_id     in-folder
                                                              :database_id   (mt/id)
                                                              :dataset_query (mt/native-query {:query "DELETE FROM venues"})}]
-      (let [items (fn [coll-id model]
-                    (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models model)
-                         :data
-                         (map #(select-keys % [:name :model :collection_namespace]))))]
-        (is (= [{:name "In app", :model "action", :collection_namespace "data-apps"}]
-               (items app-coll-id "action")))
-        (is (= [{:name "App question", :model "card"}]
-               (map #(dissoc % :collection_namespace) (items app-coll-id "card"))))
-        (is (= [{:name "In folder", :model "action", :collection_namespace "data-actions"}]
-               (items actions-coll-id "action")))))))
+      (binding [mi/*deserializing?* true]
+        (mt/with-temp [:model/Card _ {:name          "App question"
+                                      :collection_id app-coll-id
+                                      :dataset_query (mt/mbql-query venues)}]
+          (let [items (fn [coll-id model]
+                        (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models model)
+                             :data
+                             (map #(select-keys % [:name :model :collection_namespace]))))]
+            (is (= [{:name "In app", :model "action", :collection_namespace "data-apps"}]
+                   (items app-coll-id "action")))
+            (is (= [{:name "App question", :model "card"}]
+                   (map #(dissoc % :collection_namespace) (items app-coll-id "card"))))
+            (is (= [{:name "In folder", :model "action", :collection_namespace "data-actions"}]
+                   (items actions-coll-id "action")))))))))
 
 (deftest snippet-collection-items-count-only-test
   (testing "The snippets namespace is unpaginated, but a count-only request still keeps its LIMIT"
