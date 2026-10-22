@@ -29,6 +29,7 @@ export function DataAppHeader({ app }: DataAppHeaderProps) {
               label: t`Questions`,
               to: Urls.dataStudioDataAppQuestions(app.name),
             },
+            { label: t`Actions`, to: Urls.dataStudioDataAppActions(app.name) },
             {
               label: t`Permissions`,
               to: Urls.dataStudioDataAppPermissions(app.name),
