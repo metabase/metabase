@@ -6,7 +6,7 @@
 databaseChangeLog:
 
   - changeSet:
-      id: v65.2026-10-21T00:00:00
+      id: v66.2026-10-21T00:00:00
       author: escherize
       comment: Recreate workspace table
       changes:
@@ -63,7 +63,7 @@ databaseChangeLog:
             cascadeConstraints: true
 
   - changeSet:
-      id: v65.2026-10-21T00:00:01
+      id: v66.2026-10-21T00:00:01
       author: escherize
       comment: Recreate workspace_database table
       changes:
@@ -151,7 +151,7 @@ databaseChangeLog:
             cascadeConstraints: true
 
   - changeSet:
-      id: v65.2026-10-21T00:00:02
+      id: v66.2026-10-21T00:00:02
       author: escherize
       comment: Recreate table_remapping table
       changes:
