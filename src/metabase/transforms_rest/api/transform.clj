@@ -183,7 +183,7 @@
   (api/create-check :model/Transform body)
   (transforms.core/check-database-feature body)
   (transforms.core/validate-incremental-column-type! body)
-  (api/check (not (transforms-base.u/target-table-exists? body))
+  (api/check (not (transforms-base.u/planned-target-table-exists? body))
              409
              (deferred-tru "A table with that name already exists."))
   (-> (transforms.core/create-transform! body)

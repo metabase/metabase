@@ -1,9 +1,12 @@
 (ns metabase-enterprise.workspaces.transform-hooks-test
   (:require
+   [clojure.java.jdbc :as jdbc]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.table-remapping :as ws.table-remapping]
    [metabase-enterprise.workspaces.transform-hooks :as ws.transform-hooks]
+   [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.core :as lib]
    [metabase.test :as mt]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.transforms.interface :as transforms.i]
@@ -150,3 +153,34 @@
                                :from_schema     "PUBLIC"
                                :from_table_name "BAR"))
           "no TableRemapping row recorded for a non-workspaced DB"))))
+
+(deftest transform-api-checks-the-workspace-target-for-existence-test
+  (testing "in a workspace, POST/PUT /api/transform check the remapped target, not the canonical one"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:workspaces :advanced-permissions :transforms-basic :hosting}
+        (let [iso-schema "ws_target_check_iso"
+              spec       (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              query      (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")
+              create!    (fn [status table-name]
+                           (mt/user-http-request :crowberto :post status "transform"
+                                                 {:name   (str "ws-target-check " table-name)
+                                                  :source {:type "query" :query query}
+                                                  :target {:type "table" :schema "public" :name table-name}}))]
+          (with-instance-workspace-for-db! iso-schema
+            (fn []
+              (try
+                (testing "create targeting an existing canonical table succeeds"
+                  (create! 200 "orders")
+                  (testing "and the check records no TableRemapping"
+                    (is (zero? (t2/count :model/TableRemapping :database_id (mt/id))))))
+                (testing "update retargeting to an existing canonical table succeeds"
+                  (let [{id :id} (create! 200 "ws_target_check_new")]
+                    (mt/user-http-request :crowberto :put 200 (str "transform/" id)
+                                          {:target {:type "table" :schema "public" :name "products"}})))
+                (testing "the workspace's own copy of the target existing is still a 409"
+                  (jdbc/execute! spec [(format "CREATE SCHEMA %s; CREATE TABLE %s.public__venues (id INT)"
+                                               iso-schema iso-schema)])
+                  (create! 409 "venues"))
+                (finally
+                  (t2/delete! :model/Transform :name [:like "ws-target-check %"])
+                  (jdbc/execute! spec [(format "DROP SCHEMA IF EXISTS %s CASCADE" iso-schema)]))))))))))
