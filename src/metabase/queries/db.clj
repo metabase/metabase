@@ -4,6 +4,7 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.collections.core :as collections]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -590,6 +591,23 @@
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
+
+(mu/defn unpublished-table-names :- [:set :string]
+  "Among the Tables with `table-ids`, the names of those not published to the Library."
+  [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
+  (or (t2/select-fn-set :name [:model/Table :name] :id [:in table-ids] :is_published false
+                        {:from [(warehouse-schema-overlay/table-query)]})
+      #{}))
+
+(mu/defn library-metric-ids :- [:set ::lib.schema.id/card]
+  "Among `card-ids`, the IDs of the metrics in the Library's Metrics collection or one of its subcollections."
+  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
+  (or (t2/select-fn-set :id [:model/Card :report_card.id] {:join  [:collection [:= :collection.id :report_card.collection_id]]
+                                                           :where [:and
+                                                                   [:in :report_card.id card-ids]
+                                                                   [:= :report_card.type "metric"]
+                                                                   [:= :collection.type collections/library-metrics-collection-type]]})
+      #{}))
 
 (defn card-ids-outside-collection
   "Among `card-ids`, the IDs of the cards that are not in the collection with `collection-id`."
