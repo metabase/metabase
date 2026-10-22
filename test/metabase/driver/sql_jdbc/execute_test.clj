@@ -17,7 +17,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
   (:import
-   (java.sql Connection DatabaseMetaData SQLException SQLNonTransientConnectionException SQLRecoverableException
+   (java.sql Connection DatabaseMetaData ResultSet SQLException SQLNonTransientConnectionException SQLRecoverableException
              SQLTimeoutException SQLTransientConnectionException)
    (javax.sql DataSource)))
 
@@ -372,6 +372,19 @@
                    (SQLNonTransientConnectionException. "Unknown column 'a' in 'field list'" "42S22")]]
           (testing (ex-message e)
             (is (= :invalid-query (error-type e))))))
+      (testing "A connection failure while closing the result set is a QP error"
+        (let [execute-statement (mt/original-fn #'sql-jdbc.execute/execute-statement-or-prepared-statement!)
+              failure           (SQLNonTransientConnectionException. "Connection is broken" "08000")]
+          (mt/with-dynamic-fn-redefs [sql-jdbc.execute/row-thunk (fn [& _] #(throw failure))
+                                      sql-jdbc.execute/execute-statement-or-prepared-statement!
+                                      (fn [& args]
+                                        (let [^ResultSet rs (apply execute-statement args)]
+                                          (reify ResultSet
+                                            (getMetaData [_] (.getMetaData rs))
+                                            (close [_]
+                                              (.close rs)
+                                              (throw failure)))))]
+            (is (= :qp (:error_type (qp/process-query query)))))))
       (testing "A failed connection, a canceled or timed-out statement or a transient failure is a QP error"
         (doseq [e [(SQLException. "An I/O error occurred while sending to the backend" "08006")
                    (SQLNonTransientConnectionException. "Connection is broken" "90067")
