@@ -146,7 +146,7 @@ describe("UserPasswordApp (OSS)", () => {
   });
 
   it.each(["ldap", "google", "jwt", "saml"] as const)(
-    "should hide the password form for a %s user (metabase#23298)",
+    "should prevent %s users from editing SSO credentials (metabase#23298)",
     (ssoSource) => {
       setup({
         user: createMockUser({

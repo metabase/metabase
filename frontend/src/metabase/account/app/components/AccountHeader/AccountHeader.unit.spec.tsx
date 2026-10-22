@@ -143,7 +143,7 @@ describe("AccountHeader", () => {
     });
 
     it.each(["ldap", "google", "jwt", "saml"] as const)(
-      "should show the email and hide the tab for a %s user (metabase#23298)",
+      "should prevent %s users from editing SSO credentials (metabase#23298)",
       (ssoSource) => {
         setup({
           user: getUser({ sso_source: ssoSource, slack_account_status: null }),
