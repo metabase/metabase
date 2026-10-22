@@ -978,7 +978,7 @@
 ;;; literal (resolve's `:invalid-temporal-literal` check still needs to see it). The `between`
 ;;; example drops the wrapper anyway: `day` on a date adds nothing, and the bound ends up as the
 ;;; query builder writes it.
-;;; Pass 2.96 expands date-only `day` / `default` bounds into ranges in conditional aggregations.
+;;; Pass 2.6 expands date-only `day` / `default` bounds into ranges in conditional aggregations.
 ;;;
 ;;; `::query` / `::stage` are `:closed false`, so a stray `filters:` on the query root or a join map
 ;;; sits in no stage: E7 names the clause, never the stray key, and the model's fix is dropped again.
@@ -1296,7 +1296,7 @@
    form))
 
 ;;; ============================================================
-;;; Pass 2.96 -- expand whole-day comparisons outside of filters, expressions and join conditions.
+;;; Pass 2.6 -- expand whole-day comparisons outside of filters, expressions and join conditions.
 ;;;
 ;;; Date-only bounds with the `day` or `default` unit become ranges on the unbucketed column,
 ;;; with an exclusive upper bound on the next day. The expression editor can save these ranges;
@@ -3337,7 +3337,7 @@
   17811 are after January 2026, and
   `[\"=\" [\"absolute-datetime\" \"2026-03-01\" \"month\"] CREATED_AT]` counts none of the 256 orders
   from March 2026. Pass 2.95 repairs comparisons in filters and expressions.
-  Pass 2.96 expands date-only `day` / `default` bounds into ranges and unwraps `default` timestamps
+  Pass 2.6 expands date-only `day` / `default` bounds into ranges and unwraps `default` timestamps
   outside of filters, expressions and join conditions. This detector has the model rewrite the rest.
 
   `relative-datetime` and `datetime-diff` units do carry `:decode/normalize`, so they survive the hop
@@ -3449,11 +3449,7 @@
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
        tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
     2. fill in missing `\"lib/type\"` markers on the query, joins, and stages;
-    2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
-       `absolute-datetime` literal and onto the ref it is compared to: the hoisted form survives a
-       fallback to legacy MBQL, and the query engine runs it right where it runs the literal-side
-       form wrong (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
-    2.96. expand date-only `day` / `default` comparisons into whole-day ranges on the unbucketed column outside of
+    2.6. expand date-only `day` / `default` comparisons into whole-day ranges on the unbucketed column outside of
        `filters`, `expressions` and join `conditions`; leave date negations for E7; unwrap `default` timestamps
        and the whole-day start of a `between` that ends at `now` or at a timestamp;
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
@@ -3462,6 +3458,10 @@
     3.5. resolve 0-based integer aggregation references (`[aggregation, {}, <int>]`) in a
        stage to the canonical UUID-keyed MBQL 5 form, stamping `lib/uuid` on the target
        aggregation clause and `base-type`/`effective-type` on the ref's options;
+    2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
+       `absolute-datetime` literal and onto the ref it is compared to: the hoisted form survives a
+       fallback to legacy MBQL, and the query engine runs it right where it runs the literal-side
+       form wrong (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
     3.7. auto-wire `source-field-join-alias` (and the accompanying portable `source-field`)
        on field clauses whose target table is reachable through **exactly one** explicit
        join on the stage via a single unambiguous FK on the joined table. Skips clauses
@@ -3525,6 +3525,7 @@
    (-> parsed
        normalize-shape*
        (stamp-top-level-database* mp)
+       ;; Before Pass 3: order-by must equal its aggregation, so date bounds are normalized first.
        repair-day-and-default-comparisons*
        rewrite-order-by-inline-aggs*
        resolve-aggregation-ref-indexes*
