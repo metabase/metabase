@@ -229,7 +229,14 @@ export function wrapperPath(spec: string, index: number) {
   const dir = path.dirname(spec);
   const extension =
     spec.endsWith(".tsx") || spec.endsWith(".jsx") ? ".tsx" : ".ts";
-  return path.join(dir, `${WRAPPER_PREFIX}${index}.unit.spec${extension}`);
+  const label = path
+    .basename(spec)
+    .replace(/\.unit\.spec\.[jt]sx?$/, "")
+    .replace(/[^A-Za-z0-9]+/g, "_");
+  return path.join(
+    dir,
+    `${WRAPPER_PREFIX}${label}_${index}.unit.spec${extension}`,
+  );
 }
 
 /**

@@ -9,7 +9,13 @@ import {
   parseKey,
   toRepoRelative,
 } from "./verify/coverage";
-import { chunk, mutantOf, stripMutant, wrapperSource } from "./verify/jest";
+import {
+  chunk,
+  mutantOf,
+  stripMutant,
+  wrapperPath,
+  wrapperSource,
+} from "./verify/jest";
 import { type PassResults, classifyFailure, judgeMutant } from "./verify/judge";
 import { mapLine, parseDeletedTests, parseHunks } from "./verify/lines";
 import {
@@ -177,6 +183,20 @@ describe("mutants", () => {
 });
 
 describe("wrapper spec", () => {
+  it("gives each spec in one directory its own wrapper files", () => {
+    const dir = "frontend/src/metabase/admin/databases/containers";
+    const specs = [
+      `${dir}/DatabaseEditApp.unit.spec.tsx`,
+      `${dir}/DatabaseListApp.unit.spec.tsx`,
+      `${dir}/DatabasePage.unit.spec.tsx`,
+    ];
+    const paths = specs.flatMap((spec) =>
+      [0, 1, 2].map((index) => wrapperPath(spec, index)),
+    );
+    expect(new Set(paths).size).toBe(paths.length);
+    expect(wrapperPath(specs[1], 0)).toMatch(/__e2e_verify_DatabaseListApp_0/);
+  });
+
   it("registers each test once per mutant and names it with the mutant", () => {
     const source = wrapperSource("Thing.unit.spec", [0, 3]);
     expect(source).toContain('require("./Thing.unit.spec")');
