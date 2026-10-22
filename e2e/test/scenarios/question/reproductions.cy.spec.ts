@@ -796,7 +796,7 @@ describe("issue 74500", () => {
       },
     }).then(({ body: question }) => {
       // Visiting the notebook directly skips the slide-in, which would throw off measurements
-      cy.visit(`/question/${question.id}/notebook`);
+      H.visitQuestionAdhoc(question, { mode: "notebook" });
     });
 
     cy.log("the filter editor fits below, so it opens below");
