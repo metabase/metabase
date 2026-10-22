@@ -20,7 +20,7 @@ type BreakoutMenuProps = SettingWidgetProps<string | null> & {
   columns?: { value: string; label: string }[];
 };
 
-/** An icon button in the toolbar's button group; the tooltip names the breakout. */
+/** An icon button in the toolbar's button group, labeled "By <column>" while set. */
 export const BreakoutMenu = ({
   value,
   onChange,
@@ -28,28 +28,27 @@ export const BreakoutMenu = ({
 }: BreakoutMenuProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const selected = columns.find((column) => column.value === value);
-  const vars = selected !== undefined ? () => BREAKOUT_SET_VARS : undefined;
-  const label =
-    selected !== undefined ? t`Broken out by ${selected.label}` : t`Break out`;
+  const isSet = selected !== undefined;
 
   return (
     <Menu position="bottom-start" opened={isOpen} onChange={setIsOpen}>
       <Menu.Target>
-        <Tooltip label={label} disabled={isOpen}>
+        <Tooltip label={t`Break out`} disabled={isOpen || isSet}>
           <Button
             variant="default"
-            px="sm"
-            vars={vars}
-            aria-label={label}
-            aria-pressed={selected !== undefined}
+            px={isSet ? undefined : "sm"}
+            vars={isSet ? () => BREAKOUT_SET_VARS : undefined}
+            leftSection={isSet ? <Icon name="split_branch" /> : undefined}
+            aria-label={isSet ? undefined : t`Break out`}
+            aria-pressed={isSet}
             disabled={columns.length === 0}
           >
-            <Icon name="split_branch" />
+            {isSet ? t`By ${selected.label}` : <Icon name="split_branch" />}
           </Button>
         </Tooltip>
       </Menu.Target>
       <Menu.Dropdown mah={MAX_DROPDOWN_HEIGHT} style={{ overflowY: "auto" }}>
-        {selected !== undefined && (
+        {isSet && (
           <>
             <Menu.Item
               leftSection={<Icon name="close" />}
