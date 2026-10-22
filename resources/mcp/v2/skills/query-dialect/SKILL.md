@@ -135,7 +135,7 @@ Window: `offset` sits in `aggregation` and reads another breakout row — month-
 
 ## Metrics, measures, segments
 
-By numeric id, on a stage built on the metric's required source: the base table in `source-table` for a table metric, or the model or saved question in `source-card` for a card metric. Measures and segments go on a stage whose `source-table` is their base table. Metric `"aggregation": [["metric", {}, 42]]`; measure `"aggregation": [["measure", {}, 7]]`; segment `"filters": [["segment", {}, 3]]`. `browse_data` `get_fields` lists each table's with ids. To compose on top of one, `get_content` `include: ["definition"]` returns its clauses in this dialect to inline and extend.
+By numeric id, on a stage built on the metric's required source: the base table in `source-table` for a table metric, or the model or saved question in `source-card` for a card metric. Only a single-stage metric defined on a card requires that exact card; a multi-stage metric whose definition starts from a card requires its underlying table in `source-table` instead. Measures and segments go on a stage whose `source-table` is their base table. Metric `"aggregation": [["metric", {}, 42]]`; measure `"aggregation": [["measure", {}, 7]]`; segment `"filters": [["segment", {}, 3]]`. `browse_data` `get_fields` lists each table's with ids. To compose on top of one, `get_content` `include: ["definition"]` returns its clauses in this dialect to inline and extend.
 
 A metric's or measure's output column is named for the aggregation inside its definition (`sum`, `count`, `avg`), not for the metric or measure — set `"name"` in its options slot (`["measure", {"name": "revenue"}, 7]`) to name it for a later stage.
 
