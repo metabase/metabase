@@ -8,7 +8,7 @@ import { DataAppsNavbarSection } from "./DataAppsNavbarSection";
 
 describe("DataAppsNavbarSection", () => {
   it("does not show apps section when there are no data apps", async () => {
-    fetchMock.get("path:/api/apps?available=true", []);
+    fetchMock.get("path:/api/ee/apps?available=true", []);
 
     renderWithProviders(<DataAppsNavbarSection onItemSelect={jest.fn()} />);
 
@@ -20,7 +20,7 @@ describe("DataAppsNavbarSection", () => {
   });
 
   it("shows every data app as a link", async () => {
-    fetchMock.get("path:/api/apps?available=true", [
+    fetchMock.get("path:/api/ee/apps?available=true", [
       { name: "gizmo", display_name: "Gizmo" },
       { name: "gadget", display_name: "Gadget" },
     ]);

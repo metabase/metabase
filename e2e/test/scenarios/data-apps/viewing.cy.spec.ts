@@ -167,7 +167,7 @@ describe("scenarios > data apps > viewing & routing", () => {
       // The metadata endpoint refuses an outdated app to non-admins with this
       // exact shape (see `check-not-outdated` in data_apps/api.clj).
       cy.intercept(
-        { method: "GET", pathname: `/api/apps/${APP_NAME}` },
+        { method: "GET", pathname: `/api/ee/apps/${APP_NAME}` },
         {
           statusCode: 409,
           body: {
