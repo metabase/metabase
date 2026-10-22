@@ -3679,7 +3679,8 @@
         (is (= #{other-button} (t2/select-pks-set :report_dashboardcard :id [:in [http-button other-button]])))))))
 
 (deftest delete-actions-of-non-models-test
-  (testing "v65.1y8qok: the actions of cards that are not models, and their dashboard buttons, are deleted"
+  (testing "v65.1y8qok: the actions of non-models and archived models, and those archived along with a model, are deleted
+            with their dashboard buttons"
     (impl/test-migrations ["v65.1y8qok"] [migrate!]
       (let [user-id        (t2/insert-returning-pk! :core_user {:first_name  "Action"
                                                                 :last_name   "Owner"
@@ -3698,10 +3699,11 @@
                                                                        :entity_id  (u/generate-nano-id)
                                                                        :created_at :%now
                                                                        :updated_at :%now})
-            insert-card!   (fn [card-type]
+            insert-card!   (fn [card-type & {:keys [archived]}]
                              (t2/insert-returning-pk! :report_card {:name                   "Card"
                                                                     :entity_id              (u/generate-nano-id)
                                                                     :type                   card-type
+                                                                    :archived               (boolean archived)
                                                                     :display                "table"
                                                                     :dataset_query          "{}"
                                                                     :visualization_settings "{}"
@@ -3709,13 +3711,15 @@
                                                                     :database_id            db-id
                                                                     :created_at             :%now
                                                                     :updated_at             :%now}))
-            insert-action! (fn [model-id]
-                             (t2/insert-returning-pk! :action {:name       "Action"
-                                                               :entity_id  (u/generate-nano-id)
-                                                               :type       "query"
-                                                               :model_id   model-id
-                                                               :created_at :%now
-                                                               :updated_at :%now}))
+            insert-action! (fn [model-id & {:keys [archived archived-directly]}]
+                             (t2/insert-returning-pk! :action {:name              "Action"
+                                                               :entity_id         (u/generate-nano-id)
+                                                               :type              "query"
+                                                               :model_id          model-id
+                                                               :archived          (boolean archived)
+                                                               :archived_directly (boolean archived-directly)
+                                                               :created_at        :%now
+                                                               :updated_at        :%now}))
             insert-button! (fn [action-id]
                              (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id           dash-id
                                                                              :action_id              action-id
@@ -3728,15 +3732,20 @@
                                                                              :col                    0
                                                                              :created_at             :%now
                                                                              :updated_at             :%now}))
-            model-action   (insert-action! (insert-card! "model"))
-            no-model       (insert-action! nil)
+            model-id       (insert-card! "model")
+            model-action   (insert-action! model-id)
+            archived-alone (insert-action! model-id :archived true :archived-directly true)
+            archived-along (insert-action! model-id :archived true)
+            no-model       (insert-action! nil :archived true)
+            archived-model (insert-action! (insert-card! "model" :archived true))
             question       (insert-action! (insert-card! "question"))
             metric         (insert-action! (insert-card! "metric"))
             kept-button    (insert-button! model-action)
-            deleted-button (insert-button! question)]
+            deleted-button (insert-button! question)
+            action-ids     [model-action archived-alone archived-along no-model archived-model question metric]]
         (t2/insert! :query_action {:action_id question :database_id db-id :dataset_query "{}"})
         (migrate!)
-        (is (= #{model-action no-model} (t2/select-pks-set :action :id [:in [model-action no-model question metric]])))
+        (is (= #{model-action archived-alone no-model} (t2/select-pks-set :action :id [:in action-ids])))
         (is (= #{kept-button} (t2/select-pks-set :report_dashboardcard :id [:in [kept-button deleted-button]])))
         (is (not (t2/exists? :query_action :action_id question)))))))
 

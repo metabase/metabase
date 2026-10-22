@@ -1,16 +1,20 @@
-## Actions belong to models only: turning a model into a question now deletes its actions, so the ones left on cards that
-## are no longer models go too (their dashboard cards and query_action/implicit_action rows cascade).
+## A model's actions never outlive it: archiving a model or turning it into a question now deletes its actions. This
+## deletes the ones such writes left behind: actions of cards that are no longer models, of archived models, and those
+## archived along with a model that has since been restored. Their dashboard cards and query_action/implicit_action rows
+## cascade. Actions without a model are left alone.
 
 databaseChangeLog:
   - changeSet:
       id: v65.1y8qok
       author: ranquild
-      comment: Delete the actions of cards that are not models
+      comment: Delete the actions of non-models and archived models, and those archived along with a model
       changes:
         - sql:
             sql: >-
               DELETE FROM action
               WHERE EXISTS (SELECT 1 FROM report_card
                             WHERE report_card.id = action.model_id
-                              AND report_card.type <> 'model');
+                              AND (report_card.type <> 'model'
+                                   OR report_card.archived = TRUE
+                                   OR (action.archived = TRUE AND action.archived_directly = FALSE)));
       rollback: # nothing to do; the deleted actions cannot be restored
