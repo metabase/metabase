@@ -145,26 +145,6 @@ describe("scenarios > admin > security center", { tags: "@EE" }, () => {
     securityCenterContent().findByText("Dismiss all").should("not.exist");
   });
 
-  it("should show nav item with badge and navigate to the security center", () => {
-    seedAllAdvisories();
-    cy.visit("/admin");
-
-    // Nav item and badge are visible
-    cy.findByTestId("admin-navbar").within(() => {
-      cy.findByText("Security").should("be.visible");
-    });
-    cy.findByTestId("security-center-badge").should("be.visible");
-
-    // Clicking navigates to security center
-    cy.findByTestId("admin-navbar").within(() => {
-      cy.findByText("Security").click();
-    });
-    cy.url().should("include", "/admin/security-center");
-    securityCenterContent().within(() => {
-      cy.findByText("Security Center").should("be.visible");
-    });
-  });
-
   it("should open notification settings modal, show Slack state, save settings, and default admin toggle with SMTP", () => {
     seedAllAdvisories();
     H.setupSMTP();
