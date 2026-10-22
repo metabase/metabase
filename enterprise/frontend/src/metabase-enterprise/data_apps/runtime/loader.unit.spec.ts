@@ -76,9 +76,29 @@ describe("fetchDataAppBundleCode", () => {
       await expect(fetchDataAppBundleCode("demo")).resolves.toEqual({
         code: "CODE",
         allowedHosts: expected,
+        contentSecurityPolicy: null,
       });
     },
   );
+
+  it("reads the CSP alongside the bundle source and allowed hosts", async () => {
+    setup(
+      new Response("CODE", {
+        headers: {
+          "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify([
+            "https://api.example.com",
+          ]),
+          "X-Metabase-Data-App-Content-Security-Policy": "default-src 'none';",
+        },
+      }),
+    );
+
+    await expect(fetchDataAppBundleCode("demo")).resolves.toEqual({
+      code: "CODE",
+      allowedHosts: ["https://api.example.com"],
+      contentSecurityPolicy: "default-src 'none';",
+    });
+  });
 
   it("throws a DataAppBundleError carrying the HTTP status on a non-2xx response", async () => {
     setup(new Response("nope", { status: 404 }));
