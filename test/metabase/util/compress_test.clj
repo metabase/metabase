@@ -12,7 +12,7 @@
 
 (set! *warn-on-reflection* true)
 
-(deftest compress-test
+(deftest ^:parallel compress-test
   (testing "tgz/untgz"
     (let [dir     (doto (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))
                     .mkdirs)
@@ -89,7 +89,7 @@
           (.closeArchiveEntry tar))))
     archive))
 
-(deftest untgz-max-uncompressed-bytes-test
+(deftest ^:parallel untgz-max-uncompressed-bytes-test
   (testing "untgz aborts when total uncompressed bytes exceed :max-uncompressed-bytes"
     (let [content (.getBytes ^String (apply str (repeat 1024 \a)) "UTF-8")
           archive (create-multi-entry-tgz 10 content) ;; 10 KiB total uncompressed
@@ -105,7 +105,7 @@
           (io/delete-file archive true)
           (run! #(io/delete-file % true) (reverse (file-seq out))))))))
 
-(deftest untgz-max-entries-test
+(deftest ^:parallel untgz-max-entries-test
   (testing "untgz aborts when entry count exceeds :max-entries"
     (let [content (.getBytes "x" "UTF-8")
           archive (create-multi-entry-tgz 10 content)
@@ -119,7 +119,7 @@
           (io/delete-file archive true)
           (run! #(io/delete-file % true) (reverse (file-seq out))))))))
 
-(deftest untgz-path-traversal-test
+(deftest ^:parallel untgz-path-traversal-test
   (testing "untgz rejects tar entries with path traversal"
     (let [content (.getBytes "content" "UTF-8")
           out     (doto (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))
@@ -133,7 +133,7 @@
               (io/delete-file archive true)
               (run! #(io/delete-file % true) (reverse (file-seq out))))))))))
 
-(deftest tgz-bytes-test
+(deftest ^:parallel tgz-bytes-test
   (let [files {"dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
                "metabase-plugin.json" (.getBytes "{}" "UTF-8")
                "dist/assets/icon.png" (byte-array [0 (int 0x80) (int 0xff) 1])}]
@@ -148,7 +148,7 @@
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid path"
                               (u.compress/tgz-bytes {path (.getBytes "x" "UTF-8")})))))))
 
-(deftest untgz-files-test
+(deftest ^:parallel untgz-files-test
   (testing "dot segments in file names are normalized"
     (doseq [path ["./dist/index.js" "././dist/./index.js"]]
       (let [content (.getBytes "script" "UTF-8")

@@ -5,7 +5,7 @@
    [metabase.config.core :as config]
    [metabase.util.json :as json]))
 
-(deftest parse-manifest-test
+(deftest ^:parallel parse-manifest-test
   (testing "parses valid JSON"
     (is (= {:name "test-viz" :icon "icon.svg"}
            (manifest/parse-manifest "{\"name\": \"test-viz\", \"icon\": \"icon.svg\"}"))))
@@ -88,7 +88,7 @@
       (is (false? (manifest/sdk-version-tested? "1.9.9")))
       (is (false? (manifest/sdk-version-tested? "2.2.0"))))))
 
-(deftest tested-sdk-version-range-covers-current-sdk-test
+(deftest ^:parallel tested-sdk-version-range-covers-current-sdk-test
   (testing "tested-sdk-version-range includes the @metabase/custom-viz version in package.json — bump the range in the same PR as the version (see custom-viz/dev.md)"
     (let [{:keys [version]} (json/decode+kw (slurp "enterprise/frontend/src/custom-viz/package.json"))]
       (is (true? (manifest/sdk-version-tested? version))
@@ -126,7 +126,7 @@
              (map :type (manifest/warnings {:metabase_version ">=1.99"
                                             :manifest         {:sdk {:version "1.0.5"}}})))))))
 
-(deftest validation-error-test
+(deftest ^:parallel validation-error-test
   (testing "well-formed manifests produce no error, extra keys and nils included"
     (is (nil? (manifest/validation-error {:name "viz"})))
     (is (nil? (manifest/validation-error {:name     "viz"
@@ -152,7 +152,7 @@
 
 ;;; ------------------------------------------------ Path Safety ------------------------------------------------
 
-(deftest safe-relative-path?-test
+(deftest ^:parallel safe-relative-path?-test
   (testing "accepts simple filenames"
     (is (true? (manifest/safe-relative-path? "icon.svg")))
     (is (true? (manifest/safe-relative-path? "assets/icon.svg"))))
@@ -171,7 +171,7 @@
 
 ;;; ------------------------------------------------ Asset Paths ------------------------------------------------
 
-(deftest asset-paths-test
+(deftest ^:parallel asset-paths-test
   (testing "returns normalized paths for icons with dot segments"
     (is (= ["icon.png"] (manifest/asset-paths {:icon "./icon.png"})))
     (is (= ["images/icon.png"] (manifest/asset-paths {:icon "./images/./icon.png"}))))
@@ -194,7 +194,7 @@
 
 ;;; ------------------------------------------------ Content Type ------------------------------------------------
 
-(deftest asset-content-type-test
+(deftest ^:parallel asset-content-type-test
   (testing "recognizes image types"
     (is (= "image/svg+xml" (manifest/asset-content-type "icon.svg")))
     (is (= "image/png" (manifest/asset-content-type "thumb.png")))
@@ -207,7 +207,7 @@
     ;; .html has MIME text/html — should be rejected
     (is (nil? (manifest/asset-content-type "page.html")))))
 
-(deftest identifier-error-test
+(deftest ^:parallel identifier-error-test
   (testing "`:` is the viz-settings key separator"
     (is (nil? (manifest/identifier-error "demo-viz")))
     (is (= "Plugin identifier \"demo:viz\" must not contain \":\""
@@ -218,7 +218,7 @@
   (testing "a non-string is someone else's problem"
     (is (nil? (manifest/identifier-error nil)))))
 
-(deftest directory-name-error-test
+(deftest ^:parallel directory-name-error-test
   (testing "includes the serving rule"
     (is (= "Plugin identifier \"demo:viz\" must not contain \":\""
            (manifest/directory-name-error "demo:viz"))))
