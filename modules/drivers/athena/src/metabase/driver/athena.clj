@@ -51,7 +51,7 @@
   [_driver]
   ["Catalog" "IdpWellKnownConfigurationUrl" "LogLevel" "OutputLocation" "ProfileName" "SsoLoginUrl"])
 
-(defmethod driver/additional-options-style :athena [_driver] :semicolon)
+(defmethod driver/additional-options-separators :athena [_driver] #{:semicolon})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |

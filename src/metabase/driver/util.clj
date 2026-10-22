@@ -28,7 +28,7 @@
    [metabase.warehouses.schema :as warehouses.schema])
   (:import
    (java.io ByteArrayInputStream)
-   (java.net URLDecoder)
+   (java.net URI URISyntaxException)
    (java.security KeyFactory KeyStore PrivateKey)
    (java.security.cert Certificate CertificateFactory X509Certificate)
    (java.security.spec PKCS8EncodedKeySpec)
@@ -238,7 +238,7 @@
           (throw (blocked-network-address-exception)))))))
 
 (def ^:private additional-options-entry-separator
-  {:url "&", :semicolon ";", :comma ","})
+  {:ampersand "&", :semicolon ";", :comma ","})
 
 (defn- split-additional-options
   "The `[name value]` entries of `additional-options`, split on `separator` with no regard for quoting."
@@ -257,34 +257,53 @@
     (for [[_ k braced plain] (re-seq entry additional-options)]
       [k (if braced (str/replace braced "}}" "}") plain)])))
 
+(defn- additional-options-entries
+  "The `[name value]` entries of `options` every way `driver`'s client might read them: split on each separator the
+  client accepts, with and without brace quoting, from the string as written and from it percent-decoded whole --
+  presto-jdbc decodes the query string before splitting it, so `%26` is a `&` to it, and what is one entry to us is
+  two to the client. Whichever reading the client acts on has been seen."
+  [driver options]
+  (for [reading   (remove nil? [options (u.http/percent-decoded options)])
+        separator (map additional-options-entry-separator (driver/additional-options-separators driver))
+        entry     (concat (split-additional-options reading separator)
+                          (brace-quoted-additional-options reading separator))]
+    entry))
+
 (defn- supplied-connection-parameters
   "Every `[name value]` an admin supplies to `driver`'s client in `details`: each string detail, and each entry of the
-  driver's [[driver/additional-options-detail-key]] -- every occurrence of a repeated name, and read both with and
-  without brace quoting, so that whichever one the client acts on has been seen."
+  driver's [[driver/additional-options-detail-key]] -- every occurrence of a repeated name -- under its name as
+  written and percent-decoded, since pgjdbc and Snowflake decode a name before matching it."
   [driver details]
   (let [options (get details (driver/additional-options-detail-key driver))]
-    (concat
-     (for [[k v] details
-           :when (string? v)]
-       [(name k) v])
-     (when (and (string? options) (not (str/blank? options)))
-       (let [separator (additional-options-entry-separator (driver/additional-options-style driver))]
-         (concat (split-additional-options options separator)
-                 (brace-quoted-additional-options options separator)))))))
+    (for [[k v] (concat
+                 (for [[k v] details
+                       :when (string? v)]
+                   [(name k) v])
+                 (when (and (string? options) (not (str/blank? options)))
+                   (additional-options-entries driver options)))
+          k     (remove nil? [k (u.http/percent-decoded k)])]
+      [k v])))
+
+(defn- file-url-path
+  "The path a `file:` URL names, or nil when `value` is not one. mariadb-java-client opens a keystore named by URL."
+  [^String value]
+  (let [value (str/trim value)]
+    (when (str/starts-with? (u/lower-case-en value) "file:")
+      (try
+        (.getPath (URI. value))
+        (catch URISyntaxException _ nil)))))
 
 (defn- path-readings
   "The paths a client might take `value` to name: as written, percent-decoded -- pgjdbc, Trino and Snowflake decode a
-  URL parameter before using it, so `..%2F` is a `../` to them -- and, since some parameters take a comma-separated
-  list of paths, each entry of it; all of those trimmed as well."
+  URL parameter before using it, so `..%2F` is a `../` to them -- either of those as the file a `file:` URL names,
+  and, since some parameters take a comma-separated list of paths, each entry of it; all of those trimmed as well."
   [^String value]
-  (let [decoded (try
-                  (URLDecoder/decode value "UTF-8")
-                  (catch IllegalArgumentException _ nil))]
-    (into #{}
-          (comp (mapcat #(cons % (str/split % #",")))
-                (mapcat (juxt identity str/trim))
-                (remove str/blank?))
-          (cond-> [value] decoded (conj decoded)))))
+  (into #{}
+        (comp (map #(or (file-url-path %) %))
+              (mapcat #(cons % (str/split % #",")))
+              (mapcat (juxt identity str/trim))
+              (remove str/blank?))
+        (remove nil? [value (u.http/percent-decoded value)])))
 
 (defn validate-connection-file-paths!
   "Throw a 400 if `details` hand `driver`'s client a local file path, through a parameter it declares in

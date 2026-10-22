@@ -4,10 +4,7 @@
    [clojure.string :as str]
    [metabase.util :as u]
    [metabase.util.http :as u.http]
-   [metabase.util.performance :refer [not-empty]])
-  (:import
-   (java.net URLDecoder)
-   (java.nio.charset StandardCharsets)))
+   [metabase.util.performance :refer [not-empty]]))
 
 (set! *warn-on-reflection* true)
 
@@ -134,13 +131,6 @@
                           {:connection-string connection-string})))
         hosts))))
 
-(defn- percent-decoded
-  "`s` percent-decoded, or nil when it is not valid percent-encoding."
-  [^String s]
-  (try
-    (URLDecoder/decode s StandardCharsets/UTF_8)
-    (catch IllegalArgumentException _ nil)))
-
 (defn- connection-string-parameters
   "The `name=value` pairs in a JDBC `connection-string`, whichever separator style the driver that built it uses. Only
   what follows the first separator is read: the authority (`//host:port/db`) is [[connection-string-hosts]]' business,
@@ -154,9 +144,8 @@
     (for [pair  (str/split params #"[&;,]")
           :let  [[k v] (str/split pair #"=" 2)]
           :when (and k v)
-          [k v] (distinct (cons [k v] (when-let [decoded-k (percent-decoded k)]
-                                        (when-let [decoded-v (percent-decoded v)]
-                                          [[decoded-k decoded-v]]))))]
+          [k v] (distinct [[k v]
+                           [(or (u.http/percent-decoded k) k) (or (u.http/percent-decoded v) v)]])]
       [(str/trim k) (str/trim v)])))
 
 (defn connection-string-parameter-values

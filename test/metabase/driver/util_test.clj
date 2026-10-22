@@ -976,9 +976,19 @@
   [_driver]
   {"trustStore" :read})
 
-(defmethod driver/additional-options-style ::semicolon-paths-driver
+(defmethod driver/additional-options-separators ::semicolon-paths-driver
   [_driver]
-  :semicolon)
+  #{:semicolon})
+
+(driver/register! ::either-separator-paths-driver, :abstract? true)
+
+(defmethod driver/file-path-parameters ::either-separator-paths-driver
+  [_driver]
+  {"logpath" :write})
+
+(defmethod driver/additional-options-separators ::either-separator-paths-driver
+  [_driver]
+  #{:ampersand :semicolon})
 
 (defn- path-refusal
   "The `:access` of the path refusal `thunk` throws, or nil when it throws none."
@@ -1009,6 +1019,17 @@
       (testing "a percent-encoded value is checked as the client decodes it"
         (is (= :read (refusal ::url-paths-driver
                               {:additional-options "sslrootcert=/allowed-dir/..%2F..%2Fetc%2Fpasswd"}))))
+      (testing "a percent-encoded name is matched as the client decodes it"
+        ;; pgjdbc and Snowflake decode each name: `sslr%6Fotcert` is `sslrootcert` to them
+        (is (= :read (refusal ::url-paths-driver {:additional-options "sslr%6Fotcert=/etc/ca.pem"}))))
+      (testing "a parameter smuggled inside another's percent-encoded value is seen"
+        ;; presto-jdbc decodes the whole query string before splitting it, so `%26` is a `&` to it: this is one entry
+        ;; to us and two to the client
+        (is (= :read (refusal ::url-paths-driver {:additional-options "other=a%26sslrootcert%3D%2Fetc%2Fca.pem"}))))
+      (testing "a `file:` URL names the file it points to"
+        ;; mariadb-java-client opens a keystore `trustStore=file:///...` through the URL
+        (is (= :read (refusal ::url-paths-driver {:sslrootcert "file:///etc/ca.pem"})))
+        (is (nil? (refusal ::url-paths-driver {:sslrootcert "file:///allowed-dir/ca.pem"}))))
       (testing "each entry of a comma-separated list of paths is checked"
         (is (= :read (refusal ::url-paths-driver {:additional-options "sslrootcert=/allowed-dir/x,/etc"}))))
       (testing "a parameter the client both reads and writes through has to be in both lists"
@@ -1021,7 +1042,12 @@
                               {:additional-options "sslrootcert=/etc/ca.pem&sslrootcert=/allowed-dir/ca.pem"}))))
       (testing "options are split the way the driver's client splits them"
         (is (= :read (refusal ::semicolon-paths-driver {:additional-options "a=1;trustStore=/etc/ts.jks"})))
-        (is (nil? (refusal ::semicolon-paths-driver {:additional-options "a=1;trustStore=/allowed-dir/ts.jks"}))))
+        (is (nil? (refusal ::semicolon-paths-driver {:additional-options "a=1;trustStore=/allowed-dir/ts.jks"})))
+        (testing "on every separator a client accepts, when it accepts more than one"
+          ;; the Redshift client splits on `&` and on `;` alike
+          (is (= :write (refusal ::either-separator-paths-driver {:additional-options "a=1;logpath=/etc"})))
+          (is (= :write (refusal ::either-separator-paths-driver {:additional-options "a=1&logpath=/etc"})))
+          (is (nil? (refusal ::either-separator-paths-driver {:additional-options "a=1&logpath=/writable-dir"})))))
       (testing "a brace-quoted value is read whole, separators and all"
         ;; mssql-jdbc reads `{/allowed-dir/x;/../../etc/passwd}` as one value, `/etc/passwd` once normalized
         (is (= :read (refusal ::semicolon-paths-driver

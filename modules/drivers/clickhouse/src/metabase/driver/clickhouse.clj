@@ -51,11 +51,13 @@
    "sslcert"       :read
    "ssl_key"       :read
    "ssl_key_store" :read
-   "trust_store"   :read})
+   "trust_store"   :read
+   ;; read by the bundled v1 client, which `clickhouse.jdbc.v1=true` switches to
+   "sslkey"        :read})
 
 (defmethod driver/non-file-path-parameters :clickhouse
   [_driver]
-  ["clickhouse_setting_log_comment" "key_store_password" "key_store_type"])
+  ["clickhouse_setting_log_comment" "ignore_unknown_config_key" "key_store_password" "key_store_type"])
 
 (defn- quote-schema [s] (sql.u/quote-name :clickhouse :schema s))
 

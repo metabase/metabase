@@ -67,7 +67,13 @@
    "serverCertificate" :read
    "keyStoreLocation"  :read})
 
-(defmethod driver/additional-options-style :sqlserver [_driver] :semicolon)
+(defmethod driver/non-file-path-parameters :sqlserver
+  [_driver]
+  ["cacheBulkCopyMetadata" "hostNameInCertificate" "jaasConfigurationName" "keyStoreAuthentication"
+   "keyStorePrincipalId" "keyStoreSecret" "loginTimeout" "statementPoolingCacheSize" "trustServerCertificate"
+   "trustStorePassword" "trustStoreType" "useDefaultJaasConfig"])
+
+(defmethod driver/additional-options-separators :sqlserver [_driver] #{:semicolon})
 
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true

@@ -67,11 +67,14 @@
 
 (defmethod driver/file-path-parameters :mysql
   [_driver]
-  {"keyStore"               :read
-   "trustStore"             :read
-   "serverSslCert"          :read
-   "serverRsaPublicKeyFile" :read
-   "localSocket"            :read})
+  {"keyStore"                     :read
+   "trustStore"                   :read
+   ;; the legacy MySQL Connector/J names, which mariadb-java-client still accepts as aliases of the two above
+   "clientCertificateKeyStoreUrl" :read
+   "trustCertificateKeyStoreUrl"  :read
+   "serverSslCert"                :read
+   "serverRsaPublicKeyFile"       :read
+   "localSocket"                  :read})
 
 (defmethod driver/non-file-path-parameters :mysql
   [_driver]

@@ -72,7 +72,7 @@
    "KerberosServicePrincipalPattern" "KerberosUseCanonicalHostname" "SSLKeyStorePassword" "SSLKeyStoreType"
    "SSLTrustStorePassword" "SSLTrustStoreType" "SSLUseSystemKeyStore" "SSLUseSystemTrustStore"
    "assumeNullCatalogMeansCurrentCatalog" "catalog" "externalAuthenticationRedirectHandlers"
-   "externalAuthenticationTokenCache" "hostnameInCertificate" "httpLoggingLevel" "path"])
+   "externalAuthenticationTokenCache" "followRedirects" "hostnameInCertificate" "httpLoggingLevel" "path"])
 
 (doseq [[feature supported?] {:basic-aggregations               true
                               :binning                          true

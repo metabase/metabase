@@ -413,3 +413,14 @@
             :expected [:external-only :allow-private :allow-all]}
            (try (http/env-network-policy "MB_TEST_ALLOWED_NETWORKS" "allow-everything")
                 (catch ExceptionInfo e (ex-data e)))))))
+
+(deftest percent-decoded-test
+  (testing "the decoded form, when there is one to see"
+    (is (= "proxyHost=localhost" (http/percent-decoded "proxy%48ost=%6Cocalhost")))
+    (is (= "/allowed-dir/../etc" (http/percent-decoded "/allowed-dir/..%2Fetc"))))
+  (testing "nil when decoding changes nothing, so a caller can skip the duplicate reading"
+    (is (nil? (http/percent-decoded "sslrootcert=/etc/ca.pem")))
+    (is (nil? (http/percent-decoded ""))))
+  (testing "nil for a string that is not valid percent-encoding"
+    (is (nil? (http/percent-decoded "100%")))
+    (is (nil? (http/percent-decoded "%zz")))))

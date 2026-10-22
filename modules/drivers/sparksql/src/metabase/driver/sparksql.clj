@@ -40,7 +40,7 @@
 
 (defmethod driver/additional-options-detail-key :sparksql [_driver] :jdbc-flags)
 
-(defmethod driver/additional-options-style :sparksql [_driver] :semicolon)
+(defmethod driver/additional-options-separators :sparksql [_driver] #{:semicolon})
 
 ;;; ------------------------------------------ Custom HoneySQL Clause Impls ------------------------------------------
 

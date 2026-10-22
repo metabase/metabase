@@ -69,6 +69,9 @@
    "logunclosedconnections" "maxlogfilecount" "maxlogfilesize" "preparedstatementcachequeries"
    "preparedstatementcachesizemib" "profile"])
 
+;; the client splits `?a=1;b=2` and `?a=1&b=2` alike
+(defmethod driver/additional-options-separators :redshift [_driver] #{:ampersand :semicolon})
+
 (doseq [[feature supported?] {:atomic-renames                   true
                               :connection-impersonation         true
                               :database-routing                 true

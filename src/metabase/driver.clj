@@ -414,21 +414,22 @@
   [_driver]
   [])
 
-(defmulti additional-options-style
-  "How this driver's client separates the entries of `:additional-options`: `:url` (`a=1&b=2`), `:semicolon`
-  (`a=1;b=2`), or `:comma` (`a=1,b=2`). Defaults to `:url`. Reading the options the way the client does is what lets
-  [[metabase.driver.util/validate-connection-file-paths!]] see the values it will."
+(defmulti additional-options-separators
+  "The separators this driver's client accepts between the entries of `:additional-options`, as a set of `:ampersand`
+  (`a=1&b=2`), `:semicolon` (`a=1;b=2`), and `:comma` (`a=1,b=2`) -- more than one when the client splits on any of
+  them, as the Redshift client does. Defaults to `#{:ampersand}`. Reading the options every way the client might is
+  what lets [[metabase.driver.util/validate-connection-file-paths!]] see the values it will."
   {:added "0.58.36" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod additional-options-style :default
+(defmethod additional-options-separators :default
   [_driver]
-  :url)
+  #{:ampersand})
 
 (defmulti additional-options-detail-key
   "The detail key holding the free-form options this driver appends to its connection string, read the way
-  [[additional-options-style]] says. Defaults to `:additional-options`."
+  [[additional-options-separators]] says. Defaults to `:additional-options`."
   {:added "0.58.36" :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

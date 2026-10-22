@@ -73,7 +73,7 @@
   ["KerberosConstrainedDelegation" "KerberosDelegation" "KerberosPrincipal" "KerberosRemoteServiceName"
    "KerberosServicePrincipalPattern" "KerberosUseCanonicalHostname" "SSLKeyStorePassword" "SSLKeyStoreType"
    "SSLTrustStorePassword" "SSLTrustStoreType" "SSLUseSystemKeyStore" "SSLUseSystemTrustStore"
-   "assumeNullCatalogMeansCurrentCatalog" "catalog" "externalAuthenticationRedirectHandlers"
+   "assumeNullCatalogMeansCurrentCatalog" "catalog" "disallowLocalRedirect" "externalAuthenticationRedirectHandlers"
    "externalAuthenticationTokenCache" "hostnameInCertificate" "httpLoggingLevel" "path"])
 
 (set! *warn-on-reflection* true)

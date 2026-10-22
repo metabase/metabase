@@ -65,9 +65,10 @@
 
 (defmethod driver/non-file-path-parameters :databricks
   [_driver]
-  ["httppath"])
+  ["AllowSelfSignedCerts" "CheckCertRevocation" "EnableDirectResults" "EnableSQLExecDirectResults" "EnableTokenCache"
+   "UseSystemTrustStore" "enableMultipleCatalogSupport" "httppath" "loglevel"])
 
-(defmethod driver/additional-options-style :databricks [_driver] :semicolon)
+(defmethod driver/additional-options-separators :databricks [_driver] #{:semicolon})
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
