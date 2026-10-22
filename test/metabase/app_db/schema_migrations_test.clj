@@ -4055,3 +4055,33 @@
         (migrate!)
         (is (true? (t2/select-one-fn :is_default :python_library :id unedited)))
         (is (false? (t2/select-one-fn :is_default :python_library :id edited)))))))
+
+(deftest data-app-unique-resource-collection-test
+  (testing "v65.2026-10-22T00:00:00-02: a shared resource collection stays with the first app, and no two apps share one"
+    (impl/test-migrations ["v65.2026-10-22T00:00:00" "v65.2026-10-22T00:00:02"] [migrate!]
+      (let [collection! (fn [slug]
+                          (t2/insert-returning-pk! :collection {:name       slug
+                                                                :slug       slug
+                                                                :location   "/"
+                                                                :namespace  "data-apps"
+                                                                :entity_id  (u/generate-nano-id)
+                                                                :created_at :%now}))
+            app!        (fn [slug collection-id]
+                          (t2/insert-returning-pk! :data_app {:name                   slug
+                                                              :display_name           slug
+                                                              :bundle_path            "dist/index.js"
+                                                              :entity_id              (u/generate-nano-id)
+                                                              :resource_collection_id collection-id
+                                                              :created_at             :%now
+                                                              :updated_at             :%now}))
+            shared      (collection! "shared")
+            own         (collection! "own")
+            first-app   (app! "first" shared)
+            second-app  (app! "second" shared)
+            other-app   (app! "other" own)]
+        (migrate!)
+        (is (= shared (t2/select-one-fn :resource_collection_id :data_app :id first-app)))
+        (is (nil? (t2/select-one-fn :resource_collection_id :data_app :id second-app)))
+        (is (= own (t2/select-one-fn :resource_collection_id :data_app :id other-app)))
+        (testing "a second app on a collection is refused"
+          (is (thrown? Exception (app! "third" shared))))))))
