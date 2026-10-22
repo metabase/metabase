@@ -12,7 +12,7 @@ import { setup } from "./common";
 describe("ActionCreator > Query Actions", () => {
   describe("New Action", () => {
     it("renders correctly", async () => {
-      await setup({ isAdmin: true });
+      await setup();
 
       expect(screen.getByText(/New action/i)).toBeInTheDocument();
       expect(
@@ -37,13 +37,13 @@ describe("ActionCreator > Query Actions", () => {
     });
 
     it("should disable submit by default", async () => {
-      await setup({ isAdmin: true });
+      await setup();
       expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
       expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
     });
 
     it("should show clickable data reference icon", async () => {
-      await setup({ isAdmin: true });
+      await setup();
       await userEvent.click(getIcon("reference"));
 
       await waitFor(() =>
@@ -55,7 +55,7 @@ describe("ActionCreator > Query Actions", () => {
     });
 
     it("should show action settings button", async () => {
-      await setup({ isAdmin: true });
+      await setup();
       expect(
         screen.getByRole("button", { name: "Action settings" }),
       ).toBeInTheDocument();
@@ -91,7 +91,7 @@ describe("ActionCreator > Query Actions", () => {
 
     describe("Save Modal", () => {
       it("should show default message in model picker", async () => {
-        await setup({ model: null, isAdmin: true });
+        await setup({ model: null });
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");
@@ -116,7 +116,7 @@ describe("ActionCreator > Query Actions", () => {
           can_write: true,
           name: MODEL_NAME,
         });
-        await setup({ model, isAdmin: true });
+        await setup({ model });
 
         // put query into textbox
         const view = screen.getByTestId("mock-native-query-editor");
@@ -144,7 +144,7 @@ describe("ActionCreator > Query Actions", () => {
   describe("Editing Action", () => {
     it("renders correctly", async () => {
       const action = createMockQueryAction();
-      await setup({ action, isAdmin: true });
+      await setup({ action });
 
       await waitFor(() => {
         expect(screen.getByText(action.name)).toBeInTheDocument();
@@ -180,7 +180,7 @@ describe("ActionCreator > Query Actions", () => {
       const action = createMockQueryAction({
         parameters: [createMockActionParameter({ name: "FooBar" })],
       });
-      await setup({ action, canWrite: false, isAdmin: true });
+      await setup({ action, canWrite: false });
 
       await waitFor(() => {
         expect(screen.getByDisplayValue(action.name)).toBeDisabled();

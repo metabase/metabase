@@ -345,7 +345,7 @@ export const useCommandPaletteBasicActions = ({
 
   const openActionModal = [];
 
-  if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
+  if (isAdmin && hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
     openActionModal.push({
       id: "create-action",
       name: t`New action`,
@@ -358,6 +358,7 @@ export const useCommandPaletteBasicActions = ({
     });
   }
   useRegisterActions(openActionModal, [
+    isAdmin,
     hasDatabaseWithActionsEnabled,
     hasNativeWrite,
     hasModels,

@@ -35,7 +35,7 @@ export async function setup({
   action,
   canWrite = true,
   hasActionsEnabled = true,
-  isAdmin = false,
+  isAdmin = true,
   isPublicSharingEnabled = false,
   model,
 }: SetupOpts = {}) {

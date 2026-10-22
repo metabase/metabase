@@ -15,10 +15,9 @@ import { setup as baseSetup } from "./common";
 
 async function setup({
   action = createMockImplicitQueryAction(),
-  isAdmin = true,
   ...opts
 }: SetupOpts = {}) {
-  await baseSetup({ action, isAdmin, ...opts });
+  await baseSetup({ action, ...opts });
   return { action };
 }
 
