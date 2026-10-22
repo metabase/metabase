@@ -92,9 +92,9 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
 
   useEffect(() => {
     if (baseQuery && !query) {
-      setQuery(baseQuery);
+      setQuery(direction.prepareQuery?.(baseQuery) ?? baseQuery);
     }
-  }, [baseQuery, query]);
+  }, [baseQuery, query, direction]);
 
   if (error) {
     return <Text c="feedback-negative">{error}</Text>;
@@ -139,53 +139,59 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
         </Paper>
       </Stack>
 
-      <Stack gap="sm">
-        <Title order={3}>{t`Chill mode`}</Title>
-        <ChillFrame
-          isHidden={direction.canHideFilters && areFiltersHidden}
-          filterButton={
-            direction.canHideFilters ? (
-              <Button
-                size="compact-md"
-                variant="default"
-                leftSection={<Icon name="filter" />}
-                onClick={() => setAreFiltersHidden((hidden) => !hidden)}
-              >
-                {areFiltersHidden ? t`Show filters` : t`Hide filters`}
-              </Button>
-            ) : (
-              direction.FilterButton && (
-                <direction.FilterButton
-                  query={query}
-                  stageIndex={STAGE_INDEX}
-                  variant="chill"
-                  onChange={setQuery}
-                />
-              )
-            )
-          }
-          results={<QueryResults query={query} stageIndex={STAGE_INDEX} />}
-        >
-          <direction.Component
-            query={query}
-            stageIndex={STAGE_INDEX}
-            variant="chill"
-            onChange={setQuery}
-          />
-        </ChillFrame>
-      </Stack>
+      {direction.Canvas ? (
+        <direction.Canvas query={query} onChange={setQuery} />
+      ) : (
+        <>
+          <Stack gap="sm">
+            <Title order={3}>{t`Chill mode`}</Title>
+            <ChillFrame
+              isHidden={direction.canHideFilters && areFiltersHidden}
+              filterButton={
+                direction.canHideFilters ? (
+                  <Button
+                    size="compact-md"
+                    variant="default"
+                    leftSection={<Icon name="filter" />}
+                    onClick={() => setAreFiltersHidden((hidden) => !hidden)}
+                  >
+                    {areFiltersHidden ? t`Show filters` : t`Hide filters`}
+                  </Button>
+                ) : (
+                  direction.FilterButton && (
+                    <direction.FilterButton
+                      query={query}
+                      stageIndex={STAGE_INDEX}
+                      variant="chill"
+                      onChange={setQuery}
+                    />
+                  )
+                )
+              }
+              results={<QueryResults query={query} stageIndex={STAGE_INDEX} />}
+            >
+              <direction.Component
+                query={query}
+                stageIndex={STAGE_INDEX}
+                variant="chill"
+                onChange={setQuery}
+              />
+            </ChillFrame>
+          </Stack>
 
-      <Stack gap="sm">
-        <Title order={3}>{t`Notebook mode`}</Title>
-        <NotebookFrame>
-          <direction.Component
-            query={query}
-            stageIndex={STAGE_INDEX}
-            variant="notebook"
-            onChange={setQuery}
-          />
-        </NotebookFrame>
-      </Stack>
+          <Stack gap="sm">
+            <Title order={3}>{t`Notebook mode`}</Title>
+            <NotebookFrame>
+              <direction.Component
+                query={query}
+                stageIndex={STAGE_INDEX}
+                variant="notebook"
+                onChange={setQuery}
+              />
+            </NotebookFrame>
+          </Stack>
+        </>
+      )}
 
       <Stack gap="sm">
         <Title order={3}>{t`Preview query`}</Title>

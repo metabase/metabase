@@ -15,6 +15,12 @@ export type FilterUiProps = {
   onChange: (query: Lib.Query) => void;
 };
 
+/** A direction that brings its own view instead of the chill/notebook frames. */
+export type FilterCanvasProps = {
+  query: Lib.Query;
+  onChange: (query: Lib.Query) => void;
+};
+
 export type FilterDirection = {
   id: string;
   name: string;
@@ -24,4 +30,8 @@ export type FilterDirection = {
   FilterButton?: ComponentType<FilterUiProps>;
   /** The chill header's button reads "Hide filters" and toggles the strip. */
   canHideFilters?: boolean;
+  /** Replaces the chill and notebook frames with the direction's own view. */
+  Canvas?: ComponentType<FilterCanvasProps>;
+  /** Turns the plain Orders query into the direction's starting query. */
+  prepareQuery?: (query: Lib.Query) => Lib.Query;
 };
