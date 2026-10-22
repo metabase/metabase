@@ -1,3 +1,5 @@
+import fetchMock from "fetch-mock";
+
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import type { ENTERPRISE_PLUGIN_NAME } from "__support__/enterprise-typed";
 import {
@@ -85,16 +87,13 @@ export const setup = ({
   }
 
   setupSettingsEndpoints([]);
+  fetchMock.get("path:/api/ee/library/tree", collections);
 
   return renderWithProviders(
     <Route
       path="/"
       element={
-        <NavbarLibrarySection
-          collections={collections}
-          selectedId={undefined}
-          onItemSelect={jest.fn()}
-        />
+        <NavbarLibrarySection selectedId={undefined} onItemSelect={jest.fn()} />
       }
     />,
     {

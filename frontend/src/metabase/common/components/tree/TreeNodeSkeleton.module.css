@@ -1,0 +1,21 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-block: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.icon {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  /* Line up with the node icon, past the expand toggle. */
+  margin-left: 1.25rem;
+}
+
+.name {
+  flex: 1;
+  max-width: 60%;
+  height: 0.75rem;
+}

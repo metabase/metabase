@@ -15,8 +15,16 @@ export interface TreeProps<TData = unknown> extends Omit<BoxProps, "children"> {
   onSelect?: (item: ITreeNodeItem<TData>) => void;
   rightSection?: (item: ITreeNodeItem<TData>) => React.ReactNode;
   TreeNode?: any;
+  /** Drives expansion from outside. A lazily loaded tree needs it, to fetch a node's children as it expands. */
   tree?: TreeController<TData>;
   wrapNodesInListItem?: boolean;
+  /** Called when the pointer settles on a node, so a lazy tree can fetch its children ahead of the click. */
+  onNodeHover?: (id: ITreeNodeItem<TData>["id"]) => void;
+  /** Whether the top level itself was cut short, so its end should load the next page when reached. */
+  hasMore?: boolean;
+  /** Called with the parent whose level should grow, or `null` for the top level. */
+  onLoadMore?: (parentId: ITreeNodeItem<TData>["id"] | null) => void;
+  loadingMoreIds?: Set<ITreeNodeItem<TData>["id"] | null>;
 }
 
 function BaseTree<TData = unknown>({
@@ -30,6 +38,10 @@ function BaseTree<TData = unknown>({
   rightSection,
   tree,
   wrapNodesInListItem,
+  onNodeHover,
+  hasMore,
+  onLoadMore,
+  loadingMoreIds,
   ...boxProps
 }: TreeProps<TData>) {
   const defaultController = useTree({
@@ -56,6 +68,10 @@ function BaseTree<TData = unknown>({
       depth={0}
       onSelect={onSelect}
       onToggleExpand={handleToggleExpand}
+      onNodeHover={onNodeHover}
+      hasMore={hasMore}
+      onLoadMore={onLoadMore}
+      loadingMoreIds={loadingMoreIds}
       rightSection={rightSection}
       wrapNodes={wrapNodesInListItem}
       {...boxProps}

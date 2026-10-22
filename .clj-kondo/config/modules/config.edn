@@ -676,6 +676,7 @@
            queries
            request
            util
+           util.config
            warehouse-schema-overlay}
    :model-imports #{:model/Card :model/Collection}}
 
