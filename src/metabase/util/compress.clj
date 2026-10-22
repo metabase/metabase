@@ -96,12 +96,23 @@
             (recur next-total))
           total)))))
 
+(defn- regular-file?
+  "Whether tar entry `e` is a regular file. `TarArchiveEntry.isFile` is true of any entry that isn't a directory,
+  including links and FIFOs, which an archive carries without content."
+  [^TarArchiveEntry e]
+  (and (.isFile e)
+       (not (.isSymbolicLink e))
+       (not (.isLink e))
+       (not (.isFIFO e))
+       (not (.isCharacterDevice e))
+       (not (.isBlockDevice e))))
+
 (defn untgz
   "Uncompress tar+gzip `archive` into directory `dst`.
 
   `archive` can be anything `io/input-stream` coerces — a `File`, a byte array,
-  or a raw `InputStream`. Skips hidden entries. Returns the number of unpacked
-  entries (files + dirs).
+  or a raw `InputStream`. Skips hidden entries; links, FIFOs and devices are
+  counted but not written. Returns the number of unpacked entries (files + dirs).
 
   Optional `opts` (default unset, no behavior change):
   - `:max-uncompressed-bytes` — abort with ex-info when total extracted bytes
@@ -122,18 +133,25 @@
                                   (throw (ex-info (format "Archive exceeds max entries (%d)" max-entries)
                                                   {:status-code 400 :max-entries max-entries})))
                      f          (.toFile (.resolveIn e dst-path))
-                     next-total (long (if (.isFile e)
+                     next-total (long (cond
+                                        (regular-file? e)
                                         (do (io/make-parents f)
                                             (with-open [out (io/output-stream f)]
                                               (copy-tar-entry! tar out total-bytes max-uncompressed-bytes)))
-                                        (do (.mkdirs f) total-bytes)))]
+
+                                        (.isDirectory e)
+                                        (do (.mkdirs f) total-bytes)
+
+                                        :else
+                                        total-bytes))]
                  (recur next-count next-total))))
            entry-count))))))
 
 (defn untgz-files
   "The regular files in tar+gzip `archive` as a map of entry path to bytes. `archive` can be anything
-  `io/input-stream` coerces. Hidden entries are skipped as [[untgz]] skips them, and an entry whose path could leave
-  a directory is refused. Dot segments are removed from file paths. Takes the same `opts` as [[untgz]]."
+  `io/input-stream` coerces. Hidden entries, links, FIFOs and devices are skipped as [[untgz]] skips them, and an
+  entry whose path could leave a directory is refused. Dot segments are removed from file paths. Takes the same
+  `opts` as [[untgz]]."
   ([archive]
    (untgz-files archive nil))
   ([archive {:keys [max-uncompressed-bytes max-entries]}]
@@ -148,7 +166,7 @@
                (when (and max-entries (> next-count ^long max-entries))
                  (throw (ex-info (format "Archive exceeds max entries (%d)" max-entries)
                                  {:status-code 400 :max-entries max-entries})))
-               (if (.isFile e)
+               (if (regular-file? e)
                  (let [entry-name (str/join "/" (remove #{"."} (str/split entry-name #"/" -1)))
                        _          (check-entry-name! entry-name)
                        out        (ByteArrayOutputStream.)

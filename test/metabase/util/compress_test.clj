@@ -7,7 +7,7 @@
   (:import
    (java.io File)
    (java.nio.file Files)
-   (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveOutputStream)
+   (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveOutputStream TarConstants)
    (org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream)))
 
 (set! *warn-on-reflection* true)
@@ -47,6 +47,28 @@
                         (TarArchiveOutputStream. 512 "UTF-8"))]
       (let [entry (doto (TarArchiveEntry. ^String entry-name true)
                     (.setSize (alength content)))]
+        (.putArchiveEntry tar entry)
+        (.write tar content)
+        (.closeArchiveEntry tar)))
+    archive))
+
+(defn- create-special-entries-tgz
+  "Create a tar.gz archive holding a symbolic link, a hard link, a FIFO, and one regular file `real.txt`."
+  ^File []
+  (let [archive (File/createTempFile "archive" ".tar.gz")]
+    (with-open [tar (-> (io/output-stream archive)
+                        (GzipCompressorOutputStream.)
+                        (TarArchiveOutputStream. 512 "UTF-8"))]
+      (doseq [^TarArchiveEntry entry [(doto (TarArchiveEntry. "dist/index.js" TarConstants/LF_SYMLINK)
+                                        (.setLinkName "/etc/passwd"))
+                                      (doto (TarArchiveEntry. "hard.js" TarConstants/LF_LINK)
+                                        (.setLinkName "real.txt"))
+                                      (TarArchiveEntry. "pipe" TarConstants/LF_FIFO)]]
+        (.putArchiveEntry tar entry)
+        (.closeArchiveEntry tar))
+      (let [content (.getBytes "hi" "UTF-8")
+            entry   (doto (TarArchiveEntry. "real.txt" true)
+                      (.setSize (alength content)))]
         (.putArchiveEntry tar entry)
         (.write tar content)
         (.closeArchiveEntry tar)))
@@ -160,4 +182,19 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid path"
                                 (u.compress/untgz-files archive)))
           (finally
-            (io/delete-file archive true)))))))
+            (io/delete-file archive true))))))
+  (testing "links and FIFOs are not regular files: they are skipped, not read as empty files"
+    (let [archive (create-special-entries-tgz)
+          out     (doto (io/file (System/getProperty "java.io.tmpdir") (mt/random-name)) .mkdirs)]
+      (try
+        (is (= {"real.txt" (seq (.getBytes "hi" "UTF-8"))}
+               (update-vals (u.compress/untgz-files archive) seq)))
+        (testing "untgz neither writes them to disk nor follows them"
+          (u.compress/untgz archive out)
+          (is (= ["real.txt"]
+                 (->> (file-seq out)
+                      (filter #(.isFile ^File %))
+                      (mapv #(str (.relativize (.toPath out) (.toPath ^File %))))))))
+        (finally
+          (io/delete-file archive true)
+          (run! io/delete-file (reverse (file-seq out))))))))
