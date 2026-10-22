@@ -5,8 +5,10 @@
    [medley.core :as m]
    [metabase.analyze.core :as analyze]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.interface :as mi]
+   [metabase.types.core :as types]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -19,7 +21,7 @@
 
 (mu/defn field-isa?
   "`isa?` on a field, checking semantic_type and then base_type"
-  [{:keys [base_type semantic_type]} :- ::ads/field
+  [{:keys [base_type semantic_type]} :- [:or ::ads/field ::ads/root.entity]
    ;; for some insane reason this is called with totally imaginary types like `:type/GenericNumber`
    t :- [:and
          qualified-keyword?
@@ -41,8 +43,17 @@
 
 (mu/defn filter-tables :- [:sequential ::ads/source]
   "filter `tables` by `tablespec`, which is just an entity type (eg. :entity/GenericTable)"
-  [tablespec tables :- [:maybe [:sequential ::ads/source]]]
-  (filter #(-> % :entity_type (isa? tablespec)) tables))
+  [tablespec :- :keyword
+   tables    :- [:maybe [:sequential ::ads/source]]]
+  (filter #(isa? types/entity-hierarchy (:entity_type %) tablespec) tables))
+
+(defn ancestor-count
+  "Number of ancestors of one entry of a template's `applies_to` / `field_type`, which mixes entity types and field
+  types. Entity types live in [[types/entity-hierarchy]]; field and semantic types are still in the global hierarchy."
+  [t]
+  (count (if (isa? types/entity-hierarchy t :entity/*)
+           (ancestors types/entity-hierarchy t)
+           (ancestors t))))
 
 (defn saved-metric?
   "Is this a saved aggregation clause? True for V2 Metrics and Measures."
@@ -65,7 +76,9 @@
 
 (mu/defn collect-field-references :- [:maybe [:sequential :mbql.clause/field]]
   "Collect all `:field` references from a given form."
-  [form]
+  [form :- [:or
+            ::lib.schema.common/possibly-unnormalized-clause
+            [:sequential ::lib.schema.common/possibly-unnormalized-clause]]]
   (match/match-many form [:field & _] &match))
 
 (mu/defn ->field :- [:maybe [:and
@@ -95,8 +108,8 @@
              (update :base_type keyword)
              (update :semantic_type keyword)
              (->> (mi/instance :model/Field))
-             (assoc :xrays/database-id (:database root))
-             (analyze/run-classifiers {}))))
+             (analyze/run-classifiers {})
+             (assoc :xrays/database-id (:database root)))))
      ;; otherwise this isn't returning something, and that's probably an error. Log it.
      (log/warnf "Cannot resolve Field %s in automagic analysis context" field-id-or-name-or-clause))))
 

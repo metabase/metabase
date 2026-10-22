@@ -18,6 +18,7 @@ To set application permissions, go to the top right of the screen and click the 
 Settings access defines which groups can view and edit the settings under the Admin > Settings tab. These settings include:
 
 - [Settings](../configuring-metabase/settings.md)
+- [Domains](../configuring-metabase/domains.md)
 - [Email](../configuring-metabase/email.md)
 - [Slack](../configuring-metabase/slack.md)
 - [Webhooks](../configuring-metabase/webhooks.md)
@@ -25,8 +26,8 @@ Settings access defines which groups can view and edit the settings under the Ad
 - [Localization](../configuring-metabase/localization.md)
 - [Appearance](../configuring-metabase/appearance.md)
 - [Public sharing](../embedding/public-links.md)
-- [Embedding in other applications](../embedding/start.md)
-- [Caching](../configuring-metabase/caching.md)
+
+Embedding settings aren't included. They live in the **Embedding hub**, which only admins can open.
 
 ## Monitoring access
 
@@ -45,6 +46,7 @@ The following Monitor pages aren't included in Monitoring access:
 
 - [Dependency diagnostics](../monitor/dependency-diagnostics.md): Available to admins and people in the [Data Analysts](../people-and-groups/managing.md#data-analysts) group
 - [Alerts management](../monitor/alerts-management.md): Available to admins only
+- [API key usage](../monitor/api-key-usage.md): Available to admins only
 
 ## Subscriptions and alerts
 

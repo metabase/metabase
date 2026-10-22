@@ -83,6 +83,10 @@
   "Background fill for the row-label cells of a rendered `:pivot` table."
   "#FAFAFA")
 
+(def ^:const color-row-stripe-bg
+  "Background fill for alternating rows of a rendered `:table` when `table.striped` is enabled."
+  "#F9FBFC")
+
 ;; don't try to improve the code and make this a plain variable, in EE it's customizable which is why it's a function.
 ;; Too much of a hassle to have it be a fn in one version of the code an a constant in another
 (defn primary-color

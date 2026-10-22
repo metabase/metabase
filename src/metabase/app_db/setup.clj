@@ -20,6 +20,7 @@
    [metabase.app-db.liquibase :as liquibase]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
+   [metabase.funnysql.core :as funnysql]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2]
@@ -30,7 +31,8 @@
    [methodical.core :as methodical]
    [toucan2.honeysql2 :as t2.honeysql]
    [toucan2.jdbc.options :as t2.jdbc.options]
-   [toucan2.pipeline :as t2.pipeline])
+   [toucan2.pipeline :as t2.pipeline]
+   [toucan2.util :as t2.util])
   (:import
    (com.mchange.v2.c3p0 PoolBackedDataSource WrapperConnectionPoolDataSource)
    (liquibase.exception LockException)))
@@ -73,7 +75,7 @@
                         available just in case)."
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)
    direction   :- :keyword
-   & args]
+   & args      :- [:* :int]]
   ;; TODO: use [[jdbc/with-db-transaction]] instead of manually commit/rollback
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (.setAutoCommit conn false)
@@ -233,7 +235,7 @@
                        "\n\n"
                        (trs "Once your database has been downgraded, try running the application again.")
                        "\n\n"
-                       (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
+                       (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade-or-to-an-older-version"))
                   {})))))))
 
 (mu/defn- run-schema-migrations!
@@ -279,14 +281,15 @@
     state afterwards (see [[mdb.encryption/record-encryption-state!]]). Turned off by the `enable-encryption` command
     and by [[metabase.cmd.copy/copy!]],
     which handle the encryption state themselves."
-  ([db-type data-source]
+  ([db-type     :- :keyword
+    data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
    (setup-db! db-type data-source {}))
 
   ([db-type     :- :keyword
     data-source :- (ms/InstanceOfClass javax.sql.DataSource)
     {:keys [auto-migrate? create-sample-content? manage-encryption-state?]
      :or   {auto-migrate? true, create-sample-content? false, manage-encryption-state? true}}
-    :- [:map
+    :- [:map {:closed true}
         [:auto-migrate?          {:optional true} :boolean]
         [:create-sample-content? {:optional true} :boolean]
         [:manage-encryption-state?      {:optional true} :boolean]]]
@@ -334,7 +337,8 @@
    {:pre [(#{:h2 :ansi :mysql} dialect)]}
    ((:quote (sql/get-dialect dialect)) s)))
 
-(defn- clause-order-fn-for-application-db [clauses]
+(defn- clause-order-fn-for-application-db
+  [clauses]
   (case (mdb.connection/db-type)
     (:postgres :h2) clauses
     :mysql          (let [{f :clause-order-fn} (sql/get-dialect :mysql)]
@@ -387,3 +391,13 @@
     (contains? query :delete-from)
     (-> (dissoc :delete-from)
         (assoc :from [(:delete-from query)]))))
+
+(methodical/defmethod t2.pipeline/compile [#_query-type :default
+                                           #_model      :default
+                                           #_query      clojure.lang.IPersistentMap]
+  "Override default Honey SQL 2 backend; compile using Funny SQL instead."
+  [query-type model honeysql]
+  (let [options  (t2.honeysql/options)
+        sql-args (t2.util/try-with-error-context ["compile SQL with Funny SQL" {:honeysql honeysql, :options options}]
+                   (funnysql/format honeysql (mdb.connection/db-type) options))]
+    (t2.pipeline/compile query-type model sql-args)))

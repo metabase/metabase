@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import { msgid, ngettext, t } from "ttag";
 import _ from "underscore";
 
-import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
   useListPermissionsGroupsQuery,
@@ -84,11 +83,7 @@ export function ConversationHeader({
             {conversation.user && (
               <Menu shadow="sm" position="bottom-start" withinPortal>
                 <Menu.Target>
-                  <ActionIcon
-                    variant="subtle"
-                    color="text-secondary"
-                    aria-label={t`User actions`}
-                  >
+                  <ActionIcon variant="subtle" aria-label={t`User actions`}>
                     <Icon name="ellipsis" size={16} />
                   </ActionIcon>
                 </Menu.Target>
@@ -233,12 +228,12 @@ function UserGroupsMenu({
         </Anchor>
       </Menu.Target>
       <Menu.Dropdown miw="14rem">
-        <Menu.Label>{t`View a group's permissions`}</Menu.Label>
+        <Menu.Label>{t`View a group's usage`}</Menu.Label>
         {userGroups.map((group) => (
           <Menu.Item
             key={group.id}
             component={ForwardRefLink}
-            to={getGroupFocusPermissionsUrl(group.id)}
+            to={Urls.monitorAiAuditingUsage({ groupId: group.id })}
             leftSection={<Icon name="group" size={14} />}
           >
             {group.name}

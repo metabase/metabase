@@ -1,7 +1,12 @@
 import { defineConfig } from "../../../src/index";
 import type { CreateCustomVisualization } from "../../../src/types/viz";
+
 import { Visualization } from "./Visualization";
-import { Settings } from "./types";
+
+type Settings = {
+  customWidget?: string | null;
+  threshold?: number;
+};
 
 // A custom React component used as a setting widget. It renders a forbidden
 // element (`<form>`) — rendering it makes React call
@@ -29,6 +34,14 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
       }
     },
     settings: {
+      customWidget: defineSetting({
+        id: "customWidget",
+        title: "Custom widget",
+        widget: ForbiddenSettingWidget,
+        getDefault() {
+          return null;
+        },
+      }),
       threshold: defineSetting({
         id: "threshold",
         title: "Threshold",
@@ -45,14 +58,6 @@ const createVisualization: CreateCustomVisualization<Settings> = ({
             },
             placeholder: "Set threshold",
           };
-        },
-      }),
-      customWidget: defineSetting({
-        id: "customWidget",
-        title: "Custom widget",
-        widget: ForbiddenSettingWidget,
-        getDefault() {
-          return null;
         },
       }),
     },

@@ -84,7 +84,7 @@
   "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
   Allows for filtering by context: views or selections"
   [_route-params
-   {:keys [context include_metadata]} :- [:map
+   {:keys [context include_metadata]} :- [:map {:closed true}
                                           [:context (ms/QueryVectorOf [:enum :selections :views])]
                                           [:include_metadata {:default false} [:maybe :boolean]]]]
   (when-not (seq context) (throw (ex-info "context is required." {})))
@@ -98,7 +98,7 @@
   "Adds a model to the list of recently selected items."
   [_route-params
    _query-params
-   {:keys [model model_id context]} :- [:map
+   {:keys [model model_id context]} :- [:map {:closed true}
                                         [:model    (into [:enum] recent-views/rv-models)]
                                         [:model_id ms/PositiveInt]
                                         [:context  [:enum :selection]]]]

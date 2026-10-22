@@ -2,232 +2,253 @@
   "Application database queries for the actions module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.actions.schema :as actions.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.queries.card-schema :as queries.card-schema]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.util.malli :as mu]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [toucan2.core :as t2]))
 
-(defn database-for-action
-  "The Database of the model Card of the Action with `action-id`, or nil."
-  [action-id]
-  (t2/select-one :model/Database {:select [:db.*]
-                                  :from   :action
-                                  :join   [[:report_card :card] [:= :card.id :action.model_id]
-                                           [:metabase_database :db] [:= :db.id :card.database_id]]
-                                  :where  [:= :action.id action-id]}))
+(defn- action-database-joins
+  "The joins from `action` to the Database `db` of its query, or of its model Card for an implicit action."
+  []
+  [[(t2/table-name :model/QueryAction) :qa] [:= :qa.action_id :action.id]
+   [(t2/table-name :model/Card) :card]      [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
+   [(t2/table-name :model/Database) :db]    [:= :db.id [:coalesce :qa.database_id :card.database_id]]])
 
-(defn table-database-id
+(mu/defn database-for-action
+  "The Database the Action with `action-id` runs against: its query's, or its model's for an implicit action, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one :model/Database {:select    [:db.*]
+                                  :from      [[(t2/table-name :model/Action) :action]]
+                                  :left-join (action-database-joins)
+                                  :where     [:and [:= :action.id action-id] [:not= :db.id nil]]}))
+
+(mu/defn table-database-id
   "The Database id of the Table with `table-id`, or nil."
-  [table-id]
-  (t2/select-one-fn :db_id [:model/Table :db_id] table-id))
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-one-fn :db_id [:model/Table :db_id] :id table-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
-(defn card-query
+(mu/defn card-query
   "The query of the Card with `card-id`, or nil."
-  [card-id]
+  [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :dataset_query :model/Card :id card-id))
 
-(defn card
+(mu/defn card
   "The Card with `card-id`, or nil."
-  [card-id]
+  [card-id :- ::lib.schema.id/card]
   (t2/select-one :model/Card :id card-id))
 
-(defn cards
+(mu/defn cards
   "The Cards with `card-ids`."
-  [card-ids]
+  [card-ids :- [:set ::lib.schema.id/card]]
   (t2/select :model/Card :id [:in card-ids]))
 
-(defn cards-by-id
+(mu/defn cards-by-id
   "A map of Card id to Card for the Cards with `card-ids`."
-  [card-ids]
+  [card-ids :- [:sequential ::lib.schema.id/card]]
   (t2/select-pk->fn identity :model/Card :id [:in card-ids]))
 
-(defn card-type
+(mu/defn card-type
   "The type of the Card with `card-id`, or nil."
-  [card-id]
-  (t2/select-one-fn :type [:model/Card :type :card_schema] :id card-id))
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-fn :type [:model/Card :type] :id card-id))
 
-(defn table
+(mu/defn card-collection-id
+  "The Collection id of the Card with `card-id`, or nil."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-fn :collection_id [:model/Card :collection_id] :id card-id))
+
+(mu/defn card-ids-outside-collection
+  "Among `card-ids`, the IDs of the Cards that are not in the Collection with `collection-id`."
+  [card-ids      :- [:set ::lib.schema.id/card]
+   collection-id :- ::lib.schema.id/collection]
+  (t2/select-pks-set :model/Card {:where [:and
+                                          [:in :id card-ids]
+                                          [:or [:= :collection_id nil] [:not= :collection_id collection-id]]]}))
+
+(mu/defn collection-exists?
+  "Whether the Collection with `collection-id` exists."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/exists? :model/Collection :id collection-id))
+
+(mu/defn collection-namespace
+  "The namespace of the Collection with `collection-id`, or nil."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/select-one-fn :namespace [:model/Collection :namespace] :id collection-id))
+
+(mu/defn collection-namespace-with-entity-id
+  "The namespace of the Collection with `entity-id`, or nil."
+  [entity-id :- :string]
+  (t2/select-one-fn :namespace [:model/Collection :namespace] :entity_id entity-id))
+
+(mu/defn unarchived-collection-exists?
+  "Whether the unarchived Collection with `collection-id` exists."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/exists? :model/Collection :id collection-id :archived false))
+
+(mu/defn action-model-id
+  "The model Card id of the Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one-fn :model_id [:model/Action :model_id] :id action-id))
+
+(mu/defn table
   "The Table with `table-id`, or nil."
-  [table-id]
-  (t2/select-one :model/Table :id table-id))
+  [table-id :- [:maybe ::lib.schema.id/table]]
+  (t2/select-one :model/Table :id table-id {:from [(warehouse-schema-overlay/table-query)]}))
 
-(defn tables
+(mu/defn tables
   "The Tables with `table-ids`."
-  [table-ids]
-  (t2/select :model/Table :id [:in table-ids]))
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select :model/Table :id [:in table-ids] {:from [(warehouse-schema-overlay/table-query)]}))
 
-(defn database
+(mu/defn database
   "The Database with `database-id`, or nil."
-  [database-id]
+  [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
-(defn dashcard-in-dashboard
+(mu/defn dashcard-in-dashboard
   "The DashboardCard with `dashcard-id` on the Dashboard with `dashboard-id`, or nil."
-  [dashcard-id dashboard-id]
+  [dashcard-id  :- ::lib.schema.id/dashcard
+   dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one :model/DashboardCard :id dashcard-id :dashboard_id dashboard-id))
 
-(defn dashcard-dashboard-id
+(mu/defn dashcard-dashboard-id
   "The `:dashboard_id` of the DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id]
+  [dashcard-id :- ::lib.schema.id/dashcard]
   (t2/select-one-fn :dashboard_id [:model/DashboardCard :dashboard_id] dashcard-id))
 
-(defn dashcard-action-id
+(mu/defn dashcard-action-id
   "The Action id of the DashboardCard with `dashcard-id`, or nil."
-  [dashcard-id]
+  [dashcard-id :- ::lib.schema.id/dashcard]
   (t2/select-one-fn :action_id :model/DashboardCard :id dashcard-id))
 
-(defn delete-dashcards-for-action!
-  "Delete the DashboardCards of the Action with `action-id`."
-  [action-id]
+(mu/defn delete-dashcards-for-action!
+  "Delete the DashboardCards of the Action with `action-id`, returning the number deleted."
+  [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/DashboardCard :action_id action-id))
 
-(defn insert-action!
+(mu/defn insert-query-execution!
+  "Insert the QueryExecution `row` and return its id."
+  [row :- ::queries.schema/query-execution.update]
+  (t2/insert-returning-pk! :model/QueryExecution row))
+
+(mu/defn insert-action!
   "Insert the Action `row` and return the inserted instance."
-  [row]
+  [row :- ::actions.schema/action.for-insert]
   (t2/insert-returning-instance! :model/Action row))
 
-(defn update-action!
-  "Apply `changes` to the Action with `action-id`."
-  [action-id changes]
+(mu/defn update-action!
+  "Apply `changes` to the Action with `action-id`, returning the number updated."
+  [action-id :- ::lib.schema.id/action
+   changes   :- ::actions.schema/action.for-update]
   (t2/update! :model/Action action-id changes))
 
-(defn insert-query-action!
-  "Insert the QueryAction `action`."
-  [action]
+(mu/defn insert-query-action!
+  "Insert the QueryAction `action`, returning the number inserted."
+  [action :- ::actions.schema/query-action.update]
   (t2/insert! :model/QueryAction action))
 
-(defn insert-http-action!
-  "Insert the HTTPAction `action`."
-  [action]
-  (t2/insert! :model/HTTPAction action))
-
-(defn insert-implicit-action!
-  "Insert the ImplicitAction `action`."
-  [action]
+(mu/defn insert-implicit-action!
+  "Insert the ImplicitAction `action`, returning the number inserted."
+  [action :- ::actions.schema/implicit-action.update]
   (t2/insert! :model/ImplicitAction action))
 
-(defn update-query-action!
-  "Apply `changes` to the QueryAction with `action-id`."
-  [action-id changes]
+(mu/defn update-query-action!
+  "Apply `changes` to the QueryAction with `action-id`, returning the number updated."
+  [action-id :- ::lib.schema.id/action
+   changes   :- ::actions.schema/query-action.update]
   (t2/update! :model/QueryAction action-id changes))
 
-(defn update-http-action!
-  "Apply `changes` to the HTTPAction with `action-id`."
-  [action-id changes]
-  (t2/update! :model/HTTPAction action-id changes))
-
-(defn update-implicit-action!
-  "Apply `changes` to the ImplicitAction with `action-id`."
-  [action-id changes]
+(mu/defn update-implicit-action!
+  "Apply `changes` to the ImplicitAction with `action-id`, returning the number updated."
+  [action-id :- ::lib.schema.id/action
+   changes   :- ::actions.schema/implicit-action.update]
   (t2/update! :model/ImplicitAction action-id changes))
 
-(defn delete-query-action!
-  "Delete the QueryAction of the Action with `action-id`."
-  [action-id]
+(mu/defn delete-query-action!
+  "Delete the QueryAction of the Action with `action-id`, returning the number deleted."
+  [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/QueryAction :action_id action-id))
 
-(defn delete-http-action!
-  "Delete the HTTPAction of the Action with `action-id`."
-  [action-id]
-  (t2/delete! :model/HTTPAction :action_id action-id))
-
-(defn delete-implicit-action!
-  "Delete the ImplicitAction of the Action with `action-id`."
-  [action-id]
+(mu/defn delete-implicit-action!
+  "Delete the ImplicitAction of the Action with `action-id`, returning the number deleted."
+  [action-id :- ::lib.schema.id/action]
   (t2/delete! :model/ImplicitAction :action_id action-id))
 
-(defn query-actions
+(mu/defn query-actions
   "The QueryActions of the Actions with `action-ids`."
-  [action-ids]
+  [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/select :model/QueryAction :action_id [:in action-ids]))
 
-(defn query-action
+(mu/defn query-action
   "The QueryAction of the Action with `action-id`, or nil."
-  [action-id]
+  [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/QueryAction :action_id action-id))
 
-(defn http-actions
-  "The HTTPActions of the Actions with `action-ids`."
-  [action-ids]
-  (t2/select :model/HTTPAction :action_id [:in action-ids]))
-
-(defn implicit-actions
+(mu/defn implicit-actions
   "The ImplicitActions of the Actions with `action-ids`."
-  [action-ids]
+  [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/select :model/ImplicitAction :action_id [:in action-ids]))
 
-(defn actions-with-id
+(mu/defn actions-with-id
   "The Actions with `action-id` (usually a single Action, since ids are unique)."
-  [action-id]
+  [action-id :- [:maybe ::lib.schema.id/action]]
   (t2/select :model/Action :id action-id))
 
-(defn actions-with-ids
+(mu/defn actions-with-ids
   "The Actions whose `:id` is in `action-ids`."
-  [action-ids]
+  [action-ids :- [:sequential ::lib.schema.id/action]]
   (t2/select :model/Action :id [:in action-ids]))
 
-(defn unarchived-action-with-id
+(mu/defn unarchived-action-with-id
   "The unarchived Actions with `action-id` (usually a single Action, since ids are unique)."
-  [action-id]
+  [action-id :- [:maybe ::lib.schema.id/action]]
   (t2/select :model/Action :id action-id :archived false))
 
-(defn action-with-entity-id
+(mu/defn action-with-entity-id
   "The Actions with `entity-id` (usually a single Action, since entity ids are unique)."
-  [entity-id]
+  [entity-id :- :string]
   (t2/select :model/Action :entity_id entity-id))
 
-(defn actions-of-type
-  "The Actions of `action-type`."
-  [action-type]
-  (t2/select :model/Action :type action-type))
-
-(defn unarchived-actions-for-models
-  "The unarchived Actions whose `:model_id` is in `model-ids`."
-  [model-ids]
-  (t2/select :model/Action :model_id [:in model-ids] :archived false))
-
-(defn unarchived-non-http-actions-for-model
-  "The unarchived, non-HTTP Actions of the model Card with `model-id`."
-  [model-id]
-  (t2/select :model/Action :model_id model-id :archived false :type [:not= "http"]))
-
-(defn unarchived-non-http-actions-for-models
-  "The unarchived, non-HTTP Actions whose `:model_id` is in `model-ids`."
-  [model-ids]
-  (t2/select :model/Action :model_id [:in model-ids] :archived false :type [:not= "http"]))
-
-(defn fields-for-parameters
+(mu/defn fields-for-parameters
   "The id, base type, display name, and description of the Fields with `field-ids`."
-  [field-ids]
-  (t2/select [:model/Field :id :base_type :display_name :description] :id [:in field-ids]))
+  [field-ids :- [:set ::lib.schema.id/field]]
+  (t2/select [:model/Field :id :base_type :display_name :description] :id [:in field-ids] {:from [(warehouse-schema-overlay/field-query)]}))
 
-(defn action-database-settings
+(mu/defn action-database-settings
   "The id and Database settings of the Actions with `action-ids`."
-  [action-ids]
-  (t2/query {:select [:action.id :db.settings]
-             :from   :action
-             :join   [[:report_card :card] [:= :card.id :action.model_id]
-                      [:metabase_database :db] [:= :db.id :card.database_id]]
-             :where  [:in :action.id action-ids]}))
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/query {:select    [:action.id :db.settings]
+             :from      [[(t2/table-name :model/Action) :action]]
+             :left-join (action-database-joins)
+             :where     [:and [:in :action.id action-ids] [:not= :db.id nil]]}))
 
-(defn card-scope-columns
-  "The query, Collection id, Database id, and display of the Card with `card-id`, or nil."
-  [card-id]
-  (t2/select-one [:model/Card :dataset_query :collection_id :database_id :display] card-id))
+(mu/defn card-scope-columns
+  "The query-relevant columns of the Card with `card-id`, plus its Collection id and display, or nil."
+  [card-id :- ::lib.schema.id/card]
+  ;; Spelled out rather than calling `metabase.queries.core/card-query-info`: `queries` loads `actions` (via
+  ;; `driver-api`), so requiring its API namespace back from here is a cyclic load. `queries.card-schema` is the
+  ;; dependency-free namespace that exists for exactly this.
+  (t2/select-one (queries.card-schema/selection [:collection_id :database_id :display]) :id card-id))
 
-(defn dashboard-collection-id
+(mu/defn dashboard-collection-id
   "The Collection id of the Dashboard with `dashboard-id`, or nil."
-  [dashboard-id]
+  [dashboard-id :- ::lib.schema.id/dashboard]
   (t2/select-one-fn :collection_id [:model/Dashboard :collection_id] dashboard-id))
 
-(defn destination-database-exists-for-router?
+(mu/defn destination-database-exists-for-router?
   "Whether the Database with `database-id` has routing destinations."
-  [database-id]
+  [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :router_database_id database-id))
 
-(defn writable-table-exists?
+(mu/defn writable-table-exists?
   "Whether the Database with `database-id` has a writable Table."
-  [database-id]
-  (t2/exists? :model/Table :db_id database-id :is_writable true))
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Table :db_id database-id :is_writable true {:from [(warehouse-schema-overlay/table-query)]}))
 
-(defn table-with-unknown-writability-exists?
+(mu/defn table-with-unknown-writability-exists?
   "Whether the Database with `database-id` has a Table whose writability is unknown."
-  [database-id]
-  (t2/exists? :model/Table :db_id database-id :is_writable nil))
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Table :db_id database-id :is_writable nil {:from [(warehouse-schema-overlay/table-query)]}))

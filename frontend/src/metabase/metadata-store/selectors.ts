@@ -13,14 +13,19 @@ import Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import Table from "metabase-lib/v1/metadata/Table";
 import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import {
   getFieldValues,
   getRemappings,
 } from "metabase-lib/v1/queries/utils/field";
+import { isNumeric } from "metabase-lib/v1/types/utils/isa";
 import type {
+  Field as ApiField,
   Table as ApiTable,
   Card,
+  DatabaseId,
   FieldId,
+  FieldReference,
   FieldValue,
   Measure,
   Metric,
@@ -32,7 +37,9 @@ import type {
   NormalizedSchema,
   NormalizedSegment,
   NormalizedTable,
+  SchemaId,
   Segment,
+  TableId,
 } from "metabase-types/api";
 
 import { type FieldEntity, FieldSchema } from "./schema";
@@ -121,12 +128,155 @@ export const getShallowDatabases = getNormalizedDatabases;
 export const getShallowTables = getNormalizedTables;
 export const getShallowFields = getNormalizedFields;
 export const getShallowSegments = getNormalizedSegments;
+export const getShallowSchemas = getNormalizedSchemas;
+export const getShallowQuestions = getNormalizedQuestions;
+
+const getVisibleTable = (state: MetadataState, tableId: TableId) =>
+  getNormalizedTables(state)[tableId];
+
+const getVisibleFields = (state: MetadataState) => getNormalizedFields(state);
+
+// Field values can arrive before the field itself, which leaves a stub record
+// with no `uniqueId`. `getMetadata` drops those.
+const isResolvedField = (
+  field: NormalizedField | undefined,
+): field is NormalizedField => field?.uniqueId != null;
+
+/**
+ * The ids of a table's fields, as `getMetadata` resolves `Table.fields`: the
+ * table's `original_fields` when it has them, otherwise its visible fields.
+ */
+export const getShallowTableFieldIds = createSelector(
+  [getVisibleTable, getVisibleFields],
+  (table, fields): ApiField["id"][] => {
+    if (table == null) {
+      return [];
+    }
+    if (table.original_fields) {
+      return table.original_fields.map((field) => field.id);
+    }
+    return (table.fields ?? [])
+      .map((fieldKey) => fields[fieldKey])
+      .filter(isResolvedField)
+      .map((field) => field.id);
+  },
+);
+
+export type ShallowForeignKey = Omit<NormalizedForeignKey, "origin"> & {
+  origin: NormalizedField;
+};
+
+/**
+ * A table's foreign keys whose origin field is visible, with that field in
+ * place of its id. `undefined` until the table's foreign keys are loaded.
+ */
+export const getShallowTableForeignKeys = createSelector(
+  [getVisibleTable, getVisibleFields],
+  (table, fields): ShallowForeignKey[] | undefined =>
+    table?.fks?.flatMap((foreignKey) => {
+      const origin = fields[foreignKey.origin_id];
+      return isResolvedField(origin) ? [{ ...foreignKey, origin }] : [];
+    }),
+);
+
+// The relations between the store's records need the same resolving the v1
+// `Metadata` object does: a table that arrived without its ids still belongs to
+// its schema, and `original_fields` outranks a table's field ids. Each selector
+// below returns that lookup, memoised on the records behind it, so a caller
+// that only learns the id it wants later still reads a stable function.
+
+const getMetadataForShallowReads = (state: State) => getMetadata(state);
+
+/**
+ * A lookup from a database id to its schemas.
+ */
+export const getShallowDatabaseSchemas = createSelector(
+  [getMetadataForShallowReads, getNormalizedSchemas],
+  (metadata, schemas) =>
+    (databaseId: DatabaseId): NormalizedSchema[] =>
+      (metadata.database(databaseId)?.getSchemas() ?? [])
+        .map((schema) => schemas[schema.id])
+        .filter((schema) => schema != null),
+);
+
+/**
+ * A lookup from a database id to its tables.
+ */
+export const getShallowDatabaseTables = createSelector(
+  [getMetadataForShallowReads],
+  (metadata) =>
+    (databaseId: DatabaseId): NormalizedTable[] =>
+      (metadata.database(databaseId)?.getTables() ?? []).map((table) =>
+        table.getPlainObject(),
+      ),
+);
+
+/**
+ * A lookup from a schema id to its tables.
+ */
+export const getShallowSchemaTables = createSelector(
+  [getMetadataForShallowReads],
+  (metadata) =>
+    (schemaId: SchemaId): NormalizedTable[] =>
+      (metadata.schema(schemaId)?.tables ?? []).map((table) =>
+        table.getPlainObject(),
+      ),
+);
+
+/**
+ * A lookup from a table id to the schema it belongs to. A table the store does
+ * not hold, and a schema it has not loaded, both give nothing.
+ */
+export const getShallowTableSchema = createSelector(
+  [getMetadataForShallowReads, getNormalizedSchemas],
+  (metadata, schemas) =>
+    (tableId: TableId): NormalizedSchema | undefined => {
+      const schemaId = metadata.table(tableId)?.getPlainObject().schema;
+      return schemaId != null ? schemas[schemaId] : undefined;
+    },
+);
+
+/**
+ * A lookup from a table id to its fields.
+ */
+export const getShallowTableFields = createSelector(
+  [getMetadataForShallowReads],
+  (metadata) =>
+    (tableId: TableId): NormalizedField[] =>
+      (metadata.table(tableId)?.getFields() ?? []).map((field) =>
+        field.getPlainObject(),
+      ),
+);
+
+/**
+ * A lookup from a field id, or a field reference, to the field.
+ */
+export const getShallowFieldById = createSelector(
+  [getMetadataForShallowReads],
+  (metadata) =>
+    (fieldId: FieldId | FieldReference): NormalizedField | undefined =>
+      metadata.field(fieldId)?.getPlainObject(),
+);
+
+/**
+ * A lookup from a field to its name, with the names of its parents for a
+ * nested field. A field the store does not hold keeps its own `display_name`.
+ */
+export const getShallowFieldName = createSelector(
+  [getMetadataForShallowReads],
+  (metadata) =>
+    (
+      field: Pick<NormalizedField, "id" | "table_id" | "display_name">,
+    ): string =>
+      metadata.field(field.id, field.table_id)?.displayName() ??
+      field.display_name,
+);
 
 // Takes the whole `State`, not `MetadataState`: it composes `getSettings`,
 // which reads settings out of the RTK Query cache. It narrows when that does.
-export const getMetadata: (
+const getMetadataForOpts: (
   state: State,
-  props?: MetadataSelectorOpts,
+  props: MetadataSelectorOpts,
 ) => Metadata = createSelector(
   [
     getNormalizedDatabases,
@@ -219,19 +369,26 @@ export const getMetadata: (
   },
 );
 
-export const getMetadataUnfiltered = (state: State) => {
-  return getMetadata(state, {
-    includeHiddenTables: true,
-    includeSensitiveFields: true,
-  });
+const NO_OPTS: MetadataSelectorOpts = {};
+
+/**
+ * Reselect keys its cache on the argument list, so `getMetadata(state)` and
+ * `getMetadata(state, undefined)` would build two `Metadata` objects over the
+ * same records, and with them two sets of metabase-lib caches. Callers use both
+ * shapes, so the options are canonicalised here.
+ */
+export const getMetadata = (
+  state: State,
+  props: MetadataSelectorOpts = NO_OPTS,
+): Metadata => getMetadataForOpts(state, props);
+
+const UNFILTERED_OPTS: MetadataSelectorOpts = {
+  includeHiddenTables: true,
+  includeSensitiveFields: true,
 };
 
-export const getMetadataWithHiddenTables = (
-  state: State,
-  props?: TableSelectorOpts,
-) => {
-  return getMetadata(state, { ...props, includeHiddenTables: true });
-};
+export const getMetadataUnfiltered = (state: State) =>
+  getMetadata(state, UNFILTERED_OPTS);
 
 // Utils
 
@@ -494,5 +651,44 @@ export function getFieldRemappings(
   state: MetadataState,
   fieldId: FieldId,
 ): FieldValue[] {
-  return state.entities.fields[fieldId]?.remappings ?? [];
+  return state.entities.fields[fieldId]?.remappings ?? NO_REMAPPINGS;
+}
+
+// a shared empty array, so a field with no remappings keeps its identity
+// between calls and a `useSelector` on it does not re-render
+const NO_REMAPPINGS: FieldValue[] = [];
+
+/**
+ * The label a field carries for `value`.
+ *
+ * It merges the values a values endpoint fetched with the remappings the
+ * client accumulated as other widgets fetched values. The store holds both, so
+ * a field a caller holds cannot answer this on its own.
+ */
+export function getRemappedFieldValue(
+  state: State,
+  field: ParameterField,
+  value: unknown,
+): string | undefined {
+  const fieldId = typeof field.id === "number" ? field.id : null;
+  const storeField =
+    fieldId == null ? undefined : state.entities.fields[fieldId];
+  const remappings =
+    fieldId == null ? NO_REMAPPINGS : getFieldRemappings(state, fieldId);
+
+  // parameter values arrive from the URL as strings
+  const key =
+    isNumeric(field) && typeof value !== "number"
+      ? parseFloat(String(value))
+      : value;
+
+  // a later entry wins, so the accumulated remappings override the field's
+  // own values
+  const labels = new Map<unknown, string | undefined>(
+    // the store's copy carries the values a values endpoint fetched, which the
+    // field a caller holds does not
+    getRemappings({ ...field, values: storeField?.values, remappings }),
+  );
+
+  return labels.get(key);
 }

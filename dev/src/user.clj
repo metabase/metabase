@@ -144,6 +144,7 @@
   (in-ns 'dev)
   :loaded)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^{:dynamic true
        :doc "When true, the backend code will be reloaded on every request.
              This value is set by the `--hot` command line argument to the `:dev-start` alias."}
@@ -187,7 +188,6 @@
       (spit ".nrepl-port" port)
       (nrepl-server/start-server
        :port port
-       :bind "0.0.0.0"
        ;; this handler has cider middlewares installed:
        :handler (apply nrepl-server/default-handler
                        (conj cider-nrepl/cider-middleware 'refactor-nrepl.middleware/wrap-refactor)))))

@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import * as Pivot from "cljs/metabase.pivot.js";
+import { memoize } from "metabase/utils/memoize";
 import { checkNotNull } from "metabase/utils/types";
 import { formatValue } from "metabase/value-formatting";
 import type {
@@ -97,10 +98,8 @@ export function multiLevelPivot(
     rowIndexes,
   ].map((indexes) =>
     indexes.map((index) =>
-      _.memoize(
-        (value: RowValue) => formatValue(value, columnSettings[index]),
-        (value: RowValue) => JSON.stringify(value) + String(index),
-      ),
+      // `index` is closed over, so the value is the whole key.
+      memoize((value: RowValue) => formatValue(value, columnSettings[index])),
     ),
   );
 

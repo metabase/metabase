@@ -2,6 +2,14 @@
 name: clojure-review
 description: Review Clojure and ClojureScript code changes for compliance with Metabase coding standards, style violations, and code quality issues. Use when reviewing pull requests or diffs containing Clojure/ClojureScript code.
 allowed-tools: Read, Grep, Bash, Glob
+metadata:
+  metareview:
+    title: Clojure review
+    kind: agent
+    rule: Clojure files changed
+    watches: ["*.clj", "*.cljc", "*.cljs"]
+    icon: lambda
+    color: green
 ---
 
 # Clojure Code Review Skill
@@ -111,12 +119,7 @@ liability it usually is.
 ### Miscellaneous
 
 - [ ] Example data is bird-themed when possible
-- [ ] Kondo suppressions use a reader-discard map, not `#_:clj-kondo/ignore`, with
-      `:clj-kondo/ignore` as the first key
-- [ ] Each new suppression is approved and has a `;;` comment explaining why the warning cannot be fixed
-- [ ] Any ratchet budget increase is explained in the PR
-- [ ] PRs that remove ignores leave ratchet budgets unchanged; the shrink workflow records reductions on
-      `master`
+- [ ] Kondo linter suppressions use proper format (not `#_:clj-kondo/ignore` keyword form)
 
 ## Pattern matching table
 

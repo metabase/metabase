@@ -1,6 +1,8 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import browseModelsVideoThumbnail from "assets/img/browse-models-video-thumbnail.png";
+
 import S from "./ModelsVideo.module.css";
 
 export const ModelsVideo = ({ autoplay }: { autoplay: 0 | 1 }) => {
@@ -27,7 +29,7 @@ export const ModelsVideoThumbnail = ({ onClick }: { onClick: () => void }) => {
       <img
         alt={t`Browse models video thumbnail`}
         loading="lazy"
-        src="app/assets/img/browse-models-video-thumbnail.png"
+        src={browseModelsVideoThumbnail}
         width="100%"
       />
     </div>

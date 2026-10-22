@@ -185,7 +185,7 @@ export const cardApi = Api.injectEndpoints({
             listTag("card"),
             listTag("schema"),
             listTag("table"),
-            listTag("embedding-hub-checklist"),
+            listTag("setup-guide-checklist"),
           ]),
       }),
       updateCard: builder.mutation<Card, UpdateCardRequest>({
@@ -205,6 +205,8 @@ export const cardApi = Api.injectEndpoints({
             idTag("table", `card__${payload.id}`),
             listTag("revision"),
             listTag("table"), // table listings include information about published models
+            // updating a card resolves any content-diagnostics finding for it
+            listTag("content-diagnostics-finding"),
           ];
 
           if (payload.dashboard_id != null) {
@@ -343,7 +345,7 @@ export const cardApi = Api.injectEndpoints({
       }),
       updateCardEnableEmbedding: updateCardPropertiesMutation<
         "enable_embedding" | "embedding_type"
-      >([listTag("embedding-hub-checklist")]),
+      >([listTag("setup-guide-checklist")]),
       updateCardEmbeddingParams: updateCardPropertiesMutation<
         "embedding_params" | "embedding_type"
       >(),
@@ -374,6 +376,12 @@ export const cardApi = Api.injectEndpoints({
     };
   },
 });
+
+/**
+ * Reads an already-fetched card out of the RTK cache. Use it after awaiting the
+ * fetch, where a hook is not an option.
+ */
+export const selectCard = cardApi.endpoints.getCard.select;
 
 export const {
   useListCardsQuery,

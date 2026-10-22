@@ -15,6 +15,7 @@
    [metabase.transforms-base.ordering :as transforms-base.ordering]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.db :as transforms.db]
+   [metabase.transforms.feature-gating :as transforms.gating]
    [metabase.transforms.models.transform :as transform.model]
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
@@ -116,7 +117,7 @@
 (defn get-transforms
   "Get a list of transforms."
   [& {:keys [last-run-start-time last-run-statuses tag-ids database-id]}]
-  (let [enabled-types (transforms.u/enabled-source-types-for-user)]
+  (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
     (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id)]
       (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
@@ -208,7 +209,7 @@
                                           {:status-code 400}))))
                       (api/check (not (and (not= (target-fields old) (target-fields new))
                                            (transforms-base.u/target-table-exists? new)))
-                                 403
+                                 409
                                  (deferred-tru "A table with that name already exists.")))
                     (transforms.db/update-transform! id (dissoc body :tag_ids))
                     ;; Update tag associations if provided

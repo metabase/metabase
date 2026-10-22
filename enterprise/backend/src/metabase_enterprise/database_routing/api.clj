@@ -27,15 +27,15 @@
   reachable before adding it — destination details are not required to be valid at creation time, and an
   unreachable destination is fine."
   [_route-params
-   {:keys [check_connection_details]} :- [:map
+   {:keys [check_connection_details]} :- [:map {:closed true}
                                           [:check_connection_details {:optional true} ms/MaybeBooleanValue]]
-   {:keys [router_database_id destinations]} :- [:map
+   {:keys [router_database_id destinations]} :- [:map {:closed true}
                                                  [:router_database_id ms/PositiveInt]
                                                  [:destinations
                                                   [:sequential
-                                                   [:map
+                                                   [:map {:closed true}
                                                     [:name               ms/NonBlankString]
-                                                    [:details            ms/Map]]]]]]
+                                                    [:details            ms/DatabaseDetails]]]]]]
   (api/check-400 (database-routing.db/router-exists? router_database_id))
   (api/check-400 (not (database-routing.db/destination-name-exists? router_database_id (map :name destinations)))
                  "A destination database with that name already exists.")
@@ -105,9 +105,9 @@
   - change the `user_attribute` used to route for an existing Router database, or
   - turn a Router database into a regular Database
   depending on the value of `user_attribute`"
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [user_attribute]} :- [:map [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
+   {:keys [user_attribute]} :- [:map {:closed true} [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
   (let [db (database-routing.db/database id)]
     (api/check-404 db)
     (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")

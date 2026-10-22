@@ -55,7 +55,7 @@
   owning node holds a run's `cancel-chan`."
   []
   (rt/heartbeat-and-reconcile! {:model      :model/TransformRun
-                                :active     [:= :is_active true]
+                                :active     [:is_active true]
                                 :ids        (keys @connections)
                                 :heartbeat! transform-run/heartbeat-runs!
                                 :on-gone    chan-signal-cancel!}))
@@ -150,9 +150,11 @@
       ;; is at least visible in metrics. Magnitude can be inferred from log volume if needed.
       (analytics/inc! :metabase-transforms/cancelation-completed {:outcome "error"}))))
 
-(task/defjob  ^{:doc "Cancel items that haven't been canceled in two minutes"
-                org.quartz.DisallowConcurrentExecution true}
-  CancelOldTransformRuns [ctx]
+(task/defjob CancelOldTransformRuns
+  "Cancel items that haven't been canceled in two minutes"
+  {:saved-class "metabase.transforms.canceling.CancelOldTransformRuns"
+   :concurrent? false}
+  [ctx]
   (cancel-old-transform-runs! ctx))
 
 (defn- start-job! []

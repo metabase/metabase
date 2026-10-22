@@ -19,30 +19,6 @@ describe("scenarios > data studio > data model > measures", () => {
   });
 
   describe("Measure list", () => {
-    it("should show empty state and navigation when no measures exist", () => {
-      visitDataStudioMeasures(ORDERS_ID);
-
-      cy.log("verify empty state");
-      MeasureList.getEmptyState().scrollIntoView().should("be.visible");
-      MeasureList.get()
-        .findByText(
-          "Create a measure to define a reusable aggregation for this table.",
-        )
-        .should("be.visible");
-
-      cy.log("verify new measure link and navigation");
-      MeasureList.getNewMeasureLink().scrollIntoView().click();
-
-      cy.log("verify measure_create_started event");
-      H.expectUnstructuredSnowplowEvent({
-        event: "measure_create_started",
-        triggered_from: "data_studio_measures_list",
-        target_id: ORDERS_ID,
-      });
-
-      cy.url().should("include", `${getMeasuresBaseUrl(ORDERS_ID)}/new`);
-    });
-
     it("should display measures and allow navigation to edit page", () => {
       createTestMeasure({
         name: "Total Revenue",
@@ -97,8 +73,16 @@ describe("scenarios > data studio > data model > measures", () => {
   });
 
   describe("Measure creation", () => {
-    it("should create a measure with aggregation and verify across features", () => {
+    it("should create a measure with aggregation, confirm leaving with unsaved changes, and verify it in the query builder", () => {
       visitDataStudioMeasures(ORDERS_ID);
+
+      cy.log("verify empty state");
+      MeasureList.getEmptyState().scrollIntoView().should("be.visible");
+      MeasureList.get()
+        .findByText(
+          "Create a measure to define a reusable aggregation for this table.",
+        )
+        .should("be.visible");
 
       cy.log("navigate to new measure page");
       MeasureList.getNewMeasureLink().scrollIntoView().click();
@@ -109,9 +93,18 @@ describe("scenarios > data studio > data model > measures", () => {
         triggered_from: "data_studio_measures_list",
         target_id: ORDERS_ID,
       });
+      cy.url().should("include", `${getMeasuresBaseUrl(ORDERS_ID)}/new`);
 
       cy.log("fill in measure name");
       MeasureEditor.getNameInput().type("Total Revenue");
+
+      cy.log("verify leave confirmation with unsaved changes");
+      MeasureEditor.getBreadcrumb("Orders").click();
+      H.modal().within(() => {
+        cy.findByText("Discard your changes?").should("be.visible");
+        cy.button("Cancel").click();
+      });
+      MeasureEditor.get().findByText("Total Revenue").should("be.visible");
 
       cy.log("add aggregation");
       MeasureEditor.getAggregationPlaceholder().click();
@@ -171,7 +164,7 @@ describe("scenarios > data studio > data model > measures", () => {
   });
 
   describe("Measure editing", () => {
-    it("should display and update existing measure", () => {
+    it("should display and update existing measure, and navigate back to measures tab via breadcrumb", () => {
       createTestMeasure({
         name: "Test Measure",
         description: "Test description",
@@ -203,17 +196,9 @@ describe("scenarios > data studio > data model > measures", () => {
       MeasureEditor.getDescriptionInput().clear().type("Updated description");
       MeasureEditor.getSaveButton().click();
       cy.wait("@updateMeasure");
+      H.undoToastList().should("contain.text", "Measure updated");
 
-      cy.log("verify updated measure in query builder");
-      verifyMeasureInQueryBuilder("Test Measure Updated");
-    });
-
-    it("should navigate back to measures tab via breadcrumb", () => {
-      createTestMeasure({ name: "Breadcrumb Test Measure" });
-      cy.get<number>("@measureId").then((measureId) => {
-        visitDataModelMeasure(ORDERS_ID, measureId);
-      });
-
+      cy.log("navigate back to measures tab via breadcrumb");
       MeasureEditor.getBreadcrumb("Orders").click();
 
       cy.url().should(
@@ -223,11 +208,15 @@ describe("scenarios > data studio > data model > measures", () => {
       cy.findByRole("tab", { name: /Measures/i })
         .scrollIntoView()
         .should("have.attr", "aria-selected", "true");
+
+      cy.log("verify updated measure in query builder");
+      verifyMeasureInQueryBuilder("Test Measure Updated");
     });
   });
 
   describe("Measure deletion", () => {
     it("should remove measure via more menu", () => {
+      createTestMeasure({ name: "Kept Measure" });
       createTestMeasure({ name: "Measure to Delete" });
       cy.get<number>("@measureId").then((measureId) => {
         visitDataModelMeasure(ORDERS_ID, measureId);
@@ -245,33 +234,16 @@ describe("scenarios > data studio > data model > measures", () => {
         "include",
         `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/measures`,
       );
-      MeasureList.get()
-        .findByText("Measure to Delete", { timeout: 1000 })
-        .should("not.exist");
+      MeasureList.getMeasure("Kept Measure")
+        .scrollIntoView()
+        .should("be.visible");
+      MeasureList.get().findByText("Measure to Delete").should("not.exist");
 
       cy.log("verify measure removed from query builder");
-      verifyMeasureNotInQueryBuilder("Total Revenue");
-    });
-  });
-
-  describe("Unsaved changes", () => {
-    it("should show leave confirmation with unsaved changes", () => {
-      visitDataStudioMeasures(ORDERS_ID);
-
-      MeasureList.getNewMeasureLink().scrollIntoView().click();
-      MeasureEditor.getNameInput().type("Unsaved Measure");
-
-      cy.log("attempt to navigate away");
-      MeasureEditor.getBreadcrumb("Orders").click();
-
-      cy.log("verify confirmation modal");
-      H.modal().within(() => {
-        cy.findByText("Discard your changes?").should("be.visible");
-        cy.button("Cancel").click();
+      verifyMeasureNotInQueryBuilder({
+        removedMeasureName: "Measure to Delete",
+        keptMeasureName: "Kept Measure",
       });
-
-      cy.log("verify still on editor");
-      MeasureEditor.get().findByText("Unsaved Measure").should("be.visible");
     });
   });
 
@@ -312,7 +284,7 @@ describe("scenarios > data studio > data model > measures", () => {
   });
 
   describe("Revision history", () => {
-    it("should display revision history with changes to name, description, and aggregation", () => {
+    it("should display revision history with changes to name, description, and aggregation, and the dependency graph", () => {
       createTestMeasure({
         name: "Original Name",
         description: "Original description",
@@ -389,15 +361,6 @@ describe("scenarios > data studio > data model > measures", () => {
           .scrollIntoView()
           .should("be.visible");
       });
-    });
-  });
-
-  describe("Dependencies", () => {
-    it("should display dependency graph for a measure", () => {
-      createTestMeasure({ name: "Dependencies Test Measure" });
-      cy.get<number>("@measureId").then((measureId) => {
-        visitDataModelMeasure(ORDERS_ID, measureId);
-      });
 
       cy.log("navigate to dependencies tab");
       MeasureEditor.getDependenciesTab().click();
@@ -410,15 +373,17 @@ describe("scenarios > data studio > data model > measures", () => {
         );
       });
       H.DependencyGraph.graph().should("be.visible");
-      H.DependencyGraph.graph()
-        .findByText("Dependencies Test Measure")
-        .should("be.visible");
+      H.DependencyGraph.graph().findByText("Updated Name").should("be.visible");
     });
   });
 
   describe("Readonly access for data analysts", () => {
-    it("should show measures in list but hide New measure button for non-admin", () => {
+    it("should show measures in list and measure detail in readonly mode for non-admin", () => {
       createTestMeasure({ name: "Readonly Test Measure" });
+      createTestMeasure({
+        name: "Readonly Detail Measure",
+        description: "Test description for readonly",
+      });
 
       H.setUserAsAnalyst(NODATA_USER_ID);
       cy.signIn("nodata");
@@ -439,49 +404,34 @@ describe("scenarios > data studio > data model > measures", () => {
         `/data-studio/data/database/${SAMPLE_DB_ID}/schema/${SAMPLE_DB_SCHEMA_ID}/table/${ORDERS_ID}/measures/new`,
       );
       cy.url().should("include", "/unauthorized");
-    });
-
-    it("should display measure detail in readonly mode for non-admin", () => {
-      createTestMeasure({
-        name: "Readonly Detail Measure",
-        description: "Test description for readonly",
-      });
 
       cy.get<number>("@measureId").then((measureId) => {
-        H.setUserAsAnalyst(NODATA_USER_ID);
-        cy.signIn("nodata");
-
         visitDataModelMeasure(ORDERS_ID, measureId);
+      });
 
-        cy.log("verify measure name input is disabled");
-        MeasureEditor.get()
-          .findByDisplayValue("Readonly Detail Measure")
-          .should("be.disabled");
+      cy.log("verify measure name input is disabled");
+      MeasureEditor.get()
+        .findByDisplayValue("Readonly Detail Measure")
+        .should("be.disabled");
 
-        cy.log("verify description is displayed as plain text");
-        MeasureEditor.get().findByText("Description").should("be.visible");
-        MeasureEditor.get()
-          .findByText("Test description for readonly")
+      cy.log("verify description is displayed as plain text");
+      MeasureEditor.get().findByText("Description").should("be.visible");
+      MeasureEditor.get()
+        .findByText("Test description for readonly")
+        .should("be.visible");
+
+      cy.log("verify Remove measure option is hidden in actions menu");
+      MeasureEditor.getActionsButton().click();
+      H.popover().findByText("Explore").should("be.visible");
+      H.popover().findByText("Remove measure").should("not.exist");
+      cy.realPress("Escape");
+
+      cy.log("verify revision history is still accessible");
+      MeasureEditor.getRevisionHistoryTab().click();
+      MeasureRevisionHistory.get().within(() => {
+        cy.findByText(/created this measure/i)
+          .scrollIntoView()
           .should("be.visible");
-
-        cy.log("verify Save button is not visible");
-        MeasureEditor.get()
-          .findByRole("button", { name: /Save/i })
-          .should("not.exist");
-
-        cy.log("verify Remove measure option is hidden in actions menu");
-        MeasureEditor.getActionsButton().click();
-        H.popover().findByText("Explore").should("be.visible");
-        H.popover().findByText("Remove measure").should("not.exist");
-        cy.realPress("Escape");
-
-        cy.log("verify revision history is still accessible");
-        MeasureEditor.getRevisionHistoryTab().click();
-        MeasureRevisionHistory.get().within(() => {
-          cy.findByText(/created this measure/i)
-            .scrollIntoView()
-            .should("be.visible");
-        });
       });
     });
   });
@@ -557,12 +507,19 @@ function verifyMeasureInQueryBuilder(
   cy.findByTestId("scalar-value").should("be.visible");
 }
 
-function verifyMeasureNotInQueryBuilder(
-  measureName: string,
-  tableId: number = ORDERS_ID,
-) {
-  H.openTable({ table: tableId, mode: "notebook" });
+function verifyMeasureNotInQueryBuilder({
+  removedMeasureName,
+  keptMeasureName,
+}: {
+  removedMeasureName: string;
+  keptMeasureName: string;
+}) {
+  H.openTable({ table: ORDERS_ID, mode: "notebook" });
 
   H.getNotebookStep("data").button("Summarize").click();
-  H.popover().findByText(measureName).should("not.exist");
+  H.popover().within(() => {
+    cy.findByText("Measures").click();
+    cy.findByText(keptMeasureName).should("be.visible");
+    cy.findByText(removedMeasureName).should("not.exist");
+  });
 }

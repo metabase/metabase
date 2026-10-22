@@ -1,17 +1,16 @@
-import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Badge, Icon, Skeleton, Tabs } from "metabase/ui";
+import {
+  PillTabNavigation,
+  type TabCountState,
+} from "metabase/common/components/PillTabNavigation";
 import type { IconName } from "metabase-types/api";
 
 import type {
   NotificationsTab,
   NotificationsUrlState,
-  TabCountState,
 } from "../NotificationsAdminPage/types";
 import { trackAlertsManagementTabClicked } from "../analytics";
-
-import S from "./NotificationsTabs.module.css";
 
 type Props = {
   tab: NotificationsTab;
@@ -28,36 +27,6 @@ type TabConfig = {
   count: TabCountState;
   patch: Partial<NotificationsUrlState>;
 };
-
-const TabCountBadge = ({
-  count,
-  isActive,
-}: {
-  count: TabCountState;
-  isActive: boolean;
-}) =>
-  match(count)
-    .with({ status: "loading" }, () => (
-      <Skeleton
-        h={16}
-        miw="1.5rem"
-        radius="xl"
-        data-testid="tab-count-skeleton"
-      />
-    ))
-    .with({ status: "loaded" }, ({ value }) =>
-      isActive ? (
-        <Badge variant="filled" size="xs" color="brand">
-          {value}
-        </Badge>
-      ) : (
-        <Badge variant="light" size="xs" color="neutral">
-          {value}
-        </Badge>
-      ),
-    )
-    .with({ status: "error" }, () => null)
-    .exhaustive();
 
 export const NotificationsTabs = ({
   tab,
@@ -98,46 +67,20 @@ export const NotificationsTabs = ({
     },
   ];
 
-  const handleTabChange = (value: NotificationsTab | null) => {
-    const next = tabs.find((config) => config.value === value);
-    if (next !== undefined) {
-      trackAlertsManagementTabClicked(next.value);
-      onChange(next.patch);
-    }
-  };
-
   return (
-    <Tabs
-      variant="pills"
-      value={tab}
-      onChange={handleTabChange}
-      radius="xl"
+    <PillTabNavigation
       data-testid="notifications-admin-tabs"
-      classNames={{
-        list: S.list,
-        tab: S.tab,
-        tabLabel: S.tabLabel,
-        tabSection: S.tabSection,
-      }}
-    >
-      <Tabs.List>
-        {tabs.map((config) => (
-          <Tabs.Tab
-            key={config.value}
-            value={config.value}
-            leftSection={<Icon name={config.icon} size={16} />}
-            rightSection={
-              <TabCountBadge
-                count={config.count}
-                isActive={config.value === tab}
-              />
-            }
-            data-testid={`notifications-admin-tab-${config.value}`}
-          >
-            {config.label}
-          </Tabs.Tab>
-        ))}
-      </Tabs.List>
-    </Tabs>
+      tabs={tabs.map((config) => ({
+        label: config.label,
+        icon: config.icon,
+        count: config.count,
+        isSelected: config.value === tab,
+        "data-testid": `notifications-admin-tab-${config.value}`,
+        onClick: () => {
+          trackAlertsManagementTabClicked(config.value);
+          onChange(config.patch);
+        },
+      }))}
+    />
   );
 };

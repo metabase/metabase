@@ -24,6 +24,10 @@ export type ChartSettingWidgetProps<TValue> = {
   onChangeSettings: (settings: Partial<VisualizationSettings>) => void;
 };
 
+export type CustomVizSettingWidgetProps = ChartSettingWidgetProps<unknown> & {
+  id: string;
+} & Record<string, unknown>;
+
 export type ChartSettingEnumToggleProps<T extends string> = {
   value: T | undefined;
   onChange: (value: T) => void;
@@ -32,10 +36,18 @@ export type ChartSettingEnumToggleProps<T extends string> = {
   uncheckedValue: T;
 };
 
+export type ChartSettingSegmentedControlValue = string | boolean | null;
+
+export type ChartSettingSegmentedControlOption = {
+  name: string;
+  value: ChartSettingSegmentedControlValue;
+  icon?: IconName;
+};
+
 export type ChartSettingSegmentedControlProps = {
-  options: { name: string; value: string; icon?: IconName }[];
-  onChange: (value: string) => void;
-  value: string;
+  options: ChartSettingSegmentedControlOption[];
+  onChange: (value: ChartSettingSegmentedControlValue) => void;
+  value: ChartSettingSegmentedControlValue;
 };
 
 export type ChartSettingGoalInputProps = {

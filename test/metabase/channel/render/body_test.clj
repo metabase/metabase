@@ -812,7 +812,7 @@
                 card-b-doc (render.tu/render-card-as-hickory! card-b-id)]
             ;; The test asserts that all 4 slices exist by seeing that each path element has the colour assigned to that category
             ;; we should expect to see each of the 4 (and only those 4) colours.
-            ;; This is also true of the colours for the legend circle elements.
+            ;; This is also true of the colours for the legend marker elements.
             ;; When legend and Totals are disabled, we should expect those elements not to exist in the render
             (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
@@ -822,7 +822,7 @@
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :total-els-text     #{}}]]]
-              (let [legend-elements (->> (hik.s/select (hik.s/tag :circle) doc)
+              (let [legend-elements (->> (hik.s/select (hik.s/child (hik.s/class "visx-group") (hik.s/tag :rect)) doc)
                                          (map #(get-in % [:attrs :fill]))
                                          set)
                     slice-elements  (->> (hik.s/select (hik.s/tag :path) doc)
@@ -876,6 +876,34 @@
             (testing "The underlying add-dashcard-timeline-events call adds the timeline events to the card"
               (is (=? [tl-a tl-b] (:timeline_events (#'body/add-dashcard-timeline-events {:card card})))))
             (is (= 2 (count (:timeline_events (first cards-with-data)))))))))))
+
+(deftest subscription-render-omits-timeline-events-test
+  (testing "A chart saved with timeline events renders in a subscription, without showing any of the events"
+    (mt/dataset test-data
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [event-name "Kilroy Was Here"]
+          (mt/with-temp [:model/Collection {collection-id :id} {:name "Timeline Collection"}
+                         :model/Timeline {timeline-id :id} {:name          "Releases"
+                                                            :collection_id collection-id}
+                         :model/TimelineEvent _ {:timeline_id timeline-id
+                                                 :name        event-name
+                                                 :timestamp   #t "2019-05-15T00:00:00Z"}
+                         :model/Card {card-id :id}
+                         {:display                :line
+                          :collection_id          collection-id
+                          :dataset_query          (mt/mbql-query orders
+                                                    {:aggregation [[:count]]
+                                                     :breakout    [!month.created_at]})
+                          :visualization_settings {:timeline.selected_timeline_ids [timeline-id]}}
+                         :model/Dashboard {dash-id :id} {:collection_id collection-id}
+                         :model/DashboardCard {dashcard-id :id} {:dashboard_id dash-id
+                                                                 :card_id      card-id}]
+            (let [doc (render.tu/render-dashcard-as-hickory! dashcard-id)]
+              (testing "the line chart itself renders"
+                (is (seq (hik.s/select (hik.s/tag :path) doc))))
+              (testing "the saved event is nowhere in the rendered chart"
+                (is (empty? (hik.s/select (hik.s/find-in-text (re-pattern event-name)) doc)))
+                (is (not (str/includes? (pr-str doc) event-name)))))))))))
 
 (deftest unknown-column-settings-test
   (testing "Unknown `:column_settings` keys don't break static-viz rendering with a Null Pointer Exception (#27941)."
@@ -1281,6 +1309,24 @@
             (testing "Renders with at least one category name visible"
               (is (= "Doohickey" category-text)))))))))
 
+(deftest render-region-map-static-viz-test
+  (testing "The static-viz region (choropleth) map renders as an image, not an error card.
+            React 19's scheduler references MessageChannel, which the GraalJS render context must polyfill."
+    (mt/with-temp [:model/Card card
+                   {:name                   "region-map-test"
+                    :display                :map
+                    :visualization_settings {:map.type      "region"
+                                             :map.region    "us_states"
+                                             :map.dimension "STATE"
+                                             :map.metric    "METRIC"}
+                    :dataset_query          (mt/native-query
+                                             {:query (str "SELECT 'CA' AS state, 99999 AS metric "
+                                                          "UNION ALL SELECT 'NY' AS state, 11111 AS metric")})}]
+      (let [data (:data (qp/process-query (:dataset_query card)))
+            part (body/render :region_map :attachment "UTC" card nil data)]
+        (is (= :img (-> part :content second first))
+            "Region map renders as an image, not a degraded table or an error card")))))
+
 (deftest render-correct-day-of-week-test
   (testing "The static-viz bar chart renders with the correct start of the week."
     (mt/with-temporary-setting-values [start-of-week "monday"]
@@ -1296,10 +1342,11 @@
                                              :graph.metrics ["sum"]}}]
           (mt/with-temp [:model/Card {card-id :id} card]
             (let [doc            (render.tu/render-card-as-hickory! card-id)
+                  weekday-names  #{"Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"}
                   first-day-text (->> (hik.s/select (hik.s/tag :text) doc)
                                       (map (fn [el] (-> el :content first)))
-                                      (take-last 4)
                                       (map str/trim)
+                                      (filter weekday-names)
                                       first)]
               (testing "Renders with correct day of week first"
                 (is (= "Monday" first-day-text))))))))))
@@ -1326,7 +1373,7 @@
                               (map str/trim)
                               first)]
               (testing "Renders with correct day of week first"
-                (is (= "2017/1" label))))))))))
+                (is (= "2018/4" label))))))))))
 
 (deftest render-correct-whitelabel-colors
   (when config/ee-available?
@@ -1421,8 +1468,10 @@
 (def ^:private pivot-test-data
   "A `:pivot` query result: rows R, cols C, single measure m, plus the pivot-grouping column the QP emits.
   `:pivot-export-options` carries the row/col/measure column indexes in the pivot-grouping-free space (R=0, C=1, m=2)."
-  {:cols                 [{:name "R" :base_type :type/Text} {:name "C" :base_type :type/Text}
-                          {:name "pivot-grouping" :base_type :type/Integer} {:name "m" :base_type :type/Integer}]
+  {:cols                 [{:name "R" :display_name "R" :base_type :type/Text}
+                          {:name "C" :display_name "C" :base_type :type/Text}
+                          {:name "pivot-grouping" :display_name "pivot-grouping" :base_type :type/Integer}
+                          {:name "m" :display_name "m" :base_type :type/Integer}]
    :rows                 [["a" "x" 0 10] ["a" "y" 0 20] ["b" "x" 0 30] ["b" "y" 0 40]]
    :format-rows?         true
    :pivot-export-options {:pivot-rows [0] :pivot-cols [1] :pivot-measures [2]}})
@@ -1447,7 +1496,8 @@
     (testing "a pivot card with no column split degrades to a flat table without erroring"
       (let [part (body/render :pivot :inline "UTC"
                               {:display :pivot :visualization_settings {}} nil
-                              {:cols [{:name "a" :base_type :type/Text} {:name "b" :base_type :type/Number}]
+                              {:cols [{:name "a" :display_name "a" :base_type :type/Text}
+                                      {:name "b" :display_name "b" :base_type :type/Number}]
                                :rows [["x" 1]]})]
         (is (some? (:content part)))))
     (testing "the card's conditional formatting colors the measure value cells"
@@ -1492,9 +1542,11 @@
     ;; uncolored) and the m1 cells labeled m2 (11-44, not > 50 -> uncolored) -- so the m2 cells being the colored
     ;; ones confirms the measure mapping. Totals are off so only the data cells remain.
     (let [split    {:rows ["R"] :columns ["C"] :values ["m1" "m2"]}
-          cols     [{:name "R" :base_type :type/Text} {:name "C" :base_type :type/Text}
-                    {:name "pivot-grouping" :base_type :type/Integer}
-                    {:name "m1" :base_type :type/Integer} {:name "m2" :base_type :type/Integer}]
+          cols     [{:name "R" :display_name "R" :base_type :type/Text}
+                    {:name "C" :display_name "C" :base_type :type/Text}
+                    {:name "pivot-grouping" :display_name "pivot-grouping" :base_type :type/Integer}
+                    {:name "m1" :display_name "m1" :base_type :type/Integer}
+                    {:name "m2" :display_name "m2" :base_type :type/Integer}]
           data     {:cols                 cols
                     :rows                 [["a" "x" 0 11 100] ["a" "y" 0 22 200]
                                            ["b" "x" 0 33 300] ["b" "y" 0 44 400]]
@@ -1515,6 +1567,144 @@
         (is (every? #(str/includes? h %) ["11" "22" "33" "44" "100" "200" "300" "400"])))
       (testing "only the four m2 value cells (> 50) are colored"
         (is (= 4 (count (re-seq #"background-color" h))))))))
+
+(def ^:private simple-pivot-cols
+  [{:name "CATEGORY" :display_name "Category" :base_type :type/Text}
+   {:name "SOURCE"   :display_name "Source"   :base_type :type/Text}
+   {:name "count"    :display_name "Count"    :base_type :type/Integer}])
+
+(def ^:private simple-pivot-rows
+  "Ordered by category then source, as a two-breakout query returns them: sorted within each category but not
+  overall, so the browser sorts both axes."
+  [["Gizmo" "Google" 1] ["Gizmo" "Organic" 2]
+   ["Widget" "Affiliate" 3] ["Widget" "Google" 4]])
+
+(def ^:private simple-pivot-settings
+  {:table.pivot true :table.pivot_column "SOURCE" :table.cell_column "count"})
+
+(defn- rendered-grid
+  "The text of every <th> and <td> of a rendered part, one vector per <tr>."
+  [part]
+  (for [tr (render.tu/nodes-with-tag (:content part) :tr)]
+    (->> (tree-seq #(and (seqable? %) (not (map? %)) (not (string? %))) seq tr)
+         (filter #(and (vector? %) (#{:th :td} (first %))))
+         (mapv last))))
+
+(defn- render-simple-pivot
+  ([viz-settings] (render-simple-pivot viz-settings simple-pivot-cols simple-pivot-rows))
+  ([viz-settings cols rows]
+   (body/render :table :inline "UTC" {:display :table :visualization_settings viz-settings} nil
+                {:cols cols :rows rows :viz-settings viz-settings})))
+
+(deftest ^:parallel simple-pivot-test
+  (testing "a Table card with the \"Pivot table\" toggle on renders as the browser's simple pivot (#76931)"
+    (is (= [["Category" "Affiliate" "Google" "Organic"]
+            ["Gizmo"    ""          "1"      "2"]
+            ["Widget"   "3"         "4"      ""]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings)))))
+  (testing "string-keyed settings pivot too"
+    (is (= (rendered-grid (render-simple-pivot simple-pivot-settings))
+           (rendered-grid (render-simple-pivot (update-keys simple-pivot-settings name))))))
+  (testing "the row-label header is the column's display name; a column title override is ignored, as in the browser"
+    (let [card {:display                :table
+                :visualization_settings {:column_settings {"[\"name\",\"CATEGORY\"]" {:column_title "Cat"}}}}
+          part (body/render :table :inline "UTC" card nil
+                            {:cols simple-pivot-cols :rows simple-pivot-rows :viz-settings simple-pivot-settings})]
+      (is (= "Category" (ffirst (rendered-grid part))))))
+  (testing "the flat table is unchanged when the toggle does not apply"
+    (let [flat (html (:content (render-simple-pivot {})))]
+      (doseq [[reason settings] [["toggle off"           (assoc simple-pivot-settings :table.pivot false)]
+                                 ["unknown pivot column" (assoc simple-pivot-settings :table.pivot_column "NOPE")]
+                                 ["cell column missing"  (dissoc simple-pivot-settings :table.cell_column)]
+                                 ["pivot and cell alike" (assoc simple-pivot-settings :table.cell_column "SOURCE")]]]
+        (testing reason
+          (is (= flat (html (:content (render-simple-pivot settings)))))))))
+  (testing "a result with four columns stays flat"
+    (let [cols (conj simple-pivot-cols {:name "extra" :display_name "Extra" :base_type :type/Text})
+          rows (mapv #(conj % "x") simple-pivot-rows)]
+      (is (= [["Category" "Source"    "Count" "Extra"]
+              ["Gizmo"    "Google"    "1"     "x"]
+              ["Gizmo"    "Organic"   "2"     "x"]
+              ["Widget"   "Affiliate" "3"     "x"]
+              ["Widget"   "Google"    "4"     "x"]]
+             (rendered-grid (render-simple-pivot simple-pivot-settings cols rows)))))))
+
+(deftest simple-pivot-row-limit-test
+  (testing "the grid is built from every row, not only the first attachment-table-row-limit rows"
+    (mt/with-temporary-setting-values [attachment-table-row-limit 2]
+      (is (= [["Category" "Affiliate" "Google" "Organic"]
+              ["Gizmo"    ""          "1"      "2"]
+              ["Widget"   "3"         "4"      ""]]
+             (rendered-grid (render-simple-pivot simple-pivot-settings)))))))
+
+(deftest ^:parallel simple-pivot-compare-values-test
+  (let [day (fn [d] (java.time.LocalDate/of 2024 1 (int d)))]
+    (doseq [[a b expected] [[nil nil 0] [nil "a" -1] ["a" nil 1] [nil 1 -1] [nil {:a 1} -1] [{:a 1} nil 1]
+                            ["a" "b" -1] ["b" "a" 1] ["a" "a" 0]
+                            [1 2.5 -1] [3N 2 1] [2 2.0 0]
+                            [(day 1) (day 2) -1] [:a :b -1] [false true -1]
+                            ["1" 1 0] [(day 1) "2024-01-01" 0] [{:a 1} {:b 2} 0]]]
+      (testing (pr-str [a b])
+        (is (= expected (Integer/signum (int (#'body/compare-pivot-values a b)))))))))
+
+(deftest ^:parallel simple-pivot-order-test
+  (testing "a native query's deliberate row order is kept when the rows are not sorted within groups"
+    (is (= [["Category" "Organic" "Google"]
+            ["Widget"   "1"       ""]
+            ["Gizmo"    ""        "2"]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings simple-pivot-cols
+                                               [["Widget" "Organic" 1] ["Gizmo" "Google" 2]])))))
+  (testing "rows sorted descending within groups sort the headings descending"
+    (is (= [["Category" "Organic" "Google"]
+            ["Gizmo"    "2"       "1"]
+            ["Widget"   "4"       "3"]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings simple-pivot-cols
+                                               [["Gizmo" "Organic" 2] ["Gizmo" "Google" 1]
+                                                ["Widget" "Organic" 4] ["Widget" "Google" 3]])))))
+  (testing "nil pivot values sort first and get an empty heading"
+    (is (= [["Category" ""  "Google"]
+            ["Gizmo"    "1" "2"]
+            ["Widget"   "3" "4"]]
+           (rendered-grid (render-simple-pivot simple-pivot-settings simple-pivot-cols
+                                               [["Gizmo" nil 1] ["Gizmo" "Google" 2]
+                                                ["Widget" nil 3] ["Widget" "Google" 4]]))))
+    (is (= [nil nil 1 2] (sort @#'body/compare-pivot-values [2 nil 1 nil]))))
+  (testing "numeric pivot values are formatted as headings and sorted numerically"
+    (let [cols [{:name "CATEGORY" :display_name "Category" :base_type :type/Text}
+                {:name "YEAR"     :display_name "Year"     :base_type :type/Integer}
+                {:name "count"    :display_name "Count"    :base_type :type/Integer}]]
+      (is (= [["Category" "2" "10"]
+              ["Gizmo"    "1" "2"]
+              ["Widget"   "3" "4"]]
+             (rendered-grid (render-simple-pivot (assoc simple-pivot-settings :table.pivot_column "YEAR") cols
+                                                 [["Gizmo" 2 1] ["Gizmo" 10 2] ["Widget" 2 3] ["Widget" 10 4]])))))))
+
+(deftest ^:parallel simple-pivot-sort-state-test
+  (testing "no row sequence leaves a grouped sort state both ascending and descending within groups"
+    ;; every sequence of four rows over these values and groups, and every state along the way
+    (let [row-choices (for [value [nil 1 2 "a"], group [:x :y]] [value group])
+          row-seqs    (reduce (fn [acc _] (for [rows acc, row row-choices] (conj rows row)))
+                              [[]]
+                              (range 4))]
+      (is (empty? (for [rows  row-seqs
+                        state (reductions (fn [state [value group]] (#'body/track-order state value group))
+                                          @#'body/unsorted-state
+                                          rows)
+                        :when (and (:grouped? state) (:group-asc state) (:group-desc state))]
+                    rows))))))
+
+(deftest simple-pivot-conditional-formatting-test
+  (let [render-with (fn [rule]
+                      (html (:content (render-simple-pivot (assoc simple-pivot-settings
+                                                                  :table.column_formatting [rule])))))]
+    (testing "a value rule on the cell column colors the matching cells, and nothing else"
+      (is (= 2 (count (re-seq #"background-color"
+                              (render-with {:type "single" :columns ["count"] :color "#ff0000"
+                                            :operator ">" :value 2}))))))
+    (testing "a row-highlight rule colors only the matching cells, as in the browser's pivoted table"
+      (is (= 2 (count (re-seq #"background-color"
+                              (render-with {:type "single" :columns ["count"] :color "#ff0000"
+                                            :operator ">" :value 2 :highlight_row true}))))))))
 
 (deftest render-pin-map-resolves-columns-by-semantic-type-test
   (testing "render :pin_map finds lat/long columns by semantic type when the column settings aren't persisted"

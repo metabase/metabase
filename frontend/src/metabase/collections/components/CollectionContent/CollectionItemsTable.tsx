@@ -10,12 +10,17 @@ import { usePrevious } from "react-use";
 import { t } from "ttag";
 
 import NoResultsImg from "assets/img/no_results.svg";
-import { skipToken, useListCollectionItemsQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetCollectionItemsMetadataQuery,
+  useListCollectionItemsQuery,
+} from "metabase/api";
 import {
   ALL_MODELS,
   COLLECTION_PAGE_SIZE,
   type CollectionContentTableColumn,
   DEFAULT_VISIBLE_COLUMNS_LIST,
+  FILTERS_VISIBILITY_THRESHOLD,
 } from "metabase/collections/components/CollectionContent/constants";
 import CollectionEmptyState from "metabase/collections/components/CollectionEmptyState";
 import { trackCollectionItemsFiltered } from "metabase/common/collections/analytics";
@@ -27,6 +32,7 @@ import { isRootTrashCollection } from "metabase/common/collections/utils";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { ItemsTable } from "metabase/common/components/ItemsTable";
 import { getVisibleColumnsMap } from "metabase/common/components/ItemsTable/utils";
+import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { usePagination } from "metabase/common/hooks/use-pagination";
@@ -67,18 +73,15 @@ const getDefaultSortingOptions = (
       };
 };
 
-const getQueryFilters = (
-  models: CollectionItemModel[],
-  selectedFilters: CollectionItemModel[] | null,
-): Pick<ListCollectionItemsRequest, "models"> => {
-  if (selectedFilters == null) {
-    return { models };
-  }
-
-  return {
-    models: selectedFilters.length > 0 ? selectedFilters : ["no_models"],
-  };
-};
+// `itemsSorting` keeps the snake_case `SortingOptions` shape that `BaseItemsTable` emits, which is shared with
+// tables driving endpoints that still take snake_case (e.g. /api/ee/stale/:id). The collection items endpoint
+// takes kebab-case, so translate here rather than changing the shared UI type.
+const toItemsSortingParams = (
+  sorting: SortingOptions<ListCollectionItemsSortColumn>,
+) => ({
+  "sort-column": sorting.sort_column,
+  "sort-direction": sorting.sort_direction,
+});
 
 export type CollectionItemsTableProps = {
   collectionId?: CollectionId;
@@ -224,6 +227,26 @@ export const CollectionItemsTable = ({
     (isEmbeddingSdk() || isRootTrashCollection(collection)) &&
     showDashboardQuestions;
 
+  // `currentData` is per collection, so a previous collection's metadata never drives this one's toolbar.
+  const { currentData: itemsMetadata } = useGetCollectionItemsMetadataQuery(
+    collectionId === undefined || !showFilterBar
+      ? skipToken
+      : {
+          id: collectionId,
+          models,
+          "show-dashboard-questions": showDashboardQuestionsInList,
+        },
+  );
+  const availableModels = itemsMetadata?.available_models ?? [];
+  const totalItems = itemsMetadata?.total_items ?? 0;
+
+  const showToolbar =
+    Boolean(showFilterBar) && totalItems > FILTERS_VISIBILITY_THRESHOLD;
+  // The toolbar can disappear while a search or type filter is active, e.g. after
+  // archiving items; ignore the leftover selection rather than filtering a bare list.
+  const appliedSearchText = showToolbar ? trimmedSearchText : "";
+  const appliedFilters = showToolbar ? selectedFilters : null;
+
   return (
     <CollectionItemsTableContent
       bookmarks={bookmarks}
@@ -239,11 +262,11 @@ export const CollectionItemsTable = ({
       handleMove={handleMove}
       page={page}
       pageSize={pageSize}
-      searchText={searchText}
-      selectedFilters={selectedFilters}
+      searchText={showToolbar ? searchText : ""}
+      selectedFilters={appliedFilters}
       selected={selected}
       selectOnlyTheseItems={selectOnlyTheseItems}
-      showFilterBar={showFilterBar}
+      showToolbar={showToolbar}
       toggleItem={toggleItem}
       itemsSorting={itemsSorting}
       itemsQuery={
@@ -251,15 +274,15 @@ export const CollectionItemsTable = ({
           ? skipToken
           : {
               id: collectionId,
-              ...getQueryFilters(models, selectedFilters),
-              ...(showFilterBar ? { include_available_models: true } : {}),
+              models: appliedFilters ?? models,
               limit: pageSize,
               offset: pageSize * page,
-              show_dashboard_questions: showDashboardQuestionsInList,
-              ...itemsSorting,
-              ...(trimmedSearchText.length > 0 ? { q: trimmedSearchText } : {}),
+              "show-dashboard-questions": showDashboardQuestionsInList,
+              ...toItemsSortingParams(itemsSorting),
+              ...(appliedSearchText.length > 0 ? { q: appliedSearchText } : {}),
             }
       }
+      availableModels={availableModels}
       visibleColumns={visibleColumns}
       onClick={onClick}
       onNextPage={handleNextPage}
@@ -275,6 +298,8 @@ type CollectionItemsTableContentProps = CollectionItemsTableProps & {
   page: number;
   searchText: string;
   selectedFilters: CollectionItemModel[] | null;
+  showToolbar: boolean;
+  availableModels: string[];
   itemsSorting: SortingOptions<ListCollectionItemsSortColumn>;
   itemsQuery: ListCollectionItemsRequest | typeof skipToken;
   onNextPage: () => void;
@@ -304,7 +329,8 @@ const CollectionItemsTableContent = ({
   selectedFilters,
   selected,
   selectOnlyTheseItems,
-  showFilterBar,
+  showToolbar,
+  availableModels,
   toggleItem,
   itemsSorting,
   itemsQuery,
@@ -316,18 +342,19 @@ const CollectionItemsTableContent = ({
   onSelectedFiltersChange,
   onItemsSortingChange,
 }: CollectionItemsTableContentProps) => {
-  const { data, isFetching: fetchingItems } =
+  const { data, isFetching, isLoading, error } =
     useListCollectionItemsQuery(itemsQuery);
 
   const items = data?.data ?? [];
-  const availableModels = data?.available_models ?? [];
-  const total = data?.total;
+  const totalMatchingItems = data?.total;
   const visibleColumnsMap = useMemo(
     () => getVisibleColumnsMap(visibleColumns),
     [visibleColumns],
   );
 
-  const hasPagination: boolean = total ? total > pageSize : false;
+  const hasPagination: boolean = totalMatchingItems
+    ? totalMatchingItems > pageSize
+    : false;
 
   const unselected = getIsSelected
     ? items.filter((item) => !getIsSelected(item))
@@ -342,20 +369,27 @@ const CollectionItemsTableContent = ({
     itemsQuery !== skipToken && Boolean(itemsQuery.q?.trim());
   const hasSearchText = searchText.trim().length > 0 || hasSearchQuery;
   const hasActiveFilters = hasSearchText || selectedFilters != null;
-  const isSearching = fetchingItems && hasSearchQuery;
-  const isEmpty = !fetchingItems && items.length === 0 && !hasActiveFilters;
+  const isSearching = isFetching && hasSearchQuery;
+  const hasNoItems = !isFetching && !error && items.length === 0;
+  const isEmpty = hasNoItems && !hasActiveFilters;
 
   if (isEmpty) {
     return <EmptyContentComponent collection={collection} />;
   }
 
-  const showNoResults =
-    !fetchingItems && hasActiveFilters && items.length === 0;
+  const showNoResults = hasNoItems && hasActiveFilters;
   const showTable = !showNoResults;
+  // Shared by the skeleton and the loaded table, so both render the same header and columns.
+  const sharedTableProps = {
+    collection,
+    sortingOptions: itemsSorting,
+    onToggleSelected: toggleItem,
+    visibleColumnsMap,
+  };
 
   return (
     <>
-      {showFilterBar && (
+      {showToolbar && (
         <CollectionItemsToolbar
           searchText={searchText}
           availableModels={availableModels}
@@ -368,27 +402,32 @@ const CollectionItemsTableContent = ({
       {showNoResults && <CollectionNoResults hasSearchText={hasSearchText} />}
       {showTable && (
         <Box data-testid="collection-table">
-          <ItemsTable
-            databases={databases}
-            bookmarks={bookmarks}
-            createBookmark={createBookmark}
-            deleteBookmark={deleteBookmark}
-            items={items}
-            collection={collection}
-            sortingOptions={itemsSorting}
-            onSortingOptionsChange={onItemsSortingChange}
-            selectedItems={selected}
-            hasUnselected={hasUnselected}
-            getIsSelected={getIsSelected}
-            onToggleSelected={toggleItem}
-            onDrop={clear}
-            onMove={handleMove}
-            onCopy={handleCopy}
-            onSelectAll={handleSelectAll}
-            onSelectNone={clear}
-            onClick={onClick}
-            visibleColumnsMap={visibleColumnsMap}
-          />
+          <DelayedLoadingAndErrorWrapper
+            error={error}
+            loading={isLoading}
+            loader={
+              <ItemsTable withSkeleton items={[]} {...sharedTableProps} />
+            }
+          >
+            <ItemsTable
+              {...sharedTableProps}
+              databases={databases}
+              bookmarks={bookmarks}
+              createBookmark={createBookmark}
+              deleteBookmark={deleteBookmark}
+              items={items}
+              onSortingOptionsChange={onItemsSortingChange}
+              selectedItems={selected}
+              hasUnselected={hasUnselected}
+              getIsSelected={getIsSelected}
+              onDrop={clear}
+              onMove={handleMove}
+              onCopy={handleCopy}
+              onSelectAll={handleSelectAll}
+              onSelectNone={clear}
+              onClick={onClick}
+            />
+          </DelayedLoadingAndErrorWrapper>
           <div
             className={cx(
               CS.flex,
@@ -402,7 +441,7 @@ const CollectionItemsTableContent = ({
                 showTotal
                 page={page}
                 pageSize={pageSize}
-                total={total}
+                total={totalMatchingItems}
                 itemsLength={items.length}
                 onNextPage={onNextPage}
                 onPreviousPage={onPreviousPage}

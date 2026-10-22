@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.user-context :as user-context]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.context :as context]
    [metabase.metabot.curation :as curation]
    [metabase.metabot.table-utils :as table-utils]
@@ -15,6 +16,10 @@
 
 (def ^:private users-native-query (lib/native-query meta/metadata-provider "SELECT * FROM users"))
 (def ^:private users-mbql-query (lib/query meta/metadata-provider (meta/table-metadata :users)))
+
+(defn- create-context
+  [context]
+  (context/create-context context {:metabot (metabot.config/resolve-metabot metabot.config/internal-metabot-id)}))
 
 (deftest database-tables-for-context-returns-stubs
   (testing "Used tables become lightweight stubs — id/type/name/schema/description only, never columns"
@@ -96,91 +101,6 @@
           (is (= 0 @call-count)
               "Should not call database-tables-for-context for MBQL queries"))))))
 
-(deftest enhance-context-with-schema-python-transform
-  (testing "Enhances context with schema for Python transforms"
-    (let [mock-tables [{:id 24 :name "orders" :schema "public"}
-                       {:id 31 :name "products" :schema "public"}]]
-      (mt/with-dynamic-fn-redefs [context/python-transform-tables-for-context
-                                  (fn [_] mock-tables)]
-        (let [input {:user_is_viewing [{:type "transform"
-                                        :source {:type "python"
-                                                 :source-database 2
-                                                 :source-tables [{:alias "orders" :table_id 24}
-                                                                 {:alias "products" :table_id 31}]}}]}
-              result (#'context/enhance-context-with-schema input)
-              used-tables (get-in result [:user_is_viewing 0 :used_tables])]
-          (is (= mock-tables used-tables)))))))
-
-(deftest python-transform-tables-for-context-returns-stubs
-  (testing "Python transform used tables are lightweight stubs without columns"
-    (mt/with-dynamic-fn-redefs [table-utils/used-tables-from-ids
-                                (fn [_ _] [{:id 24 :name "orders" :schema "public" :description "orders table"}])]
-      (let [result (#'context/python-transform-tables-for-context {:database-id 2 :table-ids [24]})]
-        (is (= [{:id 24 :type :table :name "orders" :database_schema "public" :description "orders table"}]
-               result))
-        (is (not-any? #(contains? % :fields) result))))))
-
-(deftest enhance-context-with-schema-python-transform-no-source-tables
-  (testing "Handles Python transform without source-tables"
-    (let [called? (atom false)]
-      (mt/with-dynamic-fn-redefs [context/python-transform-tables-for-context
-                                  (fn [_] (reset! called? true) nil)]
-        (let [input {:user_is_viewing [{:type "transform"
-                                        :source {:type "python"
-                                                 :source-database 2
-                                                 :source-tables []}}]}
-              result (#'context/enhance-context-with-schema input)]
-          (is (nil? (get-in result [:user_is_viewing 0 :used_tables])))
-          (is (false? @called?)))))))
-
-(deftest enhance-context-with-schema-python-transform-no-source-database
-  (testing "Handles Python transform without source-database"
-    (let [called? (atom false)]
-      (mt/with-dynamic-fn-redefs [context/python-transform-tables-for-context
-                                  (fn [_] (reset! called? true) nil)]
-        (let [input {:user_is_viewing [{:type "transform"
-                                        :source {:type "python"
-                                                 :source-tables [{:alias "orders" :table_id 24}]}}]}
-              result (#'context/enhance-context-with-schema input)]
-          (is (nil? (get-in result [:user_is_viewing 0 :used_tables])))
-          (is (false? @called?)))))))
-
-(deftest annotate-transform-source-types-native-transform-test
-  (testing "Annotates draft native transform with source_type :native"
-    (let [input {:user_is_viewing [{:type "transform"
-                                    :source {:type :query
-                                             :query users-native-query}}]}
-          result (#'context/annotate-transform-source-types input)]
-      (is (= :native (get-in result [:user_is_viewing 0 :source_type]))))))
-
-(deftest annotate-transform-source-types-mbql-transform-test
-  (testing "Annotates draft MBQL transform with source_type :mbql"
-    (let [input {:user_is_viewing [{:type "transform"
-                                    :source {:type :query
-                                             :query users-mbql-query}}]}
-          result (#'context/annotate-transform-source-types input)]
-      (is (= :mbql (get-in result [:user_is_viewing 0 :source_type]))))))
-
-(deftest annotate-transform-source-types-python-transform-test
-  (testing "Annotates draft Python transform with source_type :python"
-    (let [input {:user_is_viewing [{:type "transform"
-                                    :source {:type :python
-                                             :body "import pandas as pd"
-                                             :source-database (mt/id)}}]}
-          result (#'context/annotate-transform-source-types input)]
-      (is (= :python (get-in result [:user_is_viewing 0 :source_type]))))))
-
-(deftest annotate-transform-source-types-normalization-test
-  (testing "Transform source query gets normalized before query type detection"
-    (let [input {:user_is_viewing [{:type "transform"
-                                    :source {:type "query"
-                                             :query {:lib/type "mbql/query"
-                                                     :stages [{:native "SELECT * FROM users"
-                                                               :lib/type "mbql.stage/native"}]
-                                                     :database (mt/id)}}}]}
-          result (#'context/annotate-transform-source-types input)]
-      (is (= :native (get-in result [:user_is_viewing 0 :source_type]))))))
-
 (deftest recent-views-in-context-test
   (testing "Adds recent views to context"
     (mt/with-test-user :rasta
@@ -203,7 +123,7 @@
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :selection)
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)
         (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Collection col-id :view)
-        (let [recently-viewed (-> (context/create-context {})
+        (let [recently-viewed (-> (create-context {})
                                   :user_recently_viewed)]
           (is (= 5 (count recently-viewed)))
           ;; Assert that collection is excluded even though it was viewed most recently
@@ -219,7 +139,7 @@
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Table table-id :selection)
           (mt/with-temporary-setting-values [metabot-recent-views-enabled? false]
-            (let [ctx (context/create-context {})]
+            (let [ctx (create-context {})]
               (is (not (contains? ctx :user_recently_viewed))))))))))
 
 (deftest recent-views-disabled-strips-preexisting-test
@@ -258,8 +178,8 @@
                      :model/Card      {um :id}         {:type "model"    :name "unverified m"}
                      :model/Dashboard {ud :id}         {:name "unverified d"}
                      :model/Table     {table-id :id}   {}
-                     :model/Metabot   {metabot-eid :entity_id} {:name "test metabot"
-                                                                :use_verified_content true}]
+                     :model/Metabot   metabot {:name "test metabot"
+                                               :use_verified_content true}]
         (doseq [[id type] [[vq1 "card"] [vq2 "card"] [vm1 "card"] [vm2 "card"] [vd "dashboard"]]]
           (moderation/create-review! {:moderated_item_id   id
                                       :moderated_item_type type
@@ -290,9 +210,9 @@
               ud*     (as-pair "dashboard" ud)
               table*  (as-pair "table"     table-id)
               keys-of (fn [items] (set (map (juxt :type :id) items)))]
-          (testing "no metabot-id passed -> no filtering (even with :content-verification active)"
+          (testing "The default Metabot includes recent views"
             (mt/with-premium-features #{:content-verification}
-              (let [items (-> (context/create-context {}) :user_recently_viewed)
+              (let [items (-> (create-context {}) :user_recently_viewed)
                     ks    (keys-of items)]
                 (is (= 5 (count items)))
                 (is (contains? ks uq*))
@@ -301,7 +221,7 @@
                 (is (contains? ks table*)))))
           (testing "use_verified_content=true -> filters recents to curated content"
             (mt/with-premium-features #{:content-verification}
-              (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
+              (let [items (-> (context/create-context {} {:metabot metabot})
                               :user_recently_viewed)
                     ks    (keys-of items)]
                 (is (not (contains? ks table*)) "a plain table is not curated, so it is filtered out")
@@ -317,26 +237,20 @@
           (testing "filtering is gated on the setting, not the :content-verification feature — curated is
                     precomputed at ingestion, so recents still filter without the feature (matches search)"
             (mt/with-premium-features #{}
-              (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
+              (let [items (-> (context/create-context {} {:metabot metabot})
                               :user_recently_viewed)
                     ks    (keys-of items)]
                 (is (not (contains? ks uq*)))
                 (is (not (contains? ks um*)))
-                (is (not (contains? ks ud*))))))
-          (testing "metabot-id that does not resolve -> no filtering"
-            (mt/with-premium-features #{:content-verification}
-              (let [items (-> (context/create-context {} {:metabot-id "nonexistent-entity-id"})
-                              :user_recently_viewed)
-                    ks    (keys-of items)]
-                (is (contains? ks uq*))))))))))
+                (is (not (contains? ks ud*)))))))))))
 
 (deftest recent-views-most-recent-review-wins-test
   (testing "A card that was verified and later un-verified is correctly excluded"
     (mt/with-test-user :rasta
       (mt/with-premium-features #{:content-verification}
         (mt/with-temp [:model/Card    {card-id :id}      {:type "question" :name "flip-flop"}
-                       :model/Metabot {metabot-eid :entity_id} {:name "test metabot"
-                                                                :use_verified_content true}]
+                       :model/Metabot metabot {:name "test metabot"
+                                               :use_verified_content true}]
           ;; First verify, then un-verify. create-review! marks older rows as most_recent=false.
           (moderation/create-review! {:moderated_item_id   card-id
                                       :moderated_item_type "card"
@@ -347,7 +261,7 @@
                                       :moderator_id        (mt/user->id :crowberto)
                                       :status              nil})
           (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
-          (let [items (-> (context/create-context {} {:metabot-id metabot-eid})
+          (let [items (-> (context/create-context {} {:metabot metabot})
                           :user_recently_viewed)
                 ids   (set (map :id items))]
             (is (not (contains? ids card-id))
@@ -377,7 +291,7 @@
             raw      {:user_is_viewing [{:type  "adhoc"
                                          :query (lib/query  mp (lib.metadata/table mp (mt/id :orders)))}]
                       :current_time_with_timezone "2025-01-15T12:00:00+02:00"}
-            enriched (context/create-context raw)
+            enriched (create-context raw)
             uc-vars  (user-context/enrich-context-for-template enriched)
             viewing  (:viewing_context uc-vars)]
         (testing "viewing context is non-empty"
@@ -411,3 +325,17 @@
       (mt/with-dynamic-fn-redefs [curation/curated-ids (constantly #{["card" 1] ["table" 2]})]
         (is (= [{:model :card :id 1} {:model :table :id 2}]
                (#'context/filter-recents-to-curated recents)))))))
+
+(deftest ^:parallel host-app-request?-test
+  (testing "the client header decides whether Metabase's own pages surround Metabot"
+    (doseq [[client expected] {"embedding-sdk-react"       true
+                               "embedding-simple"          true
+                               "data-app"                  true
+                               "embedding-iframe-full-app" false
+                               "embedding-iframe-static"   false
+                               nil                         false}]
+      (testing (pr-str client)
+        (is (= expected
+               (context/host-app-request? {:headers (cond-> {} client (assoc "x-metabase-client" client))}))))))
+  (testing "no request bound, e.g. a caller outside an HTTP handler"
+    (is (false? (context/host-app-request? nil)))))

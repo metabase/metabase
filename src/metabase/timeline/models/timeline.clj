@@ -5,6 +5,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
+   [metabase.timeline.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -46,7 +47,8 @@
 ;;;; serialization
 
 (defmethod serdes/deserialization-dependencies "Timeline" [{:keys [collection_id]}]
-  [[{:model "Collection" :id collection_id}]])
+  (when collection_id
+    [[{:model "Collection" :id collection_id}]]))
 
 (defmethod serdes/serialization-dependencies "Timeline" [_model-name {:keys [collection_id]}]
   ;; A Timeline only references its containing Collection, which a selective export may legitimately omit.
@@ -56,8 +58,7 @@
 (defmethod serdes/make-spec "Timeline" [_model-name opts]
   {:copy      [:archived :default :description :entity_id :icon :name]
    :skip      []
-   :transform {:created_at    (serdes/date)
-               :collection_id (serdes/fk :model/Collection)
+   :transform {:collection_id (serdes/fk :model/Collection)
                :creator_id    (serdes/fk :model/User)
-               :events        (serdes/nested :model/TimelineEvent :timeline_id (merge {:sort-by (juxt :name :created_at)} opts))}
+               :events        (serdes/nested :model/TimelineEvent :timeline_id (merge {:sort-by (juxt :name :entity_id)} opts))}
    :defaults  {:archived false :default false}})

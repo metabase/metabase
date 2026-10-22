@@ -2,36 +2,56 @@ import { Group } from "@visx/group";
 import { init } from "echarts/core";
 
 import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import { readAllPointsOutOfRange } from "metabase/static-viz/lib/data-visibility";
+import { withCartesianChartSize } from "metabase/static-viz/lib/rendering-context";
 import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
+import { STATIC_CARTESIAN_CHART_SIZE } from "metabase/static-viz/lib/utils";
 import {
   getBoxPlotLayoutModel,
   getBoxPlotModel,
   getBoxPlotOption,
   getChartLayout,
   getLegendItems,
+  getSizeAdjustedSettings,
   registerEChartsModules,
 } from "metabase/viz-core";
 
 import Watermark from "../../watermark.svg?component";
+import { DataOutOfRangeOverlay } from "../DataOutOfRangeOverlay/DataOutOfRangeOverlay";
 import { Legend } from "../Legend";
 import { calculateLegendRows } from "../Legend/utils";
 
 registerEChartsModules();
 
-const WIDTH = 540;
-const HEIGHT = 360;
 const LEGEND_PADDING = 8;
 
 export function BoxPlotChart({
   rawSeries,
-  settings,
-  renderingContext,
-  width = WIDTH,
-  height = HEIGHT,
+  settings: originalSettings,
+  renderingContext: originalRenderingContext,
+  width = STATIC_CARTESIAN_CHART_SIZE.width,
+  height = STATIC_CARTESIAN_CHART_SIZE.height,
   isStorybook = false,
   hasDevWatermark = false,
+  gridSize,
 }: StaticChartProps) {
-  const chartModel = getBoxPlotModel(rawSeries, settings);
+  const renderingContext = withCartesianChartSize(originalRenderingContext, {
+    width,
+    height,
+  });
+  const settings = getSizeAdjustedSettings({
+    settings: originalSettings,
+    width,
+    height,
+    gridSize,
+  });
+  const chartModel = getBoxPlotModel(
+    rawSeries,
+    settings,
+    [],
+    undefined,
+    renderingContext.cartesianSize,
+  );
 
   const legendItems = getLegendItems(chartModel.seriesModels);
   const isReversed = settings["legend.is_reversed"];
@@ -79,6 +99,7 @@ export function BoxPlotChart({
   chart.setOption(option);
 
   const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  const allPointsOutOfRange = readAllPointsOutOfRange(chart);
   chart.dispose();
 
   return (
@@ -96,6 +117,13 @@ export function BoxPlotChart({
           preserveAspectRatio="xMinYMin slice"
           fill={renderingContext.getColor("text-secondary")}
           opacity={0.2}
+        />
+      )}
+      {allPointsOutOfRange && (
+        <DataOutOfRangeOverlay
+          width={width}
+          height={height}
+          renderingContext={renderingContext}
         />
       )}
     </svg>

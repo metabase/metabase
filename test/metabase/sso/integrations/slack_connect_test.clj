@@ -63,9 +63,9 @@
 
 (defmacro with-successful-oidc! [& body]
   `(do
-     (derive :provider/slack-connect :provider/test-successful-oidc)
+     (auth-identity/derive! :provider/slack-connect :provider/test-successful-oidc)
      ~@body
-     (underive :provider/slack-connect :provider/test-successful-oidc)))
+     (auth-identity/underive! :provider/slack-connect :provider/test-successful-oidc)))
 
 ;;; -------------------------------------------------- Prerequisites Tests --------------------------------------------------
 

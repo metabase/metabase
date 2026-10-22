@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.queries.schema :as queries.schema]
    [metabase.util.malli :as mu]
@@ -39,14 +40,14 @@
    [:name                                ms/NonBlankString]
    [:authority_level    {:optional true} [:maybe :string]]
    [:is_remote_synced   {:optional true} :boolean]
-   [:card_type          {:optional true} [:maybe ::queries.schema/card-type]]
+   [:card_type          {:optional true} [:maybe ::queries.schema/card.type]]
    [:description        {:optional true} [:maybe :string]]
    [:display            {:optional true} [:maybe :string]]])
 
 (mu/defn- normalize-bookmark-result :- BookmarkResult
   "Normalizes bookmark results. Bookmarks are left joined against the card, collection, dashboard, document,
   and exploration tables, but only points to one of them. Normalizes it so it has just the desired fields."
-  [result]
+  [result :- ::bookmarks.db/bookmark-row]
   (let [result            (cond-> (into {} (remove (comp nil? second) result))
                             ;; If not a collection then remove collection properties
                             ;; to avoid shadowing the "real" properties.
@@ -74,7 +75,7 @@
   item_id, name, and description from the underlying bookmarked item.
 
   Bookmarks whose target `user-id` can no longer read are filtered out."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (let [user-scope {:current-user-id user-id
                     :is-superuser?   (perms/is-superuser? user-id)}]
     (->> (bookmarks.db/bookmark-rows-for-user user-id user-scope)

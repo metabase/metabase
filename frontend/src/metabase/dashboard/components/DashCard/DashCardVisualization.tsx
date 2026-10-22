@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { dashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
@@ -15,11 +16,16 @@ import {
   getDashcardData,
 } from "metabase/dashboard/selectors";
 import {
+  getIsDashCardTimelineEventsEnabled,
+  useDashCardTimelineEvents,
+  useReportDashCardTimelineEventsEnabled,
+} from "metabase/dashboard/timeline-events";
+import {
   getVirtualCardType,
   isDashcardAccessRestricted,
 } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
+import { useMetadataProvider } from "metabase/metadata-store";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Path } from "metabase/router";
 import { useNavigate } from "metabase/router";
@@ -34,7 +40,7 @@ import type { LoadingViewProps } from "metabase/visualizations/components/Visual
 import {
   LEGEND_LABEL_FONT_SIZE,
   LEGEND_LABEL_FONT_WEIGHT,
-} from "metabase/visualizations/components/legend/LegendCaption";
+} from "metabase/visualizations/components/legend/constants";
 import type {
   CardSlownessStatus,
   ClickObject,
@@ -55,7 +61,6 @@ import {
   isCartesianChart,
 } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
@@ -88,7 +93,10 @@ import { DashCardMenu } from "./DashCardMenu/DashCardMenu";
 import { DashCardParameterMapper } from "./DashCardParameterMapper/DashCardParameterMapper";
 import S from "./DashCardVisualization.module.css";
 import { getDashcardTokenId, getDashcardUuid } from "./dashcard-ids";
-import type { DashCardOnChangeCardAndRunHandler } from "./types";
+import type {
+  DashCardGetCardHref,
+  DashCardOnChangeCardAndRunHandler,
+} from "./types";
 import {
   getCardsFromSeries,
   getMissingColumnsFromVisualizationSettings,
@@ -123,8 +131,8 @@ interface DashCardVisualizationProps {
   dashcard: DashboardCard;
   series: DashCardSeries;
   question: Question | null;
-  metadata: Metadata;
   getHref?: () => string | undefined;
+  getCardHref?: DashCardGetCardHref;
 
   gridSize: {
     width: number;
@@ -164,8 +172,8 @@ export function DashCardVisualization({
   dashcard,
   series: rawSeries,
   question,
-  metadata,
   getHref,
+  getCardHref,
   gridSize,
   gridItemWidth,
   totalNumGridCols,
@@ -244,13 +252,18 @@ export function DashCardVisualization({
     }
   }, [dashcard, rawSeries]);
 
+  // The metric's own database, which is the only one this component resolves.
+  const metadataProvider = useMetadataProvider(
+    rawSeries?.[0]?.json_query?.database ?? null,
+  );
+
   const untranslatedSeries: DashCardSeries | VisualizerSeries = useMemo(() => {
     if (!dashcard || !rawSeries || rawSeries.length === 0) {
       return rawSeries;
     }
 
     if (!isVisualizerDashboardCard(dashcard)) {
-      return getMetricSeriesWithDefaultDisplay(rawSeries, metadata);
+      return getMetricSeriesWithDefaultDisplay(rawSeries, metadataProvider);
     }
 
     const visualizerEntity = dashcard.visualization_settings.visualization;
@@ -292,7 +305,7 @@ export function DashCardVisualization({
         name: dashcard.card.name,
         description: dashcard.card.description,
         display: display ?? DEFAULT_VISUALIZER_DISPLAY,
-        visualization_settings: settings,
+        visualization_settings: _.omit(settings, "click_behavior"),
         dataset_query: STRUCTURED_QUERY_TEMPLATE,
       },
       _.omit(dashcard.visualization_settings, "visualization"),
@@ -339,7 +352,7 @@ export function DashCardVisualization({
     }
 
     return series;
-  }, [rawSeries, dashcard, datasets, metadata]);
+  }, [rawSeries, dashcard, datasets, metadataProvider]);
 
   const series = PLUGIN_CONTENT_TRANSLATION.useTranslateSeries<
     DashCardSeriesItem | VisualizerSeriesItem
@@ -435,6 +448,17 @@ export function DashCardVisualization({
     [onChangeCardAndRun, findCardById],
   );
 
+  const getNextCardHref = useMemo(() => {
+    if (!getCardHref) {
+      return;
+    }
+
+    return (nextCard: SeriesCard) => {
+      const previousCard = findCardById(nextCard.id);
+      return previousCard ? getCardHref({ nextCard, previousCard }) : undefined;
+    };
+  }, [getCardHref, findCardById]);
+
   const onOpenQuestion = useCallback(
     (cardId: CardId | null) => {
       const card = findCardById(cardId);
@@ -487,6 +511,24 @@ export function DashCardVisualization({
       bufferSpace: 100,
     });
 
+  const {
+    isEnabled: isTimelineEventsEnabled,
+    timelineEvents,
+    timelineEventsVisibility,
+    selectedTimelineEventIds,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+    onTimelineEventsShown,
+  } = useDashCardTimelineEvents(dashcard);
+  const isChartTimelineEventsEnabled = useSelector((state) =>
+    getIsDashCardTimelineEventsEnabled(state, dashcard.id),
+  );
+  const handleTimelineEventsEnabledChange =
+    useReportDashCardTimelineEventsEnabled(dashcard.id);
+  const withTimelineEvents =
+    isTimelineEventsEnabled && isChartTimelineEventsEnabled;
+
   const actionButtons = useMemo(() => {
     const cardId = dashcard.card_id ?? dashcard.card?.id;
     const cardResult = cardId ? datasets?.[cardId] : undefined;
@@ -505,6 +547,7 @@ export function DashCardVisualization({
         result,
         canEdit: !isVisualizerCard,
         openUnderlyingQuestionItems,
+        withTimelineEvents,
       });
 
     const errorStatus =
@@ -538,6 +581,7 @@ export function DashCardVisualization({
             result={result}
             dashcard={dashcard}
             canEdit={!isVisualizerCard}
+            withTimelineEvents={withTimelineEvents}
             onEditVisualization={
               isVisualizerCard ? onEditVisualization : undefined
             }
@@ -553,6 +597,7 @@ export function DashCardVisualization({
     dashcardMenu,
     datasets,
     isEditing,
+    withTimelineEvents,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
@@ -608,9 +653,9 @@ export function DashCardVisualization({
               ? rawSeries
               : undefined
           }
-          metadata={metadata}
           mode={clickActionMode ?? dashboardClickActionMode}
           getHref={getHref}
+          getCardHref={getNextCardHref}
           gridSize={gridSize}
           totalNumGridCols={totalNumGridCols}
           headerIcon={headerIcon}
@@ -640,9 +685,16 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
+          timelineEvents={timelineEvents}
+          timelineEventsVisibility={timelineEventsVisibility}
+          selectedTimelineEventIds={selectedTimelineEventIds}
+          onOpenTimelines={onOpenTimelines}
+          onSelectTimelineEvents={onSelectTimelineEvents}
+          onDeselectTimelineEvents={onDeselectTimelineEvents}
+          onTimelineEventsShown={onTimelineEventsShown}
+          onTimelineEventsEnabledChange={handleTimelineEventsEnabledChange}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}
-          autoAdjustSettings
         />
       </EmbeddingEntityContextProvider>
     </div>

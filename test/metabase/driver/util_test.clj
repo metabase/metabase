@@ -14,6 +14,8 @@
    [metabase.lib.test-util :as lib.tu]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.settings.core :as setting]
+   [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -100,14 +102,14 @@
                                       :required    false}
                                      {:name "ssl"}
                                      {:name "use-keystore"
-                                      :visible-if  {:ssl true}}
+                                      :visible-if  {"ssl" true}}
                                      {:name         "keystore-password-value"
                                       :display-name "Keystore Password",
                                       :type         "password",
                                       :required     false,
-                                      :visible-if   {:use-keystore true
+                                      :visible-if   {"use-keystore" true
                                                      ;; this should have been filled in as a transitive dependency
-                                                     :ssl          true}}
+                                                     "ssl"          true}}
                                      {:name         "keystore-options"
                                       :display-name "Keystore"
                                       :options      [{:name  "Local file path"
@@ -116,17 +118,17 @@
                                                       :value "uploaded"}]
                                       :type         "select"
                                       :default      "local"
-                                      :visible-if   {:use-keystore true
-                                                     :ssl          true}}
+                                      :visible-if   {"use-keystore" true
+                                                     "ssl"          true}}
                                      {:name                 "keystore-value"
                                       :type                 "textFile"
                                       :treat-before-posting "base64"
-                                      :visible-if           {:keystore-options "uploaded"}}
+                                      :visible-if           {"keystore-options" "uploaded"}}
                                      {:name        "keystore-path"
                                       :type        "string"
-                                      :visible-if  {:keystore-options "local"
-                                                    :use-keystore true
-                                                    :ssl          true}}]
+                                      :visible-if  {"keystore-options" "local"
+                                                    "use-keystore" true
+                                                    "ssl"          true}}]
                                     false]
                                    [[{:name "host"}
                                      {:name        "password-value"
@@ -135,16 +137,16 @@
                                       :required    false}
                                      {:name "ssl"}
                                      {:name "use-keystore"
-                                      :visible-if  {:ssl true}}
+                                      :visible-if  {"ssl" true}}
                                      {:name         "keystore-password-value"
                                       :display-name "Keystore Password"
                                       :type         "password"
                                       :required     false
-                                      :visible-if   {:use-keystore true}}
+                                      :visible-if   {"use-keystore" true}}
                                      {:name                 "keystore-value"
                                       :type                 "textFile"
                                       :treat-before-posting "base64"
-                                      :visible-if           {:use-keystore true}}]
+                                      :visible-if           {"use-keystore" true}}]
                                     true]]]
       (testing (str " with is-hosted? " is-hosted?)
         (mt/with-premium-features (if is-hosted? #{:hosting} #{})
@@ -196,14 +198,14 @@
              :description "Comma separated names of schemas that should appear in Metabase"
              :helper-text "You can use patterns like \"auth*\" to match multiple schemas"
              :type        "text"
-             :visible-if  {:my-schema-filters-type "inclusion"}
+             :visible-if  {"my-schema-filters-type" "inclusion"}
              :required    true}
             {:name        "my-schema-filters-patterns"
              :placeholder "E.x. public,auth*"
              :description "Comma separated names of schemas that should NOT appear in Metabase"
              :helper-text "You can use patterns like \"auth*\" to match multiple schemas"
              :type        "text"
-             :visible-if  {:my-schema-filters-type "exclusion"}
+             :visible-if  {"my-schema-filters-type" "exclusion"}
              :required    true}
             {:name "last-prop"}]
            (driver.u/connection-props-server->client
@@ -493,12 +495,14 @@
 (deftest features-batched-falls-back-when-budget-blown-test
   (testing "a blown batch budget falls back to the per-feature path instead of throwing or truncating"
     (let [db (driver.u/ensure-lib-database (mt/db))]
-      (with-redefs [driver.u/supports?-timeout-ms 20
-                    driver/database-supports? (fn [_ _ _] (Thread/sleep 50) true)]
-        ;; every per-feature check times out too and degrades to false, which is exactly what the unbatched
-        ;; path returns under the same stall
-        (is (= (#'driver.u/features* :h2 db)
-               (#'driver.u/features-batched* :h2 db)))))))
+      ;; Each check is slow enough that the whole scan overruns the batch budget, but far short of the
+      ;; per-feature timeout, so the fallback path answers every feature rather than degrading to false.
+      (with-redefs [driver.u/features-timeout-ms (constantly 5)
+                    driver/database-supports? (fn [_ _ _] (Thread/sleep 1) true)]
+        (let [expected (#'driver.u/features* :h2 db)]
+          (is (seq expected) "the fallback has to return a real feature set for this comparison to mean anything")
+          (is (= expected
+                 (#'driver.u/features-batched* :h2 db))))))))
 
 (deftest sqlite-in-available-drivers
   (with-redefs [driver.impl/hierarchy (->  (derive (make-hierarchy) :sqlite :metabase.driver/driver)
@@ -923,8 +927,39 @@
       (is (= :external-only (driver.settings/warehouse-allowed-networks)))
       (is (=? {:status-code 400}
               (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
-  (testing "an unrecognized policy fails closed at the point of use rather than quietly allowing everything"
+  (testing "an unrecognized policy is refused outright rather than silently leaving the instance on some other
+           policy -- startup reads this Setting, so the instance does not come up at all"
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "unknown-policy"]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
-                            #"Unknown network policy"
-                            (driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))
+                            #"Invalid MB_WAREHOUSE_ALLOWED_NETWORKS"
+                            (driver.settings/warehouse-allowed-networks))))))
+
+(deftest warehouse-allowed-networks-is-environment-only-test
+  (testing "the policy is read from the environment only: a value that reached the setting table -- an older
+           version's admin API, a serialization import, a direct write -- is ignored, not trusted"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks nil]
+      (mt/with-premium-features #{:hosting}
+        (mt/with-temporary-raw-setting-values [warehouse-allowed-networks "allow-all"]
+          (is (= :external-only (driver.settings/warehouse-allowed-networks)))
+          (is (=? {:status-code 400}
+                  (ssrf-error #(driver.u/validate-connection-hosts! :postgres {:host "127.0.0.1"}))))))))
+  (testing "and the environment still wins over a stored value"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
+      (mt/with-temporary-raw-setting-values [warehouse-allowed-networks "external-only"]
+        (is (= :allow-private (driver.settings/warehouse-allowed-networks))))))
+  (testing "nothing can write it: it is a read-only Setting"
+    (is (thrown-with-msg? UnsupportedOperationException
+                          #"read-only setting"
+                          (setting/set! :warehouse-allowed-networks :allow-all)))))
+
+(deftest warehouse-allowed-networks-startup-validation-test
+  (testing "a policy the environment names but Metabase does not recognize stops the boot, rather than waiting
+           for the first query to discover it"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-everything"]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                            #"Invalid MB_WAREHOUSE_ALLOWED_NETWORKS"
+                            (startup/def-startup-validation! ::driver.settings/warehouse-allowed-networks)))))
+  (testing "a policy it does recognize lets the boot continue"
+    (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
+      (is (= :allow-private
+             (startup/def-startup-validation! ::driver.settings/warehouse-allowed-networks))))))

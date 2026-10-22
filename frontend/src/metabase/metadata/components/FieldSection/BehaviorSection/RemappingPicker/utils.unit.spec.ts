@@ -1,4 +1,3 @@
-import { checkNotNull } from "metabase/utils/types";
 import type { FieldValue } from "metabase-types/api";
 import {
   createMockField,
@@ -10,7 +9,6 @@ import {
   getFkTargetTableEntityNameOrNull,
   getOptions,
   getValue,
-  hydrateTableFields,
 } from "./utils";
 
 describe("RemappingPicker/utils", () => {
@@ -88,32 +86,6 @@ describe("RemappingPicker/utils", () => {
 
       expect(getFkTargetTableEntityNameOrNull(table)).toBe(undefined);
       expect(getFkTargetTableEntityNameOrNull(undefined)).toBe(undefined);
-    });
-  });
-
-  describe("hydrateTableFields", () => {
-    it("adds DataSelector compatibility methods to every field", () => {
-      const table = createMockTable({
-        fields: [createMockField({ display_name: "Total" })],
-      });
-
-      const hydratedField = checkNotNull(
-        hydrateTableFields(table)?.fields?.[0],
-      );
-
-      expect(hydratedField).toEqual(
-        expect.objectContaining({
-          display_name: "Total",
-          displayName: expect.any(Function),
-          icon: expect.any(Function),
-          getPlainObject: expect.any(Function),
-          table,
-        }),
-      );
-    });
-
-    it("passes through an undefined table", () => {
-      expect(hydrateTableFields(undefined)).toBe(undefined);
     });
   });
 });

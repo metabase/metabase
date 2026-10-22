@@ -23,10 +23,12 @@
   "Queue used to recalculate the field values for updated columns in the background."
   (ArrayBlockingQueue. 1000))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *field-value-invalidate-queue*
   "A layer of indirection on the actual [[field-value-invalidation-queue]], for testing."
   nil)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *invalidate-select-batch-size*
   "Chunk size when fetching :model/Field rows for invalidation. Keeps a single SQL `IN (…)`
   clause well under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100)."
@@ -121,7 +123,7 @@
                       (action-v2.db/fields-by-name table-id field-names))
         coerce-fn   (->> (for [{field-name :name, :keys [coercion_strategy, semantic_type]} fields
                                :when (not (isa? semantic_type :type/PK))]
-                           [(keyword field-name)
+                           [field-name
                             (or (when (nil? coercion_strategy) identity)
                                 (:in (data-editing.coerce/coercion-fns coercion_strategy))
                                 (throw (ex-info "Coercion strategy has no defined coercion function"
@@ -129,7 +131,7 @@
                                                  :field field-name
                                                  :coercion_strategy coercion_strategy})))])
                          (into {}))
-        coerce      (fn [k v] (some-> v ((coerce-fn (keyword k) identity))))]
+        coerce      (fn [k v] (some-> v ((coerce-fn (name k) identity))))]
     (for [row input-rows]
       (m/map-kv-vals coerce row))))
 
@@ -175,7 +177,9 @@
   (let [table-ids        (distinct (map :table-id diffs))
         table->pk-fields (u/group-by identity select-table-pk-fields concat table-ids)
         diff->pk-diff    (u/for-map [{:keys [table-id before after] :as diff} diffs
-                                     :when (or before after)]
+                                     :when (or before after)
+                                     :let [before (some-> before (update-keys u/qualified-name))
+                                           after  (some-> after (update-keys u/qualified-name))]]
                            [diff {:pk     (get-row-pks (table->pk-fields table-id) (or after before))
                                   :before before
                                   :after  after}])]

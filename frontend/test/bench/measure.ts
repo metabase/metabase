@@ -1,0 +1,562 @@
+/* eslint-env node */
+
+/**
+ * Loads a page repeatedly in a throttled headless Chrome and reports how long
+ * the initial bundle takes to download, parse and run.
+ *
+ * `domContentLoadedEventEnd` is the number to read. A `defer` script is
+ * guaranteed to have downloaded, parsed and executed before DOMContentLoaded
+ * fires, so it brackets exactly the work a chunk layout can move around. It also
+ * survives the app erroring against the stub API, which a paint metric does not.
+ *
+ * The first load fills the HTTP cache, the second fills V8's code cache, and the
+ * loads after that are the steady state a returning user sees. Both are
+ * reported, because a chunk layout can help one and hurt the other.
+ *
+ * The network is shaped with tc netem rather than by the browser, because
+ * browser throttling is applied per request and so prices every byte at the
+ * bandwidth rate wherever it sits in the response. A layout that pushes the
+ * script tags past the initial congestion window costs a whole round trip
+ * instead, which only packet-level shaping reproduces. Linux only, and it needs
+ * root: this runs on a CI runner.
+ */
+import { spawn, spawnSync } from "node:child_process";
+import fs from "node:fs";
+import http from "node:http";
+
+const CHROME =
+  process.env.CHROME_PATH ||
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+
+const url = process.argv[2];
+const runs = Number(process.argv[3] || 8);
+const cpuThrottle = Number(process.env.CPU_THROTTLE || 4);
+const mbps = Number(process.env.NETWORK_MBPS || 10);
+const latency = Number(process.env.NETWORK_LATENCY || 40);
+const keepCache = Boolean(process.env.WARM);
+// Signs the load in, so the document carries what a real user's does: their
+// locale and, once the build writes them, the route's preload hints.
+const sessionCookie = process.env.SESSION_COOKIE || "";
+const port = 9222 + Number(process.env.PORT_OFFSET || 0);
+
+if (!url) {
+  console.error("usage: bun measure.ts <url> [runs]");
+  console.error(
+    "env: CPU_THROTTLE NETWORK_MBPS NETWORK_LATENCY WARM PORT_OFFSET SESSION_COOKIE",
+  );
+  process.exit(1);
+}
+
+const backendPort = Number(new URL(url).port || 80);
+const shapeNetwork = mbps > 0 || latency > 0;
+
+/** What a real link carries. Loopback defaults to 65536. */
+const LOOPBACK_MTU = 1500;
+const LOOPBACK_MTU_DEFAULT = 65536;
+
+const privileged = (process.getuid?.() ?? 0) === 0 ? [] : ["sudo"];
+
+function asRoot(command: string): { ok: boolean; stderr: string } {
+  const [executable, ...args] = [...privileged, "sh", "-c", command];
+  const result = spawnSync(executable, args, { encoding: "utf8" });
+  return { ok: result.status === 0, stderr: (result.stderr || "").trim() };
+}
+
+function shellOutput(command: string): string {
+  return spawnSync("sh", ["-c", command], { encoding: "utf8" }).stdout || "";
+}
+
+/**
+ * The window is counted in segments, so loopback's 65536-byte MTU makes the
+ * initial ten-segment window about 640 kB. Every document this harness loads
+ * fits in one flight at that size, and the reading comes out the same whatever
+ * the layout does. Forcing 1500 is what makes the boundary observable.
+ */
+function shapeLoopback(): void {
+  // A packet crosses lo's egress once in each direction, so the round trip is
+  // twice the one-way delay netem is given.
+  const perDirectionMs = Math.round(latency / 2);
+  const bitsPerSecond = mbps * 1024 * 1024;
+
+  asRoot(`ip link set dev lo mtu ${LOOPBACK_MTU}`);
+  // Nothing to delete on a fresh runner, so this one is allowed to fail.
+  asRoot("tc qdisc del dev lo root");
+
+  const steps = [
+    "tc qdisc add dev lo root handle 1: prio bands 3",
+    `tc qdisc add dev lo parent 1:1 handle 10: netem delay ${perDirectionMs}ms rate ${bitsPerSecond}bit`,
+    // Only the backend is shaped. The harness drives Chrome over CDP on
+    // loopback as well, and delaying that channel would move the moment each
+    // reading is taken without moving the load the reading describes.
+    ...["dport", "sport"].flatMap((direction) => [
+      `tc filter add dev lo parent 1: protocol ip prio 1 u32 match ip ${direction} ${backendPort} 0xffff flowid 1:1`,
+      `tc filter add dev lo parent 1: protocol ipv6 prio 2 u32 match ip6 ${direction} ${backendPort} 0xffff flowid 1:1`,
+    ]),
+  ];
+
+  for (const step of steps) {
+    const { ok, stderr } = asRoot(step);
+    if (!ok) {
+      console.error(`could not shape the network: ${step}\n${stderr}`);
+      process.exit(1);
+    }
+  }
+
+  // An unshaped run still reports plausible times, so a shaping failure would
+  // read as a result rather than as an error. Check it took.
+  const link = shellOutput("ip link show lo");
+  const qdisc = shellOutput("tc qdisc show dev lo");
+  const problems = [
+    !link.includes(`mtu ${LOOPBACK_MTU}`) &&
+      `lo is not at mtu ${LOOPBACK_MTU}: ${link.split("\n")[0].trim()}`,
+    !qdisc.includes("netem") && `no netem qdisc on lo: ${qdisc.trim()}`,
+    perDirectionMs > 0 &&
+      !qdisc.includes(`delay ${perDirectionMs}ms`) &&
+      `netem is not delaying ${perDirectionMs}ms: ${qdisc.trim()}`,
+  ].filter(Boolean);
+
+  if (problems.length > 0) {
+    console.error(`the network shaping did not take:\n${problems.join("\n")}`);
+    process.exit(1);
+  }
+}
+
+/**
+ * A first visit opens a connection, and so does a return visit. A load here
+ * follows the one before it by seconds, and Chrome would reuse the connection
+ * that one left open. That skips the handshake, a whole round trip the reading
+ * then lacks, and how often it happens moves with the timing between loads.
+ * Closing the connections makes every load pay for its own.
+ */
+async function closeBackendConnections(): Promise<void> {
+  const sockets = `'( dport = :${backendPort} or sport = :${backendPort} )'`;
+  let open = "";
+
+  // More than once, because a request the last page had in flight can still
+  // open a connection after the first pass.
+  for (let attempt = 0; attempt < 20; attempt++) {
+    asRoot(`ss -K -t ${sockets}`);
+    open = shellOutput(`ss -H -t state established ${sockets}`).trim();
+    if (!open) {
+      return;
+    }
+    await sleep(50);
+  }
+
+  // A kernel without socket destroy leaves them open and reports nothing.
+  console.error(`connections to the backend stayed open:\n${open}`);
+  process.exit(1);
+}
+
+function unshapeLoopback(): void {
+  asRoot("tc qdisc del dev lo root");
+  asRoot(`ip link set dev lo mtu ${LOOPBACK_MTU_DEFAULT}`);
+}
+
+/** What READ_METRICS evaluates to in the page. */
+interface Run {
+  href: string;
+  language: string;
+  ttfb: number;
+  domContentLoaded: number;
+  load: number;
+  firstPaint: number;
+  firstContentfulPaint: number;
+  largestContentfulPaint: number;
+  appMounted: number;
+  pageReady: number;
+  lastScriptEnd: number;
+  scriptCount: number;
+  scriptBytes: number;
+  styleBytes: number;
+  totalBytes: number;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Cleared by the first load that shows the build records no performance
+// marks, so the rest of the series skips waiting for them.
+let buildRecordsMarks = true;
+
+function devtools(path: string, method = "GET"): Promise<any> {
+  return new Promise((resolve, reject) => {
+    http
+      .request({ host: "127.0.0.1", port, path, method }, (res) => {
+        let body = "";
+        res.on("data", (chunk) => (body += chunk));
+        res.on("end", () => {
+          try {
+            resolve(body ? JSON.parse(body) : {});
+          } catch {
+            resolve({});
+          }
+        });
+      })
+      .on("error", reject)
+      .end();
+  });
+}
+
+/** The slice of the DevTools protocol this needs, over the native WebSocket. */
+class Session {
+  socket: WebSocket;
+  lastId: number;
+  pending: Map<number, (result: any) => void>;
+
+  constructor(socket: WebSocket) {
+    this.socket = socket;
+    this.lastId = 0;
+    this.pending = new Map();
+
+    socket.addEventListener("message", (event: MessageEvent) => {
+      const message = JSON.parse(event.data);
+      const resolve = this.pending.get(message.id);
+      if (resolve) {
+        this.pending.delete(message.id);
+        resolve(message.result);
+      }
+    });
+  }
+
+  send(method: string, params: Record<string, unknown> = {}): Promise<any> {
+    const id = ++this.lastId;
+    this.socket.send(JSON.stringify({ id, method, params }));
+    return new Promise((resolve) => this.pending.set(id, resolve));
+  }
+}
+
+// Everything up to `load` comes from navigation timing, and the paint entries
+// say when the browser first drew. `mb:app-mounted` and `mb:page-ready` are the
+// two the app records itself, because only it knows when the shell committed
+// and when the page has its data. See metabase/utils/performance-marks.ts.
+const READ_METRICS = `JSON.stringify((() => {
+  const nav = performance.getEntriesByType("navigation")[0];
+  // Only what arrived before DOMContentLoaded is counted. That set is fixed
+  // once the event fires, so the counts do not depend on when this runs, and a
+  // build that records no marks is counted at the same moment as one that does.
+  const resources = performance
+    .getEntriesByType("resource")
+    .filter((entry) => nav && entry.responseEnd <= nav.domContentLoadedEventEnd);
+  const scripts = resources.filter((entry) => entry.name.endsWith(".js"));
+  const paint = (name) => {
+    const entry = performance.getEntriesByName(name)[0];
+    return entry ? entry.startTime : 0;
+  };
+  return {
+    href: location.href,
+    // What the server actually served, so a row says which locale it measured.
+    language: document.documentElement.lang,
+    ttfb: nav ? nav.responseStart : 0,
+    domContentLoaded: nav ? nav.domContentLoadedEventEnd : 0,
+    load: nav ? nav.loadEventEnd : 0,
+    firstPaint: paint("first-paint"),
+    firstContentfulPaint: paint("first-contentful-paint"),
+    largestContentfulPaint: window.__benchLargestPaint || 0,
+    appMounted: paint("mb:app-mounted"),
+    pageReady: paint("mb:page-ready"),
+    lastScriptEnd: Math.max(0, ...scripts.map((entry) => entry.responseEnd)),
+    scriptCount: scripts.length,
+    scriptBytes: scripts.reduce((total, entry) => total + entry.encodedBodySize, 0),
+    styleBytes: resources
+      .filter((entry) => entry.name.endsWith(".css"))
+      .reduce((total, entry) => total + entry.encodedBodySize, 0),
+    // Every byte the page fetched before DOMContentLoaded, compressed as it
+    // arrived: the document itself, then each script, stylesheet, font, image
+    // and API response.
+    totalBytes: (nav ? nav.encodedBodySize : 0) + resources
+      .reduce((total, entry) => total + entry.encodedBodySize, 0),
+  };
+})())`;
+
+// Records the last largest-contentful-paint the page reports. The entries arrive
+// in increasing order, so the latest one is the largest so far. `buffered` covers
+// a paint that lands before the observer is registered.
+//
+// The browser keeps revising this until the user interacts, and the reading is
+// taken once the page reports ready. It is therefore a lower bound rather than
+// the final figure, which is what makes it comparable between commits.
+const OBSERVE_LARGEST_PAINT = `
+  window.__benchLargestPaint = 0;
+  new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      window.__benchLargestPaint = entry.startTime;
+    }
+  }).observe({ type: "largest-contentful-paint", buffered: true });
+`;
+
+// A fixed workload with the three kinds of work a page load does: parse and
+// compile, allocate and sort, build and lay out. How long it takes is the speed
+// this runner gives the page right now, under the same throttle as the loads.
+const CALIBRATE = `(() => {
+  const start = performance.now();
+  let source = "";
+  for (let index = 0; index < 4000; index++) {
+    source += "function f" + index + "(a, b) { return a * " + index + " + b; }\\n";
+  }
+  // Unique each time, so the compile is never served from a cache.
+  new Function(source + "return f3999(1, " + Math.random() + ");")();
+  const items = Array.from({ length: 200000 }, (_, index) => ({
+    key: (index * 2654435761) % 1000003,
+    label: "item " + index,
+  }));
+  items.sort((a, b) => a.key - b.key);
+  const root = document.createElement("div");
+  for (let index = 0; index < 3000; index++) {
+    const paragraph = document.createElement("p");
+    paragraph.textContent = items[index].label;
+    root.appendChild(paragraph);
+  }
+  document.body.appendChild(root);
+  root.getBoundingClientRect();
+  root.remove();
+  return performance.now() - start;
+})()`;
+
+const CALIBRATION_REPEATS = 5;
+
+async function calibrate(): Promise<number[]> {
+  const target = await devtools("/json/new?about:blank", "PUT");
+  const socket = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((resolve) => socket.addEventListener("open", resolve));
+  const session = new Session(socket);
+  await session.send("Emulation.setCPUThrottlingRate", { rate: cpuThrottle });
+
+  const readings = [];
+  // One extra at the front, discarded, so no reading pays for a cold renderer.
+  for (let repeat = 0; repeat <= CALIBRATION_REPEATS; repeat++) {
+    const { result } = await session.send("Runtime.evaluate", {
+      expression: CALIBRATE,
+      returnByValue: true,
+    });
+    readings.push(Number(result.value));
+  }
+
+  socket.close();
+  await devtools(`/json/close/${target.id}`);
+  return readings.slice(1);
+}
+
+async function launchChrome() {
+  const chrome = spawn(CHROME, [
+    "--headless=new",
+    // The harness only ever loads its own server on localhost, and a Chrome
+    // installed by CI has no SUID sandbox binary to use.
+    "--no-sandbox",
+    `--remote-debugging-port=${port}`,
+    `--user-data-dir=${fs.mkdtempSync("/tmp/metabase-bench-")}`,
+    "--no-first-run",
+    "--disable-extensions",
+    "--disable-background-networking",
+    "--window-size=1280,900",
+  ]);
+  chrome.stderr.on("data", () => {});
+
+  for (let attempt = 0; attempt < 60; attempt++) {
+    try {
+      await devtools("/json/version");
+      return chrome;
+    } catch {
+      await sleep(250);
+    }
+  }
+  throw new Error(`Chrome did not open a debugging port on ${port}`);
+}
+
+async function loadOnce() {
+  if (shapeNetwork) {
+    await closeBackendConnections();
+  }
+
+  const target = await devtools("/json/new?about:blank", "PUT");
+  const socket = new WebSocket(target.webSocketDebuggerUrl);
+  await new Promise((resolve) => socket.addEventListener("open", resolve));
+  const session = new Session(socket);
+
+  await session.send("Page.enable");
+  await session.send("Network.enable");
+  await session.send("Network.setCacheDisabled", { cacheDisabled: !keepCache });
+  await session.send("Emulation.setCPUThrottlingRate", { rate: cpuThrottle });
+
+  if (sessionCookie) {
+    await session.send("Network.setCookie", {
+      name: "metabase.SESSION",
+      value: sessionCookie,
+      url,
+    });
+  }
+
+  // Largest-contentful-paint entries never reach the performance timeline, so
+  // `getEntriesByType` cannot see them. An observer is the only way to read one,
+  // and it has to exist before the paint. Paint entries are buffered, which is
+  // why first-contentful-paint needs none of this.
+  await session.send("Page.addScriptToEvaluateOnNewDocument", {
+    source: OBSERVE_LARGEST_PAINT,
+  });
+
+  await session.send("Page.navigate", { url });
+
+  const read = async () => {
+    const { result } = await session.send("Runtime.evaluate", {
+      expression: READ_METRICS,
+      returnByValue: true,
+    });
+    return result && result.value ? JSON.parse(result.value) : null;
+  };
+
+  // Polled rather than waiting on a lifecycle event, because the app errors
+  // against the stub API and a failed boot must still produce a reading. The
+  // href check keeps the blank page the tab opens on out of the results.
+  let metrics = null;
+  for (let attempt = 0; attempt < 300; attempt++) {
+    const parsed = await read();
+    if (
+      parsed &&
+      parsed.domContentLoaded > 0 &&
+      parsed.scriptCount > 0 &&
+      parsed.href.startsWith(url)
+    ) {
+      metrics = parsed;
+      break;
+    }
+    await sleep(150);
+  }
+
+  // The marks land after the entry scripts, `mb:page-ready` only on a route that
+  // records it, and the largest paint later still. Wait a bounded while rather
+  // than missing them.
+  //
+  // They must not gate the reading itself. A jar built before the marks existed
+  // never fires either one, and waiting on them there would turn each load into
+  // a 45s timeout and then report no reading at all. One load settles it for the
+  // whole series, so the rest do not pay the wait again.
+  for (
+    let attempt = 0;
+    buildRecordsMarks &&
+    metrics &&
+    (!metrics.pageReady || !metrics.largestContentfulPaint) &&
+    attempt < 40;
+    attempt++
+  ) {
+    await sleep(150);
+    metrics = (await read()) || metrics;
+  }
+  if (metrics && !metrics.appMounted) {
+    buildRecordsMarks = false;
+  }
+
+  socket.close();
+  await devtools(`/json/close/${target.id}`);
+  // The close is only a request. Wait for the page to be gone, so it cannot
+  // open a connection while the next load is closing them.
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const targets = await devtools("/json/list");
+    if (
+      !Array.isArray(targets) ||
+      targets.every((open) => open.id !== target.id)
+    ) {
+      break;
+    }
+    await sleep(50);
+  }
+  return metrics;
+}
+
+/**
+ * The run that stands for a series: the one whose DOMContentLoaded is the
+ * median.
+ *
+ * A whole run, not a median of each reading on its own. Medianing the readings
+ * separately describes a load that never happened, and lets one reading land
+ * before a reading that must precede it, such as a page-ready earlier than the
+ * TTFB printed beside it.
+ */
+function representative(results: Run[], from = 0): Run {
+  const sorted = [...results.slice(from)].sort(
+    (a, b) => a.domContentLoaded - b.domContentLoaded,
+  );
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
+/** The readings one load produced, in the order a user meets them. */
+function timings(run: Run) {
+  const ms = (value: number) => Number(value.toFixed(1));
+  return {
+    ttfbMs: ms(run.ttfb),
+    firstContentfulPaintMs: ms(run.firstContentfulPaint),
+    domContentLoadedMs: ms(run.domContentLoaded),
+    appMountedMs: ms(run.appMounted),
+    largestContentfulPaintMs: ms(run.largestContentfulPaint),
+    pageReadyMs: ms(run.pageReady),
+    loadMs: ms(run.load),
+  };
+}
+
+(async () => {
+  if (shapeNetwork) {
+    shapeLoopback();
+    // Registered on exit so the early returns below put lo back too.
+    process.on("exit", unshapeLoopback);
+  }
+
+  const chrome = await launchChrome();
+  const results = [];
+
+  // Before and after the loads, so the reading covers the time they ran in.
+  const calibration = await calibrate();
+
+  for (let run = 0; run < runs; run++) {
+    const metrics = await loadOnce();
+    if (metrics) {
+      results.push(metrics);
+    }
+  }
+
+  calibration.push(...(await calibrate()));
+  calibration.sort((a, b) => a - b);
+
+  chrome.kill();
+
+  if (results.length === 0) {
+    console.error("no runs produced a reading");
+    process.exit(1);
+  }
+
+  // Written with a callback rather than console.log so the process cannot exit
+  // with the JSON still buffered in a pipe.
+  process.stdout.write(
+    JSON.stringify(
+      {
+        url,
+        runs: results.length,
+        cpuThrottle,
+        network: mbps > 0 ? `${mbps} Mbps` : "unthrottled",
+        cache: keepCache ? "kept between runs" : "disabled",
+        locale: results[0].language,
+        scripts: results[0].scriptCount,
+        scriptKb: Number((results[0].scriptBytes / 1024).toFixed(1)),
+        cssKb: Number((results[0].styleBytes / 1024).toFixed(1)),
+        // Read at the same moment as `scriptKb`, so the difference between the
+        // two is everything the page loaded that is not script.
+        totalKb: Number((results[0].totalBytes / 1024).toFixed(1)),
+        // Each of the three is one load. A zero in a reading means the browser
+        // or the route never reported that one.
+        median: timings(representative(results)),
+        // The second visit happens once per browser profile, so it is the one
+        // run itself rather than a run chosen out of several.
+        secondLoad: results.length > 1 ? timings(results[1]) : null,
+        // The first load of a cache-kept series still fills an empty cache, so
+        // the steady state starts at the third.
+        steady: results.length > 2 ? timings(representative(results, 2)) : null,
+        everyRunMs: results.map((result) =>
+          Math.round(result.domContentLoaded),
+        ),
+        calibrationMs: Number(
+          calibration[Math.floor(calibration.length / 2)].toFixed(1),
+        ),
+      },
+      null,
+      2,
+    ) + "\n",
+    () => process.exit(0),
+  );
+})();

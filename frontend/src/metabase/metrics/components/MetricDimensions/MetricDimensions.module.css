@@ -45,18 +45,18 @@
 
 .row {
   min-height: 2.5rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-sm);
   padding: var(--mantine-spacing-xxs) var(--mantine-spacing-sm);
 }
 
 .row:hover {
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
 }
 
 .rowActive,
 .rowActive:hover {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
 }
 
 .rowButton {
@@ -73,13 +73,13 @@
 
 .addableRow {
   min-height: 2.5rem;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
   border-radius: var(--mantine-radius-sm);
   padding: var(--mantine-spacing-xxs) var(--mantine-spacing-sm);
 }
 
 .addableRow:hover {
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
 }
 
 .accordion .item,
@@ -95,11 +95,11 @@
 .accordion .control {
   padding: var(--mantine-spacing-sm);
   border-radius: var(--mantine-radius-sm);
-  background-color: var(--mb-color-background-secondary);
+  background-color: var(--mb-color-background_page-secondary);
 }
 
 .accordion .control:hover {
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
 }
 
 .accordion .label {
@@ -122,14 +122,4 @@
 .accordion .content {
   padding: var(--mantine-spacing-sm) 0 0 var(--mantine-spacing-xl);
   border-top: none;
-}
-
-.column .deleteIconButton {
-  border: 1px solid var(--mb-color-border);
-  height: 2.25rem;
-  width: 2.25rem;
-
-  &:hover {
-    border: 1px solid var(--mb-color-border-strong);
-  }
 }

@@ -33,7 +33,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph/db/:db-id"
   "Fetch a graph of all Permissions for db-id `db-id`."
-  [{:keys [db-id]} :- [:map
+  [{:keys [db-id]} :- [:map {:closed true}
                        [:db-id ms/PositiveInt]]]
   (api/check-superuser)
   (data-perms.graph/api-graph {:db-id db-id}))
@@ -44,7 +44,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/graph/group/:group-id"
   "Fetch a graph of all Permissions for group-id `group-id`."
-  [{:keys [group-id]} :- [:map
+  [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
@@ -83,7 +83,7 @@
 
   If the skip-graph query param is truthy, then the graph will not be returned."
   [_route-params
-   {:keys [skip-graph force]} :- [:map
+   {:keys [skip-graph force]} :- [:map {:closed true}
                                   [:skip-graph {:default false} [:maybe ms/BooleanValue]]
                                   [:force      {:default false} [:maybe ms/BooleanValue]]]
    new-graph :- ::permissions-rest.schema/graph-update-request]
@@ -128,12 +128,8 @@
   Actually changing the name brings a whole host of problems, and we very rarely actually present the names of
   Permissions Groups to users. (These are the only endpoints that reveal them.) So I think it makes sense to just
   adjust them here."
-  [{:keys [magic_group_type] :as group} using-tenants?]
-  (update group :name (fn [n]
-                        (if (and (= magic_group_type perms/all-users-magic-group-type)
-                                 using-tenants?)
-                          "All internal users"
-                          n))))
+  [group using-tenants?]
+  (assoc group :name (perms/group-display-name group using-tenants?)))
 
 (defn- maybe-fix-names
   "See [[maybe-fix-name]] for details."
@@ -156,7 +152,7 @@
   - `tenancy=internal`: Returns only non-tenant groups (where `is_tenant_group = false`)
   - No `tenancy` parameter: Returns all groups (default behavior)"
   [_route_params
-   {:keys [tenancy]} :- [:map
+   {:keys [tenancy]} :- [:map {:closed true}
                          [:tenancy {:optional true} [:enum "external" "internal"]]]]
   (try
     (perms/check-group-manager)
@@ -169,7 +165,7 @@
     (-> (ordered-groups (request/limit) (request/offset)
                         {:tenancy                       tenancy
                          :manager-user-id               manager-user-id
-                         :tenants-enabled?               (setting/get :use-tenants)
+                         :tenants-enabled?              (setting/get :use-tenants)
                          :advanced-permissions-enabled? (premium-features/enable-advanced-permissions?)})
         (t2/hydrate :member_count)
         (maybe-fix-names))))
@@ -180,7 +176,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/group/:id"
   "Fetch the details for a certain permissions group."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (perms/check-manager-of-group id)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [id])))
@@ -194,10 +190,10 @@
   "IDs of the permission groups holding a stored read (or read-write) grant on the collection of a shareable item (a
   `dashboard` or a `question`). The \"invite someone to view\" group picker lists all groups and uses these ids to mark
   the ones whose members can already see the item; the Administrators group has implicit access to everything and is
-  never included. The ids are otherwise unfiltered; system-managed groups like Data Analysts appear when they hold a
-  grant, and clients intersect the ids with the groups they display. Superuser-only, like the invite action itself."
+  never included. The Data Analysts group is omitted unless `advanced-permissions` is enabled. The ids are otherwise
+  unfiltered. Superuser-only, like the invite action itself."
   [_route-params
-   {:keys [id] item-type :type} :- [:map
+   {:keys [id] item-type :type} :- [:map {:closed true}
                                     [:type [:enum "dashboard" "question"]]
                                     [:id   ms/PositiveInt]]]
   (api/check-superuser)
@@ -205,7 +201,9 @@
                 "dashboard" :model/Dashboard
                 "question"  :model/Card)
         item  (api/read-check model id)]
-    (vec (sort (perms/collection-read-access-group-ids (:collection_id item))))))
+    (vec (sort (cond-> (perms/collection-read-access-group-ids (:collection_id item))
+                 (not (premium-features/enable-advanced-permissions?))
+                 (disj (u/the-id (perms/data-analyst-group))))))))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -215,7 +213,7 @@
   "Create a new `PermissionsGroup`."
   [_route-params
    _query-params
-   {:keys [name is_tenant_group]} :- [:map
+   {:keys [name is_tenant_group]} :- [:map {:closed true}
                                       [:name ms/NonBlankString]
                                       [:is_tenant_group {:optional true} [:maybe :boolean]]]]
   (api/check-superuser)
@@ -235,10 +233,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/group/:group-id"
   "Update the name of a `PermissionsGroup`."
-  [{:keys [group-id]} :- [:map
+  [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]
    _query-params
-   {:keys [name]} :- [:map
+   {:keys [name]} :- [:map {:closed true}
                       [:name ms/NonBlankString]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
@@ -258,7 +256,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/group/:group-id"
   "Delete a specific `PermissionsGroup`."
-  [{:keys [group-id]} :- [:map
+  [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (empty? (perms/hidden-tenant-group-ids [group-id])))
@@ -287,8 +285,6 @@
             (permissions-rest.db/group-memberships
              {:manager-user-id        (when (and (not api/*is-superuser?*) api/*is-group-manager?*)
                                         api/*current-user-id*)
-              :excluded-group-id      (when-not (premium-features/enable-advanced-permissions?)
-                                        (u/the-id (perms/data-analyst-group)))
               :exclude-tenant-groups? (not (setting/get :use-tenants))})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
@@ -299,7 +295,7 @@
   "Add a `User` to a `PermissionsGroup`. Returns updated list of members belonging to the group."
   [_route-params
    _query-params
-   {:keys [group_id user_id is_group_manager]} :- [:map
+   {:keys [group_id user_id is_group_manager]} :- [:map {:closed true}
                                                    [:group_id         ms/PositiveInt]
                                                    [:user_id          ms/PositiveInt]
                                                    [:is_group_manager {:default false} [:maybe :boolean]]]]
@@ -323,10 +319,10 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/membership/:id"
   "Update a Permission Group membership. Returns the updated record."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [is_group_manager]} :- [:map
+   {:keys [is_group_manager]} :- [:map {:closed true}
                                   [:is_group_manager :boolean]]]
   ;; currently this API is only used to update the `is_group_manager` flag and it requires advanced-permissions
   (perms/check-advanced-permissions-enabled :group-manager)
@@ -348,7 +344,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :put "/membership/:group-id/clear"
   "Remove all members from a `PermissionsGroup`. Returns a 400 (Bad Request) if the group ID is for the admin group."
-  [{:keys [group-id]} :- [:map
+  [{:keys [group-id]} :- [:map {:closed true}
                           [:group-id ms/PositiveInt]]]
   (perms/check-manager-of-group group-id)
   (api/check-404 (permissions-rest.db/permissions-group-exists? group-id))
@@ -363,7 +359,7 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :delete "/membership/:id"
   "Remove a User from a PermissionsGroup (delete their membership)."
-  [{:keys [id]} :- [:map
+  [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [membership (permissions-rest.db/group-membership id)]
     (api/check-404 membership)

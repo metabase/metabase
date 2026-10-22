@@ -1,6 +1,7 @@
 (ns metabase.metabot.models.metabot-prompt
   (:require
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.schema]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [methodical.core :as methodical]
@@ -30,8 +31,6 @@
 
 (defmethod serdes/make-spec "MetabotPrompt" [_model-name _opts]
   {:copy      [:entity_id :prompt]
-   :transform {:created_at (serdes/date)
-               :updated_at (serdes/date)
-               :model      (serdes/kw)
+   :transform {:model      (serdes/kw)
                :card_id    (serdes/fk :model/Card)
                :metabot_id (serdes/parent-ref)}})

@@ -1,5 +1,6 @@
 import querystring from "querystring";
 
+import { t } from "ttag";
 import _ from "underscore";
 
 import { clone } from "metabase/utils/clone";
@@ -11,7 +12,6 @@ import {
 import { stableStringify } from "metabase/utils/objects";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { deriveFieldOperatorFromParameter } from "metabase-lib/v1/parameters/utils/operators";
 import { normalizeParameterValue } from "metabase-lib/v1/parameters/utils/parameter-values";
@@ -30,6 +30,18 @@ import type {
   VirtualDashCardParameterMapping,
 } from "metabase-types/api";
 import { isDashCardDataSeries } from "metabase-types/guards/dashboard";
+
+export const QUESTION_NAME_MAX_LENGTH = 254;
+
+export function getNonBlankNameAndDescription({
+  name,
+  description,
+}: Partial<Pick<Card, "name" | "description">>) {
+  return {
+    name: name?.trim() ? name : t`Untitled question`,
+    description: description?.trim() ? description : null,
+  };
+}
 
 export type SerializeCardOptions = {
   includeDatasetQuery?: boolean;
@@ -101,7 +113,7 @@ export function isEqualCard(card1?: Card | null, card2?: Card | null) {
 
 export function getMetricSeriesWithDefaultDisplay(
   series: DashCardSeries,
-  metadata: Metadata,
+  metadataProvider: Lib.MetadataProvider,
 ): DashCardSeries {
   if (series.length !== 1 || !isDashCardDataSeries(series)) {
     return series;
@@ -112,9 +124,9 @@ export function getMetricSeriesWithDefaultDisplay(
     return series;
   }
 
-  const query = Lib.fromJsQueryAndMetadata(metadata, metricSeries.json_query);
+  const query = Lib.fromJsQuery(metadataProvider, metricSeries.json_query);
   const { display, settings = {} } = Lib.defaultDisplay(
-    query,
+    Lib.dropEmptyStages(query),
     metricSeries.data.cols,
   );
 

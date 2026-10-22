@@ -1,7 +1,7 @@
 {
   "name": "vite-6-host-app",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "start": "./entrypoint.sh",

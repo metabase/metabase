@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { getIn } from "icepick";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { isNetworkError, isStreamInterruptedError } from "metabase/api/client";
@@ -10,11 +10,10 @@ import { ExternalLink } from "metabase/common/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { getEngineNativeType } from "metabase/databases/utils/engine";
-import { FixSqlQueryButton } from "metabase/metabot/components/FixSqlQueryButton";
 import { useSelector } from "metabase/redux";
 import { getLearnUrl } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Box, Center, Flex, Icon } from "metabase/ui";
+import { Box, Button, Center, Flex, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetError, DatasetErrorType } from "metabase-types/api";
@@ -23,24 +22,24 @@ import { VISUALIZATION_SLOW_TIMEOUT } from "../../../constants";
 
 import VisErrorS from "./VisualizationError.module.css";
 import { AdminEmail } from "./components";
-import { adjustPositions, getDatasetErrorMessage, stripRemarks } from "./utils";
+import { getDatasetErrorMessage, stripRemarks } from "./utils";
 
 interface VisualizationErrorProps {
   className?: string;
-  via: Record<string, any>[];
   question: Question;
   duration: number;
   error: DatasetError;
   errorType?: DatasetErrorType;
+  errorAction?: ReactNode;
 }
 
 export function VisualizationError({
   className,
-  via,
   question,
   duration,
   error,
   errorType,
+  errorAction,
 }: VisualizationErrorProps) {
   const query = question.query();
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
@@ -137,12 +136,7 @@ export function VisualizationError({
 
   if (isNative) {
     // always show errors for native queries
-    let processedError = errorMessage;
-    const origSql = getIn(via, [(via || "").length - 1, "ex-data", "sql"]);
-    if (typeof origSql === "string" && processedError) {
-      processedError = adjustPositions(processedError, origSql);
-    }
-    processedError = stripRemarks(processedError);
+    const processedError = stripRemarks(errorMessage);
     const database = question.database();
     const isSql = database && getEngineNativeType(database.engine) === "sql";
 
@@ -158,16 +152,17 @@ export function VisualizationError({
           <Box className={VisErrorS.QueryErrorMessage}>{processedError}</Box>
           <Flex align="center" my="lg" gap="lg">
             {isSql && showMetabaseLinks && (
-              <ExternalLink
-                className={VisErrorS.QueryErrorLink}
+              <Button
+                component={ExternalLink}
                 href={getLearnUrl(
                   "grow-your-data-skills/learn-sql/debugging-sql/sql-syntax",
                 )}
+                variant="subtle"
               >
                 {t`Learn how to debug SQL errors`}
-              </ExternalLink>
+              </Button>
             )}
-            <FixSqlQueryButton />
+            {errorAction}
           </Flex>
         </Flex>
       </Box>

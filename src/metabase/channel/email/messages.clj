@@ -27,7 +27,8 @@
    [metabase.util.i18n :as i18n :refer [trs tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
 
@@ -158,10 +159,7 @@
 (defn all-admin-recipients
   "Return a sequence of email addresses for all Admin users who have accepted their invitation (i.e. have logged in at
   least once). Admins who have been invited but not yet accepted are excluded — they shouldn't receive notifications
-  about activity in an instance they haven't joined.
-
-  The first recipient will be the site admin (or oldest accepted admin if unset), which is the address that should be
-  used in `mailto` links (e.g., for the new user to email with any questions)."
+  about activity in an instance they haven't joined. The site admin email, if set, comes first."
   []
   (concat (when-let [admin-email (system/admin-email)]
             [admin-email])
@@ -188,7 +186,6 @@
                                               :joinedViaSSO      google-auth?
                                               :joinedUserEmail   (:email new-user)
                                               :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13".
-                                              :adminEmail        (first recipients)
                                               :joinedUserEditUrl (str (system/site-url) "/admin/people")})})))
 
 (defn send-password-reset-email!
@@ -217,7 +214,15 @@
 (mu/defn send-login-from-new-device-email!
   "Format and send an email informing the user that this is the first time we've seen a login from this device. Expects
   login history information as returned by [[metabase.login-history.models.login-history/human-friendly-infos]]."
-  [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map [:user_id pos-int?]]]
+  [{user-id :user_id, :keys [timestamp], :as login-history} :- [:map {:closed true}
+                                                                [:user_id             pos-int?]
+                                                                [:device_description  {:optional true} [:maybe :string]]
+                                                                [:device_id           {:optional true} [:maybe :string]]
+                                                                [:ip_address          {:optional true} [:maybe :string]]
+                                                                [:location            {:optional true} [:maybe :string]]
+                                                                [:session_id          {:optional true} [:maybe :string]]
+                                                                [:timestamp           {:optional true} [:maybe ms/TemporalInstant]]
+                                                                [:timezone            {:optional true} [:maybe :string]]]]
   (let [user-info    (or (channel.db/user-contact-info user-id)
                          (throw (ex-info (tru "User {0} does not exist" user-id)
                                          {:user-id user-id, :status-code 404})))
@@ -304,7 +309,7 @@
                         :logoHeader   true
                         :heading      (trs "We hope you''ve been enjoying Metabase.")
                         :callToAction (trs "Would you mind taking a quick 5 minute survey to tell us how it’s going?")
-                        :link         "https://metabase.com/feedback/active"})
+                        :link         "https://www.metabase.com/feedback/active"})
         email-msg {:subject      (trs "[{0}] Tell us how things are going." (app-name-trs))
                    :recipients   [email]
                    :message-type :html
@@ -325,7 +330,7 @@
                        {:emailType  "notification"
                         :logoHeader true
                         :first-name first_name
-                        :link       (cond-> "https://metabase.com/feedback/creator"
+                        :link       (cond-> "https://www.metabase.com/feedback/creator"
                                       encoded-info (str "?context=" encoded-info))}
                        (when-not (premium-features/is-hosted?)
                          {:self-hosted (system/site-url)}))

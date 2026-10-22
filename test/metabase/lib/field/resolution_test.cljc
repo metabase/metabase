@@ -1915,15 +1915,14 @@
                :lib/original-join-alias   "Products"
                :lib/original-name         "ID_2"
                :lib/type                  :metadata/column}
-              (lib/metadata query -1
-                            (#'lib.field.resolution/additional-metadata-from-source-card
-                             query
-                             -1
-                             (lib/normalize
-                              ::lib.schema.metadata/column
-                              {:lib/type                :metadata/column
-                               :lib/source              :source/previous-stage
-                               :id                      (meta/id :products :id)
-                               :name                    "Products__ID"
-                               :lib/source-column-alias "Products__ID"
-                               :base-type               :type/Integer}))))))))
+              (#'lib.field.resolution/additional-metadata-from-source-card
+               query
+               -1
+               (lib/normalize
+                ::lib.schema.metadata/column
+                {:lib/type                :metadata/column
+                 :lib/source              :source/previous-stage
+                 :id                      (meta/id :products :id)
+                 :name                    "Products__ID"
+                 :lib/source-column-alias "Products__ID"
+                 :base-type               :type/Integer})))))))

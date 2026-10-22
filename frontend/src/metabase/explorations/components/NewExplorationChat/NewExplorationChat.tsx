@@ -22,9 +22,9 @@ import {
 } from "metabase/metabot/hooks";
 import type {
   MetabotAgentDataPartMessage,
-  MetabotChatMessage,
   MetabotDataPart,
   MetabotDebugToolCallMessage,
+  MetabotMessagePart,
 } from "metabase/metabot/state";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import type { RemoveFromResearchPlanResponse } from "metabase-types/api";
@@ -92,6 +92,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
     messages,
     conversationId,
     retryMessage,
+    continueResponse,
     isDoingScience,
     submitInput,
     cancelRequest,
@@ -138,8 +139,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       } catch (error) {
         console.error(error);
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to add research groups`,
         });
       }
@@ -181,8 +181,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       } catch (error) {
         console.error(error);
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to update research plan`,
         });
       }
@@ -226,8 +225,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       } catch (error) {
         console.error(error);
         sendToast({
-          icon: "warning_triangle_filled",
-          iconColor: "warning",
+          variant: "negative",
           message: t`Failed to add timelines`,
         });
       }
@@ -244,24 +242,24 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
       return;
     }
 
-    const unprocessedMessages = messages.filter(
-      (message) => !processedMessageIdsRef.current.has(message.id),
-    );
-    for (const message of unprocessedMessages) {
-      processedMessageIdsRef.current.add(message.id);
+    const unprocessedParts = messages
+      .flatMap((message) => message.parts)
+      .filter((part) => !processedMessageIdsRef.current.has(part.id));
+    for (const part of unprocessedParts) {
+      processedMessageIdsRef.current.add(part.id);
     }
 
     handleResearchPlanUpdateMessages(
-      unprocessedMessages.filter(isResearchPlanUpdateMessage),
+      unprocessedParts.filter(isResearchPlanUpdateMessage),
     );
     handleRemoveFromResearchPlanToolCallMessages(
-      unprocessedMessages.filter(isRemoveFromResearchPlanToolCallMessage),
+      unprocessedParts.filter(isRemoveFromResearchPlanToolCallMessage),
     );
     handleSetExplorationNameToolCallMessages(
-      unprocessedMessages.filter(isSetExplorationNameToolCallMessage),
+      unprocessedParts.filter(isSetExplorationNameToolCallMessage),
     );
     handleSelectExplorationTimelinesToolCallMessages(
-      unprocessedMessages.filter(isSelectExplorationTimelinesToolCallMessage),
+      unprocessedParts.filter(isSelectExplorationTimelinesToolCallMessage),
     );
   }, [
     isDoingScience,
@@ -276,7 +274,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 
   return (
     <>
-      <Stack flex={1} mih={0} gap="lg" bg="background-secondary">
+      <Stack flex={1} mih={0} gap="lg" bg="background_page-secondary">
         {hasMessages ? (
           <Stack
             flex={1}
@@ -288,14 +286,17 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           >
             <Messages
               messages={messages}
+              size="md"
               onRetryMessage={(id) =>
                 retryMessage(id, { profile: "explorations" })
               }
-              onContinueMessage={(prompt) =>
-                submitInput(prompt, {
-                  preventOpenSidebar: true,
-                  profile: "explorations",
-                })
+              onContinueMessage={
+                continueResponse &&
+                (() =>
+                  continueResponse({
+                    preventOpenSidebar: true,
+                    profile: "explorations",
+                  }))
               }
               isDoingScience={isDoingScience}
               debug={false}
@@ -306,8 +307,8 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
           <Box flex={1} mih={0} />
         )}
         <Flex
-          bg="background-primary"
-          bd="1px solid border"
+          bg="background_page-primary"
+          bd="1px solid border-neutral"
           bdrs="sm"
           mx="xl"
           pr="0.75rem"
@@ -351,7 +352,7 @@ export function NewExplorationChat({ selection }: NewExplorationChatProps) {
 }
 
 function isResearchPlanUpdateMessage(
-  message: MetabotChatMessage,
+  message: MetabotMessagePart,
 ): message is ResearchPlanUpdateMessage {
   return (
     message.role === "agent" &&
@@ -361,7 +362,7 @@ function isResearchPlanUpdateMessage(
 }
 
 function isRemoveFromResearchPlanToolCallMessage(
-  message: MetabotChatMessage,
+  message: MetabotMessagePart,
 ): message is MetabotToolCallMessageWithResult {
   return (
     message.role === "agent" &&
@@ -373,7 +374,7 @@ function isRemoveFromResearchPlanToolCallMessage(
 }
 
 function isSetExplorationNameToolCallMessage(
-  message: MetabotChatMessage,
+  message: MetabotMessagePart,
 ): message is MetabotToolCallMessageWithResult {
   return (
     message.role === "agent" &&
@@ -385,7 +386,7 @@ function isSetExplorationNameToolCallMessage(
 }
 
 function isSelectExplorationTimelinesToolCallMessage(
-  message: MetabotChatMessage,
+  message: MetabotMessagePart,
 ): message is MetabotToolCallMessageWithResult {
   return (
     message.role === "agent" &&

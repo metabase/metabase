@@ -1,84 +1,168 @@
 .root {
+  --ai-size-xs: 16px;
+  --ai-size-sm: 24px;
+  --ai-size-md: 32px;
+  --ai-size-lg: 40px;
+  --mb-ai-radius: 6px;
+  --mb-ai-icon-size: 16px;
+
+  border-radius: var(--ai-radius, var(--mb-ai-radius));
+
+  &:active {
+    transform: none;
+  }
+
+  &[data-size="xs"],
+  &[data-size="sm"] {
+    --mb-ai-radius: 4px;
+    --mb-ai-icon-size: 12px;
+  }
+
+  &[data-size="lg"] {
+    --mb-ai-radius: 8px;
+  }
+
+  &[data-size="xs"],
+  &[data-size="sm"],
+  &[data-size="md"],
+  &[data-size="lg"] {
+    .icon > svg {
+      width: var(--mb-ai-icon-size);
+      height: var(--mb-ai-icon-size);
+    }
+  }
+
   &[data-disabled] {
-    color: var(--mb-color-icon-disabled);
     pointer-events: all;
   }
 
-  &[data-variant="subtle"] {
-    color: var(--mb-color-text-disabled);
+  &[data-variant="default"],
+  &[data-variant="filled"] {
+    box-shadow: var(--mantine-shadow-xs);
+  }
+}
+
+.root[data-variant="default"] {
+  border-color: var(--mb-color-border-neutral-strong);
+}
+
+.root[data-variant="default"],
+.root[data-variant="filled"],
+.root[data-variant="light"],
+.root[data-variant="subtle"],
+.root[data-variant^="on-dark-"] {
+  border-width: 0.5px;
+
+  &:hover:not([data-loading]),
+  &[data-hovered]:not([data-loading]) {
+    color: var(--ai-hover-color, var(--ai-color));
+    background-color: var(--ai-hover);
+  }
+
+  &:active:not([data-loading]),
+  &[data-pressed]:not([data-loading]) {
+    color: var(--ai-hover-color, var(--ai-color));
+    background-color: var(--ai-pressed, var(--ai-hover));
+    box-shadow: none;
+  }
+
+  &:disabled:not([data-loading]),
+  &[data-disabled]:not([data-loading]) {
+    color: var(--mb-color-icon-disabled);
+    border-color: transparent;
+    background-color: var(--mb-color-background_surface-disabled);
+    box-shadow: none;
+  }
+}
+
+.root[data-variant="light"],
+.root[data-variant="subtle"] {
+  &[data-selected]:not([data-loading], :disabled, [data-disabled]) {
+    color: var(--ai-selected-color);
+    background-color: var(--ai-selected-bg);
 
     &:hover {
-      color: var(--mb-color-text-secondary);
-      background-color: var(--mb-color-background_page-secondary);
+      color: var(--ai-selected-hover-color);
+      background-color: var(--ai-selected-hover);
     }
   }
+}
 
-  /* To be able to seamlessly support color property across variants we need
-      to implement variantColorResolver. Same thing is pointed out in Button component. */
-  &[data-variant="info"] {
-    color: var(--mb-color-core-brand);
+.root[data-variant="light"] {
+  --ai-selected-color: var(--mb-color-button_label-filled-brand-default);
+  --ai-selected-hover-color: var(--mb-color-button_label-filled-brand-default);
+  --ai-selected-bg: var(--mb-color-background_surface-brand-strong);
+  --ai-selected-hover: var(--mb-color-background_surface-brand-strong-hover);
+}
+
+.root[data-variant="subtle"] {
+  --ai-selected-color: var(--mb-color-text-brand-strong);
+  --ai-selected-hover-color: var(--mb-color-text-brand-strong-hover);
+  --ai-selected-bg: var(--mb-color-background_surface-brand-subtle);
+  --ai-selected-hover: var(--mb-color-background_surface-brand-subtle-hover);
+
+  &:disabled:not([data-loading]),
+  &[data-disabled]:not([data-loading]) {
     background-color: transparent;
+  }
+}
 
-    &:hover,
-    &:active,
-    &[data-is-active="true"] {
-      background-color: var(--mb-color-background_surface-brand-subtle);
-    }
+.root[data-variant="on-dark-primary"] {
+  --ai-bd: 0.5px solid transparent;
+}
+
+.root[data-variant="on-dark-secondary"] {
+  --ai-bd: 0.5px solid var(--mb-color-border-on_dark);
+}
+
+.root[data-variant^="on-dark-"] {
+  box-shadow: var(--mantine-shadow-xs_on_dark);
+
+  &:disabled:not([data-loading]),
+  &[data-disabled]:not([data-loading]) {
+    color: var(--mb-color-button_label-on_dark-disabled);
+    background-color: var(--mb-color-button-on_dark-disabled);
+  }
+}
+
+:global(.mb-mantine-ActionIconGroup-group) {
+  &:has(> .root) {
+    --ai-border-width: 0px;
+
+    width: fit-content;
+    overflow: hidden;
+    border: 0.5px solid var(--mb-color-border-neutral-strong);
+    border-radius: 6px;
+    box-shadow: var(--mantine-shadow-xs);
   }
 
-  &[data-variant="warning"] {
-    color: var(--mb-color-feedback-warning);
-    background-color: transparent;
-
-    &:hover,
-    &:active,
-    &[data-is-active="true"] {
-      background-color: var(--mb-color-background_surface-warning);
-    }
+  &:has(> .root[data-size="lg"]) {
+    border-radius: 8px;
   }
 
-  &[data-variant="error"] {
-    color: var(--mb-color-feedback-negative);
-    background-color: transparent;
+  & > .root[data-variant] {
+    width: auto;
+    min-width: auto;
+    padding-inline: 16px;
+    border-width: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
 
-    &:hover,
-    &:active,
-    &[data-is-active="true"] {
-      background-color: var(--mb-color-background_surface-error);
-    }
-  }
-
-  &[data-variant="viewHeader"] {
-    color: var(--mb-color-text-primary);
-    background-color: transparent;
-    border: 1px solid transparent;
-    transition: all 300ms linear;
-
-    &:hover {
-      color: var(--mb-color-core-brand);
-      background-color: var(--mb-color-background_page-tertiary);
-      border: 1px solid transparent;
+    &[data-size="lg"] {
+      padding-inline: 24px;
     }
 
-    &:disabled,
-    &[data-disabled] {
-      color: var(--mb-color-text-disabled);
-      background-color: transparent;
-    }
-  }
-
-  &[data-variant="viewFooter"] {
-    color: var(--mb-color-text-secondary);
-    background-color: transparent;
-
-    &:hover {
-      color: var(--mb-color-core-brand);
+    &:disabled:not([data-loading]),
+    &[data-disabled]:not([data-loading]) {
+      background-color: var(--mb-color-background_surface-disabled);
     }
 
-    &:disabled,
-    &[data-disabled] {
-      color: var(--mb-color-text-disabled);
-      background-color: transparent;
+    &:not(:first-child)::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      border-inline-start: 0.5px solid var(--mb-color-border-neutral-strong);
     }
   }
 }

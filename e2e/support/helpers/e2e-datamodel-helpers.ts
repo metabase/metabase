@@ -1,3 +1,4 @@
+import { UNNAMED_SCHEMA_NAME } from "metabase-lib/v1/metadata/utils/schema";
 import type {
   DatabaseId,
   FieldId,
@@ -31,6 +32,8 @@ export const DataModel = {
   },
   TablePicker: {
     get: getTablePicker,
+    expandDatabase: expandTablePickerDatabase,
+    expandSchema: expandTablePickerSchema,
     getDatabase: getTablePickerDatabase,
     getDatabaseToggle: getTablePickerDatabaseToggle,
     getDatabaseCheckbox,
@@ -152,7 +155,6 @@ export const DataModel = {
     getReplaceButton: getSourceReplacementReplaceButton,
     getCancelButton: getSourceReplacementCancelButton,
     getTargetPickerButton: getSourceReplacementTargetPickerButton,
-    getDependentsTab: getSourceReplacementDependentsTab,
     getFindAndReplaceButton: getSourceReplacementFindAndReplaceButton,
   },
 };
@@ -175,7 +177,9 @@ function visit({
   basePath?: string;
 } = {}) {
   const normalizedBasePath = getNormalizedBasePath(basePath);
-  cy.intercept("GET", "/api/database").as("datamodel/visit/databases");
+  cy.intercept({ method: "GET", pathname: "/api/database" }).as(
+    "datamodel/visit/databases",
+  );
   cy.intercept("GET", "/api/database/*").as("datamodel/visit/database");
   cy.intercept("GET", "/api/table/*/query_metadata*").as(
     "datamodel/visit/metadata",
@@ -286,6 +290,72 @@ function getTablePickerDatabase(name: string) {
     .findAllByTestId("tree-item")
     .filter('[data-type="database"]')
     .filter(`:contains("${name}")`);
+}
+
+let tablePickerExpandCount = 0;
+
+/**
+ * Expands a database row in the table picker via its toggle, waits for the
+ * schemas request (and, for a lone schema, the dependent tables request) to
+ * resolve, and asserts the children rendered.
+ */
+function expandTablePickerDatabase(name: string) {
+  tablePickerExpandCount += 1;
+  const schemasAlias = `tablePickerSchemas${tablePickerExpandCount}`;
+  const tablesAlias = `tablePickerTables${tablePickerExpandCount}`;
+  cy.intercept("GET", "/api/database/*/schemas?*").as(schemasAlias);
+  cy.intercept("GET", "/api/database/*/schema/*").as(tablesAlias);
+
+  getTablePickerDatabaseToggle(name).should(
+    "have.attr",
+    "aria-expanded",
+    "false",
+  );
+  getTablePickerDatabaseToggle(name).click();
+
+  cy.wait(`@${schemasAlias}`, { timeout: 25000 }).then(({ response }) => {
+    expect(response?.statusCode).to.eq(200);
+    const schemas = response?.body;
+    if (
+      Array.isArray(schemas) &&
+      (schemas.length === 1 || schemas.includes(UNNAMED_SCHEMA_NAME))
+    ) {
+      cy.wait(`@${tablesAlias}`, { timeout: 25000 }).then(
+        ({ response: tablesResponse }) => {
+          expect(tablesResponse?.statusCode).to.eq(200);
+        },
+      );
+    }
+  });
+
+  getTablePickerDatabaseToggle(name).should(
+    "have.attr",
+    "aria-expanded",
+    "true",
+  );
+}
+
+/**
+ * Expands a schema row in the table picker and synchronizes on its tables
+ * being loaded, mirroring expandTablePickerDatabase.
+ */
+function expandTablePickerSchema(name: string) {
+  tablePickerExpandCount += 1;
+  const tablesAlias = `tablePickerTables${tablePickerExpandCount}`;
+  cy.intercept("GET", "/api/database/*/schema/*").as(tablesAlias);
+
+  getTablePickerSchemaToggle(name).should(
+    "have.attr",
+    "aria-expanded",
+    "false",
+  );
+  getTablePickerSchemaToggle(name).click();
+
+  cy.wait(`@${tablesAlias}`, { timeout: 25000 }).then(({ response }) => {
+    expect(response?.statusCode).to.eq(200);
+  });
+
+  getTablePickerSchemaToggle(name).should("have.attr", "aria-expanded", "true");
 }
 
 function getTablePickerDatabaseToggle(name: string) {
@@ -527,7 +597,7 @@ function getFieldSuffixInput() {
 }
 
 function getFieldSectionCloseButton() {
-  return getFieldSectioHeader().findByRole("link", { name: /close/ });
+  return getFieldSectioHeader().findByRole("link", { name: /close/i });
 }
 
 /** preview section helpers */
@@ -877,14 +947,11 @@ function getInterceptsForArea(area: Area) {
   cy.intercept("PUT", "/api/table").as("updateTables");
   cy.intercept("PUT", "/api/table/*").as("updateTable");
 
+  cy.intercept({ method: "GET", pathname: "/api/database" }).as("databases");
+
   if (area === "admin") {
-    cy.intercept("GET", "/api/database?*").as("databases");
     cy.intercept("GET", "/api/field/*/values").as("fieldValues");
     cy.intercept("PUT", "/api/table/*").as("updateTable");
-  }
-
-  if (area === "data studio") {
-    cy.intercept("GET", "/api/database").as("databases");
   }
 }
 
@@ -913,12 +980,6 @@ function getSourceReplacementTargetPickerButton() {
     "button",
     "Pick a table, model, or saved question",
   );
-}
-
-function getSourceReplacementDependentsTab(count: number) {
-  return getSourceReplacementModal().findByRole("tab", {
-    name: new RegExp(`${count} items? will be changed`),
-  });
 }
 
 function getSourceReplacementFindAndReplaceButton() {

@@ -17,7 +17,7 @@
 (set! *warn-on-reflection* true)
 
 (mr/def ::table-selectors
-  [:map
+  [:map {:closed true}
    ;; disjunctive filters (e.g. db_id IN $database_ids OR id IN $table_ids)
    [:database_ids {:optional true} [:sequential ms/PositiveInt]]
    [:schema_ids {:optional true} [:sequential :string]]
@@ -142,11 +142,11 @@
 
 (api.macros/defendpoint :get "/:id/publishing-info" :- [:maybe PublishingInfo]
   "Return the latest valid publishing information for a published table, or no content when unavailable."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
    _body
    _request]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [table (api/read-check :model/Table id)]
     (when (:is_published table)
       (publishing-info id))))
@@ -169,10 +169,11 @@
   [_route-params
    _query-params
    body :- ::publish-table-selectors]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [target-collection  (api/check-404 (data-studio.db/collection (:collection_id body)))
         _                  (api/check-400 (= (:type target-collection) collection/library-data-collection-type)
-                                          (tru "Tables can only be published to Library/Data collections."))
+                                          (tru "Tables can only be published to Semantic layer/Data collections."))
+        _                  (api/write-check target-collection)
         selectors          (body->table-selectors body)
         upstream-ids       (all-upstream-table-ids selectors)
         ;; Don't move already-published upstream tables; only publish unpublished ones. Get table IDs before update
@@ -193,13 +194,15 @@
   [_route-params
    _query-params
    body :- ::table-selectors]
-  (api/check-data-analyst)
+  (api/check-data-studio-access)
   (let [selectors       (body->table-selectors body)
         downstream-ids  (all-downstream-table-ids selectors)
         ;; Get table IDs before update for event publishing
         table-ids-to-update (data-studio.db/table-ids-matching-selectors selectors downstream-ids :any)]
     (api/check-403 (can-publish-all-tables? table-ids-to-update))
     (when (seq table-ids-to-update)
+      (run! (comp api/write-check data-studio.db/collection)
+            (into #{} (keep :collection_id) (data-studio.db/tables table-ids-to-update)))
       (data-studio.db/unpublish-tables! table-ids-to-update)
       ;; Publish events for audit log and remote sync tracking
       (let [updated-tables (data-studio.db/tables table-ids-to-update)]

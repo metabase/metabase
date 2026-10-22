@@ -18,6 +18,7 @@
    [clojure.test :refer :all]
    [malli.json-schema :as mjs]
    [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.slackbot-query :as slackbot-query]
    [metabase.test :as mt]
@@ -81,26 +82,33 @@
 
 ;; These tests stub `execute-representations-query` with a fake that returns a canned
 ;; `:structured-output` so we can assert the slackbot-specific wrapping (link construction,
-;; adhoc_viz data part, instructions text, error passthrough).
+;; adhoc_viz data part, output text) without the pipeline.
 
 (defn- with-repr-stub! [stub-fn f]
-  (with-redefs [construct/execute-representations-query stub-fn
-                ;; `streaming/query->question-url` inspects the query; stub it too so the
-                ;; fake query doesn't have to satisfy the real function's expectations.
-                streaming/query->question-url
-                (fn [_q display]
-                  (str "/question#fake" (when display (str "?d=" display))))]
+  (mt/with-dynamic-fn-redefs
+    [construct/execute-representations-query stub-fn
+     ;; `streaming/query->question-url` inspects the query; stub it too so the
+     ;; fake query doesn't have to satisfy the real function's expectations.
+     streaming/query->question-url
+     (fn [_q display]
+       (str "/question#fake" (when display (str "?d=" display))))]
     (f)))
+
+(defn- call
+  [arguments]
+  (test-util/call-tool slackbot-query/slackbot-construct-notebook-query-tool arguments))
 
 (deftest slackbot-tool-happy-path-test
   (testing (str "Slackbot tool takes an external-query map, hands it verbatim to\n"
-                "execute-representations-query, wraps the result in an adhoc_viz data part\n"
-                "with the provided title + display, and returns structured-output + instructions.")
+                "execute-representations-query, and wraps the result in an adhoc_viz data part\n"
+                "with the provided title + display.")
     (let [captured-query (atom nil)
+          captured-opts  (atom :not-called)
           fake-query     {:lib/type :mbql/query :database 1 :stages [{:source-table 10}]}]
       (with-repr-stub!
-        (fn [external-query]
+        (fn [external-query & [opts]]
           (reset! captured-query external-query)
+          (reset! captured-opts opts)
           {:structured-output {:query-id       "q-1"
                                :query          fake-query
                                :result-columns []}
@@ -110,13 +118,17 @@
                              :stages   [{:lib/type     "mbql.stage/mbql"
                                          :source-table ["Sample" "PUBLIC" "ORDERS"]
                                          :aggregation  [["count" {}]]}]}
-                result      (slackbot-query/slackbot-construct-notebook-query-tool
-                             {:reasoning "user asked for order count"
-                              :query     query-input
-                              :title     "Monthly order volume"
-                              :display   "bar"})]
+                result      (call {:reasoning "user asked for order count"
+                                   :query     query-input
+                                   :title     "Monthly order volume"
+                                   :display   "bar"})]
             (testing "external-query passed through verbatim"
               (is (= query-input @captured-query)))
+            (testing "no `:recovery-hint` is threaded in. A pipeline error's recovery steps come
+                     from its declaration in `tools.recoverable.pipeline`, filtered by the tools
+                     the calling profile has — passing a hint as well would append a second copy
+                     of the same advice."
+              (is (nil? @captured-opts)))
             (testing "structured-output is returned upstream"
               (is (= "q-1" (get-in result [:structured-output :query-id])))
               (is (= fake-query (get-in result [:structured-output :query]))))
@@ -129,26 +141,30 @@
                 (is (= "bar" (:display data)))
                 (is (str/starts-with? (:link data) "/question#"))
                 (is (= fake-query (:query data)))))
-            (testing "instructions text mentions follow-up visualization rendering"
-              (is (str/includes? (:instructions result) "follow-up message")))))))))
+            (testing "the model is told the visualization follows in its own message. Before, this
+                     tool returned `:instructions` and no `:output`, so what actually reached the
+                     model was the printed result map — this sentence plus the EDN of the resolved
+                     query."
+              (is (str/includes? (:output result) "follow-up message"))
+              (is (str/includes? (:output result) "future tense"))
+              (is (not (str/includes? (:output result) "source-table"))))))))))
 
 (deftest slackbot-tool-no-optional-fields-test
   (testing (str "When title/display are absent, the adhoc_viz data part omits them (doesn't\n"
                 "include them with nil values) but the link is still built and returned.")
     (let [fake-query {:lib/type :mbql/query :database 1 :stages [{:source-table 10}]}]
       (with-repr-stub!
-        (fn [_external-query]
+        (fn [_external-query & _]
           {:structured-output {:query-id       "q-x"
                                :query          fake-query
                                :result-columns []}
            :instructions      "ok"})
         (fn []
-          (let [result (slackbot-query/slackbot-construct-notebook-query-tool
-                        {:reasoning "simple request"
-                         :query     {:lib/type "mbql/query"
-                                     :stages   [{:lib/type     "mbql.stage/mbql"
-                                                 :source-table ["Sample" "PUBLIC" "ORDERS"]
-                                                 :aggregation  [["count" {}]]}]}})
+          (let [result (call {:reasoning "simple request"
+                              :query     {:lib/type "mbql/query"
+                                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                                      :source-table ["Sample" "PUBLIC" "ORDERS"]
+                                                      :aggregation  [["count" {}]]}]}})
                 data   (get-in result [:data-parts 0 :data])]
             (is (= "q-x" (get-in result [:structured-output :query-id])))
             (is (not (contains? data :title)))
@@ -156,66 +172,87 @@
             (is (string? (:link data)))
             (is (= fake-query (:query data)))))))))
 
-(deftest slackbot-tool-agent-error-surfaces-as-output-test
-  (testing (str "When `execute-representations-query` throws an :agent-error? ex-info (as it\n"
-                "does for unknown database, malformed YAML, etc.), the slackbot wrapper\n"
-                "returns `{:output <message>}` so the message reaches the LLM verbatim -\n"
-                "no stack trace, no data-parts.")
+(deftest slackbot-tool-declared-pipeline-error-test
+  (testing (str "A pipeline error carrying a declared `:error` code becomes that recoverable\n"
+                "error: the pipeline's own sentence, plus the recovery steps its declaration\n"
+                "supplies. The tool itself says nothing about recovery.")
     (with-repr-stub!
-      (fn [_external-query]
-        (throw (ex-info "Unknown database: `Sample`. Use the exact database name as reported by search / read_resource."
+      (fn [_external-query & _]
+        (throw (ex-info "Unknown database: `Sample`."
                         {:agent-error? true
                          :status-code  400
                          :error        :unknown-database
                          :database     "Sample"})))
       (fn []
-        (let [result (slackbot-query/slackbot-construct-notebook-query-tool
-                      {:reasoning "test agent-error path"
-                       :query     {:lib/type "mbql/query" :stages []}})]
-          (testing "bare :output key with the agent message, no structured-output or data-parts"
-            (is (string? (:output result)))
-            (is (re-find #"Unknown database" (:output result)))
-            (is (re-find #"Sample" (:output result)))
-            (is (nil? (:structured-output result)))
-            (is (nil? (:data-parts result)))))))))
+        (let [{:keys [class code text]}
+              (test-util/tool-failure slackbot-query/slackbot-construct-notebook-query-tool
+                                      {:reasoning "test agent-error path"
+                                       :query     {:lib/type "mbql/query" :stages []}})]
+          (is (= :recoverable class))
+          (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-database code))
+          (testing "the pipeline's sentence survives verbatim"
+            (is (str/includes? text "Unknown database"))
+            (is (str/includes? text "Sample")))
+          (testing "and the declaration's recovery step is appended"
+            (is (str/includes? text "first element of every portable FK"))))))))
 
-(deftest slackbot-tool-unexpected-error-is-wrapped-test
-  (testing (str "A non-agent exception (e.g. a programming bug) gets wrapped with a generic\n"
-                "`Failed to construct notebook query: ...` prefix. Protects the LLM from\n"
-                "leaking internal stack-trace-style messages.")
+(deftest slackbot-tool-undeclared-error-ends-the-turn-test
+  (testing (str "An exception the pipeline stamped `:agent-error?` onto without authoring a\n"
+                "sentence for it is unrecoverable. Its message was written for a developer, and\n"
+                "before this it went to the model as the tool's whole output.")
     (with-repr-stub!
-      (fn [_external-query]
-        (throw (RuntimeException. "something went sideways")))
+      (fn [_external-query & _]
+        (throw (ex-info "No matching clause: :metabase.lib.schema/bogus" {:agent-error? true})))
       (fn []
-        (let [result (slackbot-query/slackbot-construct-notebook-query-tool
-                      {:reasoning "test non-agent error path"
-                       :query     {:lib/type "mbql/query" :stages []}})]
-          (is (string? (:output result)))
-          (is (str/starts-with? (:output result) "Failed to construct notebook query:"))
-          (is (re-find #"something went sideways" (:output result))))))))
+        (is (= {:class :unrecoverable :code :internal}
+               (test-util/tool-failure slackbot-query/slackbot-construct-notebook-query-tool
+                                       {:reasoning "foreign failure"
+                                        :query     {:lib/type "mbql/query" :stages []}})))))))
+
+(deftest slackbot-tool-refusal-is-a-not-found-test
+  (testing (str "A 403 from inside the pipeline becomes the shared not-found error rather than\n"
+                "`api/read-check`'s own sentence. Before, \"You don't have permissions to do\n"
+                "that.\" was handed to the model as the tool's output, which named nothing and\n"
+                "offered no next step.")
+    (with-repr-stub!
+      (fn [_external-query & _]
+        (throw (ex-info "You don't have permissions to do that." {:status-code 403})))
+      (fn []
+        (let [{:keys [class code text]}
+              (test-util/tool-failure slackbot-query/slackbot-construct-notebook-query-tool
+                                      {:reasoning "refused"
+                                       :query     {:lib/type "mbql/query" :stages []}})]
+          (is (= :recoverable class))
+          (is (= :metabase.metabot.tools.recoverable.common/not-found code))
+          (is (str/includes? text "was not found"))
+          (testing "and says nothing about permissions, which would leak whether it exists"
+            (is (not (str/includes? text "permission")))))))))
+
+(deftest slackbot-tool-bug-propagates-test
+  (testing "an unexpected error, e.g. a programming bug, is not converted"
+    (with-repr-stub!
+      (fn [_external-query & _] (throw (RuntimeException. "something went sideways")))
+      (fn []
+        (is (thrown-with-msg? RuntimeException #"something went sideways"
+                              (call {:reasoning "bug" :query {:lib/type "mbql/query" :stages []}})))))))
 
 ;;; ---------------------------------------- end-to-end test --------------------------------------------------------
 
 (deftest slackbot-tool-end-to-end-test
-  (testing (str "End-to-end: call the slackbot tool with a YAML query against the real\n"
-                "application sample DB. Exercises the full repr pipeline (parse-yaml \u2192\n"
-                "repair \u2192 validate \u2192 resolve) plus the slackbot-specific wrapping\n"
-                "(query->question-url, adhoc_viz data part). Serves as a safety net for\n"
-                "step 14 - any future regression in the slackbot contract should surface here\n"
-                "without needing a live LLM loop.")
+  (testing (str "End-to-end: call the slackbot tool with a real query against the real\n"
+                "application sample DB. Exercises the full repr pipeline (validate → repair →\n"
+                "resolve) plus the slackbot-specific wrapping (query->question-url, adhoc_viz\n"
+                "data part).")
     (mt/with-current-user (test.users/user->id :crowberto)
       (let [db-name (t2/select-one-fn :name :model/Database :id (mt/id))
-            ;; Canonical DB name (per `repr-plan.md` step 13); `Sample` alone would
-            ;; short-circuit with :unknown-database.
             external-query {:lib/type "mbql/query"
                             :stages   [{:lib/type     "mbql.stage/mbql"
                                         :source-table [db-name "PUBLIC" "ORDERS"]
                                         :aggregation  [["count" {}]]}]}
-            result  (slackbot-query/slackbot-construct-notebook-query-tool
-                     {:reasoning "count the orders"
-                      :query     external-query
-                      :title     "Total orders"
-                      :display   "bar"})]
+            result  (call {:reasoning "count the orders"
+                           :query     external-query
+                           :title     "Total orders"
+                           :display   "bar"})]
         (testing "structured-output carries a resolved MBQL 5 query with numeric ids"
           (let [q (get-in result [:structured-output :query])]
             (is (= :mbql/query (:lib/type q)))
@@ -230,31 +267,26 @@
             (is (= "bar" (:display data)))
             (is (str/starts-with? (:link data) "/question#"))
             (is (map? (:query data)))))
-        (testing "canonical-DB-name happy path returns a structured-output, not an error :output"
-          ;; A non-agent failure (or agent-error) would clear :structured-output and put the
-          ;; message under :output. Sanity-check the happy-path shape.
-          (is (some? (:structured-output result)) (pr-str result))
-          (is (nil? (:output result))))))))
+        (testing "and an `:output` the model can read"
+          (is (string? (:output result)))
+          (is (str/includes? (:output result) "Query created")))))))
 
 (deftest slackbot-tool-end-to-end-unknown-database-test
-  (testing (str "End-to-end error path: if the LLM writes a DB name that doesn't match any\n"
-                "application database, the slackbot tool returns `{:output <message>}` with\n"
-                "a clear `Unknown database` message (no stack trace, no data-parts). This is\n"
-                "the post-step-13 loud-failure behaviour - the previous silent-rewrite pass\n"
-                "is gone.")
+  (testing (str "End-to-end error path: a DB name matching no application database is the\n"
+                "declared `unknown-database` error, with the pipeline's sentence and the\n"
+                "recovery step that says where a database name comes from.")
     (mt/with-current-user (test.users/user->id :crowberto)
-      (let [;; Intentionally use an impossible name so we hit :unknown-database at lookup.
-            external-query {:lib/type "mbql/query"
+      (let [external-query {:lib/type "mbql/query"
                             :stages   [{:lib/type     "mbql.stage/mbql"
                                         :source-table ["DefinitelyNotARealDatabaseName" "PUBLIC" "ORDERS"]
                                         :aggregation  [["count" {}]]}]}
-            result (slackbot-query/slackbot-construct-notebook-query-tool
-                    {:reasoning "wrong db name"
-                     :query     external-query
-                     :display   "table"})]
-        (testing "no structured-output, no data-parts, clear message"
-          (is (nil? (:structured-output result)))
-          (is (nil? (:data-parts result)))
-          (is (string? (:output result)))
-          (is (re-find #"Unknown database" (:output result)))
-          (is (re-find #"DefinitelyNotARealDatabaseName" (:output result))))))))
+            {:keys [class code text]}
+            (test-util/tool-failure slackbot-query/slackbot-construct-notebook-query-tool
+                                    {:reasoning "wrong db name"
+                                     :query     external-query
+                                     :display   "table"})]
+        (is (= :recoverable class))
+        (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-database code))
+        (is (str/includes? text "Unknown database"))
+        (is (str/includes? text "DefinitelyNotARealDatabaseName"))
+        (is (str/includes? text "portable FK"))))))

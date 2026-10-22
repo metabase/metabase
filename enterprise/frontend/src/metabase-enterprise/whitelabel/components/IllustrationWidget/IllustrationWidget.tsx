@@ -1,15 +1,17 @@
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, JSX } from "react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
-import { BasicAdminSettingInput } from "metabase/admin/settings/components/widgets/AdminSettingInput";
 import { LighthouseIllustrationThumbnail } from "metabase/common/components/LighthouseIllustration";
 import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import CS from "metabase/css/core/index.css";
 import { useAdminSetting } from "metabase/settings";
-import { Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
+import {
+  BasicAdminSettingInput,
+  SettingHeader,
+} from "metabase/settings-components";
+import { ActionIcon, Box, Button, Flex, Icon, Paper, Text } from "metabase/ui";
 import type {
   EnterpriseSettingKey,
   IllustrationSettingValue,
@@ -17,11 +19,7 @@ import type {
 
 import { ImageUploadInfoDot } from "../ImageUploadInfoDot";
 
-import { PreviewImage, SailboatImage } from "./IllustrationWidget.styled";
-export interface StringSetting {
-  value: IllustrationSettingValue | null;
-  default: IllustrationSettingValue;
-}
+import S from "./IllustrationWidget.module.css";
 
 type IllustrationType = "background" | "icon";
 
@@ -54,24 +52,18 @@ const getIllustrationType = (
   }
 };
 
-const SELECT_OPTIONS: Record<IllustrationType, SelectOption[]> = {
+const getSelectOptions = (): Record<IllustrationType, SelectOption[]> => ({
   background: [
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Lighthouse`, value: "default" },
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`No illustration`, value: "none" },
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Custom`, value: "custom" },
   ],
   icon: [
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Sailboat`, value: "default" },
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`No illustration`, value: "none" },
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
     { label: t`Custom`, value: "custom" },
   ],
-} as const;
+});
 
 export function IllustrationWidget({
   name,
@@ -88,7 +80,7 @@ export function IllustrationWidget({
   const [errorMessage, setErrorMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const type = getIllustrationType(name);
-  const options = SELECT_OPTIONS[type];
+  const options = getSelectOptions()[type];
   const customIllustrationSettingName =
     // Unjustified type cast. FIXME
     `${name}-custom` as EnterpriseSettingKey;
@@ -192,11 +184,11 @@ export function IllustrationWidget({
       <Paper withBorder shadow="none">
         <Flex>
           <Flex
+            className={S.borderRight}
             align="center"
             justify="center"
             w="7.5rem"
             pos="relative"
-            style={{ borderRight: "1px solid var(--mb-color-border-neutral)" }}
           >
             {getPreviewImage({
               value: localValue,
@@ -251,15 +243,15 @@ export function IllustrationWidget({
                         : t`Remove uploaded image`}
                   </Text>
                   {customIllustrationSource && (
-                    <Button
-                      leftSection={<Icon name="close" />}
+                    <ActionIcon
                       variant="subtle"
-                      c="text-primary"
+                      size="sm"
                       ml="lg"
-                      size="compact-md"
                       onClick={handleRemoveCustomIllustration}
                       aria-label={t`Remove custom illustration`}
-                    />
+                    >
+                      <Icon name="close" />
+                    </ActionIcon>
                   )}
                 </Flex>
               ))}
@@ -281,7 +273,7 @@ async function isFileIntact(dataUri: string) {
 
 const PREVIEW_ELEMENTS: Record<IllustrationType, JSX.Element> = {
   background: <LighthouseIllustrationThumbnail />,
-  icon: <SailboatImage />,
+  icon: <Box className={S.sailboat} w="6.25rem" h="5.625rem" />,
 };
 
 interface GetPreviewImageProps {
@@ -304,7 +296,15 @@ function getPreviewImage({
   }
 
   if (value === "custom" && customSource) {
-    return <PreviewImage src={customSource} />;
+    return (
+      <Box
+        component="img"
+        className={S.previewImage}
+        src={customSource}
+        w="6.25rem"
+        h="5.625rem"
+      />
+    );
   }
 
   return null;

@@ -9,7 +9,6 @@
    [malli.error :as me]
    [metabase.config.core :as config]
    [metabase.search.config :as search.config]
-   [metabase.search.db :as search.db]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
@@ -91,7 +90,19 @@
   ;; `:document` is the document model's prose-mirror body: it's indexed as searchable text (via
   ;; ast->text) but the raw JSON should never be echoed back in the search response or bloat the index row.
   ;; `:data_layer` also stays IN: Metabot surfaces it on table results so the LLM sees a table's data layer.
-  #{:pinned :view_count :last_viewed_at :native_query :dataset_query :document :exploration_id})
+  ;; The `:table_collection_*` and `:table_is_published` render terms only feed the measure and segment specs'
+  ;; `:root-collection-type` function and their reindex hooks, so they stay out of the response.
+  #{:dataset_query
+    :document
+    :exploration_id
+    :last_viewed_at
+    :native_query
+    :pinned
+    :table_collection_id
+    :table_collection_location
+    :table_collection_type
+    :table_is_published
+    :view_count})
 
 (def attr-types
   "The abstract types of each attribute."
@@ -200,6 +211,7 @@
                    [:map-of :keyword [:or fn? true?]]]]
    [:embedding-exclude {:optional true} [:set :keyword]]
    [:render-terms [:map-of NonAttrKey AttrValue]]
+   [:source {:optional true} fn?]
    [:where {:optional true} vector?]
    [:bookmark {:optional true} vector?]
    [:joins {:optional true} JoinMap]])
@@ -400,6 +412,10 @@
    Spec keys:
    - `:model` - Toucan model keyword (required)
    - `:attrs` - Map of search index attributes (required)
+   - `:source` - A thunk returning what `:this` reads from, as a `[source :this]` pair, when the indexable rows are
+     not simply the model's own table -- a Table, whose user-set values live in a side-car. A thunk because the spec
+     map is evaluated as the namespace loads, and resolving another model there would be a load cycle. Defaults to
+     the model's own table.
    - `:search-terms` - Searchable text fields: a vector of column keywords, or a map of
      column keyword to either `true` (use the raw value) or a transform fn applied for
      full-text search (required)
@@ -407,7 +423,7 @@
      embedding text (they remain in full-text search). Use for fields whose raw value is
      not suitable for semantic search.
    - `:render-terms` - Additional attributes needed for display (required)
-   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated users only)
+   - `:visibility` - `:all` (default) or `:app-user` (non-sandboxed, non-impersonated, non-routed users only)
    - `:where` - HoneySQL where clause to filter indexed records
    - `:bookmark` - HoneySQL join expression to detect if entity is bookmarked by current user
    - `:joins` - Map of join aliases to [model join-condition] tuples
@@ -452,8 +468,11 @@
   "Given a transformed toucan map, get back a mapping to the raw db values that we can use in a query."
   [instance]
   (let [xforms (try
-                 (#'t2.transformed/in-transforms (t2/model instance))
-                 (catch Exception _     ; this happens for :model/ModelIndexValue, which has no transforms
+                 (let [model (t2/model instance)]
+                   ;; We know ModelIndexValue to have no transforms.
+                   (when-not (and (keyword? model) (= (name model) "ModelIndexValue"))
+                     (#'t2.transformed/in-transforms model)))
+                 (catch Exception _     ; may happen for other models that have no transforms
                    nil))]
     (reduce-kv
      (fn [m k v]
@@ -478,7 +497,6 @@
   (doseq [d (keys (model-hooks))]
     (derive d :hook/search-index))
 
-  (search-models-to-update (search.db/any-card))
   (methods spec)
   (model-hooks)
 
@@ -507,6 +525,7 @@
     (sequential? form) (mapv canonicalize form)
     :else form))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *testing-only-index-version-hash*
   "Override for tests that need a specific index version."
   nil)

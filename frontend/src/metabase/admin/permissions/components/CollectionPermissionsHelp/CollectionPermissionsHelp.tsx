@@ -6,7 +6,7 @@ import { useDocsUrl } from "metabase/common/hooks";
 import { Flex, Stack, Text, Title, rem } from "metabase/ui";
 
 export const CollectionPermissionsHelp = () => {
-  const { url } = useDocsUrl("permissions/collection");
+  const { url } = useDocsUrl("permissions/collections");
 
   return (
     <Flex direction="column" py={rem(22)} px="xl">

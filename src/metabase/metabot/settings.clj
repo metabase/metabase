@@ -3,8 +3,8 @@
    [clojure.string :as str]
    [metabase.llm.provider :as llm.provider]
    [metabase.llm.settings :as llm.settings]
-   [metabase.metabot.self.catalog :as catalog]
    [metabase.metabot.self.google :as google]
+   [metabase.metabot.self.registry :as registry]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]))
@@ -16,6 +16,14 @@
   :encryption :no
   :export?    false
   :doc        false)
+
+(defsetting metabot-chat-turn-async-timeout-ms
+  (deferred-tru "Maximum duration of a Metabot chat turn in milliseconds.")
+  :type       :positive-integer
+  :visibility :internal
+  :default    1800000
+  :encryption :no
+  :export?    false)
 
 (defsetting metabot-enabled?
   (deferred-tru "Whether Metabot is enabled for regular usage.")
@@ -54,7 +62,7 @@
   :feature    :ai-controls)
 
 (defsetting metabot-chat-system-prompt
-  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar and embedded Metabot).")
+  (deferred-tru "Custom instructions appended to Metabot''s system prompt for the chat experience (the AI sidebar, embedded Metabot, and Metabot in Slack).")
   :type       :string
   :default    ""
   :visibility :admin
@@ -97,6 +105,28 @@
   :type       :boolean
   :visibility :internal
   :default    true
+  :export?    false)
+
+(defsetting metabot-query-execution-enabled?
+  (deferred-tru "Whether Metabot can run queries and read their results. Result rows are sent to the LLM provider.")
+  :type       :boolean
+  :visibility :admin
+  :default    false
+  :export?    false)
+
+(defsetting metabot-sql-execution-enabled?
+  (deferred-tru "Whether Metabot can also run SQL queries it wrote, for questions a notebook query can''t express. Applies only when Metabot can run queries, and only on databases where the user may write SQL.")
+  :type       :boolean
+  :visibility :internal
+  :default    true
+  :export?    false)
+
+(defsetting metabot-eval-profiles-enabled?
+  (deferred-tru "Whether Metabot accepts the profiles that exist only for evals, such as one that answers only in SQL. Set it only on instances that run evals.")
+  :type       :boolean
+  :visibility :internal
+  :default    false
+  :setter     :none
   :export?    false)
 
 ;;; ------------------------------------------------- LLM Provider ------------------------------------------------
@@ -186,32 +216,37 @@
   :visibility       :settings-manager
   :export?          false
   :deprecated-name  :ee-ai-metabot-provider
+  :getter           #(llm.provider/canonical-model-ref (setting/get-value-of-type :string :llm-metabot-provider))
   :setter           (fn [new-value]
                       (when new-value
                         (validate-model-ref! new-value))
-                      (setting/set-value-of-type! :string :llm-metabot-provider new-value)))
+                      (setting/set-value-of-type! :string :llm-metabot-provider
+                                                  (llm.provider/canonical-model-ref new-value))))
 
 (defn- mini-model-ref
-  "The model reference for the fastest model of the connection `model-ref` names, or nil when that connection's
-  provider type has no such model."
+  "The model reference for the mini model the connection `model-ref` names was listed as serving, or nil when it
+  names the one model it serves."
   [model-ref]
-  (let [conn-key (llm.provider/model-ref->connection-key model-ref)]
-    (when-let [model (llm.provider/mini-model (:type (llm.provider/connection conn-key)))]
+  (let [conn-key                       (llm.provider/model-ref->connection-key model-ref)
+        {:keys [type config] :as conn} (llm.provider/connection conn-key)]
+    (when-let [model (and (not (llm.provider/connection-model type config))
+                          (llm.provider/connection-mini-model conn))]
       (str conn-key "/" model))))
 
 (defn explicit-mini-model
-  "The model reference [[llm-mini-model]] was explicitly set to, or nil while it is being derived
-  from [[llm-metabot-provider]]. Callers that act on the admin's choice rather than on the model quick tasks happen
-  to run on want this: [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked."
+  "The model reference [[llm-mini-model]] was explicitly set to, or nil when derived from [[llm-metabot-provider]].
+
+  Callers that act on the admin's choice rather than on the model quick tasks happen to run on want this:
+  [[llm-mini-model]] itself resolves, so it names a connection even when none was ever picked.
+  A retired model id reads as the model that now serves it (see [[llm.provider/canonical-model-ref]])."
   []
-  (setting/get-value-of-type :string :llm-mini-model))
+  (llm.provider/canonical-model-ref (setting/get-value-of-type :string :llm-mini-model)))
 
 (defn- -llm-mini-model
   "Quick background tasks — naming a conversation, and whatever short, high-volume calls come next — do not need the
-  model Metabot chats on, so with nothing stored this resolves to the fastest model of the
-  connection [[llm-metabot-provider]] names. Connections whose provider type has no such model — the ones that name
-  the single model they serve, and the managed provider — fall through to the Metabot model itself, so this always
-  names a model as long as Metabot does."
+  model Metabot chats on, so with nothing stored this resolves to the fastest model the
+  connection [[llm-metabot-provider]] names was listed as serving. Connections with no such model fall through to
+  the Metabot model itself, so this always names a model as long as Metabot does."
   []
   (or (explicit-mini-model)
       (let [metabot-ref (llm-metabot-provider)]
@@ -227,7 +262,7 @@
   :setter     (fn [new-value]
                 (when new-value
                   (validate-model-ref! new-value))
-                (setting/set-value-of-type! :string :llm-mini-model new-value)))
+                (setting/set-value-of-type! :string :llm-mini-model (llm.provider/canonical-model-ref new-value))))
 
 (defsetting llm-metabot-configured?
   "Whether the connection selected for Metabot has the credentials it needs."
@@ -245,7 +280,7 @@
   :visibility :public
   :setter     :none
   :export?    false
-  :getter     #(catalog/streams-reasoning? (llm-metabot-provider))
+  :getter     #(registry/streams-reasoning? (llm-metabot-provider))
   :doc        false)
 
 (defsetting llm-metabot-supports-fast-mode?
@@ -256,7 +291,7 @@
   :visibility :settings-manager
   :setter     :none
   :export?    false
-  :getter     #(catalog/supports-fast-mode? (llm-metabot-provider))
+  :getter     #(registry/supports-fast-mode? (llm-metabot-provider))
   :doc        false)
 
 (defsetting llm-fast-mode
@@ -273,13 +308,16 @@
   "True when changing `setting-key` could change whether Metabot can reach an LLM — i.e. it
   feeds [[llm-metabot-configured?]] or one of the Metabot enable settings.
 
-  Matches all of [[metabase.llm.settings]] rather than a hand-listed key set: being broad
-  costs a redundant re-check, while missing a key silently strands callers that wake on it."
+  Matches every setting the `llm` module defines, rather than a hand-listed key set or a single
+  namespace: the module spreads its settings over several namespaces, and being broad costs a
+  redundant re-check while missing a key silently strands callers that wake on it."
   [setting-key]
   (boolean
    (or (contains? metabot-llm-setting-keys setting-key)
-       (= 'metabase.llm.settings
-          (:namespace (get @setting/registered-settings setting-key))))))
+       (some-> (get @setting/registered-settings setting-key)
+               :namespace
+               str
+               (str/starts-with? "metabase.llm.")))))
 
 ;;; ------------------------------------------------- AI Data Retention ------------------------------------------------
 
@@ -316,7 +354,7 @@
       env-var-value)))
 
 (defsetting ai-usage-max-retention-days
-  (deferred-tru "Number of days to retain rows in the ai_usage_log, metabot_conversation, and metabot_message tables. Minimum value is 30; set to 0 to retain data indefinitely.")
+  (deferred-tru "Number of days to retain rows in the ai_usage_log, metabot_conversation, metabot_message, agent_api_call_log, and api_key_usage_log tables. Minimum value is 30; set to 0 to retain data indefinitely.")
   :type       :integer
   :visibility :admin
   :setter     :none
@@ -330,6 +368,7 @@
 - `metabot_conversation`
 - `metabot_message`
 - `agent_api_call_log`
+- `api_key_usage_log`
 
 Once a day, Metabase deletes rows older than this threshold. The minimum value is 30 days (Metabase will treat entered values of 1 to 29 the same as 30).
 If set to 0, Metabase will keep all rows. If you don't set this variable, Metabase keeps rows for 180 days.")

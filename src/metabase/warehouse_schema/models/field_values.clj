@@ -42,6 +42,8 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
+   [metabase.warehouse-schema.schema]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -51,10 +53,12 @@
   "The maximum character length for a stored FieldValues entry."
   100)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *total-max-length*
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
   (long (* analyze/auto-list-cardinality-threshold entry-max-length)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Integer *distinct-limit*
   "Per-column row cap for warehouse-side distinct-value fetches. Used by the UNION ALL per-arm
   `LIMIT`, by the per-field MBQL `lib/limit` in `distinct-values`, and by `persist-field-values!`
@@ -102,7 +106,8 @@
 
 (doto :model/FieldValues
   (derive :metabase/model)
-  (derive :hook/timestamped?))
+  (derive :hook/timestamped?)
+  (derive :hook/dependencies))
 
 (t2/deftransforms :model/FieldValues
   {:human_readable_values mi/transform-json-no-keywordization
@@ -385,8 +390,9 @@
              ::lib.schema.metadata/column]]
   (try
     (let [field  (cond-> field
-                   (t2/model field) (lib-be/instance->metadata :metadata/column))
-          result ((requiring-resolve 'metabase.warehouse-schema.metadata-from-qp/table-query)
+                   ;; a caller may hand us a Field hydrated with its Table, which is not part of column metadata
+                   (t2/model field) (-> (dissoc :table) (lib-be/instance->metadata :metadata/column)))
+          result (metadata-from-qp/table-query
                   (:table-id field)
                   (fn [query]
                     (-> query
@@ -431,6 +437,7 @@
   [field-id]
   (get-latest-field-values field-id :full nil))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *fv-select-batch-size*
   "Chunk size when fetching FieldValues by `field_id [:in …]`. Keeps a single SQL `IN (…)` clause
   under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100). Wide tables can
@@ -525,6 +532,7 @@
   See [[detached-fetch!]]."
   (atom {}))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *fetch-max-age-ms*
   "How long a detached fetch may run before it is canceled, and how long a caller will wait on one.
 
@@ -542,6 +550,7 @@
   what this endpoint promises its callers, and that is a decision of its own."
   (* 60 60 1000))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *max-in-flight-fetches*
   "Ceiling on the registry, independent of whatever else happens to bound it.
 
@@ -687,10 +696,6 @@
   (conj (serdes/generate-path "Field" {:id field_id})
         {:model "FieldValues" :id "0"}))
 
-(defmethod serdes/deserialization-dependencies "FieldValues" [fv]
-  (let [db-path (first (serdes/path fv))]
-    [[db-path]]))
-
 (defmethod serdes/load-find-local "FieldValues" [path]
   ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
   (let [field (serdes/load-find-local (pop path))]
@@ -706,11 +711,10 @@
 
 (defmethod serdes/make-spec "FieldValues" [_model-name _opts]
   {:copy      [:values :human_readable_values :has_more_values :hash_key]
-   :transform {:created_at   (serdes/date)
-               :last_used_at (serdes/date)
-               :type         (serdes/kw)
+   :skip [:last_used_at]
+   :transform {:type         (serdes/kw)
                :field_id     {::serdes/fk true
-                              :export     (constantly ::serdes/skip)
+                              :export     #(serdes/*export-field-fk* %)
                               :import-with-context (fn [current _ _]
                                                      (let [field-ref (field-path->field-ref (serdes/path current))]
                                                        (serdes/*import-field-fk* field-ref)))}}
@@ -725,6 +729,9 @@
                    (= (:hash_key ingested) (:hash_key local)) (dissoc :hash_key))]
     ((get-method serdes/load-update! "") "FieldValues" ingested local)))
 
+(defmethod serdes/ingested-path "FieldValues" [_ {:keys [field_id]}]
+  (conj (serdes/field->path field_id) {:model "FieldValues" :id "0"}))
+
 (def ^:private field-values-slug "___fieldvalues")
 
 (defmethod serdes/storage-path "FieldValues" [fv _]
@@ -733,4 +740,4 @@
   (let [hierarchy    (serdes/path fv)
         field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
     (update field-path (dec (count field-path))
-            (fn [segment] (update segment :label str field-values-slug)))))
+            (fn [segment] (assoc segment :suffix field-values-slug)))))

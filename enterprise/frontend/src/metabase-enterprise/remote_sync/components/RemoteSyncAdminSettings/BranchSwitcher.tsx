@@ -91,8 +91,7 @@ export const BranchSwitcher = ({
         return;
       }
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: errorMessage ?? t`Sorry, we were unable to switch branches.`,
       });
     }
@@ -138,10 +137,10 @@ export const BranchSwitcher = ({
           position="bottom-start"
           width={320}
           withinPortal
+          middlewares={{ flip: false, shift: true }}
         >
           <Combobox.Target>
             <Button
-              variant="default"
               disabled={disabled || isLoading}
               loading={isLoading}
               onClick={() => combobox.toggleDropdown()}
@@ -199,20 +198,23 @@ export const BranchSwitcher = ({
       {branchMismatch && (
         <Modal
           opened
-          padding="xxl"
           title={t`This view is out of date`}
           withCloseButton={false}
           onClose={() => setBranchMismatch(null)}
         >
-          <Text mt="lg">{branchMismatch}</Text>
-          <Group gap="sm" justify="end" mt="xxl">
-            <Button variant="subtle" onClick={() => setBranchMismatch(null)}>
+          <Text>{branchMismatch}</Text>
+          <Modal.Footer>
+            <Button
+              variant="subtle"
+              color="neutral"
+              onClick={() => setBranchMismatch(null)}
+            >
               {t`Cancel`}
             </Button>
             <Button variant="filled" onClick={() => window.location.reload()}>
               {t`Refresh`}
             </Button>
-          </Group>
+          </Modal.Footer>
         </Modal>
       )}
     </>

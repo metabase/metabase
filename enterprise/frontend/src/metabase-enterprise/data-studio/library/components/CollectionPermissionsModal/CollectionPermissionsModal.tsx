@@ -10,7 +10,9 @@ export function CollectionPermissionsModal({
   onClose,
 }: CollectionPermissionsModalProps) {
   useListCollectionsQuery(
-    namespace === "snippets" ? { namespace: "snippets" } : skipToken,
+    namespace === "snippets" || namespace === "data-actions"
+      ? { namespace }
+      : skipToken,
   );
 
   return (

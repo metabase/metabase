@@ -183,10 +183,22 @@
 (events/derive! :event/password-reset-initiated ::user-event)
 (events/derive! :event/password-reset-successful ::user-event)
 (events/derive! :event/mfa-verification-failed ::user-event)
+(events/derive! :event/mfa-required-enrollment-failed ::user-event)
 (events/derive! :event/mfa-enrolled ::user-event)
 (events/derive! :event/mfa-disabled ::user-event)
+(events/derive! :event/mcp-jwt-token-issued ::user-event)
 
 (methodical/defmethod events/publish-event! ::user-event
+  [topic event]
+  (audit-log/record-event! topic event))
+
+;; session events
+
+(events/derive! ::session-event ::event)
+(events/derive! :event/session-revoked ::session-event)
+(events/derive! :event/sessions-revoked ::session-event)
+
+(methodical/defmethod events/publish-event! ::session-event
   [topic event]
   (audit-log/record-event! topic event))
 
@@ -333,6 +345,11 @@
 (events/derive! :event/transform-run-start ::transform-event)
 (events/derive! :event/transform-run-canceled ::transform-event)
 (events/derive! :event/transform-run-timeout ::transform-event)
+(events/derive! :event/transform-test-create ::transform-event)
+(events/derive! :event/transform-test-update ::transform-event)
+(events/derive! :event/transform-test-delete ::transform-event)
+(events/derive! :event/transform-test-run-start ::transform-event)
+(events/derive! :event/transform-test-run-timeout ::transform-event)
 (events/derive! :event/transform-inspect-discover ::transform-event)
 (events/derive! :event/transform-inspect-lens ::transform-event)
 

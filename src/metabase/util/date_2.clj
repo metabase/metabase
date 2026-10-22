@@ -181,7 +181,8 @@
     (add (t/zoned-date-time \"2019-11-05T15:44-08:00[US/Pacific]\") :month 2)
     ->
     (t/zoned-date-time \"2020-01-05T15:44-08:00[US/Pacific]\")"
-  ([unit amount]
+  ([unit   :- (into [:enum] add-units)
+    amount :- [:maybe :int]]
    (add (t/zoned-date-time) unit amount))
 
   ([t      :- TemporalInstance
@@ -217,8 +218,14 @@
     ;; operation. Maybe we should rename this unit to clear up the potential confusion (?)
     :year})
 
-(defn- start-of-week []
-  ((requiring-resolve 'metabase.settings.core/get) :start-of-week))
+(def ^:private TimeConfig
+  ;; Mirrors ::lib.schema.common/time-config, duplicated because util can't depend on lib.
+  [:map
+   {:closed true}
+   [:start-of-week [:enum :monday :tuesday :wednesday :thursday :friday :saturday :sunday]]])
+
+(def ^:private ComparisonType
+  [:enum := :< :<= :> :>=])
 
 (let [m (u.date.common/static-instances DayOfWeek)]
   (defn- day-of-week*
@@ -243,34 +250,33 @@
 (mu/defn extract :- :int
   "Extract a field such as `:minute-of-hour` from a temporal value `t`.
 
-    (extract (t/zoned-date-time \"2019-11-05T15:44-08:00[US/Pacific]\") :day-of-month)
+    (extract {:start-of-week :sunday}
+             (t/zoned-date-time \"2019-11-05T15:44-08:00[US/Pacific]\") :day-of-month)
     ;; -> 5
 
   Values are returned as numbers (currently, always and integers, but this may change if we add support for
-  `:fraction-of-second` in the future.)"
-  ([unit]
-   (extract (t/zoned-date-time) unit))
-
-  ([t    :- TemporalInstance
-    unit :- (into [:enum] (conj extract-units :day-of-week-iso))]
-   (t/as t (case unit
-             :second-of-minute :second-of-minute
-             :minute-of-hour   :minute-of-hour
-             :hour-of-day      :hour-of-day
-             :day-of-week      (.dayOfWeek (week-fields (start-of-week)))
-             :day-of-week-iso  (.dayOfWeek (week-fields :monday))
-             :day-of-month     :day-of-month
-             :day-of-year      :day-of-year
-             :week-of-year     (.weekOfYear (week-fields (start-of-week)))
-             :month-of-year    :month-of-year
-             :quarter-of-year  :quarter-of-year
-             :year             :year))))
+  `:fraction-of-second` in the future.) `time-config` controls the first day used by week-based fields."
+  [{:keys [start-of-week]} :- TimeConfig
+   t                      :- TemporalInstance
+   unit                   :- (into [:enum] (conj extract-units :day-of-week-iso))]
+  (t/as t (case unit
+            :second-of-minute :second-of-minute
+            :minute-of-hour   :minute-of-hour
+            :hour-of-day      :hour-of-day
+            :day-of-week      (.dayOfWeek (week-fields start-of-week))
+            :day-of-week-iso  (.dayOfWeek (week-fields :monday))
+            :day-of-month     :day-of-month
+            :day-of-year      :day-of-year
+            :week-of-year     (.weekOfYear (week-fields start-of-week))
+            :month-of-year    :month-of-year
+            :quarter-of-year  :quarter-of-year
+            :year             :year)))
 
 (defmulti ^TemporalAdjuster adjuster
   "Get the custom `TemporalAdjuster` named by `k`.
 
     ;; adjust 2019-12-10T17:26 to the second week of the year
-    (t/adjust #t \"2019-12-10T17:26\" (u.date/adjuster :week-of-year 2)) ;; -> #t \"2019-01-06T17:26\""
+    (t/adjust #t \"2019-12-10T17:26\" (u.date/adjuster :week-of-year 2 :sunday)) ;; -> #t \"2019-01-06T17:26\""
   {:arglists '([k & args])}
   (fn [k & _] (keyword k)))
 
@@ -279,10 +285,10 @@
   (throw (Exception. (tru "No temporal adjuster named {0}" k))))
 
 (defmethod adjuster :first-day-of-week
-  [_]
+  [_ start-of-week]
   (reify TemporalAdjuster
     (adjustInto [_ t]
-      (t/adjust t :previous-or-same-day-of-week (start-of-week)))))
+      (t/adjust t :previous-or-same-day-of-week start-of-week))))
 
 (defmethod adjuster :first-day-of-quarter
   [_]
@@ -291,19 +297,19 @@
       (.with t (.atDay (t/year-quarter t) 1)))))
 
 (defmethod adjuster :first-week-of-year
-  [_]
+  [_ start-of-week]
   (reify TemporalAdjuster
     (adjustInto [_ t]
       (-> t
           (t/adjust :first-day-of-year)
-          (t/adjust (adjuster :first-day-of-week))))))
+          (t/adjust (adjuster :first-day-of-week start-of-week))))))
 
 (defmethod adjuster :week-of-year
-  [_ week-of-year]
+  [_ week-of-year start-of-week]
   (reify TemporalAdjuster
     (adjustInto [_ t]
       (-> t
-          (t/adjust (adjuster :first-week-of-year))
+          (t/adjust (adjuster :first-week-of-year start-of-week))
           (t/plus (t/weeks (dec week-of-year)))))))
 
 ;; if you attempt to truncate a `LocalDate` to `:day` or anything smaller we can go ahead and return it as is
@@ -328,23 +334,21 @@
 (mu/defn truncate :- TemporalInstance
   "Truncate a temporal value `t` to the beginning of `unit`, e.g. `:hour` or `:day`. Not all truncation units are
   supported on all subclasses of `Temporal` — for example, you can't truncate a `LocalTime` to `:month`, for obvious
-  reasons."
-  ([unit]
-   (truncate (t/zoned-date-time) unit))
-
-  ([^Temporal t :- TemporalInstance
-    unit        :- (into [:enum] truncate-units)]
-   (case unit
-     :default     t
-     :millisecond (t/truncate-to t :millis)
-     :second      (t/truncate-to t :seconds)
-     :minute      (t/truncate-to t :minutes)
-     :hour        (t/truncate-to t :hours)
-     :day         (t/truncate-to t :days)
-     :week        (-> (.with t (adjuster :first-day-of-week))    (t/truncate-to :days))
-     :month       (-> (t/adjust t :first-day-of-month)           (t/truncate-to :days))
-     :quarter     (-> (.with t (adjuster :first-day-of-quarter)) (t/truncate-to :days))
-     :year        (-> (t/adjust t :first-day-of-year)            (t/truncate-to :days)))))
+  reasons. `time-config` controls the beginning of a week."
+  [{:keys [start-of-week]} :- TimeConfig
+   ^Temporal t             :- TemporalInstance
+   unit                    :- (into [:enum] truncate-units)]
+  (case unit
+    :default     t
+    :millisecond (t/truncate-to t :millis)
+    :second      (t/truncate-to t :seconds)
+    :minute      (t/truncate-to t :minutes)
+    :hour        (t/truncate-to t :hours)
+    :day         (t/truncate-to t :days)
+    :week        (-> (.with t (adjuster :first-day-of-week start-of-week)) (t/truncate-to :days))
+    :month       (-> (t/adjust t :first-day-of-month)                     (t/truncate-to :days))
+    :quarter     (-> (.with t (adjuster :first-day-of-quarter))           (t/truncate-to :days))
+    :year        (-> (t/adjust t :first-day-of-year)                      (t/truncate-to :days))))
 
 (mu/defn bucket :- [:or number? TemporalInstance]
   "Perform a truncation or extraction unit on temporal value `t`. (These two operations are collectively known as
@@ -352,18 +356,19 @@
 
   You can combine this function with `group-by` to do some date/time bucketing in Clojure-land:
 
-    (group-by #(bucket % :quarter-of-year) (map t/local-date [\"2019-01-01\" \"2019-01-02\" \"2019-01-04\"]))
-    ;; -> {1 [(t/local-date \"2019-01-01\") (t/local-date \"2019-01-02\")], 2 [(t/local-date \"2019-01-04\")]}"
-  ([unit]
-   (bucket (t/zoned-date-time) unit))
+    (group-by #(bucket {:start-of-week :sunday} % :quarter-of-year)
+              (map t/local-date [\"2019-01-01\" \"2019-01-02\" \"2019-01-04\"]))
+    ;; -> {1 [(t/local-date \"2019-01-01\") (t/local-date \"2019-01-02\")], 2 [(t/local-date \"2019-01-04\")]}
 
-  ([t    :- TemporalInstance
-    unit :- (into [:enum] cat [extract-units truncate-units])]
-   (cond
-     (= unit :default)     t
-     (extract-units unit)  (extract t unit)
-     (truncate-units unit) (truncate t unit)
-     :else                 (throw (Exception. (tru "Invalid unit: {0}" unit))))))
+  `time-config` controls week-based extraction and truncation."
+  [time-config :- TimeConfig
+   t           :- TemporalInstance
+   unit        :- (into [:enum] cat [extract-units truncate-units])]
+  (cond
+    (= unit :default)     t
+    (extract-units unit)  (extract time-config t unit)
+    (truncate-units unit) (truncate time-config t unit)
+    :else                 (throw (Exception. (tru "Invalid unit: {0}" unit)))))
 
 (mu/defn range :- [:map
                    [:start TemporalInstance]
@@ -371,23 +376,29 @@
   "Get a start (by default, inclusive) and end (by default, exclusive) pair of instants for a `unit` span of time
   containing `t`. e.g.
 
-    (range (t/zoned-date-time \"2019-11-01T15:29:00Z[UTC]\") :week)
+    (range {:start-of-week :sunday} (t/zoned-date-time \"2019-11-01T15:29:00Z[UTC]\") :week)
     ->
     {:start (t/zoned-date-time \"2019-10-27T00:00Z[UTC]\")
-     :end   (t/zoned-date-time \"2019-11-03T00:00Z[UTC]\")}"
-  ([unit]
-   (range (t/zoned-date-time) unit))
+     :end   (t/zoned-date-time \"2019-11-03T00:00Z[UTC]\")}
 
-  ([t unit]
-   (range t unit nil))
+  `time-config` controls the beginning of a week."
+  ([time-config :- TimeConfig
+    t           :- TemporalInstance
+    unit        :- (into [:enum] add-units)]
+   (range time-config t unit nil))
 
-  ([t    :- TemporalInstance
-    unit :- (into [:enum] add-units)
+  ([time-config :- TimeConfig
+    t           :- TemporalInstance
+    unit        :- (into [:enum] add-units)
     {:keys [start end resolution]
      :or   {start      :inclusive
             end        :exclusive
-            resolution :millisecond}}]
-   (let [t (truncate t unit)]
+            resolution :millisecond}}
+    :- [:maybe [:map {:closed true}
+                [:start      {:optional true} [:enum :inclusive :exclusive]]
+                [:end        {:optional true} [:enum :inclusive :exclusive]]
+                [:resolution {:optional true} (into [:enum] add-units)]]]]
+   (let [t (truncate time-config t unit)]
      {:start (case start
                :inclusive t
                :exclusive (add t resolution -1))
@@ -395,42 +406,52 @@
                :inclusive (add (add t unit 1) resolution -1)
                :exclusive (add t unit 1))})))
 
-(defn comparison-range
+(mu/defn comparison-range
   "Generate an range that of instants that when bucketed by `unit` would be `=`, `<`, `<=`, `>`, or `>=` to the value of
   an instant `t` bucketed by `unit`. (`comparison-type` is one of `:=`, `:<`, `:<=`, `:>`, or `:>=`.) By default, the
   start of the resulting range is inclusive, and the end exclusive; this can be tweaked by passing `options`.
 
     ;; Generate range off instants that have the same MONTH as Nov 18th
-    (comparison-range (t/local-date \"2019-11-18\") :month := {:resolution :day})
-    ;; -> {:start (t/local-date \"2019-11-01\"), :end (t/local-date \"2019-12-01\")}"
-  ([unit comparison-type]
-   (comparison-range (t/zoned-date-time) unit comparison-type))
+    (comparison-range {:start-of-week :sunday}
+                      (t/local-date \"2019-11-18\") :month := {:resolution :day})
+    ;; -> {:start (t/local-date \"2019-11-01\"), :end (t/local-date \"2019-12-01\")}
 
-  ([t unit comparison-type]
-   (comparison-range t unit comparison-type nil))
+  `time-config` controls the beginning of week-based ranges."
+  ([time-config     :- TimeConfig
+    t               :- TemporalInstance
+    unit            :- (into [:enum] truncate-units)
+    comparison-type :- ComparisonType]
+   (comparison-range time-config t unit comparison-type nil))
 
-  ([t unit comparison-type {:keys [start end resolution]
-                            :or   {start      :inclusive
-                                   end        :exclusive
-                                   resolution :millisecond}
-                            :as   options}]
+  ([time-config     :- TimeConfig
+    t               :- TemporalInstance
+    unit            :- (into [:enum] truncate-units)
+    comparison-type :- ComparisonType
+    {:keys [start end resolution]
+     :or   {start      :inclusive
+            end        :exclusive
+            resolution :millisecond}}
+    :- [:maybe [:map {:closed true}
+                [:start      {:optional true} [:enum :inclusive :exclusive]]
+                [:end        {:optional true} [:enum :inclusive :exclusive]]
+                [:resolution {:optional true} (into [:enum] add-units)]]]]
    (case comparison-type
      :<  {:end (case end
-                 :inclusive (add (truncate t unit) resolution -1)
-                 :exclusive (truncate t unit))}
-     :<= {:end (let [t (add (truncate t unit) unit 1)]
+                 :inclusive (add (truncate time-config t unit) resolution -1)
+                 :exclusive (truncate time-config t unit))}
+     :<= {:end (let [t (add (truncate time-config t unit) unit 1)]
                  (case end
                    :inclusive (add t resolution -1)
                    :exclusive t))}
-     :>  {:start (let [t (add (truncate t unit) unit 1)]
+     :>  {:start (let [t (add (truncate time-config t unit) unit 1)]
                    (case start
                      :inclusive t
                      :exclusive (add t resolution -1)))}
-     :>= {:start (let [t (truncate t unit)]
+     :>= {:start (let [t (truncate time-config t unit)]
                    (case start
                      :inclusive t
                      :exclusive (add t resolution -1)))}
-     :=  (range t unit options))))
+     :=  (range time-config t unit {:start start, :end end, :resolution resolution}))))
 
 ;; Moving the type hints to the arg lists makes clj-kondo happy, but breaks eastwood (and maybe causes reflection
 ;; warnings) at the call sites.

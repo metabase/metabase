@@ -64,8 +64,8 @@
    permissions list with defaults filled in."
   [_route-params
    _query-params
-   {:keys [permissions]} :- [:map
-                             [:permissions [:sequential [:map
+   {:keys [permissions]} :- [:map {:closed true}
+                             [:permissions [:sequential [:map {:closed true}
                                                          [:group_id pos-int?]
                                                          [:perm_type  (into [:enum] valid-perm-types)]
                                                          [:perm_value (into [:enum] all-valid-perm-values)]]]]]]

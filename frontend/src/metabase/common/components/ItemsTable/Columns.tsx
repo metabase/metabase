@@ -5,12 +5,22 @@ import type { ActionMenuProps } from "metabase/common/collections/components/Act
 import { ActionMenu } from "metabase/common/collections/components/ActionMenu";
 import { DateTime } from "metabase/common/components/DateTime";
 import { EntityItemName } from "metabase/common/components/EntityItemName";
+import { IconButtonWrapper } from "metabase/common/components/IconButtonWrapper";
+import { Link } from "metabase/common/components/Link";
 import { Markdown } from "metabase/common/components/Markdown";
 import { useTranslateContent } from "metabase/content-translation/hooks";
-import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import { ArchiveButton } from "metabase/embedding/components/ArchiveButton";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { Checkbox, Ellipsified, type IconProps, Tooltip } from "metabase/ui";
+import {
+  Checkbox,
+  Ellipsified,
+  FixedSizeIcon,
+  Flex,
+  type IconProps,
+  Text,
+  Tooltip,
+} from "metabase/ui";
 import { modelToUrl } from "metabase/urls";
 import { isTouchDevice } from "metabase/utils/browser";
 import { isPlainKey } from "metabase/utils/keyboard";
@@ -23,18 +33,15 @@ import type {
 
 import type { SortableColumnHeaderProps } from "./BaseItemsTable/BaseItemsTable";
 import { SortableColumnHeader } from "./BaseItemsTable/BaseItemsTable";
-import {
-  BulkSelectWrapper,
-  ColumnHeader,
-  DescriptionIcon,
-  ItemButton,
-  ItemCell,
-  ItemLink,
-  ItemNameCell,
-  RowActionsContainer,
-  TableColumn,
-} from "./BaseItemsTable.styled";
+import S from "./Columns.module.css";
 import { EntityIconCheckBox } from "./EntityIconCheckBox";
+import {
+  ColumnHeader,
+  ItemCell,
+  ItemNameCell,
+  TableColumn,
+} from "./TableElements";
+import { COLUMN_RESPONSIVE_PROPS } from "./column-layout";
 
 type HeaderProps = Omit<
   SortableColumnHeaderProps<ListCollectionItemsSortColumn>,
@@ -50,17 +57,22 @@ const ItemLinkComponent = ({
   onClick?: (item: CollectionItem) => void;
 }>) => {
   if (isEmbeddingSdk()) {
-    return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
+    return (
+      <Text className={S.itemLink} onClick={() => onClick?.(item)}>
+        {children}
+      </Text>
+    );
   }
 
   return (
-    <ItemLink
+    <Link
+      className={S.itemLink}
       draggable={item.model !== "collection"}
       to={modelToUrl(item)}
       onClick={() => onClick?.(item)}
     >
       {children}
-    </ItemLink>
+    </Link>
   );
 };
 
@@ -79,7 +91,7 @@ export const Columns = {
       onSelectNone?: () => void;
     }) => (
       <ColumnHeader>
-        <BulkSelectWrapper>
+        <IconButtonWrapper className={S.bulkSelect}>
           <Checkbox
             checked={!!selectedItems?.length}
             indeterminate={!!selectedItems?.length && !!hasUnselected}
@@ -96,7 +108,7 @@ export const Columns = {
             }}
             aria-label={t`Select all items`}
           />
-        </BulkSelectWrapper>
+        </IconButtonWrapper>
       </ColumnHeader>
     ),
     Cell: ({
@@ -188,9 +200,10 @@ export const Columns = {
               status={item.moderated_status}
             />
             {item.description && includeDescription && (
-              <DescriptionIcon
+              <FixedSizeIcon
                 name="info"
                 size={16}
+                c="text-secondary"
                 tooltip={
                   <Markdown
                     dark
@@ -217,17 +230,12 @@ export const Columns = {
     },
   },
   Description: {
-    Col: () => (
-      <TableColumn
-        hideAtContainerBreakpoint="sm"
-        containerName="ItemsTableContainer"
-      />
-    ),
+    Col: () => <TableColumn {...COLUMN_RESPONSIVE_PROPS.description} />,
     Header: ({ sortingOptions, onSortingOptionsChange }: HeaderProps) => (
       <SortableColumnHeader
         name="description"
         sortingOptions={sortingOptions}
-        hideAtContainerBreakpoint="sm"
+        {...COLUMN_RESPONSIVE_PROPS.description}
         onSortingOptionsChange={onSortingOptionsChange}
       >
         {t`Description`}
@@ -244,7 +252,10 @@ export const Columns = {
       const tc = useTranslateContent();
 
       return (
-        <ItemCell data-testid={`${testIdPrefix}-description`}>
+        <ItemCell
+          data-testid={`${testIdPrefix}-description`}
+          {...COLUMN_RESPONSIVE_PROPS.description}
+        >
           <Ellipsified>{tc(item.description) ?? ""}</Ellipsified>
         </ItemCell>
       );
@@ -254,8 +265,7 @@ export const Columns = {
     Col: () => (
       <TableColumn
         style={{ width: "140px" }}
-        hideAtContainerBreakpoint="sm"
-        containerName="ItemsTableContainer"
+        {...COLUMN_RESPONSIVE_PROPS.lastEditedBy}
       />
     ),
     Header: ({
@@ -269,8 +279,7 @@ export const Columns = {
         name="last_edited_by"
         sortingOptions={sortingOptions}
         onSortingOptionsChange={onSortingOptionsChange}
-        hideAtContainerBreakpoint="sm"
-        containerName="ItemsTableContainer"
+        {...COLUMN_RESPONSIVE_PROPS.lastEditedBy}
       >
         {isTrashed
           ? c("Precedes the name of a user").t`Deleted by`
@@ -290,8 +299,7 @@ export const Columns = {
       return (
         <ItemCell
           data-testid={`${testIdPrefix}-last-edited-by`}
-          hideAtContainerBreakpoint="sm"
-          containerName="ItemsTableContainer"
+          {...COLUMN_RESPONSIVE_PROPS.lastEditedBy}
         >
           <Ellipsified>{lastEditedBy}</Ellipsified>
         </ItemCell>
@@ -302,8 +310,7 @@ export const Columns = {
     Col: () => (
       <TableColumn
         style={{ width: "140px" }}
-        hideAtContainerBreakpoint="md"
-        containerName="ItemsTableContainer"
+        {...COLUMN_RESPONSIVE_PROPS.lastEditedAt}
       />
     ),
     Header: ({
@@ -317,8 +324,7 @@ export const Columns = {
         name="last_edited_at"
         sortingOptions={sortingOptions}
         onSortingOptionsChange={onSortingOptionsChange}
-        hideAtContainerBreakpoint="md"
-        containerName="ItemsTableContainer"
+        {...COLUMN_RESPONSIVE_PROPS.lastEditedAt}
       >
         {isTrashed
           ? c("Time which the item was deleted").t`Deleted at`
@@ -337,8 +343,7 @@ export const Columns = {
         <ItemCell
           data-testid={`${testIdPrefix}-last-edited-at`}
           data-server-date
-          hideAtContainerBreakpoint="md"
-          containerName="ItemsTableContainer"
+          {...COLUMN_RESPONSIVE_PROPS.lastEditedAt}
         >
           {lastEditInfo && (
             <Tooltip label={<DateTime value={lastEditInfo.timestamp} />}>
@@ -355,9 +360,14 @@ export const Columns = {
     Cell: (props: ActionMenuProps) => {
       return (
         <ItemCell>
-          <RowActionsContainer data-ignore-row-selection>
+          <Flex
+            className={S.rowActions}
+            gap="sm"
+            justify="flex-end"
+            data-ignore-row-selection
+          >
             <ActionMenu {...props} />
-          </RowActionsContainer>
+          </Flex>
         </ItemCell>
       );
     },
@@ -368,9 +378,9 @@ export const Columns = {
     Cell: ({ item }: { item: CollectionItem }) => {
       return (
         <ItemCell>
-          <RowActionsContainer>
+          <Flex className={S.rowActions} gap="sm" justify="flex-end">
             <ArchiveButton item={item} />
-          </RowActionsContainer>
+          </Flex>
         </ItemCell>
       );
     },

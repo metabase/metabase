@@ -1,6 +1,6 @@
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { fireEvent, renderWithProviders, screen } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { User } from "metabase-types/api";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -18,13 +18,22 @@ const getUser = (opts?: Partial<User>) =>
 type SetupOpts = {
   user?: User;
   isMfaEnabled?: boolean;
+  path?: string;
 };
 
-function setup({ user = getUser(), isMfaEnabled = false }: SetupOpts = {}) {
-  const onChangeLocation = jest.fn();
+function setup({
+  user = getUser(),
+  isMfaEnabled = false,
+  path,
+}: SetupOpts = {}) {
+  const onChangeLocation = jest.fn<void, [string]>();
 
   renderWithProviders(
-    <AccountHeader user={user} onChangeLocation={onChangeLocation} />,
+    <AccountHeader
+      user={user}
+      path={path}
+      onChangeLocation={onChangeLocation}
+    />,
     {
       storeInitialState: createMockState({
         settings: mockSettings({
@@ -61,6 +70,27 @@ describe("AccountHeader", () => {
   });
 
   describe("authentication tab", () => {
+    it("should be selected on the authentication page", () => {
+      setup({ path: "/account/authentication" });
+
+      expect(
+        screen.getByRole("tab", { name: "Authentication" }),
+      ).toHaveAttribute("aria-selected", "true");
+    });
+
+    it.each(["active", "inactive"] as const)(
+      "should show the tab for an SSO user with an %s Slack account",
+      (status) => {
+        setup({
+          user: getUser({ sso_source: "google", slack_account_status: status }),
+        });
+
+        expect(
+          screen.getByRole("tab", { name: "Authentication" }),
+        ).toBeInTheDocument();
+      },
+    );
+
     it("should show the tab for a user who can change their password", () => {
       setup({ user: getUser({ sso_source: null }) });
 

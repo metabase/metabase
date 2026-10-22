@@ -1,5 +1,6 @@
 import cx from "classnames";
 import {
+  type JSX,
   type StyleHTMLAttributes,
   forwardRef,
   useEffect,
@@ -10,27 +11,26 @@ import { useMount, usePrevious } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import {
   skipToken,
   useGetRemappedCardParameterValueQuery,
   useGetRemappedDashboardParameterValueQuery,
   useGetRemappedParameterValueQuery,
 } from "metabase/api";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import { MultiAutocompleteWithTranslation } from "metabase/common/components/MultiAutocomplete";
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import CS from "metabase/css/core/index.css";
 import { useEmbeddingEntityContext } from "metabase/embedding/context";
-import { addRemappings, getMetadata } from "metabase/metadata-store";
+import { addRemappings } from "metabase/metadata-store";
 import {
   fetchCardParameterValues,
   fetchDashboardParameterValues,
   fetchParameterValues,
 } from "metabase/parameters/actions";
-import { connect, useDispatch } from "metabase/redux";
-import type { State } from "metabase/redux/store";
+import { useDispatch } from "metabase/redux";
 import {
   Autocomplete,
   Loader,
@@ -39,7 +39,11 @@ import {
 } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import { isNotNull } from "metabase/utils/types";
-import Field from "metabase-lib/v1/metadata/Field";
+import {
+  getSearchField,
+  getSharedRemappedField,
+} from "metabase-lib/v1/metadata/utils/remapping";
+import type { ParameterField } from "metabase-lib/v1/parameters/types";
 import { hasRemappedParameterValues } from "metabase-lib/v1/parameters/utils/parameter-source";
 import { normalizeParameter } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -54,7 +58,7 @@ import type {
 import { Value as ValueComponent } from "../Value";
 
 import { ListField } from "./ListField";
-import SingleSelectListField from "./SingleSelectListField";
+import { SingleSelectListField } from "./SingleSelectListField";
 import type { LoadingStateType, ValuesMode } from "./types";
 import {
   canUseCardEndpoints,
@@ -76,13 +80,6 @@ const MAX_SEARCH_RESULTS = 100;
 const COMBOBOX_WIDTH = 364;
 const DROPDOWN_WIDTH = 314;
 
-function mapStateToProps(state: State, { fields = [] }: { fields: Field[] }) {
-  const metadata = getMetadata(state);
-  return {
-    fields: fields.map((field) => metadata.field(field.id) || field),
-  };
-}
-
 export interface IFieldValuesWidgetProps {
   maxResults?: number;
   style?: StyleHTMLAttributes<HTMLDivElement>;
@@ -99,7 +96,9 @@ export interface IFieldValuesWidgetProps {
 
   parameter: Parameter;
   parameters?: Parameter[]; // linked parameters with values
-  fields: Field[];
+  // a field filter parameter that has no mapped fields still renders this
+  // widget, so that it can query values by parameter instead
+  fields?: ParameterField[];
   dashboardId?: DashboardId;
   cardId?: CardId;
 
@@ -110,7 +109,6 @@ export interface IFieldValuesWidgetProps {
   autoFocus?: boolean;
   className?: string;
   placeholder?: string;
-  checkedColor?: string;
 
   optionRenderer?: (option: FieldValue) => JSX.Element;
 }
@@ -131,7 +129,7 @@ export const FieldValuesWidgetInner = forwardRef<
     disablePKRemappingForSearch,
     parameter,
     parameters,
-    fields,
+    fields = [],
     dashboardId,
     cardId,
     value,
@@ -140,7 +138,6 @@ export const FieldValuesWidgetInner = forwardRef<
     autoFocus,
     className,
     placeholder,
-    checkedColor,
     optionRenderer,
   },
   ref,
@@ -257,7 +254,7 @@ export const FieldValuesWidgetInner = forwardRef<
 
   // ? this may rely on field mutations
   const updateRemappings = (options: FieldValue[]) => {
-    if (Field.remappedField(fields) != null) {
+    if (getSharedRemappedField(fields) != null) {
       fields.forEach((field) => {
         if (typeof field.id === "number") {
           dispatch(addRemappings(field.id, options));
@@ -386,7 +383,6 @@ export const FieldValuesWidgetInner = forwardRef<
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
-            checkedColor={checkedColor}
           />
         ) : isListMode && hasListValues && !multi ? (
           <SingleSelectListField
@@ -396,7 +392,6 @@ export const FieldValuesWidgetInner = forwardRef<
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
-            checkedColor={checkedColor}
           />
         ) : multi ? (
           <MultiAutocompleteWithTranslation
@@ -468,9 +463,7 @@ export const FieldValuesWidget = ExplicitSize<IFieldValuesWidgetProps>()(
 );
 
 // eslint-disable-next-line import/no-default-export
-export default connect(mapStateToProps, null, null, { forwardRef: true })(
-  FieldValuesWidget,
-);
+export default FieldValuesWidget;
 
 const LoadingState = () => (
   <div
@@ -486,7 +479,7 @@ function getNothingFoundMessage({
   loadingState,
   lastValue,
 }: {
-  fields: (Field | null)[];
+  fields: (ParameterField | null)[];
   loadingState: LoadingStateType;
   lastValue: string;
 }) {
@@ -495,7 +488,7 @@ function getNothingFoundMessage({
   }
   if (fields.length === 1 && fields[0] != null) {
     const [field] = fields;
-    const searchField = field.searchField();
+    const searchField = getSearchField(field);
     return t`No matching ${searchField?.display_name} found.`;
   } else {
     return t`No matching result`;
@@ -513,7 +506,7 @@ function renderValue({
   compact,
   displayValue,
 }: {
-  fields: Field[];
+  fields: ParameterField[];
   formatOptions: Record<string, any>;
   value: RowValue;
   parameter?: Parameter;
@@ -531,7 +524,7 @@ function renderValue({
       cardId={cardId}
       dashboardId={dashboardId}
       maximumFractionDigits={20}
-      remap={displayValue || Field.remappedField(fields) != null}
+      remap={displayValue || getSharedRemappedField(fields) != null}
       displayValue={displayValue}
       {...formatOptions}
       autoLoad={autoLoad}
@@ -542,7 +535,7 @@ function renderValue({
 
 type RemappedValueProps = {
   parameter: Parameter;
-  fields: Field[];
+  fields: ParameterField[];
   value: ParameterValueOrArray | null;
   dashboardId?: DashboardId;
   cardId?: CardId;
@@ -615,12 +608,12 @@ function RemappedValue({
 
 type RemappedOptionProps = {
   option: { value: string; label?: string };
-  fields: Field[];
+  fields: ParameterField[];
   tc: ContentTranslationFunction;
 };
 
 function RemappedOption({ option, fields, tc }: RemappedOptionProps) {
-  const isRemapped = Field.remappedField(fields) != null;
+  const isRemapped = getSharedRemappedField(fields) != null;
   const label = tc(option.label ?? option.value);
 
   if (!isRemapped) {

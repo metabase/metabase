@@ -181,6 +181,8 @@
             attempts (atom 0)
             orig     analytics/inc!]
         ;; a metrics backend that is down exactly when we try to record the drop
+        ;; the drop path runs on an mq delivery worker thread, which doesn't inherit *local-redefs*
+        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [analytics/inc! (fn [metric & args]
                                        (if (= metric :metabase-mq/batches-dropped)
                                          (throw (ex-info "metrics backend is down" {}))

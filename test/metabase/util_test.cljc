@@ -379,8 +379,6 @@
     false "cam.saul+1@metabase.co.uk" "metabase.com"
     true  "cam.saul+1@metabase.com"   "metabase.com"))
 
-;; defspec-generated test var; the runner finds it via metadata, clojure-lsp sees no reference
-#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
 (defspec pick-first-test 100
   (prop/for-all [coll (gen/list gen/small-integer)]
     (let [result (u/pick-first pos? coll)]
@@ -444,21 +442,7 @@
     'str                                  :dispatch-type/symbol
     #"\d+"                                :dispatch-type/regex
     str                                   :dispatch-type/fn
-    #?(:clj (Object.) :cljs (js/Object.)) :dispatch-type/*)
-  (testing "All type keywords should derive from :dispatch-type/*"
-    (are [x] (isa? (u/dispatch-type-keyword x) :dispatch-type/*)
-      :dispatch-type/nil
-      :dispatch-type/string
-      :dispatch-type/keyword
-      :dispatch-type/integer
-      :dispatch-type/number
-      :dispatch-type/map
-      :dispatch-type/sequential
-      :dispatch-type/set
-      :dispatch-type/symbol
-      :dispatch-type/regex
-      :dispatch-type/fn
-      :dispatch-type/*)))
+    #?(:clj (Object.) :cljs (js/Object.)) :dispatch-type/unknown))
 
 (deftest ^:parallel assoc-dissoc-test
   (testing `lib.options/with-option-value

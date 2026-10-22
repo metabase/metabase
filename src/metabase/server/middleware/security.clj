@@ -9,7 +9,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.config.core :as config]
    [metabase.embedding.settings :as embedding.settings]
-   [metabase.mcp.core :as mcp]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.server.settings :as server.settings]
@@ -25,10 +24,18 @@
 
 (set! *warn-on-reflection* true)
 
+(def script-nonce-response-key
+  "Response key that opts a response into a `script-src` nonce. Set it on server-rendered documents whose
+  inline script body varies per request, so no build-time hash can cover them. Everything else is expected
+  to use the hashes in [[inline-js-hashes]]."
+  ::script-nonce?)
+
 (defn- generate-nonce
-  "Generates a random nonce of 10 characters to add to the `Content-Security-Policy` header so that only scripts and
-   inline style elements with the same nonce will be allowed to run. The server generates a unique nonce value each
-   time it sends a response. For more information see
+  "Generates a random nonce of 10 characters to add to the `Content-Security-Policy` header so that only
+   style elements with the same nonce will be allowed to apply. The app document hands this value to page
+   JS, which needs it to inject styles at runtime (Emotion, CodeMirror, ECharts). The server generates a
+   unique nonce value each time it sends a response. `script-src` only carries the nonce for responses that
+   set [[script-nonce-response-key]]. For more information see
    https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/style-src."
   []
   (let [chars         "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -228,9 +235,8 @@
 (defenterprise data-app-connect-src-hosts
   "Origins the data app identified by `slug` may reach (its `allowed_hosts`),
    added to the data-app iframe document's CSP `connect-src` so the sandboxed
-   bundle can `fetch`/XHR them. Returns `[]` in OSS, when the
-   `:data-apps-preview` feature is absent, or when there's no enabled app for
-   `slug`. EE
+   bundle can `fetch`/XHR them. Returns `[]` in OSS, when the `:data-apps`
+   feature is absent, or when there's no enabled app for `slug`. EE
    implementation: [[metabase-enterprise.data-apps.csp]]."
   metabase-enterprise.data-apps.csp
   [_slug]
@@ -238,16 +244,20 @@
 
 (defn- content-security-policy-header
   "`Content-Security-Policy` header. See https://content-security-policy.com for more details."
-  [nonce data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  [nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img?]
   {"Content-Security-Policy"
    (str/join
     (for [[k vs] {:default-src  ["'none'"]
                   :script-src   (concat
                                  ["'self'"
-                                  ;; for custom viz plugin bundles loaded via fetch + inline <script> with nonce.
+                                  ;; Only responses that set [[script-nonce-response-key]] get a nonce here.
+                                  ;; The app document deliberately does not: its inline scripts are covered by
+                                  ;; the hashes below, and it hands the nonce to page JS so styles can be
+                                  ;; injected at runtime, which would make a `script-src` nonce reachable by
+                                  ;; anything that can read the page.
                                   ;; In dev mode 'unsafe-inline' covers this; adding a nonce there would
                                   ;; cause the browser to ignore 'unsafe-inline' per the CSP spec.
-                                  (when (and nonce (not config/is-dev?))
+                                  (when (and nonce script-nonce? (not config/is-dev?))
                                     (format "'nonce-%s'" nonce))
                                   "https://maps.google.com"
                                   "https://accounts.google.com"
@@ -382,8 +392,9 @@
     (or (interactive-embedding-origins) "'none'")))
 
 (defn- content-security-policy-header-with-frame-ancestors
-  [frame-ancestors-mode nonce data-app-iframe? data-app-connect-hosts allow-blob-img?]
-  (cond-> (update (content-security-policy-header nonce data-app-iframe? data-app-connect-hosts allow-blob-img?)
+  [frame-ancestors-mode nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img?]
+  (cond-> (update (content-security-policy-header nonce script-nonce? data-app-iframe? data-app-connect-hosts
+                                                  allow-blob-img?)
                   "Content-Security-Policy"
                   #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode)))
     ;; MANDATORY for data apps — do not remove/weaken. Sole barrier (no JS backstop)
@@ -488,35 +499,42 @@
                 approved-list)))))))
 
 (defn access-control-headers
-  "Returns headers for CORS requests. Merges embedding SDK origins and MCP app origins."
-  [origin approved-origins]
-  (let [mcp-origins       (mcp/cors-origins)
-        all-origins       (str/trim (str approved-origins " " mcp-origins))
-        localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))
-        mcp-sandbox?       (mcp/sandbox-origin? origin)]
-    (when (or (seq all-origins) localhost-allowed? mcp-sandbox?)
-      (merge
-       (when (or (approved-origin? origin all-origins) mcp-sandbox?)
-         {"Access-Control-Allow-Origin" origin
-          "Vary"                        "Origin"})
-       {"Access-Control-Allow-Headers"  "*"
-        "Access-Control-Allow-Methods"  "*"
-        "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version, Mcp-Session-Id"
-        ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
-        "Access-Control-Max-Age"  "60"}))))
+  "Returns headers for CORS requests. `cors` can supply an `:origins-fn` and a
+  `:sandbox-origin?-fn` for origins owned by a higher-level module."
+  ([origin approved-origins]
+   (access-control-headers origin approved-origins nil))
+  ([origin approved-origins {:keys [origins-fn sandbox-origin?-fn]}]
+   (let [extra-origins      (when origins-fn (origins-fn))
+         all-origins        (str/trim (str approved-origins " " extra-origins))
+         localhost-allowed? (and (localhost-origin? origin) (not (server.settings/disable-cors-on-localhost)))
+         sandbox-origin?    (boolean (and sandbox-origin?-fn (sandbox-origin?-fn origin)))]
+     (when (or (seq all-origins) localhost-allowed? sandbox-origin?)
+       (merge
+        (when (or (approved-origin? origin all-origins) sandbox-origin?)
+          {"Access-Control-Allow-Origin" origin
+           "Vary"                        "Origin"})
+        {"Access-Control-Allow-Headers"  "*"
+         "Access-Control-Allow-Methods"  "*"
+         "Access-Control-Expose-Headers" "Content-Disposition, X-Metabase-Anti-CSRF-Token, X-Metabase-Version, Mcp-Session-Id"
+         ;; Needed for Embedding SDK. Should cache preflight requests for the specified number of seconds.
+         "Access-Control-Max-Age"  "60"})))))
 
 (defn security-headers
   "Fetch a map of security headers that should be added to a response based on the passed options.
    `:frame-ancestors` controls clickjacking protection: `:any` (open embedding),
    `:self` (same-origin only), or `:none` (default — no framing unless interactive
-   embedding is configured)."
-  [& {:keys [origin nonce frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts allow-blob-img?]
-      :or   {frame-ancestors :none, allow-cache? false, data-app-iframe? false, allow-blob-img? false}}]
+   embedding is configured). `:script-nonce?` adds the nonce to `script-src`, see
+   [[script-nonce-response-key]]."
+  [& {:keys [origin nonce script-nonce? frame-ancestors allow-cache? data-app-iframe? data-app-connect-hosts
+             allow-blob-img? cors]
+      :or   {frame-ancestors :none, allow-cache? false, script-nonce? false, data-app-iframe? false,
+             allow-blob-img? false}}]
   (merge
    (if allow-cache? cache-far-future-headers (cache-prevention-headers))
    strict-transport-security-header
-   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce data-app-iframe? data-app-connect-hosts allow-blob-img?)
-   (access-control-headers origin (embedding.settings/embedding-app-origins-sdk))
+   (content-security-policy-header-with-frame-ancestors frame-ancestors nonce script-nonce? data-app-iframe?
+                                                        data-app-connect-hosts allow-blob-img?)
+   (access-control-headers origin (embedding.settings/embedding-app-origins-sdk) cors)
    ;; Tell browsers not to render our site as an iframe (prevent clickjacking)
    (x-frame-options-header frame-ancestors)
    {;; Prevent Flash / PDF files from including content from site.
@@ -552,7 +570,7 @@
   [request]
   (second (re-matches data-app-slug-regex (:uri request))))
 
-(defn- site-origin
+(defn site-origin
   "This Metabase instance's origin as `{:protocol :domain :port}` (parsed from
    `site-url`), or nil. Matches the shape [[parse-url]] returns so origins compare
    with `=`."
@@ -618,11 +636,22 @@
     (remove #(covers-instance-origin? self %) hosts)
     hosts))
 
-(defn- add-security-headers* [request response]
+(defn- cacheable-status?
+  "Whether a response with this status may carry a far-future cache header. A 404 for a hashed
+  asset is transient: during a rolling deploy a client can ask an instance that does not have the
+  file yet. Caching that answer for a year leaves the asset unreachable long after the deploy."
+  [status]
+  (boolean (and status
+                (or (<= 200 status 299)
+                    (= status 304)))))
+
+(defn- add-security-headers* [cors request response]
   ;; merge is other way around so that handler can override headers
   (let [headers (security-headers
                  :origin                      (get (:headers request) "origin")
+                 :cors                        cors
                  :nonce                       (:nonce request)
+                 :script-nonce?               (boolean (get response script-nonce-response-key))
                  ;; The internal data-app iframe is only ever framed by the
                  ;; same-origin Metabase app, so restrict it to `'self'` rather
                  ;; than the open embedding `*`. Check it before the broader
@@ -631,13 +660,21 @@
                                                 (request/data-app? request)                       :self
                                                 ((some-fn request/public? request/embed?) request) :any
                                                 :else                                              :none)
-                 :allow-cache?                (request/cacheable? request)
+                 :allow-cache?                (and (request/cacheable? request)
+                                                   (cacheable-status? (:status response)))
                  :data-app-iframe?            (data-app-iframe-request? request)
                  ;; Per-app `allowed_hosts` → `connect-src`/`form-action` (iframe
                  ;; doc) and `frame-src` (both the iframe doc and the top page,
-                 ;; whose `frame-src` gates the iframe's own navigations).
+                 ;; whose `frame-src` gates the iframe's own navigations). The
+                 ;; hosts are looked up only for a signed-in user: the header would
+                 ;; otherwise hand an app's `allowed_hosts` to anyone who can guess
+                 ;; its slug, and let them probe which slugs exist. A signed-out
+                 ;; request still gets the data-app policy with an empty allowlist,
+                 ;; not the broader instance-wide one.
                  :data-app-connect-hosts      (when-let [slug (data-app-slug request)]
-                                                (drop-instance-origin (data-app-connect-src-hosts slug)))
+                                                (if (:metabase-user-id request)
+                                                  (drop-instance-origin (data-app-connect-src-hosts slug))
+                                                  []))
                  ;; Data apps and the EAJS embed page both render custom viz icons as blob: <img> URLs
                  :allow-blob-img?             (or (data-app-iframe-request? request)
                                                   (request/embed-sdk-eajs-entrypoint? request)))
@@ -648,11 +685,14 @@
     (update response :headers #(merge %2 %1 cors-headers) headers)))
 
 (defn add-security-headers
-  "Middleware that adds HTTP security and cache-busting headers."
-  [handler]
-  (fn [request respond raise]
-    (let [request (assoc request :nonce (generate-nonce))]
-      (handler
-       request
-       (comp respond (partial add-security-headers* request))
-       raise))))
+  "Middleware that adds HTTP security and cache-busting headers. `cors` contains optional callbacks supplied by the
+  application when it constructs the handler."
+  ([handler]
+   (add-security-headers handler nil))
+  ([handler cors]
+   (fn [request respond raise]
+     (let [request (assoc request :nonce (generate-nonce))]
+       (handler
+        request
+        (comp respond (partial add-security-headers* cors request))
+        raise)))))

@@ -2,10 +2,9 @@ import cx from "classnames";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
 import CS from "metabase/css/core/index.css";
+import { TextInputBlurChange } from "metabase/ui";
 import { getNamedAccentColors } from "metabase/ui/colors/groups";
 import type { SingleSeries, VisualizationSettings } from "metabase-types/api";
-
-import { SeriesNameInput } from "./ChartNestedSettingSeries.styled";
 
 export interface ChartNestedSettingsSeriesSingleProps {
   object: SingleSeries;
@@ -50,7 +49,7 @@ const ChartNestedSettingsSeriesSingle = ({
             })
           }
         />
-        <SeriesNameInput
+        <TextInputBlurChange
           className={cx(CS.flexFull, CS.ml1, CS.alignSelfStretch)}
           resetOnEsc
           value={computedSettings.title}

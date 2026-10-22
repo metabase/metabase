@@ -13,6 +13,7 @@
    [metabase.indexes.schema :as schema]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -62,23 +63,30 @@
   [{:keys [transform_id]}]
   (api/write-check :model/Transform transform_id))
 
-(api.macros/defendpoint :get "/" :- [:map [:data [:sequential Index]]]
+(api.macros/defendpoint :get "/" :- [:map
+                                     [:data [:sequential Index]]
+                                     [:warehouse_error {:optional true} [:maybe :string]]]
   "A transform's indexes: those physically in the warehouse, merged with its managed requests. Each entry is flagged
-  `:metabase_managed`; managed ones also carry `:request` (status + definition)."
+  `:metabase_managed`; managed ones also carry `:request` (status + definition). If the warehouse can't be read, the
+  managed requests are still listed (as absent) and `:warehouse_error` carries the reason."
   [_route-params
-   {:keys [transform-id]} :- [:map [:transform-id ms/PositiveInt]]]
+   {:keys [transform-id]} :- [:map {:closed true} [:transform-id ms/PositiveInt]]]
   (let [transform   (api/read-check :model/Transform transform-id)
-        database-id (transforms-base.i/target-db-id transform)
+        database    (api/check-404 (indexes-rest.db/database (transforms-base.i/target-db-id transform)))
         {:keys [schema] table-name :name} (:target transform)
         managed     (table-index/select-for-transform transform-id)
-        warehouse   (or (reconcile/fetch-warehouse-indexes (indexes-rest.db/database database-id)
-                                                           schema table-name)
-                        [])]
-    {:data (reconcile/merge-indexes managed warehouse)}))
+        [warehouse warehouse-error]
+        (try
+          [(reconcile/fetch-warehouse-indexes database schema table-name)]
+          (catch Exception e
+            (log/warnf "fetch-table-indexes failed for %s.%s: %s" schema table-name (ex-message e))
+            [[] (reconcile/driver-error-message (:engine database) e)]))]
+    (cond-> {:data (reconcile/merge-indexes managed warehouse)}
+      warehouse-error (assoc :warehouse_error warehouse-error))))
 
 (api.macros/defendpoint :get "/request/:id" :- RequestIndex
   "Fetch a single index request (e.g. to poll its status)."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (doto (api/check-404 (indexes-rest.db/table-index id))
     (read-check-owner!)))
 
@@ -87,7 +95,7 @@
   not under `/request`."
   [_route-params
    _query-params
-   {:keys [transform_id structured]} :- [:map
+   {:keys [transform_id structured]} :- [:map {:closed true}
                                          [:transform_id ms/PositiveInt]
                                          [:structured ::schema/index-structured]]]
   (api/write-check :model/Transform transform_id)
@@ -118,9 +126,9 @@
 
 (api.macros/defendpoint :put "/request/:id" :- RequestIndex
   "Replace the structured definition of an index request, marking it update-pending."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [structured]} :- [:map [:structured ::schema/index-structured]]]
+   {:keys [structured]} :- [:map {:closed true} [:structured ::schema/index-structured]]]
   (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
     (write-check-owner! existing)
     (assert-stable-key! existing structured)
@@ -133,7 +141,7 @@
 (api.macros/defendpoint :delete "/request/:id"
   "Mark an index request `delete-pending`. The physical index is only dropped when the target table is next rebuilt
   (pending changes force a full run), so the row stays visible in this state until that rebuild removes it."
-  [{:keys [id]} :- [:map [:id ms/PositiveInt]]]
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (let [existing (api/check-404 (table-index/select-applicable-by-id id))]
     (write-check-owner! existing)
     (indexes-rest.db/set-table-index-status! id :delete-pending))

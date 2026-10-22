@@ -572,8 +572,8 @@ export function filterNullDimensionValues(
   return filteredDataset;
 }
 
-// eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-export const NO_X_AXIS_VALUES_ERROR_MESSAGE = t`There is no data to display. Check the query to ensure there are non-null x-axis values.`;
+export const getNoXAxisValuesErrorMessage = () =>
+  t`There is no data to display. Check the query to ensure there are non-null x-axis values.`;
 
 export function replaceZeroesForLogScale(
   dataset: ChartDataset,
@@ -803,7 +803,7 @@ export const applyVisualizationSettingsDataTransformations = (
   ) {
     dataset = filterNullDimensionValues(dataset, showWarning);
     if (dataset.length === 0) {
-      throw new Error(NO_X_AXIS_VALUES_ERROR_MESSAGE);
+      throw new Error(getNoXAxisValuesErrorMessage());
     }
   }
 
@@ -939,6 +939,7 @@ const sortByDimension = (
 export const getSortedSeriesModels = (
   seriesModels: SeriesModel[],
   settings: ComputedVisualizationSettings,
+  isRowChart = false,
 ): SeriesModel[] => {
   const breakoutSeriesOrder = settings["graph.series_order"];
   if (breakoutSeriesOrder == null || breakoutSeriesOrder.length === 0) {
@@ -964,10 +965,9 @@ export const getSortedSeriesModels = (
     })
     .filter(isNotNull);
 
-  // On stacked charts we reverse the order of series so that the series
-  // order in the sidebar matches series order on the chart.
-  // Also it produces historically correct order of series on already saved questions.
-  const isReversed = !isEmpty(settings["stackable.stack_type"]);
+  // Upright stacks are reversed so the sidebar order matches the chart (and saved
+  // questions keep their order); row stacks grow left to right, so already match.
+  const isReversed = !isRowChart && !isEmpty(settings["stackable.stack_type"]);
   if (isReversed) {
     orderedSeriesModels.reverse();
   }

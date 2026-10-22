@@ -28,7 +28,6 @@
    [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
-   (java.sql Timestamp)
    (java.time Instant)))
 
 (set! *warn-on-reflection* true)
@@ -141,7 +140,7 @@
     (log/warn "Failed to publish queue outbox row during recovery; will retry with backoff"
               {:queue queue_name :outbox-id id :publish-attempts next-attempts :retry-delay-ms delay-ms :error (ex-message e)})
     (analytics/inc! :metabase-mq/batches-retried {:channel queue_name :reason "outbox-recovery"})
-    (update acc :bumps conj {:id id :next-attempt-at (Timestamp/from (.plusMillis now delay-ms))})))
+    (update acc :bumps conj {:id id :next-attempt-at (.plusMillis now delay-ms)})))
 
 (defn- recover-page!
   "Runs one transaction of the recovery sweep over up to [[recovery-page-size]] *due* rows, in id order
@@ -153,10 +152,10 @@
   [after-id]
   (t2/with-transaction [_conn]
     (let [now    (Instant/now)
-          now-ts (Timestamp/from now)
+          now-ts now
           rows (mq.db/due-outbox-rows after-id
                                       now-ts
-                                      (Timestamp/from (.minusMillis now recovery-age-ms))
+                                      (.minusMillis now recovery-age-ms)
                                       recovery-page-size
                                       (for-update-clause))
           {:keys [recover-ids bumps backend-down?]}

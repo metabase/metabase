@@ -67,8 +67,8 @@
   ;; one transaction so a crash can't commit the database row yet skip the permissions guard below —
   ;; the next boot would see the database and no-op, leaving the stale permissions with no re-run path
   (t2/with-transaction [_conn]
-    (audit-app.db/insert-database! {:is_audit         true
-                                    :id               id
+    (audit-app.db/insert-database! id
+                                   {:is_audit         true
                                     :name             default-db-name
                                     :description      "Internal Audit DB used to power metabase analytics."
                                     :engine           engine
@@ -262,6 +262,15 @@
                  (audit/last-analytics-checksum! current-checksum))
                (not= original-engine (mdb/db-type))))))))))
 
+(defn- views-checksum
+  "Checksum of the `instance_analytics_views` SQL files. Stored in the `last-analytics-views-checksum`
+   setting; when it changes, `ensure-audit-db-installed!` triggers a one-shot audit DB schema sync
+   so that newly added or renamed views become discoverable without waiting for the next scheduled sync."
+  []
+  (when (io/resource "migrations/instance_analytics_views")
+    (u.files/with-open-path-to-resource [views-dir "migrations/instance_analytics_views"]
+      (directory-content-checksum views-dir ".sql"))))
+
 (defn- maybe-install-audit-db!
   []
   (let [audit-db (audit-app.db/audit-database)
@@ -285,17 +294,10 @@
     (when (contains? #{::installed ::updated} result)
       (when-let [db (audit-app.db/audit-database)]
         (log/info "Syncing Audit DB")
-        (log/with-no-logs (sync/sync-database! db {:scan :schema}))))
+        (log/with-no-logs (sync/sync-database! db {:scan :schema}))
+        ;; this sync saw every current view, so `maybe-sync-audit-db!` need not sync again for stale views
+        (audit-app.settings/last-analytics-views-checksum! (views-checksum))))
     result))
-
-(defn- views-checksum
-  "Checksum of the `instance_analytics_views` SQL files. Stored in the `last-analytics-views-checksum`
-   setting; when it changes, `ensure-audit-db-installed!` triggers a one-shot audit DB schema sync
-   so that newly added or renamed views become discoverable without waiting for the next scheduled sync."
-  []
-  (when (io/resource "migrations/instance_analytics_views")
-    (u.files/with-open-path-to-resource [views-dir "migrations/instance_analytics_views"]
-      (directory-content-checksum views-dir ".sql"))))
 
 (defn- maybe-sync-audit-db!
   "One-shot synchronous `:scan :schema` sync of the audit DB. Fires when any trigger is true:

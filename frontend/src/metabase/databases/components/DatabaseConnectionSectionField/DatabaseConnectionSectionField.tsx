@@ -1,5 +1,5 @@
 import { useField } from "formik";
-import { useCallback } from "react";
+import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
 import { FormField } from "metabase/forms";
@@ -21,7 +21,7 @@ export const DatabaseConnectionSectionField = ({
   }, [value, setValue]);
 
   return (
-    <FormField>
+    <FormField mb="lg">
       <Box
         bg="background_page-tertiary"
         p="xl"

@@ -1,9 +1,6 @@
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import type { State } from "metabase/redux/store";
-import {
-  createMockSettingsState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { setLocalization } from "metabase/utils/i18n";
 import { createMockParameter } from "metabase-types/api/mocks";
 

@@ -15,6 +15,7 @@
    [metabase.notification.payload.core :as notification.payload]
    [metabase.parameters.dashboard :as parameters.dashboard]
    [metabase.parameters.params :as params]
+   [metabase.parameters.schema :as parameters.schema]
    [metabase.public-sharing-rest.api :as api.public]
    [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
@@ -38,7 +39,7 @@
 
 (def SearchParams
   "Malli schema for route params of search paths"
-  [:map
+  [:map {:closed true}
    [:token EncodedToken]
    [:param-key ms/NonBlankString]
    [:prefix ms/NonBlankString]])
@@ -46,13 +47,35 @@
 (def QueryParams
   "Malli schema for the raw query-string parameter map of the embed query and param-values endpoints: dashboard/card
   parameter slugs (or parameter IDs, for the param-values endpoints) mapped to values exactly as they come off the
-  query string, plus the optional `:parameters` JSON blob (see [[parse-query-params]]). Keys that don't read cleanly
-  as keywords (e.g. slugs starting with a digit) arrive as strings (see [[normalize-query-params]])."
-  [:map-of [:or :keyword :string] [:maybe [:or :string [:sequential :string]]]])
+  query string, plus the optional `parameters` JSON blob (see [[parse-query-params]]). String-keyed: slugs are not
+  ours to name, and some (e.g. ones starting with a digit) never read cleanly as keywords anyway (see
+  [[normalize-query-params]])."
+  (ms/string-keyed-map [:maybe [:or :string [:sequential :string]]]))
 
 (def ParsedQueryParams
   "Schema for [[QueryParams]] after the `:parameters` JSON blob has been decoded into real JSON scalars."
-  [:map-of [:or :keyword :string] [:maybe [:ref ::lib.schema.parameter/parameter.value]]])
+  [:map-of :string [:maybe [:ref ::lib.schema.parameter/parameter.value]]])
+
+(def ParamValue
+  "A single dashboard/card parameter value, or a sequence of them."
+  [:maybe [:ref ::lib.schema.parameter/parameter.value]])
+
+(def SlugValueMap
+  "A map of dashboard/card parameter slug to its value, slugs normalized to strings whether they came off a
+  decoded JWT or the query string."
+  [:map-of :string ParamValue])
+
+(def ^:private ResourceId
+  [:or ms/PositiveInt ms/NanoIdString])
+
+(def UnsignedToken
+  "The decoded, but not necessarily resource-id-translated, payload of an embedding JWT, whose other claims (`exp`, `iat`, ...) belong to the embedding application."
+  [:map {:closed false, ::mr/deliberately-open true, :description "embedding JWT claims"}
+   [:resource          {:optional true} [:map {:closed true}
+                                         [:question  {:optional true} ResourceId]
+                                         [:dashboard {:optional true} ResourceId]]]
+   [:params            {:optional true} SlugValueMap]
+   [:_embedding_params {:optional true} SlugValueMap]])
 
 (comment
   ;; load dynamic model resolution code... should already be loaded by [[metabase.core.init]] so this is mostly here for
@@ -68,8 +91,12 @@
 (defn- check-params-are-allowed
   "Check that the conditions specified by `object-embedding-params` are satisfied."
   [object-embedding-params token-params user-params]
-  (let [all-params        (merge token-params user-params)
-        duplicated-params (set/intersection (set (keys token-params)) (set (keys user-params)))]
+  (let [param-names       (fn [params] (into #{} (map name) (keys params)))
+        token-values      (update-keys token-params name)
+        all-params        (param-names (merge token-params user-params))
+        token-param-names (param-names token-params)
+        user-param-names  (param-names user-params)
+        duplicated-params (set/intersection token-param-names user-param-names)]
     (doseq [[param status] object-embedding-params]
       (case status
         ;; disabled means a param is not allowed to be specified by either token or user
@@ -80,15 +107,15 @@
                               [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
         ;; locked means JWT must specify param
         "locked"   (api/check
-                    (some? (get token-params param))    [400 (tru "You must specify a value for {0} in the JWT." param)]
-                    (not (contains? user-params param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
+                    (some? (get token-values param))          [400 (tru "You must specify a value for {0} in the JWT." (keyword param))]
+                    (not (contains? user-param-names param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
 
 (defn- check-params-exist
   "Make sure all the params specified are specified in `object-embedding-params`."
   [object-embedding-params all-params]
   (let [embedding-params (set (keys object-embedding-params))]
     (doseq [[k _] all-params]
-      (api/check (contains? embedding-params k)
+      (api/check (contains? embedding-params (name k))
                  [400 (format "Unknown parameter %s." k)]))))
 
 (defn- check-param-sets
@@ -96,7 +123,6 @@
   URL) are valid for the `object-embedding-params`. `token-params` and `user-params` should be sets of all valid param
   keys specified in the JWT or by the user, respectively."
   [object-embedding-params token-params user-params]
-  ;; TODO - maybe make this log/debug once embedding is wrapped up
   (log/debug "Validating params for embedded object:\n"
              "object embedding params:" object-embedding-params
              "token params:"            token-params
@@ -135,8 +161,8 @@
   "Given a pre-loaded `dashboard` entity and parameters map in the format `slug->value`, return a sequence of
   parameters with `:id`s that can be passed to various functions in the [[metabase.dashboards-rest.api]] namespace such
   as [[metabase.dashboards-rest.api/process-query-for-dashcard]]."
-  [dashboard   :- :map
-   slug->value :- :map]
+  [dashboard   :- ::dashboards.schema/dashboard
+   slug->value :- SlugValueMap]
   (let [parameters (:parameters dashboard)
         slug->id (into {} (map (juxt :slug :id)) parameters)
         slug->type (into {} (map (juxt :slug :type)) parameters)]
@@ -161,10 +187,10 @@
   booleans and boolean strings. To fix this issue we introduced another query string parameter `:parameters` which
   contains serialized JSON with parameter values. If this object cannot be found or parsed, we fallback to plain query
   string parameters."
-  [query-params]
-  (let [parsed (when-let [parameters (:parameters query-params)]
+  [query-params :- QueryParams]
+  (let [parsed (when-let [parameters (some query-params [:parameters "parameters"])]
                  (try
-                   (json/decode+kw parameters)
+                   (json/decode parameters)
                    (catch Throwable _
                      nil)))]
     (when (and (some? parsed)
@@ -172,25 +198,25 @@
       (throw (ex-info (tru "Invalid parameter values") {:status-code 400})))
     (or parsed query-params {})))
 
-(mu/defn normalize-query-params :- [:map-of :keyword :any]
+(mu/defn normalize-query-params :- [:map-of :string :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our
   `wrap-keyword-params` middleware normally converts all query params keys to keywords, but only if they seem like
   ones that make sense as keywords. Some params, such as ones that start with a number, do not pass this test, and are
   not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect.
   Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
-  [query-params]
+  [query-params :- [:or QueryParams ParsedQueryParams]]
   (-> query-params
-      (update-keys keyword)
+      (update-keys name)
       (update-vals (fn [v] (if (= v "") nil v)))))
 
-(mu/defn validate-and-merge-params :- [:map-of :keyword :any]
+(mu/defn validate-and-merge-params :- [:map-of :string :any]
   "Validate that the `token-params` passed in the JWT and the `user-params` (passed as part of the URL) are allowed, and
   that ones that are required are specified by checking them against a Card or Dashboard's `object-embedding-params`
   (the object's value of `:embedding_params`). Throws a 400 if any of the checks fail. If all checks are successful,
   returns a *merged* parameters map."
   [object-embedding-params :- ms/EmbeddingParams
-   token-params            :- [:map-of :keyword :any]
-   user-params             :- [:map-of :keyword :any]]
+   token-params            :- SlugValueMap
+   user-params             :- SlugValueMap]
   (check-param-sets object-embedding-params
                     (m/filter-vals valid-param-value? token-params)
                     (m/filter-vals valid-param-value? user-params))
@@ -203,7 +229,11 @@
                        v)))))
 
 (mu/defn- param-values-merged-params :- [:map-of ms/NonBlankString :any]
-  [id->slug slug->id embedding-params token-params id-query-params]
+  [id->slug         :- [:map-of ms/NonBlankString ms/NonBlankString]
+   slug->id         :- [:map-of ms/NonBlankString ms/NonBlankString]
+   embedding-params :- ms/EmbeddingParams
+   token-params     :- SlugValueMap
+   id-query-params  :- [:or QueryParams ParsedQueryParams]]
   (let [slug-query-params  (into {}
                                  (for [[id v] id-query-params]
                                    [(or (get id->slug (name id))
@@ -224,12 +254,21 @@
 
 ;;; ---------------------------------------------- Other Param Util Fns ----------------------------------------------
 
+(defn- param-id->slug
+  "Build an id->slug lookup from `parameters`, skipping any without a `:slug` — such a parameter can never be
+  looked up by slug, and a nil slug would wreck `set/map-invert`."
+  [parameters]
+  (into {} (comp (filter :slug) (map (juxt :id :slug))) parameters))
+
 (defn- locked-slug->value
   "The `\"locked\"` parameter values carried by the signed JWT. These are supplied by the embedding server rather
   than the client, and are passed to the parameter value lookups as constraints so the values offered for the
   enabled parameters match the rows the locked values select."
   [embedding-params token-params]
-  (into {} (filter (fn [[slug _value]] (= (get embedding-params (keyword slug)) "locked"))) token-params))
+  (into {}
+        (comp (filter (fn [[slug _value]] (= (get embedding-params (name slug)) "locked")))
+              (map (fn [[slug value]] [(name slug) value])))
+        token-params))
 
 (defn- enabled-param-slugs
   "The set of param slugs (as keywords) from `dashboard-or-card-params` that may be exposed to embed viewers: only
@@ -237,24 +276,24 @@
   listed as \"disabled\" or \"locked\" — is not in the set, so it fails closed."
   [dashboard-or-card-params embedding-params]
   (into #{}
-        (comp (map (comp keyword :slug))
-              (filter #(= (get embedding-params %) "enabled")))
+        (comp (filter #(= (get embedding-params (:slug %)) "enabled"))
+              (map (comp keyword :slug)))
         dashboard-or-card-params))
 
 (mu/defn- enabled-params
-  "Keep only the `:parameters` of `dashboard-or-card` whose slug is listed as `enabled` in the `embedding-params`
-  whitelist, so the frontend doesn't display widgets for params (`disabled`, `locked`, or unlisted) the user can't
-  set."
-  [dashboard-or-card embedding-params :- ms/EmbeddingParams]
-  (let [param-slugs-to-keep (enabled-param-slugs (:parameters dashboard-or-card) embedding-params)]
-    (update dashboard-or-card :parameters (partial filter #(contains? param-slugs-to-keep (keyword (:slug %)))))))
+  "Keep only the `parameters` whose slug is listed as `enabled` in the `embedding-params` whitelist, so the frontend
+  doesn't display widgets for params (`disabled`, `locked`, or unlisted) the user can't set."
+  [parameters       :- [:maybe [:sequential ::parameters.schema/parameter]]
+   embedding-params :- ms/EmbeddingParams]
+  (let [param-slugs-to-keep (enabled-param-slugs parameters embedding-params)]
+    (filter #(contains? param-slugs-to-keep (keyword (:slug %))) parameters)))
 
 (defn- remove-token-parameters
   "Removes any parameters with slugs matching keys provided in `token-params`, as these should not be exposed to the
   user."
   [dashboard-or-card token-params]
   (let [token-slugs (set (keys token-params))]
-    (update dashboard-or-card :parameters (partial remove #(contains? token-slugs (keyword (:slug %)))))))
+    (update dashboard-or-card :parameters (partial remove #(contains? token-slugs (:slug %))))))
 
 (defn- substitute-token-parameters-in-text
   "For any dashboard parameters with slugs matching keys provided in `token-params`, substitute their values from the
@@ -265,7 +304,7 @@
         dashcards          (:dashcards dashboard)
         params-with-values (reduce
                             (fn [acc param]
-                              (if-let [value (get token-params (keyword (:slug param)))]
+                              (if-let [value (get token-params (:slug param))]
                                 (conj acc (assoc param :value value))
                                 acc))
                             []
@@ -287,10 +326,11 @@
                                          [:value :any]]]]
   "Adds `value` to parameters with `slug` matching a key in `merged-slug->value` and removes parameters without a
    `value`."
-  [parameters slug->value]
+  [parameters  :- [:sequential ::parameters.schema/parameter]
+   slug->value :- SlugValueMap]
   (when (seq parameters)
     (for [param parameters
-          :let  [slug  (keyword (:slug param))
+          :let  [slug  (:slug param)
                  value (get slug->value slug)
                  ;; operator parameters expect a sequence of values so if we get a lone value (e.g. from a single URL
                  ;; query parameter) wrap it in a sequence
@@ -320,7 +360,7 @@
     (-> (api.public/public-card card-id :enable-embedding? enable-embedding?)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
-        (enabled-params resolved-embedding-params)
+        (update :parameters enabled-params resolved-embedding-params)
         api.public/keep-param-fields-for-parameters
         (assoc :embedding_params resolved-embedding-params))))
 
@@ -359,13 +399,13 @@
 
 (defn- tile-slug->value
   [object-parameters parameter-values]
-  (let [id->slug (into {} (map (juxt :id :slug)) object-parameters)]
+  (let [id->slug (param-id->slug object-parameters)]
     (into {}
           (map (fn [{:keys [id value]}]
-                 [(keyword (or (get id->slug id)
-                               (throw (ex-info (tru "Invalid query params: could not determine slug for parameter with ID {0}"
-                                                    (pr-str id))
-                                               {:status-code 400}))))
+                 [(or (get id->slug id)
+                      (throw (ex-info (tru "Invalid query params: could not determine slug for parameter with ID {0}"
+                                           (pr-str id))
+                                      {:status-code 400})))
                   value]))
           parameter-values)))
 
@@ -423,7 +463,10 @@
 
 (mu/defn dashboard-for-unsigned-token :- ::dashboards.schema/dashboard
   "Return the info needed for embedding about Dashboard specified in `token`."
-  [unsigned-token & {:keys [embedding-params enable-embedding?]}]
+  [unsigned-token :- UnsignedToken
+   & {:keys [embedding-params enable-embedding?]} :- [:maybe [:map {:closed true}
+                                                              [:embedding-params {:optional true} [:maybe ms/EmbeddingParams]]
+                                                              [:enable-embedding? {:optional true} [:maybe :boolean]]]]]
   (let [dashboard-id (unsigned-token->dashboard-id unsigned-token)
         embedding-params (or embedding-params
                              (embedding-rest.db/dashboard-embedding-params dashboard-id))
@@ -432,7 +475,7 @@
         (substitute-token-parameters-in-text token-params)
         (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)
-        (enabled-params embedding-params)
+        (update :parameters enabled-params embedding-params)
         api.public/keep-param-fields-for-parameters)))
 
 (defn- get-embed-dashboard-context
@@ -484,16 +527,16 @@
   (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         parameters          (or (seq (:parameters card))
                                 (queries/card-template-tag-parameters card))
-        id->slug            (into {} (map (juxt :id :slug)) parameters)
+        id->slug            (param-id->slug parameters)
         slug->id            (set/map-invert id->slug)
         searched-param-slug (get id->slug param-key)
         embedding-params    (:embedding_params card)]
     (try
-      (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
+      (when-not (= (get embedding-params searched-param-slug) "enabled")
         (throw (ex-info (tru "Cannot search for values: {0} is not an enabled parameter."
                              (pr-str searched-param-slug))
                         {:status-code 400})))
-      (when (get slug-token-params (keyword searched-param-slug))
+      (when (get slug-token-params searched-param-slug)
         (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT." (pr-str searched-param-slug))
                         {:status-code 400})))
       (try
@@ -531,16 +574,16 @@
   (let [slug-token-params   (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
         parameters          (or (seq (:parameters card))
                                 (queries/card-template-tag-parameters card))
-        id->slug            (into {} (map (juxt :id :slug)) parameters)
+        id->slug            (param-id->slug parameters)
         slug->id            (set/map-invert id->slug)
         searched-param-slug (get id->slug param-key)
         embedding-params    (:embedding_params card)]
     (try
-      (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
+      (when-not (= (get embedding-params searched-param-slug) "enabled")
         (throw (ex-info (tru "Cannot get remapped value for parameter: {0} is not an enabled parameter."
                              (pr-str searched-param-slug))
                         {:status-code 400})))
-      (when (get slug-token-params (keyword searched-param-slug))
+      (when (get slug-token-params searched-param-slug)
         (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT."
                              (pr-str searched-param-slug))
                         {:status-code 400})))
@@ -591,17 +634,17 @@
         embedding-params                               (if preview
                                                          (merge
                                                           published-embedding-params
-                                                          (get unsigned-token :_embedding_params))
+                                                          (update-keys (get unsigned-token :_embedding_params) name))
                                                          published-embedding-params)
-        id->slug                                       (into {} (map (juxt :id :slug)) parameters)
+        id->slug                                       (param-id->slug parameters)
         slug->id                                       (set/map-invert id->slug)
         searched-param-slug                            (get id->slug searched-param-id)]
     (try
       ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
-      (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
+      (when-not (= (get embedding-params searched-param-slug) "enabled")
         (throw (ex-info (tru "Cannot search for values: {0} is not an enabled parameter." (pr-str searched-param-slug))
                         {:status-code 400})))
-      (when (get slug-token-params (keyword searched-param-slug))
+      (when (get slug-token-params searched-param-slug)
         (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT." (pr-str searched-param-slug))
                         {:status-code 400})))
       ;; ok, at this point we can run the query
@@ -639,7 +682,7 @@
          _                          (when-not preview (check-embedding-enabled-for-dashboard dashboard))
          slug-token-params          (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
          parameters                 (:parameters dashboard)
-         id->slug                   (into {} (map (juxt :id :slug)) parameters)
+         id->slug                   (param-id->slug parameters)
          slug->id                   (set/map-invert id->slug)
          published-embedding-params (:embedding_params dashboard)
          ;; when previewing an embed, embedding-params should come from the token,
@@ -647,7 +690,7 @@
          ;; the settings to the Appdb.
          embedding-params           (if preview
                                       (merge published-embedding-params
-                                             (get unsigned-token :_embedding_params))
+                                             (update-keys (get unsigned-token :_embedding_params) name))
                                       published-embedding-params)
          param-slug                 (get id->slug param-key)
          locked-param-ids           (into #{}
@@ -656,10 +699,10 @@
                                                     (-> param name slug->id))))
                                           embedding-params)]
      ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
-     (when (not= (get embedding-params (keyword param-slug)) "enabled")
+     (when (not= (get embedding-params param-slug) "enabled")
        (throw (ex-info (tru "Cannot get remapped value for parameter: {0} is not an enabled parameter." (pr-str param-slug))
                        {:status-code 400})))
-     (when (get slug-token-params (keyword param-slug))
+     (when (get slug-token-params param-slug)
        (throw (ex-info (tru "You can''t specify a value for {0} if it''s already set in the JWT." (pr-str param-slug))
                        {:status-code 400})))
      (let [constraints (-> (param-values-merged-params id->slug slug->id embedding-params slug-token-params {})

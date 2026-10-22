@@ -152,7 +152,7 @@
 
 (deftest check-and-update-remote-settings-env-var-aware-test
   (testing "Settings sourced from env vars are not overwritten by check-and-update-remote-settings!"
-    (with-redefs [settings/check-git-settings! (constantly true)]
+    (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly true)]
       (mt/with-temp-env-var-value! [mb-remote-sync-url "file://env/url.git"
                                     mb-remote-sync-token "env-token"
                                     mb-remote-sync-branch "env-branch"]
@@ -171,7 +171,7 @@
           (is (= "env-token" (settings/remote-sync-token)))
           (is (= "env-branch" (settings/remote-sync-branch)))))))
   (testing "Non-env-sourced settings are still updated normally"
-    (with-redefs [settings/check-git-settings! (constantly true)]
+    (mt/with-dynamic-fn-redefs [settings/check-git-settings! (constantly true)]
       (mt/with-temporary-setting-values [:remote-sync-url nil
                                          :remote-sync-token nil
                                          :remote-sync-branch nil
@@ -205,8 +205,8 @@
   (testing "check-and-update-remote-settings! must refuse when guards/task-running? returns true,
             without changing any settings or calling git"
     (let [check-git-call-count (atom 0)]
-      (with-redefs [guards/task-running?         (constantly true)
-                    settings/check-git-settings! (fn [_] (swap! check-git-call-count inc) true)]
+      (mt/with-dynamic-fn-redefs [guards/task-running?         (constantly true)
+                                  settings/check-git-settings! (fn [_] (swap! check-git-call-count inc) true)]
         (mt/with-temporary-setting-values [:remote-sync-url    "file://my/repo.git"
                                            :remote-sync-token  nil
                                            :remote-sync-type   :read-only

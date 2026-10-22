@@ -3,11 +3,8 @@
 import userEvent from "@testing-library/user-event";
 import _ from "underscore";
 
+import { createMockDashboardState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import {
-  createMockDashboardState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import type { DashboardCard, DashboardTab } from "metabase-types/api";
 import {
   createMockActionDashboardCard,

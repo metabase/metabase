@@ -163,6 +163,7 @@ export const ChartSettingFieldPicker = ({
                 <ChartSettingColorPicker
                   pillSize="small"
                   value={colors[seriesKey]}
+                  forwardColorName
                   onChange={(hexValue, colorName) => {
                     onChangeSeriesColor?.(seriesKey, hexValue, colorName);
                   }}
@@ -179,7 +180,12 @@ export const ChartSettingFieldPicker = ({
         rightSection={
           <>
             {!disabled && (
-              <ActionIcon c="text-secondary" size="sm" radius="xl" p={0}>
+              <ActionIcon
+                variant="subtle"
+                c="text-secondary"
+                size="sm"
+                radius="xl"
+              >
                 <Icon name="chevrondown" />
               </ActionIcon>
             )}

@@ -1,3 +1,3 @@
-import { generateReleaseLog } from './release-log';
+import { generateReleaseLog } from "./release-log";
 
 console.log(await generateReleaseLog());

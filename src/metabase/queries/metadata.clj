@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
@@ -30,7 +29,7 @@
   permissions; there was a specific option where you could give a Perms Group permissions to run existing Cards with
   native queries, but not to create new ones. With the advent of what is currently being called 'Space-Age
   Permissions', all Cards' permissions are based on their parent Collection, removing the need for native read perms."
-  [db :- [:map]]
+  [db :- :metabase.warehouses.schema/database]
   (if (and (not (:is_audit db))
            (= :query-builder-and-native
               (perms/full-database-permission-for-user
@@ -99,9 +98,10 @@
 (mu/defn- batch-fetch-query-metadata*
   "Fetch dependent metadata for ad-hoc queries.
   Options:
-    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive in the `:tables` the
+      current user can edit the data model of (default false)"
   [queries :- [:maybe [:sequential ::lib.schema/query]]
-   opts    :- [:maybe [:map [:include-sensitive-fields? {:optional true} :boolean]]]]
+   opts    :- [:maybe [:map {:closed true} [:include-sensitive-fields? {:optional true} :boolean]]]]
   (let [source-table-ids       (into #{}
                                      (mapcat lib/all-source-table-ids)
                                      queries)
@@ -148,7 +148,8 @@
 (defn batch-fetch-query-metadata
   "Fetch dependent metadata for ad-hoc queries.
   Options:
-    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive (default false)"
+    - `include-sensitive-fields?` - if true, includes fields with visibility_type :sensitive in the `:tables` the
+      current user can edit the data model of (default false)"
   ([queries]
    (batch-fetch-query-metadata queries nil))
   ([queries opts]
@@ -224,13 +225,9 @@
 
 (mu/defn batch-fetch-dashboard-metadata
   "Fetch dependent metadata for dashboards."
-  [dashboards :- [:sequential
-                  [:map {:optional true} [:dashcards
-                                          [:sequential
-                                           [:map
-                                            [:card   {:optional true} [:maybe ::queries.schema/card]]
-                                            [:series {:optional true} [:maybe [:sequential [:map
-                                                                                            [:dataset_query ::lib-be.schema/maybe-legacy-or-empty-query]]]]]]]]]]]
+  [dashboards :- [:sequential [:or
+                               :metabase.dashboards.schema/dashboard
+                               :metabase.xrays.automagic-dashboards.schema/dashboard]]]
   (let [dashcards (mapcat :dashcards dashboards)
         cards     (for [{:keys [card series]} dashcards
                         :let   [all (conj series card)]

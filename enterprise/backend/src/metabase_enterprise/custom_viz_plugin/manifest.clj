@@ -46,7 +46,7 @@
   (some-> (mr/explain ManifestFieldTypes manifest) me/humanize))
 
 (defn identifier-error
-  "Why `identifier` can't name a plugin, or nil. `:` separates the parts of `custom-viz:<identifier>:<setting id>`
+  "Why `identifier` can't name a plugin, or nil. `:` separates the parts of `custom:<identifier>:<setting id>`
    viz-settings keys, so an identifier containing it could read another plugin's settings."
   [identifier]
   (when (and (string? identifier) (str/includes? identifier ":"))

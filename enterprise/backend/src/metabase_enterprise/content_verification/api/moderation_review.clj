@@ -16,7 +16,7 @@
   [_route-params
    _query-params
    {:keys [text moderated_item_id moderated_item_type status]}
-   :- [:map
+   :- [:map {:closed true}
        [:text                {:optional true} [:maybe :string]]
        [:moderated_item_id   ms/PositiveInt]
        [:moderated_item_type moderation/moderated-item-types]

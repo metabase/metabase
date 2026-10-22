@@ -2,104 +2,156 @@
   "Application database queries for the auth identity module. Every function here is a direct Toucan 2 call with no
   additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
   (:require
+   [metabase.auth-identity.schema :as auth-identity.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.users.schema :as users.schema]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(defn auth-identity
+(def ^:private AuthIdentityRow
+  "The writable columns of an AuthIdentity row (excluding `:id`, `:created_at`, `:updated_at`)."
+  [:map {:closed true}
+   [:user_id      {:optional true} [:maybe ::lib.schema.id/user]]
+   [:provider     {:optional true} [:maybe [:or :keyword :string]]]
+   [:credentials  {:optional true} [:maybe ::auth-identity.schema/auth-identity.credentials]]
+   [:metadata     {:optional true} [:maybe ::auth-identity.schema/auth-identity.metadata]]
+   [:provider_id  {:optional true} [:maybe :string]]
+   [:last_used_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:expires_at   {:optional true} [:maybe ms/TemporalInstant]]
+   [:confirmed_at {:optional true} [:maybe ms/TemporalInstant]]])
+
+(mu/defn auth-identity
   "The AuthIdentity of the User with `user-id` at `provider`, or nil."
-  [user-id provider]
-  (t2/select-one :model/AuthIdentity :user_id user-id :provider provider))
+  [user-id  :- ::lib.schema.id/user
+   provider :- :string]
+  (t2/select-one :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
-(defn auth-identity-id
+(mu/defn auth-identity-id
   "The id of the AuthIdentity of the User with `user-id` at `provider`, or nil."
-  [user-id provider]
-  (t2/select-one-pk :model/AuthIdentity :user_id user-id :provider provider))
+  [user-id  :- ::lib.schema.id/user
+   provider :- :string]
+  (t2/select-one-pk :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
-(defn auth-identity-expiry
+(mu/defn auth-identity-expiry
   "The id and expiry of the AuthIdentity of the User with `user-id` at `provider`, or nil."
-  [user-id provider]
-  (t2/select-one [:model/AuthIdentity :id :expires_at] :user_id user-id :provider provider))
+  [user-id  :- ::lib.schema.id/user
+   provider :- :string]
+  (t2/select-one [:model/AuthIdentity :id :expires_at] :user_id (long user-id) :provider [:auto/param provider]))
 
-(defn auth-identity-exists?
+(mu/defn auth-identity-exists?
   "Whether the User with `user-id` has an AuthIdentity at `provider`."
-  [user-id provider]
-  (t2/exists? :model/AuthIdentity :user_id user-id :provider provider))
+  [user-id  :- ::lib.schema.id/user
+   provider :- :string]
+  (t2/exists? :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
-(defn insert-auth-identity!
-  "Insert the AuthIdentity `row`."
-  [row]
+(mu/defn insert-auth-identity!
+  "Insert the AuthIdentity `row`, returning the number inserted."
+  [row :- AuthIdentityRow]
   (t2/insert! :model/AuthIdentity row))
 
-(defn update-auth-identity!
-  "Apply `changes` to the AuthIdentity with `id`."
-  [id changes]
+(mu/defn update-auth-identity!
+  "Apply `changes` to the AuthIdentity with `id`, returning the number updated."
+  [id      :- ms/PositiveInt
+   changes :- AuthIdentityRow]
   (t2/update! :model/AuthIdentity id changes))
 
-(defn touch-auth-identity!
-  "Set `last_used_at` of the AuthIdentity with `id` to now."
-  [id]
+(mu/defn touch-auth-identity!
+  "Set `last_used_at` of the AuthIdentity with `id` to now, returning the number updated. `id` may be nil (no
+  matching AuthIdentity), which updates nothing."
+  [id :- [:maybe ms/PositiveInt]]
   (t2/update! :model/AuthIdentity id {:last_used_at :%now}))
 
-(defn delete-auth-identities!
-  "Delete the AuthIdentities of the User with `user-id` at `provider`."
-  [user-id provider]
-  (t2/delete! :model/AuthIdentity :user_id user-id :provider provider))
+(mu/defn delete-auth-identities!
+  "Delete the AuthIdentities of the User with `user-id` at `provider`, returning the number deleted."
+  [user-id  :- ::lib.schema.id/user
+   provider :- :string]
+  (t2/delete! :model/AuthIdentity :user_id (long user-id) :provider [:auto/param provider]))
 
-(defn delete-sessions-for-user!
-  "Delete every Session of the User with `user-id`. Duplicates `metabase.session.db/delete-sessions-for-user!`;
-  can't delegate to it because the `session` module already depends on `auth-identity`, so the reverse dependency
-  would be a module cycle."
-  [user-id]
-  (t2/delete! :model/Session :user_id user-id))
+(mu/defn end-sessions-for-user!
+  "Record that every Session of the User with `user-id` ended because their password changed, clearing each key so
+  none can authenticate again; `ended-by` is who changed it. Returns the number ended."
+  [user-id  :- ::lib.schema.id/user
+   ended-by :- [:maybe ::lib.schema.id/user]]
+  ;; the same write `metabase.session.db/end-sessions!` makes, repeated here rather than delegated: the `session`
+  ;; module already depends on `auth-identity`, so the reverse dependency would be a module cycle
+  (t2/update! :model/Session :user_id (long user-id) :ended_at nil
+              {:ended_at         :%now
+               :end_reason       "password-change"
+               :ended_by_user_id ended-by
+               :key_hashed       nil}))
 
-(defn user
+(mu/defn user
   "The User with `user-id`, or nil."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one :model/User user-id))
 
-(defn user-by-email
+(mu/defn user-by-email
   "The User whose email matches `email` case-insensitively, or nil."
-  [email]
+  [email :- :string]
   (t2/select-one :model/User :%lower.email (u/lower-case-en email)))
 
-(defn user-login-columns
-  "The id, active flag, last login, and tenant id of the User with `user-id`, or nil."
-  [user-id]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :id user-id))
+(mu/defn user-login-columns
+  "Return login details for the user with `user-id`, or nil.
 
-(defn user-login-columns-by-email
-  "The id, active flag, last login, and tenant id of the User whose email matches `email` case-insensitively, or
-  nil."
-  [email]
-  (t2/select-one [:model/User :id :is_active :last_login :tenant_id] :%lower.email (u/lower-case-en email)))
+  The details include the user's ID, active flag, last login, tenant ID, and type."
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id :type] :id (long user-id)))
 
-(defn user-login-status
+(mu/defn user-login-columns-by-email
+  "Return login details for the user whose email matches `email`, or nil.
+
+  The match is case-insensitive. The details include the user's ID, active flag, last login, tenant ID, and type."
+  [email :- :string]
+  (t2/select-one [:model/User :id :is_active :last_login :tenant_id :type] :%lower.email (u/lower-case-en email)))
+
+(mu/defn user-login-status
   "The id, active flag, and last login of the User with `user-id`, or nil."
-  [user-id]
+  [user-id :- ::lib.schema.id/user]
   (t2/select-one [:model/User :id :is_active :last_login] user-id))
 
-(defn user-active?
+(mu/defn user-active?
   "Whether the User with `user-id` is active."
-  [user-id]
-  (t2/select-one-fn :is_active :model/User :id user-id))
+  [user-id :- ::lib.schema.id/user]
+  (t2/select-one-fn :is_active :model/User :id (long user-id)))
 
-(defn update-user!
-  "Apply `changes` to the User with `user-id`."
-  [user-id changes]
+(mu/defn update-user!
+  "Apply `changes` to the User with `user-id`, returning the number updated."
+  [user-id :- ::lib.schema.id/user
+   changes :- ::users.schema/user.update]
   (t2/update! :model/User user-id changes))
 
-(defn insert-user-returning-login-columns!
+(mu/defn insert-user-returning-login-columns!
   "Insert the User `row` and return its id, last login, active flag, and tenant id."
-  [row]
+  [row :- ::users.schema/user.update]
   (t2/insert-returning-instance! [:model/User :id :last_login :is_active :tenant_id] row))
 
-(defn insert-session!
-  "Insert a Session and return the inserted instance."
-  [session-id user-id auth-identity-id session-key expires-at]
+(mu/defn insert-session!
+  "Insert a Session and return the inserted instance.
+
+  `opts` carries provider-specific extras. The `:saml-*` keys come from a SAML login assertion and
+  are stored so single logout can name the session and subject the IdP knows."
+  [session-id           :- :string
+   user-id              :- ::lib.schema.id/user
+   auth-identity-id     :- [:maybe ms/PositiveInt]
+   session-key          :- :string
+   expires-at           :- [:maybe ms/TemporalInstant]
+   mfa-auth-identity-id :- [:maybe ms/PositiveInt]
+   opts                 :- [:map {:closed true}
+                            [:saml-session-index  {:optional true} [:maybe :string]]
+                            [:saml-name-id        {:optional true} [:maybe :string]]
+                            [:saml-name-id-format {:optional true} [:maybe :string]]]]
+  ;; `:id` and `:session_key` stay unmarked: the before-insert hook checks the id is not a UUID and hashes the key,
+  ;; and both need the plain string. The key itself never reaches SQL, only its hash.
   (t2/insert-returning-instance! :model/Session
                                  ;; Without setting the ID here we can't return an instance on MySQL
                                  :id session-id
-                                 :user_id user-id
-                                 :auth_identity_id auth-identity-id
+                                 :user_id (long user-id)
+                                 :auth_identity_id (some-> auth-identity-id long)
                                  :session_key session-key
-                                 :expires_at expires-at))
+                                 :expires_at [:auto/param expires-at]
+                                 :mfa_auth_identity_id (some-> mfa-auth-identity-id long)
+                                 :saml_session_index [:auto/param (:saml-session-index opts)]
+                                 :saml_name_id [:auto/param (:saml-name-id opts)]
+                                 :saml_name_id_format [:auto/param (:saml-name-id-format opts)]))
