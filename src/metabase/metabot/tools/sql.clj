@@ -63,7 +63,7 @@
   [{:keys [query-id query]} title]
   (streaming/viz-part {:entity-id (str (random-uuid))
                        :query-id query-id
-                       :query (links/->legacy-mbql query)
+                       :query (links/->frontend-query query)
                        :title title}))
 
 (defn- validated-sql-action!

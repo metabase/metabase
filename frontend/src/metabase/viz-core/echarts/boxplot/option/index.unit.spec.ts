@@ -1,5 +1,5 @@
 import { DEFAULT_METABASE_COMPONENT_THEME } from "metabase/ui";
-import type { RawSeries } from "metabase-types/api";
+import type { RawSeries, RowValues } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -30,30 +30,36 @@ const otherMetric = createMockColumn({
   display_name: "Other",
   base_type: "type/Integer",
 });
-const rawSeries: RawSeries = [
-  {
-    card: createMockCard({ id: 1, display: "boxplot" }),
-    data: createMockDatasetData({
-      cols: [category, metric, otherMetric],
-      rows: [1000, 2000, 2500, 3000, 4000, 15000].map((value) => [
-        "A",
-        value,
-        value * 10,
-      ]),
-    }),
-  },
-];
+const filledRows = [1000, 2000, 2500, 3000, 4000, 15000].map((value) => [
+  "A",
+  value,
+  value * 10,
+]);
+
+function makeRawSeries(rows: RowValues[]): RawSeries {
+  return [
+    {
+      card: createMockCard({ id: 1, display: "boxplot" }),
+      data: createMockDatasetData({
+        cols: [category, metric, otherMetric],
+        rows,
+      }),
+    },
+  ];
+}
 
 function setup({
   cartesianSize = "small",
   settings: overrides = {},
   staticViz = false,
   height = 450,
+  rows = filledRows,
 }: {
   cartesianSize?: CartesianChartSize;
   settings?: ComputedVisualizationSettings;
   staticViz?: boolean;
   height?: number;
+  rows?: RowValues[];
 } = {}) {
   const settings = createMockVisualizationSettings({
     "graph.dimensions": ["category"],
@@ -83,7 +89,7 @@ function setup({
     }),
   };
   const model = getBoxPlotModel(
-    rawSeries,
+    makeRawSeries(rows),
     settings,
     [],
     undefined,
@@ -113,6 +119,13 @@ function setup({
   );
   return { model, layout, settings, option, renderingContext };
 }
+
+describe("empty series", () => {
+  it("returns an empty option instead of emitting a lone x-axis", () => {
+    const { option } = setup({ rows: [] });
+    expect(option).toEqual({});
+  });
+});
 
 describe("responsive BoxPlot presentation", () => {
   it.each(["small", "medium", "large", "fullscreen"] as const)(
