@@ -12,6 +12,7 @@ type VirtualizedGridProps<T> = {
   renderItem: (item: T) => ReactNode;
   columnsPerRow: Record<BreakpointName, number>;
   estimatedRowHeight: number;
+  itemOrder?: "row" | "column";
   overscan?: number;
 } & Omit<BoxProps, "children">;
 
@@ -21,6 +22,7 @@ export const VirtualizedGrid = <T,>({
   renderItem,
   columnsPerRow,
   estimatedRowHeight,
+  itemOrder = "row",
   overscan = 5,
   ...boxProps
 }: VirtualizedGridProps<T>) => {
@@ -39,10 +41,18 @@ export const VirtualizedGrid = <T,>({
   );
 
   // Group items into rows based on current columns
-  const rows = useMemo(
-    () => _.chunk(items, currentColumns),
-    [items, currentColumns],
-  );
+  const rows = useMemo(() => {
+    if (itemOrder === "row") {
+      return _.chunk(items, currentColumns);
+    }
+
+    const rowCount = Math.ceil(items.length / currentColumns);
+    const rows = Array.from({ length: rowCount }, (): T[] => []);
+    items.forEach((item, index) => {
+      rows[index % rowCount].push(item);
+    });
+    return rows;
+  }, [items, currentColumns, itemOrder]);
 
   const virtualizer = useVirtualizer({
     count: rows.length,

@@ -22,6 +22,7 @@ type CollectionListViewProps = {
   crumbs: Crumb;
   loading?: boolean;
   items: CollectionListItem[];
+  itemOrder?: ComponentProps<typeof VirtualizedGrid>["itemOrder"];
   containerStyle?: CSSProperties;
   containerClassName?: string;
 };
@@ -30,6 +31,7 @@ export const CollectionListView = ({
   crumbs,
   loading = false,
   items,
+  itemOrder,
   containerStyle,
   containerClassName,
 }: CollectionListViewProps) => {
@@ -70,6 +72,7 @@ export const CollectionListView = ({
         ) : (
           <VirtualizedGrid
             items={items}
+            itemOrder={itemOrder}
             keyExtractor={(item) => item.key}
             renderItem={renderItem}
             columnsPerRow={{ xs: 1, sm: 2, md: 3, lg: 4, xl: 4 }}
