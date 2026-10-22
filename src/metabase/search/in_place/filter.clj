@@ -148,7 +148,7 @@
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
 
-(doseq [model ["card" "dataset" "metric" "dashboard" "action"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "action" "data-app"]]
   (defmethod build-optional-filter-query [:id model]
     [_filter model query ids]
     (sql.helpers/where query [:in (search.config/column-with-model-alias model :id) ids])))

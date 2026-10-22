@@ -137,7 +137,7 @@
                 [:not= :search_index.model "table"]
                 [:= :search_index.archived true]
                 [:= :search_index.curated true]
-                [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action"]]
+                [:in :search_index.model ["card" "dataset" "metric" "dashboard" "action" "data-app"]]
                 [:or
                  [:= nil :search_index.dashboard_id]
                  [:not= [:inline 0] [:coalesce :search_index.dashboardcard_count [:inline 0]]]]

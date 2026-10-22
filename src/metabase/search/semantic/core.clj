@@ -1,7 +1,6 @@
 (ns metabase.search.semantic.core
   (:require
    [metabase.premium-features.core :refer [defenterprise]]
-   [metabase.search.config :as search.config]
    [metabase.search.engine :as search.engine]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.util.log :as log]))
@@ -75,8 +74,10 @@
   (results search-ctx))
 
 (defmethod search.engine/model-set :search.engine/semantic
-  [_search-ctx]
-  search.config/all-models)
+  [search-ctx]
+  ;; The app DB index applies the permission filters. A semantic match does not need the search terms, so they must
+  ;; not narrow the types.
+  (search.engine/model-set (assoc search-ctx :search-engine :search.engine/appdb :search-string nil)))
 
 (defmethod search.engine/diagnose :search.engine/semantic
   [search-ctx expected-model expected-id]

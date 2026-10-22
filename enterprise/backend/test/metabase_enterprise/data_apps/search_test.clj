@@ -2,7 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.config :as data-apps.config]
+   [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
+   [metabase.search.core :as search]
+   [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -32,6 +35,22 @@
       :available_models
       set
       (contains? "data-app")))
+
+(defn- semantic-engine-offers-data-app-type?
+  "Whether the semantic search engine's type filter offers data apps to `user` searching for [[search-term]]."
+  [user]
+  (mt/with-current-user (mt/user->id user)
+    (-> (search/search-context {:current-user-id       api/*current-user-id*
+                                :current-user-perms    @api/*current-user-permissions-set*
+                                :is-superuser?         api/*is-superuser?*
+                                :is-impersonated-user? false
+                                :is-sandboxed-user?    false
+                                :is-routed-user?       false
+                                :models                nil
+                                :search-string         search-term})
+        (assoc :search-engine :search.engine/semantic)
+        search/model-set
+        (contains? "data-app"))))
 
 (defn- with-each-engine
   "Run `check!` with the index engine when the app DB supports it, then with the legacy engine."
@@ -147,6 +166,39 @@
           (doseq [user [:crowberto :rasta :lucky]]
             (testing (str user " is not offered data apps")
               (is (not (offers-data-app-type? user))))))))))
+
+(deftest semantic-type-filter-offers-data-apps-only-to-users-who-can-read-one-test
+  ;; The semantic engine lists types from the app DB index, which MySQL and MariaDB cannot hold.
+  (when (search.engine/supported-engine? :search.engine/appdb)
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"
+                                                  :bundle_path "s.js"}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
+                     :model/DataAppGroupAssignment _ {:data_app_id app-id :permission_group_id group-id}]
+        (testing "an admin is offered data apps"
+          (is (semantic-engine-offers-data-app-type? :crowberto)))
+        (testing "a user in an assigned group is offered data apps"
+          (is (semantic-engine-offers-data-app-type? :rasta)))
+        (testing "a user in no assigned group is not offered data apps"
+          (is (not (semantic-engine-offers-data-app-type? :lucky))))))))
+
+(deftest search-by-ids-finds-the-requested-data-app-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"
+                                                :bundle_path "sightings.js"}
+                   :model/DataApp {other-id :id} {:name "plovers" :display_name "Sandpiper counts"
+                                                  :bundle_path "counts.js"}
+                   :model/PermissionsGroup {group-id :id} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
+                   :model/DataAppGroupAssignment _ {:data_app_id app-id :permission_group_id group-id}
+                   :model/DataAppGroupAssignment _ {:data_app_id other-id :permission_group_id group-id}]
+      (with-each-engine
+        (fn []
+          (doseq [user [:crowberto :rasta]]
+            (testing (str user " finds only the data app with the requested id")
+              (is (= #{app-id}
+                     (set (keys (found-data-apps user :models "data-app" :ids app-id))))))))))))
 
 (deftest search-finds-no-data-apps-without-the-feature-test
   (mt/with-premium-features #{}
