@@ -16,10 +16,10 @@ export const ITERATION_2_DIRECTIONS: FilterDirection[] = [
   {
     id: "expression-bar-inline-2",
     get name() {
-      return t`Expression bar A`;
+      return t`Expression bar: inline stages`;
     },
     get description() {
-      return t`Iteration 2 copy of the expression bar. One bar for the whole expression. Pick filters from a dropdown; type "and", "or" and parentheses between them. Cancel and Apply sit in the bar; the header button hides and shows the strip.`;
+      return t`One bar for the whole expression. Pick filters from a dropdown; type "and", "or" and parentheses between them. Once the query has a summary, a second numbered stage follows inline for filters on the summary (Count, breakout columns), on its own band; the boundary between stages is an AND that can't be changed. Arrow keys cross between stages. Cancel and Apply sit in the bar; the header button hides and shows the strip.`;
     },
     Component: ExpressionBarInline2Prototype,
     canHideFilters: true,
@@ -30,7 +30,7 @@ export const ITERATION_2_DIRECTIONS: FilterDirection[] = [
       return t`Expression bar with drill-through`;
     },
     get description() {
-      return t`Expression bar A in a real question: Orders, Sum of Total by month. Type in the bar itself: the app's filter list opens under the caret with a "Logic" section (and, or, parentheses) on top, and the best match is highlighted as you type. A filter only becomes a pill once its column is picked. Click a point on the chart and use "See these orders" or "Break out by…": the drill's filters are appended at the end, AND-ed with what's there, wrapped in parentheses when the existing expression is an OR.`;
+      return t`Expression bar with inline stages in a real question: Orders, Sum of Total by month. Type in the bar itself: the app's filter list opens under the caret with a "Logic" section (and, or, parentheses) on top, and the best match is highlighted as you type. A filter only becomes a pill once its column is picked. Click a point on the chart and use "See these orders" or "Break out by…": the drill's filters are appended at the end, AND-ed with what's there, wrapped in parentheses when the existing expression is an OR.`;
     },
     Component: ExpressionBarInline2Prototype,
     Canvas: QuestionView,
