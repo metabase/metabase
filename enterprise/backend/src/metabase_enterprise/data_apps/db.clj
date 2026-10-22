@@ -151,9 +151,11 @@
                                [:= :membership.group_id :assignment.permission_group_id]
                                [:core_user :member]
                                [:= :member.id :membership.user_id]]
+                      ;; No `[:auto/param]` marker: this query also runs inside queries compiled outside Toucan, such
+                      ;; as the search index's, which reject it. Both compilers bind the integer id as a parameter.
                       :where  [:and
                                [:= :app.enabled true]
-                               [:= :membership.user_id [:auto/param user-id]]
+                               [:= :membership.user_id user-id]
                                [:= :member.tenant_id nil]]}))
 
 (mu/defn readable-data-app?
