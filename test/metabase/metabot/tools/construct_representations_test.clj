@@ -13,6 +13,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.agent-lib.representations.repair :as repr.repair]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
@@ -255,6 +256,33 @@
    :stages   [{:lib/type     "mbql.stage/mbql"
                :source-table ["Sample" "PUBLIC" "ORDERS"]
                :fields       [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]}]})
+
+(deftest export-validation-failures-end-metabot-turn-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [export-query repr.resolve/export-query]
+        (mt/with-dynamic-fn-redefs [repr.resolve/export-query
+                                    (fn [& args]
+                                      (assoc-in (apply export-query args) ["stages" 0 "filters"] {"op" ">"}))]
+          (let [caught (try
+                         (tools/with-pipeline-errors
+                           (construct/execute-representations-query orders-id-query))
+                         (catch Throwable e e))
+                entries (tools/entries [construct/construct-notebook-query-tool])
+                outcome (tools.runtime/invoke entries
+                                              {:profile-id :nlq :metabot nil
+                                               :user-scope #{"agent:notebook:create"}
+                                               :tool-names (set (keys entries))}
+                                              "construct_notebook_query"
+                                              {:query orders-id-query
+                                               :title "Order IDs" :description "IDs of orders."})]
+            (is (nil? (:error (ex-data caught))))
+            (is (= :unrecoverable (:class (tools.error/classify caught))))
+            (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
+                    :error {:class :unrecoverable :code :internal}}
+                   outcome))
+            (is (= "Something went wrong."
+                   (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
 
 (deftest metadata-lookup-failures-propagate-test
   (with-mp-and-stubs!
