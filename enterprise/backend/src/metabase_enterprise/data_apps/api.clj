@@ -21,6 +21,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
@@ -322,9 +323,32 @@
   (let [app (read-check-data-app (data-apps.db/enabled-data-app-by-slug slug))]
     (data-app-response (cond-> app (not api/*is-superuser?*) check-not-outdated))))
 
+(defn- bundle-response
+  [slug request]
+  (let [app (check-not-outdated (read-check-data-app (data-apps.db/enabled-data-app-by-slug slug)))
+        hash (:bundle_hash app)
+        etag (some->> hash (format "\"%s\""))
+        revalidate? (and hash
+                         (contains? (if-none-match-hashes (get-in request [:headers "if-none-match"])) hash))]
+    (if revalidate?
+      ;; 304 carries only the cacheable headers (Cache-Control) + ETag, never
+      ;; Content-Type or a body, per RFC 9110 §15.4.5.
+      {:status 304 :body nil :headers {"Cache-Control" "no-cache" "ETag" etag}}
+      (let [^bytes bundle (data-apps.db/data-app-bundle (:id app))]
+        (if (and bundle (pos? (alength bundle)))
+          {:status 200
+           :headers (-> bundle-response-headers
+                        (assoc "X-Metabase-Data-App-Allowed-Hosts" (json/encode (:allowed_hosts app))
+                               "X-Metabase-Data-App-Content-Security-Policy"
+                               (mw.security/embedded-data-app-content-security-policy (:allowed_hosts app)))
+                        (cond-> etag (assoc "ETag" etag)))
+           :body (ByteArrayInputStream. bundle)}
+          {:status 404
+           :headers {"Content-Type" "application/json"}
+           :body "{\"error\":\"Bundle not synced yet\"}"})))))
+
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
-  "Serve the cached JS bundle for a single enabled data app by slug. Honors
-   `If-None-Match` against the content-hash ETag with a 304."
+  "Serve an authorized bundle and its CSP. Honors If-None-Match against the source-hash ETag with a 304."
   {:scope api-scope/data-app}
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
@@ -332,30 +356,13 @@
    request
    respond
    raise]
-  (try
-    (let [row  (check-not-outdated (read-check-data-app (data-apps.db/enabled-data-app-by-slug slug)))
-          hash (:bundle_hash row)
-          etag (some->> hash (format "\"%s\""))]
-      (cond
-        (and hash (contains? (if-none-match-hashes (get-in request [:headers "if-none-match"])) hash))
-        ;; 304 carries only the cacheable headers (Cache-Control) + ETag — never
-        ;; Content-Type or a body, per RFC 9110 §15.4.5.
-        (respond {:status 304, :headers {"Cache-Control" "no-cache", "ETag" etag}})
-
-        :else
-        (let [^bytes bundle (data-apps.db/data-app-bundle (:id row))]
-          (if (and bundle (pos? (alength bundle)))
-            (respond {:status  200
-                      :headers (-> bundle-response-headers
-                                   (assoc "X-Metabase-Data-App-Allowed-Hosts"
-                                          (json/encode (:allowed_hosts row)))
-                                   (cond-> etag (assoc "ETag" etag)))
-                      :body    (ByteArrayInputStream. bundle)})
-            (respond {:status  404
-                      :headers {"Content-Type" "application/json"}
-                      :body    "{\"error\":\"Bundle not synced yet\"}"})))))
-    (catch Throwable e
-      (raise e))))
+  (let [{:keys [response error]} (try
+                                   {:response (bundle-response slug request)}
+                                   (catch Throwable e
+                                     {:error e}))]
+    (if error
+      (raise error)
+      (respond response))))
 
 (def routes
   "`/api/apps` routes."
