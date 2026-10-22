@@ -59,7 +59,7 @@ describe("EnableEmbeddingPrompt", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "usage conditions" }),
-    ).toHaveAttribute("href", "https://metabase.com/license/embedding");
+    ).toHaveAttribute("href", "https://www.metabase.com/license/embedding");
 
     await userEvent.click(
       screen.getByRole("button", { name: "Enable modular embedding" }),
@@ -90,7 +90,7 @@ describe("EnableEmbeddingPrompt", () => {
     const link = screen.getByRole("link", { name: "usage conditions" });
     expect(link).toHaveAttribute(
       "href",
-      "https://metabase.com/license/embedding",
+      "https://www.metabase.com/license/embedding",
     );
     expect(link).toHaveAttribute("target", "_blank");
 
