@@ -1,3 +1,4 @@
+import type { ContentTranslationFunction } from "metabase/content-translation/types";
 import type Question from "metabase-lib/v1/Question";
 
 import { getQuestionTitle } from "./get-question-title";
@@ -62,7 +63,8 @@ describe("getQuestionTitle", () => {
 
   it("passes the name through a content translation function", () => {
     const question = stubQuestion({ displayName: "Translated Title" });
-    const tc = (s: string) => `[translated] ${s}`;
+    const tc: ContentTranslationFunction = (s) =>
+      typeof s === "string" ? `[translated] ${s}` : s;
     expect(getQuestionTitle(question, tc)).toBe(
       "[translated] Translated Title",
     );
