@@ -1339,6 +1339,12 @@
   (or (and (vector? v) (= "now" (nth v 0 nil)))
       (and (iso-date-string? v) (not (re-matches date-only-pattern (str/trim v))))))
 
+(defn- t-separated
+  "`timestamp` with a `T` between its date and time.
+  A space there breaks the column name of an aggregation, though a filter accepts it."
+  [timestamp]
+  (str/replace-first (str/trim timestamp) " " "T"))
+
 (defn- unwrap-whole-day-start
   "Unwrap the whole-day start of a `between` that ends at `now` or at a timestamp.
 
@@ -1346,7 +1352,8 @@
   clause to E7, since `BETWEEN` stops at the start of a plain date or of a `relative-datetime` period."
   [[_ _ _ start end :as node]]
   (if (and (between-clause? node) (whole-day-bound? start) (now-or-timestamp? end))
-    (assoc node 3 (redundant-bucket-literal start))
+    (cond-> (assoc node 3 (redundant-bucket-literal start))
+      (string? end) (assoc 4 (t-separated end)))
     node))
 
 (defn- repair-day-and-default-comparison [node]
@@ -1359,7 +1366,7 @@
         (unwrap-whole-day-start
          (into (subvec node 0 3)
                (map (fn [operand literal]
-                      (if (and literal (not (re-matches date-only-pattern literal))) literal operand))
+                      (if (and literal (not (re-matches date-only-pattern literal))) (t-separated literal) operand))
                     (subvec node 3) literals)))))
     node))
 

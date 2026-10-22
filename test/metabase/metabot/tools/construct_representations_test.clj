@@ -2000,7 +2000,9 @@
                    [["<" {} created-at (end "2017-02-01")] 949]
                    [[">=" {} created-at (start "2017-01-31")] 17819]
                    [["between" {} created-at (start "2017-01-31") ["now" {}]] 17819]
-                   [["between" {} created-at (start "2017-01-01") ["absolute-datetime" {} "2017-01-31T12:30:00" "default"]] 203]]]
+                   [["between" {} created-at (start "2017-01-01") ["absolute-datetime" {} "2017-01-31T12:30:00" "default"]] 203]
+                   [["between" {} created-at (start "2017-01-01") ["absolute-datetime" {} "2017-01-31 12:30:00" "default"]] 203]
+                   [["between" {} created-at (start "2017-01-01") "2017-01-31 12:30:00"] 203]]]
             (testing (pr-str predicate)
               (let [;; Separate filters let Pass 2.95 handle dates with different units.
                     filter-predicate (if (and (contains? #{"=" "in"} (first predicate)) (> (count predicate) 4))

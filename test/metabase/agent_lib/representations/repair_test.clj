@@ -1143,18 +1143,22 @@
                                       (abs-dt "2017-01-31" end-unit)]]}]}))))))
 
 (deftest ^:parallel default-timestamps-keep-their-time-test
-  (let [input ["between" {} created-at (abs-dt "2026-01-01T12:30:00" "default")
-               (abs-dt "2026-01-31T12:30:00" "default")]
-        expected ["between" {} created-at "2026-01-01T12:30:00" "2026-01-31T12:30:00"]]
-    (is (= [["count-where" {} expected]]
-           (get (repair-in-stage {"aggregation" [["count-where" {} input]]}) "aggregation")))))
+  (doseq [separator ["T" " "]]
+    (let [input ["between" {} created-at (abs-dt (str "2026-01-01" separator "12:30:00") "default")
+                 (abs-dt (str "2026-01-31" separator "12:30:00") "default")]
+          expected ["between" {} created-at "2026-01-01T12:30:00" "2026-01-31T12:30:00"]]
+      (is (= [["count-where" {} expected]]
+             (get (repair-in-stage {"aggregation" [["count-where" {} input]]}) "aggregation"))
+          (pr-str input)))))
 
 (deftest ^:parallel between-a-whole-day-and-now-or-a-timestamp-test
   (doseq [unit ["day" "default"]
           [end end'] [[["now" {}] ["now" {}]]
                       ["now" ["now" {}]]
                       [(abs-dt "2026-01-31T12:30:00" "default") "2026-01-31T12:30:00"]
-                      ["2026-01-31T12:30:00" "2026-01-31T12:30:00"]]]
+                      ["2026-01-31T12:30:00" "2026-01-31T12:30:00"]
+                      [(abs-dt "2026-01-31 12:30:00" "default") "2026-01-31T12:30:00"]
+                      ["2026-01-31 12:30:00" "2026-01-31T12:30:00"]]]
     (testing (pr-str [unit end])
       (let [stage (repair-in-stage
                    {"aggregation" [["count-where" {} ["between" {} created-at (abs-dt "2026-01-01" unit) end]]]})]
