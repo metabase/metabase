@@ -315,11 +315,12 @@
           (is (= row (hash-row token)))
           (is (=? {:valid true :status "ok"} (premium-features/token-status))))))))
 
+(def ^:private audit-app-status {:valid true :status "ok" :features ["audit-app"]})
+
 (defn- change-hash-row!
-  "Change the hash row for `token` as another instance would after a refresh that got a different status."
   [token]
   (t2/update! :model/PremiumFeaturesCache :token_hash (#'token-check/hash-token token)
-              {:token_status_hash (#'token-check/hash-token-status {:valid true :status "ok" :features ["audit-app"]})}))
+              {:token_status_hash (#'token-check/hash-token-status audit-app-status)}))
 
 (deftest tick-after-another-instance-changed-the-hash-fetches-test
   (let [token    (tu/random-token)
@@ -327,7 +328,7 @@
     (mt/with-temporary-raw-setting-values [premium-embedding-token token]
       (with-store [calls #(deref response)]
         (token-check/refresh-now!)
-        (reset! response {:valid true :status "ok" :features ["audit-app"]})
+        (reset! response audit-app-status)
         (change-hash-row! token)
         (token-check/tick!)
         (is (= 2 @calls))
@@ -379,7 +380,13 @@
           (is (pos? @calls))
           (is (= held @@#'token-check/entry))
           (is (= row (hash-row token)))
-          (is (premium-features/has-feature? :sandboxes)))))))
+          (is (premium-features/has-feature? :sandboxes)))
+        (testing "the request stands, so the next tick tries again"
+          (with-store [calls (constantly good-status)]
+            (token-check/tick!)
+            (is (= 1 @calls))
+            (token-check/tick!)
+            (is (= 1 @calls))))))))
 
 (deftest tick-whose-hash-read-fails-does-not-throw-test
   (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
