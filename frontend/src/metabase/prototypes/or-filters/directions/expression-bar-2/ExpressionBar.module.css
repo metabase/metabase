@@ -226,6 +226,11 @@
   display: contents;
 }
 
+/* Only the segment holding the focused input shows its position caret; the bar's focus-within would light up both. */
+.segment:not(:focus-within) .gapActive::before {
+  display: none;
+}
+
 .segmentStatus {
   flex: 1 0 100%;
   order: 1;
