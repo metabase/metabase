@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { useContext, useState } from "react";
+import { useCallback, useContext, useState } from "react";
 
 import { Box, Flex } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -16,6 +16,7 @@ import { NumberFilterPicker } from "../NumberFilterPicker";
 import { StringFilterPicker } from "../StringFilterPicker";
 import { TimeFilterPicker } from "../TimeFilterPicker";
 import type { FilterChangeOpts } from "../types";
+import { useFilterAutoApply } from "../use-filter-auto-apply";
 
 import S from "./FilterPickerBody.module.css";
 
@@ -30,6 +31,8 @@ interface FilterPickerBodyProps {
   withSubmitButton?: boolean;
   onChange: (filter: Lib.ExpressionClause, opts: FilterChangeOpts) => void;
   onBack?: () => void;
+  /** Prototype: closes the picker after an explicit submit, when filters apply as the user changes them. */
+  onClose?: () => void;
   readOnly?: boolean;
 }
 
@@ -44,10 +47,29 @@ export function FilterPickerBody({
   withSubmitButton = true,
   onChange,
   onBack,
+  onClose,
   readOnly,
 }: FilterPickerBodyProps) {
-  const preview = useContext(FilterPreviewContext);
+  const livePreview = useContext(FilterPreviewContext);
   const [draftFilter, setDraftFilter] = useState<Lib.ExpressionClause>();
+  const autoApply = useFilterAutoApply({
+    query,
+    stageIndex,
+    filter,
+    onChange,
+    onClose,
+  });
+  const isAutoApply = autoApply.isActive && !readOnly;
+  // With auto-apply, the question itself shows the filter, so there is no preview.
+  const preview = isAutoApply ? null : livePreview;
+  const { onDraftChange: onAutoApplyDraftChange } = autoApply;
+  const handleDraftChange = useCallback(
+    (filter: Lib.ExpressionClause | undefined) => {
+      setDraftFilter(filter);
+      onAutoApplyDraftChange(filter);
+    },
+    [onAutoApplyDraftChange],
+  );
 
   const FilterWidget = getFilterWidget(column);
   if (!FilterWidget) {
@@ -56,6 +78,7 @@ export function FilterPickerBody({
 
   const body = (
     <Box
+      {...(isAutoApply ? autoApply.containerProps : undefined)}
       className={cx({
         [S.readOnly]: readOnly,
         [S.withPreview]: preview != null && !readOnly,
@@ -69,9 +92,11 @@ export function FilterPickerBody({
         filter={filter}
         isNew={isNew}
         withAddButton={withAddButton}
-        withSubmitButton={withSubmitButton && !readOnly}
-        onChange={onChange}
-        onDraftChange={preview ? setDraftFilter : undefined}
+        withSubmitButton={withSubmitButton && !readOnly && !isAutoApply}
+        onChange={isAutoApply ? autoApply.onChange : onChange}
+        onDraftChange={
+          isAutoApply ? handleDraftChange : preview ? setDraftFilter : undefined
+        }
         onBack={onBack}
         readOnly={readOnly}
       />

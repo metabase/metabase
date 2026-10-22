@@ -840,7 +840,7 @@ function compareDimensionValues(value1: RowValue, value2: RowValue): number {
   return String(value1).localeCompare(String(value2));
 }
 
-function getPreviewQuery(
+export function getPreviewQuery(
   query: Lib.Query,
   stageIndex: number,
   filter: Lib.Filterable | undefined,
@@ -858,14 +858,14 @@ function getPreviewQuery(
 
 // Pickers build new clauses, with new ids and slightly different field refs,
 // so the same filter must be compared by meaning, not by value.
-function areQueriesEqual(query1: Lib.Query, query2: Lib.Query): boolean {
+export function areQueriesEqual(query1: Lib.Query, query2: Lib.Query): boolean {
   return Lib.areLegacyQueriesEqual(
     Lib.toJsQuery(query1),
     Lib.toJsQuery(query2),
   );
 }
 
-function readsSlowTable(
+export function readsSlowTable(
   query: Lib.Query,
   prototypeData: PrototypeDataInfo | null | undefined,
 ): boolean {

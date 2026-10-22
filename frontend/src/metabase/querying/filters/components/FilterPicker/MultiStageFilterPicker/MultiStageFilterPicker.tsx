@@ -89,6 +89,7 @@ export function MultiStageFilterPicker({
       withAddButton
       onChange={handleFilterChange}
       onBack={handleBack}
+      onClose={onClose}
     />
   );
 }

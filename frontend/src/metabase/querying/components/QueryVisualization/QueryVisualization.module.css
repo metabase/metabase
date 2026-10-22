@@ -32,3 +32,14 @@
 .shadowed {
   box-shadow: 0 2px 2px var(--mb-color-shadow-default);
 }
+
+/* Prototype: the delayed loading spinner fades in. */
+.fadeIn {
+  animation: fade-in 0.2s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}

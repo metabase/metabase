@@ -6,6 +6,10 @@ import { c, t } from "ttag";
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { Warnings } from "metabase/common/components/Warnings";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
+import {
+  LOADING_SPINNER_DELAY_MS,
+  usePrototypeSetting,
+} from "metabase/prototype";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
@@ -36,6 +40,8 @@ export function QueryVisualization(props: QueryVisualizationProps) {
   } = props;
 
   const canRun = Lib.canRun(question.query(), question.type());
+  const [spinnerDelayMs] = usePrototypeSetting(LOADING_SPINNER_DELAY_MS);
+  const isSpinnerShown = useIsRunningLong(Boolean(isRunning), spinnerDelayMs);
   const [warnings, setWarnings] = useState<string[]>([]);
 
   // The result is not rendered until the query returns, so the chart chunk
@@ -57,7 +63,9 @@ export function QueryVisualization(props: QueryVisualizationProps) {
 
   return (
     <Box pos="relative" h="100%" className={cx(className, S.root)}>
-      {isRunning ? <VisualizationRunningState className={S.overlay} /> : null}
+      {isSpinnerShown ? (
+        <VisualizationRunningState className={cx(S.overlay, S.fadeIn)} />
+      ) : null}
       <VisualizationDirtyState
         {...props}
         hidden={!isDirtyStateShown}
@@ -68,7 +76,7 @@ export function QueryVisualization(props: QueryVisualizationProps) {
       )}
       <Box
         className={cx(S.visualization, QueryBuilderS.Visualization, {
-          [QueryBuilderS.VisualizationLoading]: isRunning,
+          [QueryBuilderS.VisualizationLoading]: isSpinnerShown,
         })}
         data-testid="query-visualization-root"
       >
@@ -97,6 +105,22 @@ export function QueryVisualization(props: QueryVisualizationProps) {
       </Box>
     </Box>
   );
+}
+
+// Prototype: fast queries show no spinner, so that it does not flash.
+function useIsRunningLong(isRunning: boolean, delayMs: number): boolean {
+  const [isLong, setIsLong] = useState(false);
+
+  useEffect(() => {
+    if (!isRunning) {
+      setIsLong(false);
+      return;
+    }
+    const timeoutId = setTimeout(() => setIsLong(true), delayMs);
+    return () => clearTimeout(timeoutId);
+  }, [isRunning, delayMs]);
+
+  return isRunning && isLong;
 }
 
 const VisualizationEmptyState = ({ children }: { children: ReactNode }) => {
