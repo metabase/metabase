@@ -302,8 +302,7 @@
       (testing "a source-field that is not a foreign key is refused"
         (is (= (refused "Field " (pr-str (fk "VENUES" "NAME")) " is on table \"VENUES\", but its `source-field` "
                         (pr-str (fk "CHECKINS" "DATE")) " is not a foreign key to that table, so the field cannot "
-                        "be reached through it. Use a `source-field` that is a foreign key to \"VENUES\", or join "
-                        "\"VENUES\" explicitly and reference the field with its `join-alias`.")
+                        "be reached through it. Use `source-field` " (pr-str venue-id) " to reach \"VENUES\" directly.")
                (refusal {:source-field (fk "CHECKINS" "DATE")} (fk "VENUES" "NAME")))))
       (testing (str "a one-hop reference builds and runs, as do the path the refusal names and a reference through "
                     "an explicit join, whose `source-field` the query processor ignores")
@@ -380,6 +379,23 @@
           (testing (pr-str stages)
             (let [query (get-in (construct-checkins-query db stages) [:structured-output :query])]
               (is (seq (mt/rows (qp/process-query query)))))))))))
+
+(deftest construct-notebook-query-direct-source-field-hint-test
+  (let [db       (t2/select-one-fn :name :model/Database (mt/id))
+        fk       (fn [table column] [db "PUBLIC" table column])
+        user-id  (fk "CHECKINS" "USER_ID")
+        query    (fn [source-field]
+                   (construct-checkins-query
+                    db [{:aggregation [["count" {}]]
+                         :breakout    [["field" {:source-field source-field} (fk "USERS" "NAME")]]}]))]
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [e (try
+                (query (fk "CHECKINS" "VENUE_ID"))
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (= :wrong-source-field (:error (ex-data e))))
+        (is (str/includes? (or (ex-message e) "") (str "Use `source-field` " (pr-str user-id)))))
+      (testing "the direct key suggested by the hint builds and runs"
+        (is (seq (mt/rows (qp/process-query (get-in (query user-id) [:structured-output :query])))))))))
 
 (defn- construct-tool-failure-for-thrown
   "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return the

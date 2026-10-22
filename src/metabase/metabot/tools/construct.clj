@@ -656,28 +656,39 @@
     field-ref
     (serdes.resolve/export-mbql (resolve.mp/export-resolver metadata-provider permission-aware-content-store) field-ref)))
 
+(defn- direct-source-field-hint
+  [metadata-provider columns table-id table-name]
+  (when-let [field-ids (seq (distinct (keep (fn [column]
+                                              (when (and (= table-id (:table-id column))
+                                                         (nil? (:fk-join-alias column)))
+                                                (:fk-field-id column)))
+                                            columns)))]
+    (format "Use `source-field` %s to reach %s directly."
+            (str/join " or " (map #(pr-str (nth (field-ref-for-error metadata-provider [:field {} %]) 2)) field-ids))
+            table-name)))
+
 (defn- wrong-source-field-error
   "The agent error for `field-ref`, whose column is on table `table-id` while its `source-field` points at table
   `fk-table-id`, or at no table when it is not a foreign key."
-  [metadata-provider [_ {:keys [source-field]} target] table-id fk-table-id]
+  [metadata-provider [_ {:keys [source-field]} target] table-id fk-table-id columns]
   (let [table-name    (pr-str (:name (lib.metadata.protocols/table metadata-provider table-id)))
         ;; The metadata provider skips permission checks, so name the key's table only if the user may query it
         fk-table-name (when (and fk-table-id (contains? (metabot.perms/queryable-table-ids #{fk-table-id}) fk-table-id))
-                        (pr-str (:name (lib.metadata.protocols/table metadata-provider fk-table-id))))
-        via-fk-table? (and fk-table-name
-                           (= 1 (count (filter #(= table-id (:target-table-id %))
-                                               (resolve.mp/outbound-fks-from-table metadata-provider fk-table-id)))))]
+                        (pr-str (:name (lib.metadata.protocols/table metadata-provider fk-table-id))))]
     (ex-info (str (if fk-table-name
                     (format "Field %s is on table %s, but its `source-field` %s is a foreign key to table %s, so the field cannot be reached through it."
                             (pr-str target) table-name (pr-str source-field) fk-table-name)
                     (format "Field %s is on table %s, but its `source-field` %s is not a foreign key to that table, so the field cannot be reached through it."
                             (pr-str target) table-name (pr-str source-field)))
                   " "
-                  (if via-fk-table?
-                    (format "%s has a foreign key to %s: join %s explicitly on %s and leave out `source-field`, so the field is reached through that join."
-                            fk-table-name table-name fk-table-name (pr-str source-field))
-                    (format "Use a `source-field` that is a foreign key to %s, or join %s explicitly and reference the field with its `join-alias`."
-                            table-name table-name)))
+                  (or (direct-source-field-hint metadata-provider columns table-id table-name)
+                      (if (and fk-table-name
+                               (= 1 (count (filter #(= table-id (:target-table-id %))
+                                                   (resolve.mp/outbound-fks-from-table metadata-provider fk-table-id)))))
+                        (format "%s has a foreign key to %s: join %s explicitly on %s and leave out `source-field`, so the field is reached through that join."
+                                fk-table-name table-name fk-table-name (pr-str source-field))
+                        (format "Use a `source-field` that is a foreign key to %s, or join %s explicitly and reference the field with its `join-alias`."
+                                table-name table-name))))
              {:agent-error? true
               :status-code  400
               :error        :wrong-source-field})))
@@ -692,15 +703,16 @@
 
 (defn- assert-source-field-in-stage!
   [query stage-number [_ {:keys [source-field] :as opts} target :as field-ref]]
-  (let [columns (filter #(source-field-column? opts %) (lib/visible-columns query stage-number))]
-    (when-not (lib/find-matching-column query stage-number field-ref columns {:generous? true})
+  (let [columns (lib/visible-columns query stage-number)]
+    (when-not (lib/find-matching-column query stage-number field-ref
+                                        (filter #(source-field-column? opts %) columns) {:generous? true})
       (let [mp          (lib.metadata/->metadata-provider query)
             table-id    (when (pos-int? target) (:table-id (fetch-field mp target)))
             fk-field    (fetch-field mp source-field)
             fk-table-id (some->> (:fk-target-field-id fk-field) (fetch-field mp) :table-id)
             field-ref   (field-ref-for-error mp field-ref)]
         (if (and table-id fk-field (not= table-id fk-table-id))
-          (throw (wrong-source-field-error mp field-ref table-id fk-table-id))
+          (throw (wrong-source-field-error mp field-ref table-id fk-table-id columns))
           (throw (ex-info (format "Field %s cannot be reached through `source-field` %s in this stage. Use a foreign key available in this stage, or join the field's table explicitly and reference it with `join-alias`."
                                   (pr-str (nth field-ref 2)) (pr-str (get-in field-ref [1 :source-field])))
                           {:agent-error? true
