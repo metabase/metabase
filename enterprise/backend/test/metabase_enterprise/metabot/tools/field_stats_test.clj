@@ -195,11 +195,11 @@
   (let [mp (mt/metadata-provider)]
     (lib/aggregate (lib/query mp (lib.metadata/table mp (mt/id :categories))) (lib/count))))
 
-(defn- count-field-metadata [profile card-id]
+(defn- card-field-metadata [profile card-id field-id]
   (binding [scope/*current-user-scope* #{"*"}]
     (let [entries (metabot.tools/->entries (:tools (profiles/get-profile profile)) nil nil profile)]
       ((get-in entries ["get_field_values" :fn])
-       {:data_source "question" :source_id card-id :field_id "count"}))))
+       {:data_source "question" :source_id card-id :field_id field-id}))))
 
 (defn- check-count-fingerprint [query restricted?]
   (let [columns (mt/as-admin (-> query qp/process-query :data :results_metadata :columns))
@@ -210,8 +210,8 @@
     (mt/with-temp [:model/Card {card-id :id} {:type :question :database_id (mt/id)
                                               :dataset_query query :result_metadata columns}]
       (doseq [profile [:document-generate-content :slackbot]]
-        (let [unrestricted (mt/as-admin (count-field-metadata profile card-id))
-              user-result (count-field-metadata profile card-id)]
+        (let [unrestricted (mt/as-admin (card-field-metadata profile card-id "count"))
+              user-result (card-field-metadata profile card-id "count")]
           (is (= {:result-type :field-metadata :field_id "count"
                   :value_metadata {:statistics (merge {:distinct-count 1 :percent-null 0.0}
                                                       (get-in fingerprint [:type :type/Number]))}}
@@ -248,3 +248,23 @@
 (deftest virtual-column-fingerprint-returned-for-unrestricted-user-test
   (mt/with-test-user :rasta
     (check-count-fingerprint (count-query) false)))
+
+(deftest native-column-fingerprints-withheld-without-parsing-sql-test
+  (met/with-gtaps! {:gtaps {:categories {:query (sandboxed-query)}}}
+    (let [mp (mt/metadata-provider)
+          table-name (:name (lib.metadata/table mp (mt/id :categories)))
+          count-sql (str "SELECT COUNT(*) AS \"count\" FROM \"" table-name "\"")]
+      (doseq [[sql field-id] [[(str count-sql " WHERE \"ID\" < 0x7FFFFFFF") "count"]
+                              [(str count-sql " WHERE X'01' = X'01'") "count"]
+                              [(str "TABLE \"" table-name "\"") "NAME"]]]
+        (testing sql
+          (let [query (lib/native-query mp sql)
+                columns (mt/as-admin (-> query qp/process-query :data :results_metadata :columns))]
+            (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query query
+                                                      :result_metadata columns}]
+              (doseq [profile [:document-generate-content :slackbot]]
+                (let [unrestricted (mt/as-admin (card-field-metadata profile card-id field-id))
+                      result (card-field-metadata profile card-id field-id)]
+                  (is (pos? (get-in unrestricted [:structured-output :value_metadata :statistics :distinct-count])))
+                  (is (= {:result-type :field-metadata :field_id field-id :value_metadata nil}
+                         (:structured-output result))))))))))))

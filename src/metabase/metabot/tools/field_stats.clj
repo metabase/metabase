@@ -1,15 +1,16 @@
 (ns metabase.metabot.tools.field-stats
   (:require
    [clojure.set :as set]
+   [metabase.api.common :as api]
    [metabase.lib.core :as lib]
    [metabase.lib.walk :as lib.walk]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.metadata-perms :as metabot.perms]
-   [metabase.metabot.query-analyzer :as query-analyzer]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.util :as metabot.tools.u]
    [metabase.parameters.field-values :as params.field-values]
+   [metabase.permissions.core :as perms]
    [metabase.query-processor.interface :as qp.i]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.request.core :as request]
@@ -33,24 +34,29 @@
       (and (pos? (:updated-fingerprints (request/as-admin (sync/refingerprint-field! field))))
            (metabot.db/field-fingerprint id))))
 
+(defn- database-unrestricted?
+  [db-id]
+  (and (= :unrestricted (perms/full-database-permission-for-user api/*current-user-id* :perms/view-data db-id))
+       (not (perms/sandboxed-user-for-db? db-id))
+       (let [{:keys [impersonation routing]} (perms/data-access-token {:database-id db-id :table-ids #{}})]
+         (not (or impersonation routing)))))
+
 (defn- query-row-restricted?
   [query]
   (try
-    (let [query (binding [qp.i/*skip-middleware-because-app-db-access* true]
-                  (request/as-admin (qp.preprocess/preprocess query)))
-          table-ids (volatile! (set (lib/all-source-table-ids query)))]
-      (lib.walk/walk-stages
-       query
-       (fn [query _path stage]
-         (when (= (:lib/type stage) :mbql.stage/native)
-           (let [{:keys [tables error]} (query-analyzer/tables-for-native (lib/query query stage))]
-             (vswap! table-ids
-                     (fn [ids]
-                       (when (and ids (not error) (coll? tables) (every? (comp int? :table-id) tables))
-                         (into ids (map :table-id) tables))))))
-         nil))
-      (or (nil? @table-ids)
-          (boolean (seq (metabot.perms/row-restricted-table-ids @table-ids)))))
+    (if (database-unrestricted? (:database query))
+      false
+      (let [query (binding [qp.i/*skip-middleware-because-app-db-access* true]
+                    (request/as-admin (qp.preprocess/preprocess query)))
+            table-ids (set (lib/all-source-table-ids query))
+            native? (volatile! false)]
+        (lib.walk/walk-stages query
+                              (fn [_query _path stage]
+                                (when (= (:lib/type stage) :mbql.stage/native)
+                                  (vreset! native? true))
+                                nil))
+        (or @native?
+            (boolean (seq (metabot.perms/row-restricted-table-ids table-ids))))))
     (catch Exception e
       (log/debug e "Could not determine source tables for virtual column statistics")
       true)))
@@ -62,8 +68,9 @@
   since that would run an unrestricted warehouse sample and persist its result to the shared
   `Field` row. The restriction check uses the persisted Field's owning table rather than the
   caller's column metadata, since saved Card result metadata can be stale or user-edited.
-  Virtual-column fingerprints are withheld if any table read by the query is restricted, or the
-  query's source tables cannot be determined."
+  Virtual column fingerprints are withheld if a source table is row-restricted. Queries containing
+  native SQL require unrestricted database access without sandboxing, impersonation or routing.
+  Unrestricted database users keep fingerprints even when source tables cannot be determined."
   [query {:keys [id fingerprint]} limit]
   (if id
     (let [field (metabot.db/field id)

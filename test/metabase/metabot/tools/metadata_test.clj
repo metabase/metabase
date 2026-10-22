@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.agent.profiles :as profiles]
@@ -422,20 +423,38 @@
                                     " No accessible field IDs are available for this data source."
                                     "\nChoose another data source.")))))))))
 
-(deftest virtual-column-statistics-require-known-source-tables-test
-  (mt/as-admin
-    (let [mp (mt/metadata-provider)
-          query (lib/native-query mp "SELECT 17 AS \"bird_count\"")
-          columns (-> query qp/process-query :data :results_metadata :columns)
-          statistics (merge {:distinct-count 1 :percent-null 0.0}
-                            (get-in columns [0 :fingerprint :type :type/Number]))]
-      (doseq [[sql expected] [["SELECT 17 AS \"bird_count\"" {:statistics statistics}]
-                              ["SELECT 17 AS \"bird_count\" FROM \"missing_statistics_source\"" nil]]]
-        (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query (lib/native-query mp sql)
-                                                  :result_metadata columns}]
-          (doseq [profile [:document-generate-content :slackbot]]
-            (let [result (invoke-metadata profile "get_field_values"
-                                          {:data_source "question" :source_id card-id :field_id "bird_count"})]
-              (is (nil? (:error result)))
-              (is (= {:result-type :field-metadata :field_id "bird_count" :value_metadata expected}
-                     (:structured-output result))))))))))
+(defn- check-unrestricted-statistics [card-id statistics]
+  (doseq [profile [:document-generate-content :slackbot]]
+    (let [responses (for [user [:crowberto :rasta]]
+                      (mt/with-test-user user
+                        (let [result (invoke-metadata profile "get_field_values"
+                                                      {:data_source "question" :source_id card-id :field_id "bird_count"})]
+                          (is (nil? (:error result)))
+                          (is (= {:result-type :field-metadata :field_id "bird_count"
+                                  :value_metadata {:statistics statistics}}
+                                 (:structured-output result)))
+                          result)))]
+      (is (apply = responses)))))
+
+(deftest unrestricted-virtual-column-statistics-do-not-require-source-tables-test
+  (let [mp (mt/metadata-provider)
+        query (lib/native-query mp "SELECT 17 AS \"bird_count\"")
+        required-query (lib/native-query mp "SELECT 17 AS \"bird_count\" WHERE 1 < {{max_id}}")
+        columns (mt/as-admin (-> query qp/process-query :data :results_metadata :columns))
+        statistics (merge {:distinct-count 1 :percent-null 0.0}
+                          (get-in columns [0 :fingerprint :type :type/Number]))]
+    (doseq [query [query
+                   (lib/native-query mp "SELECT 17 AS \"bird_count\" FROM \"missing_statistics_source\"")
+                   (lib/with-template-tags required-query
+                     (mapv #(assoc % :type :number :required true) (lib/template-tags required-query)))]]
+      (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query query :result_metadata columns}]
+        (check-unrestricted-statistics card-id statistics)))
+    (mt/with-temp [:model/Card {card-id :id} {:type :question :dataset_query query :result_metadata columns}]
+      (with-redefs [driver.u/trusted-for-table-permissions? #{}]
+        (check-unrestricted-statistics card-id statistics)))
+    (mt/with-temp [:model/Card {inner-id :id} {:type :question :dataset_query query :result_metadata columns}
+                   :model/Card {outer-id :id} {:type :question
+                                               :dataset_query (lib/query mp (lib.metadata/card mp inner-id))
+                                               :result_metadata columns}]
+      (t2/delete! :model/Card :id inner-id)
+      (check-unrestricted-statistics outer-id statistics))))
