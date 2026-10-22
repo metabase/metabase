@@ -2,6 +2,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { useTranslateContent } from "metabase/content-translation/hooks";
 import {
   setEditingParameter,
   setParameterValue,
@@ -28,6 +29,7 @@ import {
 } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { isDateParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
   areParameterValuesIdentical,
   parameterHasNoDisplayValue,
@@ -39,7 +41,7 @@ import { preventDragOrInputFocus } from "../utils";
 import S from "./DashCardFilterMenu.module.css";
 
 const LIST_WIDTH = 256;
-const WIDGET_WIDTH = 380;
+const WIDGET_MIN_WIDTH = 380;
 
 interface DashCardFilterMenuProps {
   parameters: UiParameter[];
@@ -49,6 +51,7 @@ export function DashCardFilterMenu({
   parameters: allParameters,
 }: DashCardFilterMenuProps) {
   const dispatch = useDispatch();
+  const tc = useTranslateContent();
   const { isEditing, hideParameters } = useDashboardContext();
   const parameters = getVisibleParameters(allParameters, hideParameters);
   const [isOpen, setIsOpen] = useState(false);
@@ -116,6 +119,13 @@ export function DashCardFilterMenu({
       </Menu.Target>
       <Menu.Dropdown
         className={S.dropdown}
+        // The dropdown keeps the max-width measured for the filter list, which
+        // would clip a double calendar (metabase#52918).
+        maw={
+          selectedParameter && isDateParameter(selectedParameter)
+            ? "100vw !important"
+            : undefined
+        }
         data-testid="show-filter-parameter-dropdown"
         onMouseDown={preventDragOrInputFocus}
       >
@@ -134,7 +144,7 @@ export function DashCardFilterMenu({
                 rightSection={<Icon name="chevronright" />}
                 onClick={() => handleSelectParameter(parameter.id)}
               >
-                {parameter.name}
+                {tc(parameter.name)}
               </Menu.Item>
             ))}
           </Box>
@@ -152,18 +162,19 @@ interface FilterWidgetProps {
 
 function FilterWidget({ parameter, onBack, onClose }: FilterWidgetProps) {
   const dispatch = useDispatch();
+  const tc = useTranslateContent();
   const { dashboard } = useDashboardContext();
   const linkedFilterParameters = useLinkedFilterParameters();
 
   const status = getValueStatus(parameter);
 
   return (
-    <Box w={WIDGET_WIDTH} maw="100%">
+    <Box miw={WIDGET_MIN_WIDTH}>
       <Flex align="center" pr="md">
         <UnstyledButton className={S.backButton} p="md" onClick={onBack}>
           <Icon name="chevronleft" size={12} />
           <Text component="span" fw={700} c="inherit">
-            {parameter.name}
+            {tc(parameter.name)}
           </Text>
         </UnstyledButton>
         {status && (
