@@ -293,33 +293,6 @@
     (finally
       (premium-features/stop-refresher!))))
 
-(deftest clear-local-cache-refreshes-unless-just-refreshed-test
-  (do-with-refresher-started!
-   (fn []
-     (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
-       (with-store [calls (constantly good-status)]
-         (testing "with nothing held, a hint refreshes"
-           (premium-features/clear-local-cache!)
-           (is (= 1 @calls)))
-         (testing "a hint right after a refresh does not"
-           (premium-features/clear-local-cache!)
-           (is (= 1 @calls)))
-         (testing "a hint once the held status is older than the floor does"
-           (age-entry! (t/minutes 1))
-           (premium-features/clear-local-cache!)
-           (is (= 2 @calls))))))))
-
-(deftest clear-local-cache-before-the-refresher-starts-leaves-the-refresh-to-the-first-tick-test
-  (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
-    (with-store [calls (constantly good-status)]
-      (premium-features/refresh-at-startup!)
-      (premium-features/clear-local-cache!)
-      (age-entry! (t/minutes 1))
-      (premium-features/clear-local-cache!)
-      (is (= 1 @calls) "a hint that arrives during initialization does not fetch")
-      (token-check/tick!)
-      (is (= 2 @calls) "the first tick makes the refresh the hint asked for"))))
-
 (deftest tick-with-no-entry-held-fetches-test
   (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
     (with-store [calls (constantly good-status)]
@@ -344,6 +317,73 @@
   [token]
   (t2/update! :model/PremiumFeaturesCache :token_hash (#'token-check/hash-token token)
               {:token_status_hash (#'token-check/hash-token-status audit-app-status)}))
+
+(deftest clear-local-cache-with-a-matching-hash-row-does-not-fetch-test
+  (do-with-refresher-started!
+   (fn []
+     (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+       (with-store [calls (constantly good-status)]
+         (token-check/refresh-now!)
+         (dotimes [_ 3]
+           (premium-features/clear-local-cache!))
+         (is (= 1 @calls))
+         (is (not @@#'token-check/refresh-requested?))
+         (is (premium-features/has-feature? :sandboxes)))))))
+
+(deftest clear-local-cache-with-a-differing-hash-row-fetches-test
+  (do-with-refresher-started!
+   (fn []
+     (let [token    (tu/random-token)
+           response (atom good-status)]
+       (mt/with-temporary-raw-setting-values [premium-embedding-token token]
+         (with-store [calls #(deref response)]
+           (token-check/refresh-now!)
+           (reset! response audit-app-status)
+           (change-hash-row! token)
+           (premium-features/clear-local-cache!)
+           (is (= 2 @calls))
+           (is (premium-features/has-feature? :audit-app))
+           (is (not (premium-features/has-feature? :sandboxes)))
+           (is (=? {:valid true :features ["audit-app"]} (premium-features/token-status)))
+           (testing "the hash row now matches the held status, so the next hint does nothing"
+             (premium-features/clear-local-cache!)
+             (is (= 2 @calls)))))))))
+
+(deftest clear-local-cache-with-no-held-status-fetches-test
+  (do-with-refresher-started!
+   (fn []
+     (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+       (with-store [calls (constantly good-status)]
+         (premium-features/clear-local-cache!)
+         (is (= 1 @calls))
+         (is (premium-features/has-feature? :sandboxes)))))))
+
+(deftest clear-local-cache-whose-fetch-fails-does-not-throw-test
+  (do-with-refresher-started!
+   (fn []
+     (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+       (with-store [calls #(throw (ex-info "network failure!" {}))]
+         (is (nil? (premium-features/clear-local-cache!)))
+         (is (pos? @calls)))))))
+
+(deftest clear-local-cache-before-the-refresher-starts-only-requests-a-refresh-test
+  (let [token (tu/random-token)]
+    (mt/with-temporary-raw-setting-values [premium-embedding-token token]
+      (with-store [calls (constantly good-status)]
+        (testing "with nothing held"
+          (premium-features/clear-local-cache!)
+          (is (zero? @calls) "a hint that arrives during initialization does not fetch")
+          (is @@#'token-check/refresh-requested?)
+          (token-check/tick!)
+          (is (= 1 @calls) "the first tick makes the refresh the hint asked for"))
+        (testing "with a differing hash row"
+          (change-hash-row! token)
+          (premium-features/clear-local-cache!)
+          (is (= 1 @calls))
+          (is @@#'token-check/refresh-requested?)
+          (token-check/tick!)
+          (is (= 2 @calls))
+          (is (premium-features/has-feature? :sandboxes)))))))
 
 (deftest tick-after-another-instance-changed-the-hash-fetches-test
   (let [token    (tu/random-token)

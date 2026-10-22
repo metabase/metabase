@@ -115,10 +115,12 @@
            (is (= 1 @calls))))))))
 
 (deftest newer-cookie-refreshes-token-status-test
-  (testing "a newer cookie makes this instance fetch its token status from the store"
-    (let [entry (var-get #'token-check/entry)
-          saved @entry
-          calls (atom 0)]
+  (testing "a newer cookie makes an instance that holds no status fetch it from the store"
+    (let [entry    (var-get #'token-check/entry)
+          saved    @entry
+          calls    (atom 0)
+          ;; an hour between ticks, so none runs during the test
+          started? (premium-features/start-refresher! (* 60 60 1000))]
       (reset! entry nil)
       (try
         (with-redefs [mw.pf-cache/last-known-invalidation (atom nil)]
@@ -134,4 +136,6 @@
               (is (= 1 @calls))
               (is (true? (premium-features/has-feature? :sandboxes))))))
         (finally
+          (when started?
+            (premium-features/stop-refresher!))
           (reset! entry saved))))))
