@@ -21,7 +21,7 @@ const openMenu = () =>
   userEvent.click(screen.getByRole("button", { name: "Data app options" }));
 
 describe("DataAppMoreMenu", () => {
-  it("offers to open a live app, make it a draft, and manage its groups", async () => {
+  it("offers to open a live app and make it a draft", async () => {
     setup({ app: createMockDataApp({ name: "sales", enabled: true }) });
 
     await openMenu();
@@ -32,9 +32,6 @@ describe("DataAppMoreMenu", () => {
     expect(
       screen.getByRole("menuitem", { name: /Make draft/ }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("menuitem", { name: /Manage group access/ }),
-    ).toHaveAttribute("href", "/admin/settings/apps/sales/groups");
   });
 
   it("does not offer to open a draft app", async () => {

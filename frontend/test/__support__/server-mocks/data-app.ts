@@ -1,6 +1,12 @@
 import fetchMock from "fetch-mock";
 
-import type { DataApp, DataAppRepoStatus } from "metabase-types/api";
+import type {
+  DataApp,
+  DataAppGroup,
+  DataAppGroupPermissionWarning,
+  DataAppRepoStatus,
+  GroupId,
+} from "metabase-types/api";
 
 export function setupListDataAppsEndpoint(apps: DataApp[]) {
   fetchMock.get("path:/api/ee/apps", apps);
@@ -24,4 +30,32 @@ export function setupUpdateDataAppEndpoint(app: DataApp) {
 
 export function setupDeleteDataAppEndpoint(name: string) {
   fetchMock.delete(`path:/api/ee/apps/${name}`, 204);
+}
+
+export function setupDataAppGroupsEndpoint(
+  name: string,
+  groups: DataAppGroup[],
+) {
+  fetchMock.get(`path:/api/apps/${name}/groups`, groups);
+}
+
+export function setupDataAppGroupPermissionWarningsEndpoint(
+  name: string,
+  warnings: DataAppGroupPermissionWarning[],
+) {
+  fetchMock.get(`path:/api/apps/${name}/group-permission-warnings`, warnings);
+}
+
+export function setupAddDataAppGroupsEndpoint(
+  name: string,
+  groups: DataAppGroup[],
+) {
+  fetchMock.post(`path:/api/apps/${name}/groups`, groups);
+}
+
+export function setupRemoveDataAppGroupEndpoint(
+  name: string,
+  groupId: GroupId,
+) {
+  fetchMock.delete(`path:/api/apps/${name}/groups/${groupId}`, 204);
 }
