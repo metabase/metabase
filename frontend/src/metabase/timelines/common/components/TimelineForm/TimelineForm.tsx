@@ -54,6 +54,9 @@ export const TimelineForm = ({
               name="name"
               label={t`Name`}
               placeholder={t`Product releases`}
+              // The form can mount after the modal opens (while loading), when the
+              // modal no longer looks for `data-autofocus`
+              autoFocus
               data-autofocus
             />
             <FormTextarea

@@ -120,6 +120,9 @@ const EventForm = ({
               name="name"
               label={t`Event name`}
               placeholder={t`Product launch`}
+              // The form can mount after the modal opens (while loading), when the
+              // modal no longer looks for `data-autofocus`
+              autoFocus
               data-autofocus
             />
             <Flex align="end" gap="lg">
