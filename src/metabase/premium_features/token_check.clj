@@ -236,9 +236,6 @@
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (if (or (http/success? resp) (<= 400 status 499))
       (let [decoded (or (some-> (parse-status-body body) canonical)
-                        ;; a 2xx/4xx whose body is missing or undecodable (a proxy's or WAF's error page, a stripped
-                        ;; body) carries no verdict from the store, so it is transient like a network error: never
-                        ;; held, retried, and the previous status stands meanwhile
                         (throw (ex-info "Token validation provided no response." {:status status})))]
         (when (http/success? resp)
           (analytics/inc! :metabase-token-check/attempt {:status :success}))
@@ -385,23 +382,16 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private grace-period
-  "How long a status is honored after it was fetched. Past this, with no successful refresh since, the instance has no
-  features."
+  "How long a status is honored after it was fetched."
   (t/hours 36))
 
-(defonce ^:private ^{:doc "The status this instance holds: `{:token-hash, :status, :status-hash, :fetched-at}`, or nil.
-  Only a successful refresh replaces it, and only with an authoritative status."}
-  entry
-  (atom nil))
+;; `{:token-hash, :status, :status-hash, :fetched-at}`, or nil
+(defonce ^:private entry (atom nil))
 
-(defonce ^:private ^{:doc "Refreshes in progress, as token hash -> promise of `{:status ...}` or `{:error ...}`, so
-  concurrent callers for the same token share one fetch."}
-  in-flight
-  (atom {}))
+;; token hash -> promise of `{:status ...}` or `{:error ...}`
+(defonce ^:private in-flight (atom {}))
 
 (def ^:private retry-policy
-  "Retries within one refresh. Refreshes run in the background or on an explicit request, so a few seconds of backoff
-  is fine."
   {:max-retries             2
    :initial-interval-millis 1000
    :multiplier              2.0
@@ -415,8 +405,6 @@
                           :on-close          (fn [_] (log/info "Token Check restored"))}))
 
 (defn- fetch-status
-  "Fetch the authoritative status of `token` from the store, or decode it locally for an airgap token. Returns a status
-  marked `:canonical?`, or throws."
   [token]
   (try
     (dh/with-circuit-breaker breaker
@@ -427,25 +415,25 @@
       (throw (ex-info (tru "Token validation is currently unavailable.") {})))))
 
 (defn- install!
-  "Hold `status` as the status of `token`, then record its hash for other instances and mirror its locked meters."
   [token status]
-  (let [token-hash  (hash-token token)
-        status-hash (hash-token-status status)]
-    (reset! entry {:token-hash  token-hash
-                   :status      status
-                   :status-hash status-hash
-                   :fetched-at  (t/instant)})
-    (try
-      (write-cache-to-db! token-hash status-hash)
-      (catch Throwable e
-        (log/warnf "Failed to record the token status hash: %s" (ex-message e))))
-    (update-locked-meters! status)
-    status))
+  ;; the token may have been replaced while its status was being fetched
+  (when (= token (premium-features.settings/premium-embedding-token))
+    (let [token-hash  (hash-token token)
+          status-hash (hash-token-status status)]
+      (reset! entry {:token-hash  token-hash
+                     :status      status
+                     :status-hash status-hash
+                     :fetched-at  (t/instant)})
+      (try
+        (write-cache-to-db! token-hash status-hash)
+        (catch Throwable e
+          (log/warnf "Failed to record the token status hash: %s" (ex-message e))))
+      (update-locked-meters! status)))
+  status)
 
 (defn refresh-now!
-  "Fetch the status of the configured token on this thread and hold it. Concurrent callers share one fetch. Returns the
-  fresh status, nil when no token is configured, or throws when the fetch fails, in which case the held status is left
-  as it was."
+  "Fetch the status of the configured token and hold it. Concurrent callers share one fetch. Returns the fresh status,
+  nil when no token is configured, or throws when the fetch fails, in which case the held status is left as it was."
   []
   (when-let [token (premium-features.settings/premium-embedding-token)]
     (let [token-hash (hash-token token)
@@ -476,14 +464,11 @@
     (catch Throwable _e
       nil)))
 
-(def ^:private local-refresh-floor
-  "A cross-instance hint never refreshes a status younger than this, so a stream of forged hints cannot turn each
-  request into a store call."
-  (t/seconds 30))
+;; the cross-instance hint comes from an untrusted cookie, so forged hints must not turn each request into a store call
+(def ^:private local-refresh-floor (t/seconds 30))
 
 (defn clear-local-cache!
-  "Refresh the token status because another instance says it refreshed. The hint arrives from untrusted requests, so it
-  is ignored while the held status is younger than [[local-refresh-floor]]. Never throws."
+  "Refresh the token status unless it was refreshed within [[local-refresh-floor]]. Never throws."
   []
   (let [{:keys [fetched-at]} @entry]
     (when (or (nil? fetched-at)
@@ -495,8 +480,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- current-status
-  "The status held for the configured token, if it was fetched within the [[grace-period]]; otherwise nil. A plain
-  memory read: no app DB, no network, no lock."
   []
   (when-let [token (premium-features.settings/premium-embedding-token)]
     (let [{:keys [token-hash status fetched-at]} @entry]
@@ -506,44 +489,46 @@
         status))))
 
 (defn- unvalidated-status
-  "What the token status reads as when no current status is held."
   []
   {:valid         false
    :canonical?    false
    :status        (tru "Unable to validate token")
    :error-details (tru "No current token status is held. A refresh may be in progress or failing.")})
 
+(defn- validated-status
+  "The store's status for `token`, a candidate for the premium token. Throws unless the token is valid."
+  [token]
+  (when (mr/validate [:re AirgapToken] token)
+    (assert-valid-airgap-user-count!))
+  (when-not (or (mr/validate [:re RemoteCheckedToken] token)
+                (mr/validate [:re AirgapToken] token))
+    (throw (ex-info (tru "Token format is invalid.")
+                    {:status-code   400
+                     :error-details "Token should be 64 hexadecimal characters."
+                     :response/keys #{:error-details}})))
+  (let [status (try
+                 (fetch-status token)
+                 (catch Throwable e
+                   (throw (ex-info (tru "Unable to validate token")
+                                   {:error-details (ex-message e)
+                                    :status-code   503
+                                    :response/keys #{:error-details}}
+                                   e))))]
+    (when-not (:valid status)
+      (throw (ex-info (:status status)
+                      {:error-details (:error-details status)
+                       :status-code   400
+                       :response/keys #{:error-details}})))
+    (log/info "Token is valid.")
+    status))
+
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
   [new-value]
-  ;; validate the new value if we're not unsetting it
   (try
+    ;; validate the new value if we're not unsetting it
     (let [status (when (seq new-value)
-                   (when (mr/validate [:re AirgapToken] new-value)
-                     (assert-valid-airgap-user-count!))
-                   (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
-                                 (mr/validate [:re AirgapToken] new-value))
-                     (throw (ex-info (tru "Token format is invalid.")
-                                     {:status-code   400
-                                      :error-details "Token should be 64 hexadecimal characters."
-                                      :response/keys #{:error-details}})))
-                   ;; validate against the store, not a held verdict — the token may be the same string with a
-                   ;; renewed subscription behind it
-                   (let [decoded (try
-                                   (fetch-status new-value)
-                                   (catch Throwable e
-                                     (throw (ex-info (tru "Unable to validate token")
-                                                     {:error-details (ex-message e)
-                                                      :status-code   503
-                                                      :response/keys #{:error-details}}
-                                                     e))))]
-                     (when-not (:valid decoded)
-                       (throw (ex-info (:status decoded)
-                                       {:error-details (:error-details decoded)
-                                        :status-code   400
-                                        :response/keys #{:error-details}})))
-                     (log/info "Token is valid.")
-                     decoded))]
+                   (validated-status new-value))]
       (setting/set-value-of-type! :string :premium-embedding-token new-value)
       (when status
         (install! new-value status)))

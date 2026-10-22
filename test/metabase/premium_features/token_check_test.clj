@@ -7,6 +7,7 @@
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.settings :as premium-features.settings]
    [metabase.premium-features.test-util :as tu]
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
@@ -24,8 +25,6 @@
 (use-fixtures :once (fixtures/initialize :db))
 
 (defn- do-with-clean-refresher
-  "The refresher is one per JVM: start each test with no entry and a closed breaker, and put the previous entry back
-  afterwards. Retries skip their backoff so a failing refresh does not sleep."
   [thunk]
   (let [entry   @#'token-check/entry
         breaker @#'token-check/breaker
@@ -42,8 +41,6 @@
 (use-fixtures :each do-with-clean-refresher)
 
 (defn- do-with-store
-  "Stub the store: `respond` is called with no arguments for every HTTP fetch and returns either a status map, sent
-  as a 200 with that JSON body, or a raw ring response. Calls `f` with an atom counting fetches."
   [respond f]
   (let [calls (atom 0)]
     (mt/with-dynamic-fn-redefs [token-check/http-fetch (fn [& _]
@@ -77,7 +74,6 @@
         (is (some? (hash-row token)))))))
 
 (defn- age-entry!
-  "Make the held entry look as though it was fetched `age` ago."
   [age]
   (swap! @#'token-check/entry update :fetched-at t/minus age))
 
@@ -196,7 +192,6 @@
         (let [first-refresh (future (token-check/refresh-now!))
               _             (deref fetching 5000 :timeout)
               others        (mapv (fn [_] (future (token-check/refresh-now!))) (range 7))]
-          ;; give the other callers time to join before the fetch completes
           (Thread/sleep 100)
           (deliver release true)
           (is (every? #(= (assoc good-status :canonical? true) (deref % 5000 :timeout))
@@ -611,3 +606,38 @@
               :error-details "Token should be 64 hexadecimal characters."}
              (api-error/response-data data)))
       (is (= 400 (:status-code data))))))
+
+(deftest refresh-for-a-replaced-token-does-not-overwrite-the-new-one-test
+  (testing "a refresh for the old token that finishes after the setter stored a new one leaves the new status held"
+    (let [old-token (tu/random-token)
+          new-token (tu/random-token)
+          fetching  (promise)
+          release   (promise)]
+      (mt/with-temporary-raw-setting-values [premium-embedding-token old-token]
+        (mt/with-dynamic-fn-redefs [token-check/http-fetch
+                                    (fn [_base-url token _site-uuid]
+                                      (if (= token old-token)
+                                        (do (deliver fetching true)
+                                            @release
+                                            {:status 200 :body (json/encode {:valid true :status "ok" :features ["old"]})})
+                                        {:status 200 :body (json/encode {:valid true :status "ok" :features ["new"]})}))]
+          (let [old-refresh (future (token-check/refresh-now!))]
+            (is (true? (deref fetching 5000 :timeout)))
+            (token-check/-set-premium-embedding-token! new-token)
+            (is (= #{"new"} (token-check/*token-features*)))
+            (deliver release true)
+            (is (=? {:features ["old"]} (deref old-refresh 5000 :timeout)))
+            (is (= #{"new"} (token-check/*token-features*)))))))))
+
+(deftest no-app-db-with-a-token-configured-test
+  (testing "with a token configured and no app DB, a feature check reads only memory and does not throw"
+    (let [token (tu/random-token)]
+      (mt/with-temporary-raw-setting-values [premium-embedding-token token]
+        (with-store [_ (constantly good-status)]
+          (token-check/refresh-now!)))
+      (mt/with-dynamic-fn-redefs [premium-features.settings/premium-embedding-token (constantly token)
+                                  mdb/db-is-set-up?                                 (constantly false)]
+        (is (= #{"sandboxes"} (token-check/*token-features*)))
+        (reset! @#'token-check/entry nil)
+        (is (= #{} (token-check/*token-features*)))
+        (is (=? {:valid false :canonical? false} (premium-features/token-status)))))))
