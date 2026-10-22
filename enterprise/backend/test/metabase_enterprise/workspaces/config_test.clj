@@ -74,8 +74,14 @@
                                 (some #(when (= "Secret DW" (:name %)) (:details %))))))]
     (testing "tunnel off: the tunnel credentials are not emitted"
       (is (= {} (select-keys (details-for {:tunnel-enabled false}) (keys tunnel-secrets)))))
-    (testing "tunnel on: the child gets the credentials it needs to open the tunnel"
+    (testing "tunnel on without an auth option: every credential stays, nothing says which is in use"
       (is (= tunnel-secrets (select-keys (details-for {:tunnel-enabled true}) (keys tunnel-secrets)))))
+    (testing "tunnel on with password auth: only the password ships"
+      (is (= {:tunnel-pass "tunnel-pass"}
+             (select-keys (details-for {:tunnel-enabled true :tunnel-auth-option "password"}) (keys tunnel-secrets)))))
+    (testing "tunnel on with SSH-key auth: only the key and its passphrase ship"
+      (is (= {:tunnel-private-key "tunnel-key" :tunnel-private-key-passphrase "tunnel-key-pass"}
+             (select-keys (details-for {:tunnel-enabled true :tunnel-auth-option "ssh-key"}) (keys tunnel-secrets)))))
     (testing ":secret properties never reach the config as values; the Secret table keeps them"
       (is (= {} (select-keys (details-for {:tunnel-enabled true}) (keys ssl-secrets)))))))
 

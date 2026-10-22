@@ -48,15 +48,31 @@
       :else
       {})))
 
+(def ^:private tunnel-secret-keys-by-auth-option
+  "The tunnel credentials each `:tunnel-auth-option` uses."
+  {"password" #{:tunnel-pass}
+   "ssh-key"  #{:tunnel-private-key :tunnel-private-key-passphrase}})
+
 (defn- drop-unused-tunnel-secrets
-  "Remove the SSH-tunnel credentials when `:tunnel-enabled` is falsey: the child's driver
-   only opens the tunnel when it is set, so leftover credentials from a tunnel that was
-   switched off would otherwise ship to the child's config.yml for nothing. They are plain
-   `:password`/`:string` connection properties, so unlike `:secret` properties (stored in
-   the Secret table, only their `-id` in `:details`) they sit in `:details` verbatim."
+  "Remove the SSH-tunnel credentials the child has no use for, so leftovers don't ship to its config.yml. They are
+   plain `:password`/`:string` connection properties, so unlike `:secret` properties (stored in the Secret table,
+   only their `-id` in `:details`) they sit in `:details` verbatim.
+
+   - `:tunnel-enabled` falsey: all of them; the driver only opens the tunnel when it is set.
+   - `:tunnel-auth-option` set: those of the other option. The driver offers every credential present, so this
+     follows what the admin chose rather than what the driver would try. Without the option (details created
+     through the API) both stay, since nothing says which one is in use."
   [details]
-  (cond-> details
-    (not (:tunnel-enabled details)) (dissoc :tunnel-pass :tunnel-private-key :tunnel-private-key-passphrase)))
+  (let [all-keys (reduce into #{} (vals tunnel-secret-keys-by-auth-option))]
+    (cond
+      (not (:tunnel-enabled details))
+      (apply dissoc details all-keys)
+
+      (contains? tunnel-secret-keys-by-auth-option (:tunnel-auth-option details))
+      (apply dissoc details (remove (tunnel-secret-keys-by-auth-option (:tunnel-auth-option details)) all-keys))
+
+      :else
+      details)))
 
 (defn- database-entry [wsd db]
   {:name    (:name db)
