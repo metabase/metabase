@@ -1,6 +1,7 @@
 (ns metabase-enterprise.data-apps.search-test
   (:require
    [clojure.test :refer :all]
+   [metabase-enterprise.data-apps.config :as data-apps.config]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -52,6 +53,28 @@
           (testing "a search that names no models, as global search's, finds them too"
             (is (= #{slug-match-id assigned-id}
                    (set (keys (found-data-apps :crowberto)))))))))))
+
+(deftest search-finds-only-enabled-up-to-date-data-apps-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp {current-id :id} {:name "sandpiper-dunlin" :display_name "Dunlin"
+                                                    :bundle_path "dunlin.js" :version 2}
+                   :model/DataApp {outdated-id :id} {:name "sandpiper-knot" :display_name "Knot"
+                                                     :bundle_path "knot.js" :version 1}
+                   :model/DataApp {disabled-id :id} {:name "sandpiper-sanderling" :display_name "Sanderling"
+                                                     :bundle_path "sanderling.js" :version 2 :enabled false}
+                   :model/PermissionsGroup {group-id :id} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
+                   :model/DataAppGroupAssignment _ {:data_app_id current-id :permission_group_id group-id}
+                   :model/DataAppGroupAssignment _ {:data_app_id outdated-id :permission_group_id group-id}
+                   :model/DataAppGroupAssignment _ {:data_app_id disabled-id :permission_group_id group-id}]
+      (with-redefs [data-apps.config/supported-app-version 2]
+        (with-each-engine
+          (fn []
+            (doseq [user   [:crowberto :rasta]
+                    params [[] [:models "data-app"]]]
+              (testing (str user " searching with " (pr-str params) " finds neither disabled nor outdated apps")
+                (is (= #{current-id}
+                       (set (keys (apply found-data-apps user params)))))))))))))
 
 (deftest search-finds-no-data-apps-without-the-feature-test
   (mt/with-premium-features #{}
