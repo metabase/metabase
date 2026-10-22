@@ -125,7 +125,7 @@ describe("EntryPickerModal", () => {
 
   it("shows no folder until the app list loads, then opens on the data app", async () => {
     const appsResponse = defer<DataApp[]>();
-    fetchMock.get("path:/api/apps", () => appsResponse.promise);
+    fetchMock.get("path:/api/ee/apps", () => appsResponse.promise);
     setup({ value: createMockDataAppDependencyNode({ id: OWLS.id }) });
 
     // The root collection is the last thing the root list asks for besides the app list.
@@ -150,7 +150,7 @@ describe("EntryPickerModal", () => {
 
   it("keeps the folder the user opened when the app list changes", async () => {
     let dataApps = [OWLS];
-    fetchMock.get("path:/api/apps", () => dataApps);
+    fetchMock.get("path:/api/ee/apps", () => dataApps);
     const { store } = setup({
       value: createMockDataAppDependencyNode({ id: OWLS.id }),
     });
@@ -182,7 +182,7 @@ describe("EntryPickerModal", () => {
     await screen.findByText("Our analytics");
     await waitFor(() => {
       expect(
-        fetchMock.callHistory.called("path:/api/apps", { method: "GET" }),
+        fetchMock.callHistory.called("path:/api/ee/apps", { method: "GET" }),
       ).toBe(true);
     });
     expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
@@ -194,7 +194,7 @@ describe("EntryPickerModal", () => {
     await screen.findByText("Our analytics");
     expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
     expect(
-      fetchMock.callHistory.called("path:/api/apps", { method: "GET" }),
+      fetchMock.callHistory.called("path:/api/ee/apps", { method: "GET" }),
     ).toBe(false);
   });
 });
