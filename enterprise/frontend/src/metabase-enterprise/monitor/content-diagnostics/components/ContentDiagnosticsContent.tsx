@@ -12,9 +12,9 @@ import {
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { Sidebar } from "metabase/monitor/components/MonitorLayout/Sidebar";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { Center, Flex } from "metabase/ui";
 import type { Sorting } from "metabase/utils/sorting";
-import { PAGE_SIZE } from "metabase-enterprise/monitor/constants";
 import type {
   ContentDiagnosticsBaseFinding,
   ContentDiagnosticsFilterType,

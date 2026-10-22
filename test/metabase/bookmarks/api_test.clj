@@ -5,9 +5,12 @@
    [metabase.bookmarks.db :as bookmarks.db]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (deftest bookmarks-test
   (mt/initialize-if-needed! :db)

@@ -33,9 +33,8 @@ export const Default: Story = {
     hasExampleDashboard: true,
     variant: "ee",
     hasEmbeddingFeature: false,
-    embeddingDocsUrl:
-      "https://www.metabase.com/docs/latest/embedding/start.html",
+    embeddingDocsUrl: "https://www.metabase.com/docs/latest/embedding/start",
     analyticsDocsUrl:
-      "https://www.metabase.com/learn/customer-facing-analytics/",
+      "https://www.metabase.com/docs/latest/embedding/introduction",
   },
 };

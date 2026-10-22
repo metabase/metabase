@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
+import fetchMock, { type CallLog } from "fetch-mock";
 
 import {
   findRequests,
@@ -8,6 +8,9 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import {
+  setupAdminListNotificationsEndpoint,
+  setupAdminNotificationCountsEndpoint,
+  setupAdminNotificationCountsErrorEndpoint,
   setupAdminNotificationDetailEndpoint,
   setupAdminNotificationDetailErrorEndpoint,
   setupBulkNotificationActionEndpoint,
@@ -22,10 +25,14 @@ import {
 } from "__support__/ui";
 import { URL_UPDATE_DEBOUNCE_DELAY } from "metabase/common/hooks/use-url-state";
 import { MonitorContent } from "metabase/monitor/components/MonitorLayout/MonitorContent";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { Route } from "metabase/router";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
+import { defer } from "metabase/utils/promise";
 import type {
   AdminNotification,
+  AdminNotificationCountsResponse,
+  AdminNotificationListResponse,
   NotificationId,
   UserListResult,
 } from "metabase-types/api";
@@ -42,7 +49,6 @@ import {
 } from "metabase-types/api/mocks";
 
 import { NotificationsAdminPage } from "./NotificationsAdminPage";
-import { PAGE_SIZE } from "./constants";
 
 const PATHNAME = "/monitor/notifications";
 
@@ -137,9 +143,12 @@ type SetupOpts = {
   cardDelay?: number;
   detailDelay?: number;
   detailErrorId?: NotificationId;
-  failingCountError?: boolean;
-  allCountError?: boolean;
+  countsError?: boolean;
+  countsDelay?: number;
   refetchDelay?: number;
+  getListResponse?: (
+    call: CallLog,
+  ) => AdminNotificationListResponse | Promise<AdminNotificationListResponse>;
 };
 
 const setup = ({
@@ -153,40 +162,38 @@ const setup = ({
   cardDelay,
   detailDelay,
   detailErrorId,
-  failingCountError = false,
-  allCountError = false,
+  countsError = false,
+  countsDelay,
   refetchDelay,
+  getListResponse,
 }: SetupOpts = {}) => {
   let listCallCount = 0;
 
-  fetchMock.get("path:/api/notification/admin", (call) => {
-    const params = new URL(call.url).searchParams;
-    if (
-      params.get("limit") === "1" &&
-      params.get("last_check_status") === "failing"
-    ) {
-      return failingCountError
-        ? { status: 500, body: { message: "Count failed" } }
-        : { data: [], total: failingCount, limit: 1, offset: 0 };
+  if (countsError) {
+    setupAdminNotificationCountsErrorEndpoint();
+  } else {
+    setupAdminNotificationCountsEndpoint(
+      { all: allCount, failing: failingCount, ownerless: ownerlessCount },
+      { delay: countsDelay, name: "admin-notification-counts" },
+    );
+  }
+  setupAdminListNotificationsEndpoint((call) => {
+    if (getListResponse) {
+      return getListResponse(call);
     }
-    if (params.get("limit") === "1" && params.get("creatorless") === "true") {
-      return { data: [], total: ownerlessCount, limit: 1, offset: 0 };
-    }
-    if (
-      params.get("limit") === "1" &&
-      !params.has("last_check_status") &&
-      !params.has("creatorless")
-    ) {
-      return allCountError
-        ? { status: 500, body: { message: "All count failed" } }
-        : { data: [], total: allCount, limit: 1, offset: 0 };
-    }
-    const page = { data: notifications, total, limit: PAGE_SIZE, offset: 0 };
+    const page: AdminNotificationListResponse = {
+      data: notifications,
+      total,
+      limit: PAGE_SIZE,
+      offset: 0,
+    };
     listCallCount += 1;
     // Keep every refetch except the initial load in flight, so tests can
     // observe the loading state the grid.
     return refetchDelay !== undefined && listCallCount > 1
-      ? new Promise((resolve) => setTimeout(() => resolve(page), refetchDelay))
+      ? new Promise<AdminNotificationListResponse>((resolve) =>
+          setTimeout(() => resolve(page), refetchDelay),
+        )
       : page;
   });
 
@@ -214,16 +221,19 @@ const setup = ({
   }
 
   return renderWithProviders(
-    <Route
-      path="/monitor/notifications"
-      element={
-        <MonitorContent>
-          <NotificationsAdminPage />
-        </MonitorContent>
-      }
-    >
-      <Route path=":notificationId" />
-    </Route>,
+    <>
+      <Route
+        path="/monitor/notifications"
+        element={
+          <MonitorContent>
+            <NotificationsAdminPage />
+          </MonitorContent>
+        }
+      >
+        <Route path=":notificationId" />
+      </Route>
+      <Route path="/outside" element={<div>Outside Alerts</div>} />
+    </>,
     { withRouter: true, initialRoute },
   );
 };
@@ -236,24 +246,8 @@ const getListCalls = () =>
         new URL(call.url).searchParams.get("limit") === String(PAGE_SIZE),
     );
 
-const getAllCountCalls = () =>
-  fetchMock.callHistory.calls("path:/api/notification/admin").filter((call) => {
-    const params = new URL(call.url).searchParams;
-    return (
-      params.get("limit") === "1" &&
-      !params.has("last_check_status") &&
-      !params.has("creatorless")
-    );
-  });
-
-const getFailingCountCalls = () =>
-  fetchMock.callHistory.calls("path:/api/notification/admin").filter((call) => {
-    const params = new URL(call.url).searchParams;
-    return (
-      params.get("limit") === "1" &&
-      params.get("last_check_status") === "failing"
-    );
-  });
+const getCountCalls = () =>
+  fetchMock.callHistory.calls("path:/api/notification/admin/counts");
 
 const getBulkPosts = async () =>
   (await findRequests("POST")).filter((request) =>
@@ -421,6 +415,59 @@ describe("NotificationsAdminPage", () => {
       expect(within(allTab).getByText("137")).toBeInTheDocument();
     });
 
+    it("reuses the section counts when switching tabs repeatedly", async () => {
+      const { router } = setup({
+        allCount: 137,
+        failingCount: 9,
+        ownerlessCount: 33,
+      });
+      await waitForTableToLoad();
+      expect(
+        await within(
+          screen.getByRole("button", { name: "All alerts" }),
+        ).findByText("137"),
+      ).toBeVisible();
+
+      for (let visit = 0; visit < 2; visit++) {
+        for (const [label, tab] of [
+          ["Failing", "failing"],
+          ["Ownerless", "ownerless"],
+          ["All alerts", "all"],
+        ]) {
+          await userEvent.click(screen.getByRole("button", { name: label }));
+          await waitFor(() => {
+            expect(
+              new URLSearchParams(router?.location.search).get("tab") ?? "all",
+            ).toBe(tab);
+          });
+          await waitForTableToLoad();
+        }
+      }
+      expect(getCountCalls()).toHaveLength(1);
+    });
+
+    it("refreshes cached counters when returning to Alerts", async () => {
+      const { router } = setup({ allCount: 9 });
+      await waitForTableToLoad();
+      expect(
+        await within(
+          screen.getByRole("button", { name: "All alerts" }),
+        ).findByText("9"),
+      ).toBeVisible();
+      await act(async () => router?.navigate("/outside"));
+      await screen.findByText("Outside Alerts");
+      fetchMock.modifyRoute("admin-notification-counts", {
+        response: { all: 10, failing: 0, ownerless: 0 },
+      });
+      await act(async () => router?.navigate(PATHNAME));
+      expect(
+        await within(
+          screen.getByRole("button", { name: "All alerts" }),
+        ).findByText("10"),
+      ).toBeVisible();
+      expect(getCountCalls()).toHaveLength(2);
+    });
+
     it("pushes the selected tab to the URL", async () => {
       const { router } = setup({ failingCount: 2 });
       await waitForTableToLoad();
@@ -467,47 +514,191 @@ describe("NotificationsAdminPage", () => {
       ).toBeInTheDocument();
     });
 
-    it("counts all alerts with the active filter applied", async () => {
-      setup({ initialRoute: `${PATHNAME}?active=false` });
-      await waitForTableToLoad();
+    it.each(["false", "all"])(
+      "keeps counters on the default population when the table's active filter is %s",
+      async (active) => {
+        setup({ initialRoute: `${PATHNAME}?active=${active}`, allCount: 23 });
+        await waitForTableToLoad();
 
-      const [countCall] = getAllCountCalls();
-      expect(new URL(countCall.url).searchParams.get("active")).toBe("false");
+        expect(
+          await within(
+            screen.getByRole("button", { name: "All alerts" }),
+          ).findByText("23"),
+        ).toBeInTheDocument();
+        expect(getCountCalls()).toHaveLength(1);
+        expect(new URL(getCountCalls()[0].url).search).toBe("");
+        expect(
+          fetchMock.callHistory
+            .calls("path:/api/notification/admin")
+            .every(
+              (call) =>
+                new URL(call.url).searchParams.get("limit") ===
+                String(PAGE_SIZE),
+            ),
+        ).toBe(true);
+      },
+    );
+
+    it("keeps alert navigation usable when the count endpoint fails", async () => {
+      setup({ countsError: true });
+      await waitForTableToLoad();
+      await waitFor(() =>
+        expect(screen.queryAllByTestId("tab-count-skeleton")).toHaveLength(0),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Failing" }));
+      await waitForTableToLoad();
+      expect(screen.getByRole("button", { name: "Failing" })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      expect(getCountCalls()).toHaveLength(1);
     });
 
-    it("counts inactive failing alerts when the status filter includes them", async () => {
-      setup({ initialRoute: `${PATHNAME}?active=all` });
+    it("does not wait for counters to show the alert table", async () => {
+      setup({ countsDelay: 1000, allCount: 137 });
       await waitForTableToLoad();
-
-      const [countCall] = getFailingCountCalls();
-      expect(new URL(countCall.url).searchParams.get("active")).toBeNull();
-    });
-
-    it("shows count query errors", async () => {
-      setup({ failingCountError: true });
-
-      expect(await screen.findByText("Count failed")).toBeInTheDocument();
-    });
-
-    it("keeps the page usable when only the all-count request fails", async () => {
-      setup({ allCountError: true, failingCount: 2 });
-      await waitForTableToLoad();
-
-      expect(screen.queryByText("All count failed")).not.toBeInTheDocument();
+      expect(getCountCalls()).toHaveLength(1);
+      expect(screen.getByTestId("notification-row-1")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Failing" })).toBeEnabled();
+      act(() => jest.advanceTimersByTime(1000));
       expect(
-        within(screen.getByTestId("notifications-admin-tab-all")).queryByText(
-          /\d/,
-        ),
-      ).not.toBeInTheDocument();
-      expect(
-        within(screen.getByTestId("notifications-admin-tab-failing")).getByText(
-          "2",
-        ),
+        await within(
+          screen.getByRole("button", { name: "All alerts" }),
+        ).findByText("137"),
       ).toBeInTheDocument();
+    });
+
+    it("refreshes counters after archiving and keeps the previous count until the response arrives", async () => {
+      setup({ allCount: 1 });
+      await waitForTableToLoad();
+      const allTab = screen.getByRole("button", { name: "All alerts" });
+      expect(await within(allTab).findByText("1")).toBeInTheDocument();
+      const countsRefetch = defer<AdminNotificationCountsResponse>();
+      fetchMock.modifyRoute("admin-notification-counts", {
+        response: () => countsRefetch.promise,
+      });
+
+      await userEvent.click(
+        screen.getByRole("checkbox", { name: "Select all" }),
+      );
+      await userEvent.click(
+        within(screen.getByTestId("toast-card")).getByRole("button", {
+          name: "Delete",
+        }),
+      );
+      await userEvent.click(
+        within(await screen.findByTestId("confirm-modal")).getByRole("button", {
+          name: "Delete",
+        }),
+      );
+
+      await waitFor(() => expect(getCountCalls()).toHaveLength(2));
+      expect(within(allTab).getByText("1")).toBeInTheDocument();
+      act(() => countsRefetch.resolve({ all: 0, failing: 0, ownerless: 0 }));
+      expect(await within(allTab).findByText("0")).toBeInTheDocument();
     });
   });
 
   describe("search, sorting and pagination", () => {
+    it("shows a skeleton only initially and keeps rows under the loader while paging", async () => {
+      const pending = defer<AdminNotificationListResponse>();
+      const nextPage: AdminNotificationListResponse = {
+        data: [notification2],
+        total: 26,
+        limit: 25,
+        offset: 25,
+      };
+      setup({
+        getListResponse: ({ url }) =>
+          new URL(url).searchParams.get("offset") === "25"
+            ? pending.promise
+            : { ...nextPage, data: [notification1], offset: 0 },
+      });
+      expect(screen.getByTestId("tree-table-skeleton")).toBeVisible();
+      await waitForTableToLoad();
+      await userEvent.click(screen.getByLabelText("Next page"));
+      await waitFor(() => expect(getListCalls()).toHaveLength(2));
+      expect(screen.getByTestId("notification-row-1")).toBeVisible();
+      expect(screen.getByTestId("loading-overlay")).toBeVisible();
+      expect(
+        screen.queryByTestId("tree-table-skeleton"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("26");
+      await act(async () => pending.resolve(nextPage));
+      expect(
+        await screen.findByTestId("notification-row-2"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("notification-row-1"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("pages Ownerless alerts by 25 rows and keeps its filters", async () => {
+      const ownerless = Array.from({ length: 42 }, (_, index) =>
+        createMockAdminNotification({
+          id: index + 1,
+          creator_id: null,
+          creator: null,
+        }),
+      );
+      const all = [
+        ...ownerless,
+        createMockAdminNotification({ id: 99, creator: ANN }),
+      ];
+      setup({
+        ownerlessCount: 42,
+        initialRoute: `${PATHNAME}?tab=ownerless`,
+        getListResponse: ({ url }) => {
+          const params = new URL(url).searchParams;
+          const rows = params.get("creatorless") === "true" ? ownerless : all;
+          const offset = Number(params.get("offset"));
+          const limit = Number(params.get("limit"));
+          return {
+            data: rows.slice(offset, offset + limit),
+            total: rows.length,
+            limit,
+            offset,
+          };
+        },
+      });
+      await waitForTableToLoad();
+      expect(screen.getByTestId("pagination-total")).toHaveTextContent("42");
+      expect(screen.getByTestId("notification-row-1")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+      expect(
+        await screen.findByTestId("notification-row-26"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("notification-row-1"),
+      ).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+      const params = new URL(getListCalls()[1].url).searchParams;
+      expect(params.get("limit")).toBe("25");
+      expect(params.get("offset")).toBe("25");
+      expect(params.get("active")).toBe("true");
+      expect(params.get("creatorless")).toBe("true");
+    });
+
+    it.each([0, 25])(
+      "hides the pager when %i alerts fit on one page",
+      async (total) => {
+        setup({
+          notifications: Array.from({ length: total }, (_, index) =>
+            createMockAdminNotification({ id: index + 1 }),
+          ),
+        });
+        await waitForTableToLoad();
+        expect(
+          screen.queryByTestId("pagination-total"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "Next page" }),
+        ).not.toBeInTheDocument();
+      },
+    );
+
     it("pushes the search query to the URL", async () => {
       const { router } = setup();
       await waitForTableToLoad();
@@ -572,7 +763,7 @@ describe("NotificationsAdminPage", () => {
 
       await waitFor(() => {
         expect(
-          getListCalls().some((call) => call.url.includes("offset=50")),
+          getListCalls().some((call) => call.url.includes("offset=25")),
         ).toBe(true);
       });
 

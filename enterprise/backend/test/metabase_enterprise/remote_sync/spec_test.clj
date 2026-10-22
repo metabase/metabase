@@ -8,10 +8,13 @@
    [metabase-enterprise.transforms-python.core :as transforms-python]
    [metabase.collections.test-utils :as collections.tu]
    [metabase.models.interface :as mi]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 ;;; ------------------------------------------------ Spec Validation Tests ---------------------------------------------
 
