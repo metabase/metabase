@@ -1096,4 +1096,8 @@
         (is (re-find #"ws_iso\.orders_out" (rewrite "SELECT * FROM prod.dbo.orders_out"))))
       (testing "a 3-part reference naming another database is a different table and stays put"
         (is (= "SELECT * FROM otherdb.dbo.orders_out"
-               (rewrite "SELECT * FROM otherdb.dbo.orders_out")))))))
+               (rewrite "SELECT * FROM otherdb.dbo.orders_out"))))
+      (testing "bracket-quoted references follow the same rules"
+        (is (re-find #"ws_iso\]\.\[orders_out" (rewrite "SELECT * FROM [dbo].[orders_out]")))
+        (is (re-find #"ws_iso\]\.\[orders_out" (rewrite "SELECT * FROM [prod].[dbo].[orders_out]")))
+        (is (not (re-find #"ws_iso" (rewrite "SELECT * FROM [otherdb].[dbo].[orders_out]"))))))))
