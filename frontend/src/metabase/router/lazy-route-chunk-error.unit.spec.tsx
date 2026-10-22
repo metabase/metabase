@@ -34,6 +34,20 @@ function chunkLoadTimeout() {
   return Object.assign(error, { type: "timeout" });
 }
 
+/**
+ * A request that fails only after the router has given up waiting for it, which
+ * is the window `withChunkFallback` opens. It uses a timeout, the one failure
+ * the recovery does not retry, so the whole wait is spent inside one request.
+ */
+function failsAfterTheWait() {
+  return jest.fn(
+    () =>
+      new Promise<never>((_resolve, reject) =>
+        setTimeout(() => reject(chunkLoadTimeout()), CHUNK_WAIT_MS + 200),
+      ),
+  );
+}
+
 function Fallback({ hasUnsavedChanges }: { hasUnsavedChanges: boolean }) {
   return (
     <span data-testid="chunk-error">
@@ -52,6 +66,7 @@ function renderRoutesWithFallback(routes: RouteObject[], initialRoute: string) {
       routes={routes}
       initialRoute={initialRoute}
       chunkErrorFallback={Fallback}
+      loadingFallback={<span data-testid="loading">loading</span>}
     />,
   );
 }
@@ -142,6 +157,32 @@ describe("a route whose chunk fails to load", () => {
     expect(load).toHaveBeenCalledTimes(1);
   });
 
+  // Once the location has committed there is no pending navigation to read a
+  // destination from, and none is needed: the URL in the bar is already the
+  // destination, so loading the page again lands on it.
+  it("loads the committed destination when the failure outlasts the wait", async () => {
+    const load = failsAfterTheWait();
+
+    renderRoutesWithFallback(homeAndSplit(load), "/");
+    expect(await screen.findByTestId("home")).toBeInTheDocument();
+
+    act(() => {
+      navigate("/split");
+    });
+
+    // The wait runs out first: the page being left is gone and the loading
+    // fallback stands in its place.
+    expect(
+      await screen.findByTestId("loading", undefined, { timeout: 5000 }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("home")).not.toBeInTheDocument();
+
+    await waitFor(() => expect(reload).toHaveBeenCalledTimes(1), {
+      timeout: 5000,
+    });
+    expect(redirect).not.toHaveBeenCalled();
+  });
+
   it("shows the error page instead of loading again within the interval", async () => {
     const load = jest.fn().mockRejectedValue(chunkLoadError());
 
@@ -198,12 +239,7 @@ describe("a chunk that fails while the page holds unsaved work", () => {
   // the navigation the recovery answers for can be over before the request
   // fails. The destination and the guards' answer are read before that.
   it("keeps the page mounted when the failure outlasts the wait", async () => {
-    const load = jest.fn(
-      () =>
-        new Promise<never>((_resolve, reject) =>
-          setTimeout(() => reject(chunkLoadTimeout()), CHUNK_WAIT_MS + 200),
-        ),
-    );
+    const load = failsAfterTheWait();
 
     renderRoutesWithFallback(routes(load), "/doc");
     expect(await screen.findByTestId("editor")).toBeInTheDocument();
@@ -217,6 +253,48 @@ describe("a chunk that fails while the page holds unsaved work", () => {
     ).toHaveTextContent("dirty");
     expect(screen.getByTestId("editor")).toBeInTheDocument();
     expect(redirect).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  // A guard decides on where it is being sent, so the question has to carry the
+  // destination even once the router has committed it. A guard asked about the
+  // page it is already on answers for the wrong navigation.
+  it("asks the guards about the destination, not the page left behind", async () => {
+    function WatchfulEditor() {
+      useRouteLeaveBlocker(
+        ({ nextLocation }) => nextLocation.pathname === "/doc/comments",
+      );
+      return (
+        <div>
+          <span data-testid="editor">editor</span>
+          <Outlet />
+        </div>
+      );
+    }
+
+    const load = failsAfterTheWait();
+    renderRoutesWithFallback(
+      [
+        {
+          path: "/doc",
+          element: <WatchfulEditor />,
+          children: [
+            { index: true, element: <span data-testid="doc">doc</span> },
+            { path: "comments", lazy: load },
+          ],
+        },
+      ],
+      "/doc",
+    );
+    expect(await screen.findByTestId("editor")).toBeInTheDocument();
+
+    act(() => {
+      navigate("/doc/comments");
+    });
+
+    expect(
+      await screen.findByTestId("chunk-error", undefined, { timeout: 5000 }),
+    ).toHaveTextContent("dirty");
     expect(reload).not.toHaveBeenCalled();
   });
 
