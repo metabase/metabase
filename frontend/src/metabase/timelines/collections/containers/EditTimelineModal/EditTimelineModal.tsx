@@ -8,7 +8,7 @@ import {
 import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
-import EditTimelineModal from "metabase/timelines/common/components/EditTimelineModal";
+import EditTimelineForm from "metabase/timelines/common/components/EditTimelineForm";
 import {
   TimelineModal,
   TimelineModalLoadingState,
@@ -48,7 +48,7 @@ function EditTimelineModalContainer({ params, onClose }: ModalComponentProps) {
       {isLoading || error || !timeline ? (
         <TimelineModalLoadingState loading={isLoading} error={error} />
       ) : (
-        <EditTimelineModal
+        <EditTimelineForm
           timeline={timeline}
           onSubmit={handleSubmit}
           onArchive={handleArchive}

@@ -6,15 +6,15 @@ import {
   createMockTimelineData,
 } from "metabase-types/api/mocks";
 
-import type { NewTimelineModalProps } from "./NewTimelineModal";
-import NewTimelineModal from "./NewTimelineModal";
+import type { NewTimelineFormProps } from "./NewTimelineForm";
+import NewTimelineForm from "./NewTimelineForm";
 
-describe("NewTimelineModal", () => {
+describe("NewTimelineForm", () => {
   it("should submit modal", async () => {
     const props = getProps();
     const values = createMockTimelineData();
 
-    render(<NewTimelineModal {...props} />);
+    render(<NewTimelineForm {...props} />);
     await userEvent.type(screen.getByLabelText("Name"), values.name);
     await waitFor(() => {
       expect(screen.getByText("Create")).toBeEnabled();
@@ -28,8 +28,8 @@ describe("NewTimelineModal", () => {
 });
 
 const getProps = (
-  opts?: Partial<NewTimelineModalProps>,
-): NewTimelineModalProps => ({
+  opts?: Partial<NewTimelineFormProps>,
+): NewTimelineFormProps => ({
   collection: createMockCollection(),
   onSubmit: jest.fn(),
   onCancel: jest.fn(),

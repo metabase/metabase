@@ -7,7 +7,7 @@ import {
 } from "metabase/api";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
-import NewEventModal from "metabase/timelines/common/components/NewEventModal";
+import NewEventForm from "metabase/timelines/common/components/NewEventForm";
 import {
   TimelineModal,
   TimelineModalLoadingState,
@@ -52,7 +52,7 @@ function NewEventModalContainer({ params, onClose }: ModalComponentProps) {
       {isLoading || error || !timeline ? (
         <TimelineModalLoadingState loading={isLoading} error={error} />
       ) : (
-        <NewEventModal
+        <NewEventForm
           source="collections"
           timelines={[timeline]}
           onSubmit={onSubmit}

@@ -6,19 +6,19 @@ import type { Collection, TimelineData } from "metabase-types/api";
 
 import { TimelineForm } from "../TimelineForm";
 
-export interface NewTimelineModalProps {
+export interface NewTimelineFormProps {
   collection: Collection;
   onSubmit: (values: TimelineData, collection: Collection) => void;
   onSubmitSuccess?: () => void;
   onCancel: () => void;
 }
 
-const NewTimelineModal = ({
+const NewTimelineForm = ({
   collection,
   onSubmit,
   onSubmitSuccess,
   onCancel,
-}: NewTimelineModalProps): JSX.Element => {
+}: NewTimelineFormProps): JSX.Element => {
   const initialValues = useMemo(() => {
     return getInitialValues(collection);
   }, [collection]);
@@ -50,4 +50,4 @@ const getInitialValues = (collection: Collection): TimelineData => ({
 });
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default NewTimelineModal;
+export default NewTimelineForm;

@@ -8,7 +8,7 @@ import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
 import { TimelineModalScrollArea } from "../TimelineModal";
 import { TimelinePicker } from "../TimelinePicker";
 
-export interface MoveEventModalProps {
+export interface MoveEventFormProps {
   event: TimelineEvent;
   timelines: Timeline[];
   collection?: Collection;
@@ -21,14 +21,14 @@ export interface MoveEventModalProps {
   onCancel: () => void;
 }
 
-export const MoveEventModal = ({
+export const MoveEventForm = ({
   event,
   timelines,
   collection,
   onSubmit,
   onSubmitSuccess,
   onCancel,
-}: MoveEventModalProps): JSX.Element => {
+}: MoveEventFormProps): JSX.Element => {
   const oldTimeline = timelines.find((t) => t.id === event.timeline_id);
   const [newTimeline, setNewTimeline] = useState(oldTimeline);
   const isEnabled = newTimeline?.id !== oldTimeline?.id;

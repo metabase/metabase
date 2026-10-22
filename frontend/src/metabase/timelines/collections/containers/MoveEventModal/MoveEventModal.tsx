@@ -8,7 +8,7 @@ import {
 } from "metabase/api";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
-import { MoveEventModal } from "metabase/timelines/common/components/MoveEventModal";
+import { MoveEventForm } from "metabase/timelines/common/components/MoveEventForm";
 import {
   TimelineModal,
   TimelineModalLoadingState,
@@ -66,7 +66,7 @@ function MoveEventModalContainer({ params, onClose }: ModalComponentProps) {
       {isLoading || error || !event ? (
         <TimelineModalLoadingState loading={isLoading} error={error} />
       ) : (
-        <MoveEventModal
+        <MoveEventForm
           event={event}
           timelines={timelines}
           collection={collection}

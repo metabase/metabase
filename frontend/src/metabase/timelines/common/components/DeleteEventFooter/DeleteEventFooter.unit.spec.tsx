@@ -3,14 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { render, screen } from "__support__/ui";
 import { createMockTimelineEvent } from "metabase-types/api/mocks";
 
-import type { DeleteEventModalProps } from "./DeleteEventModal";
-import DeleteEventModal from "./DeleteEventModal";
+import type { DeleteEventFooterProps } from "./DeleteEventFooter";
+import DeleteEventFooter from "./DeleteEventFooter";
 
-describe("DeleteEventModal", () => {
+describe("DeleteEventFooter", () => {
   it("should submit modal", async () => {
     const props = getProps();
 
-    render(<DeleteEventModal {...props} />);
+    render(<DeleteEventFooter {...props} />);
     await userEvent.click(screen.getByText("Delete"));
 
     expect(props.onSubmit).toHaveBeenCalled();
@@ -18,8 +18,8 @@ describe("DeleteEventModal", () => {
 });
 
 const getProps = (
-  opts?: Partial<DeleteEventModalProps>,
-): DeleteEventModalProps => ({
+  opts?: Partial<DeleteEventFooterProps>,
+): DeleteEventFooterProps => ({
   event: createMockTimelineEvent(),
   onSubmit: jest.fn(),
   onCancel: jest.fn(),

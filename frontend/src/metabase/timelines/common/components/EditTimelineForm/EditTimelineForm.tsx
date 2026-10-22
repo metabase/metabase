@@ -4,7 +4,7 @@ import type { Timeline, TimelineData } from "metabase-types/api";
 
 import { TimelineForm } from "../TimelineForm";
 
-export interface EditTimelineModalProps {
+export interface EditTimelineFormProps {
   timeline: Timeline;
   onSubmit: (values: Timeline) => void;
   onSubmitSuccess?: () => void;
@@ -13,14 +13,14 @@ export interface EditTimelineModalProps {
   onCancel: () => void;
 }
 
-const EditTimelineModal = ({
+const EditTimelineForm = ({
   timeline,
   onSubmit,
   onSubmitSuccess,
   onArchive,
   onArchiveSuccess,
   onCancel,
-}: EditTimelineModalProps): JSX.Element => {
+}: EditTimelineFormProps): JSX.Element => {
   const handleSubmit = useCallback(
     async (values: TimelineData) => {
       await onSubmit({ ...timeline, ...values, default: false });
@@ -45,4 +45,4 @@ const EditTimelineModal = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default EditTimelineModal;
+export default EditTimelineForm;

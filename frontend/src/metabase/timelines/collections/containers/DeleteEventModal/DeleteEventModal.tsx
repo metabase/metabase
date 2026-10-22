@@ -6,7 +6,7 @@ import {
   useGetTimelineEventQuery,
 } from "metabase/api";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import DeleteEventModal from "metabase/timelines/common/components/DeleteEventModal";
+import DeleteEventFooter from "metabase/timelines/common/components/DeleteEventFooter";
 import {
   TimelineModal,
   TimelineModalLoadingState,
@@ -38,7 +38,7 @@ function DeleteEventModalContainer({ params, onClose }: ModalComponentProps) {
       {isLoading || error || !event ? (
         <TimelineModalLoadingState loading={isLoading} error={error} />
       ) : (
-        <DeleteEventModal
+        <DeleteEventFooter
           event={event}
           onSubmit={onSubmit}
           onCancel={onClose}

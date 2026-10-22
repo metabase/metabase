@@ -4,19 +4,19 @@ import { t } from "ttag";
 import { Button, Modal } from "metabase/ui";
 import type { Timeline } from "metabase-types/api";
 
-export interface DeleteTimelineModalProps {
+export interface DeleteTimelineFooterProps {
   timeline: Timeline;
   onSubmit: (timeline: Timeline) => void;
   onSubmitSuccess?: () => void;
   onCancel: () => void;
 }
 
-const DeleteTimelineModal = ({
+const DeleteTimelineFooter = ({
   timeline,
   onSubmit,
   onSubmitSuccess,
   onCancel,
-}: DeleteTimelineModalProps): JSX.Element => {
+}: DeleteTimelineFooterProps): JSX.Element => {
   const handleSubmit = useCallback(async () => {
     await onSubmit(timeline);
     onSubmitSuccess?.();
@@ -33,4 +33,4 @@ const DeleteTimelineModal = ({
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DeleteTimelineModal;
+export default DeleteTimelineFooter;

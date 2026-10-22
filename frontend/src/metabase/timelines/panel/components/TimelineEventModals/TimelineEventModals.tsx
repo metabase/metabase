@@ -1,11 +1,5 @@
 import { match } from "ts-pattern";
-import { t } from "ttag";
 
-import { skipToken, useGetTimelineEventQuery } from "metabase/api";
-import {
-  TimelineModal,
-  TimelineModalLoadingState,
-} from "metabase/timelines/common/components/TimelineModal";
 import type {
   CollectionId,
   TimelineEvent,
@@ -22,16 +16,6 @@ export type TimelineEventModalState =
   | { type: "edit"; eventId: TimelineEventId }
   | { type: "move"; eventId: TimelineEventId };
 
-const getTitle = (
-  type: TimelineEventModalState["type"],
-  event: TimelineEvent | undefined,
-) =>
-  match(type)
-    .with("new", () => t`New event`)
-    .with("edit", () => t`Edit event`)
-    .with("move", () => (event ? t`Move ${event.name}` : undefined))
-    .exhaustive();
-
 export function TimelineEventModals({
   modal,
   collectionId,
@@ -45,55 +29,10 @@ export function TimelineEventModals({
   onEventCreated?: (event: TimelineEvent) => void;
   onClose: () => void;
 }) {
-  const {
-    data: event,
-    isLoading,
-    error,
-  } = useGetTimelineEventQuery(
-    modal && modal.type !== "new" ? modal.eventId : skipToken,
-  );
-
   if (!modal) {
     return null;
   }
 
-  const isLoadingEvent = modal.type !== "new" && (isLoading || !!error);
-
-  return (
-    <TimelineModal
-      title={getTitle(modal.type, event)}
-      density={modal.type === "move" ? undefined : "relaxed"}
-      tall={isLoadingEvent || modal.type === "move"}
-      onClose={onClose}
-    >
-      {isLoadingEvent ? (
-        <TimelineModalLoadingState loading={isLoading} error={error} />
-      ) : (
-        <TimelineEventModalContent
-          modal={modal}
-          collectionId={collectionId}
-          source={source}
-          onEventCreated={onEventCreated}
-          onClose={onClose}
-        />
-      )}
-    </TimelineModal>
-  );
-}
-
-function TimelineEventModalContent({
-  modal,
-  collectionId,
-  source,
-  onEventCreated,
-  onClose,
-}: {
-  modal: TimelineEventModalState;
-  collectionId: CollectionId | null | undefined;
-  source?: TimelineEventSource;
-  onEventCreated?: (event: TimelineEvent) => void;
-  onClose: () => void;
-}) {
   return match(modal)
     .with({ type: "new" }, () => (
       <NewEventModal
