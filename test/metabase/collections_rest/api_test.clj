@@ -10,6 +10,7 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
+   [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
    [metabase.permissions.core :as perms]
@@ -18,6 +19,7 @@
    [metabase.permissions.models.collection.graph-test :as graph.test]
    [metabase.queries-rest.api.card-test :as api.card-test]
    [metabase.queries.models.card :as card]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.request.core :as request]
    [metabase.revisions.models.revision :as revision]
    [metabase.test :as mt]
@@ -29,6 +31,8 @@
    (java.time ZonedDateTime ZoneId)))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :each remote-sync.tu/allow-remote-synced-collections)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users :test-users-personal-collections :row-lock))
 
@@ -1757,16 +1761,16 @@
   ;; we always place "special" collection types (i.e. "Metabase Analytics") last
   (testing "Default sort"
     (doseq [app-db [:mysql :h2 :postgres]]
-      (is (= [[:authority_level :asc :nulls-last]
-              [:type :asc :nulls-first]
+      (is (= [[:authority_level :asc-nulls-last]
+              [:type :asc-nulls-first]
               [:%lower.name :asc]
               [:id :asc]]
              (collections.children/children-sort-clause {:official-collections-first? true} app-db))))))
 
 (deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
-    (is (= [[:authority_level :asc :nulls-last]
-            [:type :asc :nulls-first]
+    (is (= [[:authority_level :asc-nulls-last]
+            [:type :asc-nulls-first]
             [:%isnull.last_edit_timestamp]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
@@ -1777,8 +1781,8 @@
 
 (deftest ^:parallel children-sort-clause-test-2b
   (testing "Sorting by last-edited-at"
-    (is (= [[:authority_level :asc :nulls-last]
-            [:type :asc :nulls-first]
+    (is (= [[:authority_level :asc-nulls-last]
+            [:type :asc-nulls-first]
             [:last_edit_timestamp :nulls-last]
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
@@ -1789,8 +1793,8 @@
 
 (deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
-    (is (= [[:authority_level :asc :nulls-last]
-            [:type :asc :nulls-first]
+    (is (= [[:authority_level :asc-nulls-last]
+            [:type :asc-nulls-first]
             [:last_edit_last_name :nulls-last]
             [:last_edit_last_name :asc]
             [:last_edit_first_name :nulls-last]
@@ -1803,8 +1807,8 @@
 
 (deftest ^:parallel children-sort-clause-test-2d
   (testing "Sorting by last-edited-by"
-    (is (= [[:authority_level :asc :nulls-last]
-            [:type :asc :nulls-first]
+    (is (= [[:authority_level :asc-nulls-last]
+            [:type :asc-nulls-first]
             [:%isnull.last_edit_last_name]
             [:last_edit_last_name :asc]
             [:%isnull.last_edit_first_name]
@@ -1817,8 +1821,8 @@
 
 (deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
-    (is (= [[:authority_level :asc :nulls-last]
-            [:type :asc :nulls-first]
+    (is (= [[:authority_level :asc-nulls-last]
+            [:type :asc-nulls-first]
             [:model_ranking :asc]
             [:%lower.name :asc]
             [:id :asc]]
@@ -1828,8 +1832,8 @@
 
 (deftest ^:parallel children-sort-clause-test-3b
   (testing "Sorting by model"
-    (is (= [[:authority_level :asc :nulls-last]
-            [:type :asc :nulls-first]
+    (is (= [[:authority_level :asc-nulls-last]
+            [:type :asc-nulls-first]
             [:model_ranking :desc]
             [:%lower.name :asc]
             [:id :asc]]
@@ -1840,18 +1844,18 @@
 (deftest ^:parallel children-sort-clause-description-test
   (testing "Sorting by description"
     (testing "ascending"
-      (is (= [[:authority_level :asc :nulls-last]
-              [:type :asc :nulls-first]
-              [:%lower.description :asc :nulls-last]
+      (is (= [[:authority_level :asc-nulls-last]
+              [:type :asc-nulls-first]
+              [:%lower.description :asc-nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
              (collections.children/children-sort-clause {:sort-column :description
                                                          :sort-direction :asc
                                                          :official-collections-first? true} :postgres))))
     (testing "descending"
-      (is (= [[:authority_level :asc :nulls-last]
-              [:type :asc :nulls-first]
-              [:%lower.description :desc :nulls-last]
+      (is (= [[:authority_level :asc-nulls-last]
+              [:type :asc-nulls-first]
+              [:%lower.description :desc-nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
              (collections.children/children-sort-clause {:sort-column :description
@@ -1914,6 +1918,33 @@
         (is (not (contains? (actions "collection/root/items" :namespace "data-actions") "Of a model")))
         (is (= #{}
                (actions (str "collection/" regular-id "/items"))))))))
+
+(deftest data-app-collection-items-test
+  (testing "GET /api/collection/:id/items lists the actions and questions of a data app collection"
+    (mt/with-temp [:model/Collection  {app-coll-id :id}     {:namespace "data-apps", :name "Data app collection"}
+                   :model/Collection  {actions-coll-id :id} {:namespace "data-actions", :name "Data actions folder"}
+                   :model/Action      {in-app :id}          {:type :query, :name "In app", :collection_id app-coll-id}
+                   :model/QueryAction _                     {:action_id     in-app
+                                                             :database_id   (mt/id)
+                                                             :dataset_query (mt/native-query {:query "DELETE FROM venues"})}
+                   :model/Action      {in-folder :id}       {:type :query, :name "In folder", :collection_id actions-coll-id}
+                   :model/QueryAction _                     {:action_id     in-folder
+                                                             :database_id   (mt/id)
+                                                             :dataset_query (mt/native-query {:query "DELETE FROM venues"})}]
+      (binding [mi/*deserializing?* true]
+        (mt/with-temp [:model/Card _ {:name          "App question"
+                                      :collection_id app-coll-id
+                                      :dataset_query (mt/mbql-query venues)}]
+          (let [items (fn [coll-id model]
+                        (->> (mt/user-http-request :crowberto :get 200 (str "collection/" coll-id "/items") :models model)
+                             :data
+                             (map #(select-keys % [:name :model :collection_namespace]))))]
+            (is (= [{:name "In app", :model "action", :collection_namespace "data-apps"}]
+                   (items app-coll-id "action")))
+            (is (= [{:name "App question", :model "card"}]
+                   (map #(dissoc % :collection_namespace) (items app-coll-id "card"))))
+            (is (= [{:name "In folder", :model "action", :collection_namespace "data-actions"}]
+                   (items actions-coll-id "action")))))))))
 
 (deftest snippet-collection-items-count-only-test
   (testing "The snippets namespace is unpaginated, but a count-only request still keeps its LIMIT"

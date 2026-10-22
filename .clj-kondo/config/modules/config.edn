@@ -366,6 +366,7 @@
            metabase.app-db.transient-error}
    :uses #{auth-provider
            connection-pool
+           funnysql
            task.secure-delegate
            util
            util.classloader
@@ -1139,6 +1140,11 @@
            request
            util}}
 
+  funnysql
+  {:team "Querying Platform"
+   :api  #{metabase.funnysql.core}
+   :uses #{util}}
+
   geojson
   {:team "UX West"
    :api  #{metabase.geojson.api
@@ -1455,9 +1461,11 @@
            mcp
            metabot.agent-api
            models
+           premium-features
            request
            server
            settings
+           sso.auth-identity
            system
            task
            tracing
@@ -1560,7 +1568,8 @@
               util
               util.config
               warehouse-schema-overlay
-              warehouses}
+              warehouses
+              xrays}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
                     :model/MetabotConversation
@@ -1594,6 +1603,7 @@
               metabase.agent-api.schema
               metabase.agent-api.settings}
    :uses    #{ai-tracing
+              analytics.interface
               api
               channel
               collections
@@ -2209,6 +2219,7 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
+                    :model/Table
                     :model/Timeline
                     :model/User}}
 
@@ -2288,6 +2299,7 @@
               metabase.query-processor.parameters.values
               metabase.query-processor.pipeline
               metabase.query-processor.pivot
+              metabase.query-processor.pivot.common
               metabase.query-processor.preprocess
               metabase.query-processor.reducible
               metabase.query-processor.result-serialization
@@ -3813,40 +3825,30 @@
 
   enterprise/data-apps
   {:team "Embedding"
-   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.core metabase-enterprise.data-apps.init}
+   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{actions
            api
            api-scope
-           audit-app
            collections
            events
            lib
-           lib.be
            lib.schema
            lib.types
-           metabot
-           metrics
            models
            permissions
            premium-features
-           queries
            remote-sync
            request
            settings
-           system
            users
            util
            util.graph
            warehouse-schema-overlay
-           enterprise/dependencies
-           enterprise/serialization}
+           enterprise/dependencies}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Database
-                    :model/Field
-                    :model/Measure
                     :model/Permissions
                     :model/Table}
    :model-exports #{:model/DataApp}}
@@ -4290,7 +4292,6 @@
            task.history
            util
            warehouse-schema-overlay
-           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}
@@ -4567,6 +4568,8 @@
            lib.schema
            models
            premium-features
+           query-processor
+           request
            revisions
            run-tracking
            sql-tools

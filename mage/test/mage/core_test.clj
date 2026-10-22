@@ -22,6 +22,7 @@
    [mage.merge-kondo-ratchets-test]
    [mage.merge-yaml-migrations-test]
    [mage.modules-test]
+   [mage.new-migration-test]
    [mage.openapi-diff-test]
    [mage.project-tests-test]
    [mage.quick-test-runner-test]
@@ -32,9 +33,10 @@
 
 (set! *warn-on-reflection* true)
 
-;; Documented in its own namespace as manual-only: it creates temporary git repositories and branches.
+;; Documented in their own namespaces as manual-only: they create temporary git repositories and branches.
 (def ^:private not-run-by-mage-test
-  '#{mage.merge-yaml-migrations-integration-test})
+  '#{mage.merge-yaml-migrations-integration-test
+     mage.pre-commit-hook-integration-test})
 
 (defn- test-namespaces-on-disk []
   (let [root (fs/path u/project-root-directory "mage" "test")]

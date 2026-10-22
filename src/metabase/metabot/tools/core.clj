@@ -220,15 +220,11 @@
     (some :data-parts entries)        (assoc :data-parts (vec (mapcat :data-parts entries)))))
 
 (defn- entry
-  "One item's [[::entry]]: the result of calling `tool`'s [[handle]] with `item-args`, or its declared
-  failure rendered.
+  "Return one [[::entry]] for `tool` and `item-args`.
 
-  A declared recoverable error becomes this item's contribution. Anything else is a fault, and by
-  default it is rethrown so the whole call fails — a bug is not a partial result.
-
-  `on-item-fault` is the one seam, for a consumer whose contract says otherwise: it takes the item's
-  args and the throwable and returns that item's [[::entry]]. Only `/v1/read-resource` passes one
-  (see [[with-batched-entries]]); it is nil everywhere else, which is the failing default."
+  A declared recoverable error becomes a failed entry. Other errors are rethrown unless
+  `on-item-fault` is supplied; it receives the item's args and the throwable and returns an entry.
+  `/v1/read-resource` and `list_available_fields` supply this callback (see [[with-batched-entries]])."
   [tool item-args ctx on-item-fault]
   (try
     (let [result (handle tool item-args ctx)]
@@ -263,27 +259,16 @@
    :recovery []})
 
 (defn with-batched-entries
-  "`f` applied to the entries of `tool`'s batched call — one [[::entry]] per item, in item order.
-  Returns whatever `f` returns, with the permission cache held across both the item loading and `f`
-  (see [[call]]).
+  "Apply `f` to the entries of `tool`'s batched call in item order.
 
-  THE ONLY CALLER IS `metabase.agent-api.api`'s `POST /v1/read-resource`, and this function exists
-  for it alone. That endpoint publishes a different contract from the agent loop's: one HTTP status
-  for the whole call and an `:error` on each item that could not be read, so a single-URI request
-  that missed is still a 200 carrying one failed item. [[run-batched]] cannot serve that — it answers
-  with one [[::result]] and throws when nothing was delivered — and before this existed the endpoint
-  got its per-item data by having `read_resource`'s own `compose` build it, which left a tool
-  constructing one of its consumers' response shapes.
+  Return whatever `f` returns, with the permission cache held while loading the items and calling `f`
+  (see [[call]]). Each item produces one [[::entry]].
 
-  So if that endpoint goes away, delete this with it. Nothing else should reach for it: a consumer
-  that wants one result per call wants [[run-batched]], which is this with `compose` and the
-  nothing-was-delivered check on top.
-
-  `opts` may carry `:on-item-fault`, called when one item fails with something other than a declared
-  recoverable error, with that item's args and the throwable; it returns that item's [[::entry]].
-  Without it such a failure fails the whole call, which is what the agent loop wants and what the
-  same endpoint must not do — its contract is one status for the call and an `:error` per item, so
-  one URI hitting a bug cannot discard the four that read."
+  An error other than a declared recoverable error fails the whole call unless `opts` includes
+  `:on-item-fault`. This callback receives the item's args and the throwable and returns its [[::entry]].
+  `POST /v1/read-resource` and `list_available_fields` use it to keep successful results when another
+  item fails unexpectedly. [[run-batched]] fails the whole call on such an error and throws when every
+  item fails."
   [tool args ctx {:keys [on-item-fault]} f]
   (metabot.perms/with-cache
     (let [item-args (batched-args tool args)]
@@ -430,7 +415,7 @@
 
 ;;; ------------------------------------------------ Converters ----------------------------------------------------
 
-(def ^:private refusal-status-codes
+(def refusal-status-codes
   "The statuses that mean \"you may not see this\" or \"this is not here\". `api/read-check` raises a
   403 for the first and a 404 for the second, and the converters collapse them."
   #{403 404})
@@ -441,7 +426,8 @@
   (try
     (thunk)
     (catch Throwable e
-      (if (contains? refusal-status-codes (:status-code (ex-data e)))
+      (if (and (not (contains? (ex-data e) tools.error/error-key))
+               (contains? refusal-status-codes (:status-code (ex-data e))))
         (tools.error/throw-recoverable! ::recoverable.common/not-found
                                         (cond-> {} kind (assoc :kind kind) (some? id) (assoc :id id))
                                         {:cause e})
@@ -453,10 +439,10 @@
     (with-entity {:kind :timeline :id timeline-id}
       (timeline/include-events-singular (timeline/get-timeline timeline-id)))
 
-  `entity` is `{:kind <keyword> :id <id>}`. A 403 and a 404 — the two things `api/read-check` raises
-  — both become the same recoverable error; see `recoverable.common/not-found!` for why they are not
-  distinguished. Every other exception passes through, so a genuine failure inside `body` stays
-  unrecoverable instead of being reported to the model as a missing entity."
+  `entity` is `{:kind <keyword> :id <id>}`. Both 403 and 404 errors from `api/read-check` become
+  the same recoverable error; see `recoverable.common/not-found!` for why they are not distinguished.
+  Declared tool errors and other exceptions pass through unchanged, so other failures remain
+  unrecoverable."
   {:style/indent [:defn]}
   [entity & body]
   `(do-with-entity ~entity (fn [] ~@body)))
@@ -470,7 +456,7 @@
   test to say so."
   (str (ns-name (:ns (meta #'recoverable.pipeline/unknown-table!)))))
 
-(defn- pipeline-error-code
+(defn pipeline-error-code
   "The `recoverable.pipeline` code for a pipeline `:error` keyword, or nil when none is declared."
   [error]
   (when (keyword? error)
@@ -484,23 +470,26 @@
   (try
     (thunk)
     (catch Throwable e
-      (let [{:keys [agent-error? status-code error entity-type entity-id]} (ex-data e)
+      (let [{:keys [agent-error? status-code error entity-type entity-id source-card source-card-type]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
-          ;; `:agent-error?` *and* an `:error` key. The pipeline's `as-agent-input-error` stamps
-          ;; `:agent-error?` onto foreign exceptions from lib, toucan2 and JDBC as well, and those
-          ;; messages are not authored for anyone — only an `:error` code says "this sentence was
-          ;; written for a model".
+          ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
           (and agent-error? code)
           (tools.error/throw-recoverable!
            code
            (cond-> {:message (or (ex-message e) "")}
              entity-type       (assoc :entity-type entity-type)
-             (some? entity-id) (assoc :entity-id entity-id))
+             (some? entity-id) (assoc :entity-id entity-id)
+             source-card       (assoc :source-card source-card
+                                      :source-card-type source-card-type))
            {:cause e})
 
           (contains? refusal-status-codes status-code)
           (tools.error/throw-recoverable! ::recoverable.common/not-found {} {:cause e})
+
+          ;; Tools that still use the legacy adapter expose any message marked with `:agent-error?`.
+          agent-error?
+          (throw (ex-info (ex-message e) (dissoc (ex-data e) :agent-error?) e))
 
           :else
           (throw e))))))
@@ -516,9 +505,8 @@
     `metabase.metabot.tools.recoverable.pipeline` becomes that error, with the pipeline's own
     sentence as the message;
   - a 403 or 404 becomes `recoverable.common/not-found!`;
-  - anything else passes through and is therefore unrecoverable, including an `:error` code with no
-    declaration. `metabase.metabot.tools.recoverable.pipeline-test` scans the pipeline sources and
-    fails when a code has none, so a new pipeline error cannot quietly start ending turns."
+  - anything else is unrecoverable and loses its `:agent-error?` flag, which prevents legacy tools
+    from exposing its message. This includes `:error` codes with no declaration."
   {:style/indent [:defn]}
   [& body]
   `(do-with-pipeline-errors (fn [] ~@body)))
