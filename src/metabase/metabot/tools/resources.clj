@@ -125,7 +125,7 @@
           (str (subs text 0 end) truncation-marker)
           (recur (long next-end)))))))
 
-(defn uri-preview
+(defn- uri-preview
   "Return a URI preview of at most 200 characters after XML or string escaping."
   [uri]
   (text-preview uri max-uri-preview-length

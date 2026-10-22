@@ -2021,9 +2021,9 @@
           resource (first (:resources response))
           attribute (second (re-find #"<resource uri=\"([^\"]*)\">" (:output response)))]
       (is (= success? (contains? resource :content)))
-      (is (<= (count (pr-str (:uri resource))) 200))
+      (is (= uri (:uri resource)))
       (is (<= (count attribute) 200))
-      (is (true? (str/includes? (:uri resource) "[truncated]"))))))
+      (is (str/ends-with? attribute "...[truncated]")))))
 
 (deftest read-resource-test
   (testing "Dispatches a top-level URI through the shared resolver"

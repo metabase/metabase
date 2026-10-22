@@ -714,7 +714,7 @@
   read is this item's `:error`, not the call's. The tool reports per item and leaves what that means
   to its caller."
   [{:keys [item output failed? structured-output]}]
-  (cond-> {:uri (metabot-resources/uri-preview (:uri item))}
+  (cond-> {:uri (:uri item)}
     failed?       (assoc :error output)
     (not failed?) (assoc :content {:structured-output structured-output})))
 
