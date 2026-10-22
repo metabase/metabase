@@ -42,6 +42,35 @@
     (testing "identity fn returns settings unchanged"
       (is (= viz (dynamic-goals/update-goal-values viz identity))))))
 
+(def ^:private visualizer-dashcard-viz
+  "A visualizer dashcard's settings: a goal at the top level, and two under `[:visualization :settings]`, one hidden."
+  {:graph.goal_value ref-a
+   :visualization    {:display  "line"
+                      :settings {:graph.show_goal  false
+                                 :graph.goal_value ref-b
+                                 :gauge.segments   [{:min 0 :max ref-a}]}}})
+
+(deftest ^:parallel dashcard-goal-values-test
+  (testing "collects the top-level goals and those nested in a visualizer dashcard, hidden ones included"
+    (is (= [ref-a ref-b 0 ref-a]
+           (dynamic-goals/dashcard-goal-values visualizer-dashcard-viz))))
+  (testing "settings without a nested visualization match goal-values"
+    (are [viz] (= (dynamic-goals/goal-values viz) (dynamic-goals/dashcard-goal-values viz))
+      {:graph.goal_value 5 :progress.goal ref-a}
+      {})))
+
+(deftest ^:parallel update-dashcard-goal-values-test
+  (testing "rewrites the top-level goals and those nested in a visualizer dashcard, hidden ones included"
+    (is (= {:graph.goal_value [:resolved ref-a]
+            :visualization    {:display  "line"
+                               :settings {:graph.show_goal  false
+                                          :graph.goal_value [:resolved ref-b]
+                                          :gauge.segments   [{:min [:resolved 0] :max [:resolved ref-a]}]}}}
+           (dynamic-goals/update-dashcard-goal-values visualizer-dashcard-viz (fn [goal] [:resolved goal])))))
+  (testing "settings without a nested visualization gain no :visualization key"
+    (is (= {:graph.goal_value [:resolved ref-a]}
+           (dynamic-goals/update-dashcard-goal-values {:graph.goal_value ref-a} (fn [goal] [:resolved goal]))))))
+
 (def ^:private referenced-entities
   {"card"    {"1" {:status "completed"
                    :data   {:cols [{:name "count"} {:name "total"}]

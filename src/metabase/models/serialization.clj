@@ -1679,7 +1679,7 @@
   "Rewrite the `:id` of every entity-referencing goal value in `settings` with `(f id model)`. Drops the goal
   when `:type` maps to no model or `f` yields nil, so an id can never outlive the entity it named."
   [settings f]
-  (dynamic-goals/update-goal-values
+  (dynamic-goals/update-dashcard-goal-values
    settings
    (fn [goal-value]
      (if-let [{:keys [type id]} (dynamic-goals/goal-source goal-value)]
@@ -1925,7 +1925,7 @@
                   (when-let [model (goal-entity-models type)]
                     (when (or (portable-id? id) (raw-ref-id? allow-int-ids? id))
                       [{:model (name model) :id id}])))))
-        (dynamic-goals/goal-values settings)))
+        (dynamic-goals/dashcard-goal-values settings)))
 
 (defn- timeline-events-deps
   [allow-int-ids? settings]
@@ -1985,7 +1985,7 @@
                   ;; Measure is a data model, synced separately rather than bundled, so only cards come along.
                   (when (and (= "card" type) (fk-elide (*export-fk* id :model/Card)))
                     [["Card" id] src]))))
-        (dynamic-goals/goal-values viz)))
+        (dynamic-goals/dashcard-goal-values viz)))
 
 (defn visualization-settings-descendants
   "Given the :visualization_settings (possibly nil) for an entity, return anything that should be considered a

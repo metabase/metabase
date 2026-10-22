@@ -80,6 +80,24 @@
   [viz-settings f]
   (update-values-in viz-settings goal-settings f))
 
+(def ^:private visualizer-settings-path
+  "Where a visualizer dashcard nests the settings of the chart it draws."
+  [:visualization :settings])
+
+(defn dashcard-goal-values
+  "Like [[goal-values]], plus the goals a visualizer dashcard nests under `:visualization`. Hidden goals included,
+  unlike [[shown-goal-values]]."
+  [viz-settings]
+  (concat (goal-values viz-settings)
+          (goal-values (get-in viz-settings visualizer-settings-path))))
+
+(defn update-dashcard-goal-values
+  "Like [[update-goal-values]], also rewriting the goals a visualizer dashcard nests under `:visualization`."
+  [viz-settings f]
+  (cond-> (update-goal-values viz-settings f)
+    (map? (get-in viz-settings visualizer-settings-path))
+    (update-in visualizer-settings-path update-goal-values f)))
+
 (defn- unresolved!
   [reason {:keys [id type column]}]
   (throw (ex-info (if type
