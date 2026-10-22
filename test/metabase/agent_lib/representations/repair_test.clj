@@ -1276,10 +1276,10 @@
          clojure.lang.ExceptionInfo
          #"These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count"
          (repair-in-stage {"aggregation" [["count-where" {} ["!=" {} created-at (abs-dt "2025-01-31" "day")]]]}))))
-  (testing "a date exclusion in a join goes in the join's own stages, since its conditions cannot hold an `or`"
+  (testing "a date exclusion moves out of a join's conditions only for an inner join, where a filter gives the same rows"
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"Join `conditions:` cannot hold an `or`, so exclude dates of the joined table with a filter in the `stages` of the join"
+         #"Join `conditions:` cannot hold an `or`, so for an inner join, put a date exclusion in `filters:` instead. With any other join type, `filters:` would change the answer, so tell the user that the exclusion cannot be added to the join."
          (repair-in-stage
           {"joins" [{"lib/type" "mbql/join" "alias" "O2"
                      "stages" [{"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
