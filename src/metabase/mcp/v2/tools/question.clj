@@ -130,16 +130,17 @@
                     stages)))))
 
 (defn- check-native-source-gates!
-  "The gates an inline `native` source passes: the `agent:sql:run` scope and the
-   `mcp-execute-sql-enabled` kill switch — `execute_sql`'s own two, because the stored card is raw
-   SQL a later `run_saved_question` executes, so accepting one under the content write scope alone
-   would rebuild `execute_sql` without its scope or its kill switch. Every source that can resolve
-   to native passes these, `query_handle` included — holding a handle is not proof the gates were
-   spent (`construct_native_query` mints under `agent:sql:construct` and never consults the kill
-   switch, and a handle resolves on `core_session.user_id`, so any credential of that user can spend
-   one minted by another). No-op on the scope half for unscoped callers (cookie sessions bind the
-   unrestricted sentinel, which matches everything)."
+  "Throw unless the current user and `token-scopes` may store a native question: the user's groups must allow
+   `execute_sql`, the scopes must match `agent:sql:run`, and the `mcp-execute-sql-enabled` kill switch must be on."
   [token-scopes]
+  ;; `execute_sql`'s own three gates. A stored native card is raw SQL a later `run_saved_question` executes, so
+  ;; accepting one under `question_write`'s policy and the content write scope alone would rebuild `execute_sql` for
+  ;; a user an admin denied it, or without its scope or its kill switch. Every source that can resolve to native
+  ;; passes these, `query_handle` included: holding a handle is not proof the gates were spent
+  ;; (`construct_native_query` mints under `agent:sql:construct` and never consults the kill switch, and a handle
+  ;; resolves on `core_session.user_id`, so any credential of that user can spend one minted by another). Unscoped
+  ;; callers bind the unrestricted sentinel, which matches every scope.
+  (registry/check-tool-allowed! "execute_sql" (message/raw "Saving a native (SQL) query"))
   (when-not (mcp.scope/matches? token-scopes metabot.scope/agent-sql-run)
     (common/throw-insufficient-scope!
      (message/msg [(str "Saving a native (SQL) query requires the %s scope — "
@@ -486,13 +487,28 @@
 
 (def ^:private question-write-args-schema
   [:map {:closed true}
-   [:method [:enum "create" "update"]]
-   [:id {:optional true} [:maybe [:or :int :string]]]
-   [:card_type {:optional true} [:maybe [:enum "question" "model"]]]
-   [:query_handle {:optional true} [:maybe :string]]
-   [:query {:optional true} [:maybe :map]]
+   [:method
+    [:enum {:description (str "\"create\" makes a new question or model (requires `name` and exactly one of "
+                              "`query_handle`, `query`, or `native`); \"update\" edits the one named by `id`.")}
+     "create" "update"]]
+   [:id {:optional true}
+    [:maybe [:or
+             [:int {:description "Numeric id of the question to update."}]
+             [:string {:description "21-character entity_id of the question to update."}]]]]
+   [:card_type {:optional true}
+    [:maybe [:enum {:description "\"question\" (default) or \"model\"."} "question" "model"]]]
+   [:query_handle {:optional true}
+    [:maybe [:string {:description (str "A handle returned by execute_query, execute_sql, or visualize_query. The "
+                                        "preferred query source on create: it saves exactly the query that tool "
+                                        "validated.")}]]]
+   [:query {:optional true}
+    [:maybe [:map {:description (str "An inline query with numeric ids and a top-level database id "
+                                     "(learn(\"query-dialect\")). Prefer `query_handle`.")}]]]
    [:native {:optional true}
-    [:maybe [:map
+    [:maybe [:map {:description (str "A native SQL query to save: {database_id, sql, template_tags?}. Requires "
+                                     "the agent:sql:run scope, the mcp-execute-sql-enabled setting, and the "
+                                     "execute_sql tool enabled for your groups. Call "
+                                     "learn(\"native-parameters\") before first passing template_tags.")}
              [:database_id [:or :int :string]]
              [:sql [:string {:min 1}]]
              [:template_tags {:optional true}
@@ -522,20 +538,39 @@
                                                              "\"id\".")}]]]
                         [:required {:optional true} [:maybe :boolean]]
                         [:default {:optional true} [:maybe :any]]]]]]]]]
-   [:name {:optional true} [:maybe [:string {:min 1}]]]
-   [:description {:optional true} [:maybe :string]]
-   [:collection_id {:optional true} [:maybe [:or :int :string]]]
-   [:dashboard_id {:optional true} [:maybe [:or :int :string]]]
-   [:collection_position {:optional true} [:maybe :int]]
-   [:display {:optional true} [:maybe common/card-display-enum]]
-   [:visualization_settings {:optional true} [:maybe :map]]
-   [:cache_ttl {:optional true} [:maybe :int]]
-   [:archived {:optional true} [:maybe :boolean]]
+   [:name {:optional true} [:maybe [:string {:min 1 :description "Question title. Required on create."}]]]
+   [:description {:optional true}
+    [:maybe [:string {:description "One or two sentences on what the question answers."}]]]
+   [:collection_id {:optional true}
+    [:maybe [:or
+             [:int {:description (str "Numeric id of the collection to save it in. Omit on create for your "
+                                      "personal collection. Exclusive with `dashboard_id`.")}]
+             [:string {:description "Collection entity_id, or \"root\" for the top-level collection."}]]]]
+   [:dashboard_id {:optional true}
+    [:maybe [:or
+             [:int {:description (str "Numeric id of a dashboard to save the question inside; it inherits that "
+                                      "dashboard's collection. On update, moves the card into that dashboard. "
+                                      "Exclusive with `collection_id`.")}]
+             [:string {:description "21-character entity_id of the dashboard to save the question inside."}]]]]
+   [:collection_position {:optional true}
+    [:maybe [:int {:description "Pin position within the collection; omit to leave it unpinned."}]]]
+   [:display {:optional true}
+    [:maybe {:description "Visualization type. learn(\"visualization-settings\") covers the choice."}
+     common/card-display-enum]]
+   [:visualization_settings {:optional true}
+    [:maybe [:map {:description (str "Display settings for the chosen `display`; learn(\"visualization-settings\") "
+                                     "lists the keys.")}]]]
+   [:cache_ttl {:optional true}
+    [:maybe [:int {:description (str "Legacy per-question cache TTL. Stored and echoed back, but no longer "
+                                     "read: caching is configured through cache policies in admin settings.")}]]]
+   [:archived {:optional true}
+    [:maybe [:boolean {:description "Update only: true moves it to the trash, false restores it."}]]]
    [:clear {:optional true}
     [:maybe [:sequential [:enum {:description "Update only: property names to unset (description, collection_position, cache_ttl). Needed because a null cannot say \"clear this\" — strict clients fill every unset property with null, so nulls are stripped at the boundary."}
                           "description" "collection_position" "cache_ttl"]]]]
    [:column_metadata {:optional true}
-    [:maybe [:sequential
+    [:maybe [:sequential {:description (str "Per-column result metadata to set, matched to the query's result "
+                                            "columns by name. Typically used with card_type \"model\".")}
              [:map
               [:name [:string {:min 1}]]
               [:display_name {:optional true} [:maybe :string]]
@@ -548,13 +583,14 @@
                              visibility-type-strs)]]]]]]])
 
 (registry/deftool question-write-tool
-  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read; on create or update, native additionally requires the agent:sql:run scope and the instance-level mcp-execute-sql-enabled setting, since the saved card is raw SQL). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet). Updating a card that is a metric is refused rather than retyping it — use metric_write."
-  {:name         "question_write"
-   :scope        metabot.scope/agent-content-write
+  "Create, update, or archive a saved question or model. method: \"create\" | \"update\". On create, pass a name and exactly one query source: query_handle (from an execute tool — MBQL or native SQL), query (an inline query — numeric ids and a top-level database id, learn(\"query-dialect\"); prefer query_handle, which saves exactly the query execute_query validated), or native ({database_id, sql, template_tags?} — the template_tags shape is MCP-specific and not guessable: before first passing it, call learn(\"native-parameters\") unless already read; on create or update, native additionally requires the agent:sql:run scope, the instance-level mcp-execute-sql-enabled setting, and the execute_sql tool enabled for your groups, since the saved card is raw SQL). Optional: card_type (\"question\" default, or \"model\"), description, collection_id (omit = your personal collection; \"root\" = the root collection) or dashboard_id (saves the question inside that dashboard, whose collection it inherits — passing both is an error), display, visualization_settings (learn(\"visualization-settings\") covers display choice and settings keys), cache_ttl, column_metadata (list of {name, display_name?, description?, semantic_type?, visibility_type?} — sets result_metadata; typically used with card_type \"model\"). On update, pass id and the fields to change; archived: true trashes, false restores; dashboard_id moves the card into that dashboard (collection follows; a question saved in another dashboard can't move to a different one; moving a card OUT of a dashboard isn't supported yet). Updating a card that is a metric is refused rather than retyping it — use metric_write."
+  {:name           "question_write"
+   :default-access :allowed
+   :scope          metabot.scope/agent-content-write
    ;; `archived: true` trashes the card, so this is not the additive-only update
    ;; `destructiveHint false` would assert.
-   :annotations  {:readOnlyHint false :destructiveHint true}
-   :args         question-write-args-schema}
+   :annotations    {:readOnlyHint false :destructiveHint true}
+   :args           question-write-args-schema}
   [args {:keys [token-scopes session-id]}]
   (let [[op a b] (v2.write/dispatch-write
                   {:create-required [:name]

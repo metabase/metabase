@@ -229,6 +229,52 @@
          (#'init/remote-sync-init)
          (is (zero? (glossary-rso-count))))))))
 
+;;; -------------------------------------------- Action ledger backfill --------------------------------------------
+
+(defn- do-with-untracked-actions!
+  "Runs `f` with `{:live :archived :unsynced}` action ids and no Action ledger rows, under `remote-sync-type`
+  `sync-type`. `:live` and `:archived` belong to a model in a synced collection, `:unsynced` to a model outside one."
+  [sync-type f]
+  (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                     :remote-sync-type sync-type
+                                     :remote-sync-branch "main"]
+    (mt/with-model-cleanup [:model/RemoteSyncObject]
+      (mt/with-temp [:model/Collection {synced-id :id}   {:name "Synced" :is_remote_synced true :location "/"}
+                     :model/Collection {plain-id :id}    {:name "Plain" :location "/"}
+                     :model/Card       {model-id :id}    {:type :model :collection_id synced-id}
+                     :model/Card       {other-id :id}    {:type :model :collection_id plain-id}
+                     :model/Action     {live :id}        {:type :implicit :name "Live" :model_id model-id}
+                     :model/Action     {archived :id}    {:type :implicit :name "Old" :model_id model-id :archived true}
+                     :model/Action     {unsynced :id}    {:type :implicit :name "Elsewhere" :model_id other-id}]
+        (t2/delete! :model/RemoteSyncObject :model_type "Action")
+        (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
+                                    remote-sync.object/dirty? (constantly false)]
+          (f {:live live :archived archived :unsynced unsynced}))))))
+
+(defn- action-rso-ids []
+  (t2/select-fn-set :model_id :model/RemoteSyncObject :model_type "Action"))
+
+(deftest remote-sync-init-backfills-action-tracking-test
+  (testing "GHY-4722: read-write init tracks the unarchived actions of synced models as 'create', once, so the next push writes them"
+    (do-with-untracked-actions!
+     :read-write
+     (fn [{:keys [live]}]
+       (#'init/remote-sync-init)
+       (is (= #{live} (action-rso-ids)))
+       (is (=? {:status "create" :model_name "Live"}
+               (t2/select-one :model/RemoteSyncObject :model_type "Action" :model_id live)))
+       (testing "a second run inserts nothing"
+         (#'init/remote-sync-init)
+         (is (= 1 (t2/count :model/RemoteSyncObject :model_type "Action"))))))))
+
+(deftest remote-sync-init-action-backfill-skips-read-only-test
+  (testing "GHY-4722: a read-only instance is not backfilled"
+    (do-with-untracked-actions!
+     :read-only
+     (fn [_]
+       (#'init/remote-sync-init)
+       (is (empty? (action-rso-ids)))))))
+
 (deftest remote-sync-init-glossary-backfill-skips-unsynced-library-test
   (testing "Glossary entries are only tracked when the Library is synced"
     (collections.tu/with-library-not-synced
@@ -237,3 +283,50 @@
        (fn [_entry]
          (#'init/remote-sync-init)
          (is (zero? (glossary-rso-count))))))))
+
+;;; ------------------------------------------- Data app ledger backfill -------------------------------------------
+
+(defn- do-with-untracked-data-apps!
+  "Runs `f` with `{:published :tracked}` data app ids under `remote-sync-type` `sync-type`, where only
+  `:tracked` has a DataApp ledger row."
+  [sync-type f]
+  (mt/with-temporary-setting-values [:remote-sync-url "file://my/repo.git"
+                                     :remote-sync-type sync-type
+                                     :remote-sync-branch "main"]
+    (mt/with-model-cleanup [:model/RemoteSyncObject :model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [insert-app! (fn [slug]
+                          (t2/insert-returning-pk! :model/DataApp {:name         slug
+                                                                   :display_name slug
+                                                                   :bundle_path  "index.js"
+                                                                   :bundle       (.getBytes "BUNDLE" "UTF-8")}))
+            published   (insert-app! "published")
+            tracked     (insert-app! "tracked")]
+        (t2/delete! :model/RemoteSyncObject :model_type "DataApp")
+        (t2/insert! :model/RemoteSyncObject {:model_type "DataApp" :model_id tracked :model_name "tracked"
+                                             :status "synced" :status_changed_at (t/offset-date-time)})
+        (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
+                                    remote-sync.object/dirty? (constantly false)]
+          (f {:published published :tracked tracked}))))))
+
+(defn- data-app-rso-statuses []
+  (t2/select-fn->fn :model_id :status :model/RemoteSyncObject :model_type "DataApp"))
+
+(deftest remote-sync-init-backfills-data-app-tracking-test
+  (testing "read-write init tracks every untracked published data app as 'create', once, so the next push writes it"
+    (do-with-untracked-data-apps!
+     :read-write
+     (fn [{:keys [published tracked]}]
+       (#'init/remote-sync-init)
+       (is (= {published "create" tracked "synced"} (data-app-rso-statuses)))
+       (is (=? {:model_name "published"}
+               (t2/select-one :model/RemoteSyncObject :model_type "DataApp" :model_id published)))
+       (testing "a second run inserts nothing"
+         (is (= 0 (rs-events/backfill-data-app-tracking!))))))))
+
+(deftest remote-sync-init-data-app-backfill-skips-read-only-test
+  (testing "a read-only instance is not backfilled"
+    (do-with-untracked-data-apps!
+     :read-only
+     (fn [{:keys [tracked]}]
+       (#'init/remote-sync-init)
+       (is (= {tracked "synced"} (data-app-rso-statuses)))))))

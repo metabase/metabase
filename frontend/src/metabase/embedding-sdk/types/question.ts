@@ -99,6 +99,7 @@ export type TableVisualizationSettings = Pick<
   | "pivot_table.column_split"
   | "pivot_table.collapsed_rows"
   | "column_settings"
+  | "table.pivot"
 >;
 
 /**

@@ -25,8 +25,10 @@
      :refresh-tokens-expired      (oauth-server.db/delete-refresh-tokens-expired-before! now)
      :refresh-tokens-revoked      (oauth-server.db/delete-revoked-refresh-tokens!)}))
 
-(task/defjob ^{:doc "Delete expired and revoked OAuth tokens and authorization codes."}
-  CleanupExpiredOAuthTokens [_]
+(task/defjob CleanupExpiredOAuthTokens
+  "Delete expired and revoked OAuth tokens and authorization codes."
+  {:saved-class "metabase.oauth_server.task.cleanup_expired_tokens.CleanupExpiredOAuthTokens"}
+  [_]
   (log/debug "Cleaning up expired/revoked OAuth tokens")
   (tracing/with-span :tasks "task.oauth-server.cleanup-expired-tokens.delete" {}
     (let [counts (cleanup-expired-tokens!)]

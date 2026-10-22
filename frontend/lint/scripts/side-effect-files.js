@@ -2,7 +2,14 @@
 // Without a flag it exits 1 when the registry has drifted, `--update` adds new files as unclassified and drops clean ones, and `--verbose` prints every finding.
 
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
+const {
+  Worker,
+  isMainThread,
+  parentPort,
+  workerData,
+} = require("worker_threads");
 
 const { Linter } = require("eslint");
 const micromatch = require("micromatch");
@@ -69,10 +76,10 @@ function listSourceFiles() {
     .sort();
 }
 
-function scanEffectFiles() {
+function scanFiles(files) {
   const linter = new Linter();
   const findings = new Map();
-  for (const file of listSourceFiles()) {
+  for (const file of files) {
     // The registry records what a file itself does at import, so its imports of other listed files don't count.
     const messages = linter
       .verify(readSource(file), LINTER_CONFIG, {
@@ -88,6 +95,46 @@ function scanEffectFiles() {
     }
   }
   return findings;
+}
+
+// Parsing every source file with the typescript-eslint parser is the whole cost
+// of this scan, and each file is independent, so the list is split across
+// workers. The workers load eslint through node's own require, which also skips
+// the transform a test runner would otherwise apply to it.
+const SCAN_WORKER_COUNT = Math.min(
+  8,
+  Math.max(1, os.availableParallelism() - 1),
+);
+const SCAN_TASK = "scanEffectFiles";
+
+async function scanEffectFiles() {
+  const files = listSourceFiles();
+  if (SCAN_WORKER_COUNT === 1) {
+    return scanFiles(files);
+  }
+
+  const chunks = Array.from({ length: SCAN_WORKER_COUNT }, () => []);
+  files.forEach((file, index) => {
+    chunks[index % SCAN_WORKER_COUNT].push(file);
+  });
+
+  const scanned = await Promise.all(
+    chunks.map(
+      (chunk) =>
+        new Promise((resolve, reject) => {
+          const worker = new Worker(__filename, {
+            workerData: { task: SCAN_TASK, files: chunk },
+          });
+          worker.on("message", resolve);
+          worker.on("error", reject);
+        }),
+    ),
+  );
+
+  // listSourceFiles is sorted and callers rely on that order for their reports.
+  return new Map(
+    scanned.flat().sort(([left], [right]) => (left < right ? -1 : 1)),
+  );
 }
 
 // Listed packages that no source file imports.
@@ -150,9 +197,9 @@ function updateRegistry(registryPath, { missing, stale }) {
 }
 
 /* eslint-disable no-console */
-function main(argv) {
+async function main(argv) {
   const started = Date.now();
-  const findings = scanEffectFiles();
+  const findings = await scanEffectFiles();
   const effectFiles = [...findings.keys()];
   const registry = loadRegistry(DEFAULT_REGISTRY_PATH);
   const diff = diffRegistry(registry, effectFiles);
@@ -207,6 +254,12 @@ module.exports = {
   unimportedPackages,
 };
 
-if (require.main === module) {
-  process.exit(main(process.argv.slice(2)));
+if (!isMainThread && workerData?.task === SCAN_TASK) {
+  parentPort.postMessage([...scanFiles(workerData.files)]);
+}
+
+// isMainThread matters: a worker's entry module is its own require.main, so
+// without it every worker would run main and spawn workers of its own.
+if (isMainThread && require.main === module) {
+  main(process.argv.slice(2)).then((code) => process.exit(code));
 }

@@ -24,6 +24,7 @@
 (defn- parse-http-headers [headers]
   (json/decode headers))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (defn ^:dynamic *fetch-as-json*
   "Fetches url and parses body as json, returning it."
   [url headers]
@@ -273,6 +274,7 @@
          (every? #(address-allowed-for-network-policy? policy %)
                  (host->inet-addresses hostname))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^DnsResolver ^:dynamic *system-dns-resolver*
   "The underlying system DNS resolver. Exposed as a dynamic var so tests can inject a fake
   host->address mapping"
@@ -294,6 +296,7 @@
             (throw (ex-info "Refusing to connect to a non-permitted network address"
                             {:ssrf true :policy policy :host host}))))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *proxy-selector*
   "The `ProxySelector` [[jvm-proxied-url?]] asks. nil reads `ProxySelector/getDefault` at call time, which is what
   Apache HttpClient's route planner does; tests bind it rather than installing a selector process-wide."

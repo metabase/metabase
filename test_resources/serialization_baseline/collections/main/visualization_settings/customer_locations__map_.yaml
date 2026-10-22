@@ -442,7 +442,6 @@ result_metadata:
   lib/source-column-alias: CREATED_AT
   qp/implicit-field?: true
 visualization_settings:
-  column_settings: null
   map.center_latitude: 39.5
   map.center_longitude: -98.35
   map.latitude_column: LATITUDE
@@ -452,8 +451,6 @@ visualization_settings:
   map.zoom: 4
 card_schema: 24
 serdes/meta:
-- id: CI61cHgBAKPBEDTxhK8X3
-  label: customer_locations__map_
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: question

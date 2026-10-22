@@ -195,7 +195,6 @@
                                  "card")
                       ;; Named for the wire, as the dirty-changes payload already does for `display`.
                       :display (some-> display name)}]))
-          ;; :card_schema is required alongside :type — selecting it runs Card's schema upgrades.
           (remote-sync.db/card-types ids))))
 
 (defn- describe-entities
@@ -235,7 +234,9 @@
                      top-level-ancestor-id
                      (get top-levels))]
     (cond
-      (= :library-synced (get-in (spec/spec-for-model-key (keyword "model" model)) [:eligibility :type]))
+      (let [spec (spec/spec-for-model-key (keyword "model" model))]
+        (or (= :library-synced (get-in spec [:eligibility :type]))
+            (spec/library-content? spec instance)))
       (if library
         {:type       :collection
          :collection (remedy-collection library)}
@@ -451,6 +452,10 @@
                                                            (remote-sync.db/collections sync-on)))
                                        (update :sync-off #(when-let [sync-off (seq %)]
                                                             (remote-sync.db/collections sync-off))))]
+    ;; a data app's collection is synced with its app, and a pull refuses its file once it says remote-synced
+    (when (some spec/data-apps-namespace-collection? sync-on)
+      (throw (ex-info (tru "A data app''s collection is synced with its app and can''t be marked as synced.")
+                      {:status-code 400})))
     (try
       (t2/with-transaction [_]
         (when (seq sync-on)

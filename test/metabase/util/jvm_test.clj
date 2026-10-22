@@ -6,6 +6,8 @@
    [clojure.test.check.properties :as prop]
    [metabase.util :as u]))
 
+(set! *warn-on-reflection* true)
+
 (deftest ^:parallel host-up?-test
   (testing "host-up?"
     (are [s expected] (= expected
@@ -15,6 +17,22 @@
   (testing "host-port-up?"
     (is (= false
            (u/host-port-up? "nosuchhost" 8005)))))
+
+(defn- exception-with-frames [& class-names]
+  (doto (Exception. "boom")
+    (.setStackTrace (into-array StackTraceElement
+                                (for [class-name class-names]
+                                  (StackTraceElement. class-name "invoke" "File.java" 1))))))
+
+(deftest ^:parallel filtered-stacktrace-test
+  (testing "a trace with a Metabase frame keeps the frames before it, marks it, and drops non-Metabase frames after it"
+    (is (= ["org.h2.Driver.invoke(File.java:1)"
+            "--> sync.fields.invoke(File.java:1)"]
+           (u/filtered-stacktrace (exception-with-frames "org.h2.Driver" "metabase.sync.fields" "clojure.core")))))
+  (testing "a trace with no Metabase frame has no nil entry, so it satisfies [:sequential :string] (GHY-3856)"
+    (is (= [] (u/filtered-stacktrace (exception-with-frames))))
+    (is (= ["org.h2.Driver.invoke(File.java:1)"]
+           (u/filtered-stacktrace (exception-with-frames "org.h2.Driver"))))))
 
 (deftest ^:parallel ip-address?-test
   (are [x expected] (= expected

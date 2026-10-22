@@ -10,6 +10,7 @@ import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
 import {
+  SIDESHEET_HORIZONTAL_PADDING,
   Sidesheet,
   SidesheetCard,
   SidesheetTabPanelContainer,
@@ -142,7 +143,7 @@ export function DashboardInfoSidebarInner({
             defaultValue={Tab.Overview}
             className={SidesheetS.FlexScrollContainer}
           >
-            <Tabs.List mx="xxl">
+            <Tabs.List mx={SIDESHEET_HORIZONTAL_PADDING}>
               <Tabs.Tab value={Tab.Overview}>{t`Overview`}</Tabs.Tab>
               {!isIADashboard && (
                 <Tabs.Tab value={Tab.History}>{t`History`}</Tabs.Tab>

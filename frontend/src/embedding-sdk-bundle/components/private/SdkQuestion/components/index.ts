@@ -6,6 +6,7 @@ export * from "./DownloadWidget";
 export * from "./Filter";
 export * from "./Editor";
 export * from "./EditorButton";
+export * from "./RefreshButton";
 export * from "./ResetButton";
 export * from "./SaveButton";
 export * from "./SdkSaveQuestionForm";

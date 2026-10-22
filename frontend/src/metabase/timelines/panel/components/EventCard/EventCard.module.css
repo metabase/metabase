@@ -1,0 +1,13 @@
+.root {
+  border-left: 0.25rem solid transparent;
+  cursor: pointer;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+
+  &.selected {
+    border-left-color: var(--mb-color-core-brand);
+    background-color: var(--mb-color-background_surface-hover);
+  }
+}

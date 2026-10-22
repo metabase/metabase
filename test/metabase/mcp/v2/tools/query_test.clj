@@ -972,7 +972,7 @@
 ;;; ------------------------------------------- QP input whitelist -------------------------------------------------
 
 ;;; GHY-4313: the QP only ever sees the keys MCP forwards
-;;; ([[metabase.mcp.v2.tools.query/query-passthrough-keys]]). A fresh `query` is additionally
+;;; ([[metabase.metabot.query-execution/query-passthrough-keys]]). A fresh `query` is additionally
 ;;; rejected outright by the closed `:metabase.lib.schema/query`, but the handle path skips that
 ;;; schema — `resolve-query-handle!` checks only that stages are non-empty and the last one has a
 ;;; positive limit, and `POST /drills` stores a caller-supplied query verbatim. So an unknown key

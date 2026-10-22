@@ -25,6 +25,7 @@
       (and (contains? changes :result) (not (contains? changes :analyzed_at)))
       (assoc :analyzed_at (mi/now)))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *current-analysis-finding-version*
   "Current version of the query validation logic.
   This should be incremented when the analysis logic changes.
@@ -75,10 +76,11 @@
   1000)
 
 (defn mark-stale!
-  "Mark entities of `entity-type` with ids in `entity-ids` and existing findings as stale for re-analysis.
-  Entities without existing findings are ignored - they'll be picked up by the normal job flow."
-  [entity-type entity-ids]
-  (doseq [batch (partition-all mark-stale-batch-size entity-ids)]
+  "Mark the existing findings of the entities in `type->ids`, `{entity-type ids}`, stale for re-analysis. Entities
+  without findings are ignored - they'll be picked up by the normal job flow."
+  [type->ids]
+  (doseq [[entity-type ids] type->ids
+          batch             (partition-all mark-stale-batch-size ids)]
     (dependencies.db/mark-findings-stale! entity-type batch)))
 
 (defn has-stale-entities?

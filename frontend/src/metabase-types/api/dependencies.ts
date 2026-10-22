@@ -3,7 +3,9 @@
 // enterprise/backend/src/metabase_enterprise/dependencies/api.clj
 // (See entity-select-fields map)
 
+import type { WritebackActionBase, WritebackActionType } from "./actions";
 import type { Card, CardType } from "./card";
+import type { Collection } from "./collection";
 import type { Dashboard } from "./dashboard";
 import type { Document } from "./document";
 import type { Measure } from "./measure";
@@ -26,6 +28,7 @@ export const DEPENDENCY_TYPES = [
   "sandbox",
   "segment",
   "measure",
+  "action",
 ] as const;
 export type DependencyType = (typeof DEPENDENCY_TYPES)[number];
 
@@ -41,6 +44,7 @@ export const DEPENDENCY_GROUP_TYPES = [
   "sandbox",
   "segment",
   "measure",
+  "action",
 ] as const;
 export type DependencyGroupType = (typeof DEPENDENCY_GROUP_TYPES)[number];
 
@@ -197,6 +201,26 @@ export type MeasureDependencyNode = BaseDependencyNode<
   MeasureDependencyNodeData
 >;
 
+export type ActionDependencyNodeData = Pick<
+  WritebackActionBase,
+  | "name"
+  | "description"
+  | "model_id"
+  | "parameters"
+  | "created_at"
+  | "creator_id"
+  | "creator"
+  | "collection_id"
+> & {
+  type: WritebackActionType;
+  collection?: Collection | null;
+};
+
+export type ActionDependencyNode = BaseDependencyNode<
+  "action",
+  ActionDependencyNodeData
+>;
+
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
@@ -206,7 +230,8 @@ export type DependencyNode =
   | DocumentDependencyNode
   | SandboxDependencyNode
   | SegmentDependencyNode
-  | MeasureDependencyNode;
+  | MeasureDependencyNode
+  | ActionDependencyNode;
 
 export type AnalysisFindingErrorId = number;
 

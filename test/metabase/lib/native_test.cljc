@@ -880,6 +880,28 @@
                query
                {"#133-bh-population-model" "#1206-bh-population-model"}))))))
 
+(deftest ^:parallel rename-template-tags-test
+  (testing "a tag map and its text are renamed the way a query's native stage is"
+    (let [renames {"#133-bh-population-model" "#1206-bh-population-model"}]
+      (is (= "select * from {{#1206-bh-population-model}} where {{ state }}"
+             (lib.native/rename-template-tags-in-text
+              "select * from {{ #133-bh-population-model }} where {{ state }}" renames)))
+      (is (=? {"#1206-bh-population-model" {:name         "#1206-bh-population-model"
+                                            :display-name "#1206 Bh Population Model"
+                                            :card-id      1206}
+               "state"                     {:name "state" :display-name "State"}}
+              (lib.native/rename-template-tags
+               {"#133-bh-population-model" {:type         :card
+                                            :name         "#133-bh-population-model"
+                                            :display-name "#133 Bh Population Model"
+                                            :id           "5ebf6c2e-d6e2-449e-97b7-7005047928e5"
+                                            :card-id      1206}
+                "state"                    {:type         :text
+                                            :name         "state"
+                                            :display-name "State"
+                                            :id           "6ebf6c2e-d6e2-449e-97b7-7005047928e5"}}
+               renames))))))
+
 (deftest ^:parallel replace-template-tag-names-noop-test
   (let [query (card-tag-query "select * from {{#133-some-old-slug}}"
                               {:type         :card

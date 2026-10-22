@@ -1,0 +1,8 @@
+.link {
+  color: var(--mb-color-core-filter);
+  transition: color 200ms;
+
+  &:hover {
+    color: var(--mb-color-accent7-light);
+  }
+}

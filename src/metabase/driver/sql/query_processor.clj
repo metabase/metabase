@@ -51,6 +51,7 @@
 
 ;; TODO (Cam 2026-08-11) "Inner query" is MBQL 4 terminology, since we're using MBQL 5 now, rename this to `stage` and
 ;; rename all the `inner-query` function args & local variables to `stage` as well
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *inner-query*
   "The INNER query currently being processed, for situations where we need to refer back to it."
   nil)
@@ -1860,6 +1861,7 @@
     (select-keys (driver-api/field (driver-api/metadata-provider) field-id)
                  [:effective-type])))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parent-honeysql-col-type-info*
   "To be bound in `->honeysql <driver> <op>` where op is on of {:>, :>=, :<, :<=, :=, :between}`. It carries the
   compiled LHS's full HoneySQL type-info (see [[metabase.util.honey-sql-2/type-info]]) merged with `:base-type` and
@@ -2202,6 +2204,18 @@
        (remove (partial = :source-query)))
       (apply-top-level-clauses driver honeysql-form inner-query))))
 
+(defmulti apply-cte-hoist?
+  "True iff a UNION ALL pivot compiled for `driver` should hoist the shared pre-pivot subquery into a
+  `WITH` binding that every branch references by alias, rather than inlining it once per branch. On
+  by default; drivers whose planner doesn't support the resulting shape override to false."
+  {:added "0.64.0", :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod apply-cte-hoist? :sql
+  [_driver]
+  true)
+
 (defmulti preprocess
   "Do miscellaneous transformations to the MBQL before compiling the query. These changes are idempotent, so it is safe
   to use this function in your own implementations of [[driver/mbql->native]], if you want to apply changes to the
@@ -2213,9 +2227,14 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod preprocess :sql
-  [_driver mbql5-query]
+  [driver mbql5-query]
+  ;; Nest a pivot stage's joins into a prior stage only for drivers that opt into the UA CTE hoist —
+  ;; the nesting exists so [[metabase.driver.sql.pivot/compile-union-all-pivot]] can lift the shared
+  ;; subquery into a `WITH` binding. Drivers that don't hoist would just carry an unnecessary
+  ;; subquery layer on their GS / multi-query paths.
   (-> mbql5-query
       driver-api/nest-breakouts-in-stages-with-window-aggregation
+      (cond-> (apply-cte-hoist? driver) driver-api/nest-pivot-joins)
       driver-api/nest-expressions
       driver-api/add-alias-info
       :stages))
@@ -2288,45 +2307,84 @@
     [nil nil]
     stages)))
 
-(defn- stage-cte-name [stage-idx]
-  (str "__mb_stage_" stage-idx))
+(def ^:private stage-cte-prefix "__mb_stage_")
+
+(defn- stage-cte-name
+  "Name of the CTE for the current nesting level and stage, e.g.
+   WITH
+   __mb_stage_0 AS (
+       WITH
+       __mb_stage_0_1 AS (...)
+       __mb_stage_1_1 AS (...)
+   )
+   __mb_stage_1 AS (...)"
+  [level stage-idx]
+  (cond-> (str stage-cte-prefix stage-idx)
+    (pos? level) (str "_" level)))
 
 (defn- cte-stage-source-form
   "The CTE is aliased as `__mb_source` so field refs can compile the same as with nested subselects."
-  [driver prev-stage-idx]
-  {:from [[(->honeysql driver (h2x/identifier :table-alias (stage-cte-name prev-stage-idx)))
+  [driver level prev-stage-idx]
+  {:from [[(->honeysql driver (h2x/identifier :table-alias (stage-cte-name level prev-stage-idx)))
            [(->honeysql driver (h2x/identifier :table-alias source-query-alias))]]]})
 
 (defn- stage-cte
-  "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" beocomes\"__mb_stage_N AS (SELECT a FROM t)\".
+  "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" becomes \"__mb_stage_N AS (SELECT a FROM t)\".
   Applies the fix for duplicate column names similar to `stage-source-form`."
-  [stage-idx hsql stage]
-  (let [cte-name         (stage-cte-name stage-idx)
+  [level stage-idx hsql stage]
+  (let [cte-name         (stage-cte-name level stage-idx)
         columns-metadata (get-in stage [:lib/stage-metadata :columns])]
     (if (needs-cte-for-duplicate-cols? columns-metadata)
       [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
       [cte-name hsql])))
 
 (defn- stages->honeysql-ctes
-  "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from."
-  [driver stages]
+  "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from.
+   `level` is the CTE nesting level, it is added to each stage so that [[join-source]] can nest the joins properly"
+  [driver stages level]
   (let [stages   (vec stages)
         last-idx (dec (count stages))
-        cte-body  (fn [idx]
-                    (let [prev-from (if (zero? idx) {} (cte-stage-source-form driver (dec idx)))]
-                      (stage->honeysql driver prev-from (stages idx))))
-        ctes     (mapv #(stage-cte % (cte-body %) (stages %)) (range last-idx))]
+        cte-body (fn [idx]
+                   (let [prev-from (if (zero? idx) {} (cte-stage-source-form driver level (dec idx)))]
+                     (stage->honeysql driver prev-from (stages idx))))
+        ctes     (mapv #(stage-cte level % (cte-body %) (stages %)) (range last-idx))]
     (update (cte-body last-idx) :with #(into ctes %))))
 
-(defn- stages->honeysql [driver stages]
-  (if (and (use-ctes-for-stages? driver)
-           (> (count stages) 1))
-    (stages->honeysql-ctes driver stages)
-    (stages->honeysql-subselects driver stages)))
+(defn- stages->honeysql [driver stages level]
+  (let [stages (mapv #(assoc % ::cte-level level) stages)]
+    (if (and (use-ctes-for-stages? driver)
+             (> (count stages) 1))
+      (stages->honeysql-ctes driver stages level)
+      (stages->honeysql-subselects driver stages))))
 
 (defmethod join-source :sql
   [driver {:keys [stages]}]
-  (stages->honeysql driver stages))
+  (stages->honeysql driver stages (inc (::cte-level *inner-query* 0))))
+
+(defn- all-stages
+  "`stages` together with the stages of every join in them"
+  [stages]
+  (mapcat (fn [stage]
+            (cons stage (mapcat (comp all-stages :stages) (:joins stage))))
+          stages))
+
+(defn- native-sql-cte-level
+  [stage]
+  (let [sql (or (:persisted-info/native stage)
+                (when (= (:lib/type stage) :mbql.stage/native)
+                  (:native stage)))]
+    (when (string? sql)
+      (when-let [levels (seq (for [[_ level] (re-seq (re-pattern (str stage-cte-prefix #"\d+(?:_(\d+))?")) sql)]
+                               (if level (parse-long level) 0)))]
+        (apply max levels)))))
+
+(defn- top-level-cte-level
+  "The CTE nesting level for the top-level stages of query. Normally 0, but we check if there are any CTEs
+   inside the native SQL of any stage in the query, and set it to one above that to avoid name collisions."
+  [stages]
+  (if-let [levels (seq (keep native-sql-cte-level (all-stages stages)))]
+    (inc (apply max levels))
+    0))
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
@@ -2336,7 +2394,7 @@
     (binding [driver/*driver* driver]
       (let [stages (preprocess driver query)]
         (log/trace "Compiling MBQL query")
-        (u/prog1 (stages->honeysql driver stages)
+        (u/prog1 (stages->honeysql driver stages (top-level-cte-level stages))
           (log/debug "Compiled HoneySQL form")
           (driver-api/debug> (list '🍯 <>)))))
     (let [metadata-provider (driver-api/metadata-provider)

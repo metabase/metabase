@@ -3,7 +3,8 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.api-scope.core :as api-scope]
    [metabase.metabot.agent.profiles]
-   [metabase.metabot.scope :as scope]))
+   [metabase.metabot.scope :as scope]
+   [metabase.test :as mt]))
 
 (deftest ^:parallel scope-matches?-test
   (testing "exact match"
@@ -250,3 +251,27 @@
     (testing "tool without scope passes validation"
       (let [v (make-tool-var! 'test-legacy-tool {:tool-name "legacy" :schema [:=> [:cat :map] :map]})]
         (is (true? (validate! v)))))))
+
+(deftest sql-execution-allowed?-test
+  (let [nlq-only {:permission/metabot                :yes
+                  :permission/metabot-sql-generation :no
+                  :permission/metabot-nlq            :yes
+                  :permission/metabot-other-tools    :no}
+        allowed? (fn [perms granted-scopes]
+                   (binding [scope/*current-user-metabot-permissions* perms
+                             scope/*current-user-scope*               granted-scopes]
+                     (scope/sql-execution-allowed?)))]
+    (mt/with-temporary-setting-values [metabot-sql-execution-enabled? true]
+      (testing "SQL generation permission grants it, through the agent:sql:run scope that permission maps to"
+        (is (true? (allowed? scope/all-yes-permissions (scope/user-metabot-perms->scopes scope/all-yes-permissions)))))
+      (testing "NLQ alone grants agent:query:run but not SQL execution"
+        (is (false? (allowed? nlq-only (scope/user-metabot-perms->scopes nlq-only)))))
+      (testing "the SQL generation permission is required even when the scope is unrestricted"
+        (is (false? (allowed? nlq-only api-scope/unrestricted))))
+      (testing "agent:sql:run is required even with the SQL generation permission"
+        (is (false? (allowed? scope/all-yes-permissions (scope/user-metabot-perms->scopes nlq-only)))))
+      (testing "unbound permissions fall back to the defaults, which deny it"
+        (is (false? (allowed? nil api-scope/unrestricted)))))
+    (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
+      (testing "the admin setting is required"
+        (is (false? (allowed? scope/all-yes-permissions api-scope/unrestricted)))))))

@@ -5,11 +5,11 @@
    [[metabase.api-routes.routes]] and the resource-metadata endpoints in
    [[metabase.oauth-server.api.metadata]] — and for the scope sets the v2 surface accepts and advertises.
 
-   A leaf namespace, with NO requires, so both the handler and the OAuth server can read it without a
-   dependency cycle. That is load-bearing rather than tidy: `metabase.server.middleware.security` requires
-   `metabase.mcp.core`, so anything `mcp.core` reaches becomes part of the security middleware's load path —
-   pulling `metabot.scope` (and through it `premium-features`) in that way deadlocks namespace loading with a
-   methodical protocol error at web-server start. Keep this namespace dependency-free.")
+   A leaf namespace with no requires, so the handler and OAuth server can read it without a dependency cycle.
+   Anything `metabase.mcp.core` reaches joins the load path of every namespace that loads it.
+   Pulling `metabot.scope`, and through it `premium-features`, onto that path has deadlocked namespace loading
+   with a methodical protocol error at web-server start.
+   Keep this namespace dependency-free.")
 
 (set! *warn-on-reflection* true)
 
@@ -53,20 +53,19 @@
 
    Spelled as literals rather than read from `metabot.scope` because requiring that namespace here would close
    the load cycle described above; `v2-surface-scopes-match-metabot-scope-test` is what keeps them in step.
-   Scopes are never renamed — issued tokens carry literal strings — so this only ever grows."
+   Scopes are never renamed — issued tokens carry literal strings."
   ["agent:content:read"
    "agent:content:write"
    "agent:query:run"
    "agent:sql:run"
-   "agent:delivery:write"
-   "agent:resource:read"])
+   "agent:delivery:write"])
 
 (def v2-baseline-scopes
-  "The subset of [[v2-surface-scopes]], in its order, that an MCP client is told to request when it first connects:
-   reading and running queries."
-  ;; A client reaches the rest of the surface (writes, raw SQL, delivery) by stepping up on a 403 `insufficient_scope`.
-  ;; `agent:query:run` is here because charts must not need a step-up: Claude Desktop retries a tool after step-up
-  ;; over a session that declares no MCP Apps support, so a stepped-up `visualize_query` is refused and never embeds.
+  "The subset of [[v2-surface-scopes]], in its order, that the consent page locks: when a client requests one of
+   these, the user cannot untick it. Reading and running queries. Every other requested scope can be unticked."
+  ;; A user who unticks the rest (writes, raw SQL, delivery) reaches it later by stepping up on a 403
+  ;; `insufficient_scope`. `agent:query:run` is here because charts must not need a step-up: Claude Desktop retries a
+  ;; tool after step-up over a session that declares no MCP Apps support, so a stepped-up `visualize_query` is refused
+  ;; and never embeds.
   ["agent:content:read"
-   "agent:query:run"
-   "agent:resource:read"])
+   "agent:query:run"])

@@ -31,6 +31,7 @@
    [metabase.app-db.quartz]
    [metabase.app-db.setting :as mdb.setting]
    [metabase.config.core :as config]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.honey-sql-2 :as h2x]
@@ -1173,6 +1174,7 @@
   []
   (nil? (t2/query-one {:select [:*] :from :metabase_database})))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *create-sample-content*
   "If true, we create sample content in the `CreateSampleContent` migration. This is bound to false sometimes in
    load-from-h2, during serialization load, and in some tests because the sample content makes tests slow enough to
@@ -2260,12 +2262,11 @@
                  :set    {:value_with_aad (encryption/maybe-encrypt plain {:aad (mdb.setting/setting-aad "example-dashboard-id")})}
                  :where  [:= :key "example-dashboard-id"]}))))
 
-;;; MCP v1 retirement (GHY-4343): `/api/metabase-mcp` now serves the v2 tool surface, which gates every
-;;; tool on one of six coarse scopes. Clients connected to v0.60–v0.63 hold OAuth tokens carrying the
-;;; per-entity agent scopes instead, and no legacy scope satisfies any v2 scope, so `list-tools` (which,
-;;; when this migration was written, filtered by scope) filtered the whole surface away: HTTP 200, an
-;;; empty tools list, nothing logged. It does not self-heal — the refresh grant copies the original scope
-;;; forward and can only narrow — so a refreshing client stays in the zero-tools state indefinitely.
+;;; MCP v1 retirement: `/api/metabase-mcp` serves the v2 tool surface, which gates every tool on one of six
+;;; coarse scopes. Clients connected to v0.60–v0.63 hold OAuth tokens carrying the per-entity agent scopes
+;;; instead, and no legacy scope satisfies any v2 scope. A call short of scope gets a 403 `insufficient_scope`
+;;; challenge that names the v2 scopes, so the client re-authorizes; that re-authorization only validates if
+;;; the client's registered scope snapshot includes the v2 scopes.
 ;;;
 ;;; The scope strings are literals rather than a read of `metabase.mcp.paths/v2-surface-scopes`: a
 ;;; migration's behaviour must be frozen against later edits to that vector.
@@ -2277,20 +2278,6 @@
    "agent:sql:run"
    "agent:delivery:write"
    "agent:resource:read"])
-
-;; `agent:resource:read` is excluded: it gates only a resource, so a token holding it alone still
-;; resolves zero *tools*, which is the state this migration exists to end.
-(def ^:private ^:no-doc mcp-v2-tool-scopes
-  (set (remove #{"agent:resource:read"} mcp-v2-scopes)))
-
-(defn- legacy-mcp-scopes?
-  "True when `scopes` looks like a token minted against the pre-v2 scope set: it satisfies no v2 tool
-   and carries at least one scope outside the six. The second half is what keeps this off tokens that
-   are already v2-shaped (or empty), so re-running the migration revokes nothing new."
-  [scopes]
-  (let [scopes (set (filter string? scopes))]
-    (and (not (some mcp-v2-tool-scopes scopes))
-         (boolean (some (complement (set mcp-v2-scopes)) scopes)))))
 
 (defn- json-array-out
   "Parse a JSON-array column into a vector, tolerating a row that is already a collection. Returns nil
@@ -2304,7 +2291,7 @@
       (vec parsed))))
 
 (define-migration WidenDynamicOAuthClientScopesForMcpV2
-  ;; Step 1 of 2 — raise the ceiling. Dynamically registered clients snapshot the scope set that
+  ;; Raise the ceiling. Dynamically registered clients snapshot the scope set that
   ;; existed when they registered, and `validate-scope` rejects any requested scope absent from that
   ;; snapshot. Without this a user who re-authorizes is answered `400 invalid_request`, rendered raw
   ;; in the browser tab, because `/oauth/authorize` validates before narrowing. Widening the snapshot
@@ -2321,17 +2308,50 @@
                              :where  [:= :registration_type "dynamic"]})))
 
 (define-migration RevokeLegacyMcpOAuthTokens
-  ;; Step 2 of 2 — force one re-authentication. Both tables must be stamped: leaving the refresh token
-  ;; alive means the client silently refreshes into another legacy-scoped access token instead of
-  ;; re-authenticating. Once both are revoked the next request gets the existing `invalid_token` 401
-  ;; with the discovery challenge — the RFC 6750 path every MCP client already handles.
-  (doseq [table [:oauth_access_token :oauth_refresh_token]]
-    (run! (fn [{:keys [id scope]}]
-            (when (some-> (json-array-out scope) legacy-mcp-scopes?)
-              (t2/query {:update table
-                         :set    {:revoked_at :%now}
-                         :where  [:= :id id]})))
-          ;; Already-revoked rows are skipped, which is also what makes this safe to re-run.
-          (t2/reducible-query {:select [:id :scope]
-                               :from   [table]
-                               :where  [:= :revoked_at nil]}))))
+  ;; Kept as a no-op. Legacy-scoped clients re-authorize on their own through the 403 step-up, and
+  ;; revoking their tokens would instead force them through the refresh-failure path. The changeset
+  ;; stays so that instances which already ran it can still roll back past it.
+  nil)
+
+(define-migration MoveDataAppResourceCollectionsToTheirNamespace
+  ;; Every data app owns a resource collection, a root collection of the `data-apps` namespace, from its insert
+  ;; on (see `metabase-enterprise.data-apps.models.data-app`). Collections created before the namespace existed sit
+  ;; in the default namespace; an app whose collection was deleted has none. Both are brought to the invariant here.
+  (t2/query {:update :collection
+             :set    {:namespace "data-apps"}
+             :where  [:exists ^:allow-subquery {:select [1]
+                                                :from   [:data_app]
+                                                :where  [:= :data_app.resource_collection_id :collection.id]}]})
+  (run! (fn [{:keys [id name]}]
+          (let [collection-name (str "Data App: " name)
+                ;; slugified as the Collection model does (`collection-slug-max-length`), so a later rename changes nothing
+                collection-id   (t2/insert-returning-pk! :collection {:name       collection-name
+                                                                      :slug       (u/slugify collection-name {:max-length 510})
+                                                                      :location   "/"
+                                                                      :namespace  "data-apps"
+                                                                      :entity_id  (u/generate-nano-id)
+                                                                      :created_at :%now})]
+            (t2/query {:update :data_app
+                       :set    {:resource_collection_id collection-id}
+                       :where  [:= :id id]})))
+        (t2/reducible-query {:select [:id :name]
+                             :from   [:data_app]
+                             :where  [:= :resource_collection_id nil]})))
+
+(define-migration DeleteDataAppDrafts
+  ;; A draft reserved a data app's slug and resources before the app existed, for the SDK's query sync, which is
+  ;; gone. A draft has no bundle and can never be served, so the row goes, with the permission group made for it,
+  ;; as deleting an app deletes both. Its collection goes too when nothing was put in it; one that holds content
+  ;; stays for an admin to look at.
+  (doseq [{:keys [id resource_collection_id permission_group_id]} (t2/select :data_app :draft true)]
+    (t2/query {:delete-from :data_app :where [:= :id id]})
+    (when permission_group_id
+      (t2/query {:delete-from :permissions_group :where [:= :id permission_group_id]}))
+    (when resource_collection_id
+      (let [in-collection (fn [table] (t2/exists? table :collection_id resource_collection_id))
+            location      (str "/" resource_collection_id "/")]
+        (when-not (or (some in-collection [:report_card :action :report_dashboard :document :timeline :pulse
+                                           :native_query_snippet :metabase_table :transform])
+                      (t2/exists? :collection :location [:like (str location "%")]))
+          (t2/query {:delete-from :permissions :where [:= :collection_id resource_collection_id]})
+          (t2/query {:delete-from :collection :where [:= :id resource_collection_id]}))))))

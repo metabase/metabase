@@ -14,12 +14,12 @@ export const CommentsButton = <C extends ElementType = "button">({
   active,
   ...props
 }: Props<C>) => {
-  // TODO: replace with ActionIcon (GDGT-2457)
   return (
     <Button
       aria-label={t`Comments`}
-      variant={active ? "filled" : "transparent"}
-      size={active ? "sm" : "compact-md"}
+      variant={active ? "filled" : "subtle"}
+      color={active ? undefined : "neutral"}
+      size="sm"
       leftSection={
         <Icon
           name={unresolvedCommentsCount > 0 ? "comment" : "add_comment"}

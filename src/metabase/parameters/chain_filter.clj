@@ -124,6 +124,7 @@
    [:lhs ::table-field-endpoint]
    [:rhs ::table-field-endpoint]])
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enable-reverse-joins*
   "Whether to chain filter via joins where we must follow relationships in reverse, e.g. child -> parent (e.g.
   Restaurant -> Category instead of the usual Category -> Restaurant*)
@@ -550,6 +551,7 @@
               (get v->human-readable v (get v->human-readable (str v))))
             values)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-implicit-uuid-field-remapping*
   "Should implicit remapping be allowed _for uuid fields_? Not eg. for
   `GET /dashboard/:id/params/:param-key/search/:query` to search on actual field that was picked

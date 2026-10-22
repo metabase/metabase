@@ -6,8 +6,9 @@ import {
 import { version as reactVersion } from "react";
 
 import type { SdkStoreState } from "embedding-sdk-bundle/store/types";
-import { isEmbedPreviewRequest } from "metabase/embedding/lib/auth/set-embed-preview-header";
+import { ANALYTICS_PROXY_PATH } from "embedding-sdk-shared/constants/analytics";
 import { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
+import { isEmbedPreviewRequest } from "metabase/embedding/lib/auth/set-embed-preview-header";
 import { getSettings } from "metabase/settings";
 import { trackMetaplowEvent } from "metabase/utils/metaplow";
 import type { SimpleEventSchema } from "metabase-types/analytics/event";
@@ -85,7 +86,7 @@ export function initSdkTracker({
     // the SDK tracker is new, so there's no legacy format to preserve.
     encodeBase64: false,
     // Deliver through the instance proxy, not the collector's tp2 path.
-    postPath: "/api/analytics-proxy",
+    postPath: ANALYTICS_PROXY_PATH,
     // No cookies / localStorage: the SDK must not touch the host page's storage.
     stateStorageStrategy: "none",
     // v4 defaults this to true, and the test-cookie probe ignores stateStorageStrategy.

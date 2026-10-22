@@ -83,7 +83,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
   }, [prompt, submitInput, goToPlanPage]);
 
   return (
-    <Stack h="100%" bg="background-primary" align="center" p="2rem">
+    <Stack h="100%" align="center" p="2rem" className={S.page}>
       <Stack w="100%" maw="42rem" align="flex-start" gap="xl" mih={0}>
         {hasNlqAccess && (
           <Button
@@ -102,7 +102,7 @@ export function NewExplorationEntry({ selection }: NewExplorationEntryProps) {
         </Text>
         <Paper
           w="100%"
-          bd="1px solid border"
+          bd="1px solid border-neutral"
           bdrs="0.75rem"
           p="0.5rem 1rem 1rem"
           className={S.inputContainer}
@@ -206,10 +206,10 @@ function Banner() {
       justify="space-between"
       align="center"
       gap="xl"
-      bg="background-brand"
+      bg="background_surface-brand-subtle"
       px="xl"
       py="lg"
-      bd="1px solid border"
+      bd="1px solid border-neutral"
       bdrs="sm"
       data-testid="research-mode-banner"
     >
@@ -217,6 +217,7 @@ function Banner() {
         {t`Research mode helps automate running and inspecting combinations of metrics, dimensions, and event timelines so you can use your brain for analysis, not busy work.`}
       </Text>
       <ActionIcon
+        variant="subtle"
         onClick={() => setHasDismissedBanner(true)}
         aria-label={t`Dismiss`}
       >

@@ -17,6 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *card-id*
   "ID of the Card currently being executed, if there is one. Bind this in a Card-execution so we will use
   Card [Collection] perms checking rather than ad-hoc perms checking."
@@ -54,6 +55,7 @@
             (throw-inactive-table-error (lib.metadata.protocols/database (qp.store/metadata-provider))
                                         table)))))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *param-values-query*
   "Used to allow users looking at a dashboard to view (possibly chained) filters."
   false)
@@ -178,8 +180,10 @@
   [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
-   (= (perms/full-database-permission-for-user *current-user-id* :perms/create-queries database-id)
-      :query-builder-and-native)))
+   (and (= (perms/full-database-permission-for-user *current-user-id* :perms/create-queries database-id)
+           :query-builder-and-native)
+        ;; the compiled SQL of a sandboxed user's query exposes the sandbox definition
+        (not (perms/sandboxed-user-for-db? database-id)))))
 
 (defn check-current-user-has-adhoc-native-query-perms
   "Check that the current user (if bound) has adhoc native query permissions to run `query`, or throw an

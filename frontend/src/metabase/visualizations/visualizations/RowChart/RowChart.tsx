@@ -17,6 +17,7 @@ import {
 import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
 import {
   type BarData,
+  type ChartGoal,
   type GroupedDatum,
   type HoveredData,
   type RemappingHydratedChartData,
@@ -80,6 +81,7 @@ const RowChartVisualization = ({
   actionButtons,
   isFullscreen,
   isQueryBuilder,
+  isVisualizer,
   isDashboard,
   onRender,
   onHoverChange,
@@ -180,6 +182,24 @@ const RowChartVisualization = ({
     });
   };
 
+  const handleGoalHover = (event: React.MouseEvent, goal: ChartGoal | null) => {
+    if (goal == null) {
+      onHoverChange?.(null);
+      return;
+    }
+
+    onHoverChange?.({
+      element: event.currentTarget,
+      data: [
+        {
+          col: null,
+          key: goal.label,
+          value: tickFormatters.xTickFormatter(goal.value),
+        },
+      ],
+    });
+  };
+
   const openQuestion = () => {
     if (onChangeCardAndRun) {
       onChangeCardAndRun({
@@ -253,8 +273,7 @@ const RowChartVisualization = ({
       });
   }, [fontFamily]);
 
-  const hasBreakout =
-    settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
+  const hasBreakout = (settings["graph.dimensions"]?.length ?? 0) > 1;
   const hasLegend = !hideLegend && (series.length > 1 || hasBreakout);
 
   return (
@@ -277,12 +296,15 @@ const RowChartVisualization = ({
           width={outerWidth}
           height={outerHeight}
           hasLegend={hasLegend}
+          alwaysVisible={isVisualizer}
           items={legendItems}
           actionButtons={!hasTitle ? actionButtons : undefined}
           hovered={hovered}
           onHoverChange={onHoverChange}
           isFullscreen={isFullscreen}
           isQueryBuilder={isQueryBuilder}
+          fontFamily={fontFamily}
+          measureText={textMeasurer}
           onSelectSeries={handleSelectSeries}
         >
           <RowChartRenderer
@@ -300,6 +322,7 @@ const RowChartVisualization = ({
             hoveredData={hoverData}
             onClick={handleClick}
             onHover={handleHover}
+            onGoalHover={handleGoalHover}
             xLabel={xLabel}
             yLabel={yLabel}
             xScaleType={settings["graph.y_axis.scale"]}

@@ -4,6 +4,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
+   [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
@@ -176,16 +177,10 @@
       (metabot.tools.u/handle-agent-error e))))
 
 (def ^:private model-chart-schema
-  "Schema for `document_construct_model_chart`. Mirrors `construct_notebook_query`'s
-  representations format: `:query` is a YAML string in MBQL 5 representations format.
-
-  Per `repr-plan.md` step 13, `:source_entity` is no longer part of the contract — the YAML
-  query is self-describing (carries `database:` at the top level and full portable FK paths
-  everywhere else)."
   [:map {:closed true}
    [:name :string]
    [:description :string]
-   [:query :string]
+   [:query construct-tools/LLMQueryArgument]
    [:viz_settings [:map {:closed true}
                    [:chart_type chart-type-enum]]]])
 
@@ -196,9 +191,15 @@
   [{:keys [name description query viz_settings]} :- model-chart-schema]
   (try
     (let [chart-type (get viz_settings :chart_type)
-          result     (construct-tools/construct-notebook-query-tool
-                      {:query query
-                       :visualization {:chart_type chart-type}})
+          ;; `construct_notebook_query` is a record now, so this is a protocol call rather than a
+          ;; function call. The nil ctx is what construct's `handle` already ignores; this tool is
+          ;; still the old shape and has none to pass on.
+          result     (tools/call construct-tools/construct-notebook-query-tool
+                                 {:query query
+                                  :title name
+                                  :description description
+                                  :visualization {:chart_type chart-type}}
+                                 nil)
           structured (or (:structured-output result) (:structured_output result))
           query-id   (:query-id structured)
           dataset-query (:query structured)]

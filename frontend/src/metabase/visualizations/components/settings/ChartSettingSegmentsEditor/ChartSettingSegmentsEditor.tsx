@@ -24,7 +24,6 @@ import {
 import type { GoalSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
-import { ICON_BUTTON_SIZE } from "../constants";
 
 import { SegmentBoundInput } from "./SegmentBoundInput";
 
@@ -74,7 +73,8 @@ export const ChartSettingSegmentsEditor = ({
                     <Tooltip label={t`Remove range`}>
                       <ActionIcon
                         aria-label={t`Remove range ${index + 1}`}
-                        size={ICON_BUTTON_SIZE}
+                        size="sm"
+                        variant="subtle"
                         onClick={() => {
                           const newSegments = segments.filter(
                             (_v, segmentIndex) => segmentIndex !== index,

@@ -18,6 +18,7 @@
 
 .Content {
   overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
   flex: 1;
   display: flex;
   justify-content: center;

@@ -101,6 +101,7 @@
             (i18n/tru "type-of {0} returned an invalid type {1}" (pr-str expr) (pr-str expr-type)))
     (is-type? expr-type base-type)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *suppress-expression-type-check?*
   "Set this `true` to skip any type checks for expressions. This is useful while constructing expressions in Lib with
   full metadata, but it breaks during legacy conversion in some cases.

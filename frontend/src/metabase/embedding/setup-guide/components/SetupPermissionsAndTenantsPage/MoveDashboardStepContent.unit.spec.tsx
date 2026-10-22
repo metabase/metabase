@@ -99,7 +99,10 @@ describe("MoveDashboardStepContent", () => {
 
     const { onCompleted } = setup({ hasXrayDashboard: true });
 
-    const moveButton = await screen.findByText("Move to shared collection");
+    const moveButton = await screen.findByRole("button", {
+      name: "Move to shared collection",
+    });
+    await waitFor(() => expect(moveButton).toBeEnabled());
     await userEvent.click(moveButton);
 
     await waitFor(() => {
@@ -138,7 +141,10 @@ describe("MoveDashboardStepContent", () => {
 
     const { onCompleted } = setup({ hasXrayDashboard: false });
 
-    const createButton = await screen.findByText("Create a sample dashboard");
+    const createButton = await screen.findByRole("button", {
+      name: "Create a sample dashboard",
+    });
+    await waitFor(() => expect(createButton).toBeEnabled());
     await userEvent.click(createButton);
 
     await waitFor(() => {

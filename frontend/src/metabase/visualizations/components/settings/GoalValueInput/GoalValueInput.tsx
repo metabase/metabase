@@ -36,8 +36,6 @@ import {
   isGoalSelfColumnRef,
 } from "metabase-types/guards";
 
-import { ICON_BUTTON_SIZE } from "../constants";
-
 import { GoalColumnMenuItem } from "./GoalColumnMenuItem";
 import { GoalEntityPickers } from "./GoalEntityPickers";
 import S from "./GoalValueInput.module.css";
@@ -305,7 +303,8 @@ export const GoalValueInput = ({
                       aria-label={t`Pick a dynamic value`}
                       className={S.trigger}
                       data-open={isMenuOpen || isEntityPickerOpen}
-                      size={ICON_BUTTON_SIZE}
+                      size="sm"
+                      variant="subtle"
                       onClick={openMenuFromTrigger}
                     >
                       <Icon name="hexagon" />
@@ -420,7 +419,7 @@ export const GoalValueInput = ({
       />
 
       {resolved.error != null && (
-        <Text c="error" fz="sm" mt="xs">
+        <Text c="feedback-negative" fz="sm" mt="xs">
           {getGoalErrorMessage(resolved.error, sourceInfo.kind)}
         </Text>
       )}

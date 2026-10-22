@@ -199,14 +199,17 @@
   \"service unavailable\" (HTTP 503) error instead of joining the queue. Raise it to tolerate deeper bursts; set it to
   `0` to allow an unbounded queue.")
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *query-timeout-ms*
   "Maximum amount of time query is allowed to run, in ms."
   (u/minutes->ms (db-query-timeout-minutes)))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *network-timeout-ms*
   "Maximum amount of time to wait for a response from the database, in ms."
   (jdbc-network-timeout-ms))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-testing-h2-connections*
   "Whether to allow testing new H2 connections. Normally this is disabled, which effectively means you cannot create new
   H2 databases from the API, but this flag is here to disable that behavior for syncing existing databases, or when
@@ -217,15 +220,37 @@
   (or (config/config-bool :mb-dangerous-unsafe-enable-testing-h2-connections-do-not-enable)
       false))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *impersonation-allow-write?*
   "Whether write-back operations are permitted while connection impersonation is active. Normally `false`."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *allow-testing-sqlite-connections*
   "Whether to allow testing new SQLite connections. Normally disabled on hosted Metabase, which effectively prevents
   users from creating new SQLite databases from the API. Internal flows that need to test connections to the bundled
   Sample Database (sync, schema refresh, fingerprinting, etc.) bind this to `true`."
   false)
+
+(def ^:private sqlite-sample-database-path
+  "The exact `:db` path string of the bundled Sample Database, registered by the sample-data module when it extracts
+  the file, or nil before then. On a hosted instance, SQLite may open no other file; on self-hosted, this one is exempt
+  from the `readable-paths` and `writable-paths` allowlists. Exact-string match is enough: a stored Database row
+  carries the registered string verbatim, so a match can only name the Sample Database file itself."
+  (atom nil))
+
+(defn register-sqlite-sample-database-path!
+  "Record `path` as the bundled Sample Database's file, replacing any path recorded before. Called by the sample-data
+  module each time it extracts the file."
+  [path]
+  (reset! sqlite-sample-database-path path))
+
+(defn sqlite-sample-database-path?
+  "Whether `db` (a SQLite `:db` connection detail) is exactly the path registered via
+  [[register-sqlite-sample-database-path!]]."
+  [db]
+  (boolean (and (string? db)
+                (= db @sqlite-sample-database-path))))
 
 (defn- -jdbc-data-warehouse-unreturned-connection-timeout-seconds []
   (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)

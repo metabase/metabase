@@ -9,7 +9,7 @@ import { createMockEntitiesState } from "__support__/store";
 import {
   renderWithProviders,
   screen,
-  waitForLoaderToBeRemoved,
+  waitForDashboardToLoad,
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
@@ -51,7 +51,7 @@ const setup = async () => {
     },
   );
 
-  await waitForLoaderToBeRemoved();
+  await waitForDashboardToLoad();
 
   return {
     dashboardId,

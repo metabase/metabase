@@ -306,10 +306,15 @@
 ;;; TODO (Cam 6/12/25) -- all this stuff should be moved into the main [[metabase.lib.field]] namespace as and done
 ;;; automatically when [[lib.ref/*ref-style*]] is `:ref.style/broken-legacy-qp-results`
 (mu/defn- super-broken-legacy-field-ref :- [:maybe ::mbql.s/Reference]
-  "Generate a SUPER BROKEN legacy field ref for backward-compatibility purposes for frontend viz settings usage."
+  "Generate a SUPER BROKEN legacy field ref for backward-compatibility purposes for frontend viz settings usage.
+
+  The synthetic pivot-grouping column is skipped — the multi-query pivot path splices it in fresh (no
+  `:field_ref`) via `metabase.query-processor.pivot.middleware/add-pivot-grouping`, so the SQL native path
+  emits nothing here for parity with what the FE contract already sees for that column."
   [query :- ::lib.schema/query
    col   :- ::kebab-cased-map]
-  (when (= (:lib/type col) :metadata/column)
+  (when (and (= (:lib/type col) :metadata/column)
+             (not= (:lib/source col) :source/pivot-grouping))
     (let [remove-join-alias? (remove-join-alias-from-broken-field-ref? query col)]
       (-> (binding [lib.ref/*ref-style* :ref.style/broken-legacy-qp-results]
             (let [col (cond-> col
@@ -477,22 +482,15 @@
            (add-source-and-desired-aliases query)))))
 
 (defn- add-unit [col]
-  (merge
-   ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct
-   ;; formatting to display values of the column" according
-   ;; to [[metabase.query-processor.nested-queries-test/breakout-year-test]]
-   (when-let [temporal-unit ((some-fn :lib/temporal-unit :inherited-temporal-unit) col)]
-     {:unit temporal-unit})
-   col))
+  ;; TODO -- we also need to 'flow' the unit from previous stage(s) "so the frontend can use the correct formatting to
+  ;; display values of the column" according to [[metabase.query-processor.nested-queries-test/breakout-year-test]]
+  (u/assoc-default col :unit (or (:lib/temporal-unit col)
+                                 (:inherited-temporal-unit col))))
 
 (defn- add-binning-info [col]
-  (merge
-   (when-let [binning-info ((some-fn :lib/binning :lib/original-binning) col)]
-     {:binning-info (merge
-                     (when-let [strategy (:strategy binning-info)]
-                       {:binning-strategy strategy})
-                     binning-info)})
-   col))
+  (if-let [binning-info (or (:lib/binning col) (:lib/original-binning col))]
+    (u/assoc-default col :binning-info (u/assoc-default binning-info :binning-strategy (:strategy binning-info)))
+    col))
 
 ;;; TODO (Cam 6/12/25) -- remove `:lib/uuid` because it causes way to many test failures. Probably would be better to
 ;;; keep it around but I don't have time to update a million tests. Why do columns have `:lib/uuid` anyway? They

@@ -1,7 +1,0 @@
-.titleLabel {
-  cursor: pointer;
-}
-
-.titleLabel.disabled {
-  cursor: default;
-}

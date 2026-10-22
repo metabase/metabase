@@ -16,7 +16,7 @@ describe("QuestionMoreActionsMenu >", () => {
         isEnterprise: false,
       });
       await openMenu();
-      expect(screen.getByText("Create an alert")).toBeInTheDocument();
+      expect(await screen.findByText("Create an alert")).toBeInTheDocument();
     });
 
     it("should show the 'Edit alerts' menu item if alerts exist", async () => {
@@ -40,7 +40,7 @@ describe("QuestionMoreActionsMenu >", () => {
         isEnterprise: false,
       });
       await openMenu();
-      await userEvent.click(screen.getByText("Edit alerts"));
+      await userEvent.click(await screen.findByText("Edit alerts"));
       expect(await screen.findByTestId("alert-list-modal")).toBeInTheDocument();
     });
   });
@@ -56,7 +56,7 @@ describe("QuestionMoreActionsMenu >", () => {
         isEnterprise: false,
       });
       await openMenu();
-      expect(screen.getByText("Create an alert")).toBeInTheDocument();
+      expect(await screen.findByText("Create an alert")).toBeInTheDocument();
     });
 
     it("should show the 'Edit alerts' menu item if alerts exist", async () => {
@@ -68,7 +68,7 @@ describe("QuestionMoreActionsMenu >", () => {
         isEnterprise: false,
       });
       await openMenu();
-      expect(screen.getByText("Edit alerts")).toBeInTheDocument();
+      expect(await screen.findByText("Edit alerts")).toBeInTheDocument();
     });
 
     it("clicking to edit alerts should open the alert popover", async () => {
@@ -80,7 +80,7 @@ describe("QuestionMoreActionsMenu >", () => {
         isEnterprise: false,
       });
       await openMenu();
-      await userEvent.click(screen.getByText("Edit alerts"));
+      await userEvent.click(await screen.findByText("Edit alerts"));
       expect(await screen.findByTestId("alert-list-modal")).toBeInTheDocument();
     });
   });

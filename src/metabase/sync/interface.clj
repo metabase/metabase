@@ -191,6 +191,7 @@
 ;; v3 that includes new "global" fingerprint info, both the v2-fingerprinted numeric Fields and the v1-fingerprinted
 ;; textual Fields can be upgraded to v3.
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *fingerprint-version->types-that-should-be-re-fingerprinted*
   "Map of fingerprint version to the set of Field base types that need to be upgraded to this version the next
    time we do analysis. The highest-numbered entry is considered the latest version of fingerprints."
@@ -201,6 +202,7 @@
    5 #{:type/Text}
    6 #{:type/Number :type/Text :type/DateTime}})
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Long *latest-fingerprint-version*
   "The newest (highest-numbered) version of our Field fingerprints."
   (apply max (keys *fingerprint-version->types-that-should-be-re-fingerprinted*)))

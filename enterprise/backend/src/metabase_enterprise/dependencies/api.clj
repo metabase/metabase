@@ -7,6 +7,7 @@
    [metabase-enterprise.dependencies.models.dependency :as dependency]
    [metabase-enterprise.dependencies.models.dependency-status :as deps.dependency-status]
    [metabase-enterprise.sandbox.schema]
+   [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -49,18 +50,19 @@
                :collection :collection_id]
    :sandbox   [:table :table_id]
    :segment   [:name :description :created_at :creator :creator_id :table :table_id]
-   :measure   [:name :description :created_at :creator :creator_id :table :table_id]})
+   :measure   [:name :description :created_at :creator :creator_id :table :table_id]
+   :action    [:name :description :type :model_id :parameters :created_at :creator :creator_id :collection :collection_id]})
 
 (defn- format-subentity [entity]
   (case (t2/model entity)
-    :model/Collection (select-keys entity [:id :name :authority_level :is_personal])
+    :model/Collection (select-keys entity [:id :name :authority_level :is_personal :namespace :location])
     :model/Dashboard  (select-keys entity [:id :name])
     :model/Document   (select-keys entity [:id :name])
     entity))
 
 (mr/def ::usages
   [:map-of
-   [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric :measure]
+   [:enum :table :snippet :transform :dashboard :document :sandbox :segment :question :model :metric :measure :action]
    ::deps.dependency-types/entity-id])
 
 (mr/def ::dependent-error
@@ -152,6 +154,13 @@
     [:type [:= :measure]]
     [:data (fields-for :measure)]]])
 
+(mr/def ::action-entity
+  [:merge ::base-entity
+   [:map
+    [:id   ::lib.schema.id/action]
+    [:type [:= :action]]
+    [:data (fields-for :action)]]])
+
 (mr/def ::entity
   [:multi {:dispatch :type}
    [:table     [:ref ::table-entity]]
@@ -162,7 +171,8 @@
    [:document  [:ref ::document-entity]]
    [:sandbox   [:ref ::sandbox-entity]]
    [:segment   [:ref ::segment-entity]]
-   [:measure   [:ref ::measure-entity]]])
+   [:measure   [:ref ::measure-entity]]
+   [:action    [:ref ::action-entity]]])
 
 (def ^:private Entity
   "Any dependency-tracked entity `entity-value` accepts, hydrated the way `hydrate-entities` hydrates it."
@@ -175,7 +185,8 @@
    :metabase.native-query-snippets.schema/native-query-snippet
    :metabase-enterprise.sandbox.schema/sandbox
    :metabase.segments.schema/segment
-   :metabase.measures.schema/measure])
+   :metabase.measures.schema/measure
+   ::actions.schema/action])
 
 (mu/defn- entity-value :- ::entity
   [entity-type :- ::deps.dependency-types/dependency-types
@@ -204,8 +215,10 @@
 (def ^:private entity-select-fields
   {:card      [:id :name :description :type :display :database_id :query_type :collection_id :dashboard_id :document_id :result_metadata
                :created_at :creator_id :view_count
-               ;; :card_schema always has to be selected
-               :card_schema]
+               ;; :card_schema always has to be selected, and every column the Card schema upgrade
+               ;; reads has to come with it. The last four are not part of the response — `entity-keys`
+               ;; decides that — they are here only to make the upgrade runnable.
+               :card_schema :entity_id :dataset_query :dimensions :dimension_mappings]
    :dashboard [:id :name :description :created_at :creator_id :collection_id :view_count]
    :document  [:id :name :created_at :creator_id :collection_id :view_count]
    :table     [:id :name :description :display_name :db_id :schema
@@ -217,12 +230,18 @@
    :snippet   [:id :name :description :created_at :creator_id :collection_id]
    :sandbox   [:id :table_id]
    :segment   [:id :name :description :created_at :creator_id :table_id]
-   :measure   [:id :name :description :created_at :creator_id :table_id]})
+   :measure   [:id :name :description :created_at :creator_id :table_id]
+   :action    [:id :name :description :type :model_id :parameters :created_at :creator_id :collection_id]})
 
 (defn- current-user-visibility
-  "The current user, as the `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`."
+  "The current user, as the `:visible` filter-spec opts consumed by `metabase-enterprise.dependencies.db`.
+
+  Analyst-wide visibility comes with the role rather than a permissions graph, so it pauses while the
+  `advanced-permissions` feature is unavailable (see [[api/entitled-data-analyst?]])."
   [{:keys [include-archived-items]}]
-  (cond-> {:user-id api/*current-user-id* :is-superuser? api/*is-superuser?* :is-data-analyst? api/*is-data-analyst?*}
+  (cond-> {:user-id          api/*current-user-id*
+           :is-superuser?    api/*is-superuser?*
+           :is-data-analyst? (api/entitled-data-analyst?)}
     include-archived-items (assoc :include-archived-items include-archived-items)))
 
 (defn- readable-graph-dependencies
@@ -318,7 +337,12 @@
     :snippet (-> entities
                  (t2/hydrate :creator :collection)
                  (->> (map #(collection.root/hydrate-root-collection % (collection.root/hydrated-root-collection :snippets)))))
-    (:segment :measure) (t2/hydrate entities :creator [:table :db])))
+    (:segment :measure) (t2/hydrate entities :creator [:table :db])
+    :action (->> (t2/hydrate entities :creator [:collection :is_personal])
+                 (map #(collection.root/hydrate-root-collection
+                        %
+                        (collection.root/root-collection-with-ui-details
+                         (dependencies.db/action-root-namespace (nil? (:model_id %)))))))))
 
 (defn- fetch-and-hydrate-nodes
   "Fetches and hydrates entities for the given nodes.
@@ -402,7 +426,7 @@
                                                      (-> data :document :name)
                                                      (-> data :collection :name))
       :table                                     (-> data :db :name)
-      (:transform :snippet :dashboard :document) (-> data :collection :name)
+      (:transform :snippet :dashboard :document :action) (-> data :collection :name)
       :sandbox                                   nil
       (:segment :measure)                        (-> data :table :display_name)
       nil)))

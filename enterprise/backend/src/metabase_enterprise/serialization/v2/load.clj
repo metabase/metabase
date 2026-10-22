@@ -9,6 +9,8 @@
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
+   [metabase.dependencies.hooks :as dependencies.hooks]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -55,10 +57,19 @@
                          :model  model
                          :error  ::no-known-references})))))
 
+(defn- elidable-missing-dep?
+  "True when `e` reports `dep` itself as missing from both the archive and the destination, and `dep` names a
+  [[serdes.models/elidable-content-models]] entity."
+  [dep e]
+  (let [{:keys [model id]} (last dep)
+        data               (ex-data e)]
+    (and (= ::not-found (:error data))
+         (= [model id] [(:model data) (:id data)])
+         (contains? serdes.models/elidable-content-models model))))
+
 (defn- load-deps!
-  "Given a list of `deps` (hierarchies), [[load-one]] them all.
-  If [[load-one]] throws because it can't find that entity in the filesystem, check if it's already loaded in
-  our database."
+  "Given a list of `deps` (hierarchies), [[load-one]] them all. A dependency absent from the archive must already exist
+  locally unless it is [[elidable-missing-dep?]]."
   [ctx deps]
   (if (empty? deps)
     ctx
@@ -66,13 +77,8 @@
               (try
                 (load-one! ctx dep)
                 (catch Exception e
-                  (cond
-                    ;; It was missing, but we found it locally, so just return the context.
-                    (and (= (:error (ex-data e)) ::not-found)
-                         (serdes/load-find-local dep))
+                  (if (elidable-missing-dep? dep e)
                     ctx
-
-                    :else
                     (throw e)))))]
       (reduce loader ctx deps))))
 
@@ -218,8 +224,13 @@
           (try
             (with-retries 3 200
               (fn []
-                (t2/with-transaction [_tx]
-                  (serdes/load-one! ingested local-or-nil))))
+                (try
+                  (binding [mi/*deserializing?* true]
+                    (t2/with-transaction [_tx]
+                      (serdes/load-one! ingested local-or-nil)))
+                  (catch Throwable e
+                    (serdes/reset-import-cache!)
+                    (throw e)))))
             ctx
             (catch Exception e
               ;; if the entity was part of a dependency loop, a stripped version of it may already be committed; with
@@ -277,17 +288,20 @@
                              :files         file-names}
                             (first ingest-errors)))))
         (log/infof "Starting deserialization, total %s documents" (count contents))
-        (reduce (fn [ctx item]
-                  (try
-                    (load-one! ctx item)
-                    (catch Exception e
-                      (when-not continue-on-error
-                        (throw e))
-                      ;; eschew big and scary stacktrace
-                      (log/warnf (u/strip-error e "Skipping deserialization error"))
-                      (update ctx :errors conj e))))
-                ctx
-                contents))
+        (try
+          (reduce (fn [ctx item]
+                    (try
+                      (load-one! ctx item)
+                      (catch Exception e
+                        (when-not continue-on-error
+                          (throw e))
+                        ;; eschew big and scary stacktrace
+                        (log/warnf (u/strip-error e "Skipping deserialization error"))
+                        (update ctx :errors conj e))))
+                  ctx
+                  contents)
+          (finally
+            (dependencies.hooks/after-serdes-load))))
       (when reindex?
         ;; Reindex after all entities are loaded. Individual entity commits may have produced stale
         ;; search index entries; this ensures the index reflects the final state.

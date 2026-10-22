@@ -13,6 +13,7 @@ import {
   type MetabotConversationState,
   type MetabotMessage,
   getContextUsagePercent,
+  getIncompleteTurn,
   getIsConversationInProgress,
   getLastAgentMessageExternalId,
   getLongChatNotice,
@@ -186,6 +187,31 @@ describe("metabot selectors", () => {
       ).toBeUndefined();
     });
 
+    const errored = (errorType: string) =>
+      createMockMetabotMessage({
+        status: { type: "errored", error: { type: errorType } },
+      });
+
+    it("reports full when the last turn failed because the context is full", () => {
+      const state = setup([shortMessage, errored("ai_provider_context_full")]);
+      expect(getLongChatNotice(state, "omnibot")).toBe("full");
+    });
+
+    it("shows nothing when the last turn failed for another reason", () => {
+      const state = setup([shortMessage, errored("ai_provider_billing")]);
+      expect(getLongChatNotice(state, "omnibot")).toBeUndefined();
+    });
+
+    it("shows nothing when only an earlier turn failed because the context is full", () => {
+      const state = setup([
+        shortMessage,
+        errored("ai_provider_context_full"),
+        shortMessage,
+        usage(10000),
+      ]);
+      expect(getLongChatNotice(state, "omnibot")).toBeUndefined();
+    });
+
     describe("getContextUsagePercent", () => {
       it("reports the last observed usage as a share of the window, 0-100", () => {
         const state = setup([shortMessage, usage(CONTEXT_WINDOW / 4)]);
@@ -201,6 +227,36 @@ describe("metabot selectors", () => {
       it("caps at 100 when the window is overrun", () => {
         const state = setup([shortMessage, usage(CONTEXT_WINDOW * 2)]);
         expect(getContextUsagePercent(state, "omnibot")).toBe(100);
+      });
+    });
+  });
+
+  describe("getIncompleteTurn", () => {
+    it("returns null when the last turn finished normally", () => {
+      const state = setup([createMockMetabotMessage()]);
+      expect(getIncompleteTurn(state, "omnibot")).toBeNull();
+    });
+
+    it("ignores incomplete turns that are no longer the last message", () => {
+      const state = setup([
+        createMockMetabotMessage({
+          status: { type: "incomplete", finishReason: "tool-calls" },
+        }),
+        createMockMetabotMessage({ role: "user" }),
+      ]);
+      expect(getIncompleteTurn(state, "omnibot")).toBeNull();
+    });
+
+    it("describes the last turn when it stopped early", () => {
+      const state = setup([
+        createMockMetabotMessage({
+          status: { type: "incomplete", finishReason: "tool-calls" },
+        }),
+      ]);
+      expect(getIncompleteTurn(state, "omnibot")).toEqual({
+        reason: "step-limit",
+        message: expect.stringContaining("Metabot"),
+        resumePrompt: expect.any(String),
       });
     });
   });

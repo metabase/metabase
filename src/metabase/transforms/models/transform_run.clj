@@ -219,6 +219,15 @@
           (map (juxt :transform_id :last_success))
           (transforms.db/last-success-times transform-ids))))
 
+(defn last-run-start-times
+  "Map each id in `transform-ids` to its most recent run's `start_time`, regardless of run status.
+  Ids with no runs are absent."
+  [transform-ids]
+  (when (seq transform-ids)
+    (into {}
+          (map (juxt :transform_id :last_start))
+          (transforms.db/last-start-times transform-ids))))
+
 (defn- status-labels
   "Display labels for TransformRun status values."
   []

@@ -188,11 +188,13 @@
 
 ;;; -------------------------------------------------- Dynamic Vars --------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Boolean *allow-root-entries*
   "Should we allow permissions entries like `/`? By default, this is disallowed, but you can temporarily disable it here
    when creating the default entry for `Admin`."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^Boolean *allow-admin-permissions-changes*
   "Should we allow changes to be made to permissions belonging to the Admin group? By default this is disabled to
    prevent accidental tragedy, but you can enable it here when creating the default entry for `Admin`."
@@ -305,14 +307,27 @@
   (derive ::mi/read-policy.full-perms-for-perms-set)
   (derive ::mi/write-policy.full-perms-for-perms-set))
 
+(defn data-apps-namespace-collection?
+  "Is `collection-or-id` a collection of the data apps namespace? Reads the namespace from the app DB unless given a
+  collection with `:namespace`."
+  [collection-or-id]
+  (= "data-apps"
+     (some-> (if (and (map? collection-or-id) (contains? collection-or-id :namespace))
+               (:namespace collection-or-id)
+               ;; the root collection has no ID, and is the default namespace's
+               (some-> (u/id collection-or-id) permissions.db/collection-namespace))
+             name)))
+
 (defmethod mi/perms-objects-set :perms/use-parent-collection-perms
   [instance read-or-write]
-  (if (or (= read-or-write :read)
-          (remote-sync/collection-editable? (or (:collection instance) (:collection_id instance))))
-    (perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)
-    ;; We need to return a dummy permissions string that cannot possibly belong to a user in
-    ;; the case where an instance is not syncable due to remote-sync being in ':production' mode
-    #{"___no-remote-sync-access"}))
+  (let [collection (or (:collection instance) (:collection_id instance))]
+    (if (or (= read-or-write :read)
+            ;; not even an administrator edits what a data app's collection holds: only a pull of its app changes it
+            (and (not (data-apps-namespace-collection? collection))
+                 (remote-sync/collection-editable? collection)))
+      (perms-objects-set-for-parent-collection (:collection_id instance) read-or-write)
+      ;; a path that no permissions set holds, not even an administrator's `/`
+      #{"___no-write-access"})))
 
 (methodical/defmethod t2/batched-hydrate [:perms/use-parent-collection-perms :can_write]
   [_model k models]
@@ -465,7 +480,7 @@
   ;; `:t2-methods` maps t2-model-kw → the installed `mi/can-read?` fn (identity-check test uses the value).
   ;; `:search-models` maps search-model-string → claimed parent t2-model the `:collection_id` is denormalized
   ;; from at index time. The claim is verified against the spec's joins by a contract test; see
-  ;; `metabase-enterprise.semantic-search.index-test`.
+  ;; `metabase-enterprise.search.semantic.index-test`.
   (atom {:t2-methods {} :search-models {}}))
 
 (defn collection-id-only-read-models

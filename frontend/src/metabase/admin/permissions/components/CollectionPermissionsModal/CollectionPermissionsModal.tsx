@@ -31,8 +31,11 @@ import { PermissionsTable } from "../PermissionsTable";
 
 import S from "./CollectionPermissionsModal.module.css";
 
+const isFolderNamespace = (namespace?: CollectionNamespace) =>
+  namespace === "snippets" || namespace === "data-actions";
+
 const getDefaultTitle = (namespace?: CollectionNamespace) =>
-  namespace === "snippets"
+  isFolderNamespace(namespace)
     ? t`Permissions for this folder`
     : t`Permissions for this collection`;
 
@@ -148,7 +151,7 @@ const CollectionPermissionsModal = ({
       onClose={onClose}
       className={CS.overflowHidden}
       footer={[
-        ...(namespace === "snippets"
+        ...(isFolderNamespace(namespace)
           ? []
           : [
               <Link

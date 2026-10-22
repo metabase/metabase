@@ -137,7 +137,7 @@
                            ["orders__SLASH__invoices" "orders__SLASH__invoices.yaml"])
                 "Slashes in directory names get escaped"))
           (testing "the Field was properly exported"
-            (is (= (ts/extract-one "Field" (:id website))
+            (is (= (serdes/storable (ts/extract-one "Field" (:id website)))
                    (-> (yaml/from-file (io/file dump-dir
                                                 "databases"  "my_company_data"
                                                 "tables"     "customers"
@@ -158,25 +158,51 @@
         (storage/store! (into [] (extract/extract {})) (storage.files/file-writer dump-dir))
         (let [fields-dir (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields")
               read-yaml  (fn [file-name] (yaml/from-file (io/file fields-dir file-name)))]
-          (testing "the label is written as the bare enum string on the Field and inside the Table's settings"
+          (testing "the label is written as the bare enum string on the Field and its settings"
             (is (= "PII" (:data_sensitivity (read-yaml "email.yaml"))))
-            (is (= "PII" (-> (yaml/from-file (io/file fields-dir ".." "customers___tableusersettings.yaml"))
-                             :fields first :data_sensitivity))))
+            (is (= "PII" (:data_sensitivity (read-yaml "email___fieldusersettings.yaml")))))
           (testing "an unlabeled field's file has no data_sensitivity line"
             (is (not (contains? (read-yaml "id.yaml") :data_sensitivity)))))))))
 
-(deftest inline-user-settings-storage-path-test
-  (mt/with-empty-h2-app-db!
-    (ts/with-temp-dpc [:model/Database          db    {:name "My Company Data"}
-                       :model/Table             table {:name "Customers" :db_id (:id db)}
-                       :model/Field             email {:name "Email" :table_id (:id table)}
-                       :model/FieldUserSettings _     {:field_id (:id email) :description "edited"}]
-      (let [[tus] (into [] (serdes/extract-all "TableUserSettings" {:filter-column :table_id :filter-ids [(:id table)]}))]
-        (is (= 1 (count (:fields tus))))
-        (testing "git sync writes the entity at the Table's own path"
-          (is (= "Customers" (-> (serdes/storage-path tus {:inline-user-settings true}) peek :label))))
-        (testing "the CLI export writes it beside the Table's file"
-          (is (= "Customers___tableusersettings" (-> (serdes/storage-path tus {}) peek :label))))))))
+(deftest user-settings-storage-test
+  (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database          db    {:name "My Company Data"}
+                         :model/Table             table {:name "Customers" :db_id (:id db)}
+                         :model/Field             email {:name "Email" :table_id (:id table)}
+                         :model/Field             _     {:name "Id" :table_id (:id table)}
+                         :model/TableUserSettings _     {:table_id (:id table) :display_name "Clients"}
+                         :model/FieldUserSettings _     {:field_id (:id email) :description "edited"}
+                         :model/Dimension         _     {:field_id (:id email) :name "Email" :type :internal}]
+        (storage/store! (into [] (extract/extract {})) (storage.files/file-writer dump-dir))
+        (testing "each settings entity is a file beside its Table's or Field's, only where one exists"
+          (is (= #{["customers.yaml"]
+                   ["customers___tableusersettings.yaml"]
+                   ["fields" "email.yaml"]
+                   ["fields" "email___fieldusersettings.yaml"]
+                   ["fields" "email___dimension.yaml"]
+                   ["fields" "id.yaml"]}
+                 (file-set (io/file dump-dir "databases" "my_company_data" "tables" "customers")))))))))
+
+(deftest long-field-name-user-settings-storage-test
+  (testing "a long Field name keeps the settings, Dimension and values suffixes, so their files don't replace the Field's"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        (let [field-name (apply str (repeat 150 "x"))
+              slug       (apply str (repeat 100 "x"))]
+          (ts/with-temp-dpc [:model/Database          db    {:name "My Company Data"}
+                             :model/Table             table {:name "Customers" :db_id (:id db)}
+                             :model/Field             field {:name field-name :table_id (:id table)}
+                             :model/FieldUserSettings _     {:field_id (:id field) :description "edited"}
+                             :model/Dimension         _     {:field_id (:id field) :name "Long" :type :internal}
+                             :model/FieldValues       _     {:field_id (:id field)}]
+            (storage/store! (into [] (extract/extract {:include-field-values true})) (storage.files/file-writer dump-dir))
+            (is (= #{[(str slug ".yaml")]
+                     [(str slug "___fieldusersettings.yaml")]
+                     [(str slug "___dimension.yaml")]
+                     [(str slug "___fieldvalues.yaml")]}
+                   (file-set (io/file dump-dir "databases" "my_company_data" "tables" "customers" "fields"))))))))))
+
 (deftest entity-counts-report-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
     (mt/with-empty-h2-app-db!
@@ -497,3 +523,21 @@
                                   {:label "tables"     :key "tables"}
                                   {:label "target"     :key "table-1"}]))
             "transforms under databases/.../schemas/ should not get _2 suffix")))))
+
+(deftest entity-file-path-and-yaml-match-the-file-writer-test
+  (testing "the file writer writes each entity at its entity-file-path, holding exactly its entity-yaml"
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (mt/with-empty-h2-app-db!
+        (ts/with-temp-dpc [:model/Collection parent {:name "Some Collection"}
+                           :model/Collection _child {:name "Child Collection" :location (format "/%d/" (:id parent))}
+                           :model/Card       _card  {:name "A Question" :collection_id (:id parent)}]
+          (let [export   (into [] (extract/extract {:no-settings true :no-data-model true :no-transforms true}))
+                entities (filterv (comp #{"Collection" "Card"} :model last :serdes/meta) export)
+                ctx      (serdes/storage-base-context)]
+            (storage/store! export (storage.files/file-writer dump-dir))
+            (is (= 3 (count entities)))
+            (doseq [entity entities
+                    :let   [path (storage.util/entity-file-path ctx entity)]]
+              (testing path
+                (is (= (storage.util/entity-yaml entity)
+                       (slurp (io/file dump-dir path))))))))))))

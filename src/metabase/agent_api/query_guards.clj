@@ -202,20 +202,24 @@
   The query endpoints declare no `:scope` of their own, so the endpoint scope middleware cannot tell a native
   query apart from any other one: [[metabase.mcp.ui-surface/request-surface]] charges the whole `/api/dataset`
   tree a single `agent:query:run`, and every credential minted for a client holding that scope satisfies it.
-  Raw SQL costs more, and that difference is spent here: it needs an SQL-execution scope
-  (`agent:sql:run`, or v1's concrete `agent:sql:execute`) off the credential's signed claim, and the
-  `mcp-execute-sql-enabled` kill switch.
+  Raw SQL costs more, and that difference is spent here: it needs the user's groups to allow the `execute_sql`
+  MCP tool, which `check-execute-sql-allowed!` (a no-arg fn that throws when they do not) decides, an
+  SQL-execution scope (`agent:sql:run`, or v1's concrete `agent:sql:execute`) off the credential's signed claim,
+  and the `mcp-execute-sql-enabled` kill switch.
 
   A credential whose claim is simply absent fails closed: a rolling deploy can hand this node one minted before
   the claim existed.
 
   Native is refused rather than banned because `execute_sql` handles legitimately hold raw SQL and are visualizable
   by design. Non-native queries, and requests authenticated any other way, pass straight through."
-  [request query]
+  [check-execute-sql-allowed! request query]
   ;; Keyed on the credential, not on its scopes claim, so a credential carrying no claim is refused rather than
   ;; waved through — a rolling deploy can hand this node one minted before the claim existed.
   (when-let [claims (:mcp-ui-credential request)]
     (when (native-query? query)
+      ;; Read per request rather than stamped on the credential, so an admin's denial applies to credentials
+      ;; already minted.
+      (check-execute-sql-allowed!)
       ;; Scope check first, kill switch second: a client that lacks the SQL-execution scope is refused
       ;; the same way whether or not the instance has raw SQL enabled. Testing the kill switch first
       ;; would leak that config bit — an unauthorized caller could tell `mcp-execute-sql-enabled`'s
@@ -233,12 +237,13 @@
                         {:status-code 403}))))))
 
 (defn +refuse-unscoped-native-sql
-  "Ring middleware applying [[check-mcp-ui-native-query!]] to a route tree, reading the query from the request
-  body.
+  "Ring middleware applying [[check-mcp-ui-native-query!]], with `check-execute-sql-allowed!`, to a route tree,
+  reading the query from the request body.
 
   It rides the route rather than the endpoints because the endpoints cannot reach it: `agent-api` already
   `:uses` `query-processor`, so a call from inside `metabase.query-processor.api` would close a module cycle.
-  `api-routes` is `:uses :any` and is where the two modules legitimately meet.
+  `api-routes` is `:uses :any` and is where the two modules legitimately meet. The same holds for the group
+  policy, which `mcp` owns and `mcp` already `:uses` `agent-api`, so `api-routes` passes it in.
 
   Applying it to the whole `/api/dataset` tree rather than to the two executing routes is deliberate: the
   guard is keyed on `:mcp-ui-credential`, which the session middleware attaches only for the routes on the
@@ -248,10 +253,10 @@
   JSON-string `query` edge rather than assuming the already-decoded shape: `/api/dataset/:export-format`
   takes one, this middleware runs ahead of Malli's `:decode/api`, and that route is off the allowlist only
   for now."
-  [handler]
+  [check-execute-sql-allowed! handler]
   (fn [request respond raise]
     (try
-      (check-mcp-ui-native-query! request (:body request))
+      (check-mcp-ui-native-query! check-execute-sql-allowed! request (:body request))
       (handler request respond raise)
       (catch Throwable e
         (raise e)))))

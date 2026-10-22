@@ -57,6 +57,7 @@
 
 ;;; ---------------------------------------------------- source=card ------------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *max-rows*
   "Maximum number of rows returned when running a card.
   It's 1000 because it matches with the limit for chain-filter.

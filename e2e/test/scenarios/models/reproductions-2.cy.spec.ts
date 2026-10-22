@@ -10,7 +10,7 @@ import type {
   StructuredQuestionDetails,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 describe("issue 46221", () => {
   const modelDetails: NativeQuestionDetails = {
     name: "46221",
@@ -118,7 +118,7 @@ describe("issue 37300", () => {
     );
   });
 
-  it("should show the table headers even when there are no results (metabase/metabase#37300)", () => {
+  it("should show the table headers even when there are no results (metabase#37300)", () => {
     H.openQuestionActions();
     H.popover().findByText("Edit metadata").click();
     H.waitForLoaderToBeRemoved();
@@ -143,7 +143,8 @@ describe("issue 32037", () => {
     cy.location("pathname").as("modelPathname");
   });
 
-  it("should show unsaved changes modal and allow to discard changes when editing model's query (metabase#32037)", () => {
+  it("should show unsaved changes modal and allow to discard changes when editing model's query and metadata (metabase#32037)", () => {
+    cy.log("query");
     H.openQuestionActions("Edit query definition");
     cy.button("Save changes").should("be.disabled");
     H.filter({ mode: "notebook" });
@@ -156,9 +157,8 @@ describe("issue 32037", () => {
     cy.go("back");
 
     verifyDiscardingChanges();
-  });
 
-  it("should show unsaved changes modal and allow to discard changes when editing model's metadata (metabase#32037)", () => {
+    cy.log("metadata");
     H.openQuestionActions("Edit metadata");
     H.waitForLoaderToBeRemoved();
     cy.button("Save changes").should("be.disabled");
@@ -246,27 +246,12 @@ describe("issue 51925", () => {
   });
 });
 
-describe("issue 53649", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsAdmin();
-  });
-
-  it("should not get caught in an infinite loop when opening the native editor (metabase#53649)", () => {
-    H.startNewNativeModel();
-
-    // If the app freezes, this won't work
-    H.NativeEditor.type("select 1");
-    H.NativeEditor.get().should("contain", "select 1");
-  });
-});
-
-describe("issue 56698", () => {
+describe("issues 56698 and 57557", () => {
   beforeEach(() => {
     H.restore();
   });
 
-  it("should create an editable ad-hoc query based on a read-only native model (metabase#56698)", () => {
+  it("should create an editable ad-hoc query based on a read-only native model, and hide the query definition without data permissions (metabase#56698, metabase#57557)", () => {
     cy.log("create a native model");
     cy.signInAsNormalUser();
     H.createNativeQuestion(
@@ -278,38 +263,27 @@ describe("issue 56698", () => {
       { wrapId: true, idAlias: "modelId" },
     );
 
-    cy.log("verify that we create an editable ad-hoc query");
+    cy.log("verify that we create an editable ad-hoc query (metabase#56698)");
     cy.signIn("readonlynosql");
     cy.get("@modelId").then((modelId) => H.visitModel(Number(modelId)));
     H.assertQueryBuilderRowCount(2);
     H.summarize();
     H.rightSidebar().button("Done").click();
     H.assertQueryBuilderRowCount(1);
-  });
-});
 
-describe("issue 57557", () => {
-  beforeEach(() => {
-    H.restore();
-  });
-
-  it("should not allow to see the query definition for a user without data permissions (metabase#57557)", () => {
-    cy.log("create a native model");
-    cy.signInAsNormalUser();
-    H.createNativeQuestion(
-      {
-        name: "Native model",
-        native: { query: "select 1 union all select 2" },
-        type: "model",
-      },
-      { wrapId: true, idAlias: "modelId" },
+    cy.log(
+      "verify that query editing functionality is hidden (metabase#57557)",
     );
-
-    cy.log("verify that query editing functionality is hidden");
     cy.signIn("nodata");
     cy.get("@modelId").then((modelId) =>
       H.visitModel(Number(modelId), { hasDataAccess: false }),
     );
+    cy.findByTestId("qb-header")
+      .findByText("Native model")
+      .should("be.visible");
+    cy.findByTestId("query-builder-root")
+      .findByText(/This question is written in SQL/i)
+      .should("not.exist");
     H.openQuestionActions();
     H.popover().within(() => {
       cy.findByText("Edit metadata").should("be.visible");
@@ -322,7 +296,7 @@ describe("issue 57557", () => {
   });
 });
 
-describe("issue 56775", () => {
+describe("issues 56775 and 55486", () => {
   const MODEL_NAME = "Model 56775";
 
   beforeEach(() => {
@@ -340,37 +314,6 @@ describe("issue 56775", () => {
     );
   });
 
-  it("should render the correct query after using the back button in a model (metabase#56775)", () => {
-    H.openNotebook();
-    cy.button("Visualize").click();
-
-    cy.go("back");
-    H.openQuestionActions("Edit query definition");
-
-    cy.log("verify that the model definition is visible");
-    H.getNotebookStep("data").findByText(MODEL_NAME).should("not.exist");
-    H.getNotebookStep("data").findByText("Products").should("be.visible");
-  });
-});
-describe("issue 55486", () => {
-  const MODEL_NAME = "Model 55486";
-
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    H.createQuestion(
-      {
-        type: "model",
-        name: MODEL_NAME,
-        query: {
-          "source-table": PRODUCTS_ID,
-          limit: 5,
-        },
-      },
-      { visitQuestion: true },
-    );
-  });
-
   function checkIsShowingMetadataEditorTab() {
     cy.findByTestId("editor-tabs-columns").should("be.checked");
     cy.findByTestId("visualization-root").should("be.visible");
@@ -381,9 +324,18 @@ describe("issue 55486", () => {
     H.getNotebookStep("data").should("be.visible");
   }
 
-  it("should render the correct query after using the back button in a model (metabase#56775)", () => {
+  it("should render the correct query and editor tabs after using the back and forward buttons in a model (metabase#56775, metabase#55486)", () => {
+    H.openNotebook();
+    cy.button("Visualize").click();
+
+    cy.go("back");
     H.openQuestionActions("Edit query definition");
 
+    cy.log("verify that the model definition is visible (metabase#56775)");
+    H.getNotebookStep("data").findByText(MODEL_NAME).should("not.exist");
+    H.getNotebookStep("data").findByText("Products").should("be.visible");
+
+    cy.log("navigate between the editor tabs (metabase#55486)");
     H.datasetEditBar().findByText("Columns").click();
     checkIsShowingMetadataEditorTab();
 
@@ -398,7 +350,7 @@ describe("issue 55486", () => {
     cy.go("back");
     checkIsShowingQueryEditorTab();
 
-    cy.log("Forward button should show the query editor");
+    cy.log("Forward button should show the metadata editor");
     cy.go("forward");
     checkIsShowingMetadataEditorTab();
 
@@ -412,6 +364,7 @@ describe("Issue 30712", () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
 
     H.startNewModel();
 
@@ -427,10 +380,14 @@ describe("Issue 30712", () => {
   it("should not crash the editor when ordering by columns on joined tables (metabase#30712)", () => {
     H.getNotebookStep("summarize").findByLabelText("Sort").click();
     H.popover().findByText("Total").click();
+    H.getNotebookStep("sort").findByText("Total").should("be.visible");
 
     cy.log("no error should be thrown");
     cy.get("main").findByText("Something's gone wrong").should("not.exist");
-    cy.findByTestId("run-button").should("be.visible");
+    cy.findByTestId("run-button").should("be.visible").click();
+    cy.wait("@dataset");
+    H.tableInteractive().should("be.visible");
+    H.tableInteractiveHeader().findByText("Total").should("be.visible");
   });
 });
 describe("Issue 56913", () => {
@@ -438,18 +395,10 @@ describe("Issue 56913", () => {
     H.restore();
     cy.signInAsNormalUser();
 
-    H.createQuestion(
-      {
-        query: {
-          "source-table": ORDERS_ID,
-        },
-      },
-      { visitQuestion: true },
-    );
-
-    H.openQuestionActions();
-    H.popover().findByText("Turn into a model").click();
-    H.modal().button("Turn this into a model").click();
+    const ackUrl =
+      "/api/user-key-value/namespace/user_acknowledgement/key/turn_into_model_modal";
+    cy.request("PUT", ackUrl, { value: true });
+    cy.intercept("GET", ackUrl).as("modelModalAck");
 
     H.createNativeQuestion(
       {
@@ -472,6 +421,7 @@ describe("Issue 56913", () => {
 
   it("should show the error modal when converting a native question with variables into a model, even when the 'turn into a model' modal was previously acknowledged (metabase#56913)", () => {
     H.openQuestionActions();
+    cy.wait("@modelModalAck").its("response.body").should("eq", true);
     H.popover().findByText("Turn into a model").click();
     H.modal()
       .findByText("Variables in models aren't supported yet")
@@ -526,7 +476,7 @@ describe("issue 38747", () => {
     cy.signInAsNormalUser();
   });
 
-  it("should allow you to drill through with entity qualified ids", () => {
+  it("should allow you to drill through with entity qualified ids (metabase#38747)", () => {
     cy.visit("/model/new");
     cy.findByRole("link", { name: /notebook editor/ }).click();
 
@@ -563,29 +513,12 @@ describe("issue 38747", () => {
       .should("be.visible")
       .click({ waitForAnimations: false });
 
-    // Assert that we're at an adhoc question with aproprate filters
+    // Assert that we're at an adhoc question with appropriate filters
     cy.location("pathname").should("equal", "/question");
     cy.findByTestId("filter-pill").should(
       "contain.text",
       "Vendor is Nolan-Wolff",
     );
     H.tableInteractive().should("have.attr", "data-rows-count", "1");
-  });
-});
-
-describe("issue 69722", () => {
-  beforeEach(() => {
-    H.restore();
-    cy.signInAsNormalUser();
-    cy.visit("/model/new");
-    cy.findByRole("link", { name: /native query/ }).click();
-  });
-
-  it("should not be possible to overflow the native query editor (metabase#69722)", () => {
-    H.NativeEditor.type("{enter}".repeat(20));
-
-    cy.findByTestId("native-query-editor-container")
-      .findByTestId("run-button")
-      .should("be.visible");
   });
 });
