@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { getColumnIcon } from "metabase/common/utils/columns";
 import { FilterPicker } from "metabase/querying/filters/components/FilterPicker";
 import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import { Box, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
@@ -139,7 +140,7 @@ export function FilterSearchDropdown({
   }
 
   return (
-    <Stack gap={0} p="xs" miw={320}>
+    <Stack gap={0} py="xs" miw={360}>
       {parseTypedToken(text) == null && text.trim().length === 0 && (
         <Text size="xs" c="text-secondary" px="sm" py="xs">
           {allowOr
@@ -204,15 +205,21 @@ function SuggestionLabel({ suggestion }: { suggestion: Suggestion }) {
   if (suggestion.type === "column") {
     return (
       <>
-        <Icon name="filter" c="text-secondary" />
-        <Text size="sm">{suggestion.label}</Text>
+        <Icon
+          name={getColumnIcon(suggestion.column)}
+          size={18}
+          className={S.suggestionIcon}
+        />
+        <Text fw="bold" className={S.suggestionTitle}>
+          {suggestion.label}
+        </Text>
       </>
     );
   }
   return (
     <>
-      <Icon name="ellipsis" c="text-secondary" />
-      <Text size="sm" c="text-secondary">
+      <Icon name="ellipsis" size={18} className={S.suggestionIcon} />
+      <Text fw="bold" className={S.suggestionTitle}>
         {suggestion.label}
       </Text>
     </>
