@@ -85,7 +85,7 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
     breakout: true,
   }),
   "cohorts.start": withWidgetProps({
-    getTitle: () => t`What do they have to do to start?`,
+    getTitle: () => t`What marks the start of a cohort?`,
     getHint: () =>
       t`Each person's clock starts the first time they do it in the date range, even if they did it before.`,
     getSection: () => "setup",
