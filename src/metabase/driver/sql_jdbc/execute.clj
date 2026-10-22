@@ -34,7 +34,7 @@
    (com.mchange.v2.c3p0 PooledDataSource)
    (com.mchange.v2.resourcepool TimeoutException)
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLException SQLFeatureNotSupportedException
-             Statement Types)
+             SQLNonTransientConnectionException SQLRecoverableException SQLTransientException Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
    (javax.sql DataSource)))
@@ -887,6 +887,18 @@
              (assoc :query/query-canceled? true))
            e))
 
+(defn- error-in-query?
+  "Whether `e`, raised while reading rows, is the database rejecting the query.
+  A failed connection, a canceled or timed-out statement and a transient failure such as a deadlock are not. Drivers
+  report those with a JDBC exception class, a SQLState class (`08` connection exception, `40` transaction rollback,
+  `57` operator intervention) or a vendor code that [[driver/query-canceled?]] recognizes."
+  [driver ^SQLException e]
+  (not (or (instance? SQLTransientException e)
+           (instance? SQLNonTransientConnectionException e)
+           (instance? SQLRecoverableException e)
+           (some->> (.getSQLState e) (re-find #"^(?:08|40|57)"))
+           (driver/query-canceled? driver e))))
+
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond])}
@@ -929,7 +941,9 @@
                                          (let [row (try
                                                      (next-row)
                                                      (catch SQLException e
-                                                       (throw (query-error driver sql params e))))]
+                                                       (throw (if (error-in-query? driver e)
+                                                                (query-error driver sql params e)
+                                                                e))))]
                                            (when-not row
                                              (vreset! exhausted? true))
                                            row))
