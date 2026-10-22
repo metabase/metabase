@@ -79,10 +79,10 @@ const CreateDashboardModalInner = ({
 
   useTrackSdkComponentMount("CreateDashboardModal", null, {});
 
-  // Modal is ready when its form renders (loading finished).
+  // Modal is ready when open and its form renders (loading finished).
   useReportComponentReady({
     component: "CreateDashboardModal",
-    isReady: !isLocaleLoading && !isCollectionQueryLoading,
+    isReady: isOpen && !isLocaleLoading && !isCollectionQueryLoading,
     isError: false,
   });
 

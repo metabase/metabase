@@ -227,10 +227,15 @@ export const CollectionBrowserInner = ({
     isObject(collectionLoadingError) && collectionLoadingError.status === 403;
   const hasCollectionNotFoundError =
     isObject(collectionLoadingError) && collectionLoadingError.status === 404;
+  const hasCollectionGenericError =
+    isObject(collectionLoadingError) &&
+    !hasCollectionAccessError &&
+    !hasCollectionNotFoundError;
   const hasAllCollectionsError = isAtAllModeRoot && !!allCollectionsError;
   const hasCollectionError =
     hasCollectionAccessError ||
     hasCollectionNotFoundError ||
+    hasCollectionGenericError ||
     hasAllCollectionsError;
   const isCollectionReady =
     !hasCollectionError && !isFetchingCollection && !isLoadingAllCollections;

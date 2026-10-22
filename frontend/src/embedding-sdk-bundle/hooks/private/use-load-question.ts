@@ -147,7 +147,14 @@ export function useLoadQuestion({
       mergeQuestionState(questionState);
       recordPhase("metadata_ready");
 
-      recordPhase("query_start");
+      // Only record query phases for real queries (saved questions or
+      // dashboard cards). New blank questions have no meaningful query.
+      const hasRealQuery =
+        questionState.question?.id() != null || deserializedCard != null;
+
+      if (hasRealQuery) {
+        recordPhase("query_start");
+      }
       const results = await runQuestionQuerySdk({
         question: questionState.question,
         isGuestEmbed,
@@ -159,7 +166,9 @@ export function useLoadQuestion({
         initialVisualization,
       });
 
-      recordPhase("query_end");
+      if (hasRealQuery) {
+        recordPhase("query_end");
+      }
       mergeQuestionState(results);
 
       setIsLoadInFlight(false);
