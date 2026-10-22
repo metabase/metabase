@@ -1459,9 +1459,9 @@
             (testing uri
               (let [{:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
                 (is (= :recoverable class))
-                (is (str/includes? text (str "**Error:** Field " field-id
-                                             " was not found. It may not exist, or you may not have access to it.")))
-                (is (str/includes? text "Call `search`"))))))))))
+                (is (str/includes? text (str "**Error:** Field " field-id " was not found in " kind " " id
+                                             ". Valid field IDs: ")))
+                (is (str/includes? text "Retry with one of these field IDs."))))))))))
 
 (deftest read-missing-field-parent-test
   (mt/with-current-user (mt/user->id :crowberto)

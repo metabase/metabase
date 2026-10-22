@@ -287,37 +287,24 @@
         (is (thrown? clojure.lang.ExceptionInfo
                      (metabot.tools.util/get-table inactive-table-id :db_id)))))))
 
-(deftest find-column-by-field-id-test
-  (testing "finds column by integer field ID"
-    (let [columns [{:id 301 :name "ID"}
-                   {:id 302 :name "NAME"}
-                   {:id 303 :name "EMAIL"}]]
-      (is (= {:id 301 :name "ID"} (metabot.tools.util/find-column-by-field-id 301 columns)))
-      (is (= {:id 303 :name "EMAIL"} (metabot.tools.util/find-column-by-field-id 303 columns)))))
-  (testing "finds column by string-encoded field ID"
-    (let [columns [{:id 301 :name "ID"}
-                   {:id 302 :name "NAME"}]]
-      (is (= {:id 302 :name "NAME"} (metabot.tools.util/find-column-by-field-id "302" columns)))))
-  (testing "throws agent error when field ID not found"
-    (let [columns [{:id 301 :name "ID"}]]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"Field 999 not found"
-           (metabot.tools.util/find-column-by-field-id 999 columns)))))
-  (testing "throws for nil field ID"
-    (let [columns [{:id 301 :name "ID"}]]
-      (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
-           #"not found"
-           (metabot.tools.util/find-column-by-field-id nil columns)))))
-  (testing "error data contains agent-error? flag"
-    (let [columns [{:id 301 :name "ID"}]]
-      (try
-        (metabot.tools.util/find-column-by-field-id 999 columns)
-        (is false "Expected exception")
-        (catch clojure.lang.ExceptionInfo e
-          (is (:agent-error? (ex-data e)))
-          (is (= 404 (:status-code (ex-data e)))))))))
+(deftest ^:parallel find-column-by-field-id-test
+  (let [columns [{:id 301 :name "ID"}
+                 {:id 302 :name "NAME"}
+                 {:name "bird_count" :lib/desired-column-alias "Bird count"}
+                 {:name "wing_count" :lib/source-column-alias "Wing count"}
+                 {:name "number" :lib/desired-column-alias "303"}
+                 {:name "id_count" :lib/desired-column-alias "301"}]]
+    (are [field-id col-index] (= (get columns col-index)
+                                 (metabot.tools.util/find-column-by-field-id field-id columns))
+      301          0
+      "302"        1
+      "Bird count" 2
+      "Wing count" 3
+      "303"        4
+      303          4
+      "301"        5)
+    (are [field-id] (nil? (metabot.tools.util/find-column-by-field-id field-id columns))
+      999 nil "missing")))
 
 ;;; ---------------------------------------- metric sources ----------------------------------------
 
