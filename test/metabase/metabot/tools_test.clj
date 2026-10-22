@@ -329,6 +329,58 @@
                           "`join-alias`.")
                  (refusal {:source-field venue-id} (fk "CATEGORIES" "NAME")))))))))
 
+(defn- checkins-venues-join [db]
+  {:alias      "Venues"
+   :strategy   "left-join"
+   :stages     [{:lib/type "mbql.stage/mbql" :source-table [db "PUBLIC" "VENUES"]}]
+   :conditions [["=" {}
+                 ["field" {} [db "PUBLIC" "CHECKINS" "VENUE_ID"]]
+                 ["field" {:join-alias "Venues"} [db "PUBLIC" "VENUES" "ID"]]]]})
+
+(defn- construct-checkins-query [db stages]
+  (construct/execute-representations-query
+   {:lib/type "mbql/query"
+    :stages   (-> (mapv #(merge {:lib/type "mbql.stage/mbql"} %) stages)
+                  (assoc-in [0 :source-table] [db "PUBLIC" "CHECKINS"]))}))
+
+(deftest construct-notebook-query-source-field-availability-test
+  (let [db          (t2/select-one-fn :name :model/Database (mt/id))
+        fk          (fn [table column] [db "PUBLIC" table column])
+        venue-id    (fk "CHECKINS" "VENUE_ID")
+        category-id (fk "VENUES" "CATEGORY_ID")
+        category    (fk "CATEGORIES" "NAME")
+        breakout    (fn [opts field] {:aggregation [["count" {}]] :breakout [["field" opts field]]})
+        venues-join (checkins-venues-join db)]
+    (mt/with-current-user (mt/user->id :rasta)
+      (testing "a source-field must be available in its own stage and join context"
+        (doseq [stages [[(breakout {:source-field category-id} category)]
+                        [{:fields [["field" {} (fk "CHECKINS" "ID")]]}
+                         (breakout {:source-field venue-id} (fk "VENUES" "NAME"))]
+                        [(assoc (breakout {:source-field category-id :source-field-join-alias "Other"} category)
+                                :joins [venues-join])]
+                        [{:joins [(assoc venues-join :stages
+                                         [{:lib/type     "mbql.stage/mbql"
+                                           :source-table [db "PUBLIC" "VENUES"]
+                                           :filters      [["=" {}
+                                                           ["field" {:source-field (fk "CHECKINS" "USER_ID")} (fk "USERS" "NAME")]
+                                                           "Bird"]]}])]}]]]
+          (testing (pr-str stages)
+            (let [e (try
+                      (construct-checkins-query db stages)
+                      (catch clojure.lang.ExceptionInfo e e))]
+              (is (=? {:agent-error? true :status-code 400 :error :wrong-source-field} (ex-data e)))))))
+      (testing "available keys work in later stages and through an explicit join"
+        (doseq [stages [[{:fields [["field" {} venue-id]]}
+                         (breakout {:source-field venue-id} (fk "VENUES" "NAME"))]
+                        [(assoc (breakout {:source-field category-id :source-field-join-alias "Venues"} category)
+                                :joins [venues-join])]
+                        [(assoc (breakout {:source-field category-id} category) :joins [venues-join])]
+                        [(breakout {:source-field venue-id} (fk "VENUES" "NAME"))
+                         {:fields [["field" {:source-field venue-id} (fk "VENUES" "NAME")]]}]]]
+          (testing (pr-str stages)
+            (let [query (get-in (construct-checkins-query db stages) [:structured-output :query])]
+              (is (seq (mt/rows (qp/process-query query)))))))))))
+
 (defn- construct-tool-failure-for-thrown
   "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return the
   failure the model would see."
