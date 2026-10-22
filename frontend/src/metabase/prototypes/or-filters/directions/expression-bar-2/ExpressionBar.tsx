@@ -4,7 +4,9 @@ import {
   type KeyboardEvent,
   type MouseEvent,
   type ReactNode,
+  type Ref,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -53,10 +55,20 @@ import {
   writeTokens,
 } from "./tokens";
 
+/** Lets a parent move the caret into the bar, e.g. when arrowing in from a neighbouring segment. */
+export type ExpressionBarHandle = {
+  focusAt: (position: "start" | "end") => void;
+};
+
 type ExpressionBarProps = {
   query: Lib.Query;
   stageIndex: number;
   onChange: (query: Lib.Query) => void;
+  handleRef?: Ref<ExpressionBarHandle>;
+  /** Arrow key pressed at the very start of the bar; the caret has nowhere to go here. */
+  onExitStart?: () => void;
+  /** Arrow key pressed at the very end of the bar. */
+  onExitEnd?: () => void;
   /**
    * `false` for the segment after a summary: "or" is rejected and the
    * operator pills do not toggle, since the summary's filters can only be
@@ -64,8 +76,16 @@ type ExpressionBarProps = {
    */
   allowOr?: boolean;
   placeholder?: string;
-  /** Extra class on the bar box, for joining it with a neighbouring segment. */
+  /**
+   * `"segment"` renders the tokens without a box of their own, so a parent
+   * row can lay several segments out as one wrapping stream. Status and
+   * Cancel/Apply then go on a full-width line at the end of that row.
+   */
+  layout?: "bar" | "segment";
+  /** Extra class on the bar box, or on the segment wrapper in segment layout. */
   className?: string;
+  /** Segment layout only: rendered before the first token, e.g. a stage badge. */
+  leading?: ReactNode;
   /** Cancel/Apply live inside the bar instead of a trailing "+" button. */
   hasInlineActions?: boolean;
   /** Renders Cancel/Apply elsewhere, e.g. in a modal footer. */
@@ -85,9 +105,14 @@ export function ExpressionBar({
   query,
   stageIndex,
   onChange,
+  handleRef,
+  onExitStart,
+  onExitEnd,
   allowOr = true,
   placeholder = t`Type a column, "and", "or", "("…`,
+  layout = "bar",
   className,
+  leading,
   hasInlineActions = false,
   renderActions,
 }: ExpressionBarProps) {
@@ -155,6 +180,16 @@ export function ExpressionBar({
       inputRef.current?.focus();
     }
   });
+
+  useImperativeHandle(handleRef, () => ({
+    focusAt: (position) => {
+      setCaret(position === "start" ? 0 : tokens.length);
+      // When the caret already sits there nothing re-renders, so focus now;
+      // when it moves, the input remounts and the layout effect refocuses it.
+      inputRef.current?.focus();
+      focusInput();
+    },
+  }));
 
   const openDropdown = () => {
     setDropdownView({ type: "list" });
@@ -274,16 +309,28 @@ export function ExpressionBar({
       focusInput();
       return;
     }
-    if (event.key === "ArrowLeft" && cursorAtStart && caret > 0) {
-      event.preventDefault();
-      setCaret(caret - 1);
-      focusInput();
+    if (event.key === "ArrowLeft" && cursorAtStart) {
+      if (caret > 0) {
+        event.preventDefault();
+        setCaret(caret - 1);
+        focusInput();
+      } else if (onExitStart) {
+        event.preventDefault();
+        closeDropdown();
+        onExitStart();
+      }
       return;
     }
-    if (event.key === "ArrowRight" && cursorAtEnd && caret < tokens.length) {
-      event.preventDefault();
-      setCaret(caret + 1);
-      focusInput();
+    if (event.key === "ArrowRight" && cursorAtEnd) {
+      if (caret < tokens.length) {
+        event.preventDefault();
+        setCaret(caret + 1);
+        focusInput();
+      } else if (onExitEnd) {
+        event.preventDefault();
+        closeDropdown();
+        onExitEnd();
+      }
       return;
     }
     if (event.key === "ArrowDown") {
@@ -373,59 +420,99 @@ export function ExpressionBar({
     </Popover>
   );
 
+  // One keyed array holds the input so React moves it instead of remounting it.
+  const stream = [
+    ...tokens.flatMap((token, index) => [
+      <Gap
+        key={`gap-${index}`}
+        isActive={index === caret}
+        onClick={() => {
+          setCaret(index);
+          focusInput();
+        }}
+      />,
+      index === caret && <Fragment key="input">{input}</Fragment>,
+      <TokenView
+        key={`token-${index}`}
+        query={query}
+        stageIndex={stageIndex}
+        token={token}
+        hasError={index === errorPosition}
+        isFresh={freshIndexes.has(index)}
+        canToggleOperator={allowOr}
+        onReplace={(next) => setTokens(replaceTokenAt(tokens, index, next))}
+        onRemove={() => {
+          setTokens(removeTokenAt(tokens, index));
+          setCaret(Math.min(caret, tokens.length - 1));
+        }}
+      />,
+    ]),
+    caret === tokens.length && <Fragment key="input">{input}</Fragment>,
+  ];
+
+  const statusMessage = !parsed.ok
+    ? parsed.error
+    : isDirty
+      ? t`Press Enter to apply`
+      : undefined;
+
+  const inlineActions = isDirty && (
+    <Group gap="xs" ml="auto">
+      <Button size="compact-sm" variant="subtle" onClick={revert}>
+        {t`Cancel`}
+      </Button>
+      <Button
+        size="compact-sm"
+        variant="filled"
+        disabled={!parsed.ok}
+        onClick={commit}
+      >
+        {t`Apply`}
+      </Button>
+    </Group>
+  );
+
+  if (layout === "segment") {
+    // Each token contributes [gap, input?, token] to the stream. The leading
+    // element is grouped with the first token so a line break never separates them.
+    const headLength = tokens.length > 0 ? 3 : stream.length;
+    return (
+      <>
+        <Box className={cx(S.segment, className)}>
+          {leading ? (
+            <Box component="span" className={S.segmentHead}>
+              {leading}
+              {stream.slice(0, headLength)}
+            </Box>
+          ) : (
+            stream.slice(0, headLength)
+          )}
+          {stream.slice(headLength)}
+        </Box>
+        {(statusMessage || isDirty) && (
+          <Group className={S.segmentStatus} gap="sm" wrap="nowrap">
+            <Text
+              size="sm"
+              c={parsed.ok ? "text-secondary" : "feedback-negative"}
+            >
+              {statusMessage}
+            </Text>
+            {inlineActions}
+          </Group>
+        )}
+      </>
+    );
+  }
+
   return (
     <Stack gap="xs" w="100%">
       <Box
         className={cx(S.bar, className, { [S.barInvalid]: !parsed.ok })}
         onClick={handleBarClick}
       >
-        {/* One keyed array holds the input so React moves it instead of remounting it. */}
-        {[
-          ...tokens.flatMap((token, index) => [
-            <Gap
-              key={`gap-${index}`}
-              isActive={index === caret}
-              onClick={() => {
-                setCaret(index);
-                focusInput();
-              }}
-            />,
-            index === caret && <Fragment key="input">{input}</Fragment>,
-            <TokenView
-              key={`token-${index}`}
-              query={query}
-              stageIndex={stageIndex}
-              token={token}
-              hasError={index === errorPosition}
-              isFresh={freshIndexes.has(index)}
-              canToggleOperator={allowOr}
-              onReplace={(next) =>
-                setTokens(replaceTokenAt(tokens, index, next))
-              }
-              onRemove={() => {
-                setTokens(removeTokenAt(tokens, index));
-                setCaret(Math.min(caret, tokens.length - 1));
-              }}
-            />,
-          ]),
-          caret === tokens.length && <Fragment key="input">{input}</Fragment>,
-        ]}
+        {stream}
         {hasInlineActions ? (
-          isDirty && (
-            <Group gap="xs" ml="auto">
-              <Button size="compact-sm" variant="subtle" onClick={revert}>
-                {t`Cancel`}
-              </Button>
-              <Button
-                size="compact-sm"
-                variant="filled"
-                disabled={!parsed.ok}
-                onClick={commit}
-              >
-                {t`Apply`}
-              </Button>
-            </Group>
-          )
+          inlineActions
         ) : (
           <ActionIcon
             size="sm"
@@ -444,8 +531,7 @@ export function ExpressionBar({
       </Box>
       <Group justify="space-between" gap="sm" mih={28}>
         <Text size="sm" c={parsed.ok ? "text-secondary" : "feedback-negative"}>
-          {!parsed.ok && parsed.error}
-          {parsed.ok && isDirty && t`Press Enter to apply`}
+          {statusMessage}
         </Text>
         {renderActions?.({
           canApply: parsed.ok,

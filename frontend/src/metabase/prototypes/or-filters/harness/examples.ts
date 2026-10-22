@@ -257,3 +257,75 @@ export function withFilteredCountByCategoryByMonth(
     stageIndex,
   );
 }
+
+function findFilterColumnByLongName(
+  query: Lib.Query,
+  stageIndex: number,
+  longDisplayName: string,
+): Lib.ColumnMetadata | undefined {
+  return Lib.filterableColumns(query, stageIndex).find(
+    (column) =>
+      Lib.displayInfo(query, stageIndex, column).longDisplayName ===
+      longDisplayName,
+  );
+}
+
+/**
+ * Filters on both stages, long enough to wrap:
+ * rows `([Total] > 100 OR [Tax] > 2) AND [Quantity] > 3 AND [Discount] is empty`,
+ * then on the summary `[Count] > 50 AND ([Category] = Gadget OR [Category] = Gizmo)`.
+ */
+export function withTwoStagesExample(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const aggregated = withCountByCategoryByMonth(query, stageIndex);
+  const total = findColumn(aggregated, stageIndex, "Total");
+  const tax = findColumn(aggregated, stageIndex, "Tax");
+  const quantity = findColumn(aggregated, stageIndex, "Quantity");
+  const discount = findColumn(aggregated, stageIndex, "Discount");
+  if (!total || !tax || !quantity || !discount) {
+    return query;
+  }
+  const rowsFiltered = [
+    Lib.expressionClause("or", [
+      Lib.numberFilterClause({ operator: ">", column: total, values: [100] }),
+      Lib.numberFilterClause({ operator: ">", column: tax, values: [2] }),
+    ]),
+    Lib.numberFilterClause({ operator: ">", column: quantity, values: [3] }),
+    Lib.defaultFilterClause({ operator: "is-null", column: discount }),
+  ].reduce(
+    (nextQuery, clause) => Lib.filter(nextQuery, stageIndex, clause),
+    aggregated,
+  );
+
+  const summaryStageIndex = stageIndex + 1;
+  const withSummaryStage = Lib.appendStage(rowsFiltered);
+  const count = findFilterColumnByLongName(
+    withSummaryStage,
+    summaryStageIndex,
+    "Count",
+  );
+  const category = findFilterColumnByLongName(
+    withSummaryStage,
+    summaryStageIndex,
+    "Product → Category",
+  );
+  if (!count || !category) {
+    return rowsFiltered;
+  }
+  const categoryIs = (value: string) =>
+    Lib.stringFilterClause({
+      operator: "=",
+      column: category,
+      values: [value],
+      options: {},
+    });
+  return [
+    Lib.numberFilterClause({ operator: ">", column: count, values: [50] }),
+    Lib.expressionClause("or", [categoryIs("Gadget"), categoryIs("Gizmo")]),
+  ].reduce(
+    (nextQuery, clause) => Lib.filter(nextQuery, summaryStageIndex, clause),
+    withSummaryStage,
+  );
+}

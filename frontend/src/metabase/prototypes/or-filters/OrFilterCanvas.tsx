@@ -29,6 +29,7 @@ import {
   withOrExample,
   withPillsExample,
   withTwoGroupsExample,
+  withTwoStagesExample,
 } from "./harness/examples";
 import { useOrdersQuery } from "./harness/useOrdersQuery";
 import type { FilterDirection } from "./types";
@@ -93,6 +94,13 @@ const EXAMPLES: Example[] = [
       return t`Count by Category by Month, A or B`;
     },
     load: withFilteredCountByCategoryByMonth,
+    display: "bar",
+  },
+  {
+    get label() {
+      return t`Two stages, wraps`;
+    },
+    load: withTwoStagesExample,
     display: "bar",
   },
 ];
