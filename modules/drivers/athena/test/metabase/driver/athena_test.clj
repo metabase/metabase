@@ -8,7 +8,6 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -465,26 +464,7 @@
 
 ;;; ------------------------------------------------ describe-fields -------------------------------------------------
 
-(deftest ^:parallel describe-fields-sql-test
-  (testing "without `dbname`, read the given schemas"
-    (is (= [(str "SELECT \"table_schema\" AS \"table-schema\", \"table_name\" AS \"table-name\","
-                 " \"column_name\" AS \"name\", \"ordinal_position\" - 1 AS \"database-position\","
-                 " \"data_type\" AS \"database-type\", \"comment\" AS \"field-comment\""
-                 " FROM \"information_schema\".\"columns\""
-                 " WHERE (\"table_schema\" IN ('s1', 's2')) AND (\"table_name\" IN ('t1'))"
-                 " ORDER BY \"table_schema\" ASC, \"table_name\" ASC, \"ordinal_position\" ASC")]
-           (sql-jdbc.sync/describe-fields-sql :athena
-                                              :schema-names [nil "s1" "s2"]
-                                              :table-names  ["t1"]
-                                              :details      {}))))
-  (testing "with `dbname`, read only that Glue database, and return no schema"
-    (let [[sql] (sql-jdbc.sync/describe-fields-sql :athena
-                                                   :schema-names [nil]
-                                                   :details      {:dbname "mydb"})]
-      (is (str/starts-with? sql "SELECT NULL AS \"table-schema\","))
-      (is (str/includes? sql "WHERE (\"table_schema\" IN ('mydb')) ORDER BY")))))
-
-(deftest ^:parallel describe-fields-pre-process-xf-test
+(deftest ^:parallel column-rows->fields-xf-test
   (testing "types are the same as from `DESCRIBE`, and a column name occurs only once in each table"
     (is (= [{:table-schema "s", :table-name "t1", :name "id", :database-type "int", :base-type :type/Integer, :database-position 0, :field-comment "ID"}
             {:table-schema "s", :table-name "t1", :name "data", :database-type "struct", :base-type :type/Dictionary, :database-position 1}
@@ -493,7 +473,7 @@
             {:table-schema "s", :table-name "t2", :name "c", :database-type "bigint", :base-type :type/BigInteger, :database-position 0}
             {:table-schema "s", :table-name "t3", :name "c", :database-type "string", :base-type :type/Text, :database-position 0}]
            (into []
-                 (sql-jdbc.sync/describe-fields-pre-process-xf :athena nil)
+                 ((#'athena/column-rows->fields-xf))
                  [{:table-schema "s", :table-name "t1", :name "id", :database-type "int", :database-position 0, :field-comment "ID"}
                   {:table-schema "s", :table-name "t1", :name "data", :database-type "struct<name:string>", :database-position 1, :field-comment ""}
                   {:table-schema "s", :table-name "t1", :name "tags", :database-type "array<string>", :database-position 2}
@@ -503,16 +483,14 @@
                   {:table-schema "s", :table-name "t3", :name "c", :database-type "string", :database-position 0}])))))
 
 (deftest ^:parallel describe-fields-falls-back-to-describe-table-test
-  (testing "if the information_schema query fails, describe each table separately"
+  (testing "if `getColumns` fails, describe each table separately"
     (let [called (atom nil)
           fields [{:table-schema "s", :table-name "t", :name "id", :database-type "int", :base-type :type/Integer, :database-position 0}]]
-      (mt/with-dynamic-fn-redefs [sql-jdbc.execute/reducible-query (fn [_db _sql]
-                                                                     (reify clojure.lang.IReduceInit
-                                                                       (reduce [_ _rf _init]
-                                                                         (throw (ex-info "PERMISSION_DENIED" {})))))
-                                  athena/describe-fields-per-table (fn [_driver _database schema-names table-names]
-                                                                     (reset! called [schema-names table-names])
-                                                                     fields)]
+      (mt/with-dynamic-fn-redefs [athena/describe-fields-with-get-columns (fn [_driver _database _schema-names _table-names]
+                                                                            (throw (ex-info "AccessDeniedException" {})))
+                                  athena/describe-fields-per-table        (fn [_driver _database schema-names table-names]
+                                                                            (reset! called [schema-names table-names])
+                                                                            fields)]
         (is (= fields
                (into [] (driver/describe-fields :athena
                                                 (assoc meta/database :engine :athena, :details {})
