@@ -4,6 +4,7 @@
    [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.resources :as resources]
    [metabase.api.macros :as api.macros]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.core :as collection]
    [metabase.data-apps.core :as data-apps]
    [metabase.models.interface :as mi]
@@ -13,6 +14,20 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(deftest visible-data-app-filter-select-outside-toucan-test
+  (testing "the read rule query works in an app-DB query compiled outside Toucan, as the search index's queries are"
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-temp [:model/DataApp {app-id :id} {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                     :model/DataApp _ {:name "owls" :display_name "Owls" :bundle_path "owls.js"}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
+                     :model/DataAppGroupAssignment _ {:data_app_id app-id :permission_group_id group-id}]
+        (is (= [app-id]
+               (map :id (mdb/query {:select [:id]
+                                    :from   [:data_app]
+                                    :where  [:in :id (data-apps/visible-data-app-filter-select
+                                                      {:user-id (mt/user->id :rasta) :is-superuser? false})]}))))))))
 
 (deftest assignments-authorize-access-test
   (mt/with-premium-features #{:data-apps}
