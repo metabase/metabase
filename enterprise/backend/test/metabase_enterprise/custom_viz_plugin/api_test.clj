@@ -123,6 +123,14 @@
                                                :bundle_hash  "colon-hash"}]
         (let [identifiers (set (map :identifier (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")))]
           (is (not (contains? identifiers "colon:viz"))))))
+    (testing "/list still serves a legacy plugin whose identifier a repository can't name"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "My Heatmap"
+                                               :display_name "My Heatmap"
+                                               :status       :active
+                                               :enabled      true
+                                               :bundle_hash  "space-hash"}]
+        (let [identifiers (set (map :identifier (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")))]
+          (is (contains? identifiers "My Heatmap")))))
     (testing "/list does not expose the raw bundle blob"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "bundle-viz"
                                                :display_name "Bundle Viz"
@@ -165,7 +173,17 @@
                                 set))]
           (is (contains? (warn-types "colon:viz") "invalid-identifier"))
           (is (contains? (warn-types "colon:dev-viz") "invalid-identifier")
-              "dev-only plugins are exempt from version warnings but not from this one"))))))
+              "dev-only plugins are exempt from version warnings but not from this one"))))
+    (testing "GET / does not flag a legacy plugin whose identifier a repository can't name, it is still served"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "My Heatmap"
+                                               :display_name "My Heatmap"
+                                               :status       :active
+                                               :enabled      true
+                                               :bundle_hash  "space-hash"}]
+        (let [plugin (->> (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
+                          (filter #(= "My Heatmap" (:identifier %)))
+                          first)]
+          (is (not (contains? (set (map :type (:warnings plugin))) "invalid-identifier"))))))))
 
 (deftest bundle-bytes-not-exposed-test
   (mt/with-premium-features #{:custom-viz}
@@ -425,7 +443,12 @@
           (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "a:b"})]
             (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
-              (is (str/includes? resp "must not contain \":\"")))))))))
+              (is (str/includes? resp "must not contain \":\"")))))
+        (testing "dev plugin registration rejects an identifier a repository can't name"
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "a b"})]
+            (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
+                                             {:dev_bundle_url "http://localhost:5174"})]
+              (is (str/includes? resp "must be letters, digits")))))))))
 
 ;;; ------------------------------------------------ Bundle Replace ------------------------------------------------
 

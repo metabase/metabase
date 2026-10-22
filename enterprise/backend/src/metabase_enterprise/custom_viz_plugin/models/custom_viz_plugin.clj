@@ -103,10 +103,10 @@
 
 (defmethod serdes/extract-query "CustomVizPlugin"
   [model-name {:keys [filter-column filter-ids] :as opts}]
-  ;; a dev-only plugin has no bundle to export; an identifier that can't name a directory is skipped as the runtime
-  ;; `/list` skips it
+  ;; a dev-only plugin has no bundle to export; a plugin whose identifier can't name a directory is left out and
+  ;; named in the log, it is still served on this instance
   (eduction (remove (fn [{:keys [identifier]}]
-                      (when-let [error (manifest/identifier-error identifier)]
+                      (when-let [error (manifest/directory-name-error identifier)]
                         (log/warnf "Not exporting custom viz plugin: %s" error)
                         true)))
             (custom-viz-plugin.db/reducible-plugins-with-bundles filter-column filter-ids

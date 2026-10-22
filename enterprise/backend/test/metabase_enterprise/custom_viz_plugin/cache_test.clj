@@ -79,6 +79,14 @@
       (is (thrown-with-msg? Exception #"must not contain \":\""
                             (cache/validate-bundle! bytes))))))
 
+(deftest validate-bundle-rejects-name-that-cannot-name-a-directory-test
+  (testing "a name a repository can't use as the plugin's directory is rejected at upload"
+    (let [bytes (cvp.tu/make-tgz-bytes
+                 [["metabase-plugin.json" (json/encode {:name "a b"})]
+                  ["dist/index.js" "console.log('hi')"]])]
+      (is (thrown-with-msg? Exception #"must be letters, digits"
+                            (cache/validate-bundle! bytes))))))
+
 (deftest validate-bundle-rejects-invalid-json-manifest-test
   (testing "non-JSON manifest is rejected"
     (let [bytes (cvp.tu/make-tgz-bytes

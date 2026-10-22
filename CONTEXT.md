@@ -11,8 +11,12 @@ The installable unit that adds a visualization to an instance: a Bundle plus the
 _Avoid_: Custom visualization (when meaning the installed unit), viz plugin, visualization plugin, custom viz
 
 **Identifier**:
-The string that names a Custom Viz Plugin on an instance, in `custom:<identifier>` card displays, and as its directory in a repository. It is the Manifest's `name`, kept exactly as written, including case. It contains no `:`, `/`, `\` or whitespace and does not start with `.`.
+The string that names a Custom Viz Plugin on an instance, in `custom:<identifier>` card displays, and as its directory in a repository. It is the Manifest's `name`, kept exactly as written, including case. An instance serves any Identifier without `:`; one that is not a Directory Name can only have been installed before the rule existed.
 _Avoid_: Slug, name (ambiguous with display name), plugin id
+
+**Directory Name**:
+An Identifier a repository can hold: letters, digits, `.`, `_` and `-`, starting with a letter or digit. Registration refuses anything else; export leaves such a plugin out and says so in the log rather than renaming it.
+_Avoid_: Valid identifier, safe identifier
 
 **Bundle**:
 The built output a Custom Viz Plugin ships as, packed into one tar.gz: a Manifest, the built JavaScript, and its icon. An instance stores the archive as uploaded; a repository holds its files unpacked beside the plugin's entity file, and an import packs them back.
