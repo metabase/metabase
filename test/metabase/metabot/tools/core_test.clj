@@ -301,6 +301,18 @@
                             (tools/with-entity {:kind :timeline :id 5}
                               (throw (ex-info "nope" {:status-code status})))))))))))
 
+(deftest ^:parallel with-entity-keeps-inner-entity-test
+  (doseq [status [403 404]]
+    (is (=? {:class   :recoverable
+             :code    :metabase.metabot.tools.recoverable.common/not-found
+             :message "Field 2 was not found. It may not exist, or you may not have access to it."
+             :data    {:kind :field :id 2}}
+            (tools.error/classify
+             (is (thrown? clojure.lang.ExceptionInfo
+                          (tools/with-entity {:kind :table :id 1}
+                            (tools/with-entity {:kind :field :id 2}
+                              (throw (ex-info "Field lookup refused" {:status-code status})))))))))))
+
 (deftest ^:parallel with-entity-passes-everything-else-through-test
   (testing "a real failure inside the body stays unrecoverable instead of being reported as a miss"
     (doseq [data [{:status-code 500} {} {:status-code 400}]]
@@ -341,7 +353,24 @@
                :data {:entity-type "metric" :entity-id 7}}
               error))
       (is (str/starts-with? (:text (first (:recovery error)))
-                            "Metrics are aggregations, not sources.")))))
+                            "Metrics are aggregations, not sources."))))
+  (testing "an error from a `source-card:` stage carries the card, so the recovery step reads that card's columns"
+    (doseq [[error what] [[:column-not-returned "columns"]
+                          [:unexportable-fk "columns"]
+                          [:ambiguous-fk "foreign-key columns"]]]
+      (testing error
+        (is (=? {:data     {:source-card 12 :source-card-type "model"}
+                 :recovery [{:uses #{"read_resource"}
+                             :text (str "Call `read_resource` with `metabase://model/12/fields` to list the " what
+                                        " this model returns.")}]}
+                (pipeline-failure "The field cannot be referenced here."
+                                  {:agent-error? true :error error :source-card 12 :source-card-type "model"}))))))
+  (testing "an ambiguous foreign key on a `source-table:` stage still points at the table's fields"
+    (is (=? {:recovery [{:uses #{"read_resource"}
+                         :text (str "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source "
+                                    "table to list the available foreign-key columns.")}]}
+            (pipeline-failure "Two foreign keys reach the table."
+                              {:agent-error? true :error :ambiguous-fk :source-table 3})))))
 
 (deftest ^:parallel with-pipeline-errors-converts-refusals-test
   (doseq [status [403 404]]
