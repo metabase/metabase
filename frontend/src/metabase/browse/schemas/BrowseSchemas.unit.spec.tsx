@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
@@ -109,6 +109,37 @@ describe("BrowseSchemas name-based permalinks", () => {
         await screen.findByText("This database doesn't have any tables."),
       ).toBeInTheDocument();
     });
+  });
+
+  describe("schema requests", () => {
+    const MULTI_SCHEMA_MARKETING = createMockDatabase({
+      id: 8,
+      name: "Marketing",
+      tables: [
+        createMockTable({ id: 20, db_id: 8, schema: "CAMPAIGNS" }),
+        createMockTable({ id: 21, db_id: 8, schema: "LEADS" }),
+      ],
+    });
+
+    it.each(["/browse/databases/Sales", "/browse/databases/7-sales"])(
+      "requests only the opened database's schemas at %s (only selected database schemas)",
+      async (initialRoute) => {
+        setup({
+          databases: [MULTI_SCHEMA_SALES, MULTI_SCHEMA_MARKETING],
+          initialRoute,
+        });
+
+        await waitFor(() =>
+          expect(
+            fetchMock.callHistory.called("path:/api/database/7/schemas"),
+          ).toBe(true),
+        );
+        expect(await screen.findByText("PUBLIC")).toBeInTheDocument();
+        expect(
+          fetchMock.callHistory.called("path:/api/database/8/schemas"),
+        ).toBe(false);
+      },
+    );
   });
 
   describe("when the database can't be resolved", () => {
