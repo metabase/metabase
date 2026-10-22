@@ -663,9 +663,13 @@
                                                          (nil? (:fk-join-alias column)))
                                                 (:fk-field-id column)))
                                             columns)))]
-    (format "Use `source-field` %s to reach %s directly."
-            (str/join " or " (map #(pr-str (nth (field-ref-for-error metadata-provider [:field {} %]) 2)) field-ids))
-            table-name)))
+    (let [fields          (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
+          queryable-tables (metabot.perms/queryable-table-ids (into #{} (keep :table-id) fields))
+          fields          (filter #(contains? queryable-tables (:table-id %)) fields)]
+      (when (seq fields)
+        (format "Use `source-field` %s to reach %s directly."
+                (str/join " or " (map #(pr-str (nth (field-ref-for-error metadata-provider [:field {} (:id %)]) 2)) fields))
+                table-name)))))
 
 (defn- wrong-source-field-error
   "The agent error for `field-ref`, whose column is on table `table-id` while its `source-field` points at table
@@ -750,7 +754,7 @@
             fk-table-id (some->> (:fk-target-field-id fk-field) (fetch-field mp) :table-id)
             field-ref   (field-ref-for-error mp field-ref)]
         (when-not (and table-id (= table-id fk-table-id) (available-source-field query stage-number opts))
-          (if (and table-id fk-field (not= table-id fk-table-id))
+          (if (and (pos-int? target) table-id fk-field (not= table-id fk-table-id))
             (throw (wrong-source-field-error mp field-ref table-id fk-table-id columns))
             (throw (ex-info (format "Field %s cannot be reached through `source-field` %s in this stage. Use a foreign key available in this stage, or join the field's table explicitly and reference it with `join-alias`."
                                     (pr-str (nth field-ref 2)) (pr-str (get-in field-ref [1 :source-field])))

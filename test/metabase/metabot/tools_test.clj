@@ -441,6 +441,56 @@
               (is (= :wrong-source-field (:error (ex-data e)))))
             (is (seq (mt/rows (qp/process-query (run! card-eid)))))))))))
 
+(deftest construct-notebook-query-source-card-field-error-permissions-test
+  (let [mp    (mt/metadata-provider)
+        db    (t2/select-one-fn :name :model/Database (mt/id))
+        date  [db "PUBLIC" "CHECKINS" "DATE"]
+        query (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                [(lib.metadata/field mp (mt/id :venues :name))])]
+    (mt/with-temp [:model/Card {card-eid :entity_id} {:name "Venue names" :dataset_query query}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :checkins) :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [e (try
+                    (construct/execute-representations-query
+                     {:lib/type "mbql/query"
+                      :stages [{:lib/type "mbql.stage/mbql" :source-card card-eid
+                                :aggregation [["count" {}]]
+                                :breakout [["field" {:source-field date :base-type "type/Text"} "NAME"]]}]})
+                    (catch clojure.lang.ExceptionInfo e e))]
+            (is (= :wrong-source-field (:error (ex-data e))))
+            (is (= (str "Field \"NAME\" cannot be reached through `source-field` " (pr-str date)
+                        " in this stage. Use a foreign key available in this stage, or join the field's table "
+                        "explicitly and reference it with `join-alias`.")
+                   (ex-message e)))))))))
+
+(deftest construct-notebook-query-source-card-hint-permissions-test
+  (let [mp       (mt/metadata-provider)
+        db       (t2/select-one-fn :name :model/Database (mt/id))
+        category [db "PUBLIC" "VENUES" "CATEGORY_ID"]
+        target   [db "PUBLIC" "VENUES" "NAME"]
+        query    (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                   [(lib.metadata/field mp (mt/id :checkins :venue_id))])]
+    (mt/with-temp [:model/Card {card-eid :entity_id} {:name "Venue keys" :dataset_query query}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [e (try
+                    (construct/execute-representations-query
+                     {:lib/type "mbql/query"
+                      :stages [{:lib/type "mbql.stage/mbql" :source-card card-eid
+                                :aggregation [["count" {}]]
+                                :breakout [["field" {:source-field category} target]]}]})
+                    (catch clojure.lang.ExceptionInfo e e))]
+            (is (= :wrong-source-field (:error (ex-data e))))
+            (is (= (str "Field " (pr-str target) " is on table \"VENUES\", but its `source-field` "
+                        (pr-str category) " is not a foreign key to that table, so the field cannot be reached through it. "
+                        "Use a `source-field` that is a foreign key to \"VENUES\", or join \"VENUES\" explicitly "
+                        "and reference the field with its `join-alias`.")
+                   (ex-message e)))))))))
+
 (defn- construct-tool-failure-for-thrown
   "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return the
   failure the model would see."
