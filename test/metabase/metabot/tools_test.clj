@@ -343,9 +343,9 @@
             (is (some? (:schema entry)))
             (is (fn? (:fn entry))))))))
   (testing "an unconverted tool's schema comes from its var metadata"
-    (let [entries (agent-tools/->entries [#'agent-tools/create-chart-tool] (atom {}) nil :nlq)
-          [_:=> [_:cat declared] _out] (:schema (get entries "create_chart"))
-          [_:=> [_:cat original] _out] (:schema (meta #'agent-tools/create-chart-tool))]
+    (let [entries (agent-tools/->entries [#'agent-tools/list-snippets-tool] (atom {}) nil :nlq)
+          [_:=> [_:cat declared] _out] (:schema (get entries "list_snippets"))
+          [_:=> [_:cat original] _out] (:schema (meta #'agent-tools/list-snippets-tool))]
       (is (= original declared))))
   (testing "a converted tool and an unconverted one sit side by side"
     (let [entries (agent-tools/->entries [#'agent-tools/list-timelines-tool       ; mu/defn var
@@ -360,12 +360,10 @@
 
 (deftest tool-schemas-exclude-state-keys-test
   (testing "create_chart schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/create-chart-tool)
-          [_:=> [_:cat params] _out] schema]
+    (let [params (:args (tools.legacy/declaration-of #'agent-tools/create-chart-tool))]
       (is (not-any? #(= :charts_state (first %)) (rest params)))))
   (testing "edit_chart schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/edit-chart-tool)
-          [_:=> [_:cat params] _out] schema]
+    (let [params (:args (tools.legacy/declaration-of #'agent-tools/edit-chart-tool))]
       (is (not-any? #(= :queries_state (first %)) (rest params)))))
   (doseq [tool [agent-tools/create-sql-query-tool agent-tools/create-sql-query-code-edit-tool
                 agent-tools/edit-sql-query-tool agent-tools/replace-sql-query-tool]]
