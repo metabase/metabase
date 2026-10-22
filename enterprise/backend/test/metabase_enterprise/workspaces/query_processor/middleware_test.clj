@@ -308,14 +308,15 @@
              (get result {:schema "public" :table "orders"})))
       (is (= {:schema "mb_iso" :table "users"}
              (get result {:schema "public" :table "users"})))))
-  (testing "3-level remappings (SQL Server-style) keep :db on the target only"
+  (testing "3-level remappings (SQL Server-style) key the source by its catalog and by no catalog"
     ;; 3-slot specs translate to SQLGlot's `:db`+`:schema`+`:table` shape.
     ;; Our `:db` -> SQLGlot's `:db` (the catalog slot); our `:schema` stays as `:schema`.
-    ;; The source key drops `:db` so it also matches 2-part `schema.table` references.
+    ;; The `:db nil` key matches 2-part `schema.table` references, and no other catalog's.
     (let [remappings {{:db "proj" :schema "ds" :table "orders"} {:db "proj" :schema "ws_ds" :table "orders"}}
           result (#'ws.table-remapping/build-table-replacements remappings)]
-      (is (= {:db "proj" :schema "ws_ds" :table "orders"}
-             (get result {:schema "ds" :table "orders"})))))
+      (is (= {{:db "proj" :schema "ds" :table "orders"} {:db "proj" :schema "ws_ds" :table "orders"}
+              {:db nil    :schema "ds" :table "orders"} {:db "proj" :schema "ws_ds" :table "orders"}}
+             result))))
   (testing "schema-less drivers (MySQL-style) prune both :db and :schema"
     (let [remappings {{:db "" :schema "" :table "orders"} {:db "" :schema "ws_db" :table "orders"}}
           result (#'ws.table-remapping/build-table-replacements remappings)]

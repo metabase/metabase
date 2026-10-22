@@ -11,6 +11,7 @@
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.driver :as driver]
    [metabase.driver.connection.workspaces :as driver.conn.w]
+   [metabase.sql-tools.settings :as sql-tools.settings]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
@@ -1081,3 +1082,18 @@
              "pk-side schema rewrites to canonical (denormalized nil)")
          (is (= "users" (:pk-table-name out))
              "pk-side name rewrites to canonical"))))))
+
+(deftest ^:parallel rewrite-sql-sqlserver-catalog-qualification-test
+  ;; SQL Server specs carry the connection's database in `:db`; native SQL names a table as
+  ;; `schema.table` or `db.schema.table`, and may reach into another database on the server.
+  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (let [remappings {{:db "prod" :schema "dbo" :table "orders_out"}
+                      {:db "prod" :schema "ws_iso" :table "orders_out"}}
+          rewrite    #(ws.table-remapping/rewrite-sql :sqlserver % remappings)]
+      (testing "a 2-part reference resolves to the connection's database, so it is remapped"
+        (is (re-find #"ws_iso\.orders_out" (rewrite "SELECT * FROM dbo.orders_out"))))
+      (testing "a 3-part reference naming the connection's database is remapped"
+        (is (re-find #"ws_iso\.orders_out" (rewrite "SELECT * FROM prod.dbo.orders_out"))))
+      (testing "a 3-part reference naming another database is a different table and stays put"
+        (is (= "SELECT * FROM otherdb.dbo.orders_out"
+               (rewrite "SELECT * FROM otherdb.dbo.orders_out")))))))

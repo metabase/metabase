@@ -264,15 +264,20 @@
    `sql-tools/replace-names`. SQLGlot handles quoting internally based on the
    dialect, so we pass raw identifiers.
 
-   The from-side key omits the catalog: SQLGlot matches a key carrying `:db` only against
-   references that name that catalog, and native SQL on SQL Server usually writes
-   `schema.table`. The from-catalog is always the connection's own database. The to-side
-   keeps it, so a remap into another database still qualifies the rewritten reference."
+   A from-spec with a catalog yields two keys. SQLGlot matches a key carrying `:db` only
+   against references that name that catalog, but native SQL on SQL Server usually writes
+   `schema.table`. The from-catalog is always the connection's own database, which is where
+   such a reference resolves, so a second key with `:db nil` matches references that name no
+   catalog. Dropping `:db` instead would match every catalog and pull another database's
+   same-named table into the workspace. The to-side keeps its catalog, so a remap into
+   another database still qualifies the rewritten reference."
   [remappings]
   (into {}
-        (map (fn [[from-spec to-spec]]
-               [(dissoc (table-spec->sqlglot-key from-spec) :db)
-                (table-spec->sqlglot-key to-spec)]))
+        (mapcat (fn [[from-spec to-spec]]
+                  (let [from-key (table-spec->sqlglot-key from-spec)
+                        to-key   (table-spec->sqlglot-key to-spec)]
+                    (cond-> [[from-key to-key]]
+                      (:db from-key) (conj [(assoc from-key :db nil) to-key])))))
         remappings))
 
 (defn rewrite-sql
