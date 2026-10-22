@@ -82,13 +82,13 @@ describe("createDataAppSandbox", () => {
     // CSP, not the data-app document's — see `realmHostUrl`.
     it("points the membrane's realm iframe at the realm host when given one", async () => {
       const { options } = await setup({
-        realmHostUrl: "/api/apps/sandbox-host",
+        realmHostUrl: "/api/ee/near-membrane-plugin/sandbox-host",
       });
 
       // Untyped: `iframeSrc` comes from Metabase's near-membrane patch, so it is
       // absent from the upstream option types.
       expect((options as { iframeSrc?: string })?.iframeSrc).toBe(
-        "/api/apps/sandbox-host",
+        "/api/ee/near-membrane-plugin/sandbox-host",
       );
     });
 

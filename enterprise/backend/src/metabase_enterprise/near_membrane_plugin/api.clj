@@ -1,14 +1,9 @@
-(ns metabase-enterprise.custom-viz-plugin.api.sandbox-host
-  "Donor endpoint for the near-membrane custom-viz sandbox: a blank iframe document whose only
-  capability is `'unsafe-eval'` in its own realm. It cannot require auth, because EAJS loads it as an
-  iframe `src`, which carries no headers and no first-party cookies.
-
-  Served only when the browser sends `Sec-Fetch-Site: same-origin` and `Sec-Fetch-Dest: iframe`
-  (page JS cannot forge those), or, for session-authed callers, as long as there is a valid session.
-  Everything else 404s. Keep it inert: never add content, data, or parameters here."
+(ns metabase-enterprise.near-membrane-plugin.api
+  "Static evaluator document shared by custom viz and data apps.
+   Requires a feature token from either feature."
   (:require
-   [metabase-enterprise.custom-viz-plugin.settings :as custom-viz.settings]
-   [metabase.api.macros :as api.macros]))
+   [metabase.api.macros :as api.macros]
+   [metabase.premium-features.core :as premium-features]))
 
 (set! *warn-on-reflection* true)
 
@@ -21,7 +16,7 @@
   "CSP applied ONLY to the sandbox iframe document.
    - `'unsafe-eval'` required by near-membrane to evaluate plugin code inside the realm.
    - `frame-ancestors *` instead of `X-Frame-Options`, so EAJS customer pages can frame it too."
-  "default-src 'none'; script-src 'unsafe-eval'; frame-ancestors *;")
+  "default-src 'none'; script-src 'unsafe-eval'; form-action 'none'; frame-ancestors *;")
 
 (defn- sec-fetch-same-origin-iframe?
   "True when the browser attests this is a same-origin iframe navigation, the one way EAJS loads
@@ -50,13 +45,14 @@
     (sec-fetch-same-origin-iframe? request)))
 
 (api.macros/defendpoint :get "/sandbox-host" :- :any
-  "Serve a minimal HTML document used as the iframe `src` for the near-membrane custom-viz
+  "Serve a minimal HTML document used as the iframe `src` for the near-membrane
    sandbox. The response carries a per-document `Content-Security-Policy` that permits
    `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict
-   nonce-based CSP. 404s unless the custom-viz kill switch is on and the request passes the
+   nonce-based CSP. 404s unless either feature token is present and the request passes the
    fetch-metadata gate (see [[donor-load-allowed?]])."
   [_route-params _query-params _body request]
-  (if-not (and (custom-viz.settings/enable-custom-viz?)
+  (if-not (and (or (premium-features/has-feature? :custom-viz)
+                   (premium-features/has-feature? :data-apps))
                (donor-load-allowed? request))
     {:status  404
      :headers {"Content-Type"  "text/plain; charset=utf-8"
@@ -78,6 +74,5 @@
      :body    sandbox-host-html}))
 
 (def ^{:arglists '([request respond raise])} routes
-  "Unauthed `/api/ee/custom-viz-plugin/sandbox-host` donor route, mounted alongside the
-   session-authed custom-viz-plugin routes."
+  "Unauthenticated evaluator routes shared by custom viz and data apps."
   (api.macros/ns-handler *ns*))
