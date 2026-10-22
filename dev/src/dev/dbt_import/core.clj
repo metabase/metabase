@@ -9,16 +9,14 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(set! *warn-on-reflection* true)
-
 (mr/def ::report
   "What a run converted, with the file each metric was written to, and what it could not convert, with the reason."
   [:map
-   [:out-dir :string]
-   [:converted [:sequential [:map
-                             [:name :string]
-                             [:entity-id ::resolved/entity-id]
-                             [:path :string]]]]
+   [:out-dir     :string]
+   [:converted   [:sequential [:map
+                               [:name :string]
+                               [:entity-id ::resolved/entity-id]
+                               [:path :string]]]]
    [:unsupported [:sequential [:map
                                [:name :string]
                                [:reason :string]]]]])
@@ -30,8 +28,8 @@
       MB_DB_CONNECTION_URI=... clojure -M:run:ee import <out-dir> -e"
   [{:keys [manifest out-dir config]} :- [:map {:closed true}
                                          [:manifest :string]
-                                         [:out-dir :string]
-                                         [:config ::resolved/config]]]
+                                         [:out-dir  :string]
+                                         [:config   ::resolved/config]]]
   (let [resolved (resolve/resolve-manifest config (parse/parse-manifest-file manifest))
         files    (emit/files config resolved)]
     (emit/write! out-dir files)
