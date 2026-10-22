@@ -125,6 +125,7 @@ export const useAnalysis = <K extends AnalysisKind>({
     spec,
     missing,
     display: config.getDisplay(computed),
+    question: config.getQuestion?.(computed) ?? config.question,
     vizSettings: config.getVizSettings(computed, colors),
     colorSlots: config.getColorSlots?.(computed, colors) ?? [],
     query,

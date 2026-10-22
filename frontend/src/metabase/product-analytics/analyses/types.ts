@@ -159,6 +159,8 @@ export type AnalysisConfig<K extends AnalysisKind> = {
     settings: AnalysisSettingsByKind[K],
     colors: DisplayColors,
   ) => ColorSlot[];
+  /** The chart's title when it depends on the settings, in place of `question`. */
+  getQuestion?: (settings: AnalysisSettingsByKind[K]) => string;
   /**
    * Names the actors in a clicked point, e.g. "Reached step 2: Signed up".
    * `null`, or omitted, when the chart's clicks can't be traced to actors.

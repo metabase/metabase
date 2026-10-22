@@ -84,8 +84,9 @@ const getStepColor = (
 const getStepLabel = (index: number, name: string): string =>
   `${index + 1}. ${name}`;
 
+// Hourly starts are noise next to a completion window that's usually days.
 const common = commonSettings({
-  granularity: { units: ["hour", "day", "week", "month"], defaultUnit: "week" },
+  granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
 });
 
 const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {

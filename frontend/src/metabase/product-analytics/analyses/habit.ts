@@ -58,15 +58,21 @@ const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
     }),
   }),
   "habit.measure": {
-    getTitle: () => t`Measure`,
+    getTitle: () => t`What to measure`,
     getSection: () => "setup",
-    widget: "select",
+    widget: "radio",
     getDefault: () => "histogram",
     isValid: (value) => isOneOf(MEASURES, value),
     getProps: (_context, settings) => ({
       options: [
         { name: t`How often people show up`, value: "histogram" },
-        { name: ratioName(settings.granularity), value: "ratio" },
+        {
+          name:
+            toSubPeriod(settings.granularity) === "week"
+              ? t`Ratio of weekly to monthly users (WAU/MAU)`
+              : t`Ratio of daily to monthly users (DAU/MAU)`,
+          value: "ratio",
+        },
       ],
     }),
   },
@@ -78,7 +84,18 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
     return t`Habit`;
   },
   get question() {
-    return t`How many days did a person show up?`;
+    return t`How many days in a row did people show up?`;
+  },
+  getQuestion: (settings) => {
+    const isWeekly = toSubPeriod(settings.granularity) === "week";
+    if (settings["habit.measure"] === "histogram") {
+      return isWeekly
+        ? t`How many weeks in a row did people show up?`
+        : HABIT_CONFIG.question;
+    }
+    return isWeekly
+      ? t`What share of monthly users show up each week?`
+      : t`What share of monthly users show up each day?`;
   },
   get setupLabel() {
     return t`Setup`;

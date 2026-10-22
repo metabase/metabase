@@ -105,6 +105,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     widgets,
     missing,
     display,
+    question,
     vizSettings,
     colorSlots,
     query,
@@ -275,7 +276,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               style={{ overflowY: "auto" }}
             >
               <AnalysisResult
-                title={config.question}
+                title={question}
                 display={display}
                 vizSettings={chartSettings}
                 dataset={query.dataset}
@@ -299,7 +300,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
                 query.isLoading || query.error
                   ? null
                   : getAnalysisRawSeries({
-                      title: config.question,
+                      title: question,
                       display,
                       vizSettings: chartSettings,
                       dataset: query.dataset,
