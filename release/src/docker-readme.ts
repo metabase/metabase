@@ -1,17 +1,17 @@
 import fetch from "node-fetch";
 
-import type {
-  GithubProps,
-  MajorVersionSupport,
-  VersionInfoFile,
-} from "./types";
+import type { GithubProps, VersionInfoFile } from "./types";
 import {
   getCanonicalVersion,
   getLastReleaseTag,
   getOSSVersion,
   getRollingTagsForVersion,
 } from "./version-helpers";
-import { getSupportedMajorVersions, getVersionInfoUrl } from "./version-info";
+import {
+  getSupportedMajorVersions,
+  getVersionInfoUrl,
+  isLtsVersion,
+} from "./version-info";
 
 export const SUPPORTED_TAGS_PLACEHOLDER = "{{SUPPORTED_TAGS_TABLE}}";
 
@@ -22,6 +22,7 @@ export type DockerTagRow = {
   status: "Beta" | "LTS" | "Supported";
   version: string;
   isLatest: boolean;
+  lts: boolean;
 };
 
 export const getDockerTagsForVersion = (props: {
@@ -48,11 +49,11 @@ export const buildSupportedTagsTable = (rows: DockerTagRow[]) =>
   [
     "| Version | Status | Tags |",
     "|---|---|---|",
-    ...rows.map(({ major, status, version, isLatest }) => {
+    ...rows.map(({ major, status, version, isLatest, lts }) => {
       const tags = getDockerTagsForVersion({
         version,
         isLatest,
-        isLts: status === "LTS",
+        isLts: lts,
       });
       return `| ${major} | ${status} | ${tags.map((tag) => `\`${tag}\``).join(", ")} |`;
     }),
@@ -92,11 +93,14 @@ export async function getDockerTagRows({
     throw new Error(`Invalid latest major version: ${latestMajorVersion}`);
   }
 
-  const versionInfo = (await fetch(getVersionInfoUrl("v0")).then((r) =>
-    r.json(),
-  )) as VersionInfoFile;
-  const supportLines: MajorVersionSupport[] =
-    versionInfo.major_version_support ?? [];
+  const versionInfoUrl = getVersionInfoUrl("v0");
+  const versionInfoResponse = await fetch(versionInfoUrl);
+  if (!versionInfoResponse.ok) {
+    throw new Error(
+      `Failed to fetch ${versionInfoUrl}: ${versionInfoResponse.status} ${await versionInfoResponse.text()}`,
+    );
+  }
+  const versionInfo = (await versionInfoResponse.json()) as VersionInfoFile;
 
   const rows: DockerTagRow[] = [];
 
@@ -115,10 +119,16 @@ export async function getDockerTagRows({
 
     const version = getCanonicalVersion(ossVersion, edition);
 
-    const lts = supportLines.some((line) => line.major === major && line.lts);
+    const lts = await isLtsVersion({ version });
     const status = getDockerTagRowStatus({ version, lts });
 
-    rows.push({ major, status, version, isLatest: major === latestMajor });
+    rows.push({
+      major,
+      status,
+      version,
+      isLatest: major === latestMajor,
+      lts,
+    });
   }
 
   return rows;
@@ -162,9 +172,17 @@ export async function pushDockerReadme({
     );
   }
 
-  const { access_token } = (await authResponse.json()) as {
-    access_token: string;
-  };
+  const authBody: unknown = await authResponse.json();
+  const access_token =
+    typeof authBody === "object" &&
+    authBody !== null &&
+    "access_token" in authBody &&
+    typeof authBody.access_token === "string"
+      ? authBody.access_token
+      : undefined;
+  if (!access_token) {
+    throw new Error("Docker Hub authentication response has no access_token");
+  }
 
   const response = await fetch(
     `${DOCKER_HUB_API_URL}/repositories/${repository}/`,

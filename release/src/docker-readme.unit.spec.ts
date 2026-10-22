@@ -120,6 +120,45 @@ describe("docker-readme", () => {
         );
       },
     );
+
+    it("adds the -lts tag to an LTS major version that is still in beta", async () => {
+      tags.push("v0.66.0.3");
+      mockFetch.mockResolvedValue(
+        response(true, {
+          major_version_support: [line(66, true, "2028-01-01")],
+        }),
+      );
+
+      const readme = await generateDockerReadme({
+        github: github as any,
+        owner: "metabase",
+        repo: "metabase",
+        latestMajorVersion: "65",
+        edition: "oss",
+        today: "2026-10-21",
+        template: SUPPORTED_TAGS_PLACEHOLDER,
+      });
+      tags.pop();
+
+      expect(readme).toContain(
+        "| 66 | Beta | `v0.66-lts`, `v0.66.x`, `v0.66.0.x`, `v0.66.0.3` |",
+      );
+    });
+
+    it("throws with the URL when version-info.json cannot be fetched", async () => {
+      mockFetch.mockResolvedValue(response(false));
+
+      await expect(
+        generateDockerReadme({
+          github: github as any,
+          owner: "metabase",
+          repo: "metabase",
+          latestMajorVersion: "64",
+          edition: "oss",
+          template: SUPPORTED_TAGS_PLACEHOLDER,
+        }),
+      ).rejects.toThrow(/Failed to fetch .*version-info\.json: 401/);
+    });
   });
 
   describe("pushDockerReadme", () => {
@@ -163,6 +202,15 @@ describe("docker-readme", () => {
       await expect(push("bad")).rejects.toThrow(
         "Docker Hub authentication failed: 401",
       );
+    });
+
+    it("throws when the authentication response has no access token", async () => {
+      mockFetch.mockResolvedValueOnce(response(true, { token: "jwt" }));
+
+      await expect(push()).rejects.toThrow(
+        "Docker Hub authentication response has no access_token",
+      );
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
 });
