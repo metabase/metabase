@@ -1394,3 +1394,18 @@
         (is (= [["CREATE INDEX `by_cat` ON `t` (`category`)"]] stmts))
         (is (not (str/includes? (ffirst stmts) "PREPARE")))
         (is (not (str/includes? (ffirst stmts) "UNHEX")))))))
+
+(deftest error-while-reading-rows-is-invalid-query-test
+  (mt/test-driver :mysql
+    (testing "An error in the query that the database raises after the first fetch of rows is an invalid query"
+      ;; MariaDB raises this with SQLState HY000, which its JDBC driver throws as SQLTransientConnectionException
+      (is (=? {:status     :failed
+               :error_type :invalid-query
+               :error      #"(?s).*JSON_TABLE.*"}
+              (qp/process-query
+               (qp/userland-query
+                (lib/native-query
+                 (mt/metadata-provider)
+                 (str "WITH RECURSIVE seq (n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM seq WHERE n < 601) "
+                      "SELECT seq.n, jt.a FROM seq STRAIGHT_JOIN JSON_TABLE(IF(seq.n < 601, '{\"a\": 1}', '{}'), '$' "
+                      "COLUMNS (a INT PATH '$.a' ERROR ON EMPTY)) AS jt")))))))))

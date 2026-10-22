@@ -2,6 +2,7 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.sqlite-test]}
                                                             metabase.test.data/run-mbql-query {:namespaces [metabase.driver.sqlite-test]}}}}}}
   (:require
+   [clojure.core.async :as a]
    [clojure.java.io :as io]
    [clojure.java.jdbc :as jdbc]
    [clojure.test :refer :all]
@@ -9,6 +10,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
@@ -16,12 +18,16 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.serialization :as serdes]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql ResultSet SQLException)
+   (org.sqlite SQLiteErrorCode)))
 
 (set! *warn-on-reflection* true)
 
@@ -319,6 +325,31 @@
                 (lib/native-query (mt/metadata-provider)
                                   (str "SELECT json_extract(CASE WHEN ID = 1 THEN '{\"n\":1}' ELSE 'broken' END, '$.n')"
                                        " AS N FROM VENUES")))))))))
+
+(deftest canceled-while-reading-rows-is-not-invalid-query-test
+  (mt/test-driver :sqlite
+    (testing "A cancel while rows are read is a QP error, though SQLite reports it without a SQLState"
+      (let [query       (qp/userland-query
+                         (lib/native-query (mt/metadata-provider) "SELECT 1 AS X UNION ALL SELECT 2 AS X"))
+            row-thunk   (mt/original-fn #'sql-jdbc.execute/row-thunk)
+            interrupted (atom nil)]
+        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/wire-up-canceled-chan-to-cancel-Statement! (constantly nil)
+                                    sql-jdbc.execute/row-thunk
+                                    (fn [driver ^ResultSet rs rsmeta]
+                                      (let [next-row (row-thunk driver rs rsmeta)
+                                            reads    (volatile! 0)]
+                                        (fn []
+                                          (when (= 2 (vswap! reads inc))
+                                            (a/offer! qp.pipeline/*canceled-chan* ::canceled)
+                                            (.cancel (.getStatement rs)))
+                                          (try
+                                            (next-row)
+                                            (catch SQLException e
+                                              (reset! interrupted e)
+                                              (throw e))))))]
+          (is (=? {:status :failed, :error_type :qp} (qp/process-query query)))
+          (is (nil? (.getSQLState ^SQLException @interrupted)))
+          (is (= (.code SQLiteErrorCode/SQLITE_INTERRUPT) (.getErrorCode ^SQLException @interrupted))))))))
 
 (deftest ^:parallel timezone-id-test
   (mt/test-driver :sqlite
