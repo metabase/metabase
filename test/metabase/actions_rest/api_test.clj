@@ -405,11 +405,6 @@
               created-action (mt/user-http-request :crowberto :post 200 "action" initial-action)
               action-id      (u/the-id created-action)
               action-path    (str "action/" action-id)]
-          (testing "Archiving"
-            (mt/user-http-request :crowberto :put 200 action-path {:archived true})
-            (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))
-            (mt/user-http-request :crowberto :put 200 action-path {:archived false})
-            (is (false? (t2/select-one-fn :archived :model/Action :id action-id))))
           (testing "Validate POST"
             (testing "Required fields"
               (is (=? {:errors {:name "string"},
@@ -417,6 +412,18 @@
                       (mt/user-http-request :crowberto :post 400 "action" {:type "query"})))
               (is (=? {:specific-errors {:model_id ["missing required key, received: nil"]}}
                       (mt/user-http-request :crowberto :post 400 "action" {:type "implicit" :name "test"}))))))))))
+
+(deftest model-actions-cannot-be-archived-test
+  (testing "a model's action can't be archived, only deleted"
+    (mt/with-actions-enabled
+      (mt/with-actions-test-data-tables #{"users"}
+        (mt/with-actions [{:keys [action-id]} {:type :query}]
+          (let [path (str "action/" action-id)]
+            (is (= "A model's action can't be archived. Delete it instead."
+                   (mt/user-http-request :crowberto :put 400 path {:archived true})))
+            (is (false? (t2/select-one-fn :archived :model/Action :id action-id)))
+            (mt/user-http-request :crowberto :delete 204 path)
+            (is (not (t2/exists? :model/Action :id action-id)))))))))
 
 (deftest only-admins-write-model-actions-test
   (testing "only admins can create, update, or delete an action of a model, whatever their permissions on the model"

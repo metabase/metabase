@@ -7,7 +7,6 @@ import {
   useListActionsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { useSetArchive } from "metabase/archive/hooks";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import { getUserIsAdmin } from "metabase/current-user";
@@ -28,7 +27,7 @@ import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
 import {
-  canArchiveAction,
+  canDeleteAction,
   canEditAction,
   canRunAction,
 } from "metabase-lib/v1/actions/utils";
@@ -54,12 +53,6 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
   const onDeleteAction = useCallback(
     (action: WritebackAction) => deleteAction(action.id),
     [deleteAction],
-  );
-  const archive = useSetArchive();
-  const onArchiveAction = useCallback(
-    (action: WritebackAction) =>
-      archive({ id: action.id, model: "action" }, true),
-    [archive],
   );
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
@@ -107,13 +100,13 @@ export function ModelActionDetails({ model }: ModelActionDetailsProps) {
             actionUrl={actionUrl}
             canRun={canRunAction(action, databases)}
             canEdit={canEditAction(action, model)}
-            canArchive={canArchiveAction(action, model)}
-            onArchive={onArchiveAction}
+            canDelete={canDeleteAction(action, model)}
+            onDelete={onDeleteAction}
           />
         </li>
       );
     },
-    [model, databases, onArchiveAction],
+    [model, databases, onDeleteAction],
   );
 
   const newActionUrl = Urls.newAction(model.card());

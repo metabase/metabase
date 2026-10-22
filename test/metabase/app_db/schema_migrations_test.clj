@@ -3679,7 +3679,7 @@
         (is (= #{other-button} (t2/select-pks-set :report_dashboardcard :id [:in [http-button other-button]])))))))
 
 (deftest delete-actions-of-non-models-test
-  (testing "v65.1y8qok: the actions of non-models and archived models, and those archived along with a model, are deleted
+  (testing "v65.1y8qok: the actions of non-models and archived models, and the archived actions of models, are deleted
             with their dashboard buttons"
     (impl/test-migrations ["v65.1y8qok"] [migrate!]
       (let [user-id        (t2/insert-returning-pk! :core_user {:first_name  "Action"
@@ -3745,7 +3745,7 @@
             action-ids     [model-action archived-alone archived-along no-model archived-model question metric]]
         (t2/insert! :query_action {:action_id question :database_id db-id :dataset_query "{}"})
         (migrate!)
-        (is (= #{model-action archived-alone no-model} (t2/select-pks-set :action :id [:in action-ids])))
+        (is (= #{model-action no-model} (t2/select-pks-set :action :id [:in action-ids])))
         (is (= #{kept-button} (t2/select-pks-set :report_dashboardcard :id [:in [kept-button deleted-button]])))
         (is (not (t2/exists? :query_action :action_id question)))))))
 

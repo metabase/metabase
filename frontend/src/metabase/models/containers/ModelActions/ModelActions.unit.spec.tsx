@@ -450,19 +450,19 @@ describe("ModelActions", () => {
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
 
-      it("allows to archive a query action", async () => {
+      it("allows to delete a query action", async () => {
         const model = getModel();
         const action = createMockQueryAction({ model_id: model.id });
         await setupActions({ model, actions: [action] });
 
         const listItem = screen.getByRole("listitem", { name: action.name });
         await userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
-        await userEvent.click(await screen.findByText("Archive"));
+        await userEvent.click(await screen.findByText("Delete"));
 
         expect(
-          screen.getByRole("heading", { name: /Archive/ }),
+          screen.getByRole("heading", { name: /Delete/ }),
         ).toBeInTheDocument();
-        await userEvent.click(screen.getByRole("button", { name: "Archive" }));
+        await userEvent.click(screen.getByRole("button", { name: "Delete" }));
 
         await waitFor(() =>
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
@@ -470,22 +470,17 @@ describe("ModelActions", () => {
 
         expect(
           fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
-            method: "PUT",
+            method: "DELETE",
           }),
         ).toHaveLength(1);
-        const call = fetchMock.callHistory.lastCall(
-          `path:/api/action/${action.id}`,
-          {
+        expect(
+          fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
             method: "PUT",
-          },
-        );
-        expect(await call?.request?.json()).toEqual({
-          id: action.id,
-          archived: true,
-        });
+          }),
+        ).toHaveLength(0);
       });
 
-      it("doesn't allow to archive an implicit action", async () => {
+      it("doesn't allow to delete an implicit action", async () => {
         const model = getModel();
         const action = createMockImplicitQueryAction({
           model_id: model.id,
@@ -494,7 +489,7 @@ describe("ModelActions", () => {
 
         await openActionMenu(action);
 
-        expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+        expect(screen.queryByText("Delete")).not.toBeInTheDocument();
       });
 
       it("allows to disable implicit actions", async () => {
@@ -540,7 +535,7 @@ describe("ModelActions", () => {
         expect(await screen.findByText("View")).toBeInTheDocument();
       });
 
-      it("doesn't allow to archive actions", async () => {
+      it("doesn't allow to delete actions", async () => {
         const action = createMockQueryAction({
           model_id: modelCard.id,
           can_write: false,
@@ -549,7 +544,7 @@ describe("ModelActions", () => {
 
         await openActionMenu(action);
 
-        expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+        expect(screen.queryByText("Delete")).not.toBeInTheDocument();
       });
     });
 
@@ -565,7 +560,7 @@ describe("ModelActions", () => {
         expect(screen.queryByTestId("actions-menu")).not.toBeInTheDocument();
       });
 
-      it("doesn't allow to edit or archive actions", async () => {
+      it("doesn't allow to edit or delete actions", async () => {
         const action = createMockQueryAction({
           model_id: modelCard.id,
           can_write: false,
@@ -579,7 +574,7 @@ describe("ModelActions", () => {
         await openActionMenu(action);
 
         expect(await screen.findByText("View")).toBeInTheDocument();
-        expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+        expect(screen.queryByText("Delete")).not.toBeInTheDocument();
       });
     });
 

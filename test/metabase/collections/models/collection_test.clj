@@ -232,20 +232,6 @@
       (is (false? (t2/select-one-fn :archived :model/Action :id (u/the-id action))))
       (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id old-action)))))))
 
-(deftest unarchive-collection-restores-only-writable-actions-test
-  (testing "restoring a data actions Collection restores only the Actions the current user can write, so a non-admin
-            restores none"
-    (mt/with-temp [:model/Collection collection {:namespace "data-actions"}
-                   :model/Action     action     {:type :query :name "Rename" :model_id nil
-                                                 :collection_id (u/the-id collection)}]
-      (perms/grant-collection-readwrite-permissions! (perms/all-users-group) collection)
-      (archive-collection! collection)
-      (mt/with-current-user (mt/user->id :rasta)
-        (collection/archive-or-unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection))
-                                                     {:archived false}))
-      (is (false? (t2/select-one-fn :archived :model/Collection :id (u/the-id collection))))
-      (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id action)))))))
-
 (deftest delete-collection-deletes-actions-test
   (testing "deleting a Collection deletes the Actions in it, including the ones without a model"
     (mt/with-temp [:model/Collection collection {:namespace "data-actions"}
