@@ -173,7 +173,8 @@ export const TOOL_MESSAGES = {
     active: () => t`Writing SQL`,
     done: () => t`Wrote SQL`,
   },
-  // These tool labels only serve old conversations
+  // Removed tools. The model can still call one it saw in an old
+  // conversation, and these labels name that step.
   get_transform_details: {
     active: () => t`Getting transform details`,
     done: () => t`Got transform details`,
