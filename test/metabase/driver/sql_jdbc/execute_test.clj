@@ -15,7 +15,8 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
   (:import
-   (java.sql Connection DatabaseMetaData)
+   (java.sql Connection DatabaseMetaData SQLException SQLNonTransientConnectionException SQLRecoverableException
+             SQLTimeoutException)
    (javax.sql DataSource)))
 
 (deftest ^:parallel ConnectionOptions-test
@@ -354,3 +355,27 @@
             (reset! cancels 0)
             (is (= 4 (count (venues-rows 4))))
             (is (pos? @cancels))))))))
+
+(deftest error-while-reading-rows-test
+  (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc})
+    (let [mp         (mt/metadata-provider)
+          query      (qp/userland-query (lib/query mp (lib.metadata/table mp (mt/id :venues))))
+          error-type (fn [e]
+                       (mt/with-dynamic-fn-redefs [sql-jdbc.execute/row-thunk (fn [& _] #(throw e))]
+                         (:error_type (qp/process-query query))))]
+      (testing "A database error raised while rows are read is an invalid query"
+        (doseq [e [(SQLException. "Division by zero" "22012")
+                   (SQLException. "malformed JSON")]]
+          (testing (ex-message e)
+            (is (= :invalid-query (error-type e))))))
+      (testing "A failed connection, a canceled or timed-out statement or a transient failure is a QP error"
+        (doseq [e [(SQLException. "An I/O error occurred while sending to the backend" "08006")
+                   (SQLNonTransientConnectionException. "Connection is broken" "90067")
+                   (SQLRecoverableException. "Communications link failure")
+                   (SQLTimeoutException. "Statement was canceled")
+                   (SQLException. "Deadlock detected" "40P01")
+                   (SQLException. "Terminating connection due to administrator command" "57P01")]]
+          (testing (ex-message e)
+            (is (= :qp (error-type e)))))
+        (with-redefs [driver/query-canceled? (constantly true)]
+          (is (= :qp (error-type (SQLException. "Query execution was interrupted" "70100" 1317)))))))))

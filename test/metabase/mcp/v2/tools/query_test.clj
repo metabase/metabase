@@ -1149,6 +1149,7 @@
             handle (stored-handle! sid (pk-ordered-orders-query nil))]
         (mt/with-current-user (mt/user->id :rasta)
           (mt/with-dynamic-fn-redefs [lib-be.db/columns (fn [& _]
-                                                          (t2/query ["SELECT no_such_column FROM metabase_field"]))]
+                                                          (t2/with-transaction [_conn]
+                                                            (t2/query ["SELECT no_such_column FROM metabase_field"])))]
             (is (= {:result {:isError true :content [{:type "text" :text "Internal error"}]}}
                    (call! sid {:query_handle handle})))))))))

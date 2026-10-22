@@ -355,26 +355,6 @@
         (is (=? {:error (name error) :message expected}
                 (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query query})))))))
 
-(deftest database-error-callback-failure-test
-  (mt/with-prometheus-system! [_ system]
-    (doseq [database-error? [false true]
-            delivery [:throw :raise]]
-      (let [failure          (if database-error? (SQLException. "Database failure") (Exception. "Handler failure"))
-            callback-failure (if database-error? (SQLException. "Callback failure") (Exception. "Callback failure"))
-            calls            (atom 0)
-            callback         (fn [_] (swap! calls inc) (throw callback-failure))
-            handler          (#'agent-api.api/wrap-database-errors
-                              (fn [_request _respond raise]
-                                (case delivery
-                                  :throw (throw failure)
-                                  :raise (raise failure))))
-            initial          (mt/metric-value system :metabase-api/unhandled-errors)
-            caught           (try (handler {} callback callback) (catch Throwable e e))]
-        (is (identical? callback-failure caught))
-        (is (= 1 @calls))
-        (is (= (+ initial (if database-error? 1 0))
-               (mt/metric-value system :metabase-api/unhandled-errors)))))))
-
 (deftest construct-query-permission-checks-test
   (testing "Rejects a first-stage source-table the current user cannot query"
     (mt/with-no-data-perms-for-all-users!
@@ -2120,15 +2100,38 @@
 (deftest unexpected-error-is-generic-test
   (testing "An unexpected failure is a generic 500 whatever `hide-stacktraces` says, and the log gets the detail"
     (mt/with-prometheus-system! [_ system]
-      (mt/with-dynamic-fn-redefs [metabot-search/search reject-app-db-lookup]
-        (doseq [hide-stacktraces? [false true]]
+      (doseq [[search log-message detail] [[reject-app-db-lookup "Database failure in Agent API" #"(?i)no_such_column"]
+                                           [(fn [_] (throw (ex-info "Search index is unavailable" {})))
+                                            "Unhandled error in Agent API request"
+                                            #"Search index is unavailable"]]
+              hide-stacktraces?             [false true]]
+        (mt/with-dynamic-fn-redefs [metabot-search/search search]
           (mt/with-temporary-setting-values [hide-stacktraces hide-stacktraces?]
             (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
               (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
                 (is (= {:message "Something went wrong"}
                        (mt/user-http-request :rasta :post 500 "agent/v1/search" {:term_queries ["orders"]})))
                 (is (= (inc initial) (mt/metric-value system :metabase-api/unhandled-errors)))
-                (is (logs-app-db-error? (messages)))))))))))
+                (is (=? [{:message log-message, :e #(re-find detail (ex-message %))}] (messages)))))))))))
+
+(deftest error-response-callback-failure-test
+  (mt/with-prometheus-system! [_ system]
+    (doseq [database-error? [false true]
+            delivery [:throw :raise]]
+      (let [failure          (if database-error? (SQLException. "Database failure") (Exception. "Handler failure"))
+            callback-failure (if database-error? (SQLException. "Callback failure") (Exception. "Callback failure"))
+            calls            (atom 0)
+            callback         (fn [_] (swap! calls inc) (throw callback-failure))
+            handler          (#'agent-api.api/wrap-error-responses
+                              (fn [_request _respond raise]
+                                (case delivery
+                                  :throw (throw failure)
+                                  :raise (raise failure))))
+            initial          (mt/metric-value system :metabase-api/unhandled-errors)
+            caught           (try (handler {} callback callback) (catch Throwable e e))]
+        (is (identical? callback-failure caught))
+        (is (= 1 @calls))
+        (is (= (inc initial) (mt/metric-value system :metabase-api/unhandled-errors)))))))
 
 (deftest client-disconnect-is-not-an-error-test
   (testing "A client that disconnects before its response is written gets no error response, count or error log"
