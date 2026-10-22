@@ -185,6 +185,20 @@
                           first)]
           (is (not (contains? (set (map :type (:warnings plugin))) "invalid-identifier"))))))))
 
+(deftest admin-listing-error-plugin-has-no-version-warnings-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "GET / gives an error plugin no version warnings, it has no manifest to derive them from"
+      (mt/with-temp [:model/CustomVizPlugin _ {:identifier    "broken-viz"
+                                               :display_name  "broken-viz"
+                                               :status        :error
+                                               :error_message "metabase-plugin.json not found in bundle"
+                                               :enabled       true
+                                               :bundle_hash   "broken-hash"}]
+        (is (= [] (->> (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
+                       (filter #(= "broken-viz" (:identifier %)))
+                       first
+                       :warnings)))))))
+
 (deftest bundle-bytes-not-exposed-test
   (mt/with-premium-features #{:custom-viz}
     (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "bytes-sec"

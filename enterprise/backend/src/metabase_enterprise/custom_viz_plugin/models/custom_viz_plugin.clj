@@ -156,11 +156,15 @@
          cache/derived-columns)
     (catch Exception e
       (let [storable (when (and bundle (<= (alength bundle) cache/max-bundle-bytes)) bundle)]
-        {:status        :error
-         :error_message (ex-message e)
-         :display_name  identifier
-         :bundle        storable
-         :bundle_hash   (some-> storable cache/bytes-hash)}))))
+        ;; the manifest-derived columns are cleared, not kept from a bundle the row no longer holds
+        {:status           :error
+         :error_message    (ex-message e)
+         :display_name     identifier
+         :bundle           storable
+         :bundle_hash      (some-> storable cache/bytes-hash)
+         :manifest         nil
+         :icon             nil
+         :metabase_version nil}))))
 
 (defn- check-directory!
   "Throws unless the directory an ingested plugin was read from, when known, is named by its identifier."
