@@ -51,7 +51,7 @@
   com.google.auth/google-auth-library-credentials {:mvn/version "1.40.0"}       ; dep for BigQuery, Databricks, and Snowflake. Require here rather than letting different dep versions stomp on each other — see #70908
   com.google.auth/google-auth-library-oauth2-http {:mvn/version "1.40.0"}       ; Token refresh for the Metabot Google provider. Also a dep for BigQuery. Keep the version in step with google-auth-library-credentials
   com.google.code.gson/gson                 {:mvn/version "2.12.1"}             ; dep for BigQuery, Databricks, and Snowflake. Pin here so driver plugin JARs all use the same version — see #73736
-  com.google.guava/guava                    {:mvn/version "33.5.0-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
+  com.google.guava/guava                    {:mvn/version "33.7.2-jre"}         ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
   com.h2database/h2                         ^:antq/exclude                      ; https://metaboat.slack.com/archives/CKZEMT1MJ/p1727191010259979
   {:mvn/version "2.1.214"}            ; embedded SQL database
   com.ibm.icu/icu4j                         {:mvn/version "78.1"}               ; Used to transliterate Unicode characters into Latin characters
@@ -178,7 +178,7 @@
   org.mariadb.jdbc/mariadb-java-client      ^:antq/exclude                      ; 3.x only support jdbc:mariadb, so using 2.x for now
   {:mvn/version "2.7.15"}             ; MySQL/MariaDB driver
   org.mindrot/jbcrypt                       {:mvn/version "0.4"}                ; Crypto library
-  org.postgresql/postgresql                 {:mvn/version "42.7.12"}            ; Postgres driver
+  org.postgresql/postgresql                 {:mvn/version "42.7.14"}            ; Postgres driver
   org.semver4j/semver4j                     {:mvn/version "6.0.0"}              ; Semantic versioning parsing & comparison
   org.slf4j/slf4j-api                       {:mvn/version "2.0.17"}             ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
   org.tcrawley/dynapath                     {:mvn/version "1.1.0"}              ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
