@@ -46,7 +46,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [metabase.util.quoting :as quoting]))
 
 (set! *warn-on-reflection* true)
 
@@ -2948,9 +2949,9 @@
         (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
                          (tru "stage {0}, join {1} doesn''t return {2} (available: {3})"
                               stage
-                              (pr-str join-alias)
-                              (str/join ", " (map pr-str columns))
-                              (str/join ", " available)))))
+                              (quoting/quoted join-alias)
+                              (str/join ", " (map quoting/quoted columns))
+                              (str/join ", " (map quoting/quoted available))))))
    {:agent-error? true
     :error        :unresolved-join-alias-field
     :problems     problems}))
