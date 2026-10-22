@@ -226,6 +226,16 @@
       (is (every? #(str/includes? output (str "uri=\"" (subs % 0 (min 80 (count %))))) uris))
       (is (str/ends-with? output "</resources>")))))
 
+(deftest few-failures-keep-full-error-text-test
+  (doseq [uris [["metabase://collection/5/children"]
+                ["metabase://collection/5/children" "metabase://collection/VZbHZIeqQ2HhZv5r0pO6a"]]]
+    (let [{:keys [output]} (runtime/invoke (tools/entries [read-resource/read-resource-tool])
+                                           {:profile-id :sql :metabot nil :user-scope api-scope/unrestricted
+                                            :tool-names (:tool-names read-ctx)}
+                                           "read_resource" {:uris uris})]
+      (doseq [{:keys [error]} (:resources (read-uris {:uris uris}))]
+        (is (str/includes? output error))))))
+
 (deftest ^:parallel single-and-batched-declarations-test
   (let [single  (tools/declaration read-resource/read-resource-tool)
         batched (tools/batched-declaration read-resource/read-resource-tool single)]

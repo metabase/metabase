@@ -107,9 +107,9 @@
   "URI echoes occupy at most this many characters after escaping."
   200)
 
-(def ^:private max-resource-error-length
-  "Each resource's displayed error text fits within this character budget."
-  400)
+(def ^:private max-batch-error-length
+  "The failed resources in one call share this many characters of displayed error text."
+  2000)
 
 (def ^:private truncation-marker "...[truncated]")
 
@@ -1383,14 +1383,14 @@
                              (keep (fn [{:keys [item structured-output]}]
                                      (uri-label (:uri item) structured-output)))
                              (distinct))
-                       entries)]
+                       entries)
+          error-length (quot max-batch-error-length (max 1 (count (filter :failed? entries))))]
       (cond-> {:output (str "<resources>\n"
                             (str/join "\n"
                                       (for [{:keys [item output failed?]} entries]
                                         (resource-element (:uri item)
                                                           (if failed?
-                                                            (str "**Error:** "
-                                                                 (text-preview output max-resource-error-length count))
+                                                            (str "**Error:** " (text-preview output error-length count))
                                                             output))))
                             "\n</resources>")}
         (some :structured-output entries)
