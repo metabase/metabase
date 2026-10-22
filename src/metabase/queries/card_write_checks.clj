@@ -88,8 +88,10 @@
   (when (api/column-will-change? (:dashboard_id card-before-update) (get card-updates :dashboard_id ::api/not-provided))
     (check-allowed-to-remove-from-existing-dashboards card-before-update)
     (when-let [dashboard-id (:dashboard_id card-updates)]
-      (card/check-shared-dashboard-timeline-permissions! (queries.db/dashboard dashboard-id)
-                                                         [(merge card-before-update card-updates)])))
+      (let [dashboard    (queries.db/dashboard dashboard-id)
+            updated-card (merge card-before-update card-updates)]
+        (card/check-shared-dashboard-timeline-permissions! dashboard [updated-card])
+        (card/check-shared-dashboard-goal-permissions! dashboard [updated-card]))))
   (collection/check-allowed-to-change-collection card-before-update card-updates))
 
 (mu/defn- check-update-result-metadata-data-perms

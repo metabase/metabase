@@ -100,6 +100,8 @@
   (let [max-rows (or max_rows default-max-rows)
         {:keys [model query-key]} (entity-types entity-type)]
     (try
+      ;; passes for anything under the public and embed paths' `as-admin`, so there the spec's producer must
+      ;; already have checked that the reference is readable
       (let [entity (api/read-check model id)
             ;; a nested run inside the outer streaming response must return an in-memory map,
             ;; not write to the outer stream
@@ -183,6 +185,8 @@
 (defn- goal-sources
   "Runnable goal references in `viz-settings`, with toggles read from `effective-settings`."
   [viz-settings effective-settings]
+  ;; public/embed runs skip the read check; [[metabase.queries.core/check-new-goal-references!]] gates a goal when a
+  ;; user saves or places it (internal writes and copies are exempt)
   (into []
         (comp (keep dynamic-goals/goal-source)
               ;; a goal pointing at something we can't run is dropped rather than failing the request
