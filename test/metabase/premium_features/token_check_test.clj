@@ -13,6 +13,7 @@
    [metabase.premium-features.token-check :as token-check]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.api-error :as api-error]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
@@ -410,6 +411,58 @@
         (is (premium-features/has-feature? :sandboxes))
         (is (zero? (call-count)) "a feature check reads nothing"))
       (is (= 1 @calls)))))
+
+(defn- fetch-log-count
+  [messages]
+  (count (filter #(re-find #"Checking with the MetaStore" (:message %)) messages)))
+
+(deftest startup-refresh-on-a-healthy-store-fetches-once-test
+  (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+    (with-store [calls (constantly good-status)]
+      (mt/with-log-messages-for-level [messages :info]
+        (is (nil? (premium-features/refresh-at-startup!)))
+        (is (= 1 (fetch-log-count (messages)))))
+      (is (= 1 @calls))
+      (is (premium-features/has-feature? :sandboxes)))))
+
+(deftest startup-refresh-on-an-unreachable-store-tries-once-test
+  (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+    (with-store [calls #(throw (java.net.SocketTimeoutException. "Read timed out"))]
+      (is (nil? (premium-features/refresh-at-startup!)) "the failure does not escape")
+      (is (= 1 @calls) "the attempt is not retried")
+      (is (not (premium-features/has-feature? :sandboxes)))
+      (is (=? {:valid false :canonical? false} (premium-features/token-status))))
+    (testing "a later tick picks up features once the store returns"
+      (with-store [calls (constantly good-status)]
+        (token-check/tick!)
+        (is (= 1 @calls))
+        (is (premium-features/has-feature? :sandboxes))))))
+
+(defn- refresher-threads []
+  (filter #(= "premium-features-token-refresher" (.getName ^Thread %)) (keys (Thread/getAllStackTraces))))
+
+(deftest refresher-ticks-until-stopped-test
+  (let [ticks (atom 0)]
+    ;; the executor's thread does not inherit dynamic bindings
+    #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+    (with-redefs [token-check/tick! (fn []
+                                      (when (odd? (swap! ticks inc))
+                                        (throw (ex-info "tick failure!" {}))))]
+      (try
+        (is (true? (premium-features/start-refresher! 1)))
+        (is (false? (premium-features/start-refresher! 1)) "a second start leaves the running refresher alone")
+        (is (u/poll {:thunk #(deref ticks) :done? #(>= % 4) :interval-ms 1})
+            "it keeps ticking after a tick throws")
+        (is (= 1 (count (refresher-threads))))
+        (finally
+          (premium-features/stop-refresher!)))
+      ;; the worker thread exits just after the executor reports termination
+      (is (u/poll {:thunk refresher-threads :done? empty? :interval-ms 1}) "stopping leaves no thread behind")
+      (testing "it can be started again after a stop"
+        (try
+          (is (true? (premium-features/start-refresher! 1)))
+          (finally
+            (premium-features/stop-refresher!)))))))
 
 (deftest quotas-and-meters-reflect-a-fresh-fetch-test
   (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]

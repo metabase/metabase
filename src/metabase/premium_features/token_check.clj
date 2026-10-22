@@ -35,7 +35,8 @@
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2])
   (:import
-   (dev.failsafe CircuitBreakerOpenException)))
+   (dev.failsafe CircuitBreakerOpenException)
+   (java.util.concurrent Executors ScheduledExecutorService ThreadFactory TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -405,11 +406,13 @@
                           :on-close          (fn [_] (log/info "Token Check restored"))}))
 
 (defn- fetch-status
-  [token]
+  [token & {:keys [retry?] :or {retry? true}}]
   (try
     (dh/with-circuit-breaker breaker
-      (retry/with-retry (assoc retry-policy
-                               :on-retry (fn [_ e] (log/infof "Retrying token check after: %s" (ex-message e))))
+      (if retry?
+        (retry/with-retry (assoc retry-policy
+                                 :on-retry (fn [_ e] (log/infof "Retrying token check after: %s" (ex-message e))))
+          (decode-token* token))
         (decode-token* token)))
     (catch CircuitBreakerOpenException _e
       (throw (ex-info (tru "Token validation is currently unavailable.") {})))))
@@ -431,10 +434,8 @@
       (update-locked-meters! status)))
   status)
 
-(defn refresh-now!
-  "Fetch the status of the configured token and hold it. Concurrent callers share one fetch. Returns the fresh status,
-  nil when no token is configured, or throws when the fetch fails, in which case the held status is left as it was."
-  []
+(defn- refresh!
+  [fetch-opts]
   (when-let [token (premium-features.settings/premium-embedding-token)]
     (let [token-hash (hash-token token)
           mine       (promise)
@@ -442,7 +443,7 @@
           shared     (get before token-hash)]
       (when-not shared
         (try
-          (deliver mine {:status (install! token (fetch-status token))})
+          (deliver mine {:status (install! token (fetch-status token fetch-opts))})
           (log/info "Refreshed the premium features token status.")
           (catch Throwable e
             (log/errorf "Error refreshing the premium features token status: %s" (ex-message e))
@@ -454,6 +455,23 @@
         (if error
           (throw error)
           status)))))
+
+(defn refresh-now!
+  "Fetch the status of the configured token and hold it. Concurrent callers share one fetch. Returns the fresh status,
+  nil when no token is configured, or throws when the fetch fails, in which case the held status is left as it was."
+  []
+  (refresh! {}))
+
+(defn refresh-at-startup!
+  "Make one attempt, without retries, to fetch and hold the status of the configured token, so a healthy instance knows
+  its features before it serves. A failure is logged, not thrown: the instance starts with no features and [[tick!]]
+  tries again."
+  []
+  (try
+    (refresh! {:retry? false})
+    nil
+    (catch Throwable _e
+      nil)))
 
 (defn clear-cache!
   "Refresh the token status now; see [[refresh-now!]]. A failure is logged, not thrown, and the held status stands."
@@ -520,6 +538,43 @@
           (reset! refresh-requested? true))
         (log/errorf "Premium features token tick failed: %s" (ex-message e))
         nil))))
+
+(def ^:private tick-interval-ms (u/minutes->ms 1))
+
+(defonce ^:private refresher-executor (atom nil))
+
+(defn- safe-tick!
+  "`scheduleWithFixedDelay` stops rescheduling a task that throws, so nothing may escape a tick."
+  []
+  (try
+    (tick!)
+    (catch Throwable t
+      (log/errorf "Unexpected error in the premium features token tick; ticking continues: %s" (ex-message t)))))
+
+(defn start-refresher!
+  "Start this instance's daemon thread that calls [[tick!]] every `interval-ms`, a minute by default. Returns `true`
+  if this call started it, `false` if one was already running."
+  ([]
+   (start-refresher! tick-interval-ms))
+  ([interval-ms]
+   (let [exec (Executors/newSingleThreadScheduledExecutor
+               (reify ThreadFactory
+                 (newThread [_ r]
+                   (doto (Thread. r "premium-features-token-refresher")
+                     (.setDaemon true)))))]
+     (if (compare-and-set! refresher-executor nil exec)
+       (do (.scheduleWithFixedDelay exec ^Runnable safe-tick! (long interval-ms) (long interval-ms) TimeUnit/MILLISECONDS)
+           true)
+       (do (.shutdown exec)
+           false)))))
+
+(defn stop-refresher!
+  "Stop the thread started by [[start-refresher!]], interrupting a tick in progress and waiting briefly for it to end."
+  []
+  (when-let [^ScheduledExecutorService exec (first (reset-vals! refresher-executor nil))]
+    (.shutdownNow exec)
+    (when-not (.awaitTermination exec 5 TimeUnit/SECONDS)
+      (log/warn "The premium features token refresher did not stop within 5s."))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     READER                                                     |
