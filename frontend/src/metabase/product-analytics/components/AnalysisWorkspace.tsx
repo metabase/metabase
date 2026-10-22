@@ -61,6 +61,10 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
 }: AnalysisWorkspaceProps<K>) => {
   const navigate = useNavigate();
   const [isSegmentsOpen, setIsSegmentsOpen] = useState(false);
+  const handleToggleSegments = useCallback(
+    () => setIsSegmentsOpen((isOpen) => !isOpen),
+    [],
+  );
   // The setup button's hover lights up the setup panel's border.
   const [isSetupHinted, setIsSetupHinted] = useState(false);
   // Collapsed behind the Filters button until it's clicked; showing an empty
@@ -158,6 +162,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   return (
     <SegmentDragProvider
       isPaletteOpen={isSegmentsShowing}
+      onTogglePalette={handleToggleSegments}
       onPeopleSegment={handleAddPeopleFilter}
     >
       {/* Keeps the app-wide react-dnd backend out of the palette's native drags. */}
@@ -189,7 +194,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             tableName={table?.display_name}
             onTableChange={onTableChange}
             isSegmentsOpen={isSegmentsOpen}
-            onToggleSegments={() => setIsSegmentsOpen((isOpen) => !isOpen)}
+            onToggleSegments={handleToggleSegments}
             setupLabel={config.setupLabel}
             sql={query.sql}
             canSave={canSave}
@@ -228,6 +233,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               table={table}
               usersTable={usersTable}
               onSelectPeopleSegment={handleAddPeopleFilter}
+              onClose={() => setIsSegmentsOpen(false)}
             />
           )}
           {isSetupOpen && (
@@ -238,6 +244,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
               setupLabel={config.setupLabel}
               widgets={widgets}
               isHinted={isSetupHinted}
+              onClose={() => setPanel(null)}
             />
           )}
           {tableId !== undefined && (

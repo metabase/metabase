@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { Box, Divider, Paper, Tabs } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Divider,
+  Group,
+  Icon,
+  Paper,
+  Tabs,
+} from "metabase/ui";
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
 
 import type { SettingWidget } from "../settings/types";
@@ -26,6 +34,7 @@ type SetupPanelProps = {
   widgets: SettingWidget[];
   /** The toolbar button that closes this panel is hovered. */
   isHinted?: boolean;
+  onClose: () => void;
 };
 
 /**
@@ -38,6 +47,7 @@ export const SetupPanel = ({
   setupLabel,
   widgets,
   isHinted = false,
+  onClose,
 }: SetupPanelProps) => {
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   // Column role settings aren't shown, so some analyses have nothing here.
@@ -67,11 +77,16 @@ export const SetupPanel = ({
         className={S.tabs}
       >
         {/* A lone tab isn't a choice, so there's no tab bar then. */}
-        {hasAdvanced && (
+        {hasAdvanced ? (
           <Tabs.List px="xl" pt="sm">
             <Tabs.Tab value="setup">{setupLabel}</Tabs.Tab>
             <Tabs.Tab value="advanced">{t`Advanced`}</Tabs.Tab>
+            <CloseButton onClose={onClose} />
           </Tabs.List>
+        ) : (
+          <Group justify="flex-end" px="md" pt="sm">
+            <CloseButton onClose={onClose} />
+          </Group>
         )}
         <Box className={S.scroll} px="xl" pt="xl">
           <SectionWidgets widgets={widgets} section={activeTab} />
@@ -80,6 +95,21 @@ export const SetupPanel = ({
     </Paper>
   );
 };
+
+type CloseButtonProps = { onClose: () => void };
+
+/** The panel's X, at the end of its tab bar. Shared with the segments panel. */
+export const CloseButton = ({ onClose }: CloseButtonProps) => (
+  <ActionIcon
+    variant="subtle"
+    aria-label={t`Close`}
+    ml="auto"
+    style={{ alignSelf: "center" }}
+    onClick={onClose}
+  >
+    <Icon name="close" />
+  </ActionIcon>
+);
 
 /** Column role settings still pick their defaults; they just aren't shown. */
 const getSectionWidgets = (widgets: SettingWidget[], section: AnalysisPanel) =>

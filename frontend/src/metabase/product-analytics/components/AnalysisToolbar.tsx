@@ -1,7 +1,7 @@
 import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
-import { ActionIcon, Badge, Button, Group, Icon } from "metabase/ui";
+import { ActionIcon, Badge, Button, Group, Icon, Tooltip } from "metabase/ui";
 import type { ConcreteTableId } from "metabase-types/api";
 
 import type { CommonSettings } from "../analyses/types";
@@ -90,32 +90,50 @@ export const AnalysisToolbar = ({
           </Button>
           <Button.Group>
             <ToolbarSetting setting={findSetting(widgets, "counting")} />
-            {filtersSetting !== undefined && !filtersSetting.hidden && (
+            {/* PROTOTYPE: not wired up yet. */}
+            <Tooltip label={t`Break out`}>
               <Button
                 variant="default"
-                leftSection={<Icon name="filter" />}
-                rightSection={
-                  filterCount > 0 && (
-                    <Badge
-                      size="xs"
-                      variant="filled"
-                      color="neutral"
-                      bg={areFiltersExpanded ? "core-filter-strong" : undefined}
-                      c={
-                        areFiltersExpanded ? "text-primary-inverse" : undefined
-                      }
-                      style={{ cursor: "inherit" }}
-                    >
-                      {filterCount}
-                    </Badge>
-                  )
-                }
-                aria-pressed={areFiltersExpanded}
+                px="sm"
+                aria-label={t`Break out`}
                 disabled={!hasTable}
-                onClick={onToggleFilters}
               >
-                {t`Filters`}
+                <Icon name="split_branch" />
               </Button>
+            </Tooltip>
+            {filtersSetting !== undefined && !filtersSetting.hidden && (
+              <Tooltip label={t`Filters`}>
+                <Button
+                  variant="default"
+                  px="sm"
+                  rightSection={
+                    filterCount > 0 && (
+                      <Badge
+                        size="xs"
+                        variant="filled"
+                        color="neutral"
+                        bg={
+                          areFiltersExpanded ? "core-filter-strong" : undefined
+                        }
+                        c={
+                          areFiltersExpanded
+                            ? "text-primary-inverse"
+                            : undefined
+                        }
+                        style={{ cursor: "inherit" }}
+                      >
+                        {filterCount}
+                      </Badge>
+                    )
+                  }
+                  aria-label={t`Filters`}
+                  aria-pressed={areFiltersExpanded}
+                  disabled={!hasTable}
+                  onClick={onToggleFilters}
+                >
+                  <Icon name="filter" />
+                </Button>
+              </Tooltip>
             )}
           </Button.Group>
         </Group>

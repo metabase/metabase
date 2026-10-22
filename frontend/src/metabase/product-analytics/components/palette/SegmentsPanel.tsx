@@ -29,6 +29,7 @@ import {
 } from "../../segments/use-palette-segments";
 import { useSegmentDrafts } from "../../segments/use-segment-drafts";
 import { ResizeHandle } from "../ResizeHandle";
+import { CloseButton } from "../SetupPanel";
 import { EventDefinitionEditor } from "../events/EventDefinitionEditor";
 import { useTableQuery } from "../events/use-table-query";
 
@@ -46,6 +47,7 @@ type SegmentsPanelProps = {
   usersTable: UsersTable | undefined;
   /** A click on a people segment, which adds it as a filter. */
   onSelectPeopleSegment: (segment: PaletteSegment) => void;
+  onClose: () => void;
 };
 
 /**
@@ -57,6 +59,7 @@ export const SegmentsPanel = ({
   table,
   usersTable,
   onSelectPeopleSegment,
+  onClose,
 }: SegmentsPanelProps) => {
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   return (
@@ -73,6 +76,7 @@ export const SegmentsPanel = ({
         <Tabs.List px="lg" pt="sm">
           <Tabs.Tab value="event">{t`Event segments`}</Tabs.Tab>
           <Tabs.Tab value="people">{t`Cohorts`}</Tabs.Tab>
+          <CloseButton onClose={onClose} />
         </Tabs.List>
         <Box className={S.scroll}>
           <Tabs.Panel value="event" py="md">

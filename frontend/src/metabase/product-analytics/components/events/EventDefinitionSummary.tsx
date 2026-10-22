@@ -6,6 +6,7 @@ import {
   Group,
   Icon,
   Text,
+  Tooltip,
   UnstyledButton,
 } from "metabase/ui";
 
@@ -36,7 +37,10 @@ type EventDefinitionSummaryProps = {
   removeLabel?: string;
   /** Lets a palette segment be dropped on the summary to fill it in. */
   dropTarget?: SegmentDropTarget;
-  /** A slot still to fill: drawn dashed, with its placeholder. */
+  /**
+   * A slot still to fill: drawn dashed, with its placeholder and a button
+   * that shows and hides the segments panel.
+   */
   empty?: boolean;
   /** The event shown, so it can be dragged to the palette as a draft. */
   draggableEvent?: EventDefinition;
@@ -57,7 +61,9 @@ export const EventDefinitionSummary = ({
   onEdit,
   onRemove,
 }: EventDefinitionSummaryProps) => {
-  const { isPaletteOpen, startEventDrag, endDrag } = useSegmentDrag();
+  const { isPaletteOpen, onTogglePalette, startEventDrag, endDrag } =
+    useSegmentDrag();
+  const segmentsLabel = isPaletteOpen ? t`Hide segments` : t`Show segments`;
   const { isActive, isOver, dropProps } = useSegmentDropTarget(dropTarget);
   const dropLabel =
     name === undefined
@@ -119,6 +125,19 @@ export const EventDefinitionSummary = ({
         >
           <Icon name="close" />
         </ActionIcon>
+      )}
+      {empty && (
+        <Tooltip label={segmentsLabel}>
+          <ActionIcon
+            variant="subtle"
+            aria-label={segmentsLabel}
+            aria-pressed={isPaletteOpen}
+            disabled={disabled}
+            onClick={onTogglePalette}
+          >
+            <Icon name="segment" />
+          </ActionIcon>
+        </Tooltip>
       )}
     </Group>
   );

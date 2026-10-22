@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { Button, Icon, Menu } from "metabase/ui";
+import type { IconName } from "metabase-types/api";
 
 import {
   useSegmentDrag,
@@ -17,10 +18,16 @@ const getButtonLabel = (grain: Grain): string => {
     case "person":
       return t`Count people`;
     case "session":
-      return t`counting sessions`;
+      return t`Count sessions`;
     case "event":
-      return t`counting events`;
+      return t`Count events`;
   }
+};
+
+const GRAIN_ICONS: Record<Grain, IconName> = {
+  person: "person",
+  session: "clock",
+  event: "calendar",
 };
 
 const getOptionLabel = (grain: Grain): string => {
@@ -60,7 +67,7 @@ export const CountingMenu = ({
         <Button
           className={S.button}
           variant="default"
-          leftSection={<Icon name="person" />}
+          leftSection={<Icon name={GRAIN_ICONS[value]} />}
           data-hinted={isHinted}
           {...dropProps}
         >
