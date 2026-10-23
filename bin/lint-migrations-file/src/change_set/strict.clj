@@ -18,8 +18,21 @@
   This format should no longer be used for new migrations, use `id-timestamp-format-re` instead."
   #"^v\d{2,}\.\d{2}-\d{3}$")
 
+(defn valid-version-less-id?
+  "Whether `id` is a valid version-less changeset ID: lowercase letters/digits/underscores, at least one letter, and no
+  leading `v`. Binaries from before version-less support read the schema's major from the highest `id LIKE 'v%'` and
+  roll back by the number in those ids, so a `view_metrics` id would sort above every `vNN.` id there and break both."
+  [id]
+  (boolean (and (string? id)
+                (re-matches #"[a-z0-9_]+" id)
+                (re-find #"[a-z]" id)
+                (not (str/starts-with? id "v")))))
+
 (s/def ::id (s/and string?
                    (s/or
+                    ;; changesets in a year-based directory (e.g. `migrations/2026/`) have version-less ids
+                    :version-less-id
+                    valid-version-less-id?
                     ;; new ids should conform this format
                     :id-with-timestamp ;; e.g: v49.2023-12-14T08:54:54
                     (s/and #(re-matches id-timestamp-format-re %))
@@ -108,17 +121,17 @@
     :customChange})
 
 (defn- major-version
-  "Returns major version from id string, e.g. 44 from \"v44.00-034\""
+  "Returns major version from id string, e.g. 44 from \"v44.00-034\", or nil for a version-less id."
   [id-str]
   (when (string? id-str)
-    (some-> (re-find #"\d+" id-str) Integer/parseInt)))
+    (some-> (re-find #"^v(\d+)" id-str) second Integer/parseInt)))
 
 (defn- rollback-present-when-required?
   "Ensures rollback key is present when change type doesn't support auto rollback"
   [{:keys [id changes] :as change-set}]
   (or
    (int? id)
-   (< (major-version id) 45)
+   (some-> (major-version id) (< 45))
    (some change-types-supporting-rollback (mapcat keys changes))
    (contains? change-set :rollback)))
 
