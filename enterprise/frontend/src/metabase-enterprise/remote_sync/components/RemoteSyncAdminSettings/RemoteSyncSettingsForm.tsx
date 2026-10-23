@@ -20,6 +20,7 @@ import { useGetRemoteSyncChangesQuery } from "metabase-enterprise/api";
 import {
   REMOTE_SYNC_KEY,
   REMOTE_SYNC_SCHEMA,
+  TRANSFORMS_KEY,
   TYPE_KEY,
   URL_KEY,
 } from "../../constants";
@@ -40,6 +41,7 @@ import {
   RemoteSyncSettingsVariantProvider,
 } from "./RemoteSyncSettingsSection";
 import { SyncModeSection } from "./SyncModeSection";
+import { TransformsSchedulingNote } from "./TransformsSchedulingNote";
 
 export type RemoteSyncSettingsFormProps = {
   onCancel?: VoidFunction;
@@ -117,6 +119,10 @@ export const RemoteSyncSettingsForm = ({
                     <TopLevelCollectionsList skipCollections />
                   </RemoteSyncSettingsSection>
                 )}
+                <TransformsSchedulingNote
+                  isReadWrite={isReadWrite}
+                  isTransformsSyncEnabled={!!values?.[TRANSFORMS_KEY]}
+                />
               </Stack>
               <FormFooter pageProps={{ gap: "lg", maw: "52rem", mt: "xxl" }}>
                 {canDisable && (
