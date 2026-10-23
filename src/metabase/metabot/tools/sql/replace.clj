@@ -4,7 +4,6 @@
    [metabase.metabot.schema :as metabot.schema]
    [metabase.metabot.tools.sql.common :as metabot.tools.sql.common]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
@@ -36,24 +35,16 @@
        [:queries-state [:map-of :string ::metabot.schema/query]]]]
   (log/info "Replacing SQL query" {:query-id query-id :sql-length (count sql)})
 
-  ;; Look up query from in-memory state
   (let [query-id (str query-id)
-        query (get queries-state query-id)]
-    (when-not query
-      (throw (ex-info (tru "Query {0} not found" query-id)
-                      {:agent-error? true
-                       :query-id query-id
-                       :available-queries (keys queries-state)})))
-    (metabot.tools.sql.common/check-native-query-access! (:database query))
-    (let [dialect (metabot.tools.sql.validation/query->dialect query)
-
-          {:keys [valid? transpiled-sql] :as validation-result}
-          (metabot.tools.sql.validation/validate-sql dialect sql)]
-      (merge {:validation-result validation-result}
-             (when valid?
-               (let [;; Replace the SQL content - handle both formats
-                     updated-query (metabot.tools.sql.common/update-query-sql query transpiled-sql)]
-                 {:action-result {:query-id      query-id
-                                  :query-content transpiled-sql
-                                  :query         updated-query
-                                  :database      (:database query)}}))))))
+        query (metabot.tools.sql.common/query-for-sql-edit! queries-state query-id)
+        sql (metabot.tools.sql.common/check-nonblank-sql! query-id sql)
+        dialect (metabot.tools.sql.validation/query->dialect query)
+        {:keys [valid? transpiled-sql] :as validation-result}
+        (metabot.tools.sql.validation/validate-sql dialect sql)]
+    (merge {:validation-result validation-result}
+           (when valid?
+             (let [updated-query (metabot.tools.sql.common/update-query-sql query transpiled-sql)]
+               {:action-result {:query-id      query-id
+                                :query-content transpiled-sql
+                                :query         updated-query
+                                :database      (:database query)}})))))

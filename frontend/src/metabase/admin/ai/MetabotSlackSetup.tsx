@@ -175,7 +175,7 @@ export function MetabotSlackSetup() {
   }, [notification]);
 
   const { url: encryptionDocsUrl } = useDocsUrl(
-    "operations-guide/encrypting-database-details-at-rest",
+    "databases/encrypting-details-at-rest",
   );
 
   if (!isSlackTokenValid) {

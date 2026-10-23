@@ -7,6 +7,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.metabot.agent.links :as links]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.charts :as charts]
    [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]
@@ -158,10 +159,10 @@
       (testing "in the chart data part"
         (is (= expected
                (-> (binding [shared/*memory-atom* (atom {:state {:queries {"q-1" query}}})]
-                     (charts/create-chart-tool {:data_source  {:query_id "q-1"}
-                                                :viz_settings {:chart_type "bar"}
-                                                :title        "Check-ins in July"
-                                                :description  "Check-ins during July 2014."}))
+                     (test-util/call-tool charts/create-chart-tool {:data_source  {:query_id "q-1"}
+                                                                    :viz_settings {:chart_type "bar"}
+                                                                    :title        "Check-ins in July"
+                                                                    :description  "Check-ins during July 2014."}))
                    (get-in [:data-parts 0 :data :query :query :parameters])
                    json/encode
                    json/decode+kw)))))))

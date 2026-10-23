@@ -1,3 +1,5 @@
+import type { ComponentType } from "react";
+
 import { lazyModalRouteElement } from "metabase/common/components/ModalRoute";
 import ModelActions from "metabase/models/containers/ModelActions/ModelActions";
 import { loadActionCreator } from "metabase/querying/action-creator";
@@ -22,7 +24,7 @@ const modelDetailPage = () =>
     /* webpackChunkName: "model-detail" */ "metabase/detail-view/pages/ModelDetailPage/ModelDetailPage"
   ).then(({ ModelDetailPage }) => ({ Component: ModelDetailPage }));
 
-export const getRoutes = () => {
+export const getRoutes = (IsAdmin: ComponentType) => {
   const modalProps: Partial<ModalProps> = {
     ...PREVENT_AUTOCOMPLETE_CLIPPING_MODAL_PROPS,
     size: "95%",
@@ -30,7 +32,9 @@ export const getRoutes = () => {
   return (
     <Route path="/model/:slug/detail">
       <Route path="actions" element={<ModelActions />}>
-        {lazyModalRouteElement("new", actionCreatorModal, { modalProps })}
+        <Route element={<IsAdmin />}>
+          {lazyModalRouteElement("new", actionCreatorModal, { modalProps })}
+        </Route>
         {lazyModalRouteElement(":actionId", actionCreatorModal, { modalProps })}
       </Route>
       <Route path=":rowId" lazy={modelDetailPage} />
