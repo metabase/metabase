@@ -20,6 +20,7 @@
   tool."
   (:require
    [clojure.string :as str]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.error :refer [defrecoverable]]
    [metabase.models.interface :as mi]
    [metabase.util.malli.registry :as mr]))
@@ -47,10 +48,15 @@
    [:database-id      {:optional true} pos-int?]])
 
 (defn readable-database-id
-  "The `:database-id` of the pipeline error `data`, when the current user can read that database."
+  "The `:database-id` of the pipeline error `data`, when the current user can read that database.
+
+  Never returns a routing destination's id."
   [data]
   (let [id (:database-id data)]
-    (when (and (pos-int? id) (mi/can-read? :model/Database id))
+    (when (and (pos-int? id)
+               ;; `read_resource` 404s on a destination even when the user can read its router.
+               (empty? (metabot.db/destination-database-ids #{id}))
+               (mi/can-read? :model/Database id))
       id)))
 
 (def ^:private id-keys

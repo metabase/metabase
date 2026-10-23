@@ -260,6 +260,16 @@
           (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
           (is (= "metabase://database/<numeric id>/tables" (recovery-uri text))))))))
 
+(deftest recovery-steps-do-not-name-a-routing-destination-test
+  (testing "`read_resource` never opens a routing destination, so even an admin gets the placeholder"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id}     {}
+                     :model/Database {destination :name} {:router_database_id router-id}]
+        (let [{:keys [code text]} (construct-failure {"source-table" [destination "PUBLIC" "ORDERS"]
+                                                      "aggregation"  [["count" {}]]})]
+          (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
+          (is (= "metabase://database/<numeric id>/tables" (recovery-uri text))))))))
+
 (deftest ^:parallel structural-paths-payload-test
   (doseq [[paths expected-class] [["stages[0].filters: invalid type" :recoverable]
                                   [nil :unrecoverable]
