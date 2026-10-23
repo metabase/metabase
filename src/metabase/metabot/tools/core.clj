@@ -33,6 +33,7 @@
   follow one tool's behaviour without knowing which other shapes exist."
   (:require
    [clojure.string :as str]
+   [metabase.agent-lib.representations :as repr]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.schema.v2 :as schema.v2]
    [metabase.metabot.tools.error :as tools.error]
@@ -470,12 +471,16 @@
   (try
     (thunk)
     (catch Throwable e
-      (let [{:keys [agent-error? status-code error]} (ex-data e)
+      (let [{:keys [agent-error? status-code error humanized]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
           ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
           (and agent-error? code)
-          (tools.error/throw-recoverable! code (recoverable.pipeline/payload error e) {:cause e})
+          (tools.error/throw-recoverable!
+           code
+           (cond-> (recoverable.pipeline/payload error e)
+             (some? humanized) (assoc :paths (repr/humanized->paths humanized)))
+           {:cause e})
 
           (contains? refusal-status-codes status-code)
           (tools.error/throw-recoverable! ::recoverable.common/not-found {} {:cause e})

@@ -9,9 +9,8 @@
   `metabase://` URIs, portable FKs, `portable_entity_id` — and `tools.core/with-pipeline-errors`
   converts a pipeline exception into the matching declaration.
 
-  The pipeline's own message is authored text (it is built with `tru` and already reaches the model
-  today), so it is the one foreign message a payload here may carry. Everything else about the
-  exception stays in the logs.
+  The pipeline's own message, flattened validation paths, and entity references are the foreign
+  text a payload here may carry. Everything else about the exception stays in the logs.
 
   A code with no declaration is not converted and becomes unrecoverable, which is why
   `metabase.metabot.tools.recoverable.pipeline-test` scans the pipeline sources and fails when a
@@ -30,14 +29,16 @@
 (mr/def ::payload
   "The payload every pipeline-error declaration takes.
 
-  `:message` is the pipeline's own sentence. `:entity-type` and `:entity-id` are present only for
-  the codes whose recovery depends on what was referenced (see [[uri-in-source-table!]]).
+  `:message` is the pipeline's own sentence. `:paths` is the flattened structural validation text
+  the model reads. `:entity-type` and `:entity-id` are present only for the codes whose recovery
+  depends on what was referenced (see [[uri-in-source-table!]]).
   `:source-card` and `:source-card-type` are the numeric ID and type of the stage's `source-card:`,
   present only for the codes a `source-card:` stage raises (see [[column-not-returned!]]).
   `:table-id` and `:database-id` are present only for the codes whose recovery steps name that
   table or database (see [[payload]])."
   [:map {:closed true}
    [:message          :string]
+   [:paths            {:optional true} :string]
    [:entity-type      {:optional true} [:maybe :string]]
    [:entity-id        {:optional true} [:maybe [:or :string :int]]]
    [:source-card      {:optional true} [:maybe :int]]
@@ -330,9 +331,17 @@
   "A stage carried a key the representations format does not define."
   [])
 
-(defpipeline-error invalid-representations-query!
+(defn- structural-recovery
+  [{:keys [paths]}]
+  (if (seq paths)
+    [{:uses #{} :text (str "Invalid at " paths ". Fix the named paths.")}]
+    []))
+
+(defrecoverable invalid-representations-query!
   "The query did not parse as a representations query."
-  [])
+  {:payload ::payload}
+  [payload]
+  {:message (:message payload), :recovery (structural-recovery payload)})
 
 (defpipeline-error invalid-external-query!
   "A query supplied from outside the pipeline was not a valid MBQL query."

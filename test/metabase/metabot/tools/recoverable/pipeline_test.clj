@@ -16,8 +16,7 @@
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.error :as tools.error]
-   ;; loaded for its declarations; the codes are read out of the catalog, not off the vars
-   [metabase.metabot.tools.recoverable.pipeline]
+   [metabase.metabot.tools.recoverable.pipeline :as pipeline]
    [metabase.metabot.tools.recovery-hints :as v1-hints]
    [metabase.metabot.tools.resources :as resources]
    [metabase.test :as mt]))
@@ -160,6 +159,19 @@
                                                       "aggregation"  [["count" {}]]})]
           (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
           (is (= "metabase://database/<numeric id>/tables" (recovery-uri text))))))))
+
+(deftest ^:parallel structural-paths-payload-test
+  (doseq [[paths expected-class] [["stages[0].filters: invalid type" :recoverable]
+                                  [nil :unrecoverable]
+                                  [42 :unrecoverable]
+                                  [{"stages" [{"filters" "invalid type"}]} :unrecoverable]]]
+    (testing (pr-str paths)
+      (let [error (try
+                    (tools.error/throw-recoverable! ::pipeline/invalid-representations-query
+                                                    {:message "Invalid query." :paths paths})
+                    (catch Throwable e
+                      (tools.error/classify e)))]
+        (is (= expected-class (:class error)))))))
 
 ;;; ===== Can one declaration serve both surfaces? =====
 
