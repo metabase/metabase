@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
+import { ListSearchField } from "metabase/common/components/ListSearchField";
 import {
   Box,
   Button,
@@ -23,17 +24,20 @@ import type { SettingWidgetProps } from "../../settings/types";
 
 import S from "./BreakoutMenu.module.css";
 
-const MAX_DROPDOWN_HEIGHT = "60vh";
-const DROPDOWN_WIDTH = 280;
-
-/** Rests in the default button's hover gray, like a pressed Setup, and hovers darker. */
-const BREAKOUT_SET_VARS = {
+/**
+ * In the active gray of the pressed label beside it, hovered, clicked or
+ * not: its tooltip says what it does.
+ */
+const CLEAR_BUTTON_VARS = {
   root: {
     "--button-bg": "var(--mb-color-button-default-neutral-hover)",
-    "--button-hover": "var(--mb-color-button-default-neutral-pressed)",
-    "--button-pressed": "var(--mb-color-button-default-neutral-pressed)",
+    "--button-hover": "var(--mb-color-button-default-neutral-hover)",
+    "--button-pressed": "var(--mb-color-button-default-neutral-hover)",
   },
 };
+
+const MAX_DROPDOWN_HEIGHT = "60vh";
+const DROPDOWN_WIDTH = 280;
 
 type ColumnOption = { value: string; label: string; icon: IconName };
 
@@ -45,7 +49,7 @@ type BreakoutMenuProps = SettingWidgetProps<Breakout | null> & {
   usersTableId?: TableId;
 };
 
-/** "By Country", the one cohort's name, or "2 Cohorts"; null while unset. */
+/** "By Country", the one segment's name, or "2 Segments"; null while unset. */
 const getButtonLabel = (
   value: Breakout | null,
   columns: ColumnOption[],
@@ -62,15 +66,16 @@ const getButtonLabel = (
       const count = value.segments.length;
       return count === 1 && first !== undefined
         ? first.label
-        : ngettext(msgid`${count} Cohort`, `${count} Cohorts`, count);
+        : ngettext(msgid`${count} Segment`, `${count} Segments`, count);
     }
   }
 };
 
 /**
- * An icon button in the toolbar's button group, labeled while set. Its menu
- * breaks out by a property or by cohorts, one or the other: picking from the
- * other tab replaces the breakout.
+ * An icon button in the toolbar's button group, labeled while set, with a
+ * button beside it that clears the breakout. Its menu breaks out by a
+ * property or by people segments, one or the other: picking from the other
+ * tab replaces the breakout. A search box above the tabs narrows both.
  */
 export const BreakoutMenu = ({
   value,
@@ -79,93 +84,138 @@ export const BreakoutMenu = ({
   usersTableId,
 }: BreakoutMenuProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [searchText, setSearchText] = useState("");
   const label = getButtonLabel(value, columns);
   const isSet = label !== null;
   const canBreakOut = columns.length > 0 || usersTableId !== undefined;
 
+  const handleOpenChange = (isOpening: boolean) => {
+    setIsOpen(isOpening);
+    if (!isOpening) {
+      setSearchText("");
+    }
+  };
+
   return (
-    <Menu position="bottom-start" opened={isOpen} onChange={setIsOpen}>
-      <Menu.Target>
-        <Tooltip label={t`Break out`} disabled={isOpen || isSet}>
-          <Button
-            variant="default"
-            px={isSet ? undefined : "sm"}
-            vars={isSet ? () => BREAKOUT_SET_VARS : undefined}
-            leftSection={isSet ? <Icon name="split_branch" /> : undefined}
-            aria-label={isSet ? undefined : t`Break out`}
-            aria-pressed={isSet}
-            disabled={!canBreakOut}
-          >
-            {label ?? <Icon name="split_branch" />}
-          </Button>
-        </Tooltip>
-      </Menu.Target>
-      <Menu.Dropdown w={DROPDOWN_WIDTH}>
-        <Tabs defaultValue={value?.type ?? "property"}>
-          <Tabs.List grow>
-            <Tabs.Tab value={"property" satisfies BreakoutTab}>
-              {t`Properties`}
-            </Tabs.Tab>
-            <Tabs.Tab value={"cohorts" satisfies BreakoutTab}>
-              {t`People segments`}
-            </Tabs.Tab>
-          </Tabs.List>
-          <Box mah={MAX_DROPDOWN_HEIGHT} pt="xs" style={{ overflowY: "auto" }}>
-            <Tabs.Panel value={"property" satisfies BreakoutTab}>
-              <PropertyOptions
-                columns={columns}
-                value={value?.type === "property" ? value.column : null}
-                onChange={(column) => onChange({ type: "property", column })}
-              />
-            </Tabs.Panel>
-            <Tabs.Panel value={"cohorts" satisfies BreakoutTab}>
-              {usersTableId !== undefined ? (
-                <CohortOptions
-                  usersTableId={usersTableId}
-                  value={value?.type === "cohorts" ? value.segments : []}
-                  onChange={(segments) =>
-                    onChange(
-                      segments.length > 0
-                        ? { type: "cohorts", segments }
-                        : null,
-                    )
-                  }
-                />
-              ) : (
-                <EmptyMessage>
-                  {t`Link a Customers or Users table to the person column first.`}
-                </EmptyMessage>
-              )}
-            </Tabs.Panel>
-          </Box>
-        </Tabs>
-        {/* Below the options, so it appearing doesn't move them. */}
-        {isSet && (
-          <>
-            <Menu.Divider />
-            <Menu.Item
-              leftSection={<Icon name="close" />}
-              onClick={() => onChange(null)}
+    // Siblings in the toolbar's button group, so the clear button joins the
+    // label without a button inside a button.
+    <>
+      <Menu position="bottom-start" opened={isOpen} onChange={handleOpenChange}>
+        <Menu.Target>
+          <Tooltip label={t`Break out`} disabled={isOpen || isSet}>
+            <Button
+              variant="default"
+              px={isSet ? undefined : "sm"}
+              leftSection={isSet ? <Icon name="split_branch" /> : undefined}
+              aria-label={isSet ? undefined : t`Break out`}
+              className={isSet ? S.setLabel : undefined}
+              aria-pressed={isSet}
+              disabled={!canBreakOut}
             >
-              {t`Remove breakout`}
-            </Menu.Item>
-          </>
-        )}
-      </Menu.Dropdown>
-    </Menu>
+              {label ?? <Icon name="split_branch" />}
+            </Button>
+          </Tooltip>
+        </Menu.Target>
+        {/* Spaced like the filter picker: the search field pads itself. */}
+        <Menu.Dropdown w={DROPDOWN_WIDTH} p={0}>
+          <ListSearchField
+            autoFocus
+            placeholder={t`Find...`}
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            onResetClick={() => setSearchText("")}
+            p="sm"
+          />
+          <Tabs defaultValue={value?.type ?? "property"}>
+            <Tabs.List className={S.tabList} grow>
+              <Tabs.Tab value={"property" satisfies BreakoutTab}>
+                {t`Properties`}
+              </Tabs.Tab>
+              <Tabs.Tab value={"cohorts" satisfies BreakoutTab}>
+                {t`People segments`}
+              </Tabs.Tab>
+            </Tabs.List>
+            <Box mah={MAX_DROPDOWN_HEIGHT} p="xs" style={{ overflowY: "auto" }}>
+              <Tabs.Panel value={"property" satisfies BreakoutTab}>
+                <PropertyOptions
+                  columns={columns}
+                  searchText={searchText}
+                  value={value?.type === "property" ? value.column : null}
+                  onChange={(column) => onChange({ type: "property", column })}
+                />
+              </Tabs.Panel>
+              <Tabs.Panel value={"cohorts" satisfies BreakoutTab}>
+                {usersTableId !== undefined ? (
+                  <CohortOptions
+                    usersTableId={usersTableId}
+                    searchText={searchText}
+                    value={value?.type === "cohorts" ? value.segments : []}
+                    onChange={(segments) =>
+                      onChange(
+                        segments.length > 0
+                          ? { type: "cohorts", segments }
+                          : null,
+                      )
+                    }
+                  />
+                ) : (
+                  <EmptyMessage>
+                    {t`Link a Customers or Users table to the person column first.`}
+                  </EmptyMessage>
+                )}
+              </Tabs.Panel>
+            </Box>
+          </Tabs>
+        </Menu.Dropdown>
+      </Menu>
+      {isSet && (
+        <Tooltip label={t`Remove breakout`}>
+          <Button
+            className={S.clearButton}
+            variant="default"
+            vars={() => CLEAR_BUTTON_VARS}
+            // In a section, so it centers like other icon-only buttons.
+            leftSection={<Icon name="close" />}
+            aria-label={t`Remove breakout`}
+            onClick={() => onChange(null)}
+          />
+        </Tooltip>
+      )}
+    </>
   );
 };
 
+/** Whether a name has the search text in it, ignoring case. */
+const matchesSearch = (name: string, searchText: string) =>
+  name.toLowerCase().includes(searchText.trim().toLowerCase());
+
+const getNoResultsMessage = () => t`Didn't find any results`;
+
 type PropertyOptionsProps = {
   columns: ColumnOption[];
+  searchText: string;
   value: string | null;
   onChange: (column: string) => void;
 };
 
-const PropertyOptions = ({ columns, value, onChange }: PropertyOptionsProps) =>
-  columns.length > 0 ? (
+const PropertyOptions = ({
+  columns,
+  searchText,
+  value,
+  onChange,
+}: PropertyOptionsProps) => {
+  const matching = columns.filter((column) =>
+    matchesSearch(column.label, searchText),
+  );
+  if (columns.length === 0) {
+    return <EmptyMessage>{t`No properties to break out by.`}</EmptyMessage>;
+  }
+  if (matching.length === 0) {
+    return <EmptyMessage>{getNoResultsMessage()}</EmptyMessage>;
+  }
+  return (
     <>
-      {columns.map((column) => (
+      {matching.map((column) => (
         <Menu.Item
           key={column.value}
           className={S.option}
@@ -177,12 +227,12 @@ const PropertyOptions = ({ columns, value, onChange }: PropertyOptionsProps) =>
         </Menu.Item>
       ))}
     </>
-  ) : (
-    <EmptyMessage>{t`No properties to break out by.`}</EmptyMessage>
   );
+};
 
 type CohortOptionsProps = {
   usersTableId: TableId;
+  searchText: string;
   value: PeopleSegmentRef[];
   onChange: (segments: PeopleSegmentRef[]) => void;
 };
@@ -194,6 +244,7 @@ type CohortOptionsProps = {
  */
 const CohortOptions = ({
   usersTableId,
+  searchText,
   value,
   onChange,
 }: CohortOptionsProps) => {
@@ -229,9 +280,15 @@ const CohortOptions = ({
       <EmptyMessage>{t`No segments on the people table yet.`}</EmptyMessage>
     );
   }
+  const matching = segments.filter((segment) =>
+    matchesSearch(segment.name, searchText),
+  );
+  if (matching.length === 0) {
+    return <EmptyMessage>{getNoResultsMessage()}</EmptyMessage>;
+  }
   return (
     <>
-      {segments.map((segment) => (
+      {matching.map((segment) => (
         <Menu.Item
           key={segment.key}
           closeMenuOnClick={false}

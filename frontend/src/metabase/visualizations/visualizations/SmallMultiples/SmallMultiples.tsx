@@ -21,7 +21,7 @@ import {
 import { SMALL_MULTIPLES_DEFINITION } from "./definition";
 import { getSmallMultiples } from "./utils";
 
-const PANEL_HEIGHT_PX = 250;
+const PANEL_HEIGHT_PX = 300;
 
 /**
  * What a chart gets from `Visualization`: its series after its own

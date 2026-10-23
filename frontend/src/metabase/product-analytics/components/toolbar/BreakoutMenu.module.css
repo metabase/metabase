@@ -16,3 +16,26 @@
 .segmentIcon {
   color: var(--mb-color-core-filter);
 }
+
+/* Bold tabs. The labels read this variable, which overrides their own weight. */
+.tabList {
+  --tab-font-weight: 700;
+}
+
+/*
+ * The clear button joins the label as one pill: no divider between them, and
+ * the label's padding before the X goes, so one gap separates them.
+ */
+.setLabel {
+  padding-inline-end: 0 !important;
+}
+
+.clearButton {
+  color: var(--mb-color-text-secondary);
+  padding-inline: var(--mantine-spacing-sm) !important;
+
+  /* The button group's divider. */
+  &::before {
+    content: none !important;
+  }
+}
