@@ -18,6 +18,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.shared :as shared]
    [metabase.queries.core :as queries]
@@ -235,6 +236,12 @@
       ;; The agent may retry a failed call and save a second copy of the card.
       (log/error e "Failed to publish the card-create event for a card saved by Metabot" {:card-id (:id card)}))))
 
+(tools/defrecoverable save-rejected!
+  "The save request was rejected with an API client error."
+  {:payload [:map {:closed true} [:message :string]]}
+  [{:keys [message]}]
+  {:message message :recovery []})
+
 (def ^:private tool-description
   "Describe how to call `save_entity`."
   (str
@@ -294,14 +301,22 @@
           ;; event is delayed until after the transaction commits so subscribers see
           ;; the card.
           {:keys [card link destination-name] saved-destination :destination}
-          (t2/with-transaction [_conn]
-            (let [saved (case (:target_type destination)
-                          "collection" (save-to-collection! args)
-                          "dashboard"  (save-to-dashboard! args)
-                          "document"   (save-to-document! args))]
-              (when-let [conversation-id (shared/current-conversation-id)]
-                (metabot.db/link-card-to-conversation! (:id (:card saved)) conversation-id chart_id))
-              saved))
+          (try
+            (t2/with-transaction [_conn]
+              (let [saved (case (:target_type destination)
+                            "collection" (save-to-collection! args)
+                            "dashboard"  (save-to-dashboard! args)
+                            "document"   (save-to-document! args))]
+                (when-let [conversation-id (shared/current-conversation-id)]
+                  (metabot.db/link-card-to-conversation! (:id (:card saved)) conversation-id chart_id))
+                saved))
+            (catch clojure.lang.ExceptionInfo e
+              (let [data (ex-data e)
+                    status-code (:status-code data)]
+                (if (and (not (contains? data tools.error/error-key))
+                         (int? status-code) (<= 400 status-code 499))
+                  (tools.error/throw-recoverable! ::save-rejected {:message (ex-message e)} {:cause e})
+                  (throw e)))))
           _ (publish-card-create! card)
           instruction-text (te/lines
                             (str "Saved \"" question-name "\" to " destination-name ".")

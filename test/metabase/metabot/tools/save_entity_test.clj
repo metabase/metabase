@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [malli.json-schema :as mjs]
    [metabase.api-scope.core :as api-scope]
+   [metabase.documents.core :as documents]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -396,3 +397,29 @@
       (mt/with-current-user (mt/user->id :crowberto)
         (is (= {:class :unrecoverable :code :internal}
                (failure {:target_type "collection" :collection_id nil})))))))
+
+(deftest transaction-api-error-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection coll {}
+                     :model/Document doc {:document document-ast}]
+        (testing "4xx failures during card creation reach the agent with their message"
+          (doseq [status [400 403 404 409 422 499]]
+            (mt/with-dynamic-fn-redefs [queries/create-card!
+                                        (fn [& _]
+                                          (throw (ex-info "Uses content that is not remote synced."
+                                                          {:status-code status})))]
+              (is (=? {:error  {:class :recoverable :code ::save-entity/save-rejected}
+                       :output #"Uses content that is not remote synced\."}
+                      (invoke-save-entity
+                       (assoc chart-args :destination {:target_type "collection" :collection_id (:id coll)})))))))
+        (testing "a failed document insertion rolls back the card and returns its reason"
+          (mt/with-dynamic-fn-redefs [documents/add-card-to-document!
+                                      (fn [& _]
+                                        (throw (ex-info "Uses content that is not remote synced."
+                                                        {:status-code 400})))]
+            (is (=? {:error  {:class :recoverable :code ::save-entity/save-rejected}
+                     :output #"Uses content that is not remote synced\."}
+                    (invoke-save-entity
+                     (assoc chart-args :destination {:target_type "document" :document_id (:id doc)}))))
+            (is (not (t2/exists? :model/Card :document_id (:id doc))))))))))
