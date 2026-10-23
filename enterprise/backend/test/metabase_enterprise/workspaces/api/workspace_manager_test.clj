@@ -161,6 +161,22 @@
       (testing "404 for a missing workspace"
         (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/config")))))
 
+(deftest download-config-unreadable-ssl-root-cert-test
+  (testing "GET /:id/config answers 409 naming the database when its SSL root certificate can't be read"
+    (mt/with-temp [:model/Database {db-id :id} {:name    "Cert DW" :engine :postgres
+                                                :details {:ssl                   true
+                                                          :ssl-root-cert-options "local"
+                                                          :ssl-root-cert-path    "/nonexistent/fe103/root.crt"}}
+                   :model/Workspace {ws-id :id} {:name "Cert WS"}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {}
+                                               :output_namespace ""
+                                               :input_schemas    ["public"]
+                                               :status           :provisioned}]
+      (is (= "The SSL root certificate of database \"Cert DW\" can't be read on this instance"
+             (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))))))
+
 (deftest download-metadata-endpoint-test
   (testing "GET /:id/metadata returns table_metadata.json for the workspace's input schemas"
     (mt/with-temp [:model/Database {db-id :id} {:name "Meta DW" :engine :postgres :details {}}
