@@ -10,6 +10,7 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -288,6 +289,60 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"model_id"
                                 (action/update! {:id action-id :model_id nil} (action/select-action :id action-id))))
           (is (some? (t2/select-one-fn :model_id :model/Action :id action-id))))))))
+
+(defn- table-query
+  "A query of the test Table `table-key`."
+  [table-key]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-key)))))
+
+(deftest model-action-collection-follows-model-test
+  (mt/with-actions-enabled
+    (mt/with-temp [:model/Collection {coll-id :id}  {}
+                   :model/Collection {other-id :id} {}]
+      (mt/with-actions [{model-id :id}      {:type :model :dataset_query (table-query :categories)
+                                             :collection_id coll-id}
+                        {:keys [action-id]} {:type :query}]
+        (testing "an action of a model goes in the model's collection"
+          (is (= coll-id (t2/select-one-fn :collection_id :model/Action :id action-id))))
+        (testing "and can't be moved out of it"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A model's action goes in the model's collection"
+                                (t2/update! :model/Action action-id {:collection_id other-id})))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A model's action goes in the model's collection"
+                                (t2/update! :model/Action action-id {:collection_id nil}))))
+        (testing "nor be inserted in another collection"
+          (mt/with-model-cleanup [:model/Action]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"A model's action goes in the model's collection"
+                                  (action/insert! {:type          :query
+                                                   :name          "Elsewhere"
+                                                   :model_id      model-id
+                                                   :collection_id other-id
+                                                   :database_id   (mt/id)
+                                                   :dataset_query (lib/native-query (mt/metadata-provider) "select 1")})))))
+        (testing "moving the model moves its actions"
+          (t2/update! :model/Card model-id {:collection_id other-id})
+          (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))
+
+(deftest model-action-has-no-table-test
+  (testing "an implicit action of a model reads its model's table, so it can't be given one"
+    (mt/with-actions [_                   {:type :model :dataset_query (table-query :categories)}
+                      {:keys [action-id]} {:type :implicit :kind "row/create"}]
+      (is (nil? (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id)))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"An action of a model writes to the model's table"
+                            (t2/update! :model/ImplicitAction {:action_id action-id} {:table_id (mt/id :categories)})))
+      (is (nil? (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id))))))
+
+(deftest load-moves-action-to-another-model-test
+  (testing "a serdes load can move an action to another model, as exports from before the model was fixed can hold such a move"
+    (mt/with-temp [:model/Collection {other-coll :id} {}
+                   :model/Card       {other-id :id}   {:type :model :dataset_query (table-query :categories)
+                                                       :collection_id other-coll}]
+      (mt/with-actions [_                   {:type :model :dataset_query (table-query :categories)}
+                        {:keys [action-id]} {:type :query}]
+        (binding [mi/*deserializing?* true]
+          (t2/update! :model/Action action-id {:model_id other-id :collection_id other-coll}))
+        (is (= {:model_id other-id :collection_id other-coll}
+               (t2/select-one [:model/Action :model_id :collection_id] :id action-id)))))))
 
 (deftest switching-to-implicit-checks-the-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)

@@ -112,7 +112,7 @@
     (api/update-check existing-action action)
     (api/check-400 (not (and (:archived action) (get action :model_id (:model_id existing-action))))
                    (tru "A model''s action can''t be archived. Delete it instead."))
-    (when (some #(contains? action %) [:dataset_query :database_id :type :kind :model_id])
+    (when (some #(contains? action %) [:dataset_query :database_id :type :kind :model_id :table_id])
       (actions/check-action-databases-enabled (merge (actions/select-action :id id) action)))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]

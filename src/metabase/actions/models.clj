@@ -141,10 +141,18 @@
   (collection/check-allowed-content :action collection-id)
   (check-model-less-collection action))
 
+(defn- model-collection-error
+  "The 400 for an action of a model put in a Collection other than its model's."
+  []
+  (ex-info (tru "A model''s action goes in the model''s collection.") {:status-code 400}))
+
 (defn- set-model-collection
-  "`action` with the `:collection_id` of its model Card."
-  [{model-id :model_id, :as action}]
-  (assoc action :collection_id (actions.db/card-collection-id model-id)))
+  "`action` with the `:collection_id` of its model Card; throws a 400 when it is given another Collection."
+  [{model-id :model_id, collection-id :collection_id, :as action}]
+  (let [model-collection-id (actions.db/card-collection-id model-id)]
+    (when (and (some? collection-id) (not= collection-id model-collection-id))
+      (throw (model-collection-error)))
+    (assoc action :collection_id model-collection-id)))
 
 (defn- query-card-ids
   "The IDs of the Cards the native `query` reads through card template tags."
@@ -200,15 +208,19 @@
 (t2/define-before-update :model/Action
   [{model-id :model_id, :as action}]
   (let [changed? (fn [k] (contains? (t2/changes action) k))]
-    (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix-if-changed action)
-               (and model-id (changed? :model_id))
-               set-model-collection)
-      (when (and (implicit? action) (or (changed? :type) (changed? :model_id)))
+    (when (and (changed? :model_id) (not mi/*deserializing?*))
+      (throw (ex-info (tru "An action''s model can''t be changed.") {:status-code 400})))
+    (when (and model-id
+               (changed? :collection_id)
+               (not= (:collection_id action) (actions.db/card-collection-id model-id)))
+      (throw (model-collection-error)))
+    (u/prog1 (public-sharing/add-public-uuid-prefix-if-changed action)
+      (when (and (implicit? action) (changed? :type))
         (check-implicit-action-model model-id)
         (check-implicit-actions-supported action))
-      (when (some #(contains? (t2/changes <>) %) [:collection_id :model_id])
+      (when (contains? (t2/changes <>) :collection_id)
         (check-collection-content <>))
-      (when (some #(contains? (t2/changes <>) %) [:collection_id :model_id :type :archived :public_uuid :parameters])
+      (when (some #(contains? (t2/changes <>) %) [:collection_id :type :archived :public_uuid :parameters])
         (check-data-app-action <>))
       (when (contains? (t2/changes <>) :collection_id)
         (check-data-app-action-query (:collection_id <>) (:dataset_query (actions.db/query-action (:id <>))))))))
@@ -231,12 +243,30 @@
     (when (contains? (t2/changes query-action) :dataset_query)
       (check-data-app-action-query (actions.db/action-collection-id (:action_id <>)) (:dataset_query <>)))))
 
+(defn- check-implicit-action-table
+  "Throws a 400 unless `implicit-action` has a Table exactly when its Action has no model, as an action of a model writes
+  to the table its model reads when it runs."
+  [{table-id :table_id, action-id :action_id}]
+  (if (actions.db/action-model-id action-id)
+    (when (some? table-id)
+      (throw (ex-info (tru "An action of a model writes to the model''s table, so it can''t be given one.")
+                      {:status-code 400})))
+    (when (nil? table-id)
+      (throw (ex-info (tru "An implicit action needs a table.") {:status-code 400})))))
+
+(t2/define-before-update :model/ImplicitAction
+  [implicit-action]
+  (u/prog1 implicit-action
+    (when (contains? (t2/changes implicit-action) :table_id)
+      (check-implicit-action-table implicit-action))))
+
 (t2/define-before-insert :model/ImplicitAction
   [implicit-action]
   (u/prog1 implicit-action
     (when-let [collection-id (actions.db/action-collection-id (:action_id implicit-action))]
       (when (perms/data-app-collection? collection-id)
-        (throw (data-app-action-error (tru "An action in a data app''s collection is a query action, so it can''t have an implicit action.")))))))
+        (throw (data-app-action-error (tru "An action in a data app''s collection is a query action, so it can''t have an implicit action.")))))
+    (check-implicit-action-table implicit-action)))
 
 (defn- action-database-ids
   "The ids of the Databases `action` runs against: its query's, or its model's for an implicit action."
@@ -332,8 +362,7 @@
 (mu/defn- update*!
   [{:keys [id] :as updates} :- ::actions.schema/action.for-update
    existing-action          :- ::actions.schema/action]
-  (let [updates (cond-> (assoc updates :type (or (:type updates) (:type existing-action)))
-                  (get updates :model_id (:model_id existing-action)) (dissoc :collection_id))]
+  (let [updates (assoc updates :type (or (:type updates) (:type existing-action)))]
     (t2/with-transaction [_conn]
       ;; the query row first: a move into a data app's collection checks the query the action then holds
       (when-let [type-row (not-empty (cond-> (apply dissoc updates :id action-columns)
@@ -384,7 +413,7 @@
       (map (fn [action]
              (let [implicit-action (get implicit-actions-by-action-id (:id action))]
                (merge action
-                      (select-keys implicit-action [:kind]))))
+                      (select-keys implicit-action [:kind :table_id]))))
            actions))))
 
 (defn- select-actions-matching-options
@@ -651,7 +680,8 @@
 (defmethod serdes/generate-path "ImplicitAction" [_ _] nil)
 (defmethod serdes/make-spec "ImplicitAction" [_model-name _opts]
   {:copy      [:kind]
-   :transform {:action_id (serdes/parent-ref)}})
+   :transform {:action_id (serdes/parent-ref)
+               :table_id  (serdes/fk :model/Table)}})
 
 (defmethod serdes/make-spec "Action" [_model-name opts]
   {:copy      [:archived :archived_directly :description :entity_id :name :public_uuid]

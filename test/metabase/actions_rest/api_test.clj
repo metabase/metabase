@@ -9,6 +9,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.permissions.test-util :as perms.test-util]
@@ -497,6 +498,12 @@
                        mt/rows
                        ffirst)))))))))
 
+(defn- table-query
+  "A query of the test Table `table-key`."
+  [table-key]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-key)))))
+
 (deftest only-admins-write-actions-without-model-test
   (testing "only admins can create or update an action without a model, whatever their permissions on its collection"
     (mt/with-actions-test-data-and-actions-enabled
@@ -602,14 +609,20 @@
               (is (=? {:can_write false} (mt/user-http-request :rasta :get 200 (str "action/" action-id)))))))))))
 
 (deftest attached-action-keeps-model-collection-test
-  (testing "an action with a model stays in the model's collection whatever collection_id an update sends"
+  (testing "an action with a model can't be moved out of the model's collection"
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-temp [:model/Collection {coll-id :id}  {}
                      :model/Collection {other-id :id} {}]
-        (mt/with-actions [{:keys [action-id]} {:public_uuid nil :made_public_by_id nil :collection_id coll-id}]
+        (mt/with-actions [_                   {:type :model :dataset_query (table-query :categories) :collection_id coll-id}
+                          {:keys [action-id]} {:public_uuid nil :made_public_by_id nil}]
           (let [model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)]
-            (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:collection_id other-id})
-            (is (= model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))
+            (is (= "A model's action goes in the model's collection."
+                   (mt/user-http-request :crowberto :put 400 (str "action/" action-id) {:collection_id other-id})))
+            (is (= model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)))
+            (testing "sending the collection it already has is fine"
+              (is (=? {:collection_id model-collection}
+                      (mt/user-http-request :crowberto :put 200 (str "action/" action-id)
+                                            {:collection_id model-collection}))))))))))
 
 (deftest action-without-model-collection-guards-test
   (testing "an action without a model can only go in the data actions root or an existing, unarchived data actions collection"
@@ -631,15 +644,30 @@
             (is (= coll-id (:collection_id (mt/user-http-request :crowberto :get 200 path))))))))))
 
 (deftest action-with-missing-model-test
-  (testing "creating or moving an action onto a model that does not exist is a 404"
+  (testing "creating an action on a model that does not exist is a 404"
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-model-cleanup [:model/Action]
         (is (= "Not found."
                (mt/user-http-request :crowberto :post 404 "action"
-                                     (assoc (model-less-query-action nil) :model_id Integer/MAX_VALUE))))
-        (let [path (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))))]
-          (is (= "Not found."
-                 (mt/user-http-request :crowberto :put 404 path {:model_id Integer/MAX_VALUE}))))))))
+                                     (assoc (model-less-query-action nil) :model_id Integer/MAX_VALUE))))))))
+
+(deftest action-model-cannot-change-test
+  (testing "an action's model is set on create and can't be changed, added or removed"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (mt/with-actions [{model-id :id}      {:type :model :dataset_query (table-query :categories)}
+                          {:keys [action-id]} {:type :query}]
+          (let [model-less (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))))
+                of-model   (str "action/" action-id)]
+            (is (= "An action's model can't be changed."
+                   (mt/user-http-request :crowberto :put 400 model-less {:model_id model-id})))
+            (is (= "An action's model can't be changed."
+                   (mt/user-http-request :crowberto :put 400 of-model {:model_id nil})))
+            (is (=? {:model_id nil} (mt/user-http-request :crowberto :get 200 model-less)))
+            (is (=? {:model_id model-id} (mt/user-http-request :crowberto :get 200 of-model)))
+            (testing "sending the model it already has is fine"
+              (is (=? {:name "Same model"}
+                      (mt/user-http-request :crowberto :put 200 of-model {:name "Same model" :model_id model-id}))))))))))
 
 (deftest archiving-directly-test
   (testing "archiving an action through the API marks it as archived directly, and unarchiving clears that"

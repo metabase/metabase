@@ -99,7 +99,8 @@
    :bulk/delete])
 
 (def ^:private implicit-action-entries
-  [[:kind {:optional true} [:maybe ::implicit-action.kind]]])
+  [[:kind     {:optional true} [:maybe ::implicit-action.kind]]
+   [:table_id {:optional true} [:maybe ::lib.schema.id/table]]])
 
 (mr/def ::implicit-action
   (into [:map {:closed true}] implicit-action-entries))
@@ -197,13 +198,15 @@
   "A ImplicitAction as selected from the app DB: every column of `:implicit_action`."
   [:map {:closed true}
    [:action_id ::lib.schema.id/action]
-   [:kind      [:or :keyword :string]]])
+   [:kind      [:or :keyword :string]]
+   [:table_id  [:maybe ::lib.schema.id/table]]])
 
 (mr/def ::implicit-action.update
   "What an update (or insert) of a ImplicitAction accepts: every column of `:implicit_action` except `id`, all optional."
   [:map {:closed true}
    [:action_id {:optional true} [:maybe ::lib.schema.id/action]]
-   [:kind      {:optional true} [:maybe [:or :keyword :string]]]])
+   [:kind      {:optional true} [:maybe [:or :keyword :string]]]
+   [:table_id  {:optional true} [:maybe ::lib.schema.id/table]]])
 
 (mr/def ::query-action.dataset-query
   "The `:dataset_query` column of a QueryAction, decoded."

@@ -232,7 +232,7 @@
                                                                      :creator_id (mt/user->id :crowberto)})]
                (t2/insert! :model/QueryAction {:action_id action-id :database_id (mt/id)
                                                :dataset_query (lib/native-query (mt/metadata-provider) "SELECT 1")})
-               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"query action of no model"
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"goes in the model's collection"
                                      (t2/update! :model/Action action-id {:collection_id collection-id})))
                (is (= model-coll (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))))
 
