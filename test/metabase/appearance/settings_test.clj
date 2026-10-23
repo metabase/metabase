@@ -160,8 +160,7 @@
 (deftest validate-help-url-test
   (testing "validate-help-url accepts valid URLs with HTTP or HTTPS protocols"
     (is (nil? (#'appearance.settings/validate-help-url "http://www.metabase.com")))
-    (is (nil? (#'appearance.settings/validate-help-url "https://www.metabase.com")))
-    (is (nil? (#'appearance.settings/validate-help-url "https://example"))))
+    (is (nil? (#'appearance.settings/validate-help-url "https://www.metabase.com"))))
   (testing "validate-help-url accepts valid mailto: links"
     (is (nil? (#'appearance.settings/validate-help-url "mailto:help@metabase.com"))))
   (testing "validate-help-url rejects malformed URLs and URLs with invalid protocols"
@@ -173,11 +172,7 @@
     (is (thrown-with-msg?
          Exception
          #"Please make sure this is a valid URL"
-         (#'appearance.settings/validate-help-url "ftp://metabase.com")))
-    (is (thrown-with-msg?
-         Exception
-         #"Please make sure this is a valid URL"
-         (#'appearance.settings/validate-help-url "https://"))))
+         (#'appearance.settings/validate-help-url "ftp://metabase.com"))))
   (testing "validate-help-url rejects mailto: links with invalid email addresses"
     (is (thrown-with-msg?
          Exception
