@@ -613,7 +613,11 @@
                                               table-names
                                               (map :name (sync-tables database [mb-schema] nil))))
         missing-table-fields (for [table-name missing-tables
-                                   field      (describe-table-fields-with-nested-fields database glue-schema table-name)]
+                                   field      (try
+                                                (describe-table-fields-with-nested-fields database glue-schema table-name)
+                                                (catch Exception e
+                                                  (log/warnf e "Cannot describe table %s.%s, skipping field sync for it" glue-schema table-name)
+                                                  nil))]
                                (assoc field :table-schema mb-schema, :table-name table-name))]
     (sort-by (juxt :table-name :database-position) (concat fields missing-table-fields))))
 
