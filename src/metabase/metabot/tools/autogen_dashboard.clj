@@ -10,7 +10,7 @@
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
-   [metabase.metabot.tools.run-query :as run-query]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.xrays.core :as xrays]))
@@ -96,7 +96,9 @@
             mbql-query (when (and (:database query) (lib/normalized-query-type query))
                          (lib-be/normalize-query query))]
         (when-not query
-          (run-query/unknown-query-id! {:query-id query_id :known-ids (vec (keys queries))}))
+          (recoverable.common/unknown-query-id! {:query-id  query_id
+                                                 :available (sort (keys queries))
+                                                 :hint      :notebook-only}))
         (when-not (mr/validate :metabase.lib.schema/query mbql-query)
           (incomplete-query! {:query-id query_id}))
         (let [entity (tools/with-entity {:kind :query :id query_id}
