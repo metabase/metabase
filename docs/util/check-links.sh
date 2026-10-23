@@ -4,7 +4,7 @@
 # (the page has to exist under docs/, and so does any #anchor).
 #
 #   docs/util/check-links.sh                   # all three
-#   docs/util/check-links.sh docs              # only the markdown under docs/
+#   docs/util/check-links.sh docs              # only the markdown under docs/, incl. the SDK snippets
 #   docs/util/check-links.sh nav               # only nav.yml
 #   docs/util/check-links.sh src               # only the source code
 #   docs/util/check-links.sh site              # metabase.com and GitHub wiki links against the live sites
@@ -88,6 +88,32 @@ check_docs() {
   report=$(lychee docs "${lychee_args[@]}" --no-progress --format json || true)
   print_failures "$report" || return 1
   echo "Checked $total links in docs/, $count broken"
+  [ "$count" -eq 0 ]
+}
+
+# The TypeDoc snippets in docs/embedding/sdk/api/snippets only reach readers through {% include_file %},
+# which lychee doesn't expand, and the config skips docs/embedding/sdk/api. So check their links on their
+# own, the same from every page that includes them: a /docs/latest/... link has to point at a generated
+# docs/.../X.html (and its #anchor), and a relative one fails, since it resolves against the includer.
+check_snippets() {
+  echo "Checking links in the SDK snippets"
+  local tmpdir locations rendered report total count
+  tmpdir=$(mktemp -d)
+  trap 'rm -rf "$tmpdir"' RETURN
+  locations=$tmpdir/locations
+  # The .md extension matters: lychee only looks for markdown links in markdown files.
+  rendered=$tmpdir/snippet-links.md
+
+  git grep -nIoE '\]\([^)]+\)' -- docs/embedding/sdk/api/snippets |
+    sed -E 's/\]\((.*)\)$/\1/' | grep -vE '^[^:]+:[0-9]+:https?://' > "$locations" || true
+  sed -E "s#^[^:]+:[0-9]+:(.*)\$#- [snippet](\1)#; s#\]\(/docs/latest/#]($site/docs/latest/#" "$locations" > "$rendered"
+
+  report=$(lychee --config ./.lychee/config.toml --offline --include-fragments=full --no-progress \
+                  --format json --include '^https?://(www\.)?metabase\.com/docs/latest/' \
+                  --remap "^https?://(www\.)?metabase\.com/docs/latest/([^#?]+)\.md(#.*)?\$ file://$PWD/docs/\$2.html\$3" \
+                  "$rendered" || true)
+  print_failures "$report" "$locations" || return 1
+  echo "Checked $total links in the SDK snippets, $count broken"
   [ "$count" -eq 0 ]
 }
 
@@ -197,8 +223,9 @@ site_not_links=(
 
 status=0
 case "$what" in
-  all)  check_docs || status=1; echo; check_nav || status=1; echo; check_src || status=1 ;;
-  docs) check_docs || status=1 ;;
+  all)  check_docs || status=1; echo; check_snippets || status=1; echo; check_nav || status=1; echo
+        check_src || status=1 ;;
+  docs) check_docs || status=1; echo; check_snippets || status=1 ;;
   nav)  check_nav  || status=1 ;;
   src)  check_src  || status=1 ;;
   site) check_site || status=1 ;;
