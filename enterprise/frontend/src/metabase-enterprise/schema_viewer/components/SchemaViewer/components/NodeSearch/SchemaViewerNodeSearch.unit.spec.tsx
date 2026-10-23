@@ -5,6 +5,7 @@ import { checkNotNull } from "metabase/utils/types";
 import type { ConcreteTableId } from "metabase-types/api";
 
 import { SchemaViewerContext } from "../../SchemaViewerContext";
+import { createSchemaViewerDetailsStore } from "../../hooks/useSchemaViewerDetails";
 import type { SchemaViewerFlowNode } from "../../types";
 import { type FlowNodeFieldSpec, makeFlowNode } from "../../utils/test-utils";
 
@@ -42,11 +43,13 @@ function setup({
   const zoomToNode = jest.fn();
   const value = {
     visibleTableIds: new Set<ConcreteTableId>(),
+    detailsStore: createSchemaViewerDetailsStore(),
     expandingTableIds: new Set<ConcreteTableId>(),
     expandToTable: jest.fn(),
     selectedNodeId: null,
     selectNode: jest.fn(),
     zoomToNode,
+    selectEdges: jest.fn(),
   };
 
   const utils = renderWithProviders(

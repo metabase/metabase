@@ -2,11 +2,29 @@ import { NODE_WIDTH_PX } from "../../constants";
 import type { SchemaViewerFlowNode } from "../../types";
 
 import { DAGRE_NODE_SEP_PX, DAGRE_RANK_SEP_PX } from "./constants";
-import { layoutWithDagre } from "./dagre-layout";
+import {
+  applyDagrePositions,
+  getDagreLayoutRequest,
+  getDagrePositions,
+} from "./dagre-layout";
 import { partitionFocalNeighbors } from "./graph-neighborhood";
 import type { PlacementCanvas } from "./placement-canvas";
 import { createPlacementCanvas } from "./placement-canvas";
-import type { LayoutEdge } from "./types";
+import type {
+  DagreLayoutRequest,
+  DagreNodePosition,
+  LayoutEdge,
+} from "./types";
+
+export type PreparedFocalLayout =
+  | { kind: "complete"; nodes: SchemaViewerFlowNode[] }
+  | {
+      kind: "dagre";
+      graph: DagreLayoutRequest;
+      complete: (
+        positions: readonly DagreNodePosition[],
+      ) => SchemaViewerFlowNode[];
+    };
 
 /**
  * Stacks direct focal neighbors vertically in a single column centered on the
@@ -39,33 +57,11 @@ function placeFocalNeighborColumn(
   }
 }
 
-/**
- * Lays out everything that isn't part of the focal cluster (indirect nodes +
- * fully disconnected ones) with Dagre as an independent side cluster, then
- * translates the cluster one extra rank-gap to the right of the already-placed
- * focal content and vertically centers it on the focal node. Cross-cluster
- * edges (focal-cluster ↔ side-cluster) are intentionally excluded from the
- * side Dagre call so the side cluster's internal shape is driven by its own
- * connectivity, not pulled toward the already-placed focal cluster.
- */
 function placeFocalSideCluster(
-  restNodes: SchemaViewerFlowNode[],
-  edges: LayoutEdge[],
+  laidOutRest: readonly SchemaViewerFlowNode[],
   focalCenterY: number,
   canvas: PlacementCanvas,
 ): void {
-  if (restNodes.length === 0) {
-    return;
-  }
-  const restIds = new Set<string>();
-  for (const node of restNodes) {
-    restIds.add(node.id);
-  }
-  const restEdges = edges.filter(
-    (e) => restIds.has(e.source) && restIds.has(e.target),
-  );
-  const laidOutRest = layoutWithDagre(restNodes, restEdges);
-
   let restMinX = Infinity;
   let restMinY = Infinity;
   let restMaxY = -Infinity;
@@ -94,22 +90,19 @@ function placeFocalSideCluster(
 }
 
 /**
- * Re-layouts the graph around a focal node without moving the focal node
- * itself, so the user's camera position remains meaningful. Direct incoming
- * neighbors are stacked in a centered column on the left, direct outgoing
- * neighbors are stacked on the right.
- * Everything outside that focal cluster is laid out with Dagre as
- * an independent side cluster.
+ * Places the focal cluster synchronously and prepares only the remaining side
+ * cluster for Dagre. The caller decides whether that Dagre work runs in the
+ * worker or through the synchronous fallback.
  */
-export function focusNodeLayout(
+export function prepareFocusNodeLayout(
   focalId: string,
   nodes: SchemaViewerFlowNode[],
   edges: LayoutEdge[],
-): SchemaViewerFlowNode[] {
+): PreparedFocalLayout {
   const canvas = createPlacementCanvas(nodes);
   const focal = canvas.getNode(focalId);
   if (focal == null) {
-    return nodes;
+    return { kind: "complete", nodes };
   }
 
   canvas.place(focal, focal.position);
@@ -131,8 +124,38 @@ export function focusNodeLayout(
     canvas,
   );
 
-  const restNodes = nodes.filter((n) => !canvas.hasPlaced(n.id));
-  placeFocalSideCluster(restNodes, edges, focalCenterY, canvas);
+  const restNodes = nodes.filter((node) => !canvas.hasPlaced(node.id));
+  if (restNodes.length === 0) {
+    return {
+      kind: "complete",
+      nodes: canvas.getPlacedOrOriginalNodesInOrder(nodes),
+    };
+  }
 
-  return canvas.getPlacedOrOriginalNodesInOrder(nodes);
+  const restIds = new Set(restNodes.map((node) => node.id));
+  const restEdges = edges.filter(
+    (edge) => restIds.has(edge.source) && restIds.has(edge.target),
+  );
+
+  return {
+    kind: "dagre",
+    graph: getDagreLayoutRequest(restNodes, restEdges),
+    complete: (positions) => {
+      const laidOutRest = applyDagrePositions(restNodes, positions);
+      placeFocalSideCluster(laidOutRest, focalCenterY, canvas);
+      return canvas.getPlacedOrOriginalNodesInOrder(nodes);
+    },
+  };
+}
+
+/** Synchronous composition retained for fallback and existing callers. */
+export function focusNodeLayout(
+  focalId: string,
+  nodes: SchemaViewerFlowNode[],
+  edges: LayoutEdge[],
+): SchemaViewerFlowNode[] {
+  const prepared = prepareFocusNodeLayout(focalId, nodes, edges);
+  return prepared.kind === "complete"
+    ? prepared.nodes
+    : prepared.complete(getDagrePositions(prepared.graph));
 }
