@@ -201,7 +201,7 @@
    "/bookmark"             (+auth 'metabase.bookmarks.api)
    "/bug-reporting"        (+auth 'metabase.bug-reporting.api)
    "/cache"                (+auth 'metabase.cache.api)
-   "/card"                 (+auth metabase.queries-rest.api/card-routes)
+   "/card"                 (+auth (data-apps/card-guard metabase.queries-rest.api/card-routes))
    "/cards"                (+auth metabase.queries-rest.api/cards-routes)
    "/channel"              (+auth metabase.channel.rest.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)

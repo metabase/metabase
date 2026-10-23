@@ -23,6 +23,12 @@
   ([message cause]
    (ex-info message {:status-code 403} cause)))
 
+(defn- refuse-cards!
+  "Throws a 403 naming the cards with `card-ids`, which a data app may not read."
+  [metadata-providerable card-ids]
+  (throw (refusal (tru "A data app can read only the cards of data apps and the metrics in the Library, not {0}."
+                       (queries/card-labels metadata-providerable card-ids)))))
+
 (defn- check-lib-query!
   "Throws unless `query` and the cards it uses, which aren't among `checked-card-ids`, read only the Library through MBQL;
   returns the IDs of the cards checked so far."
@@ -34,8 +40,7 @@
                                 data-apps.db/data-app-readable-card-ids
                                 (set/difference card-ids)
                                 not-empty)]
-      (throw (refusal (tru "A data app can read only the cards of data apps and the metrics in the Library, not {0}."
-                           (queries/card-labels query outside)))))
+      (refuse-cards! query outside))
     (when-let [unpublished (queries/unpublished-read-table-names query)]
       (throw (refusal (tru "A data app can read only tables published to the Library, not {0}."
                            (str/join ", " (sort unpublished))))))
@@ -78,4 +83,25 @@
       (throw (refusal (tru "A data app can run only queries without parameters."))))
     (check-lib-query! query #{})
     (check-preprocessed-query! query))
+  nil)
+
+(defn- card-row
+  "The ID and database ID of the card whose ID or entity ID is the route param `card-id`, or nil when there is none."
+  [card-id]
+  (if (= 21 (count card-id))
+    (data-apps.db/card-by-entity-id card-id)
+    (data-apps.db/card-by-id (parse-long card-id))))
+
+(defenterprise check-card!
+  "Throws a 403 unless the card with `card-id`, an ID or an entity ID, is a card of a data app or a metric in the Library
+  whose query reads only the Library through MBQL, when such a card exists."
+  :feature :data-apps
+  [card-id]
+  (when-let [{:keys [id database_id]} (card-row card-id)]
+    (let [mp (lib-be/application-database-metadata-provider database_id)]
+      (when-not (contains? (data-apps.db/data-app-readable-card-ids #{id}) id)
+        (refuse-cards! mp #{id}))
+      (let [card-query (lib/query mp (:dataset-query (lib.metadata/card mp id)))]
+        (check-lib-query! card-query #{id})
+        (check-preprocessed-query! card-query))))
   nil)

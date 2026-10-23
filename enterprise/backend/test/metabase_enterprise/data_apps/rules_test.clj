@@ -152,6 +152,80 @@
              (is (re-find #"not CHECKINS" (mt/user-http-request :crowberto :post 403 endpoint as-data-app
                                                                 (lib/->legacy-MBQL checkins)))))))))))
 
+(defn- form-download
+  "The response to a data app's form submission to `POST /api/card/:id/query/csv` for the card with `card-id`, with
+  `parameters` as a JSON string, expecting `status`."
+  [status card-id parameters]
+  (mt/user-http-request :crowberto :post status (format "card/%d/query/csv" card-id)
+                        (assoc-in as-data-app [:request-options :content-type] "application/x-www-form-urlencoded")
+                        {:parameters parameters}))
+
+(deftest card-endpoints-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (data-apps.tu/with-published-tables! [(mt/id :venues)]
+       (mt/with-temp [:model/Card {app-card-id :id app-card-eid :entity_id} {:name          "Venues"
+                                                                             :collection_id collection-id
+                                                                             :dataset_query (data-apps.tu/venues-query)}
+                      :model/Card {other-card-id :id other-card-eid :entity_id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}
+                      :model/Dashboard {dashboard-id :id} {:name "Venues"}]
+         (let [request (fn [method status path & [body]]
+                         (if body
+                           (mt/user-http-request :crowberto method status path as-data-app body)
+                           (mt/user-http-request :crowberto method status path as-data-app)))]
+           (testing "a data app's card is read, by ID or entity ID, and run"
+             (is (= app-card-id (:id (request :get 200 (str "card/" app-card-id)))))
+             (is (= app-card-id (:id (request :get 200 (str "card/" app-card-eid)))))
+             (is (request :get 200 (format "card/%d/query_metadata" app-card-id)))
+             (is (= "completed" (:status (request :post 202 (format "card/%d/query" app-card-id))))))
+           (testing "a card outside data apps' collections is neither read nor run"
+             (is (re-find #"Venues elsewhere" (request :get 403 (str "card/" other-card-id))))
+             (is (re-find #"Venues elsewhere" (request :post 403 (format "card/%d/query" other-card-id))))
+             (is (re-find #"Venues elsewhere" (request :post 403 (format "card/pivot/%d/query" other-card-id)))))
+           (testing "a card that doesn't exist is left to the endpoint's 404"
+             (request :get 404 "card/999999999"))
+           (testing "a data app's card isn't run with parameters, in a dashboard, as a collection preview or from a stored result"
+             (doseq [body [{:dashboard_id dashboard-id}
+                           {:collection_preview true}
+                           {:stored_result_id 1}
+                           {:parameters [{:type :category :target [:variable [:template-tag "x"]] :value "Bar"}]}]]
+               (is (re-find #"as it is saved" (request :post 403 (format "card/%d/query" app-card-id) body))))
+             (is (re-find #"as it is saved" (request :post 403 (format "card/pivot/%d/query" app-card-id)
+                                                     {:dashboard_id dashboard-id}))))
+           (testing "a data app downloads its card from a form, and not with parameters"
+             (is (form-download 200 app-card-id "[]"))
+             (is (re-find #"as it is saved" (form-download 403 app-card-id (json/encode [{:type   :category
+                                                                                          :target [:variable [:template-tag "x"]]
+                                                                                          :value  "Bar"}])))))
+           (testing "a card outside data apps' collections isn't read by entity ID, its metadata or its download"
+             (is (re-find #"Venues elsewhere" (request :get 403 (str "card/" other-card-eid))))
+             (is (re-find #"Venues elsewhere" (request :get 403 (format "card/%d/query_metadata" other-card-id))))
+             (is (re-find #"Venues elsewhere" (form-download 403 other-card-id "[]"))))
+           (testing "a card that doesn't exist is left to the endpoint's 404 by entity ID too"
+             (request :get 404 "card/AbCdEfGhIjKlMnOpQrStU"))
+           (testing "a card's parameter values are refused until their rule comes"
+             (request :get 403 (format "card/%d/params/x/values" app-card-id)))
+           (testing "a data app's card whose table is no longer published is refused"
+             (t2/update! :model/TableUserSettings :table_id (mt/id :venues) {:is_published false})
+             (is (re-find #"not VENUES" (request :get 403 (str "card/" app-card-id)))))))))))
+
+(deftest library-metric-card-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (data-apps.tu/do-with-sources!
+      (fn [{:keys [metric-id]}]
+        (data-apps.tu/with-published-tables! [(mt/id :venues)]
+          (testing "a data app reads a Library metric"
+            (is (= metric-id (:id (mt/user-http-request :crowberto :get 200 (str "card/" metric-id) as-data-app))))
+            (is (mt/user-http-request :crowberto :get 200 (format "card/%d/query_metadata" metric-id) as-data-app)))
+          (mt/with-temp [:model/Card {app-card-id :id} {:name          "Venue count"
+                                                        :collection_id collection-id
+                                                        :dataset_query (lib/aggregate (data-apps.tu/venues-query)
+                                                                                      (lib.metadata/metric (mt/metadata-provider) metric-id))}]
+            (testing "a data app's card on a metric that leaves the Library is refused"
+              (t2/update! :model/Card metric-id {:collection_id nil})
+              (is (re-find #"Venue count" (mt/user-http-request :crowberto :get 403 (str "card/" app-card-id) as-data-app)))))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app runs nothing"
     (mt/with-premium-features #{}

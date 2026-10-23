@@ -77,6 +77,16 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id))
 
+(mu/defn card-by-id :- [:maybe [:map [:id ::lib.schema.id/card] [:database_id ::lib.schema.id/database]]]
+  "The ID and database ID of the Card with `card-id`, or nil when there is none."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one [:model/Card :id :database_id] :id card-id))
+
+(mu/defn card-by-entity-id :- [:maybe [:map [:id ::lib.schema.id/card] [:database_id ::lib.schema.id/database]]]
+  "The ID and database ID of the Card with `entity-id`, or nil when there is none."
+  [entity-id :- :string]
+  (t2/select-one [:model/Card :id :database_id] :entity_id entity-id))
+
 (mu/defn data-app-readable-card-ids :- [:set ::lib.schema.id/card]
   "Among `card-ids`, the IDs of the cards a data app may read: the cards in data apps' collections and the metrics in
   the Library, unless archived."

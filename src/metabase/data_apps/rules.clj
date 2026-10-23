@@ -17,3 +17,9 @@
   metabase-enterprise.data-apps.rules
   [_query]
   (throw (unavailable)))
+
+(defenterprise check-card!
+  "Throws a 403 unless a data app may read the card with `card-id`, an ID or an entity ID, when such a card exists."
+  metabase-enterprise.data-apps.rules
+  [_card-id]
+  (throw (unavailable)))

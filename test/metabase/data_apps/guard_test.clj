@@ -6,6 +6,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.data-apps.guard :as guard]
+   [metabase.data-apps.guards.card :as guards.card]
    [metabase.data-apps.guards.dataset :as guards.dataset]
    [metabase.test :as mt]))
 
@@ -13,7 +14,8 @@
 
 (def ^:private guarded
   "API namespace => the path under `/api` of its guarded mount, and the checks of that mount's guard."
-  {'metabase.query-processor.api {:path "dataset" :checks guards.dataset/checks}})
+  {'metabase.query-processor.api   {:path "dataset" :checks guards.dataset/checks}
+   'metabase.queries-rest.api.card {:path "card" :checks guards.card/checks}})
 
 (def ^:private unguarded-namespaces
   "The namespaces with endpoints a data app reaches that no guard covers."
@@ -25,7 +27,6 @@
     'metabase.collections-rest.api
     'metabase.dashboards-rest.api
     'metabase.native-query-snippets.api
-    'metabase.queries-rest.api.card
     'metabase.search.api
     'metabase.session.api
     'metabase.timeline.api.timeline

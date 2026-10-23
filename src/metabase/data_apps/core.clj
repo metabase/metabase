@@ -1,10 +1,13 @@
 (ns metabase.data-apps.core
   (:require
+   [metabase.data-apps.guards.card]
    [metabase.data-apps.guards.dataset]
    [metabase.premium-features.core :refer [defenterprise]]
    [potemkin :as p]))
 
 (p/import-vars
+ [metabase.data-apps.guards.card
+  card-guard]
  [metabase.data-apps.guards.dataset
   dataset-guard])
 
