@@ -154,7 +154,7 @@ function StringValueInput({
 }: StringValueInputProps) {
   if (type === "exact") {
     return (
-      <Box p="lg" pb={0} mah="25vh" style={{ overflow: "auto" }}>
+      <Box px="xl" pt="md">
         <StringFilterValuePicker
           query={query}
           stageIndex={stageIndex}
@@ -164,14 +164,14 @@ function StringValueInput({
           autoFocus={autoFocus}
           onChange={onChange}
         />
-        <Box pt="lg" />
+        <Box pt="md" />
       </Box>
     );
   }
 
   if (type === "partial") {
     return (
-      <Box p="lg" pb={0} mah="40vh" style={{ overflow: "auto" }}>
+      <Box px="xl" pt="xl" mah="40vh" style={{ overflow: "auto" }}>
         <MultiAutocompleteWithTranslation
           value={values}
           placeholder={t`Enter some text`}
