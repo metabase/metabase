@@ -83,5 +83,19 @@ export const COHORT_TABLE_DEFINITION: VisualizationDefinition = {
         ],
       }),
     },
+    "cohort.density": {
+      getSection: () => t`Display`,
+      get title() {
+        return t`Density`;
+      },
+      widget: "segmentedControl",
+      getDefault: () => "loose",
+      getProps: () => ({
+        options: [
+          { name: t`Loose`, value: "loose" },
+          { name: t`Compact`, value: "compact" },
+        ],
+      }),
+    },
   },
 };

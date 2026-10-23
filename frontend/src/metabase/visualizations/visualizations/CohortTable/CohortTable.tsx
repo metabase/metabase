@@ -37,6 +37,7 @@ const CohortTableComponent = ({
   const baseColor: string = settings["cohort.color"];
   const isColumnScale = settings["cohort.color_scale"] === "column";
   const showInitialCount = settings["cohort.initial_count"] !== "hide";
+  const isCompact = settings["cohort.density"] === "compact";
 
   const { cohorts, offsets, tableMax, columnMaxes, showYear } = useMemo(() => {
     const cohorts = pivotCohorts(data);
@@ -113,8 +114,9 @@ const CohortTableComponent = ({
         <Box
           className={S.root}
           data-show-initial-count={showInitialCount}
+          data-density={isCompact ? "compact" : "loose"}
           style={{
-            gridTemplateColumns: `${leadColumns} repeat(${offsets.length}, minmax(4.5rem, 1fr))`,
+            gridTemplateColumns: `${leadColumns} repeat(${offsets.length}, minmax(var(--cohort-cell-min-width), 1fr))`,
           }}
         >
           <div className={S.headerRow}>
