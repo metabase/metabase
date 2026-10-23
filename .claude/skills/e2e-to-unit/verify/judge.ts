@@ -24,8 +24,32 @@ export interface Observation {
   note?: string;
 }
 
-/** testName -> mutantId -> observation; mutant 0 is the clean run. */
-export type PassResults = Map<string, Map<number, Observation>>;
+/** One wrapper file's observation of one mutant. */
+export interface Witness {
+  observation: Observation;
+  /** The wrapper file, which is the module registry the mutant ran in. */
+  file: string;
+  /** The unit spec that wrapper was generated from. */
+  spec: string;
+}
+
+export interface TestRun {
+  /** mutantId -> every wrapper file that ran it. */
+  byMutant: Map<number, Witness[]>;
+  /** Wrapper file -> that file's clean run of this test. */
+  clean: Map<string, Observation>;
+}
+
+/**
+ * testName -> its runs.
+ *
+ * Each spec gets one wrapper file per `--wrappers`, and every one of them runs
+ * that spec's clean variant. A single clean observation per test is therefore
+ * the one from whichever file jest finished last, and one unstable clean run
+ * voids every other file's verdicts. Keeping the clean run per file pairs a
+ * mutant with the clean run of its own module registry.
+ */
+export type PassResults = Map<string, TestRun>;
 
 export type MutantVerdict =
   | { status: "caught"; by: string[] }
@@ -88,62 +112,89 @@ export function classifyFailure(messages: string[]): Observation {
   };
 }
 
+type ConfirmOutcome =
+  | "killed"
+  | "clean failed"
+  | "not reproduced"
+  | "not rerun";
+
+/**
+ * What the confirmation pass made of one mutant for one test. A witness counts
+ * only against the clean run of its own wrapper file.
+ */
+function confirmOutcome(
+  run: TestRun | undefined,
+  mutantId: number,
+): ConfirmOutcome {
+  let outcome: ConfirmOutcome = "not rerun";
+  for (const witness of run?.byMutant.get(mutantId) ?? []) {
+    const clean = run?.clean.get(witness.file);
+    if (!clean || clean.outcome === "other") {
+      continue;
+    }
+    if (clean.outcome !== "passed") {
+      if (outcome === "not rerun") {
+        outcome = "clean failed";
+      }
+      continue;
+    }
+    const broken = witness.observation;
+    if (broken.outcome === "failed" && broken.observed) {
+      return "killed";
+    }
+    outcome = "not reproduced";
+  }
+  return outcome;
+}
+
 export function judgeMutant(
   mutantId: number,
   fast: PassResults,
   confirm: PassResults | null,
 ): MutantVerdict {
-  const caughtBy: string[] = [];
+  const caughtBy = new Set<string>();
   const reasons: string[] = [];
   const cleanRerunTests: string[] = [];
   let ranBy = 0;
-  for (const [test, byMutant] of fast) {
-    const clean = byMutant.get(0);
-    const broken = byMutant.get(mutantId);
-    if (!broken || clean?.outcome !== "passed") {
-      continue;
-    }
-    ranBy++;
-    if (broken.outcome === "passed") {
-      continue;
-    }
-    if (broken.outcome !== "failed" || !broken.observed) {
-      reasons.push(
-        `${test}: ${
-          broken.outcome === "failed"
-            ? (broken.note ?? "not an observation")
-            : "did not finish"
-        }`,
-      );
-      continue;
-    }
-    if (!confirm) {
-      caughtBy.push(test);
-      continue;
-    }
-    const confirmed = confirm.get(test);
-    const confirmedClean = confirmed?.get(0);
-    const confirmedBroken = confirmed?.get(mutantId);
-    if (
-      !confirmedBroken ||
-      !confirmedClean ||
-      confirmedClean.outcome === "other"
-    ) {
-      reasons.push(`${test}: not rerun`);
-    } else if (confirmedClean.outcome !== "passed") {
-      reasons.push(`${test}: ${CLEAN_RERUN_NOTE}`);
-      cleanRerunTests.push(test);
-    } else if (
-      confirmedBroken.outcome === "failed" &&
-      confirmedBroken.observed
-    ) {
-      caughtBy.push(test);
-    } else {
-      reasons.push(`${test}: not reproduced on rerun`);
+  for (const [test, run] of fast) {
+    for (const witness of run.byMutant.get(mutantId) ?? []) {
+      if (run.clean.get(witness.file)?.outcome !== "passed") {
+        continue;
+      }
+      ranBy++;
+      const broken = witness.observation;
+      if (broken.outcome === "passed") {
+        continue;
+      }
+      if (broken.outcome !== "failed" || !broken.observed) {
+        reasons.push(
+          `${test}: ${
+            broken.outcome === "failed"
+              ? (broken.note ?? "not an observation")
+              : "did not finish"
+          }`,
+        );
+        continue;
+      }
+      if (!confirm) {
+        caughtBy.add(test);
+        continue;
+      }
+      const outcome = confirmOutcome(confirm.get(test), mutantId);
+      if (outcome === "killed") {
+        caughtBy.add(test);
+      } else if (outcome === "clean failed") {
+        reasons.push(`${test}: ${CLEAN_RERUN_NOTE}`);
+        cleanRerunTests.push(test);
+      } else if (outcome === "not reproduced") {
+        reasons.push(`${test}: not reproduced on rerun`);
+      } else {
+        reasons.push(`${test}: not rerun`);
+      }
     }
   }
-  if (caughtBy.length > 0) {
-    return { status: "caught", by: caughtBy };
+  if (caughtBy.size > 0) {
+    return { status: "caught", by: [...caughtBy] };
   }
   if (reasons.length > 0) {
     return {
@@ -162,8 +213,6 @@ export interface CollectedPass {
   pass: PassResults;
   /** Test name (without the mutant prefix) to its it() title, for jest's -t filter. */
   titles: Map<string, string>;
-  /** Test name to the unit specs whose wrapper ran it. */
-  specs: Map<string, Set<string>>;
 }
 
 export function collectPass(
@@ -172,7 +221,6 @@ export function collectPass(
 ): CollectedPass {
   const pass: PassResults = new Map();
   const titles = new Map<string, string>();
-  const specs = new Map<string, Set<string>>();
   for (const result of results) {
     const mutant = mutantOf(result.title);
     if (mutant === null) {
@@ -180,12 +228,6 @@ export function collectPass(
     }
     const name = stripMutant(result.fullName);
     titles.set(name, stripMutant(result.title));
-    const spec = wrapperSpecs.get(result.file);
-    if (spec) {
-      const seen = specs.get(name) ?? new Set<string>();
-      seen.add(spec);
-      specs.set(name, seen);
-    }
     let observation: Observation;
     if (result.status === "passed") {
       observation = { outcome: "passed", observed: false };
@@ -194,14 +236,24 @@ export function collectPass(
     } else {
       observation = { outcome: "other", observed: false };
     }
-    let byMutant = pass.get(name);
-    if (!byMutant) {
-      byMutant = new Map();
-      pass.set(name, byMutant);
+    let run = pass.get(name);
+    if (!run) {
+      run = { byMutant: new Map(), clean: new Map() };
+      pass.set(name, run);
     }
-    byMutant.set(mutant, observation);
+    if (mutant === 0) {
+      run.clean.set(result.file, observation);
+      continue;
+    }
+    const witnesses = run.byMutant.get(mutant) ?? [];
+    witnesses.push({
+      observation,
+      file: result.file,
+      spec: wrapperSpecs.get(result.file) ?? "",
+    });
+    run.byMutant.set(mutant, witnesses);
   }
-  return { pass, titles, specs };
+  return { pass, titles };
 }
 
 /**
@@ -211,27 +263,26 @@ export function collectPass(
  * is quadratic, and over a few hundred mutants it exceeds the system limit on
  * the length of a command line.
  */
-export function failingPairs({ pass, titles, specs }: CollectedPass) {
+export function failingPairs({ pass, titles }: CollectedPass) {
   const pairs = new Map<string, Set<number>>();
   const failingTitles = new Set<string>();
-  for (const [name, byMutant] of pass) {
-    if (byMutant.get(0)?.outcome !== "passed") {
-      continue;
-    }
-    for (const [mutant, observation] of byMutant) {
-      if (
-        mutant === 0 ||
-        observation.outcome !== "failed" ||
-        !observation.observed
-      ) {
-        continue;
+  for (const [name, run] of pass) {
+    for (const [mutant, witnesses] of run.byMutant) {
+      for (const witness of witnesses) {
+        if (run.clean.get(witness.file)?.outcome !== "passed") {
+          continue;
+        }
+        const broken = witness.observation;
+        if (broken.outcome !== "failed" || !broken.observed) {
+          continue;
+        }
+        if (witness.spec !== "") {
+          const mutants = pairs.get(witness.spec) ?? new Set<number>();
+          mutants.add(mutant);
+          pairs.set(witness.spec, mutants);
+        }
+        failingTitles.add(titles.get(name) ?? name);
       }
-      for (const spec of specs.get(name) ?? []) {
-        const mutants = pairs.get(spec) ?? new Set<number>();
-        mutants.add(mutant);
-        pairs.set(spec, mutants);
-      }
-      failingTitles.add(titles.get(name) ?? name);
     }
   }
   return { pairs, titles: [...failingTitles] };

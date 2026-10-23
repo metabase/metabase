@@ -394,16 +394,32 @@ describe("judge", () => {
     outcome: "passed" | "failed" | "other",
     observed = false,
   ) => ({ outcome, observed });
+  const WRAPPER = "/repo/__e2e_verify_Thing_0.unit.spec.tsx";
+  const SPEC = "src/Thing.unit.spec.tsx";
   const pass = (
     rows: [string, Record<number, ReturnType<typeof observation>>][],
   ): PassResults =>
     new Map(
-      rows.map(([name, byMutant]) => [
-        name,
-        new Map(
-          Object.entries(byMutant).map(([id, value]) => [Number(id), value]),
-        ),
-      ]),
+      rows.map(([name, byMutant]) => {
+        const entries = Object.entries(byMutant).map(
+          ([id, value]) => [Number(id), value] as const,
+        );
+        const clean = entries.find(([id]) => id === 0)?.[1];
+        return [
+          name,
+          {
+            byMutant: new Map(
+              entries
+                .filter(([id]) => id !== 0)
+                .map(([id, obs]) => [
+                  id,
+                  [{ observation: obs, file: WRAPPER, spec: SPEC }],
+                ]),
+            ),
+            clean: new Map(clean ? [[WRAPPER, clean]] : []),
+          },
+        ];
+      }),
     );
 
   it("classifies assertion failures", () => {
@@ -522,6 +538,43 @@ describe("judge", () => {
     });
   });
 
+  it("judges a mutant against the clean run of its own wrapper file", () => {
+    // Each spec gets one wrapper file per --wrappers, and every one runs the
+    // clean variant. An unstable clean run in one file must not void a mutant
+    // that another file witnessed.
+    const steady = "/repo/__e2e_verify_Thing_0.unit.spec.tsx";
+    const flaky = "/repo/__e2e_verify_Thing_1.unit.spec.tsx";
+    const withTwoWrappers = (): PassResults =>
+      new Map([
+        [
+          "Thing \u203a renders",
+          {
+            byMutant: new Map([
+              [
+                1,
+                [
+                  {
+                    observation: observation("failed", true),
+                    file: steady,
+                    spec: SPEC,
+                  },
+                ],
+              ],
+            ]),
+            clean: new Map([
+              [steady, observation("passed")],
+              [flaky, observation("failed", true)],
+            ]),
+          },
+        ],
+      ]);
+
+    expect(judgeMutant(1, withTwoWrappers(), withTwoWrappers())).toEqual({
+      status: "caught",
+      by: ["Thing \u203a renders"],
+    });
+  });
+
   it("leaves the voiding tests off a verdict no rerun broke", () => {
     const fast = pass([
       [
@@ -582,7 +635,7 @@ describe("collecting a pass", () => {
   const wrapper = "/repo/__e2e_verify_Thing_0.unit.spec.tsx";
 
   it("keys each test by its name without the mutant, and records its spec", () => {
-    const { pass, titles, specs } = collectPass(
+    const { pass, titles } = collectPass(
       [
         result(wrapper, "[m0] renders", "passed"),
         result(wrapper, "[m7] renders", "failed", [
@@ -591,16 +644,18 @@ describe("collecting a pass", () => {
       ],
       new Map([[wrapper, "src/Thing.unit.spec.tsx"]]),
     );
-    expect(pass.get("Thing \u203a renders")).toEqual(
-      new Map([
-        [0, { outcome: "passed", observed: false }],
-        [7, { outcome: "failed", observed: true }],
-      ]),
+    const run = pass.get("Thing \u203a renders");
+    expect(run?.clean).toEqual(
+      new Map([[wrapper, { outcome: "passed", observed: false }]]),
     );
+    expect(run?.byMutant.get(7)).toEqual([
+      {
+        observation: { outcome: "failed", observed: true },
+        file: wrapper,
+        spec: "src/Thing.unit.spec.tsx",
+      },
+    ]);
     expect(titles.get("Thing \u203a renders")).toBe("renders");
-    expect(specs.get("Thing \u203a renders")).toEqual(
-      new Set(["src/Thing.unit.spec.tsx"]),
-    );
   });
 
   it("ignores a test with no mutant prefix", () => {
@@ -615,20 +670,29 @@ describe("collecting a pass", () => {
 describe("failing pairs for the confirmation pass", () => {
   const observed = { outcome: "failed" as const, observed: true };
   const passed = { outcome: "passed" as const, observed: false };
+  const run = (
+    file: string,
+    spec: string,
+    clean: typeof passed,
+    mutants: [number, typeof observed][],
+  ) => ({
+    byMutant: new Map(
+      mutants.map(([id, observation]) => [id, [{ observation, file, spec }]]),
+    ),
+    clean: new Map([[file, clean]]),
+  });
 
   it("reruns a mutant only under the spec whose test saw it fail", () => {
     const pass: PassResults = new Map([
       [
         "Thing \u203a renders",
-        new Map([
-          [0, passed],
+        run("/w/thing_0.unit.spec.tsx", "src/Thing.unit.spec.tsx", passed, [
           [1, observed],
         ]),
       ],
       [
         "Other \u203a renders",
-        new Map([
-          [0, passed],
+        run("/w/other_0.unit.spec.tsx", "src/Other.unit.spec.tsx", passed, [
           [2, observed],
         ]),
       ],
@@ -638,10 +702,6 @@ describe("failing pairs for the confirmation pass", () => {
       titles: new Map([
         ["Thing \u203a renders", "renders"],
         ["Other \u203a renders", "renders"],
-      ]),
-      specs: new Map([
-        ["Thing \u203a renders", new Set(["src/Thing.unit.spec.tsx"])],
-        ["Other \u203a renders", new Set(["src/Other.unit.spec.tsx"])],
       ]),
     });
     expect(pairs).toEqual(
@@ -653,31 +713,22 @@ describe("failing pairs for the confirmation pass", () => {
     expect(titles).toEqual(["renders"]);
   });
 
-  it("leaves out a mutant that no clean-passing test failed on", () => {
+  it("leaves out a mutant whose own wrapper file failed its clean run", () => {
     const pass: PassResults = new Map([
       [
         "Thing \u203a renders",
-        new Map([
-          [0, passed],
+        run("/w/thing_0.unit.spec.tsx", "src/Thing.unit.spec.tsx", passed, [
           [1, passed],
         ]),
       ],
       [
         "Thing \u203a broken",
-        new Map([
-          [0, observed],
+        run("/w/thing_1.unit.spec.tsx", "src/Thing.unit.spec.tsx", observed, [
           [2, observed],
         ]),
       ],
     ]);
-    const { pairs } = failingPairs({
-      pass,
-      titles: new Map(),
-      specs: new Map([
-        ["Thing \u203a renders", new Set(["src/Thing.unit.spec.tsx"])],
-        ["Thing \u203a broken", new Set(["src/Thing.unit.spec.tsx"])],
-      ]),
-    });
+    const { pairs } = failingPairs({ pass, titles: new Map() });
     expect(pairs.size).toBe(0);
   });
 });
