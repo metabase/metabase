@@ -20,6 +20,7 @@
    [metabase.util :as u]
    [metabase.util.compress :as u.compress]
    [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -223,8 +224,11 @@
     :as                       _query-params}
    :- [:map {:closed true}
        [:dirname           {:optional true} [:maybe
-                                             {:description "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`)"}
-                                             string?]]
+                                             (mu/with-api-error-message
+                                              ;; `%`: the default name is a slug, which percent-encodes non-ASCII
+                                              [:re #"^[A-Za-z0-9_%][A-Za-z0-9._%-]{0,254}$"]
+                                              (deferred-tru "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -")
+                                              (deferred-tru "1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -"))]]
        [:collection        {:optional true} [:maybe
                                              {:description "collections' db ids/entity-ids to serialize"}
                                              (ms/QueryVectorOf
@@ -259,9 +263,10 @@
         ;; (so escape-analysis warnings land in export.log) and honors full_stacktrace for genuine failures.
         log-output (ByteArrayOutputStream.)
         entities   (extract-entities! opts log-output full-stacktrace?)]
-    (sr/streaming-response {:content-type "application/gzip" :status 200} [output _cancel-chan]
-      (sr/set-header! "Content-Disposition"
-                      (format "attachment; filename=\"%s.tar.gz\"" export-dirname))
+    (sr/streaming-response {:content-type "application/gzip"
+                            :status       200
+                            :headers      {"Content-Disposition" (format "attachment; filename=\"%s.tar.gz\""
+                                                                         export-dirname)}} [output _cancel-chan]
       (let [start  (System/nanoTime)
             result (serialize-to-stream! output export-dirname entities log-output opts)]
         (track-export-event! collection opts start result)))))

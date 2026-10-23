@@ -200,6 +200,35 @@
         (is (= known-files
                (set (.list (io/file api.serialization/parent-dir)))))))))
 
+(deftest export-dirname-validation-test
+  (mt/with-premium-features #{:serialization}
+    (testing "dirname outside the whitelist is a 400"
+      (doseq [dirname ["../backups"
+                       "a/b"
+                       "a\\b"
+                       "a\"b"
+                       "a\r\nb"
+                       ".."
+                       "."
+                       "-rf"
+                       ".hidden"
+                       (apply str (repeat 256 "a"))]]
+        (testing (pr-str dirname)
+          (is (=? {:errors {:dirname string?}}
+                  (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                        :dirname dirname :all_collections false :data_model false :settings false))))))
+    (testing "the 400 for a bad dirname states the rule"
+      (is (=? {:errors {:dirname #".*: 1-255 characters from A-Z a-z 0-9 _ - \. %, not starting with \. or -"}}
+              (mt/user-http-request :crowberto :post 400 "ee/serialization/export" {}
+                                    :dirname ".hidden" :all_collections false :data_model false :settings false))))
+    (testing "a plain dirname names both the archive root directory and the download file"
+      (let [{:keys [body headers]} (mt/user-http-request-full-response
+                                    :crowberto :post 200 "ee/serialization/export" {}
+                                    :dirname "my-export_2" :all_collections false :data_model false :settings false)]
+        (is (= "attachment; filename=\"my-export_2.tar.gz\""
+               (get headers "Content-Disposition")))
+        (is (every? #(str/starts-with? % "my-export_2/") (entry-names body)))))))
+
 (defn- search-result-count [model search-string]
   (:total
    (search/search
