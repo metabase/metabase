@@ -46,12 +46,13 @@
                                  (assoc :series (mapv :id (:series dashboard-card)))))))
         (assoc :tabs (map #(apply dissoc % excluded-columns-for-dashboard-tab-revision) tabs)))))
 
-(defn- check-reverted-dashcards-timeline-permissions!
-  "Reverting can put a card back on a publicly shared or embedded dashboard, exposing its selected timeline events, so
-  the current user needs read access to those timelines."
+(defn- check-reverted-dashcards-exposure-permissions!
+  "Reverting can put a card back on a publicly shared or embedded dashboard, exposing its selected timeline events and
+  its goals, so the current user needs read access to those timelines and to what the goals reference."
   [dashboard-id current-cards reverted-cards]
-  (queries/check-newly-exposed-dashcards-timeline-permissions!
-   (revisions.db/entity :model/Dashboard dashboard-id) current-cards reverted-cards))
+  (let [dashboard (revisions.db/entity :model/Dashboard dashboard-id)]
+    (queries/check-newly-exposed-dashcards-timeline-permissions! dashboard current-cards reverted-cards)
+    (queries/check-newly-exposed-dashcards-goal-permissions! dashboard current-cards reverted-cards)))
 
 (defn- revert-dashcards
   [dashboard-id serialized-cards]
@@ -62,7 +63,7 @@
                                           (assoc :series (mapv :id (:series dashcard)))))))
         id->current-card (zipmap (map :id current-cards) current-cards)
         {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
-    (check-reverted-dashcards-timeline-permissions! dashboard-id current-cards (concat to-create to-update))
+    (check-reverted-dashcards-exposure-permissions! dashboard-id current-cards (concat to-create to-update))
     (when (seq to-delete)
       (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
     (when (seq to-create)

@@ -91,6 +91,11 @@
   (concat (goal-values viz-settings)
           (goal-values (get-in viz-settings visualizer-settings-path))))
 
+(defn goal-references
+  "The `[type id]` of each entity the goals in `viz-settings` reference, from [[dashcard-goal-values]]."
+  [viz-settings]
+  (into #{} (comp (keep goal-source) (map (juxt :type :id))) (dashcard-goal-values viz-settings)))
+
 (defn update-dashcard-goal-values
   "Like [[update-goal-values]], also rewriting the goals a visualizer dashcard nests under `:visualization`."
   [viz-settings f]

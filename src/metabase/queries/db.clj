@@ -143,6 +143,11 @@
   [document-id :- ms/PositiveInt]
   (t2/select-pks-set :model/Card :document_id document-id))
 
+(mu/defn public-document?
+  "Whether the Document with `document-id` has a public link."
+  [document-id :- ms/PositiveInt]
+  (t2/exists? :model/Document :id document-id :public_uuid [:not= nil]))
+
 (mu/defn insert-card!
   "Insert `card` and return the new instance."
   [card :- ::queries.schema/card.update]
