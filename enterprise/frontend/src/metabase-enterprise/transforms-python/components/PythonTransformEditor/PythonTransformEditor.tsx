@@ -1,8 +1,8 @@
-import { useHotkeys } from "@mantine/hooks";
 import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import type { PythonTransformEditorProps } from "metabase/plugins";
+import { useToggleRunHotkey } from "metabase/querying/editor/hooks/use-toggle-run-hotkey";
 import { Flex, Stack } from "metabase/ui";
 import type {
   DatabaseId,
@@ -99,18 +99,13 @@ export function PythonTransformEditor({
     uiOptions?.hidePreview,
   ]);
 
-  const handleCmdEnter = () => {
-    if (!isEditMode) {
-      return;
-    }
-    if (isRunning) {
-      cancel();
-    } else if (isRunnable) {
-      handleRun();
-    }
-  };
-
-  useHotkeys([["mod+Enter", handleCmdEnter]], []);
+  useToggleRunHotkey({
+    isEnabled: Boolean(isEditMode),
+    isRunning,
+    isRunnable,
+    run: handleRun,
+    cancel: cancel,
+  });
 
   return (
     <Flex h="100%" w="100%" direction="column">
