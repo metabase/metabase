@@ -16,12 +16,10 @@
   Endpoints tag with the var rather than the string: the scope name is a wire contract that
   has already been renamed once, and a var keeps the next rename to this one line.
 
-  What gets tagged: a route is tagged when the SDK actually calls it from inside a data app.
-  Untagged is the default and is not a judgement that a route is dangerous — most untagged
-  routes are writes, admin or auth surfaces, and the rest simply have no SDK caller. Where the
-  omission is genuinely surprising — a read route sitting next to a tagged sibling, such as
-  `GET /api/action/:action-id` beside the tagged execute routes — the reason is written at the
-  endpoint itself, so \"why isn't this one tagged?\" is answered where the question is asked.
+  What gets tagged: a route is tagged when an SDK component or hook calls it inside a data app.
+  Untagged is the default and is not a judgement that a route is dangerous; it includes the
+  routes of dashboards, native queries, parameters and model actions, which a data app does not
+  use.
 
   Declared here (loaded early by [[metabase.api-scope.init]]) so the scope is registered before
   any endpoint namespace resolves the tag, mirroring how metabot declares its `agent:*` scopes

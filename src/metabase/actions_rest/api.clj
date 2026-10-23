@@ -25,7 +25,6 @@
   "Returns the actions the current user can read, unarchived unless `?archived=true`. Pass optional
   `?model-id=<model-id>` to limit to the actions of a particular model, and optional `?type=<type>` to limit to actions
   of that type."
-  {:scope api-scope/data-app}
   [_route-params
    {:keys [model-id archived]
     action-type :type} :- [:map {:closed true}
@@ -49,7 +48,6 @@
 
 (api.macros/defendpoint :get "/:action-id" :- ::actions.schema/action
   "Fetch an Action."
-  {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]]
   (-> (actions/select-action :id action-id :archived false)
@@ -168,7 +166,6 @@
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select.
 
   Parameters are sent in the request body rather than the query string so their values stay out of URLs and logs."
-  {:scope api-scope/data-app}
   [{:keys [action-id]} :- [:map {:closed true}
                            [:action-id ms/PositiveInt]]
    _query-params

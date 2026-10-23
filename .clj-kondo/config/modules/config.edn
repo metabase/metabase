@@ -664,7 +664,6 @@
    :ns-prefix "metabase.collections-rest"
    :api  #{metabase.collections-rest.api}
    :uses #{api
-           api-scope
            api.eid-translation
            collections
            documents
@@ -823,7 +822,6 @@
    :uses #{actions
            analytics
            api
-           api-scope
            api.eid-translation
            app-db
            channel
@@ -1834,7 +1832,6 @@
   {:team "Graphy"
    :api  #{metabase.native-query-snippets.api metabase.native-query-snippets.core metabase.native-query-snippets.schema}
    :uses #{api
-           api-scope
            collections
            events
            lib
@@ -2527,7 +2524,6 @@
    :uses #{analytics
            analytics.interface
            api
-           api-scope
            app-db
            appearance
            audit-app
@@ -2985,7 +2981,6 @@
    :api  #{metabase.timeline.api metabase.timeline.core metabase.timeline.schema}
    :uses #{analytics
            api
-           api-scope
            collections
            events
            lib.schema
@@ -3349,7 +3344,6 @@
    :api  #{metabase.warehouses-rest.api}
    :uses #{analytics
            api
-           api-scope
            app-db
            collections
            database-routing
@@ -3830,7 +3824,6 @@
    :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{actions
            api
-           api-scope
            collections
            events
            lib
@@ -4234,7 +4227,6 @@
    :api #{metabase-enterprise.sandbox.api.routes metabase-enterprise.sandbox.api.util metabase-enterprise.sandbox.schema}
    :uses #{analytics
            api
-           api-scope
            app-db
            audit-app
            driver
