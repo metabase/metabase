@@ -1,13 +1,10 @@
 import { createElement } from "react";
 import { t } from "ttag";
 
-import { withTwoStagesExample } from "../harness/examples";
 import type { FilterDirection } from "../types";
 
 import { ExpressionBarNotebook } from "./expression-bar-2/ExpressionBarNotebook";
 import { ExpressionBarInline2Prototype } from "./expression-bar-2/ExpressionBarPrototype";
-import { ExpressionBarStructureNotebook } from "./expression-bar-4/ExpressionBarNotebook";
-import { ExpressionBarStructurePrototype } from "./expression-bar-4/ExpressionBarPrototype";
 import {
   DebugBar,
   withFourLevelsByMonth,
@@ -18,7 +15,6 @@ import {
 } from "./expression-bar-drill/QuestionView";
 import { SelectSummarizeBar } from "./expression-bar-summarize/ExpressionBar";
 import { withFiltersForMetabot } from "./expression-bar-summarize/summaries";
-import { VariantsCanvas } from "./expression-bar-variants/VariantsCanvas";
 import { FilterRowsBar } from "./filter-rows/FilterRowsBar";
 
 /**
@@ -26,15 +22,6 @@ import { FilterRowsBar } from "./filter-rows/FilterRowsBar";
  * stays in `./index.ts` untouched so both rounds remain clickable side by side.
  */
 export const ITERATION_2_DIRECTIONS: FilterDirection[] = [
-  {
-    id: "expression-bar-inline-2-variants",
-    name: "Expression bar: variants",
-    description:
-      "Compare six variations of the inline-stages expression bar on the same query. Load an example, then switch between named stages, two lines, grouping, guided insertion, compact reading, and expanded structure.",
-    Component: ExpressionBarInline2Prototype,
-    Canvas: VariantsCanvas,
-    prepareQuery: (query) => withTwoStagesExample(query, 0),
-  },
   {
     id: "expression-bar-inline-2",
     get name() {
@@ -45,18 +32,6 @@ export const ITERATION_2_DIRECTIONS: FilterDirection[] = [
     },
     Component: ExpressionBarInline2Prototype,
     NotebookCanvas: ExpressionBarNotebook,
-    canHideFilters: true,
-  },
-  {
-    id: "expression-bar-structure",
-    get name() {
-      return t`Expression bar: structure editing`;
-    },
-    get description() {
-      return t`The inline-stages bar, edited like code. Hover a parenthesis, or put the caret next to one, to light up its pair and everything between. Shift+arrows (or Shift+click, or Cmd+A) select a run of tokens: "(" wraps it in parentheses, "!" negates it, "a" or "o" sets its operators, Backspace deletes it. Click an operator for a menu: switch it, group it with its neighbours (hover to preview), or change every operator in its group. Click a parenthesis to remove the pair, negate the group or delete it. Type "not" (or "!") before a filter or group to negate it.`;
-    },
-    Component: ExpressionBarStructurePrototype,
-    NotebookCanvas: ExpressionBarStructureNotebook,
     canHideFilters: true,
   },
   {
