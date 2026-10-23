@@ -25,9 +25,9 @@ Completed snapshots are reused without network access and are never edited by th
 
 Run `./bin/i18n/build-translation-resources` to fetch the catalogs and generate frontend JSON
 and backend EDN resources. It skips the build when the pin and the build code did not change
-since the last build. Full builds and the frontend rspack build (`TranslationResources` plugin
-in `rspack.main.config.js`) run it automatically. For backend-only development or tests, run it
-before you start the backend. Runtime translation does not access GitHub.
+since the last build. Full builds (`./bin/build.sh`) run it automatically. Frontend builds and
+`bun run dev` do not: without the resources, the app shows English, which is the source text.
+Run it by hand when you need another language. Runtime translation does not access GitHub.
 
 The `en-ZZ` pseudo-locale is generated from the pinned `metabase.po` into `target/i18n/en-ZZ.po`
 on every build. It is not stored in the external repository.

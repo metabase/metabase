@@ -62,7 +62,7 @@ The build reads `locales/metabase-i18n.commit` and downloads that commit's `.po`
 `locales/metabase-i18n/<commit>/`, which Git ignores. Run
 `./bin/i18n/build-translation-resources` before backend-only development or translation tests
 to generate missing resources or refresh them after the pin changes. It does nothing when the
-resources are up to date. Frontend builds run it automatically.
+resources are up to date. Frontend builds do not run it. Without the resources, the app shows English.
 
 We have lots of contributors who help us keep a corpus of translated strings into many different languages. We use [Crowdin](https://crowdin.com/project/metabase-i18n) to keep an authoritative list. We export `.po` files from this, which is essentially a dictionary from source to translated string. As part of our build process we format these files as edn files, maps from the source to translated string, for each locale.
 

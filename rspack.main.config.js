@@ -33,9 +33,6 @@ const {
 const {
   LocaleCatalogManifest,
 } = require("./frontend/build/shared/rspack/plugins/LocaleCatalogManifest/locale-catalog-manifest");
-const {
-  TranslationResources,
-} = require("./frontend/build/shared/rspack/plugins/TranslationResources/translation-resources");
 const resolveConfig = require("./frontend/build/shared/rspack/resolve-config");
 const {
   SIDE_EFFECT_FREE_RULE,
@@ -372,7 +369,6 @@ const config = {
     new OnScriptError(),
     ...(isDevMode ? [] : [new DropStylesEntryScriptPlugin()]),
     new PreloadAssetTags(),
-    new TranslationResources(),
     new LocaleCatalogManifest(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
