@@ -18,17 +18,17 @@ import {
   getCollectionItemsOptions,
 } from "metabase/common/components/Pickers/utils";
 import { useGetPersonalCollection } from "metabase/common/hooks/use-get-personal-collection";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import { PLUGIN_DATA_APPS, PLUGIN_LIBRARY } from "metabase/plugins";
 import { type DispatchFn, useDispatch } from "metabase/redux";
 import type {
   Collection,
   CollectionNamespace,
+  DataApp,
   LibraryCollection,
   SchemaName,
 } from "metabase-types/api";
 
 import type {
-  EntityPickerCustomFolder,
   EntityPickerOptions,
   OmniPickerCollectionItem,
   OmniPickerCollectionItemValue,
@@ -37,9 +37,13 @@ import type {
   OmniPickerTableValue,
   OmniPickerValue,
 } from "../types";
-import { getCustomFolderItem } from "../utils";
 
-import { getRootCollectionItem, personalCollectionsRoot } from "./utils";
+import {
+  getDataAppItem,
+  getDataAppsRootItem,
+  getRootCollectionItem,
+  personalCollectionsRoot,
+} from "./utils";
 
 const getDefaultPath = async ({
   options,
@@ -94,18 +98,16 @@ const getDefaultPath = async ({
 
 export function useGetPathFromValue({
   value,
-  customFolders,
-  isLoadingCustomFolders = false,
   options,
   namespaces,
   models,
+  showsDataApps = false,
 }: {
   value?: OmniPickerValue;
-  customFolders?: EntityPickerCustomFolder[];
-  isLoadingCustomFolders?: boolean;
   options: EntityPickerOptions;
   namespaces: CollectionNamespace[];
   models: OmniPickerCollectionItem["model"][];
+  showsDataApps?: boolean;
 }) {
   const [path, setPath] = useState<OmniPickerItem[]>([]);
   const [isLoadingPath, setIsLoadingPath] = useState(false);
@@ -118,27 +120,23 @@ export function useGetPathFromValue({
   const { data: personalCollection, isLoading: isLoadingPersonalCollection } =
     useGetPersonalCollection();
 
+  const { data: dataApps, isLoading: isLoadingDataApps } =
+    PLUGIN_DATA_APPS.useDataApps({
+      skip: !showsDataApps || value?.model !== "data-app",
+    });
+
+  // `dataApps` isn't a dependency: a refetch of the list must not move the user out of the folder
+  // they opened.
   useDeepCompareEffect(() => {
     if (
       isLoadingLibraryCollection ||
       isLoadingPersonalCollection ||
-      isLoadingCustomFolders
+      isLoadingDataApps
     ) {
       return;
     }
 
     setIsLoadingPath(true);
-
-    // Not a dependency: once the picker has opened, a change to the custom folders must not replace
-    // the folder the user is in.
-    const selectedCustomFolder = customFolders?.find((folder) =>
-      folder.items.some((item) => item.isSelected),
-    );
-    if (!value && selectedCustomFolder) {
-      setPath([getCustomFolderItem(selectedCustomFolder)]);
-      setIsLoadingPath(false);
-      return;
-    }
 
     if (!value) {
       getDefaultPath({
@@ -159,6 +157,7 @@ export function useGetPathFromValue({
       dispatch,
       libraryCollection,
       personalCollection,
+      dataApps,
       models,
     }).then((newPath) => {
       setPath(newPath);
@@ -170,7 +169,7 @@ export function useGetPathFromValue({
     libraryCollection,
     isLoadingLibraryCollection,
     isLoadingPersonalCollection,
-    isLoadingCustomFolders,
+    isLoadingDataApps,
   ]);
 
   return [path, setPath, { isLoadingPath }] as const;
@@ -187,12 +186,14 @@ async function getPathFromValue({
   dispatch,
   libraryCollection,
   personalCollection,
+  dataApps,
   models,
 }: {
   value: OmniPickerValue;
   dispatch: DispatchFn;
   libraryCollection?: LibraryCollection;
   personalCollection?: Collection;
+  dataApps?: DataApp[];
   models: OmniPickerCollectionItem["model"][];
 }): Promise<OmniPickerItem[]> {
   if (value.id === "databases") {
@@ -201,6 +202,11 @@ async function getPathFromValue({
 
   if (value.id === "recents") {
     return [getFakeRecentsCollection()];
+  }
+
+  if (value.model === "data-app") {
+    const dataApp = dataApps?.find((dataApp) => dataApp.id === value.id);
+    return dataApp ? [getDataAppsRootItem(), getDataAppItem(dataApp)] : [];
   }
 
   if (!isInDbPath(value)) {
