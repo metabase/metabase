@@ -15,13 +15,16 @@
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.util :as lib.util]
+   [metabase.lib.walk :as lib.walk]
    [metabase.metabot.agent.links :as links]
    [metabase.metabot.agent.streaming :as streaming]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
@@ -30,6 +33,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.query-processor.core :as qp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -645,6 +649,127 @@
                        :status-code  400
                        :error        :missing-source-in-first-stage})))))
 
+;;; ---------------------------------------- Implicit joins ----------------------------------------
+
+(defn- field-ref-for-error
+  "Return `field-ref` with portable field paths unless the caller accepts numeric IDs."
+  [metadata-provider field-ref]
+  (if serdes.resolve/*numeric-ids-allowed?*
+    field-ref
+    (serdes.resolve/export-mbql (resolve.mp/export-resolver metadata-provider permission-aware-content-store) field-ref)))
+
+(defn- foreign-key-target-table-id
+  [metadata-provider field]
+  (some->> (:fk-target-field-id field) (lib.metadata/field metadata-provider) :table-id))
+
+(defn- direct-source-field-hint
+  [metadata-provider columns table-id table-name]
+  (when-let [field-ids (seq (distinct (keep (fn [column]
+                                              (when (and (= table-id (:table-id column))
+                                                         (nil? (:fk-join-alias column)))
+                                                (:fk-field-id column)))
+                                            columns)))]
+    (let [fields          (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
+          queryable-tables (metabot.perms/queryable-table-ids (into #{} (keep :table-id) fields))
+          fields          (->> fields
+                               (filter #(contains? queryable-tables (:table-id %)))
+                               (filter #(visible-field metadata-provider (:id %)))
+                               entity-details/permission-filter-columns
+                               (filter #(= table-id (foreign-key-target-table-id metadata-provider %))))]
+      (when (seq fields)
+        (format "Use `source-field` %s to reach %s directly."
+                (str/join " or " (map #(pr-str (nth (field-ref-for-error metadata-provider [:field {} (:id %)]) 2)) fields))
+                table-name)))))
+
+(defn- intermediate-source-field
+  [metadata-provider from-table-id to-table-id]
+  (let [fields (->> (resolve.mp/outbound-fks-from-table metadata-provider from-table-id)
+                    (map :source-field)
+                    (filter #(visible-field metadata-provider (:id %)))
+                    entity-details/permission-filter-columns
+                    (filter #(= to-table-id (foreign-key-target-table-id metadata-provider %))))]
+    (when (= 1 (count fields))
+      (first fields))))
+
+(defn- wrong-source-field-error
+  "Return an agent error for a field reached through an invalid foreign key."
+  [metadata-provider [_ {:keys [source-field source-field-join-alias]} target] table-id fk-table-id columns]
+  (let [table-name    (pr-str (:name (lib.metadata.protocols/table metadata-provider table-id)))
+        ;; The metadata provider skips permission checks, so name the key's table only if the user may query it
+        fk-table-name (when (and fk-table-id (contains? (metabot.perms/queryable-table-ids #{fk-table-id}) fk-table-id))
+                        (pr-str (:name (lib.metadata.protocols/table metadata-provider fk-table-id))))]
+    (ex-info (str (if fk-table-name
+                    (format "Field %s is on table %s, but its `source-field` %s is a foreign key to table %s, so the field cannot be reached through it."
+                            (pr-str target) table-name (pr-str source-field) fk-table-name)
+                    (format "Field %s is on table %s, but its `source-field` %s is not a foreign key to that table, so the field cannot be reached through it."
+                            (pr-str target) table-name (pr-str source-field)))
+                  " "
+                  (or (direct-source-field-hint metadata-provider columns table-id table-name)
+                      (when fk-table-name
+                        (when-let [field (intermediate-source-field metadata-provider fk-table-id table-id)]
+                          (format "%s has a foreign key to %s: join %s explicitly on %s%s, then reference the field with `source-field` %s and `source-field-join-alias` set to the new join's alias."
+                                  fk-table-name table-name fk-table-name (pr-str source-field)
+                                  (if source-field-join-alias
+                                    (format " (set `join-alias` %s on this source key)" (pr-str source-field-join-alias))
+                                    "")
+                                  (pr-str (nth (field-ref-for-error metadata-provider [:field {} (:id field)]) 2)))))
+                      (format "Use a `source-field` that is a foreign key to %s, or join %s explicitly and reference the field with its `join-alias`."
+                              table-name table-name)))
+             {:agent-error? true
+              :status-code  400
+              :error        :wrong-source-field})))
+
+(defn- source-field-contexts
+  [query]
+  (let [contexts (volatile! [])]
+    (lib.walk/walk-clauses
+     (qp/drop-fields-in-summaries query)
+     (fn [query path-type path clause]
+       (when (and (lib.util/clause? clause)
+                  (= :field (first clause))
+                  (:source-field (second clause))
+                  (nil? (:join-alias (second clause))))
+         (let [stage-path (if (= path-type :lib.walk/join) (lib.walk/join-parent-stage-path path) path)]
+           (vswap! contexts conj
+                   (lib.walk/apply-f-for-stage-at-path
+                    (fn [query stage-number]
+                      {:query query :stage-number stage-number :field-ref clause})
+                    query stage-path))))
+       nil))
+    @contexts))
+
+(defn- wrong-source-field?
+  [metadata-provider [_ {:keys [source-field]} target]]
+  (when (and (pos-int? source-field) (pos-int? target))
+    (let [field       (lib.metadata/field metadata-provider target)
+          key-field   (lib.metadata/field metadata-provider source-field)
+          fk-table-id (foreign-key-target-table-id metadata-provider key-field)]
+      (and (:table-id field)
+           key-field
+           (if (:fk-target-field-id key-field)
+             (and fk-table-id (not= (:table-id field) fk-table-id))
+             true)))))
+
+(defn- assert-source-fields-reach-their-tables!
+  "Reject implicit field references whose source field is not a foreign key to the field's table."
+  [pmbql-query]
+  (doseq [{:keys [query stage-number field-ref]} (source-field-contexts pmbql-query)
+          :let [mp (lib.metadata/->metadata-provider query)]
+          :when (wrong-source-field? mp field-ref)]
+    (let [[_ {:keys [source-field]} target] field-ref
+          field-ids   (set [source-field target])
+          fields      (->> (lib.metadata/bulk-metadata mp :metadata/column field-ids)
+                           entity-details/permission-filter-columns
+                           (u/index-by :id))
+          _visible    (when-not (every? fields field-ids)
+                        (throw (ex-info "The implicit field reference cannot be resolved with the fields available to you. Use a visible foreign key or an explicit join."
+                                        {:agent-error? true :status-code 400 :error :wrong-source-field})))
+          table-id    (:table-id (get fields target))
+          fk-field    (get fields source-field)
+          fk-table-id (foreign-key-target-table-id mp fk-field)
+          field-ref   (field-ref-for-error mp field-ref)]
+      (throw (wrong-source-field-error mp field-ref table-id fk-table-id (lib/visible-columns query stage-number))))))
+
 ;;; ---------------------------------------- Result columns ----------------------------------------
 
 (defn- result-columns-for-query
@@ -858,11 +983,12 @@
     6. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
     6.5. Backstop-gate the resolved query: mirror the FE `canRun` schema validation
-       ([[query-not-runnable-explanation]]), run the FE expression editor's own
+       ([[query-not-runnable-explanation]]), check that implicit field references use a foreign key to their table
+       ([[assert-source-fields-reach-their-tables!]]), run the FE expression editor's own
        diagnostics over every custom column / aggregation / filter
        ([[repr.repair/assert-editor-accepts-expressions!]]), then reject a temporal bucket
        sitting on a column that is not temporal
-       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]). Any of the three
+       ([[repr.repair/assert-temporal-buckets-on-temporal-columns!]]). Any of these
        failing is a retryable `:agent-error?` - success on a query the editor rejects is
        BOT-1442.
     7. Export that final numeric MBQL 5 back to the portable form for the LLM-facing
@@ -915,6 +1041,7 @@
                                             {:agent-error? true
                                              :error        :query-not-runnable
                                              :status-code  400})))
+            _fks-ok       (assert-source-fields-reach-their-tables! pmbql-query)
             ;; The FE expression editor rejects some shapes the (type-check-suppressed) canRun
             ;; gate above accepts - `offset` in a filter, window functions nested in
             ;; aggregations, cyclic expression refs, type-incompatible arguments. Must run

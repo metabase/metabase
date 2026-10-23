@@ -216,6 +216,10 @@
   "No foreign key connects the two tables, so they cannot be joined implicitly."
   [metric-dimensions-step])
 
+(defpipeline-error wrong-source-field!
+  "A field reference's `source-field` is not a foreign key to the table its column is on."
+  [list-fks-step])
+
 ;;; Saved entities
 
 (defpipeline-error unknown-card!
