@@ -20,6 +20,9 @@ RUN apt-get update && \
   mkdir -p /plugins && chmod a+rwx /plugins && \
   keytool -list -cacerts
 
+COPY blocked.certs /app/certs/
+RUN cat /app/certs/blocked.certs >> /opt/java/openjdk/lib/security/blocked.certs
+
 # add Metabase jar & add our run script to the image
 COPY ./metabase.jar ./run_metabase.sh /app/
 
