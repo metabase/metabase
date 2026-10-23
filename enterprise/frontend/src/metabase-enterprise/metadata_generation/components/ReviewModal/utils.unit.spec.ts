@@ -197,7 +197,7 @@ describe("getTableLabel", () => {
 });
 
 describe("getApplySummary", () => {
-  it("lists only the written count when nothing was skipped or failed", () => {
+  it("lists only the written count when nothing was rejected or failed", () => {
     expect(
       getApplySummary(createMockMetadataGenerationApplyResult({ written: 1 })),
     ).toBe("1 value written.");

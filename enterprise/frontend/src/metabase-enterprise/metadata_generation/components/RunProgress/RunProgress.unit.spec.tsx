@@ -20,8 +20,11 @@ function setup(run: MetadataGenerationRun) {
   setupGetMetadataGenerationRunEndpoint(retryRun);
 
   const onRetry = jest.fn();
-  renderWithProviders(<RunProgress runId={run.id} onRetry={onRetry} />);
-  return { onRetry, retryRun };
+  const onReview = jest.fn();
+  renderWithProviders(
+    <RunProgress runId={run.id} onRetry={onRetry} onReview={onReview} />,
+  );
+  return { onRetry, onReview, retryRun };
 }
 
 describe("RunProgress", () => {
@@ -35,15 +38,20 @@ describe("RunProgress", () => {
     setup(run);
 
     expect(
-      await screen.findByTestId("metadata-generation-run-status"),
-    ).toHaveTextContent("Running");
-    expect(screen.getByText("4 of 10 tables processed")).toBeInTheDocument();
+      await screen.findByText("4 of 10 tables processed"),
+    ).toBeInTheDocument();
     expect(screen.getByText("1 table failed")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("metadata-generation-run-status"),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Retry failed tables/ }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Review suggestions" }),
+    ).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Cancel run" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     await waitFor(() => {
       expect(
         fetchMock.callHistory.called(
@@ -54,17 +62,23 @@ describe("RunProgress", () => {
     });
   });
 
-  it("shows no cancel button while a run is canceling", async () => {
+  it("shows no status and no cancel button while a run is canceling", async () => {
     setup(
-      createMockMetadataGenerationRun({ status: "canceling", is_active: true }),
+      createMockMetadataGenerationRun({
+        status: "canceling",
+        is_active: true,
+        total_tables: 10,
+        done_tables: 2,
+      }),
     );
 
     expect(
-      await screen.findByTestId("metadata-generation-run-status"),
-    ).toHaveTextContent("Canceling");
+      await screen.findByText("2 of 10 tables processed"),
+    ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Cancel run" }),
+      screen.queryByTestId("metadata-generation-run-status"),
     ).not.toBeInTheDocument();
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("shows failed tables and retries them for an ended run", async () => {
@@ -94,7 +108,7 @@ describe("RunProgress", () => {
       screen.getByTestId("metadata-generation-table-errors"),
     ).toHaveTextContent("orders: Not processed");
     expect(
-      screen.queryByRole("button", { name: "Cancel run" }),
+      screen.queryByRole("button", { name: "Cancel" }),
     ).not.toBeInTheDocument();
 
     await userEvent.click(
@@ -103,20 +117,14 @@ describe("RunProgress", () => {
     await waitFor(() => expect(onRetry).toHaveBeenCalledWith(retryRun));
   });
 
-  it("shows usage and no actions for a run that succeeded", async () => {
-    setup(
+  it("offers review and no other action for a run that succeeded", async () => {
+    const { onReview } = setup(
       createMockMetadataGenerationRun({
         status: "succeeded",
         is_active: null,
         total_tables: 2,
         done_tables: 2,
         ended_at: "2026-10-09T00:10:00Z",
-        usage: {
-          input_tokens: 1000,
-          output_tokens: 234,
-          total_tokens: 1234,
-          cost_usd: 0.5,
-        },
       }),
     );
 
@@ -124,7 +132,11 @@ describe("RunProgress", () => {
       await screen.findByTestId("metadata-generation-run-status"),
     ).toHaveTextContent("Done");
     expect(screen.getByText("2 of 2 tables processed")).toBeInTheDocument();
-    expect(screen.getByText("1,234 tokens, about $0.50")).toBeInTheDocument();
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toHaveLength(1);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review suggestions" }),
+    );
+    expect(onReview).toHaveBeenCalled();
   });
 });

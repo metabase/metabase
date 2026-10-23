@@ -11,6 +11,7 @@ import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import type {
   ConcreteTableId,
   MetadataGenerationEstimate,
+  MetadataGenerationRunId,
 } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -39,7 +40,11 @@ const DATABASE = createMockDatabase({
   ],
 });
 
-const RUN = createMockMetadataGenerationRun({ id: 7, total_tables: 2 });
+const RUN = createMockMetadataGenerationRun({
+  id: 7,
+  total_tables: 2,
+  done_tables: 1,
+});
 
 const START_URL = "path:/api/ee/data-sensitivity/runs";
 const ESTIMATE_URL = "path:/api/ee/data-sensitivity/runs/estimate";
@@ -47,12 +52,16 @@ const ESTIMATE_URL = "path:/api/ee/data-sensitivity/runs/estimate";
 type SetupOpts = {
   estimate?: MetadataGenerationEstimate;
   initialTableIds?: ConcreteTableId[];
+  isScopeFixed?: boolean;
+  runId?: MetadataGenerationRunId;
   startError?: { status: number; message: string };
 };
 
 function setup({
   estimate = createMockMetadataGenerationEstimate(),
   initialTableIds,
+  isScopeFixed,
+  runId,
   startError,
 }: SetupOpts = {}) {
   fetchMock.get(`path:/api/database/${DATABASE.id}/metadata`, DATABASE);
@@ -68,15 +77,19 @@ function setup({
   setupGetMetadataGenerationRunEndpoint(RUN);
 
   const onClose = jest.fn();
+  const onRunStarted = jest.fn();
   renderWithProviders(
     <GenerateMetadataModal
       databaseId={DATABASE.id}
       initialTableIds={initialTableIds}
+      isScopeFixed={isScopeFixed}
+      runId={runId}
       opened
       onClose={onClose}
+      onRunStarted={onRunStarted}
     />,
   );
-  return { onClose };
+  return { onClose, onRunStarted };
 }
 
 function getStartButton() {
@@ -89,16 +102,16 @@ describe("GenerateMetadataModal", () => {
 
     expect(
       await screen.findByTestId("generate-metadata-estimate"),
-    ).toHaveTextContent("10 tables, 200 fields");
+    ).toHaveTextContent("10 tables. 200 fields. About 86,600 tokens.");
     expect(screen.getByRole("radio", { name: "Whole database" })).toBeChecked();
     expect(
-      screen.getByRole("checkbox", { name: "Data sensitivity" }),
+      screen.getByRole("checkbox", { name: "Data sensitivities" }),
     ).toBeChecked();
     expect(
-      screen.getByRole("checkbox", { name: "Semantic type" }),
+      screen.getByRole("checkbox", { name: "Semantic types" }),
     ).toBeChecked();
     expect(
-      screen.getByRole("checkbox", { name: "Description" }),
+      screen.getByRole("checkbox", { name: "Descriptions" }),
     ).not.toBeChecked();
 
     const url = new URL(
@@ -106,17 +119,17 @@ describe("GenerateMetadataModal", () => {
     );
     expect(url.searchParams.get("database-id")).toBe("1");
     expect(url.searchParams.getAll("attributes")).toEqual([
-      "data_sensitivity",
       "semantic_type",
+      "data_sensitivity",
     ]);
   });
 
-  it("starts a run and shows its progress", async () => {
-    setup();
+  it("starts a run and passes its id to the owner", async () => {
+    const { onRunStarted } = setup();
 
     await waitFor(() => expect(getStartButton()).toBeEnabled());
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "Description" }),
+      screen.getByRole("checkbox", { name: "Descriptions" }),
     );
     await waitFor(() => expect(getStartButton()).toBeEnabled());
     await userEvent.click(getStartButton());
@@ -128,19 +141,35 @@ describe("GenerateMetadataModal", () => {
           ?.request?.json(),
       ).toEqual({
         database_id: 1,
-        attributes: ["data_sensitivity", "semantic_type", "description"],
+        attributes: ["semantic_type", "data_sensitivity", "description"],
       });
     });
+    await waitFor(() => expect(onRunStarted).toHaveBeenCalledWith(RUN.id));
+  });
+
+  it("shows the progress of the given run and can be minimized while it runs", async () => {
+    setup({ runId: RUN.id });
+
     expect(
       await screen.findByTestId("metadata-generation-run"),
     ).toBeInTheDocument();
-    expect(screen.getByText("Generating metadata")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Field metadata generation for this database"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Minimize" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("generate-metadata-form"),
+    ).not.toBeInTheDocument();
   });
 
   it("scopes the run to the given tables", async () => {
     setup({ initialTableIds: [10] });
 
-    expect(screen.getByRole("radio", { name: "Tables" })).toBeChecked();
+    expect(
+      screen.getByRole("radio", { name: "Specific tables" }),
+    ).toBeChecked();
     await waitFor(() => expect(getStartButton()).toBeEnabled());
     await userEvent.click(getStartButton());
 
@@ -152,7 +181,27 @@ describe("GenerateMetadataModal", () => {
       ).toEqual({
         database_id: 1,
         table_ids: [10],
-        attributes: ["data_sensitivity", "semantic_type"],
+        attributes: ["semantic_type", "data_sensitivity"],
+      });
+    });
+  });
+
+  it("offers no scope choice when the scope is fixed", async () => {
+    setup({ initialTableIds: [11], isScopeFixed: true });
+
+    await waitFor(() => expect(getStartButton()).toBeEnabled());
+    expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+    await userEvent.click(getStartButton());
+
+    await waitFor(async () => {
+      expect(
+        await fetchMock.callHistory
+          .lastCall(START_URL, { method: "POST" })
+          ?.request?.json(),
+      ).toEqual({
+        database_id: 1,
+        table_ids: [11],
+        attributes: ["semantic_type", "data_sensitivity"],
       });
     });
   });
@@ -162,10 +211,10 @@ describe("GenerateMetadataModal", () => {
 
     await waitFor(() => expect(getStartButton()).toBeEnabled());
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "Data sensitivity" }),
+      screen.getByRole("checkbox", { name: "Data sensitivities" }),
     );
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "Semantic type" }),
+      screen.getByRole("checkbox", { name: "Semantic types" }),
     );
 
     expect(getStartButton()).toBeDisabled();

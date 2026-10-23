@@ -6,7 +6,13 @@ import {
   setupListMetadataGenerationProposalTablesEndpoint,
   setupListMetadataGenerationProposalsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  mockGetBoundingClientRect,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import {
   createMockMetadataGenerationApplyResult,
   createMockMetadataGenerationProposal,
@@ -63,21 +69,32 @@ function setup({ onDiscard }: { onDiscard?: () => void } = {}) {
       proposed_value: "Free-text notes",
     }),
   ];
-
-  fetchMock.get(`path:/api/database/${DATABASE_ID}/metadata`, {
-    id: DATABASE_ID,
-    tables: [],
-  });
-  setupListMetadataGenerationProposalTablesEndpoint(tables);
-  setupListMetadataGenerationProposalsEndpoint(10, proposals);
-  setupListMetadataGenerationProposalsEndpoint(20, [
+  const peopleProposals = [
     createMockMetadataGenerationProposal({
       id: 4,
       table_id: 20,
       field_id: 200,
       field_display_name: "Name",
     }),
-  ]);
+  ];
+
+  // The proposals table is virtualized: rows render only inside a measured viewport.
+  mockGetBoundingClientRect({ width: 1200, height: 800 });
+  fetchMock.get(`path:/api/database/${DATABASE_ID}/metadata`, {
+    id: DATABASE_ID,
+    tables: [],
+  });
+  setupListMetadataGenerationProposalTablesEndpoint(tables);
+  setupListMetadataGenerationProposalsEndpoint(10, proposals);
+  setupListMetadataGenerationProposalsEndpoint(20, peopleProposals);
+  fetchMock.get(
+    "path:/api/ee/data-sensitivity/proposals",
+    [...proposals, ...peopleProposals],
+    {
+      name: "metadata-generation-proposals-database",
+      query: { "database-id": String(DATABASE_ID) },
+    },
+  );
   setupApplyMetadataGenerationProposalsEndpoint(
     createMockMetadataGenerationApplyResult({
       written: 1,
@@ -141,11 +158,11 @@ describe("ReviewModal", () => {
     expect(within(tables).getByText("1 suggestion")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "1 suggestion would replace a value a person set. Accept it one by one.",
+        "1 suggestion would replace a value a person set. Select it on its own row to accept it.",
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Apply 0 selected" }),
+      screen.getByRole("button", { name: "Apply 0 suggestions" }),
     ).toBeDisabled();
   });
 
@@ -167,13 +184,13 @@ describe("ReviewModal", () => {
     await userEvent.click(checkbox);
     expect(checkbox).toBeChecked();
     expect(
-      screen.getByRole("button", { name: "Apply 1 selected" }),
+      screen.getByRole("button", { name: "Apply 1 suggestion" }),
     ).toBeEnabled();
 
     await userEvent.click(checkbox);
     expect(checkbox).not.toBeChecked();
     expect(
-      screen.getByRole("button", { name: "Apply 0 selected" }),
+      screen.getByRole("button", { name: "Apply 0 suggestions" }),
     ).toBeDisabled();
     expect(getMutationCalls()).toHaveLength(0);
   });
@@ -189,7 +206,7 @@ describe("ReviewModal", () => {
       await getRowCheckbox("Accept Data sensitivity of Name"),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Apply 2 selected" }),
+      screen.getByRole("button", { name: "Apply 2 suggestions" }),
     );
 
     expect(await getApplyBody()).toEqual({
@@ -214,7 +231,7 @@ describe("ReviewModal", () => {
     expect(getMutationCalls()).toHaveLength(0);
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Apply 2 selected" }),
+      screen.getByRole("button", { name: "Apply 2 suggestions" }),
     );
 
     expect(await getApplyBody()).toEqual({
@@ -228,7 +245,7 @@ describe("ReviewModal", () => {
     setup();
 
     const textarea = await screen.findByRole("textbox", {
-      name: "Proposed Description of Notes",
+      name: "Suggested Description of Notes",
     });
     await userEvent.clear(textarea);
     await userEvent.type(textarea, "  Order notes  {Enter}");
@@ -237,7 +254,7 @@ describe("ReviewModal", () => {
     expect(getMutationCalls()).toHaveLength(0);
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Apply 1 selected" }),
+      screen.getByRole("button", { name: "Apply 1 suggestion" }),
     );
 
     expect(await getApplyBody()).toEqual({
@@ -251,7 +268,7 @@ describe("ReviewModal", () => {
     setup();
 
     const textarea = await screen.findByRole("textbox", {
-      name: "Proposed Description of Notes",
+      name: "Suggested Description of Notes",
     });
     await userEvent.clear(textarea);
     await userEvent.type(textarea, "Order notes{Enter}");
@@ -260,7 +277,7 @@ describe("ReviewModal", () => {
       await getRowCheckbox("Accept Data sensitivity of Email"),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Apply 1 selected" }),
+      screen.getByRole("button", { name: "Apply 1 suggestion" }),
     );
 
     expect(await getApplyBody()).toEqual({
@@ -269,25 +286,25 @@ describe("ReviewModal", () => {
     });
   });
 
-  it("drops the edit when the AI proposal is chosen again and keeps the row selected", async () => {
+  it("drops the edit when the AI suggestion is chosen again and keeps the row selected", async () => {
     setup();
 
     const textarea = await screen.findByRole("textbox", {
-      name: "Proposed Description of Notes",
+      name: "Suggested Description of Notes",
     });
     await userEvent.clear(textarea);
     await userEvent.type(textarea, "Order notes{Enter}");
     await userEvent.click(
       screen.getByRole("button", {
-        name: "Use the AI proposal for Description of Notes",
+        name: "Use the AI suggestion for Description of Notes",
       }),
     );
 
     expect(
-      screen.getByRole("textbox", { name: "Proposed Description of Notes" }),
+      screen.getByRole("textbox", { name: "Suggested Description of Notes" }),
     ).toHaveValue("Free-text notes");
     await userEvent.click(
-      screen.getByRole("button", { name: "Apply 1 selected" }),
+      screen.getByRole("button", { name: "Apply 1 suggestion" }),
     );
 
     expect(await getApplyBody()).toEqual({
@@ -303,27 +320,27 @@ describe("ReviewModal", () => {
       await getRowCheckbox("Accept Data sensitivity of Email"),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Apply 1 selected" }),
+      screen.getByRole("button", { name: "Apply 1 suggestion" }),
     );
 
     const result = await screen.findByTestId(
       "metadata-generation-apply-result",
     );
     expect(
-      within(result).getByText("1 value written, 2 failed"),
+      within(result).getByText("1 value written. 2 suggestions failed."),
     ).toBeInTheDocument();
     expect(
-      within(result).getByText(
-        "Field 102, Semantic type: The field is a primary or foreign key",
+      await within(result).findByText(
+        "Notes, Semantic type: The field is a primary or foreign key",
       ),
     ).toBeInTheDocument();
     expect(
       within(result).getByText(
-        "A newer run changed or removed this suggestion",
+        "This suggestion changed or was handled since you opened the review",
       ),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole("button", { name: "Apply 0 selected" }),
+      await screen.findByRole("button", { name: "Apply 0 suggestions" }),
     ).toBeDisabled();
   });
 
@@ -334,7 +351,7 @@ describe("ReviewModal", () => {
       await getRowCheckbox("Accept Data sensitivity of Email"),
     );
     expect(
-      screen.getByRole("button", { name: "Apply 1 selected" }),
+      screen.getByRole("button", { name: "Apply 1 suggestion" }),
     ).toBeEnabled();
     unmount();
 
@@ -346,7 +363,7 @@ describe("ReviewModal", () => {
       await getRowCheckbox("Accept Data sensitivity of Email"),
     ).not.toBeChecked();
     expect(
-      screen.getByRole("button", { name: "Apply 0 selected" }),
+      screen.getByRole("button", { name: "Apply 0 suggestions" }),
     ).toBeDisabled();
   });
 

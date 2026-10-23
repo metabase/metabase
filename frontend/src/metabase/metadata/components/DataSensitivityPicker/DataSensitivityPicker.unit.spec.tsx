@@ -11,9 +11,10 @@ import { DataSensitivityPicker } from "./DataSensitivityPicker";
 interface SetupOpts {
   value?: FieldDataSensitivity | null;
   source?: FieldDataSensitivitySource | null;
+  canClear?: boolean;
 }
 
-const setup = ({ value = null, source = null }: SetupOpts = {}) => {
+const setup = ({ value = null, source = null, canClear }: SetupOpts = {}) => {
   const onChange = jest.fn();
   const onReset = jest.fn();
 
@@ -22,6 +23,7 @@ const setup = ({ value = null, source = null }: SetupOpts = {}) => {
       label="Data sensitivity"
       source={source}
       value={value}
+      canClear={canClear}
       onChange={onChange}
       onReset={onReset}
     />,
@@ -44,17 +46,19 @@ describe("DataSensitivityPicker", () => {
 
     const input = screen.getByLabelText("Data sensitivity");
     expect(input).toHaveValue("");
-    expect(input).toHaveAttribute("placeholder", "Not labeled");
+    expect(input).toHaveAttribute("placeholder", "Unspecified");
     expect(screen.queryByText(/^Set by/)).not.toBeInTheDocument();
   });
 
-  it("shows 'No label' when a person cleared the value", () => {
+  it("shows 'Unspecified' when a person cleared the value", () => {
     setup({ value: null, source: "human" });
 
-    expect(screen.getByLabelText("Data sensitivity")).toHaveValue("No label");
+    expect(screen.getByLabelText("Data sensitivity")).toHaveValue(
+      "Unspecified",
+    );
   });
 
-  it("lists every category, most severe first, then 'No label'", async () => {
+  it("lists every category, most severe first, then 'Unspecified'", async () => {
     setup();
 
     await userEvent.click(screen.getByLabelText("Data sensitivity"));
@@ -73,8 +77,18 @@ describe("DataSensitivityPicker", () => {
       "Intellectual property and code",
       "Confidential business data",
       "Public (not sensitive)",
-      "No label",
+      "Unspecified",
     ]);
+  });
+
+  it("does not offer 'Unspecified' when the value cannot be cleared", async () => {
+    setup({ canClear: false });
+
+    await userEvent.click(screen.getByLabelText("Data sensitivity"));
+    const listbox = await screen.findByRole("listbox");
+
+    expect(within(listbox).getAllByRole("option")).toHaveLength(10);
+    expect(within(listbox).queryByText("Unspecified")).not.toBeInTheDocument();
   });
 
   it("calls onChange with the selected category", async () => {
@@ -90,12 +104,12 @@ describe("DataSensitivityPicker", () => {
     expect(onChange).toHaveBeenCalledWith("PHI");
   });
 
-  it("calls onChange with null for 'No label'", async () => {
+  it("calls onChange with null for 'Unspecified'", async () => {
     const { onChange } = setup({ value: "PII", source: "deterministic" });
 
     await userEvent.click(screen.getByLabelText("Data sensitivity"));
     await userEvent.click(
-      within(await screen.findByRole("listbox")).getByText("No label"),
+      within(await screen.findByRole("listbox")).getByText("Unspecified"),
     );
 
     expect(onChange).toHaveBeenCalledWith(null);
