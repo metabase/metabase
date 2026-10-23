@@ -2237,6 +2237,17 @@
               (is (some #(re-find #"(?i)no_such_column" (ex-message %))
                         (take-while some? (iterate ex-cause (:e (first (messages))))))))))))))
 
+(deftest client-error-wrapping-toucan-failure-is-generic-test
+  (doseq [status-code [400 403]]
+    (let [cause (ex-info "Metadata connection failure" {:toucan2/context-trace []}
+                         (IllegalStateException. "Metadata connection unavailable"))]
+      (mt/with-dynamic-fn-redefs [metabot-search/search
+                                  (fn [& _] (throw (ex-info "Internal metadata detail" {:status-code status-code} cause)))]
+        (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+          (is (= {:message "Something went wrong"}
+                 (mt/user-http-request :rasta :post 500 "agent/v1/search" {:term_queries ["orders"]})))
+          (is (=? [{:message "Database failure in Agent API"}] (messages))))))))
+
 (deftest client-disconnect-is-not-an-error-test
   (testing "A client that disconnects before its response is written gets no error response, count or error log"
     (mt/with-prometheus-system! [_ system]
