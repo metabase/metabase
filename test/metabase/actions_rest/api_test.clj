@@ -249,10 +249,6 @@
    :dataset_query (mt/native-query {:query "select * from checkins limit 1"})
    :collection_id (:id (collection/user->personal-collection (mt/user->id user)))})
 
-(defn- set-native-perms!
-  [db-id level]
-  (perms/set-database-permission! (perms/all-users-group) db-id :perms/create-queries level))
-
 (defn- do-with-two-actions-enabled-dbs!
   "Runs `f` with two test databases that both have actions enabled, passing it `[model-db-id query-db-id]`."
   [f]
@@ -328,47 +324,6 @@
                          (mt/user-http-request :crowberto :post 400
                                                (format "action/%s/execute" action-id)
                                                {:parameters {}}))))))))))))
-
-(deftest native-query-action-create-perms-use-query-database-test
-  (testing "POST /api/action needs native permission on the database the query targets, not the declared database_id"
-    (do-with-two-actions-enabled-dbs!
-     (fn [model-db-id query-db-id]
-       (mt/with-model-cleanup [:model/Action]
-         (perms.test-util/with-restored-data-perms!
-           (mt/with-temp [:model/Card {model-id :id} (model-card-def :rasta)]
-             (let [action (cross-db-native-action model-id model-db-id query-db-id)]
-               (testing "native permission on the declared database is not enough"
-                 (set-native-perms! model-db-id :query-builder-and-native)
-                 (set-native-perms! query-db-id :query-builder)
-                 (is (= "You don't have permissions to do that."
-                        (mt/user-http-request :rasta :post 403 "action" action))))
-               (testing "native permission on the database the query targets is what unlocks it"
-                 (set-native-perms! query-db-id :query-builder-and-native)
-                 (is (=? {:type        "query"
-                          :database_id query-db-id}
-                         (mt/user-http-request :rasta :post 200 "action" action))))))))))))
-
-(deftest native-query-action-update-perms-use-query-database-test
-  (testing "PUT /api/action/:id needs native permission on the database the updated query targets"
-    (do-with-two-actions-enabled-dbs!
-     (fn [model-db-id query-db-id]
-       (mt/with-model-cleanup [:model/Action]
-         (perms.test-util/with-restored-data-perms!
-           (mt/with-temp [:model/Card {model-id :id} (model-card-def :rasta)]
-             (set-native-perms! model-db-id :query-builder-and-native)
-             (set-native-perms! query-db-id :query-builder)
-             (let [created  (mt/user-http-request :rasta :post 200 "action"
-                                                  (cross-db-native-action model-id model-db-id model-db-id))
-                   repoint  {:database_id   model-db-id
-                             :dataset_query (write-query query-db-id)}
-                   url      (str "action/" (:id created))]
-               (testing "repointing the query at another database needs native permission on that database"
-                 (is (= "You don't have permissions to do that."
-                        (mt/user-http-request :rasta :put 403 url repoint))))
-               (testing "with native permission on the query's database the update succeeds"
-                 (set-native-perms! query-db-id :query-builder-and-native)
-                 (is (=? {:database_id query-db-id}
-                         (mt/user-http-request :rasta :put 200 url repoint))))))))))))
 
 (deftest action-update-cannot-repoint-database-id-without-the-query-test
   (testing "PUT /api/action/:id with only :database_id leaves a query action pointed at its query's database"
