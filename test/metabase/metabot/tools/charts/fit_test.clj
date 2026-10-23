@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.test-metadata :as meta]
@@ -33,6 +34,12 @@
 
 (defn- binned [column]
   (lib/with-binning column {:strategy :default}))
+
+(defn- with-more-than-100
+  "The groups of `query` whose count is more than 100, which a second stage keeps with a filter."
+  [query]
+  (let [query (lib/append-stage query)]
+    (lib/filter query (lib/> (m/find-first #(= "count" (:name %)) (lib/filterable-columns query)) 100))))
 
 (def ^:private count-by-category-and-month-of-year
   "Built from MBQL 4, as the frontend sends a query, for which lib's metadata gives the month the type of its date."
@@ -97,7 +104,10 @@
       "table pivot object"
 
       (lib/append-stage (count-by :products (meta/field-metadata :products :category)))
-      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall scalar progress funnel object"
+      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall progress funnel object"
+
+      (with-more-than-100 (count-by :orders (meta/field-metadata :orders :quantity)))
+      "table scatter progress object"
 
       (query :orders)
       "table treemap sankey scalar gauge progress object"
@@ -127,7 +137,7 @@
       "table bar line pie sunburst treemap boxplot area combo row pivot scatter sankey progress object"
 
       (lib/append-stage count-by-category-and-month-of-year)
-      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall scalar progress object")))
+      "table bar line pie sunburst treemap boxplot area combo row scatter waterfall progress object")))
 
 (deftest any-chart-type-fits-a-sql-query-test
   (testing "the columns of a SQL query aren't known until it runs, so any chart type passes"

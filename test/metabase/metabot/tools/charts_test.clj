@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.api-scope.core :as api-scope]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -263,6 +264,19 @@
              (invoke "edit_chart"
                      (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type "scalar"})
                      {:charts {"c-1" {:chart_id "c-1" :query_id "q-1" :queries [count-by-category]}}}))))
+    (testing "a number chart of categories with more than 100 orders would show a category, the first stage's breakout"
+      (let [by-category (-> (lib/aggregate (lib/query meta/metadata-provider (meta/table-metadata :products)) (lib/count))
+                            (lib/breakout (meta/field-metadata :products :category))
+                            lib/append-stage)
+            query       (lib/filter by-category
+                                    (lib/> (m/find-first #(= "count" (:name %)) (lib/filterable-columns by-category)) 100))]
+        (is (= (failure "Chart type \"scalar\" can't show this query's columns. It needs a first column that isn't "
+                        "a breakout, since it shows that column's first value. The query returns 2 columns: 1 to group "
+                        "by and 1 number to measure. Chart types that fit these columns: table, bar, line, pie, "
+                        "sunburst, treemap, boxplot, area, combo, row, scatter, waterfall, progress, funnel, object.")
+               (invoke "create_chart"
+                       (assoc chart-args :data_source {:query_id "q-1"} :viz_settings {:chart_type "scalar"})
+                       {:queries {"q-1" query}})))))
     (testing "construct_notebook_query checks its chart type against the query that it builds"
       (mt/with-dynamic-fn-redefs [construct/execute-representations-query
                                   (fn [_ & _]

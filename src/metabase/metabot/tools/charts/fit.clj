@@ -52,15 +52,16 @@
   "A requirement for 1 to `max-groupings` columns to group by and at least 1 number to measure."
   [max-groupings needs]
   {:needs needs
-   :fits? (fn [cols]
+   :fits? (fn [_query cols]
             (and (<= 1 (n-of grouping? cols) max-groupings)
                  (some metric? cols)))})
 
 (def ^:private requirements
   "What each chart type, other than `table` and `object`, needs from a query's columns.
-  `:needs` says it to the model, and `:fits?` checks the columns. `scalar` and `gauge` show the first value of the
-  first column, so they also need that column not to be a breakout, whose first value is one group's label rather than
-  a result. `smartscalar` compares values over time, so it also needs a date as its only column to group by."
+  `:needs` says it to the model, and `:fits?` checks the query and its columns. `scalar` and `gauge` show the first
+  value of the first column, so they also need that column not to come from a breakout, in the last stage or an earlier
+  one: a breakout's first value is one group's label rather than a result. `smartscalar` compares values over time, so
+  it also needs a date as its only column to group by."
   (let [axes  (groupings-and-metrics 2 "1 or 2 columns to group by and at least 1 number to measure")
         rings (groupings-and-metrics 3 "1 to 3 columns to group by and at least 1 number to measure")]
     {"bar"         axes
@@ -74,47 +75,49 @@
      "sunburst"    rings
      "waterfall"   (groupings-and-metrics 1 "exactly 1 column to group by and at least 1 number to measure")
      "treemap"     {:needs "a column to group by and a number to measure"
-                    :fits? #(and (some grouping? %) (some metric? %))}
+                    :fits? (fn [_query cols] (and (some grouping? cols) (some metric? cols)))}
      "funnel"      {:needs "exactly 1 column to group by and exactly 1 number to measure"
-                    :fits? #(= 1 (n-of grouping? %) (n-of metric? %))}
+                    :fits? (fn [_query cols] (= 1 (n-of grouping? cols) (n-of metric? cols)))}
      "scatter"     {:needs "2 or 3 numbers to measure, or 1 number to measure and 1 or 2 columns to plot it against"
-                    :fits? (fn [cols]
+                    :fits? (fn [_query cols]
                              (let [metrics (n-of metric? cols)]
                                (or (<= 2 metrics 3)
                                    (and (= 1 metrics) (<= 1 (n-of dimension? cols) 2)))))}
      "sankey"      {:needs "2 columns to group by that are neither dates nor coordinates, and a number to measure"
-                    :fits? (fn [cols]
+                    :fits? (fn [_query cols]
                              (and (<= 2 (n-of (every-pred grouping?
                                                           (complement lib.types.isa/temporal?)
                                                           (complement lib.types.isa/coordinate?))
                                               cols))
                                   (some metric? cols)))}
      "pivot"       {:needs "at least 2 columns, each one a breakout or an aggregation"
-                    :fits? #(and (<= 2 (count %)) (every? (some-fn aggregation? :lib/breakout?) %))}
+                    :fits? (fn [_query cols]
+                             (and (<= 2 (count cols)) (every? (some-fn aggregation? :lib/breakout?) cols)))}
      "scalar"      {:needs "a first column that isn't a breakout, since it shows that column's first value"
-                    :fits? #(not (:lib/breakout? (first %)))}
+                    :fits? (fn [query [col]] (not (lib/breakout-sourced? query col)))}
      "smartscalar" {:needs "a date as the only column to group by, and a number to measure"
-                    :fits? (fn [cols]
+                    :fits? (fn [_query cols]
                              (let [[grouping :as groupings] (filter grouping? cols)]
                                (and (= 1 (count groupings))
                                     (lib.types.isa/temporal? grouping)
                                     (some metric? cols))))}
      "gauge"       {:needs "a numeric first column that isn't a breakout, since it shows that column's first value"
-                    :fits? (fn [[col]]
+                    :fits? (fn [query [col]]
                              (and (lib.types.isa/numeric? col)
                                   (not (lib.types.isa/temporal? col))
-                                  (not (:lib/breakout? col))))}
+                                  (not (lib/breakout-sourced? query col))))}
      "progress"    {:needs "a numeric column"
-                    :fits? #(some lib.types.isa/numeric? %)}
+                    :fits? (fn [_query cols] (some lib.types.isa/numeric? cols))}
      "map"         {:needs "latitude and longitude columns, or a state or country column and a number to measure"
-                    :fits? #(or (and (some lib.types.isa/latitude? %) (some lib.types.isa/longitude? %))
-                                (and (some (some-fn lib.types.isa/state? lib.types.isa/country?) %)
-                                     (some metric? %)))}}))
+                    :fits? (fn [_query cols]
+                             (or (and (some lib.types.isa/latitude? cols) (some lib.types.isa/longitude? cols))
+                                 (and (some (some-fn lib.types.isa/state? lib.types.isa/country?) cols)
+                                      (some metric? cols))))}}))
 
 (defn- fits?
-  [chart-type cols]
+  [chart-type query cols]
   (if-let [requirement (requirements chart-type)]
-    (boolean ((:fits? requirement) cols))
+    (boolean ((:fits? requirement) query cols))
     true))
 
 (tools/defrecoverable incompatible-chart-type!
@@ -145,13 +148,15 @@
           ((juxt :lib/temporal-unit :inherited-temporal-unit) col))
     (assoc :effective-type :type/Integer)))
 
-(defn- returned-columns
-  "The columns that `query` returns, or nil when they can't be worked out without running it."
+(defn- with-returned-columns
+  "`[query cols]`: `query` normalized, and the columns that it returns, or nil when they can't be worked out without
+  running it."
   [query]
   (try
     (let [query (lib-be/normalize-query query)]
-      (when (seq query)
-        (not-empty (mapv with-result-type (lib/returned-columns query)))))
+      (when-let [cols (when (seq query)
+                        (not-empty (mapv with-result-type (lib/returned-columns query))))]
+        [query cols]))
     (catch Exception e
       (log/debug e "Could not work out the columns that a chart's query returns")
       nil)))
@@ -160,11 +165,11 @@
   "Throw [[incompatible-chart-type!]] when the frontend can't draw `chart-type` from the columns that `query` returns.
   A query whose columns can't be known without running it, such as a SQL query, passes."
   [chart-type query]
-  (when-let [cols (returned-columns query)]
+  (when-let [[query cols] (with-returned-columns query)]
     (let [chart-type (name chart-type)]
-      (when-not (fits? chart-type cols)
+      (when-not (fits? chart-type query cols)
         (incompatible-chart-type! {:chart-type chart-type
                                    :columns    (count cols)
                                    :groupings  (n-of grouping? cols)
                                    :metrics    (n-of metric? cols)
-                                   :fitting    (filterv #(fits? % cols) shared/chart-types)})))))
+                                   :fitting    (filterv #(fits? % query cols) shared/chart-types)})))))
