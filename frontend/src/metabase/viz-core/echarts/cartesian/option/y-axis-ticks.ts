@@ -25,12 +25,8 @@ export function getResponsiveYAxisTicks(
   const gridlines = Array.from({ length: segments + 1 }, (_, index) =>
     index === segments ? max : min + ((max - min) * index) / segments,
   );
-  const labelInterval =
-    height < PLOT_HEIGHT_BREAKPOINTS.small ||
-    (height >= PLOT_HEIGHT_BREAKPOINTS.medium &&
-      height < PLOT_HEIGHT_BREAKPOINTS.large)
-      ? 2
-      : 1;
+  // the smallest plots label their min and max gridlines only
+  const labelInterval = height < PLOT_HEIGHT_BREAKPOINTS.small ? 2 : 1;
 
   return {
     ...axis,

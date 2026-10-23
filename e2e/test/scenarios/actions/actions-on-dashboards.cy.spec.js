@@ -1005,8 +1005,6 @@ describe(
           cy.icon("pencil").click();
         });
 
-        cy.wait("@getModel");
-
         cy.findAllByRole("dialog")
           .filter(":visible")
           .within(() => {
@@ -1069,8 +1067,6 @@ function createDashboardWithActionButton({
   if (hideField) {
     cy.findByRole("dialog").within(() => {
       cy.icon("pencil").click();
-
-      cy.wait("@getModel");
     });
 
     cy.findAllByRole("dialog")

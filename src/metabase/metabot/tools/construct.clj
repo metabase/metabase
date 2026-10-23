@@ -580,9 +580,7 @@
                              :error        :unknown-database
                              :database     db-name}))
           1 (first ids)
-          (throw (ex-info (format (str "Multiple databases share the name `%s` (ids: %s). The "
-                                       "agent has no way to disambiguate; ask the user to rename "
-                                       "one of the databases or use a more specific identifier.")
+          (throw (ex-info (format "Multiple databases share the name `%s` (ids: %s)."
                                   db-name (pr-str (vec (sort ids))))
                           {:agent-error? true
                            :status-code  400
@@ -902,12 +900,12 @@
                                                                           stage-card-id (conj stage-card-id)))
             ;; Use `::unresolved` so a missing source card cannot match a metric whose table ID is nil.
             stage-table-id (if stage-card-id
-                             (or (:table-id (lib.metadata/card mp stage-card-id)) ::unresolved)
+                             (or (tools.u/card-source-table-id mp stage-card-id) ::unresolved)
                              (lib.util/source-table-id query))]
         (not-empty
          (into (sorted-map)
                (keep (fn [metric-id]
-                       (let [required    (tools.u/metric-required-source (lib.metadata/card mp metric-id))
+                       (let [required    (tools.u/metric-required-source mp (lib.metadata/card mp metric-id))
                              compatible? (and required
                                               (tools.u/metric-compatible-with-stage?
                                                required

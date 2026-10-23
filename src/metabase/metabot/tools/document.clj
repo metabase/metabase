@@ -144,14 +144,10 @@
      :metabot/capabilities #{:permission-write-sql-queries}
      :args                 sql-chart-schema})
   (handle [_ {:keys [database_id name description analysis approach sql viz_settings]} _ctx]
-    (let [{:keys [validation-result action-result]}
-          (create-sql-query-tools/create-sql-query {:database-id database_id
-                                                    :sql sql})
-          {:keys [valid? dialect error-message]} validation-result
-          {:keys [query-id query]} action-result
+    (let [{:keys [query-id query]} (sql.common/validated-sql-action!
+                                    (create-sql-query-tools/create-sql-query {:database-id database_id
+                                                                              :sql sql}))
           chart-type (get viz_settings :chart_type)]
-      (when-not valid?
-        (sql.common/sql-syntax-error! {:dialect dialect :error-message error-message}))
       (check-query! query)
       {:output            "Draft chart payload generated from SQL query."
        :structured-output {:tool          "document_construct_sql_chart"

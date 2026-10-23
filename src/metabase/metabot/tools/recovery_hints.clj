@@ -75,6 +75,9 @@
     (:unknown-field :unknown-field-id)
     "Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table's columns."
 
+    :ambiguous-field
+    "The field name matches more than one column in this table, so it cannot be referenced by name. Tell the user about the ambiguous column name."
+
     :ambiguous-fk
     (or (card-fields-hint data "foreign-key columns")
         "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns.")
@@ -94,8 +97,14 @@
     (:unknown-segment :unknown-segment-id)
     "Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag."
 
+    (:cross-database-card :cross-database-measure :cross-database-segment)
+    "A query can only reference saved questions, models, metrics, measures and segments from its own database. Use one from that database, or change the source to a table in the referenced item's database."
+
     :unknown-database
     "Use the exact database name as reported by search / `read_resource` (it appears as the first element of every portable FK, e.g. `source-table: [<db-name>, <schema>, <table>]`)."
+
+    :ambiguous-database-name
+    "Ask the user to rename one of the databases."
 
     :missing-source-in-first-stage
     "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an entity_id string."
