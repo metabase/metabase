@@ -49,6 +49,7 @@ const setupEndpoints = ({
   remoteSyncAutoImport = false,
   remoteSyncTransforms = false,
   remoteSyncCustomCollectionsEnabled,
+  transformsSchedulingEnabled = true,
   // Unjustified type cast. FIXME
   libraryCollection = null as Collection | null,
   // Unjustified type cast. FIXME
@@ -69,6 +70,7 @@ const setupEndpoints = ({
   remoteSyncAutoImport?: boolean;
   remoteSyncTransforms?: boolean;
   remoteSyncCustomCollectionsEnabled?: boolean;
+  transformsSchedulingEnabled?: boolean;
   libraryCollection?: Collection | null;
   dirty?: any[];
   rootCollectionItems?: CollectionItem[];
@@ -88,6 +90,7 @@ const setupEndpoints = ({
     "remote-sync-transforms": remoteSyncTransforms,
     "remote-sync-custom-collections-enabled":
       remoteSyncCustomCollectionsEnabled,
+    "transforms-scheduling-enabled": transformsSchedulingEnabled,
     "development-mode?": isDevInstance,
   });
 
@@ -126,13 +129,17 @@ const createStoreState = ({
   isDevInstance = false,
   remoteSyncEnabled = false,
   remoteSyncType = "read-only" as const,
+  remoteSyncTransforms = false,
   remoteSyncCustomCollectionsEnabled = true,
+  transformsSchedulingEnabled = true,
 }: {
   isAdmin?: boolean;
   isDevInstance?: boolean;
   remoteSyncEnabled?: boolean;
   remoteSyncType?: "read-only" | "read-write";
+  remoteSyncTransforms?: boolean;
   remoteSyncCustomCollectionsEnabled?: boolean;
+  transformsSchedulingEnabled?: boolean;
 } = {}) => {
   return createMockState({
     currentUser: createMockUser({ is_superuser: isAdmin }),
@@ -140,8 +147,10 @@ const createStoreState = ({
       "development-mode?": isDevInstance,
       "remote-sync-enabled": remoteSyncEnabled,
       "remote-sync-type": remoteSyncType,
+      "remote-sync-transforms": remoteSyncTransforms,
       "remote-sync-custom-collections-enabled":
         remoteSyncCustomCollectionsEnabled,
+      "transforms-scheduling-enabled": transformsSchedulingEnabled,
     }),
   });
 };
@@ -155,6 +164,7 @@ interface SetupOpts {
   remoteSyncBranch?: string;
   remoteSyncTransforms?: boolean;
   remoteSyncCustomCollectionsEnabled?: boolean;
+  transformsSchedulingEnabled?: boolean;
   libraryCollection?: Collection | null;
   dirty?: any[];
   rootCollectionItems?: CollectionItem[];
@@ -177,6 +187,7 @@ export const setup = ({
   remoteSyncBranch = "main",
   remoteSyncTransforms = false,
   remoteSyncCustomCollectionsEnabled = true,
+  transformsSchedulingEnabled = true,
   libraryCollection = null,
   dirty = [],
   rootCollectionItems = [],
@@ -199,6 +210,7 @@ export const setup = ({
     remoteSyncBranch,
     remoteSyncTransforms,
     remoteSyncCustomCollectionsEnabled,
+    transformsSchedulingEnabled,
     libraryCollection,
     dirty,
     rootCollectionItems,
@@ -216,7 +228,9 @@ export const setup = ({
         isDevInstance,
         remoteSyncEnabled,
         remoteSyncType,
+        remoteSyncTransforms,
         remoteSyncCustomCollectionsEnabled,
+        transformsSchedulingEnabled,
       }),
     },
   );

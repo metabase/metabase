@@ -612,6 +612,111 @@ describe("RemoteSyncSettingsForm", () => {
     });
   });
 
+  describe("transforms scheduling note", () => {
+    const NOTE_TEST_ID = "remote-sync-transforms-scheduling-note";
+
+    beforeEach(() => {
+      PLUGIN_TRANSFORMS.isEnabled = true;
+    });
+
+    afterEach(() => {
+      PLUGIN_TRANSFORMS.isEnabled = false;
+    });
+
+    it("should show the note when read-write and transforms sync are selected", async () => {
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncTransforms: true,
+        transformsSchedulingEnabled: false,
+      });
+
+      expect(await screen.findByTestId(NOTE_TEST_ID)).toHaveTextContent(
+        "scheduled job runs are paused",
+      );
+    });
+
+    it("should show the note after the user selects read-write", async () => {
+      setup({ remoteSyncType: "read-only" });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-only")).toBeChecked();
+      });
+      expect(screen.queryByTestId(NOTE_TEST_ID)).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByLabelText("Read-write"));
+
+      expect(await screen.findByTestId(NOTE_TEST_ID)).toBeInTheDocument();
+    });
+
+    it("should hide the note when transforms sync is off", async () => {
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncTransforms: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+      await waitForRequestsToSettle();
+
+      expect(screen.queryByTestId(NOTE_TEST_ID)).not.toBeInTheDocument();
+    });
+
+    it("should hide the note when the transforms feature is disabled", async () => {
+      PLUGIN_TRANSFORMS.isEnabled = false;
+
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncTransforms: true,
+        transformsSchedulingEnabled: false,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+      await waitForRequestsToSettle();
+
+      expect(screen.queryByTestId(NOTE_TEST_ID)).not.toBeInTheDocument();
+    });
+
+    it("should hide the note when scheduling is on for a saved read-write config with transforms sync", async () => {
+      setup({
+        remoteSyncEnabled: true,
+        remoteSyncType: "read-write",
+        remoteSyncUrl: "https://github.com/test/repo.git",
+        remoteSyncTransforms: true,
+        transformsSchedulingEnabled: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+      await waitForRequestsToSettle();
+
+      expect(screen.queryByTestId(NOTE_TEST_ID)).not.toBeInTheDocument();
+    });
+
+    it("should hide the note when an env var sets transforms-scheduling-enabled", async () => {
+      setup({
+        remoteSyncType: "read-write",
+        envSettings: ["transforms-scheduling-enabled"],
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Read-write")).toBeChecked();
+      });
+      await waitForRequestsToSettle();
+
+      expect(screen.queryByTestId(NOTE_TEST_ID)).not.toBeInTheDocument();
+    });
+  });
+
   describe("URL validation", () => {
     it("should show a validation error for non-HTTPS URLs", async () => {
       setup({

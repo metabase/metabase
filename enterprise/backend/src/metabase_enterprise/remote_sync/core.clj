@@ -82,6 +82,14 @@
   (or (not (settings/remote-sync-enabled))
       (= (settings/remote-sync-type) :read-write)))
 
+(defenterprise transforms-scheduling-default
+  "Default of `transforms-scheduling-enabled`: false when remote sync is enabled, read-write and syncs transforms."
+  :feature :none
+  []
+  (not (and (settings/remote-sync-enabled)
+            (= (settings/remote-sync-type) :read-write)
+            (settings/remote-sync-transforms))))
+
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration."
   :feature :none

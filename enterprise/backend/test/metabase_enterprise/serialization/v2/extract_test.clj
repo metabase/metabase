@@ -1041,6 +1041,12 @@
         (testing "a Setting set by an env var is not exported"
           (is (nil? (exported-site-name))))))))
 
+(deftest transforms-scheduling-enabled-not-exported-test
+  (testing "a stored transforms-scheduling-enabled is not exported"
+    (mt/with-temporary-setting-values [transforms-scheduling-enabled false]
+      (is (not-any? (comp #{:transforms-scheduling-enabled} :key)
+                    (serdes/extract-all "Setting" {}))))))
+
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"

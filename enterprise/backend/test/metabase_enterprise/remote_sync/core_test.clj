@@ -14,6 +14,7 @@
    [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.transforms.settings :as transforms.settings]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -799,3 +800,37 @@
                               (core/bulk-set-remote-sync {coll-id true})))
         (is (false? (:is_remote_synced (t2/select-one :model/Collection :id coll-id)))
             "collection's is_remote_synced flag must remain unchanged when the guard fires")))))
+
+(deftest transforms-scheduling-enabled-derived-default-test
+  (mt/with-temporary-raw-setting-values [transforms-scheduling-enabled nil]
+    (doseq [[url sync-type sync-transforms? expected]
+            [["file://repo.git" "read-write" "true"  false]
+             ["file://repo.git" "read-only"  "true"  true]
+             [nil               "read-write" "true"  true]
+             ["file://repo.git" "read-write" "false" true]]]
+      (testing (format "unset setting, url %s, type %s, remote-sync-transforms %s -> %s"
+                       url sync-type sync-transforms? expected)
+        (mt/with-temporary-raw-setting-values [remote-sync-url        url
+                                               remote-sync-type       sync-type
+                                               remote-sync-transforms sync-transforms?]
+          (is (= expected (core/transforms-scheduling-default)))
+          (is (= expected (transforms.settings/transforms-scheduling-enabled))))))))
+
+(deftest transforms-scheduling-enabled-explicit-value-test
+  (testing "a stored true overrides the derived false of a read-write instance that syncs transforms"
+    (mt/with-temporary-raw-setting-values [remote-sync-url               "file://repo.git"
+                                           remote-sync-type              "read-write"
+                                           remote-sync-transforms        "true"
+                                           transforms-scheduling-enabled "true"]
+      (is (true? (transforms.settings/transforms-scheduling-enabled)))))
+  (testing "an env var false overrides the derived true of a read-only instance"
+    (mt/with-temporary-raw-setting-values [remote-sync-url               "file://repo.git"
+                                           remote-sync-type              "read-only"
+                                           remote-sync-transforms        "true"
+                                           transforms-scheduling-enabled nil]
+      (mt/with-temp-env-var-value! [mb-transforms-scheduling-enabled "false"]
+        (is (false? (transforms.settings/transforms-scheduling-enabled))))))
+  (testing "an env var false overrides a stored true"
+    (mt/with-temporary-raw-setting-values [transforms-scheduling-enabled "true"]
+      (mt/with-temp-env-var-value! [mb-transforms-scheduling-enabled "false"]
+        (is (false? (transforms.settings/transforms-scheduling-enabled)))))))

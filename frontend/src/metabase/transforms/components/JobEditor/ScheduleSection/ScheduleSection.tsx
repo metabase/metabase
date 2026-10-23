@@ -20,7 +20,7 @@ import type { ScheduleChangeEvent } from "metabase/common/components/Schedule/ty
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
 import { useMetadataToasts } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
-import { Box, Divider, Group, Tooltip } from "metabase/ui";
+import { Box, Divider, Group, Stack, Tooltip } from "metabase/ui";
 import { getScheduleExplanation } from "metabase/utils/cron";
 import { isResourceNotFoundError } from "metabase/utils/errors";
 import type { ScheduleDisplayType } from "metabase-types/api";
@@ -28,6 +28,7 @@ import type { ScheduleDisplayType } from "metabase-types/api";
 import { trackTransformJobTriggerManualRun } from "../../../analytics";
 import { RunButton } from "../../RunButton";
 import { RunStatus } from "../../RunStatus";
+import { SchedulingPausedCallout } from "../../SchedulingPausedCallout";
 import type { TransformJobInfo } from "../types";
 
 type ScheduleSectionProps = {
@@ -51,11 +52,12 @@ export function ScheduleSection({
       label={t`Schedule`}
       description={t`Configure when this job should run.`}
     >
-      <Box px="xxl" py="xl">
+      <Stack px="xxl" py="xl" gap="lg">
+        <SchedulingPausedCallout />
         <Box display="contents" component="fieldset" disabled={readOnly}>
           <ScheduleWidget job={job} onChangeSchedule={onScheduleChange} />
         </Box>
-      </Box>
+      </Stack>
       <Divider />
       <Group px="xxl" py="lg" justify="space-between">
         <RunStatus
