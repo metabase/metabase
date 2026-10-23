@@ -25,11 +25,11 @@ The Dashboard entity
 
 | Property                                     | Type                                                                                                           |
 | :------------------------------------------- | :------------------------------------------------------------------------------------------------------------- |
-| <a id="collection"></a> `collection?`        | [`MetabaseCollection`](./sdk/api/MetabaseCollection.md) \| `null`                                              |
+| <a id="collection"></a> `collection?`        | [`MetabaseCollection`](/docs/latest/embedding/sdk/api/MetabaseCollection.md) \| `null`                         |
 | <a id="created_at"></a> `created_at`         | `string`                                                                                                       |
 | <a id="description"></a> `description`       | `string` \| `null`                                                                                             |
-| <a id="entity_id"></a> `entity_id`           | [`SdkEntityId`](./sdk/api/SdkEntityId.md)                                                                      |
-| <a id="id"></a> `id`                         | [`SdkDashboardId`](./sdk/api/SdkDashboardId.md)                                                                |
+| <a id="entity_id"></a> `entity_id`           | [`SdkEntityId`](/docs/latest/embedding/sdk/api/SdkEntityId.md)                                                 |
+| <a id="id"></a> `id`                         | [`SdkDashboardId`](/docs/latest/embedding/sdk/api/SdkDashboardId.md)                                           |
 | <a id="last-edit-info"></a> `last-edit-info` | \{ `email`: `string`; `first_name`: `string`; `id`: `number`; `last_name`: `string`; `timestamp`: `string`; \} |
 | `last-edit-info.email`                       | `string`                                                                                                       |
 | `last-edit-info.first_name`                  | `string`                                                                                                       |

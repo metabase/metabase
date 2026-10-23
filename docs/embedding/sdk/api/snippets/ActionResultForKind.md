@@ -19,8 +19,8 @@ Maps an `ActionKind` literal to the discriminated `result` shape. Omit
 
 <!-- [<snippet type-parameters>] -->
 
-| Type Parameter                                                           |
-| :----------------------------------------------------------------------- |
-| `TKind` _extends_ [`ActionKind`](./sdk/api/ActionKind.md) \| `undefined` |
+| Type Parameter                                                                                |
+| :-------------------------------------------------------------------------------------------- |
+| `TKind` _extends_ [`ActionKind`](/docs/latest/embedding/sdk/api/ActionKind.md) \| `undefined` |
 
 <!-- [<endsnippet type-parameters>] -->

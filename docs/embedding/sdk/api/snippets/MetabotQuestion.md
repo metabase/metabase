@@ -8,9 +8,9 @@ A component that renders a metabot question.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                        |
-| :-------- | :---------------------------------------------------------- |
-| `props`   | [`MetabotQuestionProps`](./sdk/api/MetabotQuestionProps.md) |
+| Parameter | Type                                                                             |
+| :-------- | :------------------------------------------------------------------------------- |
+| `props`   | [`MetabotQuestionProps`](/docs/latest/embedding/sdk/api/MetabotQuestionProps.md) |
 
 <!-- [<endsnippet parameters>] -->
 

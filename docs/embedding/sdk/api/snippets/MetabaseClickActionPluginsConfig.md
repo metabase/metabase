@@ -13,10 +13,10 @@ type MetabaseClickActionPluginsConfig = (
 
 <!-- [<snippet parameters>] -->
 
-| Parameter          | Type                                                              |
-| :----------------- | :---------------------------------------------------------------- |
-| `clickActions`     | [`MetabaseClickAction`](./sdk/api/MetabaseClickAction.md)[]       |
-| `clickedDataPoint` | [`MetabaseDataPointObject`](./sdk/api/MetabaseDataPointObject.md) |
+| Parameter          | Type                                                                                   |
+| :----------------- | :------------------------------------------------------------------------------------- |
+| `clickActions`     | [`MetabaseClickAction`](/docs/latest/embedding/sdk/api/MetabaseClickAction.md)[]       |
+| `clickedDataPoint` | [`MetabaseDataPointObject`](/docs/latest/embedding/sdk/api/MetabaseDataPointObject.md) |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -24,7 +24,7 @@ type MetabaseClickActionPluginsConfig = (
 
 <!-- [<snippet returns>] -->
 
-\| [`MetabaseClickAction`](./sdk/api/MetabaseClickAction.md)[]
+\| [`MetabaseClickAction`](/docs/latest/embedding/sdk/api/MetabaseClickAction.md)[]
 \| \{
 `onClick`: () => `void`;
 \}

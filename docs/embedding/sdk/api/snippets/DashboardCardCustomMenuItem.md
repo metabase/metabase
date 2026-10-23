@@ -10,10 +10,10 @@ type DashboardCardCustomMenuItem = {
 
 <!-- [<snippet properties>] -->
 
-| Property                                    | Type                                                                                                                                     | Description  |
-| :------------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------- | :----------- |
-| <a id="customitems"></a> `customItems?`     | ( \| [`DashCardMenuItem`](./sdk/api/DashCardMenuItem.md) \| [`CustomDashboardCardMenuItem`](./sdk/api/CustomDashboardCardMenuItem.md))[] | **`Expand`** |
-| <a id="withdownloads"></a> `withDownloads?` | `boolean`                                                                                                                                | -            |
-| <a id="witheditlink"></a> `withEditLink?`   | `boolean`                                                                                                                                | -            |
+| Property                                    | Type                                                                                                                                                                               | Description  |
+| :------------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------- |
+| <a id="customitems"></a> `customItems?`     | ( \| [`DashCardMenuItem`](/docs/latest/embedding/sdk/api/DashCardMenuItem.md) \| [`CustomDashboardCardMenuItem`](/docs/latest/embedding/sdk/api/CustomDashboardCardMenuItem.md))[] | **`Expand`** |
+| <a id="withdownloads"></a> `withDownloads?` | `boolean`                                                                                                                                                                          | -            |
+| <a id="witheditlink"></a> `withEditLink?`   | `boolean`                                                                                                                                                                          | -            |
 
 <!-- [<endsnippet properties>] -->

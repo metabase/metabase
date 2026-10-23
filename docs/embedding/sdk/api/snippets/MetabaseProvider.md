@@ -8,9 +8,9 @@ A component that provides the Metabase SDK context and theme.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                          |
-| :-------- | :------------------------------------------------------------ |
-| `props`   | [`MetabaseProviderProps`](./sdk/api/MetabaseProviderProps.md) |
+| Parameter | Type                                                                               |
+| :-------- | :--------------------------------------------------------------------------------- |
+| `props`   | [`MetabaseProviderProps`](/docs/latest/embedding/sdk/api/MetabaseProviderProps.md) |
 
 <!-- [<endsnippet parameters>] -->
 

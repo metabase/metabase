@@ -8,9 +8,9 @@ A dashboard component with the features available in the `InteractiveDashboard` 
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                            | Description |
-| :-------- | :-------------------------------------------------------------- | :---------- |
-| `props`   | [`EditableDashboardProps`](./sdk/api/EditableDashboardProps.md) |             |
+| Parameter | Type                                                                                 | Description |
+| :-------- | :----------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`EditableDashboardProps`](/docs/latest/embedding/sdk/api/EditableDashboardProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 

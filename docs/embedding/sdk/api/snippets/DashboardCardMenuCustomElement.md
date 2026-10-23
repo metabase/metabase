@@ -10,10 +10,10 @@ type DashboardCardMenuCustomElement = ({
 
 <!-- [<snippet parameters>] -->
 
-| Parameter                | Type                                                                   |
-| :----------------------- | :--------------------------------------------------------------------- |
-| `{ question, }`          | \{ `question`: [`MetabaseQuestion`](./sdk/api/MetabaseQuestion.md); \} |
-| `{ question, }.question` | [`MetabaseQuestion`](./sdk/api/MetabaseQuestion.md)                    |
+| Parameter                | Type                                                                                        |
+| :----------------------- | :------------------------------------------------------------------------------------------ |
+| `{ question, }`          | \{ `question`: [`MetabaseQuestion`](/docs/latest/embedding/sdk/api/MetabaseQuestion.md); \} |
+| `{ question, }.question` | [`MetabaseQuestion`](/docs/latest/embedding/sdk/api/MetabaseQuestion.md)                    |
 
 <!-- [<endsnippet parameters>] -->
 

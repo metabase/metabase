@@ -13,9 +13,9 @@ basename resolves to `""` and the sub-path is just the raw pathname.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter      | Type                                                    |
-| :------------- | :------------------------------------------------------ |
-| `{ children }` | [`DataAppRouterProps`](./sdk/api/DataAppRouterProps.md) |
+| Parameter      | Type                                                                         |
+| :------------- | :--------------------------------------------------------------------------- |
+| `{ children }` | [`DataAppRouterProps`](/docs/latest/embedding/sdk/api/DataAppRouterProps.md) |
 
 <!-- [<endsnippet parameters>] -->
 

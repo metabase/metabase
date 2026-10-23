@@ -8,9 +8,9 @@ A component that renders a static question.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                      |
-| :-------- | :-------------------------------------------------------- |
-| `props`   | [`StaticQuestionProps`](./sdk/api/StaticQuestionProps.md) |
+| Parameter | Type                                                                           |
+| :-------- | :----------------------------------------------------------------------------- |
+| `props`   | [`StaticQuestionProps`](/docs/latest/embedding/sdk/api/StaticQuestionProps.md) |
 
 <!-- [<endsnippet parameters>] -->
 

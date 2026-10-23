@@ -8,9 +8,9 @@ A component that renders an interactive question.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                | Description |
-| :-------- | :------------------------------------------------------------------ | :---------- |
-| `props`   | [`InteractiveQuestionProps`](./sdk/api/InteractiveQuestionProps.md) |             |
+| Parameter | Type                                                                                     | Description |
+| :-------- | :--------------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`InteractiveQuestionProps`](/docs/latest/embedding/sdk/api/InteractiveQuestionProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 

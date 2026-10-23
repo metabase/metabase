@@ -8,9 +8,9 @@ type SchemaRow<TSchema> = {
 
 <!-- [<snippet type-parameters>] -->
 
-| Type Parameter                                                                               |
-| :------------------------------------------------------------------------------------------- |
-| `TSchema` _extends_ \{ `columns`: readonly [`SchemaColumn`](./sdk/api/SchemaColumn.md)[]; \} |
+| Type Parameter                                                                                                    |
+| :---------------------------------------------------------------------------------------------------------------- |
+| `TSchema` _extends_ \{ `columns`: readonly [`SchemaColumn`](/docs/latest/embedding/sdk/api/SchemaColumn.md)[]; \} |
 
 <!-- [<endsnippet type-parameters>] -->
 

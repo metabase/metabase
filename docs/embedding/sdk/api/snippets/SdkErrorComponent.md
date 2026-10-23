@@ -10,9 +10,9 @@ type SdkErrorComponent = ({
 
 <!-- [<snippet parameters>] -->
 
-| Parameter                   | Type                                                            |
-| :-------------------------- | :-------------------------------------------------------------- |
-| `{ type, message, error, }` | [`SdkErrorComponentProps`](./sdk/api/SdkErrorComponentProps.md) |
+| Parameter                   | Type                                                                                 |
+| :-------------------------- | :----------------------------------------------------------------------------------- |
+| `{ type, message, error, }` | [`SdkErrorComponentProps`](/docs/latest/embedding/sdk/api/SdkErrorComponentProps.md) |
 
 <!-- [<endsnippet parameters>] -->
 

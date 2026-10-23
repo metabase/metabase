@@ -15,15 +15,15 @@ type QueryQuestionResult = {
 
 <!-- [<snippet properties>] -->
 
-| Property                               | Type                                                                   |
-| :------------------------------------- | :--------------------------------------------------------------------- |
-| <a id="columns"></a> `columns`         | `DatasetColumn`[]                                                      |
-| <a id="description"></a> `description` | [`MetabaseQuestion`](./sdk/api/MetabaseQuestion.md)\[`"description"`\] |
-| <a id="entityid"></a> `entityId`       | [`MetabaseQuestion`](./sdk/api/MetabaseQuestion.md)\[`"entityId"`\]    |
-| <a id="id"></a> `id`                   | [`MetabaseQuestion`](./sdk/api/MetabaseQuestion.md)\[`"id"`\]          |
-| <a id="name"></a> `name`               | [`MetabaseQuestion`](./sdk/api/MetabaseQuestion.md)\[`"name"`\]        |
-| <a id="rowcount"></a> `rowCount`       | `number` \| `null`                                                     |
-| <a id="rows"></a> `rows`               | `RowValues`[]                                                          |
-| <a id="runningtime"></a> `runningTime` | `number` \| `null`                                                     |
+| Property                               | Type                                                                                        |
+| :------------------------------------- | :------------------------------------------------------------------------------------------ |
+| <a id="columns"></a> `columns`         | `DatasetColumn`[]                                                                           |
+| <a id="description"></a> `description` | [`MetabaseQuestion`](/docs/latest/embedding/sdk/api/MetabaseQuestion.md)\[`"description"`\] |
+| <a id="entityid"></a> `entityId`       | [`MetabaseQuestion`](/docs/latest/embedding/sdk/api/MetabaseQuestion.md)\[`"entityId"`\]    |
+| <a id="id"></a> `id`                   | [`MetabaseQuestion`](/docs/latest/embedding/sdk/api/MetabaseQuestion.md)\[`"id"`\]          |
+| <a id="name"></a> `name`               | [`MetabaseQuestion`](/docs/latest/embedding/sdk/api/MetabaseQuestion.md)\[`"name"`\]        |
+| <a id="rowcount"></a> `rowCount`       | `number` \| `null`                                                                          |
+| <a id="rows"></a> `rows`               | `RowValues`[]                                                                               |
+| <a id="runningtime"></a> `runningTime` | `number` \| `null`                                                                          |
 
 <!-- [<endsnippet properties>] -->

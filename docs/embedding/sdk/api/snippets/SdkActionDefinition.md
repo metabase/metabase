@@ -16,10 +16,10 @@ instead, so an app works before its resources are written.
 
 <!-- [<snippet properties>] -->
 
-| Property                                                  | Type                                                   |
-| :-------------------------------------------------------- | :----------------------------------------------------- |
-| <a id="action"></a> `action`                              | \{ `id`: [`SdkActionId`](./sdk/api/SdkActionId.md); \} |
-| `action.id`                                               | [`SdkActionId`](./sdk/api/SdkActionId.md)              |
-| <a id="copiedactionentityid"></a> `copiedActionEntityId?` | [`SdkEntityId`](./sdk/api/SdkEntityId.md)              |
+| Property                                                  | Type                                                                        |
+| :-------------------------------------------------------- | :-------------------------------------------------------------------------- |
+| <a id="action"></a> `action`                              | \{ `id`: [`SdkActionId`](/docs/latest/embedding/sdk/api/SdkActionId.md); \} |
+| `action.id`                                               | [`SdkActionId`](/docs/latest/embedding/sdk/api/SdkActionId.md)              |
+| <a id="copiedactionentityid"></a> `copiedActionEntityId?` | [`SdkEntityId`](/docs/latest/embedding/sdk/api/SdkEntityId.md)              |
 
 <!-- [<endsnippet properties>] -->

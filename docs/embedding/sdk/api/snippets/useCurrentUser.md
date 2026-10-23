@@ -9,6 +9,6 @@ Returns `null` until the SDK is fully loaded and initialized.
 
 <!-- [<snippet returns>] -->
 
-[`MetabaseUser`](./sdk/api/MetabaseUser.md) \| `null`
+[`MetabaseUser`](/docs/latest/embedding/sdk/api/MetabaseUser.md) \| `null`
 
 <!-- [<endsnippet returns>] -->
