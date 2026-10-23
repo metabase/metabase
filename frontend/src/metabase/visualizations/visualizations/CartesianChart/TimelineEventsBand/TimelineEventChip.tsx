@@ -73,7 +73,7 @@ export const TimelineEventChip = ({
   const [openedByKeyboard, setOpenedByKeyboard] = useState(false);
   const openedRef = useRef(opened);
   openedRef.current = opened;
-  const hoverTimeoutRef = useRef<number>();
+  const hoverTimeoutRef = useRef<number | undefined>(undefined);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const cancelPendingHover = () => {

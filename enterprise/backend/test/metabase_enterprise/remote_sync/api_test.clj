@@ -17,6 +17,7 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.driver.settings :as driver.settings]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -52,6 +53,7 @@
             (f))))
 
 (use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections
   test-helpers/clean-remote-sync-state
   (fn [f]
     (mt/with-premium-features #{:remote-sync}
@@ -1038,17 +1040,15 @@
        (is (false? (remote-sync.object/dirty?)))
        (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action")))))))
 
-(deftest push-tracks-archiving-an-action-test
-  (testing "GHY-4722: archiving an action removes its file on the next push, and unarchiving it writes the file back"
+(deftest push-tracks-deleting-an-action-test
+  (testing "deleting a model's action removes its file on the next push"
     (do-with-pushed-model-actions!
      (fn [{:keys [model push! repo-file]}]
        (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")]
-         (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived true})
+         (is (some? (repo-file "collections/main/synced/rename_venue.yaml")))
+         (mt/user-http-request :crowberto :delete 204 (str "action/" action-id))
          (is (remote-sync.task/successful? (push!)))
-         (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
-         (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived false})
-         (is (remote-sync.task/successful? (push!)))
-         (is (some? (repo-file "collections/main/synced/rename_venue.yaml"))))))))
+         (is (nil? (repo-file "collections/main/synced/rename_venue.yaml"))))))))
 
 (deftest push-tracks-moving-an-action-between-models-test
   (testing "GHY-4722: moving an action to a model outside the synced collections removes its file on the next push, and moving it back writes the file again"
@@ -2404,11 +2404,11 @@
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
 
 (deftest archiving-a-synced-model-with-actions-test
-  (testing "a model in a synced collection can be archived although it has actions, which are archived with it"
+  (testing "a model in a synced collection can be archived although it has actions, which are deleted with it"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :is_remote_synced true :location "/"}
                      :model/Card       {model-id :id}  {:type :model :collection_id synced-id
                                                         :dataset_query (mt/mbql-query venues)}
                      :model/Action     {action-id :id} {:type :query :name "Rename" :model_id model-id}]
         (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
-        (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))))))
+        (is (not (t2/exists? :model/Action :id action-id)))))))

@@ -266,7 +266,7 @@
     request-parameters :- RequestParameters
     opts               :- [:maybe ExecuteActionOpts]]
    (let [dashcard (api/check-404 (actions.db/dashcard-in-dashboard dashcard-id dashboard-id))
-         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
+         action (api/check-404 (action/select-action :id (:action_id dashcard) :archived false))]
      (analytics/track-event! :snowplow/action
                              {:event     :action-executed
                               :source    :dashboard

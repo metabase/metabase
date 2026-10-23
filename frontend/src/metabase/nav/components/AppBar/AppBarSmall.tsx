@@ -1,5 +1,5 @@
 import cx from "classnames";
-import { type ReactNode, useCallback, useState } from "react";
+import { type JSX, type ReactNode, useCallback, useState } from "react";
 
 import { Nav as DetailViewNav } from "metabase/detail-view/components";
 import { MetabotAppBarButton } from "metabase/metabot/components/MetabotAppBarButton";

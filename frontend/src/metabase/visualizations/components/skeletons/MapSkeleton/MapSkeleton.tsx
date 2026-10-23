@@ -1,3 +1,5 @@
+import type { JSX } from "react";
+
 import mapImage from "assets/img/map.svg?url";
 import { ChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeletonImage";
 

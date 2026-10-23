@@ -1,4 +1,4 @@
-import { type ReactNode, useLayoutEffect, useState } from "react";
+import { type JSX, type ReactNode, useLayoutEffect, useState } from "react";
 import {
   type DataRouter,
   RouterProvider as ReactRouterProvider,
@@ -72,14 +72,14 @@ function useLocationMirror(
 export function RouterProvider({
   routes,
   onLocationChange,
-  hydrateFallback,
+  loadingFallback,
 }: {
   routes: RouteObject[];
   onLocationChange?: LocationMirror;
-  hydrateFallback?: ReactNode;
+  loadingFallback?: ReactNode;
 }): JSX.Element {
   const [router] = useState(() =>
-    createAppRouter(routes, getBasename() || undefined, hydrateFallback),
+    createAppRouter(routes, getBasename() || undefined, loadingFallback),
   );
   useLocationMirror(router, onLocationChange);
 
@@ -98,21 +98,21 @@ export function RouterProviderMemory({
   basename,
   routerHolder,
   onLocationChange,
-  hydrateFallback,
+  loadingFallback,
 }: {
   routes: RouteObject[];
   initialRoute: string;
   basename?: string;
   routerHolder?: MemoryTestRouterHolder;
   onLocationChange?: LocationMirror;
-  hydrateFallback?: ReactNode;
+  loadingFallback?: ReactNode;
 }): JSX.Element {
   const [router] = useState(() => {
     const created = createMemoryAppRouter(
       routes,
       initialRoute,
       basename,
-      hydrateFallback,
+      loadingFallback,
     );
     if (routerHolder) {
       routerHolder.current = created;

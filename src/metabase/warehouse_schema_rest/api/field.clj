@@ -21,6 +21,7 @@
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-user-settings :as schema.field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
+   [metabase.warehouse-schema.table :as schema.table]
    [metabase.xrays.core :as xrays]
    [toucan2.core :as t2]))
 
@@ -85,7 +86,10 @@
   (when target-field-id
     (check-field-in-same-database! source-field-id target-field-id param-name)
     (when (not= target-field-id current-target-field-id)
-      (api/write-check :model/Field target-field-id))))
+      (-> (warehouse-schema-rest.db/field target-field-id)
+          :table_id
+          warehouse-schema-rest.db/table
+          schema.table/check-data-model-perms))))
 
 (defn- clear-dimension-on-fk-change! [{:keys [dimensions], :as _field}]
   (doseq [{dimension-id :id, dimension-type :type} dimensions]
@@ -211,7 +215,7 @@
     (let [updated (warehouse-schema-rest.db/field id)]
       (u/prog1 (-> updated
                    (t2/hydrate :dimensions :has_field_values)
-                   (field/hydrate-target-with-write-perms))
+                   (schema.field/hydrate-target-with-data-model-perms))
         (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
         (when (not= effective-type (:effective_type field))
           (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})

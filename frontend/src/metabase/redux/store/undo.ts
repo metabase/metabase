@@ -38,7 +38,7 @@ export interface Undo {
     label: string;
     action: () => void;
   };
-  ref?: RefObject<HTMLDivElement>;
+  ref?: RefObject<HTMLDivElement | null>;
   renderChildren?: (undo: Undo) => ReactNode;
   onDismiss?: (undoId: string | number) => void;
 }

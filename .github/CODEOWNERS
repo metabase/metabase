@@ -7,12 +7,6 @@
 # src/metabase/lib_be @metabase/querying-platform
 # src/metabase/query_processor @metabase/querying-platform
 
-# @metabase/graphy
-src/metabase/graph @metabase/graphy
-enterprise/backend/src/metabase_enterprise/dependencies @metabase/graphy
-enterprise/frontend/src/metabase-enterprise/dependencies @metabase/graphy
-enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics @metabase/graphy
-
 # @metabase/embedding
 
 frontend/src/metabase/embedding @metabase/embedding
