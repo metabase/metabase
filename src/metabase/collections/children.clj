@@ -894,9 +894,11 @@
 
 (defmethod post-process-collection-children :table
   [_ {:keys [models]} _collection rows]
-  (let [tables (t2/hydrate (map #(-> (t2/instance :model/Table %)
-                                     (update :archived api/bit->boolean)) rows)
-                           :can_write)]
+  (let [tables (->> (t2/hydrate (map #(-> (t2/instance :model/Table (assoc % :db_id (:database_id %) :is_published true))
+                                          (update :archived api/bit->boolean))
+                                     rows)
+                                :can_write)
+                    (map #(dissoc % :db_id :is_published)))]
     (if (contains? models :measure)
       (t2/hydrate tables :measures)
       tables)))
