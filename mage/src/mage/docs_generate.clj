@@ -1,4 +1,4 @@
-(ns mage.generate-docs
+(ns mage.docs-generate
   "Regenerates the docs that are built from source: environment variables, the config template, the API, AI providers,
   MCP tools, CLI commands, the usage analytics reference, and the embedding SDK and EAJS references."
   (:refer-clojure :exclude [run!])
@@ -13,7 +13,7 @@
 ;; .github/scripts/check-preresolve-aliases.sh reads the `clojure` alias out of this file.
 ;; CI runs this list from master on each target branch, so every target branch needs each command.
 (def ^:private suites
-  "Each suite and its command, in the order the bare `generate-docs` command runs them."
+  "Each suite and its command, in the order the bare `docs-generate` command runs them."
   [;; One JVM runs every Clojure generator, so Metabase's namespaces load once rather than once per document.
    ["backend"         ["clojure" "-M:ee:doc" "all-documentation"]]
    ;; `./bin/mage` installs `bin/bb` in its own checkout only, not in the `--dir` checkout.
@@ -24,7 +24,7 @@
 (def ^:private suite->command (into {} suites))
 
 (def suite-names
-  "Every suite name, in the order the bare `generate-docs` command runs them."
+  "Every suite name, in the order the bare `docs-generate` command runs them."
   (mapv first suites))
 
 (defn- run-suite!

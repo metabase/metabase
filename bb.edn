@@ -122,6 +122,19 @@
    :requires [[mage.start-maildev :as start-maildev]]
    :task (task! (start-maildev/start-maildev!))}
 
+  docs-preview
+  {:doc "Preview the docs of a Metabase repo in your metabase-dot-com checkout, at http://localhost:4000/docs/latest/"
+   :examples [["./bin/mage docs-preview" "Preview the docs of this repo"]
+              ["./bin/mage docs-preview .claude/worktrees/my-feature" "Preview the docs of a worktree (a relative path starts at this repo)"]
+              ["./bin/mage docs-preview ~/code/other-metabase" "Preview the docs of another checkout"]
+              ["./bin/mage docs-preview --site ~/code/www" "Use the metabase-dot-com checkout at ~/code/www"]
+              ["METABASE_DOT_COM_DIR=~/code/www ./bin/mage docs-preview" "The same, from the env. Set it in your shell profile to use it always"]]
+   :requires [[mage.docs-preview :as docs-preview]]
+   :options [[nil "--site DIR" "The metabase-dot-com checkout. A relative path starts at this repo. Default: $METABASE_DOT_COM_DIR, then ~/metabase-dot-com"]
+             [nil "--no-open" "Do not open the browser"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "repo-path" :description "The Metabase repo or worktree with the docs. Default: this repo"}]]]
+   :task (task! (docs-preview/docs-preview! parsed))}
+
   tail-d
   {:doc     "Tail the #d debug log in real time (see dev.debug). Asks the running REPL for the exact path; falls back to DEV_DEBUG_LOG or /tmp/<dir>_debug.log."
    :examples [["./bin/mage tail-d" "tail the #d log, with bat syntax highlighting if available"]]
@@ -399,13 +412,13 @@
    :requires [[mage.cursive-resolve-as :as cursive-resolve-as]]
    :task (task! (cursive-resolve-as/do-it))}
 
-  generate-docs
+  docs-generate
   {:doc "Regenerate the docs that are built from source. The backend suite runs every Clojure generator in one JVM."
-   :examples [["./bin/mage generate-docs" "Regenerate every generated doc"]
-              ["./bin/mage generate-docs backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
-              ["./bin/mage generate-docs usage-analytics" "Usage analytics reference"]
-              ["./bin/mage generate-docs embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
-              ["./bin/mage generate-docs embedding-eajs" "Modular embedding (EAJS) reference"]]
+   :examples [["./bin/mage docs-generate" "Regenerate every generated doc"]
+              ["./bin/mage docs-generate backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
+              ["./bin/mage docs-generate usage-analytics" "Usage analytics reference"]
+              ["./bin/mage docs-generate embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
+              ["./bin/mage docs-generate embedding-eajs" "Modular embedding (EAJS) reference"]]
    :options [["-d" "--dir DIR" "Absolute path of the Metabase checkout to generate the docs in. Defaults to this checkout."]]
    :arg-schema [:or
                 [:tuple]
@@ -414,8 +427,8 @@
                          "usage-analytics"
                          "embedding-sdk"
                          "embedding-eajs"]]]
-   :requires [[mage.generate-docs :as generate-docs]]
-   :task (task! (generate-docs/run! (first (:arguments parsed)) (:options parsed)))}
+   :requires [[mage.docs-generate :as docs-generate]]
+   :task (task! (docs-generate/run! (first (:arguments parsed)) (:options parsed)))}
 
   analytics:setup
   {:doc "Set up usage analytics development mode"
