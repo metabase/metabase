@@ -461,6 +461,25 @@
       (testing "the direct key suggested by the hint builds and runs"
         (is (seq (mt/rows (qp/process-query (get-in (query user-id) [:structured-output :query])))))))))
 
+(deftest construct-notebook-query-hidden-parent-key-hint-test
+  (let [db     (t2/select-one-fn :name :model/Database (mt/id))
+        build! #(construct-checkins-query
+                 db [{:aggregation [["count" {}]]
+                      :breakout [["field" {:source-field [db "PUBLIC" "CHECKINS" "VENUE_ID"]}
+                                  [db "PUBLIC" "CATEGORIES" "NAME"]]]}])]
+    (mt/with-temp [:model/Field parent {:table_id (mt/id :venues)
+                                        :name "HIDDEN_PAYLOAD"
+                                        :base_type :type/JSON
+                                        :database_type "JSON"
+                                        :visibility_type "sensitive"
+                                        :active true}]
+      (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:parent_id (:id parent)}
+        (mt/with-current-user (mt/user->id :rasta)
+          (assert-source-field-qp-failure! build!)
+          (let [error (try (build!) (catch clojure.lang.ExceptionInfo e e))]
+            (is (= :wrong-source-field (:error (ex-data error))))
+            (is (not (re-find #"HIDDEN_PAYLOAD|CATEGORY_ID" (str (ex-message error) (ex-data error)))))))))))
+
 (defn- follow-source-field-hint! [db stage message explicit-joins]
   (let [target (get-in stage [:breakout 0 2])]
     (cond

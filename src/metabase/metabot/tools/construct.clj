@@ -684,6 +684,7 @@
   [metadata-provider from-table-id to-table-id]
   (let [fields (->> (resolve.mp/outbound-fks-from-table metadata-provider from-table-id)
                     (map :source-field)
+                    (filter #(visible-field metadata-provider (:id %)))
                     entity-details/permission-filter-columns
                     (filter #(= to-table-id (foreign-key-target-table-id metadata-provider %))))]
     (when (= 1 (count fields))
