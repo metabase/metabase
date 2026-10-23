@@ -29,6 +29,15 @@
   []
   true)
 
+(defenterprise transforms-scheduling-default
+  "Default value of the `transforms-scheduling-enabled` setting when it is not set.
+
+  Returns false if remote-sync is enabled, remote-sync-type is :read-write and transforms are synced.
+  Always true on OSS."
+  metabase-enterprise.remote-sync.core
+  []
+  true)
+
 (defenterprise model-editable?
   "Determines if a model instance is editable based on remote sync configuration.
 

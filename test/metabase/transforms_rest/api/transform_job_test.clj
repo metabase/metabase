@@ -349,6 +349,25 @@
             (let [response (mt/user-http-request user :post 202 (str "transform-job/" (:id job) "/run"))]
               (is (nil? (:job_run_id response))))))))))
 
+(deftest execute-job-with-scheduling-disabled-test
+  (testing "POST /api/transform-job/:id/run starts a run when transforms-scheduling-enabled is false"
+    (mt/with-temporary-raw-setting-values [transforms-scheduling-enabled "false"]
+      (mt/with-premium-features #{:advanced-permissions :transforms-basic}
+        (with-transforms-api-users! [user]
+          (mt/with-model-cleanup [:model/TransformJobRun]
+            (mt/with-temp [:model/TransformTag tag {:name "scheduling-disabled-tag"}
+                           :model/TransformJob job {:name "Manual Job" :schedule "0 0 0 * * ?"}
+                           :model/TransformJobTransformTag _ {:job_id (:id job) :tag_id (:id tag) :position 0}
+                           :model/Transform transform {:name "Manual Run"}
+                           :model/TransformTransformTag _ {:transform_id (:id transform) :tag_id (:id tag) :position 0}]
+              (let [called (promise)]
+                (mt/with-dynamic-fn-redefs [jobs/run-transforms! (fn [run-id & _]
+                                                                   (deliver called run-id)
+                                                                   {::jobs/status :succeeded})]
+                  (let [response (mt/user-http-request user :post 202 (str "transform-job/" (:id job) "/run"))]
+                    (is (pos-int? (:job_run_id response)))
+                    (is (= (:job_run_id response) (deref called 5000 ::timed-out)))))))))))))
+
 (deftest permissions-test
   (testing "All endpoints require transform permissions"
     (mt/with-premium-features #{:transforms-basic}

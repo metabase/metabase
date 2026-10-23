@@ -1,6 +1,7 @@
 (ns metabase.transforms.settings
   (:require
    [metabase.premium-features.core :as premium-features]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.settings.core :as setting]
    [metabase.transforms.usage :as transforms.usage]
    [metabase.util.i18n :refer [deferred-tru]]))
@@ -63,6 +64,20 @@
             (if-some [v (explicit-transforms-enabled)]
               v
               (cloud-enabled-transforms?))))
+
+(setting/defsetting transforms-scheduling-enabled
+  (deferred-tru "Whether transform jobs run on their schedules.")
+  :doc "When disabled, transform jobs do not run on their schedules. Manual runs of transforms and jobs still work.
+  When not set, the default is false on an instance where Git sync is enabled in read-write mode and syncs transforms,
+  because another instance that reads the same repository runs them on schedule. Otherwise the default is true."
+  :type       :boolean
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter
+  :getter (fn []
+            (if-some [v (setting/get-value-of-type :boolean :transforms-scheduling-enabled)]
+              v
+              (remote-sync/transforms-scheduling-default))))
 
 (setting/defsetting transforms-setup-complete
   (deferred-tru "Whether transforms setup is complete.")

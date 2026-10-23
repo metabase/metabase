@@ -521,6 +521,27 @@
                                                        (format "transform/%d/run" (:id created)))]
                     (is (= "Transform run started" (:message response)))))))))))))
 
+(deftest run-transform-with-scheduling-disabled-test
+  (mt/with-temporary-raw-setting-values [transforms-enabled            "true"
+                                         transforms-scheduling-enabled "false"]
+    (mt/with-premium-features #{:advanced-permissions}
+      (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+        (testing "POST /api/transform/:id/run starts a run when transforms-scheduling-enabled is false"
+          (mt/dataset transforms-dataset/transforms-test
+            (with-transforms-api-users! [user]
+              (with-transform-db-perms!
+                (with-transform-cleanup! [table-name "test_run_sched_off"]
+                  (let [created  (mt/user-http-request user :post 200 "transform"
+                                                       {:name   "Manual Run Transform"
+                                                        :source {:type  "query"
+                                                                 :query (make-query "Gadget")}
+                                                        :target {:type   "table"
+                                                                 :schema (get-test-schema)
+                                                                 :name   table-name}})
+                        response (mt/user-http-request user :post 202
+                                                       (format "transform/%d/run" (:id created)))]
+                    (is (= "Transform run started" (:message response)))))))))))))
+
 (deftest transforms-disabled-blocks-api-operations-test
   (doseq [[features label] [[#{:transforms-basic :hosting} "hosted with transforms features"]
                             [#{} "self-hosted"]]]
