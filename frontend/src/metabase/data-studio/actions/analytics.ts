@@ -22,9 +22,18 @@ export function trackDataActionArchived(actionId: WritebackActionId) {
   });
 }
 
-export function trackDataActionExecuted(actionId: WritebackActionId) {
+export type DataActionExecutedTriggeredFrom = "data_studio";
+
+export function trackDataActionExecuted({
+  actionId,
+  triggeredFrom,
+}: {
+  actionId: WritebackActionId;
+  triggeredFrom: DataActionExecutedTriggeredFrom;
+}) {
   trackSimpleEvent({
     event: "data_action_executed",
     target_id: actionId,
+    triggered_from: triggeredFrom,
   });
 }

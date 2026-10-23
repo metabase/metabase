@@ -61,7 +61,12 @@ export function ActionRunPage() {
         opened={isModalOpened}
         actionId={action.id}
         onClose={closeModal}
-        onSuccess={() => trackDataActionExecuted(action.id)}
+        onSuccess={() =>
+          trackDataActionExecuted({
+            actionId: action.id,
+            triggeredFrom: "data_studio",
+          })
+        }
       />
     </PageContainer>
   );

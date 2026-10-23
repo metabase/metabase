@@ -63,7 +63,10 @@ describe(
       });
       cy.wait("@executeAction");
       H.modal().should("not.exist");
-      H.expectUnstructuredSnowplowEvent({ event: "data_action_executed" });
+      H.expectUnstructuredSnowplowEvent({
+        event: "data_action_executed",
+        triggered_from: "data_studio",
+      });
 
       cy.log("archive it");
       cy.findByRole("button", { name: "Action options" }).click();
