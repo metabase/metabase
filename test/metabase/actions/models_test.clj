@@ -482,12 +482,12 @@
       (is (not (t2/exists? :model/Action :entity_id entity-id))))))
 
 (deftest storage-path-test
-  (testing "actions without a model in the data actions root or namespace are stored in the data-actions folder"
+  (testing "actions without a model in the data actions root or namespace are stored in the data_actions folder"
     (mt/with-temp [:model/Collection {folder-eid :entity_id} {:namespace "data-actions"}
                    :model/Collection {app-eid :entity_id}    {:namespace "data-apps"}]
       (let [folder-label (fn [action]
                            (:label (second (serdes/storage-path (assoc action :serdes/meta [{:model "Action"}]) {}))))]
-        (is (= "data-actions" (folder-label {:name "At root" :entity_id "x" :model_id nil :collection_id nil})))
-        (is (= "data-actions" (folder-label {:name "In folder" :entity_id "x" :model_id nil :collection_id folder-eid})))
+        (is (= "data_actions" (folder-label {:name "At root" :entity_id "x" :model_id nil :collection_id nil})))
+        (is (= "data_actions" (folder-label {:name "In folder" :entity_id "x" :model_id nil :collection_id folder-eid})))
         (is (= "main" (folder-label {:name "App copy" :entity_id "x" :model_id nil :collection_id app-eid})))
         (is (= "main" (folder-label {:name "On a model" :entity_id "x" :model_id "model-eid" :collection_id nil})))))))

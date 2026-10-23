@@ -181,6 +181,13 @@
   Leave room for recovery steps when including excerpts."
   4000)
 
+(defn output-budget
+  "Return the character budget for an excerpt after `prefix` and every recovery step."
+  [prefix recovery]
+  (let [tool-names (into #{} (mapcat :uses) recovery)]
+    (- max-output-length
+       (count (tools.error/recoverable-text {:message prefix :recovery recovery} tool-names)))))
+
 (defn render
   "The failure [[::outcome]] for a ToolError, given the tool names available this turn.
 
@@ -189,6 +196,8 @@
   | `:validation`    | the message                                               |
   | `:recoverable`   | the message, then each kept recovery step on its own line  |
   | `:unrecoverable` | a fixed sentence carrying only the code                    |
+
+  Failure text is capped at [[max-output-length]] characters.
 
   `:user-message` is copied onto the outcome for unrecoverable errors so the agent loop can show it
   to the user. It never becomes part of `:output`."
