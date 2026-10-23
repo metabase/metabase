@@ -129,7 +129,9 @@ export function buildSeries({
         result.data.rows.length > 0 &&
         hasEnoughColsForBreakout &&
         colors instanceof Map;
-      const nativeBreakout = hasBreakout && displayType.supportsMultipleSeries;
+      const nativeBreakout =
+        hasBreakout &&
+        (displayType.supportsMultipleSeries || display === "table");
       const needsManualBreakoutSplit = hasBreakout && !nativeBreakout;
 
       const vizSettings = displayType.getSettings({

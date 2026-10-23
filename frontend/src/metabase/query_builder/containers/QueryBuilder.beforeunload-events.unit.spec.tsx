@@ -180,10 +180,14 @@ describe("QueryBuilder - beforeunload events", () => {
         card: TEST_STRUCTURED_CARD,
       });
 
-      expect(screen.queryByText("Count")).not.toBeInTheDocument();
-      await userEvent.click(await screen.findByText("Summarize"));
-      await userEvent.click(await screen.findByText("Done"));
-      expect(await screen.findByText("Count")).toBeInTheDocument();
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Filter/ }),
+      );
+      await userEvent.click(await screen.findByText("Created At"));
+      await userEvent.click(await screen.findByText("Today"));
+      expect(
+        await screen.findByText("Created At is today"),
+      ).toBeInTheDocument();
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
@@ -195,10 +199,14 @@ describe("QueryBuilder - beforeunload events", () => {
         card: TEST_UNSAVED_STRUCTURED_CARD,
       });
 
-      expect(screen.queryByText("Count")).not.toBeInTheDocument();
-      await userEvent.click(await screen.findByText("Summarize"));
-      await userEvent.click(await screen.findByText("Done"));
-      expect(await screen.findByText("Count")).toBeInTheDocument();
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Filter/ }),
+      );
+      await userEvent.click(await screen.findByText("Created At"));
+      await userEvent.click(await screen.findByText("Today"));
+      expect(
+        await screen.findByText("Created At is today"),
+      ).toBeInTheDocument();
 
       const mockEvent = callMockEvent(mockEventListener, "beforeunload");
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();

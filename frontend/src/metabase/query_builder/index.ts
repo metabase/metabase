@@ -58,3 +58,8 @@ export { ViewHeading } from "./components/view/ViewSection";
 export const loadQueryBuilder = () => import("./containers/QueryBuilder");
 export const loadMetabotQueryBuilder = () =>
   import("./components/MetabotQueryBuilder/MetabotQueryBuilder");
+
+export {
+  SummarizeAggregationItemList,
+  SummarizeBreakoutColumnList,
+} from "./components/view/sidebars/SummarizeSidebar/SummarizeContent";

@@ -46,7 +46,7 @@ export function LeftControls({ showStackSeries }: LeftControlsProps) {
     [updateActiveDimensionBreakout],
   );
 
-  if (!dimensionBreakout || dimensionBreakout.type === "scalar") {
+  if (!dimensionBreakout) {
     return null;
   }
 

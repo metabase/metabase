@@ -21,6 +21,7 @@ import type { CardId } from "metabase-types/api";
 
 import { useMetricsViewerContext } from "../../context";
 
+import { MetricResultTable } from "./MetricResultTable";
 import S from "./MetricsViewerVisualization.module.css";
 
 type MetricsViewerVisualizationProps = {
@@ -110,6 +111,20 @@ export function MetricsViewerVisualization({
 
   if (!dimensionBreakout) {
     return null;
+  }
+
+  if (dimensionBreakout.display === "table") {
+    return (
+      <Stack gap="lg" flex={1}>
+        {rawSeries.map((series) => (
+          <MetricResultTable
+            key={series.card.id}
+            name={series.card.name}
+            data={series.data}
+          />
+        ))}
+      </Stack>
+    );
   }
 
   return (

@@ -17,6 +17,7 @@ import type {
   MetricSourceId,
   MetricsViewerDefinitionEntry,
   MetricsViewerDimensionBreakoutState,
+  MetricsViewerDisplayType,
   MetricsViewerFormulaEntity,
   MetricsViewerPageState,
   SelectedMetric,
@@ -86,7 +87,9 @@ async function loadMeasureDefinition(
   return LibMetric.fromMeasureMetadata(provider, meta);
 }
 
-export function useViewerState(): UseViewerStateResult {
+export function useViewerState(
+  defaultDisplay?: MetricsViewerDisplayType,
+): UseViewerStateResult {
   const location = useLocation();
   const dispatch = useDispatch();
   const store = useStore();
@@ -290,7 +293,13 @@ export function useViewerState(): UseViewerStateResult {
           return prev;
         }
         const newDimensionBreakouts = assignDimensionsForUnmappedSlots(
-          [...prev.dimensionBreakouts, dimensionBreakout],
+          [
+            ...prev.dimensionBreakouts,
+            {
+              ...dimensionBreakout,
+              display: defaultDisplay ?? dimensionBreakout.display,
+            },
+          ],
           prev.definitions,
           prev.formulaEntities,
         );
@@ -303,7 +312,7 @@ export function useViewerState(): UseViewerStateResult {
               : prev.selectedDimensionBreakoutId,
         };
       }),
-    [],
+    [defaultDisplay],
   );
 
   const updateDimensionBreakout = useCallback(
@@ -363,7 +372,10 @@ export function useViewerState(): UseViewerStateResult {
             dimensionBreakouts = computeDefaultDimensionBreakouts(
               definitionsBySourceId,
               metricSlots,
-            );
+            ).map((breakout) => ({
+              ...breakout,
+              display: defaultDisplay ?? breakout.display,
+            }));
           }
         }
 
@@ -379,7 +391,7 @@ export function useViewerState(): UseViewerStateResult {
           selectedDimensionBreakoutId,
         };
       }),
-    [],
+    [defaultDisplay],
   );
 
   const setBreakoutDimension = useCallback(

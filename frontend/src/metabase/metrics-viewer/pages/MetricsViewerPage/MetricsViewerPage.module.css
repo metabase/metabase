@@ -7,3 +7,15 @@
   min-height: 0;
   overflow-y: auto;
 }
+
+@media (max-width: 60em) {
+  .workspace {
+    flex-direction: column;
+    overflow-y: auto;
+
+    > * {
+      min-height: 30rem;
+      flex-shrink: 0;
+    }
+  }
+}

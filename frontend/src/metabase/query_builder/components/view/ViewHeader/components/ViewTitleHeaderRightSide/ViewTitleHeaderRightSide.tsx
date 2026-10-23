@@ -81,15 +81,12 @@ export function ViewTitleHeaderRightSide({
   isRunnable,
   isRunning,
   isNativeEditorOpen,
-  isShowingSummarySidebar,
   isDirty,
   isResultDirty,
   isActionListVisible,
   runQuestionQuery,
   cancelQuery,
   onOpenModal,
-  editSummary,
-  onCloseSummary,
   setQueryBuilderMode,
   areFiltersExpanded,
   onExpandFilters,
@@ -182,13 +179,7 @@ export function ViewTitleHeaderRightSide({
         queryBuilderMode,
         isObjectDetail,
         isActionListVisible,
-      }) && (
-        <QuestionSummarizeWidget
-          isShowingSummarySidebar={isShowingSummarySidebar}
-          editSummary={editSummary}
-          onCloseSummary={onCloseSummary}
-        />
-      )}
+      }) && <QuestionSummarizeWidget question={question} />}
       {QuestionNotebookButton.shouldRender({
         question,
         isActionListVisible,
