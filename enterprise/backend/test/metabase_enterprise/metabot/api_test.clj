@@ -11,7 +11,8 @@
    [metabase.metabot.test-util :as mut]
    [metabase.premium-features.core :as premium-features]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,6 +58,39 @@
               ;; doesn't leak a stale "exceeded" verdict into other tests
               (finally
                 (ee.metabot.usage/clear-limit-cache!)))))))))
+
+(deftest agent-streaming-rejects-a-message-over-the-message-limit-test
+  (testing "POST /api/metabot/agent-streaming rejects a message a message limit has no room for, before the turn persists it"
+    (mt/with-premium-features #{:ai-controls}
+      (mt/with-temporary-setting-values [metabot.settings/llm-metabot-provider test-provider
+                                         ee.metabot.settings/metabot-limit-unit "messages"
+                                         ee.metabot.settings/metabot-quota-reached-message "test limit reached"]
+        (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions]
+          (try
+            (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 0}]
+              (ee.metabot.usage/clear-limit-cache!)
+              (let [llm-called?     (atom false)
+                    conversation-id (str (random-uuid))]
+                (mt/with-dynamic-fn-redefs [openrouter/openrouter (fn [_]
+                                                                    (reset! llm-called? true)
+                                                                    (mut/mock-llm-response
+                                                                     [{:type :text :text "should not be reached"}]))]
+                  (mt/with-model-cleanup [:model/MetabotMessage
+                                          [:model/MetabotConversation :created_at]]
+                    (is (=? {:message    "test limit reached"
+                             :error-code "ai_usage_limit_reached"}
+                            (mt/user-http-request :rasta :post 402 "metabot/agent-streaming"
+                                                  {:message         "Hi"
+                                                   :context         {}
+                                                   :conversation_id conversation-id
+                                                   :history         []
+                                                   :state           {}})))
+                    (testing "nothing was persisted and no LLM call was made"
+                      (is (nil? (t2/select-one :model/MetabotConversation :id conversation-id)))
+                      (is (empty? (t2/select :model/MetabotMessage :conversation_id conversation-id)))
+                      (is (false? @llm-called?)))))))
+            (finally
+              (ee.metabot.usage/clear-limit-cache!))))))))
 
 (deftest usage-get-returns-token-status-usage-test
   (mt/with-premium-features #{:metabot-v3}

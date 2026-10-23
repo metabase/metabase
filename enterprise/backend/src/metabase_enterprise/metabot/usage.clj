@@ -118,39 +118,39 @@
       (:cnt (metabot.db/usage-message-count start user-id tenant-id)))))
 
 (defn- over-limit?
-  "Whether `usage` exhausts `max-usage`. A token limit is checked before the LLM call that would add to it, so
-  reaching the limit blocks. A message limit is checked after the turn has persisted its user message, so the count
-  already includes the message being checked, and only a count beyond the limit blocks: a limit of 2 allows two
-  messages."
-  [usage max-usage]
+  "Whether `usage` leaves no room for the caller. A token limit is checked before the LLM call that would add to it,
+  so usage at the limit blocks. A message limit counts the persisted user messages; `pending` is 1 for a message a
+  turn is about to persist, which blocks at the limit, and 0 for an LLM call on behalf of a message already counted,
+  which blocks only beyond the limit. A limit of 2 allows two messages and the LLM calls they make."
+  [usage max-usage pending]
   (case (metabot.settings/metabot-limit-unit)
-    :messages (> usage max-usage)
+    :messages (> (+ usage pending) max-usage)
     :tokens   (>= usage max-usage)))
 
 (defn- check-instance-limit
   "Check the instance-wide limit. Returns an error message string if exceeded, nil otherwise."
-  []
+  [pending]
   (when-let [max-usage (:max_usage (instance-limit/instance-limit nil))]
     (let [usage (usage-query)]
-      (when (over-limit? usage max-usage)
+      (when (over-limit? usage max-usage pending)
         (metabot.settings/metabot-quota-reached-message)))))
 
 (defn- check-tenant-limit
   "Check the tenant-level limit. Returns an error message string if exceeded, nil otherwise."
-  [tenant-id]
+  [tenant-id pending]
   (when tenant-id
     (when-let [max-usage (:max_usage (instance-limit/instance-limit tenant-id))]
       (let [usage (usage-query :tenant-id tenant-id)]
-        (when (over-limit? usage max-usage)
+        (when (over-limit? usage max-usage pending)
           (metabot.settings/metabot-quota-reached-message))))))
 
 (defn- check-user-limit
   "Check the user-level limit (max across all their groups). Returns an error message if exceeded, nil otherwise."
-  [user-id]
+  [user-id pending]
   (when user-id
     (when-let [max-usage (group-limit/limit-for-user user-id)]
       (let [usage (usage-query :user-id user-id)]
-        (when (over-limit? usage max-usage)
+        (when (over-limit? usage max-usage pending)
           (metabot.settings/metabot-quota-reached-message))))))
 
 (def ^:private ^:const cache-ttl-ms
@@ -159,7 +159,7 @@
 
 (def ^:private check-instance-limit*
   (memoize/ttl
-   (fn [_cache-key] (check-instance-limit))
+   check-instance-limit
    :ttl/threshold cache-ttl-ms))
 
 (def ^:private check-tenant-limit*
@@ -185,15 +185,33 @@
   []
   (clear-limit-cache!))
 
+(defn- check-limits
+  "The quota message when the instance, tenant, or user limit of the current user leaves no room for `pending` more
+  messages, nil otherwise. Results are cached for `cache-ttl-ms`, per `pending`."
+  [pending]
+  (let [user-id   api/*current-user-id*
+        tenant-id (some-> api/*current-user* deref :tenant_id)]
+    (or (check-instance-limit* pending)
+        (check-tenant-limit* tenant-id pending)
+        (check-user-limit* user-id pending))))
+
 (defenterprise check-usage-limits!
-  "Check all usage limits for the current user. Returns nil if all limits are within bounds,
-  or a user-friendly error message string if any limit is exceeded.
+  "Check all usage limits for an LLM call by the current user. Returns nil if all limits are within bounds,
+  or a user-friendly error message string if any limit is exceeded. A message limit counts the user message the
+  call runs for, which the turn persisted before the call, so only a count beyond the limit blocks.
 
   Results are cached for `cache-ttl-ms`."
   :feature :none
   []
-  (let [user-id   api/*current-user-id*
-        tenant-id (some-> api/*current-user* deref :tenant_id)]
-    (or (check-instance-limit* :instance)
-        (check-tenant-limit* tenant-id)
-        (check-user-limit* user-id))))
+  (check-limits 0))
+
+(defenterprise check-new-message-limits!
+  "Check all usage limits for one more user message from the current user, before a turn persists it. Returns nil
+  when the message fits, or a user-friendly error message string when a message limit is reached. A token limit is
+  checked at each LLM call instead, so the result is nil for it.
+
+  Results are cached for `cache-ttl-ms`, apart from the [[check-usage-limits!]] results."
+  :feature :none
+  []
+  (when (= :messages (metabot.settings/metabot-limit-unit))
+    (check-limits 1)))

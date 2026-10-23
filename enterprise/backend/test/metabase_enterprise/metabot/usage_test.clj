@@ -440,30 +440,64 @@
     (mt/with-temporary-setting-values [metabot-limit-unit "messages"
                                        metabot-quota-reached-message "test limit reached"]
       (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 2}]
-        (let [user-id         (mt/user->id :rasta)
+        (let [user-id           (mt/user->id :rasta)
               ;; one turn: one user message, one agent message, several LLM calls
-              conversation-id (insert-messages! user-id ["user" "agent"])]
+              conversation-id   (insert-messages! user-id ["user" "agent"])
+              add-user-message! (fn []
+                                  (t2/insert! :model/MetabotMessage {:conversation_id conversation-id
+                                                                     :user_id         user-id
+                                                                     :role            "user"
+                                                                     :profile_id      "internal"
+                                                                     :data            []
+                                                                     :data_version    2
+                                                                     :total_tokens    0})
+                                  (ee.usage/clear-limit-cache!))]
           (dotimes [_ 5]
             (insert-usage! user-id 1))
           (try
             (testing "ai_usage_log rows and agent messages do not count: one turn is one message"
               (mt/with-test-user :rasta
-                (is (nil? (usage/check-usage-limits!)))))
-            (testing "a count at the limit passes: the turn persists its user message before the check, so the
-                      second message of a limit of two is the one being checked"
-              (t2/insert! :model/MetabotMessage {:conversation_id conversation-id :user_id user-id :role "user"
-                                                 :profile_id "internal" :data [] :data_version 2 :total_tokens 0})
-              (ee.usage/clear-limit-cache!)
+                (is (nil? (usage/check-usage-limits!)))
+                (is (nil? (usage/check-new-message-limits!)))))
+            (testing "at the limit: two messages of a limit of two"
+              (add-user-message!)
               (mt/with-test-user :rasta
-                (is (nil? (usage/check-usage-limits!)))))
-            (testing "a count beyond the limit blocks: the third message of a limit of two"
-              (t2/insert! :model/MetabotMessage {:conversation_id conversation-id :user_id user-id :role "user"
-                                                 :profile_id "internal" :data [] :data_version 2 :total_tokens 0})
-              (ee.usage/clear-limit-cache!)
+                (testing "an LLM call on behalf of the second message passes"
+                  (is (nil? (usage/check-usage-limits!))))
+                (testing "a third message does not"
+                  (is (= "test limit reached" (usage/check-new-message-limits!))))))
+            (testing "beyond the limit: a message persisted past the check blocks its LLM calls"
+              (add-user-message!)
               (mt/with-test-user :rasta
                 (is (= "test limit reached" (usage/check-usage-limits!)))))
             (finally
               (cleanup-conversation! conversation-id)
+              (cleanup-test-usage! user-id))))))))
+
+(deftest new-message-check-does-not-share-the-llm-call-verdict-test
+  (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
+    (mt/with-temporary-setting-values [metabot-limit-unit "messages"
+                                       metabot-quota-reached-message "test limit reached"]
+      (testing "a cached LLM-call verdict at the limit does not let a new message through"
+        (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 0}]
+          (mt/with-test-user :rasta
+            (is (nil? (usage/check-usage-limits!)))
+            (is (= "test limit reached" (usage/check-new-message-limits!)))))))))
+
+(deftest new-message-check-leaves-token-limits-to-the-llm-call-test
+  (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
+    (mt/with-temporary-setting-values [metabot-limit-unit "tokens"
+                                       metabot-quota-reached-message "test limit reached"]
+      (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 1}]
+        (let [user-id (mt/user->id :rasta)]
+          (insert-usage! user-id 1000000)
+          (try
+            (mt/with-test-user :rasta
+              (is (nil? (usage/check-new-message-limits!)))
+              (is (= "test limit reached" (usage/check-usage-limits!))))
+            (finally
               (cleanup-test-usage! user-id))))))))
 
 (deftest messages-under-limit-returns-nil-test
