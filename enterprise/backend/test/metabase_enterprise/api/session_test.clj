@@ -27,6 +27,7 @@
                               :content-verification
                               :data-apps
                               :data-complexity-score
+                              :data-sensitivity
                               :dashboard-subscription-filters
                               :disable-password-login
                               :database-auth-providers
@@ -85,6 +86,7 @@
             :content_verification           true
             :data-apps                      true
             :data-complexity-score          true
+            :data_sensitivity               true
             :dashboard_subscription_filters true
             :disable_password_login         true
             :database_auth_providers        true

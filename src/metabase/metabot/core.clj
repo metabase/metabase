@@ -46,3 +46,12 @@
  [metabase.metabot.self
   llm-call-available?
   llm-call-unavailable-reason])
+
+(defn do-with-all-metabot-permissions
+  "Run `thunk` with every Metabot group permission granted, so the usage and permission gates in
+  [[llm-call-unavailable-reason]] and the structured call path see `all-yes-permissions` instead of resolving the
+  current user's groups. For callers whose own permission check (for example database write access) is the gate,
+  not Metabot group membership. Instance-level gates and usage limits still apply."
+  [thunk]
+  (binding [metabase.metabot.scope/*current-user-metabot-permissions* metabase.metabot.scope/all-yes-permissions]
+    (thunk)))
