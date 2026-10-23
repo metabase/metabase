@@ -3,23 +3,17 @@
   `metabase.search.db` runs the queries, so this namespace must not require it (nor `metabase.search.appdb.index`)."
   (:require
    [honey.sql.helpers :as sql.helpers]
-   [metabase.app-db.core :as mdb]
+   [metabase.models.interface :as mi]
    [metabase.search.appdb.specialization.api :as specialization]
    [metabase.search.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]))
-
-(defn- model-id-col
-  "The `model_id` of the search index row as an integer."
-  []
-  [:cast :search_index.model_id (case (mdb/db-type)
-                                  :mysql :signed
-                                  :integer)])
 
 (defn add-table-where-clauses
   "Add a `WHERE` clause to the query to only return tables the current user has access to.
    Also adds any CTEs required for permission filtering."
   [search-ctx qry]
-  (let [{:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx (model-id-col))]
+  (let [{:keys [with clause]} (search.permissions/permitted-tables-clause search-ctx
+                                                                          (mi/->integer :search_index.model_id))]
     (cond-> qry
       (seq with) (update :with (fnil into []) with)
       true       (sql.helpers/where
@@ -36,7 +30,8 @@
   (sql.helpers/where qry [:or
                           [:= :search_index.model nil]
                           [:!= :search_index.model "data-app"]
-                          (search.permissions/permitted-data-apps-clause search-ctx (model-id-col))]))
+                          (search.permissions/permitted-data-apps-clause search-ctx
+                                                                         (mi/->integer :search_index.model_id))]))
 
 (defn add-collection-join-and-where-clauses
   "Add a `WHERE` clause to the query to only return Collections the Current User has access to; join against Collection,
