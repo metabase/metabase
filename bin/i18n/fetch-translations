@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+
+commit=$(i18n_commit "${1:-}")
+destination="$I18N_CACHE/$commit"
+
+complete() {
+  test -f "$destination/.commit" &&
+    test "$(cat "$destination/.commit")" = "$commit" &&
+    test -f "$destination/metabase.po" &&
+    test -f "$destination/en-ZZ.po" &&
+    test -f "$destination/.catalogs" || return 1
+  while IFS= read -r name; do
+    test -f "$destination/$name" || return 1
+  done < "$destination/.catalogs"
+}
+
+if complete; then
+  printf '%s\n' "$destination"
+  exit 0
+fi
+
+mkdir -p "$I18N_CACHE"
+lock="$I18N_CACHE/$commit.lock"
+attempt=0
+until mkdir "$lock" 2>/dev/null; do
+  if complete; then
+    printf '%s\n' "$destination"
+    exit 0
+  fi
+  attempt=$((attempt + 1))
+  if [ "$attempt" -ge 120 ]; then
+    echo "Timed out waiting for $lock. Check for an interrupted fetch." >&2
+    exit 1
+  fi
+  sleep 1
+done
+trap 'rm -rf "$lock"' EXIT
+
+if ! complete; then
+  if [ -e "$destination" ]; then
+    echo "Incomplete translation cache: $destination. Remove it and retry." >&2
+    exit 1
+  fi
+  i18n_clone "$commit" "$lock/repo"
+  mkdir "$lock/catalogs"
+  git -C "$lock/repo" archive "$commit:locales" -- '*.po' | tar -x -C "$lock/catalogs"
+  for po in "$lock/catalogs/"*.po; do
+    basename "$po"
+  done > "$lock/catalogs/.catalogs"
+  printf '%s\n' "$commit" > "$lock/catalogs/.commit"
+  chmod a-w "$lock/catalogs/"*.po
+  mv "$lock/catalogs" "$destination"
+fi
+printf '%s\n' "$destination"

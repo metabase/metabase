@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+
+commit=$(i18n_commit)
+mkdir -p "$I18N_CACHE"
+workspace=$(mktemp -d "$I18N_CACHE/update.XXXXXX")
+trap 'rm -rf "$workspace"' EXIT
+i18n_clone "$commit" "$workspace/repo"
+printf '%s\n' "$commit" > "$workspace/repo/.git/metabase-base"
+trap - EXIT
+printf '%s\n' "$workspace/repo"

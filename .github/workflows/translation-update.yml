@@ -8,6 +8,10 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: translation-update-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   synchronize-translations:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
@@ -33,14 +37,25 @@ jobs:
       - name: install gettext
         run: sudo apt-get install gettext
 
+      - name: Prepare external translation checkout
+        run: |
+          gh auth setup-git
+          checkout=$(./bin/i18n/prepare-translation-update)
+          checkout=${checkout#"$GITHUB_WORKSPACE/"}
+          git -C "$checkout" config user.name github-actions
+          git -C "$checkout" config user.email github-actions@github.com
+          cp locales/crowdin.yml "$checkout/locales/crowdin.yml"
+          echo "METABASE_I18N_CHECKOUT=$checkout" >> "$GITHUB_ENV"
+          echo "METABASE_I18N_SOURCE_DIR=$checkout/locales" >> "$GITHUB_ENV"
+
       - name: Crowdin download
         uses: crowdin/github-action@8868a33591d21088edfc398968173a3b98d51706 # v2.16.2
         id: crowdin-download
         with:
-          config: locales/crowdin.yml
+          config: ${{ env.METABASE_I18N_SOURCE_DIR }}/crowdin.yml
           command: download
           command_args: |
-            --config locales/crowdin.yml
+            --config ${{ env.METABASE_I18N_SOURCE_DIR }}/crowdin.yml
             -e=el
             -e=et
             -e=es-MX
@@ -64,13 +79,11 @@ jobs:
 
           ./bin/i18n/update-translation-template
 
-          git add locales/metabase.po
-          git commit -m "Update translation sources $DATE" --no-verify
-
           ./bin/i18n/build-translation-resources
+          ./bin/i18n/publish-translations "$METABASE_I18N_CHECKOUT"
 
-          git add locales/
-          git commit -a -m "Update translations $Date" --allow-empty --no-verify
+          git add locales/metabase-i18n.commit resources/locales.clj
+          git commit -m "Update translations $DATE" --allow-empty --no-verify
           git push -u origin "$BRANCH_NAME"
 
       - name: Upload i18n violations report
@@ -91,9 +104,9 @@ jobs:
           CROWDIN_PROJECT_ID: ${{ secrets.CROWDIN_PROJECT_ID }}
           CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_TOKEN }}
         with:
-          config: locales/crowdin.yml
+          config: ${{ env.METABASE_I18N_SOURCE_DIR }}/crowdin.yml
           command: upload
-          command_args: --config locales/crowdin.yml
+          command_args: --config ${{ env.METABASE_I18N_SOURCE_DIR }}/crowdin.yml
 
       - name: Open PR
         id: create_pr
@@ -160,3 +173,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.METABASE_AUTOMATION_USER_TOKEN }}
           PR_NUMBER: ${{ steps.create_pr.outputs.pr_number }}
+
+      - name: Remove external update checkout
+        if: ${{ always() && env.METABASE_I18N_CHECKOUT != '' }}
+        run: rm -rf "$(dirname "$METABASE_I18N_CHECKOUT")"

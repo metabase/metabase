@@ -4,8 +4,8 @@ Metabase's internationalization pipeline has two halves that the scripts in this
 orchestrate:
 
 1. **[Extraction](#extraction)** — scan Clojure/TypeScript source for `trs` / `tru` / ttag `t`
-   tagged-template call sites, emit a gettext source template at `locales/metabase.po`.
-2. **[Artifact generation](#artifact-generation)** — read back translated `locales/*.po` files,
+   tagged-template call sites, emit a gettext source template in a writable external checkout.
+2. **[Artifact generation](#artifact-generation)** — read back translated `locales/metabase-i18n/<commit>/*.po` files,
    apply [autofixes](#autofix-pass) for unambiguously repairable translator mistakes, validate
    the rest, and emit the runtime artifacts at `resources/i18n/*.edn` (backend) and
    `resources/frontend_client/app/locales/*.json` (frontend). Translations the scanner still
@@ -15,19 +15,77 @@ Between the two, [Crowdin](https://crowdin.com/project/metabase-i18n) is where t
 the `msgstr` values. The [`.github/workflows/translation-update.yml`](../../.github/workflows/translation-update.yml)
 workflow runs weekly to pull translations down and open a PR.
 
+## Fetch pinned translations
+
+`locales/metabase-i18n.commit` pins a commit in
+[ChrisVandoo/metabase-i18n](https://github.com/ChrisVandoo/metabase-i18n).
+Builds clone that commit and extract its catalogs into the ignored directory
+`locales/metabase-i18n/<commit>/`. The `.po` files sit directly in that directory.
+Completed snapshots are reused without network access and are never edited by the scripts.
+
+Run `./bin/i18n/build-translation-resources` to fetch the catalogs and generate frontend JSON
+and backend EDN resources. Full builds do this automatically. Frontend build and development
+commands use `./bin/i18n/ensure-translation-resources`, which also rebuilds when the pin,
+build code, or required output files change. For backend-only development or tests, run that
+command before starting the backend. Runtime translation does not access GitHub.
+
+## Publish translation changes
+
+Run `./bin/i18n/update-translation-template` to extract source strings, regenerate `en-ZZ.po`,
+validate the catalogs, and publish the changed `.po` files. Use `--check` to validate without
+pushing or changing the pin.
+
+Publishing requires Git credentials with write access to `ChrisVandoo/metabase-i18n` and a
+configured Git author name and email. The script pushes a `metabase-<commit>` branch to keep
+the new commit available, then updates `locales/metabase-i18n.commit`. Commit the pin and any
+changes to `resources/locales.clj` in Metabase. A failed push leaves the pin unchanged.
+
+The Crowdin workflow uses the same scripts. Its automation token must have write access to
+both repositories. Keep the sync workflow in Metabase; the copied workflow and tools in the
+external repository are not used by this pipeline.
+
+For a custom update, prepare a writable checkout:
+
+```sh
+checkout=$(./bin/i18n/prepare-translation-update)
+export METABASE_I18N_SOURCE_DIR="$checkout/locales"
+```
+
+Run the generation scripts or download Crowdin catalogs into that directory, then run:
+
+```sh
+./bin/i18n/build-translation-resources
+./bin/i18n/publish-translations "$checkout"
+unset METABASE_I18N_SOURCE_DIR
+rm -rf "$(dirname "$checkout")"
+```
+
+`./bin/i18n/merge-translations <branch> [-o]` merges the catalogs referenced by another
+Metabase branch, validates and publishes the result, and updates the current pin. It also
+supports older branches that still track `locales/*.po`.
+
+Update commands retain their ignored working checkout on failure and print its location so
+you can recover or retry. Successful updates remove it. Only `.po` files are committed to the
+external repository; intermediate `.pot` files are not published. `en-ZZ.po` is regenerated
+when the source template changes and is consumed from the pinned snapshot during builds.
+
+For a local Git fixture or an SSH remote, set `METABASE_I18N_REPOSITORY` to the repository URL.
+The default uses public HTTPS for reads. Test the checkout and publishing helpers with
+`python3 bin/i18n/test_external_repo.py`.
+
 ```mermaid
 flowchart LR
     subgraph Extract ["Phase 1: Extraction"]
         direction LR
         Source["source<br/>(.clj/.cljc/.ts/.tsx)"]
-        Pot[(locales/metabase.po)]
+        Pot[(External metabase.po)]
         Source -->|update-translation-template| Pot
     end
 
     subgraph Sync ["Phase 2: Crowdin sync"]
         direction LR
         Crowdin{{Crowdin}}
-        LocalePo[(locales/*.po)]
+        LocalePo[(Pinned external catalogs)]
         Crowdin -->|download| LocalePo
     end
 
@@ -50,7 +108,7 @@ flowchart LR
 
 ## Extraction
 
-_Source code → `locales/metabase.po`_
+_Source code → external `metabase.po`_
 
 ### Building the backend pot file
 
@@ -147,9 +205,9 @@ More information in the [grasp issue](https://github.com/borkdude/grasp/issues/2
 
 ## Artifact generation
 
-_`locales/*.po` → `resources/i18n/*.edn` + `resources/frontend_client/app/locales/*.json`_
+_`locales/metabase-i18n/<commit>/*.po` → `resources/i18n/*.edn` + `resources/frontend_client/app/locales/*.json`_
 
-Once translators have filled in `locales/<locale>.po` through Crowdin, the build pipeline turns
+Once translators have filled in the external `<locale>.po` files through Crowdin, the build pipeline turns
 those into the runtime artifacts that Metabase actually ships:
 
 - **Backend**: `resources/i18n/<locale>.edn` — consumed by `metabase.util.i18n.impl/translate` via
@@ -171,7 +229,7 @@ This calls `clojure -X:build:build/i18n`, which invokes
    translator mistakes that can be unambiguously repaired (currently: unescaped apostrophes for
    backend strings).
 3. Run the scanner `i18n.validation/invalid-messages-in-po` on the post-autofix contents to produce
-   a seq of violation maps for every `msgstr` that *still* fails validation — see
+   a seq of violation maps for every `msgstr` that _still_ fails validation — see
    [violations report](#violations-report) below.
 4. Derive a drop-set of msgids using `i18n.validation/drop-from-build?` (see
    [drop policy](#drop-policy)) and pass it, along with the post-autofix `po-contents`, to both
@@ -191,7 +249,7 @@ The source of truth for this pipeline lives in `bin/build/src/i18n/`:
 
 ### Autofix pass
 
-Runs once per locale, *before* validation, on the parsed `po-contents`. Its job is to silently
+Runs once per locale, _before_ validation, on the parsed `po-contents`. Its job is to silently
 correct translator mistakes that can be unambiguously repaired — making translations that would
 otherwise fail the scanner ship correctly. Both the scanner and the artifact writers consume the
 post-autofix contents, so they agree on what's being shipped.
@@ -204,7 +262,7 @@ ttag has different escaping rules):
   instead of escape delimiters. Apostrophes that are already doubled, or that sit next to `{` /
   `}` (i.e. intentional MessageFormat escapes like `'{0}'`), pass through untouched.
 
-This is handled *before* the scanner, so translations that only had apostrophe typos never reach
+This is handled _before_ the scanner, so translations that only had apostrophe typos never reach
 the violations report. If you ever see `d'aquí`-style entries in the report, it means autofix
 couldn't reach them (likely a non-backend context) and you'd need to fix them in Crowdin.
 
@@ -237,20 +295,20 @@ per-type counts and a direct link to the artifact.
 
 ### Columns
 
-| Column          | Meaning |
-|-----------------|---------|
-| `locale`        | The locale the violation was found in (e.g. `fr`, `de`, `pt-BR`, `ar-SA`). |
-| `types`         | The set of violation types for this row, joined with `+` (e.g. `skipped-arg-index+arg-count-mismatch`). See [violation types](#violation-types) below. |
+| Column          | Meaning                                                                                                                                                                                                                       |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `locale`        | The locale the violation was found in (e.g. `fr`, `de`, `pt-BR`, `ar-SA`).                                                                                                                                                    |
+| `types`         | The set of violation types for this row, joined with `+` (e.g. `skipped-arg-index+arg-count-mismatch`). See [violation types](#violation-types) below.                                                                        |
 | `dropped`       | `true` if this translation was **excluded** from the built `.edn`/`.json` artifact (runtime will fall back to English). `false` if it was kept in the artifact despite imperfection (runtime renders with the issue visible). |
-| `backend`       | `true` if the msgid originates from Clojure source (`.clj` / `.cljc`), `false` if from frontend source (`.ts` / `.tsx` / `.js` / `.jsx`). This determines which format-system rules were applied. |
-| `plural_index`  | For singular (non-plural) strings this is empty. For plural strings it's the index of the affected form (`0`, `1`, …) within the locale's `msgstr[N]` array. |
-| `msgid`         | The English singular source string — the key translators see in Crowdin. |
-| `msgid_plural`  | The English plural form, if the string has one. Empty for non-plural strings. |
-| `msgstr`        | The translated string that failed validation — the actual text the translator produced. |
-| `error`         | Populated only for `invalid-message-format` rows — the `java.text.MessageFormat` exception message (e.g. `Unmatched braces in the pattern.`). Empty for other types. |
-| `expected_args` | For `arg-count-mismatch` rows: the acceptable placeholder count(s), derived from `msgid` and `msgid_plural`. Comma-separated (e.g. `0,1` for a plural where singular has 0 placeholders and plural has 1). |
-| `actual_args`   | For `arg-count-mismatch` rows: the number of distinct placeholder indices actually used in `msgstr`. |
-| `source_refs`   | Space-separated `path:line` pointers back to the source code where this msgid is used. |
+| `backend`       | `true` if the msgid originates from Clojure source (`.clj` / `.cljc`), `false` if from frontend source (`.ts` / `.tsx` / `.js` / `.jsx`). This determines which format-system rules were applied.                             |
+| `plural_index`  | For singular (non-plural) strings this is empty. For plural strings it's the index of the affected form (`0`, `1`, …) within the locale's `msgstr[N]` array.                                                                  |
+| `msgid`         | The English singular source string — the key translators see in Crowdin.                                                                                                                                                      |
+| `msgid_plural`  | The English plural form, if the string has one. Empty for non-plural strings.                                                                                                                                                 |
+| `msgstr`        | The translated string that failed validation — the actual text the translator produced.                                                                                                                                       |
+| `error`         | Populated only for `invalid-message-format` rows — the `java.text.MessageFormat` exception message (e.g. `Unmatched braces in the pattern.`). Empty for other types.                                                          |
+| `expected_args` | For `arg-count-mismatch` rows: the acceptable placeholder count(s), derived from `msgid` and `msgid_plural`. Comma-separated (e.g. `0,1` for a plural where singular has 0 placeholders and plural has 1).                    |
+| `actual_args`   | For `arg-count-mismatch` rows: the number of distinct placeholder indices actually used in `msgstr`.                                                                                                                          |
+| `source_refs`   | Space-separated `path:line` pointers back to the source code where this msgid is used.                                                                                                                                        |
 
 ### Violation types
 
@@ -322,8 +380,8 @@ tells you which language to open.
 
 ### Runtime behavior summary
 
-| Violation type           | Build-time action      | Runtime behavior |
-|--------------------------|------------------------|------------------|
-| `invalid-message-format` | Dropped from artifact  | English fallback |
-| `skipped-arg-index`      | Kept in artifact       | Localized text with literal `{N}` for missing indices |
-| `arg-count-mismatch`     | Kept in artifact       | Localized text with literal `{N}` for missing placeholders, or extra args silently dropped |
+| Violation type           | Build-time action     | Runtime behavior                                                                           |
+| ------------------------ | --------------------- | ------------------------------------------------------------------------------------------ |
+| `invalid-message-format` | Dropped from artifact | English fallback                                                                           |
+| `skipped-arg-index`      | Kept in artifact      | Localized text with literal `{N}` for missing indices                                      |
+| `arg-count-mismatch`     | Kept in artifact      | Localized text with literal `{N}` for missing placeholders, or extra args silently dropped |
