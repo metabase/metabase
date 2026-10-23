@@ -4700,7 +4700,8 @@
   {:team "Graphy"
    :api  #{metabase-enterprise.workspaces.api
            metabase-enterprise.workspaces.core
-           metabase-enterprise.workspaces.init}
+           metabase-enterprise.workspaces.init
+           metabase-enterprise.workspaces.load-metadata}
    :uses #{api
            app-db
            cache
@@ -4721,7 +4722,9 @@
    :model-exports #{:model/Workspace}
    :model-imports #{:model/Database
                     :model/Field
+                    :model/FieldUserSettings
                     :model/Table
+                    :model/TableUserSettings
                     :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
