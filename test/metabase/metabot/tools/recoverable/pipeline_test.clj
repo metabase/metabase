@@ -11,7 +11,9 @@
    [clojure.test :refer :all]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.recovery-hints :as v2-hints]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.recoverable.pipeline :as pipeline]
    [metabase.metabot.tools.recovery-hints :as v1-hints]))
 
@@ -95,17 +97,22 @@
      :paths "stages[0].filters: invalid type"
      :humanized {"stages" [{"filters" ["invalid type"]}]}}]))
 
+(defn- v1-recovery-steps
+  "Each Metabot recovery step paired with its pipeline error code."
+  []
+  (for [[code {:keys [build-fn]}] (tools.error/recoverables)
+        :when   (= declaration-ns (namespace code))
+        payload pipeline-payloads
+        step    (:recovery (build-fn payload))]
+    [code step]))
+
 (defn- v1-recovery-texts
   "Every recovery sentence that Metabot or the Agent API can send for a pipeline error.
 
   Metabot's are the steps that its pipeline declarations build, and the Agent API's are the hints that it appends."
   []
   (concat
-   (for [[code {:keys [build-fn]}] (tools.error/recoverables)
-         :when   (= declaration-ns (namespace code))
-         payload pipeline-payloads
-         step    (:recovery (build-fn payload))]
-     (:text step))
+   (map (comp :text second) (v1-recovery-steps))
    (for [code    (pipeline-codes)
          payload pipeline-payloads
          :let    [hint (v1-hints/recovery-hint (assoc payload :error code))]
@@ -128,6 +135,15 @@
            `browse_data` or `get_content` or asks for a numeric id would send their agent the wrong way"
     (doseq [text (v1-recovery-texts)]
       (is (nil? (mcp-vocabulary text)) text))))
+
+(deftest ^:parallel v1-recovery-steps-use-v1-tools-test
+  (let [tool-names (into #{}
+                         (map (comp :name tools.legacy/declaration-of))
+                         (mapcat :tools (vals @@#'profiles/*profiles)))]
+    (is (seq tool-names))
+    (doseq [[code {:keys [uses]}] (v1-recovery-steps)]
+      (is (set/subset? uses tool-names)
+          (str code " uses tools unavailable to Metabot: " (pr-str (set/difference uses tool-names)))))))
 
 (deftest ^:parallel payload-dependent-recovery-text-is-checked-test
   (let [texts (set (v1-recovery-texts))]
