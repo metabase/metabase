@@ -1,0 +1,399 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  row-gap: 0.375rem;
+  align-items: center;
+  min-height: 2.125rem;
+  padding: 0.125rem 0.25rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 0.5rem;
+  background-color: var(--mb-color-background_surface-primary);
+  font-family: var(--mantine-font-family-monospace);
+  cursor: text;
+}
+
+.bar:focus-within {
+  border-color: var(--mb-color-core-filter);
+}
+
+.barInvalid:focus-within,
+.barInvalid {
+  border-color: var(--mb-color-feedback-negative);
+}
+
+.gap {
+  position: relative;
+  align-self: stretch;
+  width: 0.25rem;
+  border-radius: 2px;
+}
+
+.gap:hover {
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+@keyframes caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes caret-blink-shadow {
+  0%,
+  49% {
+    box-shadow: inset 2px 0 0 var(--mb-color-core-filter);
+  }
+
+  50%,
+  100% {
+    box-shadow: none;
+  }
+}
+
+/* The caret between tokens: a line in the gap, so it takes no extra space. */
+.bar:focus-within .gapActive::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background-color: var(--mb-color-core-filter);
+  animation: caret-blink 1s steps(1) infinite;
+}
+
+.op {
+  padding: 0 0.25rem;
+  border-radius: 0.25rem;
+  color: var(--mb-color-text-secondary);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.op:hover {
+  background-color: var(--mb-color-background_page-secondary);
+  color: var(--mb-color-text-primary);
+}
+
+.opOr {
+  color: var(--mb-color-core-filter);
+}
+
+.paren {
+  padding: 0 0.125rem;
+  color: var(--mb-color-text-primary);
+  font-weight: 700;
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  user-select: none;
+  cursor: pointer;
+}
+
+.paren:hover {
+  background-color: var(--mb-color-background_page-secondary);
+  border-radius: 0.25rem;
+}
+
+.tokenError {
+  outline: 2px solid var(--mb-color-feedback-negative);
+  outline-offset: 1px;
+  border-radius: 0.25rem;
+}
+
+/* A token that just arrived from outside the bar (a drill, an example). */
+.tokenFresh {
+  border-radius: 0.25rem;
+  animation: fresh-token 1.5s ease-out both;
+}
+
+@keyframes fresh-token {
+  from {
+    background-color: var(--mb-color-background_surface-selected);
+    box-shadow: 0 0 0 2px var(--mb-color-core-filter);
+  }
+
+  to {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.input {
+  flex: 1 0 4rem;
+  min-width: 4rem;
+  height: 1.5rem;
+  padding: 0 0.25rem;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--mb-color-text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.input::placeholder {
+  color: var(--mb-color-text-tertiary);
+}
+
+.inputInline {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 0;
+}
+
+/* Tighter pill than the shared Token: less inner gap and padding. */
+.filterToken > button {
+  gap: 0.375rem;
+  padding: 0.0625rem 0.375rem 0.0625rem 0.5rem;
+}
+
+/* While empty, our own position caret stands in for the native one. */
+.inputEmpty {
+  caret-color: transparent;
+}
+
+/* Rows styled after the default filter picker's column list: icon, bold title, brand fill when active. */
+.suggestion {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: calc(100% - 1rem);
+  margin: 1px 0.5rem;
+  padding: 0.5rem;
+  border-radius: 4px;
+  text-align: left;
+  color: var(--mb-color-text-primary);
+}
+
+.suggestionIcon {
+  flex: 0 0 auto;
+  color: var(--mb-color-text-disabled);
+}
+
+.suggestionTitle {
+  color: var(--mb-color-text-primary);
+}
+
+.suggestion:hover,
+.suggestionActive {
+  background-color: var(--mb-color-core-brand);
+}
+
+.suggestion:hover .suggestionTitle,
+.suggestionActive .suggestionTitle,
+.suggestion:hover .suggestionIcon,
+.suggestionActive .suggestionIcon {
+  color: var(--mb-color-text-primary-inverse);
+}
+
+.keyword {
+  padding: 0 0.375rem;
+  border-radius: 0.25rem;
+  background-color: var(--mb-color-background_page-secondary);
+  font-family: var(--mantine-font-family-monospace);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+}
+
+/* At the end of the expression the input itself shows where the caret sits. */
+.input:not(.inputInline).inputEmpty:focus {
+  animation: caret-blink-shadow 1s steps(1) infinite;
+}
+
+/*
+ * Several stage segments flow as one wrapping stream inside one bar. A
+ * segment has no box of its own; its status line sorts to the end of the
+ * bar and takes a full row.
+ */
+.stagedBar {
+  width: 100%;
+}
+
+.segment {
+  display: contents;
+}
+
+/* Only the segment holding the focused input shows its position caret; the bar's focus-within would light up both. */
+.segment:not(:focus-within) .gapActive::before {
+  display: none;
+}
+
+.segmentStatus {
+  flex: 1 0 100%;
+  order: 1;
+  min-height: 1.75rem;
+  padding: 0 0.25rem;
+  font-family: var(--mantine-font-family);
+}
+
+/* Inside the stream the caret input hugs its text (or placeholder), so the next segment follows on the same line. */
+.segment .input {
+  flex: 0 0 auto;
+  field-sizing: content;
+  min-width: 1rem;
+  max-width: 100%;
+}
+
+/* Between tokens it stays zero-wide while empty, so moving the caret never shifts anything. */
+.segment .inputInline {
+  min-width: 0;
+}
+
+/* Holds the end input's slot while the caret is elsewhere, so the band keeps its length. */
+.endSpacer {
+  flex: 0 0 auto;
+  width: 1rem;
+  align-self: stretch;
+  cursor: text;
+}
+
+/*
+ * Each stage segment sits on its own faintly coloured band. A segment has no
+ * box, so every item paints its own slice: stretched to the line, so the band
+ * is level, and rounded only at the segment's ends, so it reads as one run
+ * that wraps with its tokens.
+ */
+.stageSegment > * {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  /* Vertical room so the band shows above and below the pills. */
+  padding-block: 0.25rem;
+  /* Items keep square corners so the slices join seamlessly; only the stage ends are rounded below. */
+  border-radius: 0;
+  background-color: var(--stage-band);
+  transition: background-image 120ms ease-out;
+}
+
+/*
+ * Hovering anywhere on a stage deepens its whole band, background only: a
+ * translucent hover layer over the band colour, so the pills stay as they
+ * are. The segment has no box, but `:hover` still matches it through its
+ * descendants.
+ */
+.stageSegment:hover > * {
+  background-image: linear-gradient(
+    var(--mb-color-background_surface-hover),
+    var(--mb-color-background_surface-hover)
+  );
+}
+
+/* The band opens with the stage badge, grouped with the first token. */
+.stageSegment > :first-child {
+  padding-left: 0.25rem;
+  border-radius: 0.375rem 0 0 0.375rem;
+}
+
+.segmentHead {
+  display: inline-flex;
+  align-items: center;
+}
+
+.segmentHead > .gap {
+  align-self: stretch;
+}
+
+.stageSegment > :last-child {
+  padding-right: 0.25rem;
+  margin-right: 0.25rem;
+  border-radius: 0 0.375rem 0.375rem 0;
+}
+
+.stageSegment > .input {
+  height: auto;
+}
+
+.stageSegment > .gap:hover {
+  background-color: var(--mb-color-background_page-tertiary);
+}
+
+.rowsStage {
+  --stage-band: var(--mb-color-background_page-filter);
+}
+
+.summaryStage {
+  --stage-band: var(--mb-color-background_surface-success);
+}
+
+/* The slot is a band item (tinted, stretched); the circle sits inside it. */
+.stageBadgeSlot {
+  padding-right: 0.125rem;
+  cursor: help;
+}
+
+.stageSegment .stageBadgeSlot {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+}
+
+.stageBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1rem;
+  height: 1rem;
+  padding: 0 0.25rem;
+  border-radius: 1rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background_surface-primary);
+  color: var(--mb-color-core-brand);
+  font-family: var(--mantine-font-family);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.opNot {
+  color: var(--mb-color-feedback-negative);
+}
+
+/* Tokens a menu item would act on, while that item is hovered. */
+.tokenPreview {
+  border-radius: 0.25rem;
+  box-shadow: 0 0 0 2px var(--mb-color-core-filter);
+}
+
+/* Selected tokens: only while this bar or segment holds the caret. */
+.bar:focus-within .tokenSelected,
+.segment:focus-within .tokenSelected {
+  border-radius: 0;
+  background-color: var(--mb-color-background_surface-brand-subtle);
+}
+
+/* The span of a hovered parenthesis pair. */
+.inParenSpan {
+  background-color: var(--mb-color-background_surface-secondary);
+}
+
+.parenMatched {
+  border-radius: 0.25rem;
+  color: var(--mb-color-core-filter);
+  background-color: var(--mb-color-background_surface-selected);
+}
+
+/* The pair the caret touches: shown only while the caret is in the bar. */
+.bar:focus-within .inParenSpanCaret,
+.segment:focus-within .inParenSpanCaret {
+  background-color: var(--mb-color-background_surface-secondary);
+}
+
+.bar:focus-within .parenMatchedCaret,
+.segment:focus-within .parenMatchedCaret {
+  border-radius: 0.25rem;
+  color: var(--mb-color-core-filter);
+  background-color: var(--mb-color-background_surface-selected);
+}

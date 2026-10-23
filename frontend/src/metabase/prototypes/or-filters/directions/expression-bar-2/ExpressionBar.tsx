@@ -44,7 +44,7 @@ import { CompactReadingContext } from "./settings";
 import {
   CLOSE_PAREN,
   OPEN_PAREN,
-  type Token,
+  type ExpressionToken,
   filterToken,
   insertToken,
   opToken,
@@ -121,7 +121,7 @@ export function ExpressionBar({
   const compactReading = useContext(CompactReadingContext);
   const [isFocused, setIsFocused] = useState(false);
   const committedTokens = useMemo(
-    () => readTokens(query, stageIndex),
+    () => readTokens(query, stageIndex, { withNot: true }),
     [query, stageIndex],
   );
   const [tokens, setTokens] = useState(committedTokens);
@@ -172,7 +172,10 @@ export function ExpressionBar({
     [tokens, allowOr],
   );
   const errorPosition = parsed.ok ? undefined : parsed.position;
-  const suggestions = useSuggestions(query, stageIndex, text, { allowOr });
+  const suggestions = useSuggestions(query, stageIndex, text, {
+    allowOr,
+    withNot: true,
+  });
 
   // Moving the caret moves the input's DOM node, which blurs it; refocus after render.
   const focusInput = () => {
@@ -219,7 +222,7 @@ export function ExpressionBar({
     setDropdownView({ type: "browse" });
   };
 
-  const insert = (token: Token) => {
+  const insert = (token: ExpressionToken) => {
     const next = insertToken(tokens, caret, token);
     setTokens(next.tokens);
     setCaret(next.caret);
@@ -233,7 +236,7 @@ export function ExpressionBar({
     focusInput();
   };
 
-  const handlePickToken = (token: Token) => {
+  const handlePickToken = (token: ExpressionToken) => {
     insert(token);
     setDropdownView({ type: "list" });
     setActiveIndex(0);
@@ -266,7 +269,7 @@ export function ExpressionBar({
       return;
     }
     if (event.key === " " || event.key === "Tab") {
-      const typed = parseTypedToken(text);
+      const typed = parseTypedToken(text, { withNot: true });
       if (typed) {
         event.preventDefault();
         handlePickToken(typed);
@@ -281,7 +284,7 @@ export function ExpressionBar({
         commit();
         return;
       }
-      const typed = parseTypedToken(text);
+      const typed = parseTypedToken(text, { withNot: true });
       if (typed) {
         handlePickToken(typed);
         return;
@@ -404,6 +407,7 @@ export function ExpressionBar({
         <FilterSearchDropdown
           query={query}
           allowOr={allowOr}
+          withNot
           stageIndex={stageIndex}
           text={text}
           view={dropdownView}
@@ -591,13 +595,13 @@ function Gap({
 type TokenViewProps = {
   query: Lib.Query;
   stageIndex: number;
-  token: Token;
+  token: ExpressionToken;
   hasError: boolean;
   /** The token came from outside the bar (a drill, an example) a moment ago. */
   isFresh: boolean;
   compact: boolean;
   canToggleOperator: boolean;
-  onReplace: (token: Token) => void;
+  onReplace: (token: ExpressionToken) => void;
   onRemove: () => void;
 };
 
@@ -634,6 +638,19 @@ function TokenView({
         }
       >
         {token.op}
+      </Box>
+    );
+  }
+
+  if (token.type === "not") {
+    return (
+      <Box
+        component="span"
+        className={cx(S.op, S.opNot, errorClass)}
+        title={t`Click to remove`}
+        onClick={onRemove}
+      >
+        {t`not`}
       </Box>
     );
   }
@@ -732,8 +749,8 @@ function FilterTokenView({
  * opening parenthesis when a drill wrapped a top-level OR to AND onto it.
  */
 function freshTokenIndexes(
-  previous: readonly Token[],
-  next: readonly Token[],
+  previous: readonly ExpressionToken[],
+  next: readonly ExpressionToken[],
 ): Set<number> {
   if (next.length <= previous.length) {
     return new Set();
@@ -742,7 +759,7 @@ function freshTokenIndexes(
   for (let index = previous.length; index < next.length; index++) {
     fresh.add(index);
   }
-  const opensWithParen = (tokens: readonly Token[]) =>
+  const opensWithParen = (tokens: readonly ExpressionToken[]) =>
     tokens[0]?.type === "paren" && tokens[0].side === "open";
   if (opensWithParen(next) && !opensWithParen(previous)) {
     fresh.add(0);
