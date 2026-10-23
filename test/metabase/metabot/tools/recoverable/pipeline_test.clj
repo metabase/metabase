@@ -154,7 +154,7 @@
     (let [codes [:uri-in-source-table :unknown-table :unknown-table-id :ambiguous-table
                  :unknown-field :unknown-field-id :ambiguous-field :ambiguous-fk :no-fk-path
                  :unknown-card :unknown-card-id :unknown-measure :unknown-measure-id
-                 :unknown-segment :unknown-segment-id :unknown-database
+                 :unknown-segment :unknown-segment-id :unknown-database :ambiguous-database-name
                  :cross-database-card :cross-database-measure :cross-database-segment
                  :missing-source-in-first-stage]]
       (doseq [code codes]
@@ -192,3 +192,7 @@
                   "from its own database. Use one from that database, or change the source to a table "
                   "in the referenced item's database.")
              (pipeline-error-text! error))))))
+
+(deftest ^:parallel ambiguous-database-name-recovery-test
+  (is (= "Query failed.\nAsk the user to rename one of the databases."
+         (pipeline-error-text! :ambiguous-database-name))))

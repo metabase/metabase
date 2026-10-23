@@ -17,3 +17,7 @@
                   "from its own database. Use one from that database, or change the source to a table "
                   "in the referenced item's database.")
              (recovery-hints/recovery-hint {:error error}))))))
+
+(deftest ^:parallel ambiguous-database-name-hint-test
+  (is (= "Ask the user to rename one of the databases."
+         (recovery-hints/recovery-hint {:error :ambiguous-database-name}))))

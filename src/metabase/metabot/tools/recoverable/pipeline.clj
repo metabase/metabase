@@ -157,8 +157,8 @@
 
 (defpipeline-error ambiguous-database-name!
   "The database name in a portable FK matched more than one database."
-  ;; The same database name would match the same databases again.
-  [])
+  [{:uses #{}
+    :text "Ask the user to rename one of the databases."}])
 
 ;;; Field resolution
 

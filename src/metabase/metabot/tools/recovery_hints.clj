@@ -104,6 +104,9 @@
     :unknown-database
     (tru "Use the exact database name as reported by search / `read_resource` (it appears as the first element of every portable FK, e.g. `source-table: [<db-name>, <schema>, <table>]`).")
 
+    :ambiguous-database-name
+    (tru "Ask the user to rename one of the databases.")
+
     :missing-source-in-first-stage
     (tru "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an entity_id string.")
 
