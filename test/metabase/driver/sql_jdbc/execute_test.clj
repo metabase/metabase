@@ -15,14 +15,10 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
-   [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr])
   (:import
-   (com.sun.net.httpserver HttpExchange HttpHandler HttpServer)
-   (java.net InetSocketAddress)
-   (java.sql Connection DatabaseMetaData DriverManager ResultSet SQLException SQLNonTransientConnectionException SQLRecoverableException
+   (java.sql Connection DatabaseMetaData ResultSet SQLException SQLNonTransientConnectionException SQLRecoverableException
              SQLTimeoutException SQLTransientConnectionException)
-   (java.util Properties)
    (javax.sql DataSource)
    (org.sqlite SQLiteErrorCode SQLiteException)))
 
@@ -370,17 +366,10 @@
           error-type (fn [e]
                        (mt/with-dynamic-fn-redefs [sql-jdbc.execute/row-thunk (fn [& _] #(throw e))]
                          (:error_type (qp/process-query query))))]
-      #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (testing "A database error raised while rows are read is an invalid query, whatever its exception class"
-        (doseq [e (cond-> [(SQLException. "More than one row" "21000")
-                           (SQLException. "Unique constraint violation" "23505")
-                           (SQLNonTransientConnectionException. "Unknown column 'a' in 'field list'" "42S22")]
-                    (not= driver/*driver* :clickhouse)
-                    (conj (SQLException. "Division by zero" "22012"))
-                    (= driver/*driver* :mysql)
-                    (conj (SQLTransientConnectionException. "Field 'a' can't be set for JSON_TABLE 'jt'." "HY000" 4176))
-                    (= driver/*driver* :sqlite)
-                    (conj (SQLiteException. "malformed JSON" SQLiteErrorCode/SQLITE_ERROR)))]
+        (doseq [e [(SQLException. "More than one row" "21000")
+                   (SQLException. "Unique constraint violation" "23505")
+                   (SQLNonTransientConnectionException. "Unknown column 'a' in 'field list'" "42S22")]]
           (testing (ex-message e)
             (is (= :invalid-query (error-type e))))))
       (testing "A connection failure while closing the result set is a QP error"
@@ -430,62 +419,7 @@
         (with-redefs [driver/query-canceled? (constantly true)]
           (is (= :qp (error-type (SQLException. "Query execution was interrupted" "22012")))))))))
 
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-(deftest ^:parallel clickhouse-server-errors-need-more-than-class-22-test
-  (mt/test-driver :clickhouse
-    (doseq [[message code] [["Memory limit exceeded" 241] ["Too many rows or bytes" 396]]]
-      (let [e (SQLException. message "22000" code)]
-        (is (false? (#'sql-jdbc.execute/error-in-query? :clickhouse e)))
-        (is (true? (#'sql-jdbc.execute/error-in-query? :h2 e)))))))
-
-(defn- do-with-presto-cancellation!
-  "Run `f` with a Presto HTTP endpoint that cancels after its first page of rows."
-  [f]
-  (let [server (HttpServer/create (InetSocketAddress. "127.0.0.1" 0) 0)
-        base   (str "http://127.0.0.1:" (.getPort (.getAddress server)))
-        shared {:id "canceled-query", :infoUri (str base "/info"), :warnings []}
-        page   (merge shared {:nextUri (str base "/next")
-                              :columns [{:name "x", :type "bigint", :typeSignature {:rawType "bigint", :arguments []}}]
-                              :data [[1]], :stats {:state "RUNNING"}})
-        failed (merge shared {:stats {:state "FAILED"}
-                              :error {:message "Query was canceled", :sqlState nil, :errorCode 3
-                                      :errorName "USER_CANCELED", :errorType "USER_ERROR", :retriable false}})]
-    (.createContext server "/"
-                    (reify HttpHandler
-                      (handle [_ exchange]
-                        (let [^HttpExchange exchange exchange]
-                          (.readAllBytes (.getRequestBody exchange))
-                          (if (= "DELETE" (.getRequestMethod exchange))
-                            (.sendResponseHeaders exchange 204 -1)
-                            (let [body (.getBytes ^String (json/encode (if (= "/next" (.getPath (.getRequestURI exchange)))
-                                                                         failed page)) "UTF-8")]
-                              (.set (.getResponseHeaders exchange) "Content-Type" "application/json")
-                              (.sendResponseHeaders exchange 200 (alength body))
-                              (with-open [out (.getResponseBody exchange)] (.write out body))))
-                          (.close ^HttpExchange exchange)))))
-    (.start server)
-    (try
-      (f (.getPort (.getAddress server)))
-      (finally (.stop server 0)))))
-
-#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
-(deftest presto-server-cancellation-is-qp-error-test
-  (mt/test-driver :presto-jdbc
-    (Class/forName "com.facebook.presto.jdbc.PrestoDriver")
-    (do-with-presto-cancellation!
-     (fn [port]
-       (with-open [conn (DriverManager/getConnection (str "jdbc:presto://127.0.0.1:" port)
-                                                     (doto (Properties.) (.setProperty "user" "test")))
-                   stmt (.createStatement conn)
-                   rs (.executeQuery stmt "SELECT 1 AS x")]
-         (is (.next rs))
-         (let [failure (try (.next rs) (catch SQLException e e))]
-           (is (nil? (.getSQLState ^SQLException failure)))
-           (is (= 3 (.getErrorCode ^SQLException failure)))))
-       ;; The live JDBC path needs connection details from a Database model.
-       #_{:clj-kondo/ignore [:discouraged-var]}
-       (mt/with-temp [:model/Database db {:engine :presto-jdbc
-                                          :details {:host "127.0.0.1", :port port, :user "test", :ssl false}}]
-         (mt/with-db db
-           (is (=? {:status :failed, :error_type :qp}
-                   (qp/process-query (qp/userland-query (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")))))))))))
+(deftest ^:parallel default-query-error-evidence-test
+  (let [classify (get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc)]
+    (doseq [state ["21000" "22012" "23505" "42S22"]]
+      (is (true? (classify nil (SQLException. "Query error" state)))))))

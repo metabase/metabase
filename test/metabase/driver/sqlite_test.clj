@@ -778,3 +778,8 @@
         (testing "so its base/effective type stays temporal (Lib's type wins over the storage affinity)"
           (is (isa? (:base_type col) :type/Temporal))
           (is (isa? (:effective_type col) :type/Temporal)))))))
+
+(deftest ^:parallel query-error-evidence-test
+  (mt/test-driver :sqlite
+    (doseq [code [1 19 20]]
+      (is (true? (sql-jdbc.execute/impl-error-in-query? :sqlite (SQLException. "Query error" nil code)))))))
