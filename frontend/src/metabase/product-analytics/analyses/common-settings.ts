@@ -1,5 +1,7 @@
 import { t } from "ttag";
 
+import { SegmentedControl } from "metabase/ui";
+
 import type { ColumnRole, ColumnRoles } from "../columns";
 import { AddFilterButton } from "../components/AddFilterButton";
 import { ColumnPickerWidget } from "../components/settings/ColumnPickerWidget";
@@ -14,7 +16,7 @@ import type { SettingDefinition } from "../settings/types";
 import { withWidgetProps } from "../settings/with-widget-props";
 import type { Grain, Granularity } from "../spec/types";
 
-import { isBreakout } from "./breakout";
+import { BREAKOUT_VIEWS, isBreakout } from "./breakout";
 import {
   getColumnOptions,
   getDefaultColumn,
@@ -118,9 +120,12 @@ const isBreakoutValid = (context: AnalysisContext, value: unknown) =>
 export const commonSettings = ({
   granularity,
   breakout = false,
+  canPivot = false,
 }: {
   granularity: GranularityOptions | null;
   breakout?: boolean;
+  /** Whether a breakout can show as a pivot table, as well as a chart. */
+  canPivot?: boolean;
 }): AnalysisSettingDefinitions<CommonSettings> => ({
   date_range: {
     getSection: () => "toolbar",
@@ -142,6 +147,22 @@ export const commonSettings = ({
   },
   granularity: granularitySetting(granularity),
   breakout: breakoutSetting(breakout),
+  breakout_view: withWidgetProps({
+    getTitle: () => t`Show as`,
+    getSection: () => "setup",
+    widget: SegmentedControl,
+    getDefault: () => "chart",
+    isValid: (value) => isOneOf(BREAKOUT_VIEWS, value),
+    getHidden: (_context, settings) => !canPivot || settings.breakout === null,
+    getProps: () => ({
+      data: [
+        { label: t`Chart`, value: "chart" as const },
+        { label: t`Pivot table`, value: "pivot" as const },
+      ],
+      w: "100%",
+    }),
+    readDependencies: ["breakout"],
+  }),
   filters: withWidgetProps({
     getSection: () => "toolbar",
     widget: AddFilterButton,

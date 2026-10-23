@@ -114,17 +114,32 @@ export function useModelsAndOption(
     tc,
   ]);
 
+  // With one series, the funnel steps chart draws its own step labels, so the
+  // layout shouldn't reserve x-axis tick space. With several, the steps are
+  // grouped bars that keep the steps' tooltip.
+  const isOneFunnel = isFunnelSteps && chartModel.seriesModels.length === 1;
+
   const chartLayout = useMemo(
     () =>
       getChartLayout(
         chartModel,
-        settings,
+        isOneFunnel
+          ? { ...settings, "graph.x_axis.axis_enabled": false }
+          : settings,
         hasTimelineEvents,
         width,
         height,
         renderingContext,
       ),
-    [chartModel, settings, width, height, hasTimelineEvents, renderingContext],
+    [
+      chartModel,
+      isOneFunnel,
+      settings,
+      width,
+      height,
+      hasTimelineEvents,
+      renderingContext,
+    ],
   );
 
   const timelineEventsModel = useMemo(
@@ -151,7 +166,7 @@ export function useModelsAndOption(
 
     let baseOption;
 
-    if (isFunnelSteps) {
+    if (isOneFunnel) {
       baseOption = getFunnelStepsOption(
         chartModel,
         chartLayout,
@@ -215,7 +230,7 @@ export function useModelsAndOption(
     width,
     height,
     card.display,
-    isFunnelSteps,
+    isOneFunnel,
     tooltipOption,
     chartModel,
     chartLayout,

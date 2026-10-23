@@ -72,10 +72,10 @@ describe("buildSql", () => {
     const built = buildSql(getFunnelSpec(), "SELECT 1", {
       columns: BASE_COLUMNS,
       flags: ["ev_1", "ev_2", "ev_3"],
-      extraColumns: [{ as: "cohort_attribute", alias: "Users__plan" }],
+      extraColumns: [{ as: "breakout_property", alias: "Users__plan" }],
     });
 
-    expect(built.sql).toContain("`Users__plan` AS cohort_attribute");
+    expect(built.sql).toContain("`Users__plan` AS breakout_property");
   });
 
   describe("cohorts", () => {
@@ -91,7 +91,7 @@ describe("buildSql", () => {
       return buildSql(spec, "SELECT 1", {
         columns: BASE_COLUMNS,
         flags: ["ev_1", "ev_2"],
-        extraColumns: [{ as: "cohort_attribute", alias: "plan" }],
+        extraColumns: [{ as: "breakout_property", alias: "plan" }],
       }).sql;
     };
 
@@ -110,7 +110,7 @@ describe("buildSql", () => {
       });
 
       expect(sql).toContain(
-        "argMaxIf(e.attribute_value, e.ts, e.ts <= f.start_ts AND e.attribute_value != '') AS cohort",
+        "argMaxIf(e.breakout_value, e.ts, e.ts <= f.start_ts AND e.breakout_value != '') AS cohort",
       );
       expect(sql).toContain("toStartOfMonth(f.start_ts) AS started");
     });

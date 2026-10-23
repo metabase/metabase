@@ -1,7 +1,24 @@
+import { c, t } from "ttag";
+
+import { color } from "metabase/ui/colors";
+import {
+  getLightAccentColors,
+  getMainAccentColors,
+} from "metabase/ui/colors/groups";
+import type { VisualizationSettings } from "metabase-types/api";
 import { isRecord } from "metabase-types/guards";
 
+import type { ExtraColumn } from "../columns";
+import type { EventFlags } from "../events/types";
 import { isPeopleSegmentRef } from "../segments/people-segment-ref";
 import type { PeopleSegmentRef } from "../segments/types";
+import type { BreakoutGroup, BreakoutSpec } from "../spec/types";
+import {
+  BREAKOUT_COLUMN,
+  BREAKOUT_PROPERTY_COLUMN,
+} from "../sql/analyses/breakout";
+
+import type { AnalysisContext } from "./types";
 
 /**
  * How an analysis splits its result: by a property's values, which don't
@@ -22,3 +39,134 @@ export const isBreakout = (value: unknown): value is Breakout =>
       Array.isArray(value.segments) &&
       value.segments.length > 0 &&
       value.segments.every(isPeopleSegmentRef)));
+
+type BreakoutSpecOptions = {
+  /**
+   * Whether segment groups start with everyone. Leave it out where groups add
+   * up, like a Sankey's flows into each node.
+   */
+  withEveryone?: boolean;
+  /** Whether each segment has the people outside it beside it. */
+  withOutside?: boolean;
+};
+
+/**
+ * How the planners split the result, or undefined without a breakout. Cohorts
+ * are each segment beside the people outside it, after everyone.
+ */
+export const getBreakoutSpec = (
+  breakout: Breakout | null,
+  events: EventFlags,
+  { withEveryone = true, withOutside = true }: BreakoutSpecOptions = {},
+): BreakoutSpec | undefined => {
+  switch (breakout?.type) {
+    case undefined:
+      return undefined;
+    case "property":
+      return { type: "property" };
+    case "cohorts":
+      return {
+        type: "segments",
+        groups: [
+          ...(withEveryone ? [{ label: getEveryoneLabel() }] : []),
+          ...breakout.segments.flatMap((segment): BreakoutGroup[] => {
+            const flag = events.segmentFlagFor(segment);
+            const inside = {
+              label: segment.label,
+              segment: { flag, isMember: true },
+            };
+            const outside = {
+              label: getOutsideLabel(segment.label),
+              segment: { flag, isMember: false },
+            };
+            return withOutside ? [inside, outside] : [inside];
+          }),
+        ],
+      };
+  }
+};
+
+const getEveryoneLabel = () => t`Everyone`;
+
+const getOutsideLabel = (label: string) =>
+  c("{0} is the name of a group of people").t`Not in ${label}`;
+
+/** The property's column on `events_base`, when breaking out by one. */
+export const getBreakoutExtraColumns = (
+  breakout: Breakout | null,
+  context: AnalysisContext,
+): ExtraColumn[] =>
+  breakout?.type === "property"
+    ? [
+        {
+          as: BREAKOUT_PROPERTY_COLUMN,
+          column: breakout.column,
+          from: context.usersTable !== undefined ? "users" : "events",
+        },
+      ]
+    : [];
+
+/**
+ * A color per cohort group: everyone in gray, and each segment in an accent
+ * beside the people outside it in that accent's lighter shade. Empty for a
+ * property, whose values get the chart's own colors.
+ */
+export const getBreakoutColors = (
+  breakout: Breakout | null,
+): Record<string, string> => {
+  if (breakout?.type !== "cohorts") {
+    return {};
+  }
+  const accents = getMainAccentColors();
+  const lightAccents = getLightAccentColors();
+  return {
+    [getEveryoneLabel()]: color("accent-gray-dark"),
+    ...Object.fromEntries(
+      breakout.segments.flatMap((segment, index) => [
+        [segment.label, accents[index % accents.length]],
+        [
+          getOutsideLabel(segment.label),
+          lightAccents[index % lightAccents.length],
+        ],
+      ]),
+    ),
+  };
+};
+
+/** The cartesian series settings that color each cohort group. */
+export const getBreakoutSeriesSettings = (
+  breakout: Breakout | null,
+): Pick<VisualizationSettings, "series_settings"> => ({
+  series_settings: Object.fromEntries(
+    Object.entries(getBreakoutColors(breakout)).map(([label, value]) => [
+      label,
+      { color: value },
+    ]),
+  ),
+});
+
+/** Broken out, a chart, or the groups in a pivot table. */
+export type BreakoutView = "chart" | "pivot";
+
+export const BREAKOUT_VIEWS: readonly BreakoutView[] = ["chart", "pivot"];
+
+/**
+ * Each group in a chart of its own, one above another, for a chart whose
+ * two dimensions are already in use, like stacked states over time.
+ */
+export const getChartPerGroupSettings = (): Pick<
+  VisualizationSettings,
+  "small_multiples.column"
+> => ({ "small_multiples.column": BREAKOUT_COLUMN });
+
+/**
+ * "Stack series" on, drawing a chart per group, for a chart whose groups are
+ * its series. Turning it off in the display panel puts them side by side.
+ */
+export const getStackedGroupsSettings = (): Pick<
+  VisualizationSettings,
+  "graph.split_panels" | "graph.split_panels_small_multiples"
+> => ({
+  "graph.split_panels": true,
+  "graph.split_panels_small_multiples": true,
+});

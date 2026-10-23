@@ -10,17 +10,15 @@ import {
 } from "../cohorts/retention-curves";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { formatPeriod } from "../drills/describe";
-import type { EventFlags } from "../events/types";
-import type { PeopleSegmentRef } from "../segments/types";
 import { withWidgetProps } from "../settings/with-widget-props";
-import type { CohortGroup, CohortsSpec } from "../spec/types";
 import { pointString } from "../sql/analyses/base";
-import {
-  COHORT_ATTRIBUTE_COLUMN,
-  toCohortPeriod,
-} from "../sql/analyses/cohorts";
+import { toCohortPeriod } from "../sql/analyses/cohorts";
 
-import type { Breakout } from "./breakout";
+import {
+  getBreakoutExtraColumns,
+  getBreakoutSeriesSettings,
+  getBreakoutSpec,
+} from "./breakout";
 import { commonSettings } from "./common-settings";
 import {
   getCommonSpec,
@@ -87,36 +85,6 @@ const getView = (settings: CohortsSettings): RetentionCurvesView => {
     xAxis: canShowDates(settings) ? settings["cohorts.x_axis"] : "sinceStart",
   };
 };
-
-const getCohortsBy = (breakout: Breakout | null): CohortsSpec["by"] => {
-  switch (breakout?.type) {
-    case undefined:
-      return "startDate";
-    case "property":
-      return "attribute";
-    case "cohorts":
-      return "segments";
-  }
-};
-
-/** Everyone first, then each segment beside the people outside it. */
-const getSegmentGroups = (
-  segments: readonly PeopleSegmentRef[],
-  events: EventFlags,
-): CohortGroup[] => [
-  { label: t`Everyone` },
-  ...segments.flatMap((segment): CohortGroup[] => {
-    const flag = events.segmentFlagFor(segment);
-    return [
-      { label: segment.label, segment: { flag, isMember: true } },
-      {
-        label: c("{0} is the name of a group of people")
-          .t`Not in ${segment.label}`,
-        segment: { flag, isMember: false },
-      },
-    ];
-  }),
-];
 
 const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
   ...commonSettings({
@@ -261,17 +229,12 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
   toSpec: (settings, events) => {
     const start = settings["cohorts.start"];
     const returning = settings["cohorts.return"];
-    const { breakout } = settings;
     return ready({
       ...getCommonSpec("cohorts", settings),
+      breakout: getBreakoutSpec(settings.breakout, events),
       cohorts: {
         // Empty means any event starts the clock, or counts as coming back.
         start: start === null ? undefined : { flag: events.flagFor(start) },
-        by: getCohortsBy(breakout),
-        groups:
-          breakout?.type === "cohorts"
-            ? getSegmentGroups(breakout.segments, events)
-            : undefined,
         return:
           returning === null ? undefined : { flag: events.flagFor(returning) },
         returnRule: settings["cohorts.return_rule"],
@@ -283,15 +246,7 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
     });
   },
   getExtraColumns: ({ breakout }, context) =>
-    breakout?.type === "property"
-      ? [
-          {
-            as: COHORT_ATTRIBUTE_COLUMN,
-            column: breakout.column,
-            from: context.usersTable !== undefined ? "users" : "events",
-          },
-        ]
-      : [],
+    getBreakoutExtraColumns(breakout, context),
   getDisplay: (settings) => {
     if (isTable(settings)) {
       return "cohort";
@@ -303,7 +258,10 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
   getVizSettings: (settings) =>
     isTable(settings)
       ? getCohortTableSettings(getView(settings))
-      : getRetentionCurvesSettings(getView(settings)),
+      : {
+          ...getRetentionCurvesSettings(getView(settings)),
+          ...getBreakoutSeriesSettings(settings.breakout),
+        },
   describePoint: (settings, point) => {
     const offset = pointString(point.offset);
     if (offset === null) {

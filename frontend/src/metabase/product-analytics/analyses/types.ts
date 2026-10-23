@@ -23,7 +23,7 @@ import type {
 } from "../spec/types";
 import type { DrillPoint } from "../sql/compose";
 
-import type { Breakout } from "./breakout";
+import type { Breakout, BreakoutView } from "./breakout";
 
 /** The table the person column links to, with its metadata loaded. */
 export type UsersTable = {
@@ -58,6 +58,8 @@ export type CommonSettings = ColumnRoleSettings & {
   granularity: Granularity;
   /** Null: no breakout. Only analyses that opt in read it. */
   breakout: Breakout | null;
+  /** Broken out, a chart or a pivot table. Only analyses that opt in read it. */
+  breakout_view: BreakoutView;
   filters: AnalysisFilters;
 };
 
@@ -84,9 +86,14 @@ export type PathsSettings = CommonSettings & {
   "paths.edge_metric": NonNullable<OutputSpec["pathsEdgeMetric"]>;
 };
 
+/** Whether a chart shows counts or each count's share of a total. */
+export type ValuesDisplay = "counts" | "percent";
+
 export type HabitSettings = CommonSettings & {
   "habit.active": EventDefinition | null;
   "habit.measure": HabitSpec["measure"];
+  /** The histogram's people as counts, or as a share of their group. */
+  "habit.values": ValuesDisplay;
 };
 
 export type LifecycleSettings = CommonSettings & {

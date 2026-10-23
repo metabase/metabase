@@ -117,6 +117,14 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     onChangeSettings,
     colors: displayColors,
   });
+  // Only while "Show as" is offered: a view without it keeps the stored value.
+  const breakoutViewWidget = widgets.find(
+    (widget) => widget.id === "breakout_view",
+  );
+  const isPivot =
+    breakoutViewWidget !== undefined &&
+    !breakoutViewWidget.hidden &&
+    computed.breakout_view === "pivot";
   const chartSettings = { ...vizSettings, ...displayOverrides };
   const isDisplayShowing = isDisplayOpen && tableId !== undefined;
   const filterCount = useFilterCount(computed.filters, table);
@@ -289,6 +297,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
                   panel !== "setup" ? () => setPanel("setup") : undefined
                 }
                 clickActionsMode={drillActions.mode}
+                placeholder={isPivot ? getPivotPlaceholder() : undefined}
                 isDisplayOpen={isDisplayShowing}
                 onToggleDisplay={() => setIsDisplayOpen((isOpen) => !isOpen)}
               />
@@ -350,3 +359,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     </SegmentDragProvider>
   );
 };
+
+const getPivotPlaceholder = () =>
+  t`Pivot tables don't support native SQL, so they aren't available in this prototype.`;

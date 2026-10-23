@@ -1,17 +1,16 @@
-import type {
-  AnalysisSpec,
-  CohortGroup,
-  Granularity,
-  Period,
-} from "../../spec/types";
+import type { AnalysisSpec, Granularity, Period } from "../../spec/types";
 import { dateTimeLit, lit, num } from "../compile/dialect";
 import { flagSql } from "../compile/flag";
 import type { Cte, DrillPoint, QueryPlan } from "../compose";
 
 import { pointString, scopedEvents, startOf } from "./base";
-
-/** The column the planner reads on `events_base` beyond the roles, when cohorts are by attribute. */
-export const COHORT_ATTRIBUTE_COLUMN = "cohort_attribute";
+import {
+  BREAKOUT_COLUMN,
+  BREAKOUT_VALUE_COLUMN,
+  breakoutDeps,
+  breakoutOrderBy,
+  withBreakout,
+} from "./breakout";
 
 const COHORT_PERIODS: Record<Granularity, Period> = {
   hour: "day",
@@ -33,16 +32,6 @@ const ADD_PERIODS: Record<Period, string> = {
   month: "addMonths",
 };
 
-/** The labels of the groups an event's person is in, in the groups' order. */
-const groupLabelsSql = (groups: readonly CohortGroup[]): string => {
-  const labels = groups.map(({ label, segment }) =>
-    segment === undefined
-      ? lit(label)
-      : `if(${flagSql(segment.flag)} = ${segment.isMember ? 1 : 0}, ${lit(label)}, '')`,
-  );
-  return `arrayFilter(label -> label != '', [${labels.join(", ")}])`;
-};
-
 export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
   const cohorts = spec.cohorts;
   if (!cohorts) {
@@ -50,10 +39,9 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
   }
 
   const period = periodOf(spec);
-  const isByAttribute = cohorts.by === "attribute";
-  const isBySegments = cohorts.by === "segments";
-  const isGrouped = isByAttribute || isBySegments;
-  const groups = cohorts.groups ?? [];
+  const isByAttribute = spec.breakout?.type === "property";
+  const isBySegments = spec.breakout?.type === "segments";
+  const isGrouped = spec.breakout !== undefined;
   const warnings: string[] = [];
 
   const base = scopedEvents(spec, undefined, [
@@ -65,17 +53,6 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
       as: "is_return",
       sql: cohorts.return !== undefined ? flagSql(cohorts.return.flag) : "1",
     },
-    ...(isByAttribute
-      ? [
-          {
-            as: "attribute_value",
-            sql: `ifNull(toString(${COHORT_ATTRIBUTE_COLUMN}), '')`,
-          },
-        ]
-      : []),
-    ...(isBySegments
-      ? [{ as: "segment_cohorts", sql: groupLabelsSql(groups) }]
-      : []),
   ]);
   warnings.push(...base.warnings);
 
@@ -88,8 +65,6 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
     body: [
       "SELECT",
       "  actor,",
-      // A person's segments are the same on every event.
-      ...(isBySegments ? ["  any(segment_cohorts) AS segment_cohorts,"] : []),
       "  minIf(ts, is_start) AS start_ts",
       "FROM scoped_events",
       "GROUP BY actor",
@@ -104,25 +79,24 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
       ? {
           name: "starts",
           note: `each ${spec.grain} placed in every cohort they're in, from their start`,
-          deps: ["first_starts"],
+          deps: ["first_starts", ...breakoutDeps(spec)],
           body: [
             "SELECT",
             "  actor,",
-            "  cohort,",
+            `  ${BREAKOUT_COLUMN} AS cohort,`,
             `  ${startOf(period, "start_ts")} AS started`,
-            "FROM first_starts",
-            "ARRAY JOIN segment_cohorts AS cohort",
+            `FROM ${withBreakout(spec, "first_starts")}`,
           ].join("\n"),
         }
       : isByAttribute
         ? {
             name: "starts",
-            note: `each ${spec.grain} placed with their latest ${COHORT_ATTRIBUTE_COLUMN} as of their start`,
+            note: `each ${spec.grain} placed with their latest value of the property as of their start`,
             deps: ["scoped_events", "first_starts"],
             body: [
               "SELECT",
               "  f.actor AS actor,",
-              "  argMaxIf(e.attribute_value, e.ts, e.ts <= f.start_ts AND e.attribute_value != '') AS cohort,",
+              `  argMaxIf(e.${BREAKOUT_VALUE_COLUMN}, e.ts, e.ts <= f.start_ts AND e.${BREAKOUT_VALUE_COLUMN} != '') AS cohort,`,
               `  ${startOf(period, "f.start_ts")} AS started`,
               "FROM first_starts AS f",
               "INNER JOIN scoped_events AS e ON e.actor = f.actor",
@@ -177,12 +151,8 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
     !isGrouped && !isAverage
       ? [`  ${ADD_PERIODS[period]}(cohort, offset) AS date,`]
       : [];
-  // Segment cohorts keep their groups' order rather than sorting by name.
-  const orderColumns = isBySegments
-    ? [
-        `indexOf([${groups.map(({ label }) => lit(label)).join(", ")}], cohort)`,
-        "offset",
-      ]
+  const orderColumns = isGrouped
+    ? [...breakoutOrderBy(spec, "cohort"), "offset"]
     : [...groupColumns, "offset"];
 
   // Each actor only in the offsets the range can show. The chart's cells and

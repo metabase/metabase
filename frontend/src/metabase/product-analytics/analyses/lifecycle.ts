@@ -15,6 +15,11 @@ import { pointString } from "../sql/analyses/base";
 import { FIRST_SEEN_EXTRA_COLUMN } from "../sql/analyses/lifecycle";
 import { grainTitle } from "../sql/compile/grain";
 
+import {
+  getBreakoutExtraColumns,
+  getBreakoutSpec,
+  getChartPerGroupSettings,
+} from "./breakout";
 import { getDateColumnOptions, isDateColumnInTable } from "./column-roles";
 import { commonSettings } from "./common-settings";
 import { getAxisTitleSettings } from "./series-settings";
@@ -109,10 +114,14 @@ const getFirstSeenColumn = (settings: LifecycleSettings): string | null =>
 const getPeriod = (granularity: Granularity): Period =>
   granularity === "hour" ? "day" : granularity;
 
+const { breakout_view: breakoutView, ...common } = commonSettings({
+  granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
+  breakout: true,
+  canPivot: true,
+});
+
 const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
-  ...commonSettings({
-    granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
-  }),
+  ...common,
   "lifecycle.active": withWidgetProps({
     getTitle: () => t`What action counts as being active?`,
     getSection: () => "setup",
@@ -168,6 +177,8 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
       })),
     }),
   }),
+  // Last in setup, under what it shows.
+  breakout_view: breakoutView,
 };
 
 export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
@@ -194,6 +205,7 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
     }
     return ready({
       ...getCommonSpec("lifecycle", settings),
+      breakout: getBreakoutSpec(settings.breakout, events),
       lifecycle: {
         // Empty means any event counts as being active.
         active: active === null ? undefined : { flag: events.flagFor(active) },
@@ -203,14 +215,19 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
       output: { lifecycleShown: settings["lifecycle.shown"] },
     });
   },
-  getExtraColumns: (settings) => {
+  getExtraColumns: (settings, context) => {
     const column = getFirstSeenColumn(settings);
-    return column !== null
-      ? [{ as: FIRST_SEEN_EXTRA_COLUMN, column, from: "events" }]
-      : [];
+    return [
+      ...(column !== null
+        ? [{ as: FIRST_SEEN_EXTRA_COLUMN, column, from: "events" as const }]
+        : []),
+      ...getBreakoutExtraColumns(settings.breakout, context),
+    ];
   },
   getDisplay: () => "bar",
   getVizSettings: (settings, colors) => ({
+    // The states already stack, so each group gets a chart of its own.
+    ...(settings.breakout !== null ? getChartPerGroupSettings() : {}),
     "graph.dimensions": ["period", "state"],
     "graph.metrics": ["actors"],
     "stackable.stack_type": "stacked",

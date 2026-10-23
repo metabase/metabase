@@ -4,15 +4,13 @@ import { flagSql } from "../compile/flag";
 import { compileGrain } from "../compile/grain";
 import type { Cte } from "../compose";
 
+import { actorBreakoutsCte, breakoutEventColumns } from "./breakout";
 import { IN_RANGE_FLAG, getLookbackDays } from "./lookback";
 
 export interface BaseBlock {
   ctes: Cte[];
-  splitColumn?: string;
   warnings: string[];
 }
-
-export const SPLIT_COLUMN = "split_value";
 
 export const scopedEvents = (
   spec: AnalysisSpec,
@@ -53,11 +51,15 @@ export const scopedEvents = (
   const columns = [
     `${actor} AS actor`,
     "created_at AS ts",
-    ...(spec.split ? [`${SPLIT_COLUMN}`] : []),
     "event_name",
     "url_path",
     ...(hasLookback ? [IN_RANGE_FLAG] : []),
-    ...extraColumns.map((column) => `${column.sql} AS ${column.as}`),
+    ...[
+      ...extraColumns,
+      ...(spec.breakout !== undefined
+        ? breakoutEventColumns(spec.breakout)
+        : []),
+    ].map((column) => `${column.sql} AS ${column.as}`),
   ];
 
   ctes.push({
@@ -78,11 +80,11 @@ export const scopedEvents = (
       .join("\n"),
   });
 
-  return {
-    ctes,
-    ...(spec.split ? { splitColumn: SPLIT_COLUMN } : {}),
-    warnings,
-  };
+  if (spec.breakout !== undefined) {
+    ctes.push(actorBreakoutsCte(spec.breakout));
+  }
+
+  return { ctes, warnings };
 };
 
 export const startOf = (unit: Period, expr = "ts"): string =>
@@ -91,12 +93,6 @@ export const startOf = (unit: Period, expr = "ts"): string =>
     week: `toStartOfWeek(${expr}, 1)`,
     month: `toStartOfMonth(${expr})`,
   })[unit];
-
-export const splitCols = (block: BaseBlock): string[] =>
-  block.splitColumn ? [`  ${block.splitColumn},`] : [];
-
-export const splitGroup = (block: BaseBlock): string =>
-  block.splitColumn ? `${block.splitColumn}, ` : "";
 
 /** Splits a numbered step label like "2. Signed up", as funnels and paths label steps. */
 export const parseStepLabel = (
