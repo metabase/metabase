@@ -79,6 +79,19 @@ const getListItem = (eventName: string) => {
   return item;
 };
 
+const getAddButton = () => screen.getByRole("button", { name: /Add an event/ });
+
+const queryEmptySlot = () =>
+  screen.queryByRole("button", { name: "Click to define this step" });
+
+/** The add button adds an empty slot, which opens the editor when clicked. */
+const startAddingEvent = async () => {
+  await userEvent.click(getAddButton());
+  await userEvent.click(
+    screen.getByRole("button", { name: "Click to define this step" }),
+  );
+};
+
 const renameEditedEvent = async (name: string) => {
   await userEvent.clear(getNameInput());
   await userEvent.type(getNameInput(), name);
@@ -120,18 +133,24 @@ describe("EventDefinitionListWidget", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("hides the drag handles while an event is being edited", async () => {
+  it("disables the drag handles while an event is being edited", async () => {
     setup({ value: [BIG_ORDER, HUGE_ORDER] });
     const getHandles = () => screen.getAllByTestId("drag-handle");
+    const expectHandlesDisabled = (isDisabled: boolean) =>
+      getHandles().forEach((handle) => {
+        // The handles are the step numbers, so they stay in view.
+        expect(handle).toBeVisible();
+        expect(handle).toHaveAttribute("data-disabled", String(isDisabled));
+      });
 
     expect(getHandles()).toHaveLength(2);
-    getHandles().forEach((handle) => expect(handle).toBeVisible());
+    expectHandlesDisabled(false);
 
     await userEvent.click(screen.getByRole("button", { name: "Big order" }));
-    getHandles().forEach((handle) => expect(handle).not.toBeVisible());
+    expectHandlesDisabled(true);
 
     await userEvent.click(document.body);
-    getHandles().forEach((handle) => expect(handle).toBeVisible());
+    expectHandlesDisabled(false);
   });
 
   it("removes an event", async () => {
@@ -145,7 +164,8 @@ describe("EventDefinitionListWidget", () => {
   it("needs a name and a condition to add an event, and discards it on a click outside", async () => {
     const { onChange } = setup({ value: [BIG_ORDER] });
 
-    await userEvent.click(screen.getByRole("button", { name: /Add an event/ }));
+    await startAddingEvent();
+    expect(queryEmptySlot()).not.toBeInTheDocument();
     await userEvent.type(
       screen.getByTestId("event-definition-name"),
       "Any order",
@@ -158,8 +178,10 @@ describe("EventDefinitionListWidget", () => {
 
     expect(onChange).not.toHaveBeenCalled();
     expect(
-      screen.getByRole("button", { name: /Add an event/ }),
-    ).toBeInTheDocument();
+      screen.queryByTestId("event-definition-name"),
+    ).not.toBeInTheDocument();
+    // The slot it was added in is empty again.
+    expect(queryEmptySlot()).toBeInTheDocument();
   });
 
   describe("while an event is being edited", () => {
@@ -200,39 +222,39 @@ describe("EventDefinitionListWidget", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Big order" }));
       await renameEditedEvent("Giant order");
-      await userEvent.click(
-        screen.getByRole("button", { name: /Add an event/ }),
-      );
+      await userEvent.click(getAddButton());
 
       expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange).toHaveBeenLastCalledWith([
         expect.objectContaining({ name: "Giant order" }),
         HUGE_ORDER,
       ]);
-      expect(getNameInput()).toHaveValue("");
+      expect(
+        screen.queryByTestId("event-definition-name"),
+      ).not.toBeInTheDocument();
+      expect(queryEmptySlot()).toBeInTheDocument();
     });
   });
 
   describe("while an event is being added", () => {
-    it("adds it and starts another when adding again", async () => {
+    it("adds it and leaves a slot for another when adding again", async () => {
       const { onChange } = setup({ value: [BIG_ORDER] });
 
-      await userEvent.click(
-        screen.getByRole("button", { name: /Add an event/ }),
-      );
+      await startAddingEvent();
       // The condition picker opens with the editor.
       await userEvent.click(await screen.findByText("Created At"));
       await userEvent.click(await screen.findByText("Today"));
-      await userEvent.click(
-        screen.getByRole("button", { name: /Add an event/ }),
-      );
+      await userEvent.click(getAddButton());
 
       expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange).toHaveBeenLastCalledWith([
         BIG_ORDER,
         expect.objectContaining({ name: "Created At is today" }),
       ]);
-      expect(getNameInput()).toHaveValue("");
+      expect(
+        screen.queryByTestId("event-definition-name"),
+      ).not.toBeInTheDocument();
+      expect(queryEmptySlot()).toBeInTheDocument();
     });
   });
 });
