@@ -105,6 +105,17 @@
        (sql-jdbc.execute/set-time-zone-if-supported! driver conn session-timezone))
      (f conn))))
 
+(defn- first-db-name
+  "Extract a single database name from a legacy `dbname` value. Older configurations stored
+  multiple databases here, separated by spaces, commas, or both (matching the
+  `:db-filters-patterns` syntax). These values weren't migrated, so we have to keep handling
+  them. The chosen name is just the connection's default database — other databases are
+  reached by qualifying queries (#70798, #73175)."
+  [s]
+  (->> (str/split (or s "") #"[\s,]+")
+       (remove str/blank?)
+       first))
+
 (defmethod sql-jdbc.conn/connection-details->spec :clickhouse
   [_ details]
   (let [;; ensure defaults merge on top of nils
@@ -112,10 +123,12 @@
                            default-connection-details
                            details)
         {:keys [user password dbname host port ssl clickhouse-settings max-open-connections]} details
+        dbname (first-db-name dbname)
         host   (cond ; JDBCv1 used to accept schema in the `host` configuration option
                  (str/starts-with? host "http://")  (subs host 7)
                  (str/starts-with? host "https://") (subs host 8)
                  :else host)]
+    ;; https://clickhouse.com/docs/integrations/language-clients/java/jdbc
     (-> {:classname                      "com.clickhouse.jdbc.ClickHouseDriver"
          :subprotocol                    "clickhouse"
          :subname                        (str "//" host ":" port "/" dbname)
@@ -128,10 +141,12 @@
          :http_connection_provider       "HTTP_URL_CONNECTION"
          :jdbc_ignore_unsupported_values "true"
          :jdbc_schema_term               "schema"
-         :select_sequential_consistency  true
+         :ignore_unknown_config_key      true
          :max_open_connections           (or max-open-connections 100)
-         ;; see also: https://clickhouse.com/docs/en/integrations/java#configuration
-         :custom_http_params             (or clickhouse-settings "")}
+         :custom_http_params             (cond-> "select_sequential_consistency=1"
+                                           (not (str/blank? clickhouse-settings))
+                                           (str "," clickhouse-settings))
+         :jdbc_metadata_use_show_statements false}
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]

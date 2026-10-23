@@ -102,7 +102,7 @@
              :user "bob"
              :password "qaz"
              :ssl true
-             :custom_http_params "max_threads=42,allow_experimental_analyzer=0"})
+             :custom_http_params "select_sequential_consistency=1,max_threads=42,allow_experimental_analyzer=0"})
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {:host "myclickhouse"
@@ -141,7 +141,7 @@
 
 (deftest ^:parallel clickhouse-connection-string-select-sequential-consistency
   (testing "connection with no additional options"
-    (is (= (assoc ctd/default-connection-params :select_sequential_consistency true)
+    (is (= ctd/default-connection-params
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {})))))

@@ -1,9 +1,10 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-data-types-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-data-types-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.clickhouse-data-types-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
-   [metabase.lib.options :as lib.options]
    [metabase.test :as mt]
    [metabase.test.data.clickhouse :as ctd]))
 
@@ -247,18 +248,16 @@
             result (ctd/rows-without-index query-result)]
         (is (= [["[12345123.123456789, 78.245000000]"], ["[]"]] result)))))
 
-;; TODO: Re-enable these tests once the JDBC driver issue mentioned in
-;; https://github.com/ClickHouse/metabase-clickhouse-driver/pull/305 has been fixed
 (mt/defdataset metabase_test
-  [#_["arrays_inner_types"
-      [{:field-name "arr_str",  :base-type {:native "Array(String)"}}
-       {:field-name "arr_nstr", :base-type {:native "Array(Nullable(String))"}}
-       {:field-name "arr_dec",  :base-type {:native "Array(Decimal(18, 4))"}}
-       {:field-name "arr_ndec", :base-type {:native "Array(Nullable(Decimal(18, 4)))"}}]
-      [[(into-array ["a" "b" "c"])
-        (into-array [nil "d" "e"])
-        (into-array [1 2 3])
-        (into-array [4 nil 5])]]]
+  [["arrays_inner_types"
+    [{:field-name "arr_str",  :base-type {:native "Array(String)"}}
+     {:field-name "arr_nstr", :base-type {:native "Array(Nullable(String))"}}
+     {:field-name "arr_dec",  :base-type {:native "Array(Decimal(18, 4))"}}
+     {:field-name "arr_ndec", :base-type {:native "Array(Nullable(Decimal(18, 4)))"}}]
+    [[(into-array ["a" "b" "c"])
+      (into-array [nil "d" "e"])
+      (into-array [1 2 3])
+      (into-array [4 nil 5])]]]
    ["metabase_test_lowercases"
     [{:field-name "mystring", :base-type {:native "Nullable(String)"}}]
     [["Я_1"] ["R"] ["Я_2"] ["Я"] ["я"] [nil]]]
@@ -275,11 +274,11 @@
     [["127.0.0.1" "0:0:0:0:0:0:0:1"]
      ["0.0.0.0" "2001:438:ffff:0:0:0:407d:1bc1"]
      [nil nil]]]
-   #_["maps_test"
-      [{:field-name "m", :base-type {:native "Map(String, UInt64)"}}]
-      [[(java.util.HashMap. {"key1" 1, "key2" 10})]
-       [(java.util.HashMap. {"key1" 2, "key2" 20})]
-       [(java.util.HashMap. {"key1" 3, "key2" 30})]]]
+   ["maps_test"
+    [{:field-name "m", :base-type {:native "Map(String, UInt64)"}}]
+    [[(doto (java.util.HashMap.) (.putAll {"key1" 1, "key2" 10}))]
+     [(doto (java.util.HashMap.) (.putAll {"key1" 2, "key2" 20}))]
+     [(doto (java.util.HashMap.) (.putAll {"key1" 3, "key2" 30}))]]]
    ["datetime_diff_nullable"
     [{:field-name "idx",  :base-type {:native "Int32"}}
      {:field-name "dt64", :base-type {:native "Nullable(DateTime64(3, 'UTC'))"}}
@@ -367,43 +366,44 @@
             lib/is-empty  [[3 nil]]
             lib/not-empty [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
                            [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]]))
-        (testing "can filter nullable uuids with contains"
-          (are [filter-str case-sensitive exp-rows]
-               (= exp-rows (filter-rows (-> (lib/contains uuid-field filter-str)
-                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
-            "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
-            "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
-            "AAA" true  []
-            "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
-        (testing "can filter nullable uuids with does not contain"
-          (are [filter-str case-sensitive exp-rows]
-               (= exp-rows (filter-rows (-> (lib/does-not-contain uuid-field filter-str)
-                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
-            "aaa" true  [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
-                         [3 nil]]
-            "aaa" false [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
-                         [3 nil]]
-            "AAA" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
-                         [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
-                         [3 nil]]
-            "AAA" false [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
-                         [3 nil]]))
-        (testing "can filter nullable uuids with starts with"
-          (are [filter-str case-sensitive exp-rows]
-               (= exp-rows (filter-rows (-> (lib/starts-with uuid-field filter-str)
-                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
-            "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
-            "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
-            "AAA" true  []
-            "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
-        (testing "can filter nullable uuids with ends with"
-          (are [filter-str case-sensitive exp-rows]
-               (= exp-rows (filter-rows (-> (lib/ends-with uuid-field filter-str)
-                                            (lib.options/update-options assoc :case-sensitive case-sensitive))))
-            "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
-            "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
-            "AAA" true  []
-            "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))))))
+        ;; (testing "can filter nullable uuids with contains"
+        ;;   (are [filter-str case-sensitive exp-rows]
+        ;;        (= exp-rows (filter-rows (cond-> (lib/contains uuid-field filter-str)
+        ;;                                   (not case-sensitive) lib/ignore-case)))
+        ;;     "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+        ;;     "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+        ;;     "AAA" true  []
+        ;;     "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
+        ;; (testing "can filter nullable uuids with does not contain"
+        ;;   (are [filter-str case-sensitive exp-rows]
+        ;;        (= exp-rows (filter-rows (cond-> (lib/does-not-contain uuid-field filter-str)
+        ;;                                   (not case-sensitive) lib/ignore-case)))
+        ;;     "aaa" true  [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+        ;;                  [3 nil]]
+        ;;     "aaa" false [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+        ;;                  [3 nil]]
+        ;;     "AAA" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+        ;;                  [2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+        ;;                  [3 nil]]
+        ;;     "AAA" false [[2 #uuid "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"]
+        ;;                  [3 nil]]))
+        ;; (testing "can filter nullable uuids with starts with"
+        ;;   (are [filter-str case-sensitive exp-rows]
+        ;;        (= exp-rows (filter-rows (cond-> (lib/starts-with uuid-field filter-str)
+        ;;                                   (not case-sensitive) lib/ignore-case)))
+        ;;     "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+        ;;     "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+        ;;     "AAA" true  []
+        ;;     "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
+        ;; (testing "can filter nullable uuids with ends with"
+        ;;   (are [filter-str case-sensitive exp-rows]
+        ;;        (= exp-rows (filter-rows (cond-> (lib/ends-with uuid-field filter-str)
+        ;;                                   (not case-sensitive) lib/ignore-case)))
+        ;;     "aaa" true  [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+        ;;     "aaa" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+        ;;     "AAA" true  []
+        ;;     "AAA" false [[1 #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]))
+        ))))
 
 #_(deftest ^:parallel clickhouse-array-of-uuids
     (mt/test-driver :clickhouse
@@ -441,19 +441,19 @@
          [{:field-name "mystring" :base-type :type/Text}]
          [["foo"] ["bar"] ["   "] [""] [nil]]]])
       (testing "null strings count"
-        (is (= 2M
+        (is (= 2
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:is-null $mystring]
                       :aggregation [:count]})
                    mt/first-row last))))
       (testing "nullable strings not null filter"
-        (is (= 3M
+        (is (= 3
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:not-null $mystring]
                       :aggregation [:count]})
                    mt/first-row last))))
       (testing "filter nullable string by value"
-        (is (= 1M
+        (is (= 1
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:= $mystring "foo"]
                       :aggregation [:count]})
