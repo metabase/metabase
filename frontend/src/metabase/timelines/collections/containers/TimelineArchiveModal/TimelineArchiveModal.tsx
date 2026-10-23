@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { skipToken, useGetTimelineQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
@@ -33,6 +35,7 @@ function TimelineArchiveModal({ params, onClose }: ModalComponentProps) {
       data={timeline}
       isLoading={isLoading}
       error={error}
+      loadingTitle={t`Archived events`}
       getHeaderProps={(timeline) =>
         getTimelineDetailsHeaderProps(timeline, {
           isArchive: true,

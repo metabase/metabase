@@ -10,6 +10,8 @@ export interface TimelineQueryModalProps<T> {
   data: T | undefined;
   isLoading: boolean;
   error: unknown;
+  /** Shown while loading, for modals whose title doesn't depend on `data`. */
+  loadingTitle?: ReactNode;
   getHeaderProps: (data: T) => TimelineModalHeaderProps;
   children: (data: T) => ReactNode;
   onClose: () => void;
@@ -24,6 +26,7 @@ export function TimelineQueryModal<T>({
   data,
   isLoading,
   error,
+  loadingTitle,
   getHeaderProps,
   children,
   onClose,
@@ -35,7 +38,7 @@ export function TimelineQueryModal<T>({
       tall
       animated={false}
       onClose={onClose}
-      {...(isLoaded ? getHeaderProps(data) : undefined)}
+      {...(isLoaded ? getHeaderProps(data) : { title: loadingTitle })}
     >
       {isLoaded ? (
         children(data)

@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import {
   skipToken,
   useGetCollectionQuery,
@@ -57,6 +59,7 @@ function TimelineListArchiveModal({
       data={collection}
       isLoading={isLoading}
       error={error}
+      loadingTitle={t`Archived timelines`}
       getHeaderProps={(collection) =>
         getTimelineListHeaderProps(timelines, collection, {
           isArchive: true,
