@@ -865,23 +865,25 @@
       (tru "{0}: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error)))))
 
 (defn- query-not-runnable-explanation
-  "When `pmbql-query` would make the FE's `canRun` gate return false, return an LLM-facing
-  description of where and why; nil when the query is runnable. Problems [[not-runnable-problem]]
-  explains are listed first, and the usual causes are added when it explains none."
-  [pmbql-query]
-  (binding [lib.schema.expression/*suppress-expression-type-check?* true]
-    (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
-      (let [errors (sort-by (comp nil? not-runnable-problem) (:errors explanation))]
-        (cond-> (or (some->> errors
-                             (map #(str (repr/query-path (:in %)) ": "
-                                        (or (not-runnable-problem %) (me/error-message %))))
-                             distinct
-                             (take 3)
-                             seq
-                             (str/join "; "))
-                    (tru "the query does not match the query builder''s schema"))
-          (not-any? not-runnable-problem errors)
-          (str ". " (tru "This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`")))))))
+  "Explain why `pmbql-query` fails the query builder's `canRun` check, or return nil.
+
+  Problems that [[not-runnable-problem]] can explain come first. Add the usual causes if it cannot
+  explain any of them. `repaired-query` supplies the original stage indexes and defaults to `pmbql-query`."
+  ([pmbql-query] (query-not-runnable-explanation pmbql-query pmbql-query))
+  ([pmbql-query repaired-query]
+   (binding [lib.schema.expression/*suppress-expression-type-check?* true]
+     (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
+       (let [errors (sort-by (comp nil? not-runnable-problem) (:errors explanation))]
+         (cond-> (or (some->> errors
+                              (map #(str (repr/query-path (repr/original-query-path repaired-query (:in %))) ": "
+                                         (or (not-runnable-problem %) (me/error-message %))))
+                              distinct
+                              (take 3)
+                              seq
+                              (str/join "; "))
+                     (tru "the query does not match the query builder''s schema"))
+           (not-any? not-runnable-problem errors)
+           (str ". " (tru "This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`"))))))))
 
 (defn- incompatible-metrics
   "Return the required sources of incompatible metrics in the first stage, sorted by metric ID.
@@ -1049,7 +1051,7 @@
             _perms        (check-source-table-query-permissions! mp repaired checked)
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
-            _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
+            _runnable     (when-let [why (query-not-runnable-explanation pmbql-query repaired)]
                             (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. Failing paths: {0}."
                                                  why)
                                             {:agent-error? true
@@ -1061,7 +1063,7 @@
             ;; aggregations, cyclic expression refs, type-incompatible arguments. Must run
             ;; after the `_runnable` gate: `diagnose-expression` itself validates its query
             ;; argument against the same schema.
-            _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query)
+            _editor-ok    (repr.repair/assert-editor-accepts-expressions! pmbql-query repaired)
             _buckets-ok   (repr.repair/assert-temporal-buckets-on-temporal-columns! pmbql-query)
             ;; Check sources after schema validation so an incompatible metric produces a retryable error before execution.
             _metrics-ok   (when-let [bad (incompatible-metrics mp pmbql-query)]

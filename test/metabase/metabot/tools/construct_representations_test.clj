@@ -3279,3 +3279,74 @@
                       (catch clojure.lang.ExceptionInfo e e))]
           (is (= (str "Representations query has an invalid structure.\n" hint)
                  (tools.error/recoverable-text (tools.error/classify error) #{}))))))))
+
+(deftest error-locations-after-stage-split-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [[stage-kvs error-code expected]
+              [[{"filters" {"op" ">"}}
+                :invalid-representations-query
+                "Invalid at stages[2].filters: invalid type. Fix the named paths."]
+               [{"breakout" [{"op" "field"}]}
+                :invalid-representations-query
+                (str "Invalid at stages[2].breakout[0]: should be a vector, "
+                     "clause must be [operator-string, options-map, …args]. Fix the named paths.")]
+               [{"expressions" {"Previous" ["offset" {} ["field" {} "count"] -1]}}
+                :query-not-runnable
+                "Failing paths: stages[2].expressions[0]:"]]]
+        (let [query (query-data
+                     {"lib/type" "mbql/query"
+                      "stages" [{"lib/type" "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                {"lib/type" "mbql.stage/mbql"
+                                 "aggregation" [["count" {}]]
+                                 "filters" [[">" {} ["aggregation" {} 0] 10]]}
+                                (merge {"lib/type" "mbql.stage/mbql"} stage-kvs)]})
+              error (try
+                      (tools/with-pipeline-errors (construct/execute-representations-query query))
+                      (catch clojure.lang.ExceptionInfo e e))
+              classified (tools.error/classify error)]
+          (is (= :recoverable (:class classified)))
+          (is (= (keyword "metabase.metabot.tools.recoverable.pipeline" (name error-code))
+                 (:code classified)))
+          (when (contains? stage-kvs "breakout")
+            (is (vector? (get-in (ex-data (ex-cause error)) [:humanized "stages" 2 "breakout"]))))
+          (is (str/includes? (tools.error/recoverable-text classified #{}) expected)))))))
+
+(deftest diagnostic-stage-numbers-after-split-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [split? [false true]
+              [stage-kvs error-code expected]
+              [[{"aggregation" [["field" {} "count"]]}
+                :aggregation-entry-not-aggregation
+                "Stage 1 aggregation entry 0 is a `field` clause"]
+               [{"filters" [[">" {} ["offset" {} ["field" {} "count"] -1] 1]]}
+                :expression-editor-rejection
+                "rejects a `filters:` clause in stage 1: OFFSET is not supported in custom filters"]
+               [{"joins" [{"alias" "P"
+                           "strategy" "left-join"
+                           "stages" [{"lib/type" "mbql.stage/mbql"
+                                      "source-table" ["Sample" "PUBLIC" "PRODUCTS"]}]
+                           "conditions" [["=" {} ["field" {} "PRODUCT_ID"]
+                                          ["field" {"join-alias" "P"} ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]}]
+                 "breakout" [["field" {"join-alias" "P"} "NOPE"]]}
+                :unresolved-join-alias-field
+                "stage 1, join \"P\" doesn't return \"NOPE\""]]]
+        (testing (str error-code ", split: " split?)
+          (let [query (query-data
+                       {"lib/type" "mbql/query"
+                        "stages" [(cond-> {"lib/type" "mbql.stage/mbql"
+                                           "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                           "aggregation" [["count" {}]]
+                                           "breakout" [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                                    split? (assoc "filters" [[">" {} ["aggregation" {} 0] 10]]))
+                                  (merge {"lib/type" "mbql.stage/mbql"} stage-kvs)]})
+                error (try
+                        (tools/with-pipeline-errors (construct/execute-representations-query query))
+                        (catch clojure.lang.ExceptionInfo e e))
+                classified (tools.error/classify error)]
+            (is (= :recoverable (:class classified)))
+            (is (= (keyword "metabase.metabot.tools.recoverable.pipeline" (name error-code))
+                   (:code classified)))
+            (is (str/includes? (tools.error/recoverable-text classified #{}) expected))))))))

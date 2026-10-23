@@ -30,6 +30,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -2166,14 +2167,22 @@
                      :stage        stage}))))))))
 
 (defn- split-post-agg-filters*
-  "Top-level pass: walk every stage in the query, expanding any post-agg-filter stage
-  in-place to `[stage0 stage1]`. Re-runs are no-ops (idempotent: split stages no longer
-  match the trigger). Split failures carry the unsplit query as `:query` in their ex-data."
+  "Split query stages that filter aggregation results.
+
+  Repeated calls leave already split stages unchanged. The `::repr/original-stage-indexes` metadata
+  maps each resulting stage to its index in the original input. Split failures carry the unsplit query as `:query`."
   [query]
   (if-not (and (map? query) (vector? (get query "stages")))
     query
     (try
-      (update query "stages" #(into [] (mapcat split-post-agg-filter-stage) %))
+      (let [stages           (get query "stages")
+            original-indexes (or (::repr/original-stage-indexes (meta query)) (range (count stages)))
+            stage-groups     (mapv split-post-agg-filter-stage stages)
+            stage-indexes    (into [] (mapcat (fn [idx group] (repeat (count group) idx))
+                                              original-indexes stage-groups))]
+        (-> query
+            (assoc "stages" (into [] cat stage-groups))
+            (vary-meta assoc ::repr/original-stage-indexes stage-indexes)))
       (catch clojure.lang.ExceptionInfo e
         (throw (ex-info (ex-message e) (assoc (ex-data e) :query query) e))))))
 
@@ -3033,7 +3042,7 @@
      :problems (vec (for [{:keys [alias cols named-refs path-refs]} checks
                           :let  [bad (bad-join-alias-refs mp cols named-refs path-refs import-resolver)]
                           :when (seq bad)]
-                      {:stage      idx
+                      {:stage      (repr/original-stage-index query idx)
                        :join-alias alias
                        :clauses    (vec bad)
                        :columns    (vec (distinct (map #(field-target-name mp (nth % 2)) bad)))
@@ -3388,7 +3397,7 @@
   (when (and (map? query) (vector? (get query "stages")))
     (doseq [[idx stage] (map-indexed vector (get query "stages"))]
       (when (map? stage)
-        (aggregation-entry-not-aggregation-error! stage idx)))
+        (aggregation-entry-not-aggregation-error! stage (repr/original-stage-index query idx))))
     (case-default-in-opts-error! query)
     (sexp-legacy-op-as-clause-error! query)
     (blank-expression-ref-error! query)
@@ -3436,6 +3445,8 @@
 
 (defn repair
   "Run the repair pipeline on a parsed (string-keyed, portable) representations query.
+
+  The `::repr/original-stage-indexes` metadata maps each returned stage to its index in the original input.
 
   Passes:
     1. ensure every clause vector has an options map at position 2;
@@ -3549,41 +3560,40 @@
 ;;; ============================================================
 
 (defn assert-editor-accepts-expressions!
-  "Run the FE expression editor's own validation, [[metabase.lib.expression/diagnose-expression]],
-  over every custom column, aggregation, and filter of the resolved `pmbql-query`, throwing a
-  retryable `:agent-error?` on the first clause it rejects. Returns `pmbql-query`.
+  "Validate resolved query expressions with the query builder's expression editor.
 
-  Catches shapes that are schema-legal yet broken in the editor: `offset` in a filter, window
-  functions nested inside aggregation functions, cyclic expression references, type-incompatible
-  arguments, standalone constants without `:expression-literals` support.
+  Check custom columns, aggregations and filters with [[metabase.lib.expression/diagnose-expression]],
+  and throw a retryable `:agent-error?` for the first rejected clause. Return `pmbql-query` if every
+  clause passes.
 
-  Unlike the rest of this namespace this runs after resolve. Call it only on a query that already
-  passed the suppressed-type-check `::lib.schema/query` validation - `diagnose-expression`
-  validates its query argument against that same schema, and its raw validation error would
-  otherwise preempt the friendly message."
-  [pmbql-query]
-  (doseq [stage-idx      (range (lib/stage-count pmbql-query))
-          [mode clauses] [[:expression  (lib/expressions  pmbql-query stage-idx)]
-                          [:aggregation (lib/aggregations pmbql-query stage-idx)]
-                          [:filter      (lib/filters      pmbql-query stage-idx)]]
-          [pos clause]   (map-indexed vector clauses)]
-    (when-let [{:keys [message]} (lib.expression/diagnose-expression
-                                  pmbql-query stage-idx mode clause
-                                  (when (#{:expression :aggregation} mode) pos))]
-      (let [where (case mode
-                    :expression  "custom column (`expressions:`)"
-                    :aggregation "`aggregation:`"
-                    :filter      "`filters:`")]
-        (throw (ex-info
-                (tru "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
-                     where stage-idx (str/replace message #"\.$" ""))
-                {:agent-error? true
-                 :error        :expression-editor-rejection
-                 :status-code  400
-                 :stage        stage-idx
-                 :mode         mode
-                 :clause       clause})))))
-  pmbql-query)
+  `pmbql-query` must already pass `::lib.schema/query` validation with expression type checks
+  suppressed. Otherwise, schema errors can hide the clause's error message.
+  `repaired-query` supplies the original stage indexes for diagnostics and defaults to `pmbql-query`."
+  ([pmbql-query] (assert-editor-accepts-expressions! pmbql-query pmbql-query))
+  ([pmbql-query repaired-query]
+   (doseq [stage-idx      (range (lib/stage-count pmbql-query))
+           [mode clauses] [[:expression  (lib/expressions  pmbql-query stage-idx)]
+                           [:aggregation (lib/aggregations pmbql-query stage-idx)]
+                           [:filter      (lib/filters      pmbql-query stage-idx)]]
+           [pos clause]   (map-indexed vector clauses)]
+     (when-let [{:keys [message]} (lib.expression/diagnose-expression
+                                   pmbql-query stage-idx mode clause
+                                   (when (#{:expression :aggregation} mode) pos))]
+       (let [original-idx (repr/original-stage-index repaired-query stage-idx)
+             where (case mode
+                     :expression  "custom column (`expressions:`)"
+                     :aggregation "`aggregation:`"
+                     :filter      "`filters:`")]
+         (throw (ex-info
+                 (tru "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
+                      where original-idx (str/replace message #"\.$" ""))
+                 {:agent-error? true
+                  :error        :expression-editor-rejection
+                  :status-code  400
+                  :stage        original-idx
+                  :mode         mode
+                  :clause       clause})))))
+   pmbql-query))
 
 (defn- unbucketed-ref
   "`clause` with its `temporal-unit`, and the type the bucket stamped on it, taken off.

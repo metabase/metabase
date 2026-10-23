@@ -3384,6 +3384,25 @@
       (is (= 2 (count (get once "stages"))))
       (is (= once twice)))))
 
+(deftest ^:parallel error-paths-preserve-original-stages-test
+  (let [post-agg-stage {"lib/type" "mbql.stage/mbql"
+                        "aggregation" [["count" {}]]
+                        "filters" [[">" {} ["aggregation" {} 0] 10]]}
+        query {"lib/type" "mbql/query"
+               "stages" [{"lib/type" "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                         post-agg-stage
+                         post-agg-stage
+                         {"lib/type" "mbql.stage/mbql"}]}
+        repaired (repair/repair trivial-mp query)
+        expected (mapv #(vector :stages % :filters 0) [0 1 1 2 2 3])]
+    (doseq [q [repaired (repair/repair trivial-mp repaired)]]
+      (is (= 6 (count (get q "stages"))))
+      (is (= expected (mapv #(repr/original-query-path q [:stages % :filters 0]) (range 6))))
+      (testing "only the parent stage index changes for a nested join path"
+        (is (= [:stages 3 :joins 0 :stages 1 :filters 0]
+               (repr/original-query-path q [:stages 5 :joins 0 :stages 1 :filters 0])))))))
+
 (deftest ^:parallel split-post-agg-handles-distinct-and-count-where-test
   (testing "distinct and count-where get correct lib column names"
     (let [build (fn [agg]
