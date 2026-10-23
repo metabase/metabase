@@ -242,6 +242,12 @@
                         "breakout"     [["field" {} [db "PUBLIC" "ORDERS" "CREATD_AT"]]]}
                        :metabase.metabot.tools.recoverable.pipeline/unknown-field
                        orders-uri))
+      (testing "an unknown column on another table names that table"
+        (check-failure {"source-table" [db "PUBLIC" "ORDERS"]
+                        "aggregation"  [["count" {}]]
+                        "breakout"     [["field" {} [db "PUBLIC" "PRODUCTS" "CATEGRY"]]]}
+                       :metabase.metabot.tools.recoverable.pipeline/unknown-field
+                       (str "metabase://table/" (mt/id :products) "/fields")))
       (testing "an ambiguous foreign key names the source table"
         (mt/with-temp-vals-in-db :model/Field (mt/id :orders :user_id) {:fk_target_field_id (mt/id :products :id)}
           (check-failure {"source-table" [db "PUBLIC" "ORDERS"]
