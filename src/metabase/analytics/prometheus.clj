@@ -605,6 +605,14 @@
                        {:description "Number of chart rasterization images backed by a pooled buffer."})
    (prometheus/counter :metabase-notification/image-buffer-unpooled
                        {:description "Number of chart rasterization images too large for the pool, allocated fresh."})
+   (prometheus/counter :metabase-notification/dashboard-subscription-send
+                       {:description (str "Number of dashboard subscription sends, labeled by channel and by whether a "
+                                          "PDF was attached. The fraction with include-pdf=\"true\" measures adoption "
+                                          "of the \"attach PDF\" feature.")
+                        :labels [:channel-type :include-pdf]})
+   (prometheus/counter :metabase-dashboard/pdf-export
+                       {:description "Number of on-demand dashboard-to-PDF API requests (POST /api/dashboard/:id/pdf), labeled by outcome."
+                        :labels [:status]})
    (prometheus/counter :metabase-gsheets/connection-creation-began
                        {:description "How many times the instance has initiated a Google Sheets connection creation."})
    (prometheus/counter :metabase-gsheets/connection-creation-error
