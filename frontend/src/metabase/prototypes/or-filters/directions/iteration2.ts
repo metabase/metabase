@@ -15,6 +15,7 @@ import {
 } from "./expression-bar-drill/QuestionView";
 import { SelectSummarizeBar } from "./expression-bar-summarize/ExpressionBar";
 import { withFiltersForMetabot } from "./expression-bar-summarize/summaries";
+import { FilterRowsBar } from "./filter-rows/FilterRowsBar";
 
 /**
  * Iteration 2 directions: the next round, built on what iteration 1 taught us. Iteration 1
@@ -44,6 +45,19 @@ export const ITERATION_2_DIRECTIONS: FilterDirection[] = [
     Component: ExpressionBarInline2Prototype,
     Canvas: QuestionView,
     prepareQuery: withSumOfTotalByMonth,
+  },
+  {
+    id: "filter-rows",
+    get name() {
+      return t`Filter rows`;
+    },
+    get description() {
+      return t`The drill-through question with the bar replaced by an always-visible rows editor, prefilled with a or (b and (c or (d and e))). Each row is AND-ed inside its parentheses; rows are joined by OR. Type to search filters, as in the drill-through bar. Enter adds an OR row, "(" starts a nested group one indent in and ")" leaves it, Backspace on an empty spot deletes the filter before it, arrow up/down moves between rows, Tab and Shift+Tab move between filters. A drilled filter is AND-ed onto every row.`;
+    },
+    Component: ExpressionBarInline2Prototype,
+    Canvas: (props) =>
+      createElement(QuestionView, { ...props, Bar: FilterRowsBar }),
+    prepareQuery: withFourLevelsByMonth,
   },
   {
     id: "expression-bar-debug",

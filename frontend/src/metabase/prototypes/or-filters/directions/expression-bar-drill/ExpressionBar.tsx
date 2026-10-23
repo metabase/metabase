@@ -375,7 +375,7 @@ function getHiddenSearch(listRef: RefObject<HTMLDivElement>) {
  * Types the bar's text into the list's hidden search box, then highlights
  * the best match so Enter picks it.
  */
-function useSearchSync(
+export function useSearchSync(
   listRef: RefObject<HTMLDivElement>,
   text: string,
   isActive: boolean,
@@ -412,7 +412,7 @@ function useSearchSync(
 }
 
 /** Arrow keys and Enter in the bar drive the list's own keyboard navigation. */
-function forwardKey(listRef: RefObject<HTMLDivElement>, key: string) {
+export function forwardKey(listRef: RefObject<HTMLDivElement>, key: string) {
   getHiddenSearch(listRef)?.dispatchEvent(
     new KeyboardEvent("keydown", { key, bubbles: true }),
   );
