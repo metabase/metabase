@@ -105,12 +105,14 @@ export const getPathDepth = (paths: PathsSpec): number =>
   Math.min(paths.steps, 8);
 
 /**
- * Each visit's steps in order as `ordered_steps`, and the window of them the
- * paths cover as `bounds`.
+ * The CTEs every paths query shares: each visit's steps in order as
+ * `ordered_steps`, and the window of them the paths cover as `bounds`.
+ * `carried` columns are computed on each event and kept on its step.
  */
-const pathWindowCtes = (
+export const pathWindowCtes = (
   spec: AnalysisSpec,
   paths: PathsSpec,
+  carried: readonly { as: string; sql: string }[] = [],
 ): { ctes: Cte[]; warnings: string[] } => {
   const warnings: string[] = [];
   const gap = paths.sessionGapMinutes * 60;
@@ -127,8 +129,12 @@ const pathWindowCtes = (
     { as: "is_start", sql: start !== null ? flagSql(start.flag) : "0" },
     { as: "is_end", sql: end !== null ? flagSql(end.flag) : "0" },
     { as: "step_name", sql: stepNameSql(spec) },
+    ...carried,
   ]);
   warnings.push(...base.warnings);
+  const carriedNames = carried.map(({ as }) => as);
+  const carry = (indent: string) =>
+    carriedNames.map((name) => `${indent}${name},`);
 
   const ctes: Cte[] = [...base.ctes];
 
@@ -143,6 +149,7 @@ const pathWindowCtes = (
       "  step_name,",
       "  is_start,",
       "  is_end,",
+      ...carry("  "),
       "  sum(new_visit) OVER (PARTITION BY actor ORDER BY ts",
       "    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS visit",
       "FROM (",
@@ -152,6 +159,7 @@ const pathWindowCtes = (
       "    step_name,",
       "    is_start,",
       "    is_end,",
+      ...carry("    "),
       "    if(row_number() OVER (PARTITION BY actor ORDER BY ts) = 1",
       `       OR dateDiff('second', lagInFrame(ts, 1, ts) OVER (PARTITION BY actor ORDER BY ts`,
       "         ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), ts) > " +
@@ -201,10 +209,12 @@ const pathWindowCtes = (
       "  step_name,",
       "  is_start,",
       "  is_end,",
+      ...carry("  "),
       "  row_number() OVER (PARTITION BY actor, visit ORDER BY ts) AS position",
       "FROM (",
       "  SELECT",
       "    actor, visit, ts, step_name, is_start, is_end,",
+      ...carry("    "),
       "    lagInFrame(step_name, 1, '') OVER (PARTITION BY actor, visit ORDER BY ts",
       "      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS previous_name",
       "  FROM visits",

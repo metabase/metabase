@@ -66,6 +66,11 @@ export const METABOT_PROFILES = {
       return t`Documents`;
     },
   },
+  product_analytics: {
+    get label() {
+      return t`Product analytics`;
+    },
+  },
 } as const;
 
 export type MetabotProfileId = keyof typeof METABOT_PROFILES;

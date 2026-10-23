@@ -540,6 +540,9 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "data-research_plan_update" }, (part) => {
                 pushDataPart({ type: "data_part", part });
               })
+              .with({ type: "data-event_analysis" }, (part) => {
+                pushDataPart({ type: "data_part", part });
+              })
               .with({ type: "data-code_edit" }, (part) => {
                 dispatch(addSuggestedCodeEdit({ ...part.data, active: true }));
 
@@ -560,7 +563,11 @@ export const sendAgentRequest = createAsyncThunk<
               .with({ type: "data-generated_entity" }, (part) => {
                 pushDataPart({ type: "data_part", part });
 
-                if (isFullPageMetabot) {
+                // PROTOTYPE: charts about an event analysis stay in the chat
+                // rather than replacing the analysis.
+                const isOnEventAnalysis =
+                  window.location.pathname.startsWith("/event-analysis");
+                if (isFullPageMetabot || isOnEventAnalysis) {
                   return;
                 }
 

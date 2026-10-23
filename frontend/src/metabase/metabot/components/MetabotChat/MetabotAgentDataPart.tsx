@@ -37,6 +37,7 @@ import {
 import { AgentSuggestionMessage } from "./MetabotAgentSuggestionMessage";
 import { AgentTodoListMessage } from "./MetabotAgentTodoMessage";
 import Styles from "./MetabotChat.module.css";
+import { MetabotEventAnalysisSuggestionCard } from "./MetabotEventAnalysisSuggestion";
 import { MetabotInlineChart } from "./MetabotInlineChart";
 import { MetabotInlineDashboardLink } from "./MetabotInlineDashboardLink";
 
@@ -137,6 +138,12 @@ export const AgentDataPart = ({
     .with({ part: { type: "data-research_plan_update" } }, ({ part }) =>
       debug ? <DataPartJsonCard type={part.type} value={part.data} /> : null,
     )
+    .with({ part: { type: "data-event_analysis" } }, ({ part }) => (
+      <Stack gap="lg">
+        {debug && <DataPartJsonCard type={part.type} value={part.data} />}
+        <MetabotEventAnalysisSuggestionCard suggestion={part.data} />
+      </Stack>
+    ))
     .exhaustive((dataPart: unknown) => {
       console.warn("AgentDataPart received an unexpected value:", dataPart);
       return null;

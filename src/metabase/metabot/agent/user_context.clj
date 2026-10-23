@@ -288,6 +288,21 @@
                     (te/field "Selected lines" (str (:line start) "-" (:line end)))
                     (te/field "Selected text" text))))))))
 
+(defmethod format-entity "event_analysis"
+  [{:keys [title findings database_id sql_engine ctes]}]
+  (te/lines
+   (str "The user is looking at an event (product analytics) analysis"
+        (when (not-empty title) (str ": " title)) ".")
+   (te/field "Database ID" (some-> database_id str))
+   (te/field "Database SQL engine" sql_engine)
+   (when (not-empty findings)
+     (te/lines "" "<findings>" findings "</findings>"))
+   (when (seq ctes)
+     (te/lines ""
+               "CTEs already defined for `run_event_sql` (reference them by name; don't redefine them):"
+               (for [{cte-name :name, :keys [description]} ctes]
+                 (str "- `" cte-name "`" (when (not-empty description) (str ": " description))))))))
+
 (defn format-viewing-context
   "Format user's current viewing context.
 

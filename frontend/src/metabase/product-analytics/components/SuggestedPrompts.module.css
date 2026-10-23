@@ -1,0 +1,24 @@
+.chip {
+  height: auto;
+  min-height: 2rem;
+  padding-block: 0.375rem;
+  padding-inline: 0.75rem 0.875rem;
+  border: 1px solid var(--mb-color-border);
+  border-radius: 999px;
+  background-color: var(--mb-color-background-primary);
+  color: var(--mb-color-text-primary);
+  font-weight: normal;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+
+  &:hover {
+    border-color: var(--mb-color-brand);
+    background-color: var(--mb-color-background-primary);
+    color: var(--mb-color-text-brand);
+  }
+}
+
+.icon {
+  color: var(--mb-color-icon-brand);
+}

@@ -65,7 +65,9 @@
   (into item-types-qc
         #{"document"
           "dashboard"
-          "code_editor"}))
+          "code_editor"
+          ;; product analytics event analysis page (prototype); see `metabase.metabot.tools.event-analysis`
+          "event_analysis"}))
 
 (def ^:private item-type-schema
   "Schema for the `:type` key of `:user_is_viewing` item."
@@ -188,6 +190,13 @@
    [:type [:= "code_editor"]]
    [:buffers [:sequential CodeEditorBufferSchema]]])
 
+(def ^:private EventAnalysisCteSchema
+  "One CTE an `event_analysis` item makes available to `run_event_sql`."
+  [:map {:closed true}
+   [:name :string]
+   [:sql :string]
+   [:description {:optional true} [:maybe :string]]])
+
 (def ^:private item-entries
   "The keys of a viewing context item this code reads. The rest of the item is the shape of one of
   `MetabotEntityInfo`'s variants (card/dashboard/adhoc/document) or `MetabotCodeEditorContext`, so
@@ -206,7 +215,12 @@
                                                             [:description     {:optional true} [:maybe :string]]]]]]
    [:buffers         {:optional true} [:maybe [:sequential CodeEditorBufferSchema]]]
    [:query           {:optional true} ItemQuerySchema]
-   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]])
+   [:chart_configs   {:optional true} [:maybe [:vector ChartConfigSchema]]]
+   ;; `event_analysis` items
+   [:title           {:optional true} [:maybe :string]]
+   [:findings        {:optional true} [:maybe :string]]
+   [:database_id     {:optional true} [:maybe :int]]
+   [:ctes            {:optional true} [:maybe [:sequential EventAnalysisCteSchema]]]])
 
 (def DefaultItemSchema
   "Default schema of viewing context item."

@@ -103,6 +103,16 @@
                        :query-id query-id
                        :available-queries (keys queries)})))))
 
+;;; Event analysis (product analytics)
+
+(defn event-analysis-item
+  "The `event_analysis` viewing-context item this turn was seeded with (its `:ctes`, `:database_id`, ...), or nil."
+  [memory]
+  (some (fn [item]
+          (when (= "event_analysis" (some-> (:type item) name))
+            item))
+        (get-in memory [:context :user_is_viewing])))
+
 ;;; Chart Management
 
 (defn set-chart

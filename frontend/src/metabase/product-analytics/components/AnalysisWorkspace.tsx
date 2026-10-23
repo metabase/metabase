@@ -19,6 +19,7 @@ import { buildAnalysisCard } from "../analysis-card";
 import { useDrillActions } from "../drills/use-drill-actions";
 import { useDrillQueries } from "../drills/use-drill-queries";
 import { type AnalysisFilters, withPeopleFilter } from "../filters";
+import { useAnalysisMetabot } from "../metabot/use-analysis-metabot";
 import { SegmentDragProvider } from "../segments/drag-context";
 import type { PaletteSegment } from "../segments/types";
 import type { StoredSettings } from "../settings/types";
@@ -36,6 +37,7 @@ import { AnalysisToolbar } from "./AnalysisToolbar";
 import { DisplayPanel } from "./DisplayPanel";
 import { FilterPills, useFilterCount } from "./FilterPills";
 import { SetupPanel } from "./SetupPanel";
+import { SuggestedPrompts } from "./SuggestedPrompts";
 import { MembersModal } from "./drills/MembersModal";
 import { SegmentsPanel } from "./palette/SegmentsPanel";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
@@ -101,6 +103,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     config,
     table,
     usersTable,
+    context,
+    base,
     computed,
     spec,
     widgets,
@@ -147,6 +151,21 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
 
   const tableName = table?.display_name ?? t`this table`;
   const title = savedCard?.name ?? getNewAnalysisTitle(kind, tableName);
+  const metabotPrompts = useAnalysisMetabot({
+    kind,
+    title,
+    question,
+    tableId,
+    spec,
+    base,
+    context,
+    usersTable,
+    computed,
+    stored,
+    dataset: query.dataset,
+    compiledBase: query.compiledBase,
+    isResultLoading: query.isLoading,
+  });
 
   // Only the kind on the current tab is saved; the other tabs' settings stay
   // in the URL for this session.
@@ -301,6 +320,9 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
                 isDisplayOpen={isDisplayShowing}
                 onToggleDisplay={() => setIsDisplayOpen((isOpen) => !isOpen)}
               />
+              {spec !== undefined && (
+                <SuggestedPrompts state={metabotPrompts} />
+              )}
             </Stack>
           )}
           {isDisplayShowing && (

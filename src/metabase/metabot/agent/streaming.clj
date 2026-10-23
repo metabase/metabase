@@ -23,6 +23,7 @@
 (def search-results-type "AI-SDK data type for a search tool's result list." "search_results")
 (def tool-title-type "AI-SDK data type for a tool call's settled display title." "tool_title")
 (def research-plan-update-type "AI-SDK data type for a Research plan edit's picker hydration." "research_plan_update")
+(def event-analysis-type "AI-SDK data type for a suggested event (product analytics) analysis." "event_analysis")
 
 (def ^:private ephemeral-data-types
   "Data types not written to MetabotMessage.data."
@@ -156,6 +157,14 @@
   [value]
   {:type :data
    :data-type research-plan-update-type
+   :data value})
+
+(defn event-analysis-part
+  "Data part carrying an event analysis the agent suggests (`suggest_analysis`): `{:id :title :why :kind :changes}`.
+  The FE renders it as a card the user can apply or open in a new tab."
+  [value]
+  {:type :data
+   :data-type event-analysis-type
    :data value})
 
 (defn tool-title-part

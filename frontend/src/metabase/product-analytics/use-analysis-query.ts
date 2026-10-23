@@ -37,7 +37,7 @@ export type AnalysisQueryArgs = {
   base: BaseQueryInput;
 };
 
-type AnalysisQueryResult = {
+export type AnalysisQueryResult = {
   sql: string | null;
   compiledBase: CompiledBase | undefined;
   dataset: Dataset | undefined;
@@ -74,7 +74,7 @@ type CompiledBaseResult = {
  * Compiles the base query to SQL with `/api/dataset/native`. Nothing is
  * compiled until `isReady`.
  */
-const useCompiledBase = ({
+export const useCompiledBase = ({
   isReady,
   tableId,
   base,
@@ -249,7 +249,7 @@ type NativeQueryWithConstraints = NativeDatasetQuery & {
  * A native query for `/api/dataset`. `maxRows` raises the default row limit
  * for results that are known to be bounded.
  */
-const toNativeDatasetQuery = (
+export const toNativeDatasetQuery = (
   sql: string,
   databaseId: number,
   maxRows?: number,
