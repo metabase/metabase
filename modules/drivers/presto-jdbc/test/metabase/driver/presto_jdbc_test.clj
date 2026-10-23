@@ -12,7 +12,6 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.core :as lib]
-   [metabase.query-processor :as query-processor]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -387,4 +386,4 @@
                                           :details {:host "127.0.0.1", :port port, :user "test", :ssl false}}]
          (mt/with-db db
            (is (=? {:status :failed, :error_type :qp}
-                   (query-processor/process-query (query-processor/userland-query (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")))))))))))
+                   (qp/process-query (qp/userland-query (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")))))))))))
