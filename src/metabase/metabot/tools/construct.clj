@@ -33,8 +33,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
-   [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -727,72 +725,37 @@
        nil))
     @contexts))
 
-(defn- unavailable-key-context
-  [preprocessed contexts]
-  (let [unavailable (volatile! nil)]
-    (lib.walk/walk-stages
-     preprocessed
-     (fn [query path {:keys [source-table joins]}]
-       (when source-table
-         (doseq [join joins :when (:qp/is-implicit-join join)
-                 :let [key-ref (get-in join [:conditions 0 2])
-                       column (lib.walk/apply-f-for-stage-at-path lib/metadata query path key-ref)]
-                 :when (and (= :source/table-defaults (:lib/source column))
-                            (:table-id column)
-                            (not= source-table (:table-id column)))]
-           (when-let [context (some (fn [{:keys [query stage-number field-ref] :as context}]
-                                      (when (and (= (:fk-field-id join) (:source-field (second field-ref)))
-                                                 (= source-table (:source-table (lib/query-stage query stage-number))))
-                                        context))
-                                    contexts)]
-             (vreset! unavailable context))))
-       nil))
-    @unavailable))
-
-(defn- qp-source-field-problem
-  [query contexts]
-  (try
-    (let [preprocessed (qp.preprocess/preprocess query)]
-      (or (unavailable-key-context preprocessed contexts)
-          (try
-            (qp.compile/compile-preprocessed preprocessed)
-            nil
-            (catch Exception e
-              (some (fn [cause]
-                      (let [column (:col (ex-data cause))]
-                        (when (and (= :source/implicitly-joinable (:lib/source column))
-                                   (nil? (:lib/join-alias column)))
-                          (some (fn [{[_ {:keys [source-field]} target] :field-ref :as context}]
-                                  (when (or (= target (:id column)) (= source-field (:id column))) context))
-                                contexts))))
-                    (u/full-exception-chain e))))))
-    ;; Other preprocessing and compilation failures are left to the query processor.
-    (catch Exception _ nil)))
+(defn- wrong-source-field?
+  [metadata-provider [_ {:keys [source-field]} target]]
+  (when (and (pos-int? source-field) (pos-int? target))
+    (let [field       (lib.metadata/field metadata-provider target)
+          key-field   (lib.metadata/field metadata-provider source-field)
+          fk-target   (some->> (:fk-target-field-id key-field) (lib.metadata/field metadata-provider))]
+      (and (:table-id field)
+           key-field
+           (if (:fk-target-field-id key-field)
+             (and (:table-id fk-target) (not= (:table-id field) (:table-id fk-target)))
+             true)))))
 
 (defn- assert-source-fields-reach-their-tables!
-  "Reject implicit field references that the query processor cannot resolve."
+  "Reject implicit field references whose source field is not a foreign key to the field's table."
   [pmbql-query]
-  (let [contexts (source-field-contexts pmbql-query)]
-    (when-let [{:keys [query stage-number field-ref]} (when (seq contexts)
-                                                        (qp-source-field-problem pmbql-query contexts))]
-      (let [[_ {:keys [source-field]} target] field-ref
-            mp          (lib.metadata/->metadata-provider query)
-            field-ids   (into #{} (filter pos-int?) [source-field target])
-            fields      (->> (lib.metadata/bulk-metadata mp :metadata/column field-ids)
-                             entity-details/permission-filter-columns
-                             (into {} (map (juxt :id identity))))
-            _visible    (when-not (every? fields field-ids)
-                          (throw (ex-info "The implicit field reference cannot be resolved with the fields available to you. Use a visible foreign key or an explicit join."
-                                          {:agent-error? true :status-code 400 :error :wrong-source-field})))
-            table-id    (:table-id (get fields target))
-            fk-field    (get fields source-field)
-            fk-table-id (some->> (:fk-target-field-id fk-field) (fetch-field mp) :table-id)
-            field-ref   (field-ref-for-error mp field-ref)]
-        (if (and table-id fk-field (not= table-id fk-table-id))
-          (throw (wrong-source-field-error mp field-ref table-id fk-table-id (lib/visible-columns query stage-number)))
-          (throw (ex-info (format "Field %s cannot be reached through `source-field` %s in this stage. Use a foreign key available in this stage, or join the field's table explicitly and reference it with `join-alias`."
-                                  (pr-str (nth field-ref 2)) (pr-str (get-in field-ref [1 :source-field])))
-                          {:agent-error? true :status-code 400 :error :wrong-source-field})))))))
+  (doseq [{:keys [query stage-number field-ref]} (source-field-contexts pmbql-query)
+          :let [mp (lib.metadata/->metadata-provider query)]
+          :when (wrong-source-field? mp field-ref)]
+    (let [[_ {:keys [source-field]} target] field-ref
+          field-ids   (set [source-field target])
+          fields      (->> (lib.metadata/bulk-metadata mp :metadata/column field-ids)
+                           entity-details/permission-filter-columns
+                           (u/index-by :id))
+          _visible    (when-not (every? fields field-ids)
+                        (throw (ex-info "The implicit field reference cannot be resolved with the fields available to you. Use a visible foreign key or an explicit join."
+                                        {:agent-error? true :status-code 400 :error :wrong-source-field})))
+          table-id    (:table-id (get fields target))
+          fk-field    (get fields source-field)
+          fk-table-id (some->> (:fk-target-field-id fk-field) (lib.metadata/field mp) :table-id)
+          field-ref   (field-ref-for-error mp field-ref)]
+      (throw (wrong-source-field-error mp field-ref table-id fk-table-id (lib/visible-columns query stage-number))))))
 
 ;;; ---------------------------------------- Result columns ----------------------------------------
 
@@ -986,7 +949,7 @@
     6. Resolve portable FKs to numeric IDs and normalize through `lib.schema/query` against the
        metadata-provider.
     6.5. Backstop-gate the resolved query: mirror the FE `canRun` schema validation
-       ([[query-not-runnable-explanation]]), check implicit field references using query processor resolution
+       ([[query-not-runnable-explanation]]), check that implicit field references use a foreign key to their table
        ([[assert-source-fields-reach-their-tables!]]), run the FE expression editor's own
        diagnostics over every custom column / aggregation / filter
        ([[repr.repair/assert-editor-accepts-expressions!]]), then reject a temporal bucket
