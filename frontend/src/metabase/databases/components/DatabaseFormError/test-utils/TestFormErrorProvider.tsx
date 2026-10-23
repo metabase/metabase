@@ -3,7 +3,7 @@ import type { PropsWithChildren } from "react";
 
 import { FormContext, type IFormContext } from "metabase/forms";
 
-export type ErrorVariant = "hostAndPort" | "generic";
+export type ErrorVariant = "hostAndPort" | "generic" | "secretsReentry";
 
 export interface FormProvidersOptions {
   errorVariant?: ErrorVariant;
@@ -21,6 +21,10 @@ export const TestFormErrorProvider = (props: Props) => {
     status: errorVariant ? "rejected" : "idle",
     setStatus: () => {},
     message: errorVariant ? errorMessage : undefined,
+    errorCode:
+      errorVariant === "secretsReentry"
+        ? "secrets-reentry-required"
+        : undefined,
   };
 
   return (

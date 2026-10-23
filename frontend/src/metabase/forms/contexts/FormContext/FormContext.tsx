@@ -5,6 +5,8 @@ export type FormStatus = "idle" | "pending" | "fulfilled" | "rejected";
 export interface FormState {
   status: FormStatus;
   message?: string;
+  /** machine-readable `error-code` from a rejected submit's API response */
+  errorCode?: string;
 }
 
 export interface IFormContext extends FormState {
