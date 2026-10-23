@@ -3,6 +3,7 @@
   (:require
    [clojure.set :as set]
    [metabase-enterprise.security-center.db :as security-center.db]
+   [metabase-enterprise.security-center.health-checks :as health-checks]
    [metabase-enterprise.security-center.models.security-advisory :as security-advisory]
    [metabase-enterprise.security-center.notification :as notification]
    [metabase-enterprise.security-center.settings :as settings]
@@ -134,6 +135,38 @@
     :slack-channel    (if (contains? body :slack_channel)
                         (:slack_channel body)
                         (settings/security-center-slack-channel))})
+  {:success true})
+
+(api.macros/defendpoint :get "/health-checks" :- [:sequential :map]
+  "PoC: list health checks with their current status."
+  []
+  (api/check-superuser)
+  (health-checks/list-health-checks))
+
+(api.macros/defendpoint :post "/health-checks/recheck" :- [:sequential :map]
+  "PoC: re-run all health checks synchronously and return them."
+  []
+  (api/check-superuser)
+  (health-checks/recheck!))
+
+(api.macros/defendpoint :post "/health-checks/:check-id/recheck" :- :map
+  "PoC: re-run one health check synchronously and return it."
+  [{:keys [check-id]} :- [:map {:closed true} [:check-id ms/NonBlankString]]]
+  (api/check-superuser)
+  (health-checks/recheck-one! check-id))
+
+(api.macros/defendpoint :post "/health-checks/:check-id/acknowledgement" :- [:map [:success :boolean]]
+  "PoC: acknowledge a failed health check."
+  [{:keys [check-id]} :- [:map {:closed true} [:check-id ms/NonBlankString]]]
+  (api/check-superuser)
+  (health-checks/acknowledge! check-id api/*current-user-id*)
+  {:success true})
+
+(api.macros/defendpoint :delete "/health-checks/:check-id/acknowledgement" :- [:map [:success :boolean]]
+  "PoC: remove a health check acknowledgement."
+  [{:keys [check-id]} :- [:map {:closed true} [:check-id ms/NonBlankString]]]
+  (api/check-superuser)
+  (health-checks/unacknowledge! check-id)
   {:success true})
 
 (def +check-security-center-enabled

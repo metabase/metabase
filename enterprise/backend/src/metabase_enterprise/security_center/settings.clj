@@ -75,6 +75,23 @@
   :include-in-list?   false
   :can-read-from-env? false)
 
+(defsetting security-center-health-check-acknowledgements
+  (deferred-tru "PoC: acknowledged health checks, keyed by check id.")
+  :type               :json
+  :default            {}
+  :encryption         :no
+  :feature            :admin-security-center
+  :visibility         :internal
+  :export?            false
+  :doc                false
+  :audit              :never
+  :include-in-list?   false
+  :can-read-from-env? false
+  :getter             (fn []
+                        (-> (setting/get-value-of-type :json :security-center-health-check-acknowledgements)
+                            (update-keys name)
+                            (update-vals #(update-keys % keyword)))))
+
 (defn repeat-days-for-severity
   "Return repeat days for severity, defaults to 1 if not configured"
   [severity]

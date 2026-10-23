@@ -15,6 +15,8 @@ type SecurityCenterNavItemProps = {
 type SecurityCenterPlugin = {
   isEnabled: boolean;
   securityCenterPage: PluginRoute;
+  securityCenterAdvisoriesPage: PluginRoute;
+  securityCenterHealthChecksPage: PluginRoute;
   SecurityCenterBanner: ComponentType;
   SecurityCenterPromoCard: ComponentType;
   SecurityCenterNavItem: ComponentType<SecurityCenterNavItemProps>;
@@ -24,6 +26,8 @@ type SecurityCenterPlugin = {
 const getDefaultPlugin = (): SecurityCenterPlugin => ({
   isEnabled: false,
   securityCenterPage: pluginPlaceholderRoute,
+  securityCenterAdvisoriesPage: pluginPlaceholderRoute,
+  securityCenterHealthChecksPage: pluginPlaceholderRoute,
   SecurityCenterBanner: PluginPlaceholder,
   SecurityCenterPromoCard: PluginPlaceholder,
   SecurityCenterNavItem: PluginPlaceholder,
