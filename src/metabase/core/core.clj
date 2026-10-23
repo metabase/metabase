@@ -25,7 +25,7 @@
    [metabase.notification.core :as notification]
    [metabase.oauth-server.api :as oauth-server.api]
    [metabase.plugins.core :as plugins]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
    [metabase.search.embeddings.startup :as embeddings.startup]
    [metabase.server.core :as server]
@@ -108,6 +108,7 @@
   []
   (log/info "Metabase Shutting Down ...")
   (queue/stop-listeners!)
+  (premium-features/stop-refresher!)
   (startup/run-shutdown-logic!)
   (task/stop-scheduler!)
   (server/stop-web-server!)
@@ -205,6 +206,9 @@
   ;; negatives, but for now there's not much we can do
   (mdb/setup-db! :create-sample-content? (not config/is-test?))
   (mdb/encrypt-plaintext-columns!)
+  ;; fetch the premium token status now, so that everything below sees this instance's features
+  (premium-features/refresh-at-startup!)
+  (premium-features/start-refresher!)
   ;; Disable read-only mode if its on during startup.
   ;; This can happen if a cloud migration process dies during h2 dump.
   (when (cloud-migration/read-only-mode)

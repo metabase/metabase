@@ -9,7 +9,6 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clj-http.client :as http]
-   [clojure.core.memoize :as memoize]
    [clojure.string :as str]
    [diehard.circuit-breaker :as dh.cb]
    [diehard.core :as dh]
@@ -31,10 +30,13 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.retry :as retry]
    [metabase.util.string :as u.str]
-   [potemkin.types :as p]
    [toucan2.connection :as t2.conn]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (dev.failsafe CircuitBreakerOpenException)
+   (java.util.concurrent Executors ScheduledExecutorService ThreadFactory TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -234,17 +236,13 @@
   (log/infof "Checking with the MetaStore to see whether token '%s' is valid..." (u.str/mask token))
   (let [{:keys [body status] :as resp} (http-fetch base-url token site-uuid)]
     (if (or (http/success? resp) (<= 400 status 499))
-      (do (when (http/success? resp)
-            (analytics/inc! :metabase-token-check/attempt {:status :success}))
-          (or (some-> (parse-status-body body) canonical)
-              ;; a 2xx/4xx whose body is missing or undecodable (a proxy's or WAF's error page, a stripped
-              ;; body) carries no verdict from the store, so it is transient like a network error: not cached,
-              ;; retried under the breaker, and the previous canonical status stands meanwhile
-              (throw (ex-info "Token validation provided no response." {:status status}))))
-      ;; exceptions are not cached.
-      (do (analytics/inc! :metabase-token-check/attempt {:status :failure})
-          (throw (ex-info "An unknown error occurred when validating token." {:status status
-                                                                              :body body}))))))
+      (let [decoded (or (some-> (parse-status-body body) canonical)
+                        (throw (ex-info "Token validation provided no response." {:status status})))]
+        (when (http/success? resp)
+          (analytics/inc! :metabase-token-check/attempt {:status :success}))
+        decoded)
+      (throw (ex-info "An unknown error occurred when validating token." {:status status
+                                                                          :body   body})))))
 
 (defn- metering-url
   [token base-url]
@@ -327,67 +325,6 @@
             :status        "invalid"
             :error-details (trs "Token should be a valid 64 hexadecimal character token or an airgap token.")}))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *token-check-happening* "Var to prevent recursive calls to `fetch-token-status`" false)
-
-(p/defprotocol+ TokenChecker
-  "Protocol for checking tokens with cache management."
-  (-check-token [this token]
-    "Check a token and return TokenStatus map. May throw exceptions on failure.")
-  (-clear-cache! [this]
-    "Clear any caches in this checker and any wrapped checkers, including the shared DB cache.
-     Returns nil. Implementations should delegate to wrapped checkers.")
-  (-clear-local-cache! [this]
-    "Clear only the in-process memoization in this checker and any wrapped checkers. The shared DB cache and the
-     DB-hash-validated local cache are left alone, so the next check re-validates against the DB and only refetches
-     from the MetaStore if another instance really did get a different token status. Safe to trigger from untrusted
-     input. Returns nil."))
-
-(def store-and-airgap-token-checker
-  "Creates a basic token checker that handles HTTP requests and airgap tokens.
-    No caching, no retries, no grace period - just the core logic."
-  (reify TokenChecker
-    (-check-token [_ token]
-      (decode-token* token))
-    (-clear-cache! [_] nil)
-    (-clear-local-cache! [_] nil)))
-
-(defn circuit-breaker-token-checker
-  "Wraps a token checker with circuit breaker and timeout logic."
-  [token-checker {:keys [circuit-breaker timeout-ms lock]
-                  :or {lock (Object.)}}]
-  (let [breaker (dh.cb/circuit-breaker circuit-breaker)]
-    (reify TokenChecker
-      (-check-token [_ token]
-        (when *token-check-happening*
-          (throw (ex-info "Token check is being called recursively, there is a good chance some `defenterprise` is causing this"
-                          {:pass-thru true})))
-        ;; important to not count these errors against the circuit breaker. These are not the types of errors we need
-        ;; to circuit break. (#65294)
-        (when-not (app-db/db-is-set-up?)
-          (throw (ex-info "Metabase DB is not yet set up"
-                          {:cause :token-check/app-db-not-ready})))
-        (locking lock
-          (binding [*token-check-happening* true]
-            (try (dh/with-circuit-breaker breaker
-                   (dh/with-timeout {:timeout-ms timeout-ms
-                                     :interrupt? true}
-                     (-check-token token-checker token)))
-                 (catch dev.failsafe.CircuitBreakerOpenException _e
-                   (throw (ex-info (tru "Token validation is currently unavailable.")
-                                   {:cause :token-check/circuit-breaker})))
-                 ;; a timed-out execution has no cause to unwrap — translate it ourselves
-                 (catch dev.failsafe.TimeoutExceededException _e
-                   (throw (ex-info (tru "Token validation timed out.") {})))
-                 ;; other exceptions are wrapped by Diehard in a FailsafeException. Unwrap them before
-                 ;; rethrowing.
-                 (catch dev.failsafe.FailsafeException e
-                   (throw (or (.getCause e) e)))))))
-      (-clear-cache! [_]
-        (-clear-cache! token-checker))
-      (-clear-local-cache! [_]
-        (-clear-local-cache! token-checker)))))
-
 (defn- hash-token
   "SHA-256 hex hash of a token string. Used as cache table key so the raw token never appears in plaintext."
   ^String [^String token]
@@ -408,11 +345,6 @@
   ^String [result]
   (-> result canonicalize-for-hash json/encode (.getBytes "UTF-8") buddy-hash/sha256 codecs/bytes->hex))
 
-(defn- read-cache-from-db
-  "Read a cached token status hash from the premium_features_token_cache table. Returns nil if not found."
-  [token-hash]
-  (premium-features.db/token-status-cache token-hash))
-
 (defn- write-cache-to-db!
   "Upsert a token status hash into the premium_features_token_cache table.
    Uses update-first to avoid poisoning PostgreSQL transactions on duplicate key.
@@ -428,11 +360,6 @@
           (catch Exception _e
             ;; Another instance inserted first — update instead.
             (premium-features.db/update-token-status-cache! token-hash result-hash now)))))))
-
-(defn- clear-db-cache!
-  "Delete all rows from the premium_features_token_cache table."
-  []
-  (premium-features.db/delete-token-status-cache!))
 
 (defn- extract-locks
   "Project a `:meters` map to `{meter-keyword -> boolean}` of `:is-locked` values.
@@ -451,219 +378,275 @@
       (catch Throwable t
         (log/warnf "Failed to mirror :locked-meters from token-check response: %s" (ex-message t))))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *testing-only-call-after-refresh*
-  "When non-nil, a zero-arg function called after async background refresh completes.
-   For testing only — do not use in production."
-  nil)
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   REFRESHER                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn db-hash-aware-token-checker
-  "Wraps a token checker with a DB-hash-aware local cache.
-   The DB stores only a hash of the token status (never the actual features). The full token status
-   lives exclusively in the local in-memory cache. The DB hash is used to:
-   1. Validate that the local cache is consistent with what other instances see
-   2. Detect when another instance has refreshed and got different features (hash mismatch)
+(def ^:private grace-period
+  "How long a status is honored after it was fetched."
+  (t/hours 36))
 
-   - `soft-ttl`: local entries younger than this are fresh; older triggers async refresh
-   - `hard-ttl`: local entries older than this are expired; synchronous fetch required
-   - `local-cache`: optional atom for the local cache (default: fresh atom). Exposed for testing.
-   - Hash mismatch or cold start always triggers a synchronous fetch."
-  [token-checker {:keys [soft-ttl hard-ttl local-cache]}]
-  (let [local-cache          (or local-cache (atom {}))
-        refresh-in-progress? (atom false)]
-    (letfn [(do-refresh! [token token-hash]
-              (let [result (-check-token token-checker token)]
-                ;; a non-authoritative return here is an internal bug: every legitimate inner path
-                ;; returns a canonical map or throws
-                (when-not (:canonical? result)
-                  (throw (ex-info "Refusing to cache a non-authoritative token status"
-                                  {:status (:status result)})))
-                (let [result-hash (hash-token-status result)
-                      now         (t/instant)]
-                  (write-cache-to-db! token-hash result-hash)
-                  (update-locked-meters! result)
-                  (swap! local-cache assoc token-hash {:result      result
-                                                       :result-hash result-hash
-                                                       :updated-at  now})
-                  result)))]
-      (reify TokenChecker
-        (-check-token [_ token]
-          (if-not (app-db/db-is-set-up?)
-            (-check-token token-checker token)
-            (let [token-hash  (hash-token token)
-                  local-entry (get @local-cache token-hash)
-                  db-row      (read-cache-from-db token-hash)
-                  now         (t/instant)]
-              (if (and local-entry
-                       db-row
-                       (= (:result-hash local-entry) (:token_status_hash db-row)))
-                ;; Local cache matches DB hash — check TTLs
-                (let [age-start (:updated-at local-entry)]
-                  (cond
-                    ;; Fresh (< soft-ttl): return local value
-                    (t/before? now (t/plus age-start soft-ttl))
-                    (:result local-entry)
+;; `{:token-hash, :status, :status-hash, :fetched-at}`, or nil
+(defonce ^:private entry (atom nil))
 
-                    ;; Stale (soft..hard): return local + async refresh
-                    (t/before? now (t/plus age-start hard-ttl))
-                    (do
-                      (when (compare-and-set! refresh-in-progress? false true)
-                        (future
-                          (try
-                            (do-refresh! token token-hash)
-                            (catch Exception e
-                              (log/errorf "Background premium features refresh failed: %s" (ex-message e)))
-                            (finally
-                              (reset! refresh-in-progress? false)
-                              (when-let [after *testing-only-call-after-refresh*]
-                                (after))))))
-                      (:result local-entry))
+;; token hash -> promise of `{:status ...}` or `{:error ...}`
+(defonce ^:private in-flight (atom {}))
 
-                    ;; Expired (> hard-ttl): synchronous refresh
-                    :else
-                    (do-refresh! token token-hash)))
-                ;; No local cache, no DB row, or hash mismatch: synchronous fetch
-                (do-refresh! token token-hash)))))
-        (-clear-cache! [_]
-          (reset! local-cache {})
-          (when (app-db/db-is-set-up?)
-            (clear-db-cache!))
-          (-clear-cache! token-checker))
-        (-clear-local-cache! [_]
-          ;; `local-cache` is validated against the DB hash on every check, so it self-corrects; dropping it would
-          ;; only force a synchronous MetaStore fetch.
-          (-clear-local-cache! token-checker))))))
+(defonce ^:private refresher-executor (atom nil))
 
-(defn local-cached-token-checker
-  "Wraps a token checker with short-lived in-memory TTL memoization.
-   Avoids hitting the DB on every request."
-  [token-checker {:keys [local-ttl]}]
-  (let [cached-check (memoize/ttl
-                      (fn [token] (-check-token token-checker token))
-                      :ttl/threshold (.toMillis ^java.time.Duration local-ttl))]
-    (reify TokenChecker
-      (-check-token [_ token]
-        (cached-check token))
-      (-clear-cache! [_]
-        (memoize/memo-clear! cached-check)
-        (-clear-cache! token-checker))
-      (-clear-local-cache! [_]
-        (memoize/memo-clear! cached-check)
-        (-clear-local-cache! token-checker)))))
+(def ^:private retry-policy
+  {:max-retries             2
+   :initial-interval-millis 1000
+   :multiplier              2.0
+   :jitter-factor           0.1
+   :max-interval-millis     10000})
 
-(defn- error-catching-token-checker
-  [token-checker]
-  (reify TokenChecker
-    (-check-token [_ token]
-      (try (-check-token token-checker token)
-           (catch Exception e
-             (when-not (-> e ex-data :cause #{:token-check/circuit-breaker :token-check/app-db-not-ready})
-               (log/infof "Error checking token: %s" (ex-message e))
-               (analytics/inc! :metabase-token-check/attempt {:status :failure}))
-             {:valid         false
-              :canonical?    false
-              :status        (tru "Unable to validate token")
-              :error-details (.getMessage e)})))
-    (-clear-cache! [_] (-clear-cache! token-checker))
-    (-clear-local-cache! [_] (-clear-local-cache! token-checker))))
+(defonce ^:private breaker
+  (dh.cb/circuit-breaker {:failure-threshold 3
+                          :delay-ms          (u/minutes->ms 1)
+                          :on-open           (fn [_] (log/info "Engaging circuit breaker in token check"))
+                          :on-close          (fn [_] (log/info "Token Check restored"))}))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-(def ^:dynamic *customize-checker*
-  "Dynamic variable allowing for customized token checkers. In the app, we want all of these in place. Only in tests
-  should we construct ones without circuit breakers "
-  false)
+(defn- fetch-status
+  [token & {:keys [retry?] :or {retry? true}}]
+  (try
+    (dh/with-circuit-breaker breaker
+      (if retry?
+        (retry/with-retry (assoc retry-policy
+                                 :on-retry (fn [_ e] (log/infof "Retrying token check after: %s" (ex-message e))))
+          (decode-token* token))
+        (decode-token* token)))
+    (catch CircuitBreakerOpenException _e
+      (throw (ex-info (tru "Token validation is currently unavailable.") {})))))
 
-(defn make-checker
-  "Make a token checker. Takes a base [[TokenChecker]] token checker and then arguments for the middleware-style
-  wrapping [[TokenChecker]] arguments.
+(defn- install!
+  [token status]
+  ;; the token may have been replaced while its status was being fetched
+  (when (= token (premium-features.settings/premium-embedding-token))
+    (let [token-hash  (hash-token token)
+          status-hash (hash-token-status status)]
+      (reset! entry {:token-hash  token-hash
+                     :status      status
+                     :status-hash status-hash
+                     :fetched-at  (t/instant)})
+      (try
+        (write-cache-to-db! token-hash status-hash)
+        (catch Throwable e
+          (log/warnf "Failed to record the token status hash: %s" (ex-message e))))
+      (update-locked-meters! status)))
+  status)
 
-  `db-hash-local-cache` is optional and only provided during tests."
-  [{:keys [base circuit-breaker timeout-ms local-ttl soft-ttl hard-ttl db-hash-local-cache]
-    :or   {base store-and-airgap-token-checker}}]
-  (when-not *customize-checker*
-    (assert (and base circuit-breaker timeout-ms local-ttl soft-ttl hard-ttl)
-            "Must provide all arguments for token checker"))
-  (cond-> base
-    circuit-breaker
-    (circuit-breaker-token-checker {:circuit-breaker circuit-breaker
-                                    :timeout-ms      timeout-ms})
+(defn- refresh!
+  [fetch-opts]
+  (when-let [token (premium-features.settings/premium-embedding-token)]
+    (let [token-hash (hash-token token)
+          mine       (promise)
+          [before]   (swap-vals! in-flight (fn [m] (cond-> m (not (contains? m token-hash)) (assoc token-hash mine))))
+          shared     (get before token-hash)]
+      (when-not shared
+        (try
+          (deliver mine {:status (install! token (fetch-status token fetch-opts))})
+          (log/info "Refreshed the premium features token status.")
+          (catch Throwable e
+            (log/errorf "Error refreshing the premium features token status: %s" (ex-message e))
+            (analytics/inc! :metabase-token-check/attempt {:status :failure})
+            (deliver mine {:error e}))
+          (finally
+            (swap! in-flight dissoc token-hash))))
+      (let [{:keys [status error]} @(or shared mine)]
+        (if error
+          (throw error)
+          status)))))
 
-    (and soft-ttl hard-ttl)
-    (db-hash-aware-token-checker {:soft-ttl     soft-ttl
-                                  :hard-ttl     hard-ttl
-                                  :local-cache  db-hash-local-cache})
+(defn refresh-now!
+  "Fetch the status of the configured token and hold it. Concurrent callers share one fetch. Returns the fresh status,
+  nil when no token is configured, or throws when the fetch fails, in which case the held status is left as it was."
+  []
+  (refresh! {}))
 
-    ;; inside the memoize so failure maps are memoized for local-ttl (negative cache; core.memoize
-    ;; single-flights values but not thrown exceptions), outside db-hash so they never reach the
-    ;; durable cache
-    :always
-    (error-catching-token-checker)
-
-    local-ttl
-    (local-cached-token-checker {:local-ttl local-ttl})))
-
-(def token-checker
-  "The token checker. Combines http/airgapping validation, circuit breaking, DB-hash-aware caching, and error handling."
-  (make-checker {:base            store-and-airgap-token-checker
-                 ;; the window must fit 10 worst-case failures (10s timeout + 5s negative cache
-                 ;; each ≈ 135s) or slow failures can never open the breaker
-                 :circuit-breaker {:failure-threshold-ratio-in-period [10 10 (u/seconds->ms 180)]
-                                   :delay-ms          (u/seconds->ms 30)
-                                   :success-threshold 1
-                                   :on-open           (fn [_] (log/info "Engaging circuit breaker in token check"))
-                                   :on-half-open      (fn [_] (log/info "In token check circuit breaker but attempting check"))
-                                   :on-close          (fn [_] (log/info "Token Check restored"))}
-                 :timeout-ms      (u/seconds->ms 10)
-                 :local-ttl       (t/seconds 5)
-                 :soft-ttl        (t/hours 12)
-                 :hard-ttl        (t/hours 36)}))
+(defn refresh-at-startup!
+  "Make one attempt, without retries, to fetch and hold the status of the configured token. A failure is left for
+  [[tick!]] to retry, not thrown."
+  []
+  (try
+    (refresh! {:retry? false})
+    nil
+    (catch Throwable _e
+      nil)))
 
 (defn clear-cache!
-  "Clear the token cache so that [[fetch-token-and-parse-body]] will return the latest data."
+  "Refresh the token status now; see [[refresh-now!]]. A failure is logged, not thrown, and the held status stands."
   []
-  (-clear-cache! token-checker))
+  (try
+    (refresh-now!)
+    nil
+    (catch Throwable _e
+      nil)))
+
+(defonce ^:private refresh-interval
+  ;; jittered per instance so a fleet started together does not fetch together
+  (t/minus (t/hours 12) (t/seconds (rand-int 3600))))
+
+(defonce ^:private refresh-requested? (atom false))
+
+(defn request-refresh!
+  "Have the next [[tick!]] refresh the token status, for a caller that should not wait for the fetch itself."
+  []
+  (reset! refresh-requested? true)
+  nil)
+
+(defn- shared-status-differs?
+  "Whether the shared hash row for the held status is missing or records a different status, as it does once another
+  instance has refreshed."
+  [{:keys [token-hash status-hash]}]
+  (not= (:token_status_hash (premium-features.db/token-status-cache token-hash)) status-hash))
+
+(defn- refresh-reason
+  [token requested?]
+  (let [{:keys [token-hash fetched-at] :as held} @entry]
+    (cond
+      (not= token-hash (hash-token token))
+      "no status is held"
+
+      requested?
+      "a refresh was requested"
+
+      (t/before? (t/plus fetched-at refresh-interval) (t/instant))
+      "the held status is due for its periodic refresh"
+
+      (shared-status-differs? held)
+      "the shared hash row is missing or records a different status")))
+
+(defn tick!
+  "Refresh the token status if one is due. Never throws, so a scheduler keeps calling it. A requested refresh that
+  fails stays requested."
+  []
+  (let [[requested?] (reset-vals! refresh-requested? false)]
+    (try
+      (when-let [token (premium-features.settings/premium-embedding-token)]
+        (when-let [reason (refresh-reason token requested?)]
+          (log/infof "Refreshing the premium features token status: %s." reason)
+          (refresh-now!)))
+      nil
+      (catch Throwable e
+        (when requested?
+          (reset! refresh-requested? true))
+        (log/errorf "Premium features token tick failed: %s" (ex-message e))
+        nil))))
 
 (defn clear-local-cache!
-  "Clear only this process's in-memory token memoization; see [[-clear-local-cache!]]. Unlike [[clear-cache!]] this
-  never touches the shared DB cache, so it is safe to trigger from an untrusted request."
+  "Refresh the token status now if no status is held for the configured token, or if the shared hash row is missing
+  or records a different status than the one held; otherwise do nothing. Before [[start-refresher!]], only request the refresh,
+  since initialization makes its own. A failure is logged, not thrown."
   []
-  (-clear-local-cache! token-checker))
+  (try
+    (when-let [token (premium-features.settings/premium-embedding-token)]
+      (let [held @entry]
+        (when (or (not= (:token-hash held) (hash-token token))
+                  (shared-status-differs? held))
+          (if @refresher-executor
+            (clear-cache!)
+            (request-refresh!)))))
+    nil
+    (catch Throwable e
+      (log/errorf "Error checking whether the premium features token status is current: %s" (ex-message e))
+      nil)))
 
-(defn check-token
-  "Public entrypoint to the token checking."
-  ([token] (check-token token-checker token))
-  ([checker token]
-   (-check-token checker token)))
+(def ^:private tick-interval-ms (u/minutes->ms 1))
+
+(defn- safe-tick!
+  []
+  (try
+    (tick!)
+    ;; `scheduleWithFixedDelay` stops rescheduling a task that throws
+    (catch Throwable t
+      (log/errorf "Unexpected error in the premium features token tick; ticking continues: %s" (ex-message t)))))
+
+(defn start-refresher!
+  "Start a daemon thread that calls [[tick!]] every `interval-ms`, a minute by default. Returns `true` if this call
+  started it, `false` if one was already running."
+  ([]
+   (start-refresher! tick-interval-ms))
+  ([interval-ms]
+   (let [exec (Executors/newSingleThreadScheduledExecutor
+               (reify ThreadFactory
+                 (newThread [_ r]
+                   (doto (Thread. r "premium-features-token-refresher")
+                     (.setDaemon true)))))]
+     (if (compare-and-set! refresher-executor nil exec)
+       (do (.scheduleWithFixedDelay exec ^Runnable safe-tick! (long interval-ms) (long interval-ms) TimeUnit/MILLISECONDS)
+           true)
+       (do (.shutdown exec)
+           false)))))
+
+(defn stop-refresher!
+  "Stop the thread started by [[start-refresher!]]."
+  []
+  (when-let [^ScheduledExecutorService exec (first (reset-vals! refresher-executor nil))]
+    (.shutdownNow exec)
+    (when-not (.awaitTermination exec 5 TimeUnit/SECONDS)
+      (log/warn "The premium features token refresher did not stop within 5s."))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                     READER                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- current-status
+  []
+  (when-let [token (premium-features.settings/premium-embedding-token)]
+    (let [{:keys [token-hash status fetched-at]} @entry]
+      (when (and status
+                 (= token-hash (hash-token token))
+                 (t/before? (t/instant) (t/plus fetched-at grace-period)))
+        status))))
+
+(defn unvalidated-status
+  "The status reported for a token whose status could not be validated, with `error-details` saying why."
+  ([]
+   (unvalidated-status (tru "No current token status is held. A refresh may be in progress or failing.")))
+  ([error-details]
+   {:valid         false
+    :canonical?    false
+    :status        (tru "Unable to validate token")
+    :error-details error-details}))
+
+(defn- validated-status
+  "The store's status for `token`, a candidate for the premium token. Throws unless the token is valid."
+  [token]
+  (when (mr/validate [:re AirgapToken] token)
+    (assert-valid-airgap-user-count!))
+  (when-not (or (mr/validate [:re RemoteCheckedToken] token)
+                (mr/validate [:re AirgapToken] token))
+    (throw (ex-info (tru "Token format is invalid.")
+                    {:status-code   400
+                     :error-details "Token should be 64 hexadecimal characters."
+                     :response/keys #{:error-details}})))
+  (let [status (try
+                 (fetch-status token)
+                 (catch Throwable e
+                   (throw (ex-info (tru "Unable to validate token")
+                                   {:error-details (ex-message e)
+                                    :status-code   503
+                                    :response/keys #{:error-details}}
+                                   e))))]
+    (when-not (:valid status)
+      (throw (ex-info (:status status)
+                      {:error-details (:error-details status)
+                       :status-code   400
+                       :response/keys #{:error-details}})))
+    (log/info "Token is valid.")
+    status))
 
 (defn -set-premium-embedding-token!
   "Setter for the [[metabase.premium-features.settings/token-status]] setting."
   [new-value]
-  ;; validate the new value if we're not unsetting it
   (try
-    (when (seq new-value)
-      (when (mr/validate [:re AirgapToken] new-value)
-        (assert-valid-airgap-user-count!))
-      (when-not (or (mr/validate [:re RemoteCheckedToken] new-value)
-                    (mr/validate [:re AirgapToken] new-value))
-        (throw (ex-info (tru "Token format is invalid.")
-                        {:status-code   400
-                         :error-details "Token should be 64 hexadecimal characters."
-                         :response/keys #{:error-details}})))
-      ;; validate against the store, not a cached verdict — the token may be the same string with a
-      ;; renewed subscription behind it
-      (clear-cache!)
-      (let [decoded (check-token new-value)]
-        (when-not (:valid decoded)
-          (throw (ex-info (:status decoded)
-                          {:error-details (:error-details decoded)
-                           ;; If MetaStore told us the token is invalid, use 400. If some other error occurred, a 503 is
-                           ;; probably more appropriate.
-                           :status-code (if (:canonical? decoded)
-                                          400
-                                          503)
-                           :response/keys #{:error-details}}))))
-      (log/info "Token is valid."))
-    (setting/set-value-of-type! :string :premium-embedding-token new-value)
+    ;; validate the new value if we're not unsetting it
+    (let [status (when (seq new-value)
+                   (validated-status new-value))]
+      (setting/set-value-of-type! :string :premium-embedding-token new-value)
+      (when status
+        (install! new-value status)))
     ((requiring-resolve 'metabase.dependencies.hooks/after-premium-token-update))
     (catch Throwable e
       (log/errorf "Error setting premium features token: %s" (ex-message e))
@@ -677,58 +660,44 @@
   []
   (mr/validate AirgapToken (premium-features.settings/premium-embedding-token)))
 
-(let [cached-logger (memoize/ttl
-                     ^{::memoize/args-fn (fn [[token _e]] [token])}
-                     (fn [_token e]
-                       (log/errorf "Error validating token: %s" (ex-message e)))
-                     ;; log every five minutes
-                     :ttl/threshold (* 1000 60 5))]
-  #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
-  (mu/defn ^:dynamic *token-features* :- [:set ms/NonBlankString]
-    "Get the features associated with the system's premium features token."
-    []
-    (try
-      ;; an invalid token (e.g. expired) confers no features, even if the token-status response still
-      ;; lists them (EMB-2341)
-      (or (let [{:keys [valid features]} (some-> (premium-features.settings/premium-embedding-token)
-                                                 (check-token))]
-            (when valid
-              (set features)))
-          #{})
-      (catch Throwable e
-        (when (:pass-thru (ex-data e))
-          (throw e))
-        (cached-logger (premium-features.settings/premium-embedding-token) e)
-        #{}))))
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(mu/defn ^:dynamic *token-features* :- [:set ms/NonBlankString]
+  "Get the features associated with the system's premium features token."
+  []
+  (try
+    ;; an invalid token (e.g. expired) confers no features, even if the token-status response still
+    ;; lists them (EMB-2341)
+    (let [{:keys [valid features]} (current-status)]
+      (if valid
+        (set features)
+        #{}))
+    (catch Throwable e
+      (log/errorf "Error reading premium features: %s" (ex-message e))
+      #{})))
 
 (defn -token-status
   "Getter for the [[metabase.premium-features.settings/token-status]] setting."
   []
-  (some-> (premium-features.settings/premium-embedding-token)
-          (check-token)))
+  (when (premium-features.settings/premium-embedding-token)
+    (or (current-status)
+        (unvalidated-status))))
 
 (mu/defn plan-alias :- [:maybe :string]
   "Returns a string representing the instance's current plan, if included in the last token status request."
   []
-  (some-> (premium-features.settings/premium-embedding-token)
-          (check-token)
-          :plan-alias))
+  (:plan-alias (current-status)))
 
 (mu/defn quotas :- [:maybe [:sequential [:map]]]
   "Returns a vector of maps for each quota of the subscription."
   []
   (clear-cache!)
-  (some-> (premium-features.settings/premium-embedding-token)
-          (check-token)
-          :quotas))
+  (:quotas (current-status)))
 
 (mu/defn meters :- [:maybe :map]
   "Returns a map of current metered usage for the subscription."
   []
   (clear-cache!)
-  (some-> (premium-features.settings/premium-embedding-token)
-          (check-token)
-          :meters))
+  (:meters (current-status)))
 
 (defn has-any-features?
   "True if we have a valid premium features token with ANY features."
@@ -747,11 +716,9 @@
   "Returns `true` if the token definitively has `feature`, `false` if it definitively does not, or `nil` if the token
   status is indeterminate (e.g., network failure, timeout). Returns `false` (not `nil`) when no token is configured."
   [feature]
-  (if-let [token (premium-features.settings/premium-embedding-token)]
-    (let [result (check-token token)]
-      (when (:canonical? result)
-        (boolean (and (:valid result)
-                      (contains? (set (:features result)) (name feature))))))
+  (if (premium-features.settings/premium-embedding-token)
+    (when-let [{:keys [valid features]} (current-status)]
+      (boolean (and valid (contains? (set features) (name feature)))))
     false))
 
 (defn ee-feature-error

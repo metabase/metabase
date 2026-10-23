@@ -741,12 +741,13 @@
 
   The token-value binding will contain the random token that was set."
   [[token-value] & body]
-  `(let [~token-value (premium-features.test-util/random-token)]
-     (with-redefs [metabase.premium-features.token-check/check-token
-                   (constantly {:valid    true
-                                :status   "fake"
-                                :features ["test" "fixture"]
-                                :trial    false})]
+  `(let [~token-value (premium-features.test-util/random-token)
+         status#      {:valid    true
+                       :status   "fake"
+                       :features ["test" "fixture"]
+                       :trial    false}]
+     (with-redefs [metabase.premium-features.token-check/current-status (constantly status#)
+                   metabase.premium-features.token-check/fetch-status   (constantly status#)]
        (with-temporary-raw-setting-values [:premium-embedding-token ~token-value]
          ~@body))))
 
