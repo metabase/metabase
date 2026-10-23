@@ -717,3 +717,13 @@
       (testing "anything else might be a Metabase bug: ERROR"
         (is (=? {:attempted #(> % 1), :threw? false, :levels #{:error}}
                 (run (ex-info "boom" {}))))))))
+
+(deftest per-table-field-sync-failure-names-table-once-test
+  (testing "the per-table field sync failure names the table once"
+    (mt/with-dynamic-fn-redefs [fetch-metadata/include-nested-fields-for-table
+                                (fn [& _] (throw (ex-info "boom" {})))]
+      (mt/with-log-messages-for-level [messages [metabase.sync.sync-metadata.fields :warn]]
+        (sync-fields/sync-fields! (mt/db))
+        (let [msgs (map :message (messages))]
+          (is (seq msgs))
+          (is (not-any? #(re-find #"Table Table" %) msgs)))))))

@@ -159,9 +159,9 @@
                                                        ;; a missing grant or FDW user mapping is for the customer to
                                                        ;; fix, not a Metabase bug
                                                        (if (sync-util/customer-environment-exception? e)
-                                                         (log/warnf "Error syncing Fields for Table %s: %s"
+                                                         (log/warnf "Error syncing Fields for %s: %s"
                                                                     (sync-util/name-for-logging table) (ex-message e))
-                                                         (log/errorf e "Error syncing Fields for Table %s: %s"
+                                                         (log/errorf e "Error syncing Fields for %s: %s"
                                                                      (sync-util/name-for-logging table) (ex-message e)))
                                                        0))
                                                    0)]
