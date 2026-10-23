@@ -12,6 +12,7 @@ import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { LockedTransformsBanner } from "metabase/transforms/components/LockedTransformsBanner/LockedTransformsBanner";
+import { SchedulingPausedCallout } from "metabase/transforms/components/SchedulingPausedCallout";
 import { TransformBadge } from "metabase/transforms/components/TransformBadge/TransformBadge";
 import { TransformsHeader } from "metabase/transforms/components/TransformsHeader";
 import type { TreeTableColumnDef } from "metabase/ui";
@@ -129,6 +130,7 @@ export const JobListPage = () => {
       <TransformsHeader />
       <Stack style={{ overflow: "hidden" }}>
         {isMeterLocked && <LockedTransformsBanner />}
+        <SchedulingPausedCallout />
         <Flex gap="0.5rem">
           <TextInput
             placeholder={t`Search...`}

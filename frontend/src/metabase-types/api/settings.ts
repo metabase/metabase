@@ -680,6 +680,7 @@ interface PublicSettings {
   "token-features": TokenFeatures;
   "tracing-enabled": boolean;
   "transforms-enabled": boolean;
+  "transforms-scheduling-enabled": boolean;
   "transforms-setup-complete": boolean;
   version: Version;
   "version-info-last-checked": string | null;

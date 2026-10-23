@@ -418,6 +418,7 @@ export const createMockSettings = (
   "token-status": null,
   "tracing-enabled": false,
   "transforms-enabled": false,
+  "transforms-scheduling-enabled": true,
   "transforms-setup-complete": false,
   version: createMockVersion(),
   "version-info": createMockVersionInfo(),
