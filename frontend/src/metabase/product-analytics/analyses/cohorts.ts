@@ -249,7 +249,7 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
 export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
   kind: "cohorts",
   get name() {
-    return t`Cohorts`;
+    return t`Cohort retention`;
   },
   get question() {
     return t`Do people keep coming back?`;

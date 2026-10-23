@@ -107,7 +107,7 @@ export const BreakoutMenu = ({
               {t`Properties`}
             </Tabs.Tab>
             <Tabs.Tab value={"cohorts" satisfies BreakoutTab}>
-              {t`Cohorts`}
+              {t`People segments`}
             </Tabs.Tab>
           </Tabs.List>
           <Box mah={MAX_DROPDOWN_HEIGHT} pt="xs" style={{ overflowY: "auto" }}>

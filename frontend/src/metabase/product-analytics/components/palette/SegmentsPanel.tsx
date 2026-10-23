@@ -94,7 +94,7 @@ export const SegmentsPanel = ({
       <Tabs defaultValue="event" className={S.tabs}>
         <Tabs.List px="lg" pt="sm">
           <Tabs.Tab value="event">{t`Event segments`}</Tabs.Tab>
-          <Tabs.Tab value="people">{t`Cohorts`}</Tabs.Tab>
+          <Tabs.Tab value="people">{t`People segments`}</Tabs.Tab>
           <PanelCloseButton onClose={onClose} isInTabBar />
         </Tabs.List>
         <Box className={S.scroll}>
