@@ -4,9 +4,11 @@ import fetchMock from "fetch-mock";
 import { screen, waitFor, within } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import {
+  createMockCollection,
   createMockDatabase,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
+  createMockSearchResult,
 } from "metabase-types/api/mocks";
 
 import { type CommonSetupProps, commonSetup } from "./setup";
@@ -156,6 +158,43 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByText('Search Metabase\'s docs for "Bar"'),
     ).toBeInTheDocument();
+  });
+
+  it("should link a data app search result to its app", async () => {
+    setup({
+      query: "Link",
+      searchItems: [
+        createMockSearchResult({
+          id: 7,
+          model: "data-app",
+          name: "Link Test",
+          data_app_slug: "link-test",
+        }),
+      ],
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Link Test" }),
+    ).toHaveAttribute("href", "/apps/link-test");
+  });
+
+  it("should label a data app search result as a data app, not by a collection", async () => {
+    setup({
+      query: "Link",
+      searchItems: [
+        createMockSearchResult({
+          id: 7,
+          model: "data-app",
+          name: "Link Test",
+          collection: createMockCollection({ name: "Shorebirds" }),
+          data_app_slug: "link-test",
+        }),
+      ],
+    });
+
+    const option = await screen.findByRole("option", { name: "Link Test" });
+    expect(option).toHaveTextContent("Data app");
+    expect(option).not.toHaveTextContent("Shorebirds");
   });
 
   it("should display collections that search results are from", async () => {

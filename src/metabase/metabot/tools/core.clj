@@ -471,20 +471,15 @@
   (try
     (thunk)
     (catch Throwable e
-      (let [{:keys [agent-error? status-code error entity-type entity-id humanized
-                    source-card source-card-type]} (ex-data e)
+      (let [{:keys [agent-error? status-code error humanized]} (ex-data e)
             code (pipeline-error-code error)]
         (cond
           ;; Lib exceptions can also carry `:agent-error?`, but their messages aren't written for the model.
           (and agent-error? code)
           (tools.error/throw-recoverable!
            code
-           (cond-> {:message (or (ex-message e) "")}
-             (some? humanized) (assoc :paths (repr/humanized->paths humanized))
-             entity-type       (assoc :entity-type entity-type)
-             (some? entity-id) (assoc :entity-id entity-id)
-             source-card       (assoc :source-card source-card
-                                      :source-card-type source-card-type))
+           (cond-> (recoverable.pipeline/payload error e)
+             (some? humanized) (assoc :paths (repr/humanized->paths humanized)))
            {:cause e})
 
           (contains? refusal-status-codes status-code)
