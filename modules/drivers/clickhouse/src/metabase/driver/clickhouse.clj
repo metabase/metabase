@@ -183,7 +183,9 @@
          :jdbc_schema_term               "schema"
          :ignore_unknown_config_key      true
          :max_open_connections           (or max-open-connections 100)
-         :custom_http_params             (cond-> "select_sequential_consistency=1,join_use_nulls=1"
+         :custom_http_params             (cond-> "select_sequential_consistency=1"
+                                           (not (some->> clickhouse-settings (re-find #"(?:^|,)\s*join_use_nulls\s*=")))
+                                           (str ",join_use_nulls=1")
                                            (not (str/blank? clickhouse-settings))
                                            (str "," clickhouse-settings))
          :jdbc_metadata_use_show_statements false}
