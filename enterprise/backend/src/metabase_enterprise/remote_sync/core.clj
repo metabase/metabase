@@ -83,9 +83,7 @@
       (= (settings/remote-sync-type) :read-write)))
 
 (defenterprise transforms-scheduling-default
-  "Default value of the `transforms-scheduling-enabled` setting when it is not set: false on an instance that edits
-  Git-synced transforms (remote-sync enabled, :read-write, transforms synced), because the instance that reads them
-  runs them on schedule."
+  "Default of `transforms-scheduling-enabled`: false when remote sync is enabled, read-write and syncs transforms."
   :feature :none
   []
   (not (and (settings/remote-sync-enabled)

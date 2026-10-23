@@ -68,8 +68,9 @@
 (setting/defsetting transforms-scheduling-enabled
   (deferred-tru "Whether transform jobs run on their schedules.")
   :doc "When disabled, transform jobs do not run on their schedules. Manual runs of transforms and jobs still work.
-  When not set, the default is false on an instance where Git sync is enabled in read-write mode and syncs transforms,
-  because another instance that reads the same repository runs them on schedule. Otherwise the default is true."
+  When not set, the default is false on an instance where Remote Sync is enabled in read-write mode and syncs transforms,
+  because another instance that reads the same repository is expected to run them on schedule. Otherwise the default
+  is true."
   :type       :boolean
   :visibility :authenticated
   :export?    false

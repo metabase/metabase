@@ -87,9 +87,8 @@
   [context]
   (let [job-id   (-> (conversion/from-job-data context)
                      (get "job-id"))
-        ;; Read the kill switch at fire time rather than trying to keep Quartz triggers in sync
-        ;; with the setting: it is global, env-overridable, and falls back to the token feature
-        ;; when unset, so there is no reliable toggle event to hook trigger deletion to.
+        ;; Read both settings at fire time. Each one is global and can come from an env var or a
+        ;; derived default, so no event tells us when to delete or restore the Quartz triggers.
         skipped-reason (cond
                          (not (transforms.settings/transforms-enabled))           "transforms-disabled"
                          (not (transforms.settings/transforms-scheduling-enabled)) "scheduling-disabled")]
@@ -101,9 +100,8 @@
         (do
           (log/info "Executing scheduled run of transform job" job-id)
           (transforms.jobs/run-job! job-id {:run-method :cron}))
-        ;; Skip before run-job! creates a transform_job_run row: every transform would be
-        ;; skipped by the feature check anyway and the run would be recorded as "successful",
-        ;; which is misleading. The task_history row above still records the skipped firing.
+        ;; Skip before run-job! creates a transform_job_run row. The task_history row records the
+        ;; skipped firing.
         (log/info "Skipping scheduled run of transform job" job-id "because" skipped-reason)))))
 
 (defn initialize-job!

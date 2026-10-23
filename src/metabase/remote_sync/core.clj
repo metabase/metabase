@@ -30,9 +30,7 @@
   true)
 
 (defenterprise transforms-scheduling-default
-  "Default value of the `transforms-scheduling-enabled` setting when it is not set.
-
-  Returns false if remote-sync is enabled, remote-sync-type is :read-write and transforms are synced.
+  "Default of `transforms-scheduling-enabled`. On EE, false when remote sync is read-write and syncs transforms.
   Always true on OSS."
   metabase-enterprise.remote-sync.core
   []
