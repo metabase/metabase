@@ -47,18 +47,65 @@
                [{:uses #{finder}
                  :text (str "Call `" finder "` to find the entity you want and use an id from the results.")}])})
 
+(def ^:private max-listed-query-ids
+  "The most query IDs that [[unknown-query-id!]] lists.
+  This leaves room for a recovery step within the runtime's 4,000-character limit on failure text."
+  100)
+
+(def ^:private max-query-id-chars
+  "The most characters of the requested query ID that [[unknown-query-id!]] repeats.
+  The model supplies the ID, so its length is otherwise unbounded."
+  100)
+
 (defrecoverable unknown-query-id!
-  "The requested query is absent from the conversation."
+  "The query ID names no query that the tool can use for the current user.
+
+  `:hint` picks the recovery. By default the model uses a listed ID or creates a SQL query, and `:notebook-only`
+  offers a notebook query instead. `run_query` passes one of the others for its profile, since it also runs saved
+  questions by ID."
   {:payload [:map {:closed true}
-             [:query-id :string]
-             [:available [:sequential :string]]]}
-  [{:keys [query-id available]}]
-  {:message (str "Query " (quoting/quoted query-id) " was not found. Available query IDs: "
-                 (if (seq available) (str/join ", " (map quoting/quoted available)) "none") ".")
-   :recovery [(if (seq available)
-                {:uses #{} :text "Use an available query ID from this conversation."}
-                {:uses #{"create_sql_query"}
-                 :text "Use `create_sql_query` to create a SQL query, then use the returned query ID."})]})
+             [:query-id  :string]
+             [:available [:sequential :string]]
+             [:hint      {:optional true} [:enum :notebook-only :notebook-query :sql-query :no-values]]]}
+  [{:keys [query-id available hint]}]
+  (let [more    (- (count available) max-listed-query-ids)
+        message (str "Query " (quoting/quoted (u/truncate query-id max-query-id-chars))
+                     " was not found. Available query IDs: "
+                     (if (seq available)
+                       (str (str/join ", " (map quoting/quoted (take max-listed-query-ids available)))
+                            (when (pos? more) (str " and " more " more")))
+                       "none")
+                     ".")
+        listed  {:uses #{} :text "Use an available query ID from this conversation."}]
+    (case hint
+      nil
+      {:message  message
+       :recovery [(if (seq available)
+                    listed
+                    {:uses #{"create_sql_query"}
+                     :text "Use `create_sql_query` to create a SQL query, then use the returned query ID."})]}
+
+      :notebook-only
+      {:message  message
+       :recovery [(if (seq available)
+                    listed
+                    {:uses #{"construct_notebook_query"}
+                     :text "Use `construct_notebook_query` to build a query, then use the returned query ID."})]}
+
+      :notebook-query
+      {:message  (str message " Use the ID of a query that you built, or a saved question or model that the user"
+                      " can read.")
+       :recovery []}
+
+      :sql-query
+      {:message  (str message " A saved question or model has no query ID.")
+       :recovery [{:uses #{"create_sql_query" "run_query"}
+                   :text (str "To run one, write SQL that reads it with `create_sql_query`, then run that query"
+                              " with `run_query`.")}]}
+
+      :no-values
+      {:message  (str message " A saved question or model has no query ID, and no SQL can run here.")
+       :recovery [{:uses #{} :text "Tell the user you can't read its results."}]})))
 
 (defrecoverable unknown-database!
   "The requested database does not exist."
