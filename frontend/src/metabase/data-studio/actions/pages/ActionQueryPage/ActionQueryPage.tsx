@@ -15,6 +15,7 @@ import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { Database, WritebackQueryAction } from "metabase-types/api";
 
+import { trackDataActionQueryUpdated } from "../../analytics";
 import { ActionDefinitionContent } from "../../components/ActionDefinitionContent";
 import { ActionEditor } from "../../components/ActionEditor";
 import { ActionEditorPane } from "../../components/ActionEditorPane";
@@ -128,6 +129,7 @@ function ActionEditPage({ action, databases }: ActionPageProps) {
       );
       return;
     }
+    trackDataActionQueryUpdated(action.id);
     sendSuccessToast(t`Action updated`);
     isSavedRef.current = true;
     navigate(Urls.dataStudioAction(action.id));

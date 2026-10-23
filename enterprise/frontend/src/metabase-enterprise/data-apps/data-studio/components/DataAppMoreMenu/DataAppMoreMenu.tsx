@@ -8,6 +8,7 @@ import * as Urls from "metabase/urls";
 import { useSetDataAppEnabledMutation } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
+import { trackDataAppMadeDraft, trackDataAppMadeLive } from "../../analytics";
 import { isDataAppOpenable } from "../../utils";
 
 type DataAppMoreMenuProps = {
@@ -35,6 +36,11 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
         if (error) {
           sendErrorToast(t`Failed to update ${app.display_name}`);
         } else {
+          if (enabled) {
+            trackDataAppMadeLive(app.id);
+          } else {
+            trackDataAppMadeDraft(app.id);
+          }
           sendSuccessToast(
             enabled
               ? t`${app.display_name} is live`
