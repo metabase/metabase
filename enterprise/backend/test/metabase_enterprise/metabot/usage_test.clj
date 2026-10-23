@@ -449,10 +449,16 @@
             (testing "ai_usage_log rows and agent messages do not count: one turn is one message"
               (mt/with-test-user :rasta
                 (is (nil? (usage/check-usage-limits!)))))
-            (testing "user messages count: three turns exceed a limit of two"
-              (dotimes [_ 2]
-                (t2/insert! :model/MetabotMessage {:conversation_id conversation-id :user_id user-id :role "user"
-                                                   :profile_id "internal" :data [] :data_version 2 :total_tokens 0}))
+            (testing "a count at the limit passes: the turn persists its user message before the check, so the
+                      second message of a limit of two is the one being checked"
+              (t2/insert! :model/MetabotMessage {:conversation_id conversation-id :user_id user-id :role "user"
+                                                 :profile_id "internal" :data [] :data_version 2 :total_tokens 0})
+              (ee.usage/clear-limit-cache!)
+              (mt/with-test-user :rasta
+                (is (nil? (usage/check-usage-limits!)))))
+            (testing "a count beyond the limit blocks: the third message of a limit of two"
+              (t2/insert! :model/MetabotMessage {:conversation_id conversation-id :user_id user-id :role "user"
+                                                 :profile_id "internal" :data [] :data_version 2 :total_tokens 0})
               (ee.usage/clear-limit-cache!)
               (mt/with-test-user :rasta
                 (is (= "test limit reached" (usage/check-usage-limits!)))))
@@ -483,10 +489,10 @@
       (let [rasta-id (mt/user->id :rasta)
             group-id (first (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id rasta-id))]
         (mt/with-temp [:model/MetabotGroupLimit _ {:group_id group-id :max_usage 2}]
-          (let [rasta-convo (insert-messages! rasta-id ["user" "agent" "user" "agent"])
-                lucky-convo (insert-messages! (mt/user->id :lucky) ["user" "agent" "user" "agent" "user" "agent"])]
+          (let [rasta-convo (insert-messages! rasta-id ["user" "agent" "user" "agent" "user" "agent"])
+                lucky-convo (insert-messages! (mt/user->id :lucky) ["user" "agent" "user" "agent" "user" "agent" "user" "agent"])]
             (try
-              (testing "Lucky's three messages do not count against Rasta's two"
+              (testing "Lucky's four messages do not count against Rasta's three"
                 (mt/with-test-user :rasta
                   (is (= "test limit reached" (usage/check-usage-limits!)))))
               (finally
@@ -502,8 +508,8 @@
         (mt/with-temp [:model/Tenant {tenant-id :id} {}
                        :model/User {tenant-user-id :id} {:tenant_id tenant-id}
                        :model/MetabotInstanceLimit _ {:tenant_id tenant-id :max_usage 2}]
-          (let [tenant-convo (insert-messages! tenant-user-id ["user" "agent" "user" "agent"])
-                rasta-convo  (insert-messages! (mt/user->id :rasta) ["user" "agent" "user" "agent" "user" "agent"])]
+          (let [tenant-convo (insert-messages! tenant-user-id ["user" "agent" "user" "agent" "user" "agent"])
+                rasta-convo  (insert-messages! (mt/user->id :rasta) ["user" "agent" "user" "agent" "user" "agent" "user" "agent"])]
             (try
               (binding [api/*current-user-id* tenant-user-id
                         api/*current-user*    (delay {:tenant_id tenant-id})]

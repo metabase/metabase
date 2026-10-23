@@ -117,12 +117,22 @@
       :messages
       (:cnt (metabot.db/usage-message-count start user-id tenant-id)))))
 
+(defn- over-limit?
+  "Whether `usage` exhausts `max-usage`. A token limit is checked before the LLM call that would add to it, so
+  reaching the limit blocks. A message limit is checked after the turn has persisted its user message, so the count
+  already includes the message being checked, and only a count beyond the limit blocks: a limit of 2 allows two
+  messages."
+  [usage max-usage]
+  (case (metabot.settings/metabot-limit-unit)
+    :messages (> usage max-usage)
+    :tokens   (>= usage max-usage)))
+
 (defn- check-instance-limit
   "Check the instance-wide limit. Returns an error message string if exceeded, nil otherwise."
   []
   (when-let [max-usage (:max_usage (instance-limit/instance-limit nil))]
     (let [usage (usage-query)]
-      (when (>= usage max-usage)
+      (when (over-limit? usage max-usage)
         (metabot.settings/metabot-quota-reached-message)))))
 
 (defn- check-tenant-limit
@@ -131,7 +141,7 @@
   (when tenant-id
     (when-let [max-usage (:max_usage (instance-limit/instance-limit tenant-id))]
       (let [usage (usage-query :tenant-id tenant-id)]
-        (when (>= usage max-usage)
+        (when (over-limit? usage max-usage)
           (metabot.settings/metabot-quota-reached-message))))))
 
 (defn- check-user-limit
@@ -140,7 +150,7 @@
   (when user-id
     (when-let [max-usage (group-limit/limit-for-user user-id)]
       (let [usage (usage-query :user-id user-id)]
-        (when (>= usage max-usage)
+        (when (over-limit? usage max-usage)
           (metabot.settings/metabot-quota-reached-message))))))
 
 (def ^:private ^:const cache-ttl-ms
