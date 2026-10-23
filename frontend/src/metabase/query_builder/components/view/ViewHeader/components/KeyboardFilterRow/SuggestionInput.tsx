@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { KeyboardEvent, ReactNode, Ref } from "react";
-import { Fragment, useEffect, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -87,6 +87,22 @@ export function SuggestionInput({
   onKeyDown,
 }: SuggestionInputProps) {
   const combobox = useCombobox({ defaultOpened: true });
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
+    () => new Set(),
+  );
+  // A search shows its matches in all the sections, also in collapsed ones.
+  const isSearching = text.trim().length > 0;
+  const isCollapsed = (section: string | undefined) =>
+    section != null && !isSearching && collapsedSections.has(section);
+  const toggleSection = (section: string) => {
+    const newSections = new Set(collapsedSections);
+    if (newSections.has(section)) {
+      newSections.delete(section);
+    } else {
+      newSections.add(section);
+    }
+    setCollapsedSections(newSections);
+  };
 
   const { selectFirstOption, resetSelectedOption } = combobox;
 
@@ -312,26 +328,28 @@ export function SuggestionInput({
                     {group.section != null &&
                       group.section !==
                         filteredGroups[groupIndex - 1]?.section && (
-                        <div
-                          className={cx(S.sectionHeader, {
-                            [S.sectionDivider]: groupIndex > 0,
-                          })}
-                        >
-                          {group.section}
-                        </div>
+                        <SectionHeader
+                          section={group.section}
+                          isCollapsed={isCollapsed(group.section)}
+                          isCollapsible={!isSearching}
+                          hasDivider={groupIndex > 0}
+                          onToggle={toggleSection}
+                        />
                       )}
-                    <Combobox.Group label={group.label}>
-                      <div
-                        className={cx({
-                          [S.optionGrid]: isTiles || columns > 1,
-                        })}
-                        style={{
-                          gridTemplateColumns: `repeat(${isTiles ? 2 : columns}, minmax(0, 1fr))`,
-                        }}
-                      >
-                        {group.options.map(renderOption)}
-                      </div>
-                    </Combobox.Group>
+                    {!isCollapsed(group.section) && (
+                      <Combobox.Group label={group.label}>
+                        <div
+                          className={cx({
+                            [S.optionGrid]: isTiles || columns > 1,
+                          })}
+                          style={{
+                            gridTemplateColumns: `repeat(${isTiles ? 2 : columns}, minmax(0, 1fr))`,
+                          }}
+                        >
+                          {group.options.map(renderOption)}
+                        </div>
+                      </Combobox.Group>
+                    )}
                   </Fragment>
                 ))
               ) : (
@@ -352,6 +370,41 @@ export function SuggestionInput({
         </Combobox.Dropdown>
       )}
     </Combobox>
+  );
+}
+
+interface SectionHeaderProps {
+  section: string;
+  isCollapsed: boolean;
+  isCollapsible: boolean;
+  hasDivider: boolean;
+  onToggle: (section: string) => void;
+}
+
+/** A header of a section, like a table. A click collapses the section. */
+function SectionHeader({
+  section,
+  isCollapsed,
+  isCollapsible,
+  hasDivider,
+  onToggle,
+}: SectionHeaderProps) {
+  const className = cx(S.sectionHeader, { [S.sectionDivider]: hasDivider });
+  if (!isCollapsible) {
+    return <div className={className}>{section}</div>;
+  }
+  return (
+    <button
+      className={cx(className, S.sectionToggle)}
+      type="button"
+      aria-expanded={!isCollapsed}
+      // The click keeps the focus in the input.
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={() => onToggle(section)}
+    >
+      <span className={S.sectionTitle}>{section}</span>
+      <Icon name={isCollapsed ? "chevronright" : "chevrondown"} size={12} />
+    </button>
   );
 }
 

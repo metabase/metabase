@@ -165,6 +165,42 @@
   border-top: 1px solid var(--mb-color-border-neutral);
 }
 
+.sectionToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--mantine-spacing-sm);
+  width: 100%;
+  border-right: none;
+  border-bottom: none;
+  border-left: none;
+  background: none;
+  font: inherit;
+  font-weight: bold;
+  text-align: left;
+  cursor: pointer;
+
+  &:not(.sectionDivider) {
+    border-top: none;
+  }
+
+  & svg {
+    flex-shrink: 0;
+    color: var(--mb-color-text-secondary);
+  }
+
+  &:hover svg {
+    color: var(--mb-color-text-primary);
+  }
+}
+
+.sectionTitle {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .dropdownHeader {
   padding: var(--mantine-spacing-sm);
 }
