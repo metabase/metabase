@@ -287,6 +287,7 @@ config:
     oidc-user-provisioning-enabled: true
     persisted-model-refresh-cron-schedule: 0 0 0/6 * * ? *
     persisted-models-enabled: false
+    pivot-max-result-rows: 200000
     premium-embedding-token: null
     query-caching-early-refresh-ratio: 0.1
     query-caching-max-kb: 2000
