@@ -5,6 +5,7 @@
    [metabase.explorations.impl :as explorations.impl]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metrics.core :as metrics]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -34,19 +35,20 @@
       (thunk))))
 
 (defn- insert-n-metrics!
-  "Insert `n` metric Cards and return the set of their ids."
+  "Insert and sync `n` metric Cards, returning the set of their IDs."
   [n]
   (let [q (count-metric-query :orders)]
     (set (for [_ (range n)]
-           (t2/insert-returning-pk! :model/Card
-                                    {:name                   (mt/random-name)
-                                     :type                   :metric
-                                     :creator_id             (mt/user->id :crowberto)
-                                     :database_id            (mt/id)
-                                     :table_id               (mt/id :orders)
-                                     :display                :scalar
-                                     :visualization_settings {}
-                                     :dataset_query          q})))))
+           (u/prog1 (t2/insert-returning-pk! :model/Card
+                                             {:name                   (mt/random-name)
+                                              :type                   :metric
+                                              :creator_id             (mt/user->id :crowberto)
+                                              :database_id            (mt/id)
+                                              :table_id               (mt/id :orders)
+                                              :display                :scalar
+                                              :visualization_settings {}
+                                              :dataset_query          q})
+             (metrics/sync-dimensions! :metadata/metric <>))))))
 
 (deftest target-resolvable?-test
   (testing "target-resolvable? reuses a prebuilt query and breakoutable columns"
@@ -84,7 +86,7 @@
         (is (= 2 @calls))))))
 
 (deftest query-count-does-not-scale-with-metric-count-test
-  (testing "exploration-data issues a ~constant number of DB queries regardless of metric count"
+  (testing "exploration-data issues a ~constant number of DB queries for synced metrics"
     ;; Before batching, each extra metric added ~2 permission queries (an N+1). After batching,
     ;; adding metrics must not add per-metric queries.
     (mt/with-test-user :rasta
@@ -349,21 +351,51 @@
       (is (= [1 2] (sort (mapv :id (:metrics (explorations.impl/research-groups
                                               {:groups [{:metric_id 1} {:metric_id 2}]})))))))))
 
-(deftest research-groups-hard-errors-test
+(defn- research-groups-problems
+  "Return the `ex-data` from [[explorations.impl/research-groups]] for invalid `groups`."
+  [groups]
+  (try
+    (explorations.impl/research-groups {:groups groups})
+    (catch clojure.lang.ExceptionInfo e
+      (ex-data e))))
+
+(deftest research-groups-reports-every-bad-id-test
   (with-synthetic-metrics
-    (testing "unknown metric id"
-      (is (thrown-with-msg? Exception #"Unknown or inaccessible metric id 999"
-                            (explorations.impl/research-groups
-                             {:groups [{:metric_id 999}]}))))
-    (testing "dimension that isn't a candidate of its metric"
-      (is (thrown-with-msg? Exception #"not a candidate of metric"
-                            (explorations.impl/research-groups
-                             {:groups [{:metric_id 1 :dimension_ids ["region-2"]}]}))))
-    (testing "replace_default_dimensions with no dimension_ids"
-      (is (thrown-with-msg? Exception #"replace_default_dimensions requires"
-                            (explorations.impl/research-groups
-                             {:groups [{:metric_id 1 :replace_default_dimensions true}]}))))
-    (testing "dimension the catalog still lists but query resolution drops"
+    (testing "every unknown metric id, not just the first"
+      (is (= {:unknown-metric-ids [999 1000]}
+             (research-groups-problems [{:metric_id 999} {:metric_id 1}
+                                        {:metric_id 1000} {:metric_id 999}]))))
+    (testing "every group that replaces the automatic dimensions with none"
+      (is (= {:replace-without-dimensions [1 2]}
+             (research-groups-problems [{:metric_id 1 :replace_default_dimensions true}
+                                        {:metric_id 2 :replace_default_dimensions true
+                                         :dimension_ids []}]))))
+    (testing "every dimension that isn't a candidate of its metric, with that metric's candidates"
+      (is (= {:invalid-dimensions [{:metric-id     1
+                                    :metric-name   "Revenue"
+                                    :dimension-ids ["region-2" "nope"]
+                                    :candidates    [{:id "region-1" :name "Region"}
+                                                    {:id "plan-1" :name "Plan"}]}
+                                   {:metric-id     2
+                                    :metric-name   "Churn"
+                                    :dimension-ids ["plan-1"]
+                                    :candidates    [{:id "region-2" :name "Region"}]}]}
+             (research-groups-problems [{:metric_id 1 :dimension_ids ["region-1" "region-2"]}
+                                        {:metric_id 2 :dimension_ids ["plan-1"]}
+                                        {:metric_id 1 :dimension_ids ["nope"]}]))))
+    (testing "every kind of problem at once, with no further checks on a metric that isn't there"
+      (is (= {:unknown-metric-ids         [999 1000]
+              :replace-without-dimensions [2]
+              :invalid-dimensions         [{:metric-id     1
+                                            :metric-name   "Revenue"
+                                            :dimension-ids ["wrong"]
+                                            :candidates    [{:id "region-1" :name "Region"}
+                                                            {:id "plan-1" :name "Plan"}]}]}
+             (research-groups-problems [{:metric_id 999 :dimension_ids ["anything"]}
+                                        {:metric_id 1 :dimension_ids ["wrong"]}
+                                        {:metric_id 1000 :replace_default_dimensions true}
+                                        {:metric_id 2 :replace_default_dimensions true}]))))
+    (testing "a dimension that the catalog still lists is rejected if query resolution removes it"
       ;; `plan-1` survives the cheap catalog but its target no longer resolves against the
       ;; metric's query, so it must be rejected rather than silently dropped from the payload.
       (mt/with-dynamic-fn-redefs [explorations.impl/resolve-metric-queries
@@ -371,9 +403,12 @@
                                     (mapv #(update % :dimensions
                                                    (fn [ds] (filterv (comp #{"region-1"} :id) ds)))
                                           metrics))]
-        (is (thrown-with-msg? Exception #"not a candidate of metric"
-                              (explorations.impl/research-groups
-                               {:groups [{:metric_id 1 :dimension_ids ["plan-1"]}]})))))))
+        (is (= [{:metric-id     1
+                 :metric-name   "Revenue"
+                 :dimension-ids ["plan-1"]
+                 :candidates    [{:id "region-1" :name "Region"}]}]
+               (:invalid-dimensions
+                (research-groups-problems [{:metric_id 1 :dimension_ids ["plan-1"]}]))))))))
 
 ;;; ------------------------------------------ exploration-data ------------------------------------------
 

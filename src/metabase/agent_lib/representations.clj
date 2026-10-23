@@ -25,6 +25,7 @@
       `fields`;
     * explicit joins supported; implicit joins are filled in by the repair pass."
   (:require
+   [clojure.string :as str]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.lib.schema :as lib.schema]
@@ -233,8 +234,51 @@
     (throw (ex-info (tru "Representations query has an invalid structure.")
                     {:status-code   400
                      :error         :invalid-representations-query
+                     :error-code    :invalid-representations-query
                      :humanized     (mu.humanize/humanize error)
                      :details       (pr-str (mu.humanize/humanize error))
                      :schema        ::query
                      :response/keys #{:humanized :details}})))
   parsed)
+
+(defn query-path
+  "Format a query location as a dotted path with bracketed indices, or `(root)` for an empty path."
+  [path]
+  (if (seq path)
+    (reduce (fn [s part]
+              (if (integer? part)
+                (str s "[" part "]")
+                (str s (when (seq s) ".") (if (keyword? part) (keyword->repr-string part) part))))
+            "" path)
+    "(root)"))
+
+(defn- humanized-locations
+  [path errors]
+  (cond
+    (nil? errors) nil
+    (map? errors) (mapcat (fn [[k v]] (humanized-locations (conj path k) v)) errors)
+    (seq? errors) (mapcat #(humanized-locations path %) errors)
+    (vector? errors)
+    (mapcat (fn [[i v]] (humanized-locations (conj path i) v)) (map-indexed vector errors))
+    :else [[path (str errors)]]))
+
+(def ^:private max-humanized-paths-length
+  "Character budget for structural validation paths, including the truncation marker."
+  500)
+
+(defn humanized->paths
+  "Flatten humanized validation errors into readable paths, capped at [[max-humanized-paths-length]] with an ellipsis."
+  [humanized]
+  (let [locations (humanized-locations [] humanized)
+        by-path   (group-by first locations)
+        text      (->> (distinct (map first locations))
+                       (map (fn [path]
+                              (str (query-path path) ": "
+                                   (str/join ", " (distinct (map second (get by-path path)))))))
+                       (interpose "; ")
+                       (mapcat seq)
+                       (take (inc max-humanized-paths-length))
+                       (apply str))]
+    (if (> (count text) max-humanized-paths-length)
+      (str (subs text 0 (dec max-humanized-paths-length)) "\u2026")
+      text)))

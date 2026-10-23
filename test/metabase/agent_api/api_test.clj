@@ -17,12 +17,16 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
    [metabase.mcp.core :as mcp]
+   [metabase.metabot.agent.profiles :as metabot.profiles]
+   [metabase.metabot.scope :as metabot.scope]
+   [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
@@ -430,6 +434,47 @@
                                            :groupby      ["foo"]}]}})]
         (is (=? {:error "unknown-stage-key"} response))
         (is (re-find #"aggregation" (:message response)))))))
+
+(deftest construct-query-rejects-malformed-clauses-test
+  (testing "a malformed stage or clause returns HTTP 400 with an error about the query structure"
+    (doseq [[label query] (let [post-agg (orders-query :aggregation [["count" {}]]
+                                                       :filters     [[">" {} ["aggregation" {} 0] 1]])]
+                            {"a number as `aggregation`"
+                             (assoc-in (orders-query) [:stages 0 :aggregation] 42)
+                             "an empty aggregation clause used in `order-by`"
+                             (orders-query :aggregation [[]] :order-by [["desc" {} []]])
+                             "a number as `joins`"
+                             (assoc-in (orders-query) [:stages 0 :joins] 42)
+                             "a post-aggregation filter with a number as `order-by`"
+                             (assoc-in post-agg [:stages 0 :order-by] 42)
+                             "a post-aggregation filter with a number as `fields`"
+                             (assoc-in post-agg [:stages 0 :fields] 42)
+                             "a number as a later stage"
+                             (update (orders-query) :stages conj 42)
+                             "an aggregation list as a later stage"
+                             (update (orders-query) :stages conj [["count" {}]])})
+            endpoint      ["agent/v2/construct-query" "agent/v2/query"]]
+      (testing (str endpoint ", " label)
+        (let [response (mt/user-http-request :rasta :post 400 endpoint {:query query})]
+          (is (=? {:error "invalid-representations-query"
+                   :error-code "invalid-representations-query"
+                   :message #"(?s)Representations query has an invalid structure\..*"}
+                  response))
+          (is (= #{:error :error-code :message :humanized :details} (set (keys response)))))))))
+
+(deftest construct-query-post-aggregation-errors-test
+  (doseq [[error query] [["post-agg-filter-with-trailing-clauses"
+                          (orders-query :aggregation [["count" {}]]
+                                        :filters [[">" {} ["aggregation" {} 0] 1]]
+                                        :limit 5)]
+                         ["post-agg-filter-needs-multi-stage"
+                          (orders-query :aggregation [["count" {}] ["count" {}]]
+                                        :filters [[">" {} ["aggregation" {} 0] 1]])]]
+          endpoint ["agent/v2/construct-query" "agent/v2/query"]]
+    (testing (str endpoint ", " error)
+      (let [response (mt/user-http-request :rasta :post 400 endpoint {:query query})]
+        (is (=? {:error error :error-code error :message #".*MBQL 5 requires.*"} response))
+        (is (= #{:error :error-code :message} (set (keys response))))))))
 
 (deftest construct-query-ignores-legacy-envelope-test
   (testing (str "Legacy `source_entity` / `referenced_entities` envelope from the pre-repr program API "
@@ -2043,6 +2088,47 @@
       (is (nil? (-> resp :resources first :content)))
       (is (some? (-> resp :resources first :error))))))
 
+(deftest virtual-column-statistics-respect-blocked-source-tables-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :blocked)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :no)
+        (let [mp (mt/metadata-provider)
+              categories (lib.metadata/table mp (mt/id :categories))
+              venues-query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+              joined-query (lib/join venues-query
+                                     (lib/join-clause categories
+                                                      [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
+                                                              (lib.metadata/field mp (mt/id :categories :id)))]))]
+          (doseq [[query blocked?] [[(lib/query mp categories) true] [joined-query true] [venues-query false]]]
+            (let [query (lib/aggregate query (lib/count))
+                  columns (mt/as-admin (-> query qp/process-query :data :results_metadata :columns))]
+              (mt/with-temp [:model/Card {card-id :id} {:type :question :database_id (mt/id)
+                                                        :dataset_query query :result_metadata columns}]
+                (mt/user-http-request :rasta :post (if blocked? 403 202) (str "card/" card-id "/query"))
+                (mt/with-test-user :rasta
+                  (binding [metabot.scope/*current-user-scope* #{"*"}]
+                    (doseq [profile [:document-generate-content :slackbot]]
+                      (let [entries (metabot.tools/->entries (:tools (metabot.profiles/get-profile profile)) nil nil profile)
+                            args {:data_source "question" :source_id card-id :field_id "count"}
+                            unrestricted (mt/as-admin ((get-in entries ["get_field_values" :fn]) args))
+                            result ((get-in entries ["get_field_values" :fn]) args)]
+                        (is (some? (get-in unrestricted [:structured-output :value_metadata :statistics])))
+                        (if blocked?
+                          (is (= {:result-type :field-metadata :field_id "count" :value_metadata nil}
+                                 (:structured-output result)))
+                          (is (= unrestricted result)))))))
+                (let [response (mt/user-http-request :rasta :post 200 "agent/v1/read-resource"
+                                                     {:uris [(str "metabase://question/" card-id "/fields/count")]})
+                      resource (first (:resources response))
+                      metadata (get-in resource [:content :structured-output])]
+                  (is (nil? (:error resource)))
+                  (is (= "field-metadata" (:result-type metadata)))
+                  (is (= (not blocked?) (some? (get-in metadata [:value_metadata :statistics])))))))))))))
+
 (deftest read-resource-refuses-mcp-scopes-test
   (testing "GHY-4939: MCP scopes gate the MCP surface only. An OAuth token issued to an MCP client must not reach a
             REST endpoint, so a token holding every MCP scope is refused by POST /v1/read-resource."
@@ -2097,3 +2183,14 @@
       (is (not (contains? q :qp/source-card-id)))
       (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages q))
           "internal keys are stripped from every stage"))))
+
+(deftest construct-query-structural-locations-test
+  (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                       {:query (orders-query :filters [{:op ">"} {:op "<"}])})]
+    (is (= "invalid-representations-query" (:error response)))
+    (is (= (str "Representations query has an invalid structure.\n"
+                "Invalid at stages[0].filters[0]: should be a vector, "
+                "clause must be [operator-string, options-map, \u2026args]; "
+                "stages[0].filters[1]: should be a vector, "
+                "clause must be [operator-string, options-map, \u2026args]. Fix the named paths.")
+           (:message response)))))
