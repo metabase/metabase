@@ -19,7 +19,10 @@
   gets no steps at all: a missing step reads as terse, a wrong one sends the agent at the wrong
   tool."
   (:require
+   [clojure.string :as str]
+   [metabase.metabot.db :as metabot.db]
    [metabase.metabot.tools.error :refer [defrecoverable]]
+   [metabase.models.interface :as mi]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -31,19 +34,65 @@
   the model reads. `:entity-type` and `:entity-id` are present only for the codes whose recovery
   depends on what was referenced (see [[uri-in-source-table!]]).
   `:source-card` and `:source-card-type` are the numeric ID and type of the stage's `source-card:`,
-  present only for the codes a `source-card:` stage raises (see [[column-not-returned!]])."
+  present only for the codes a `source-card:` stage raises (see [[column-not-returned!]]).
+  `:table-id` and `:database-id` are present only for the codes whose recovery steps name that
+  table or database (see [[payload]])."
   [:map {:closed true}
    [:message          :string]
    [:paths            {:optional true} :string]
    [:entity-type      {:optional true} [:maybe :string]]
    [:entity-id        {:optional true} [:maybe [:or :string :int]]]
    [:source-card      {:optional true} [:maybe :int]]
-   [:source-card-type {:optional true} [:maybe [:enum "model" "question"]]]])
+   [:source-card-type {:optional true} [:maybe [:enum "model" "question"]]]
+   [:table-id         {:optional true} pos-int?]
+   [:database-id      {:optional true} pos-int?]])
+
+(defn readable-database-id
+  "The `:database-id` of the pipeline error `data`, when the current user can read that database.
+
+  Never returns a routing destination's id."
+  [data]
+  (let [id (:database-id data)]
+    (when (and (pos-int? id)
+               ;; `read_resource` 404s on a destination even when the user can read its router.
+               (empty? (metabot.db/destination-database-ids #{id}))
+               (mi/can-read? :model/Database id))
+      id)))
+
+(def ^:private id-keys
+  "For each code whose recovery steps name a table or a database, a map from the payload key to the
+  function that reads that id from the `ex-data`."
+  {:unknown-table   {:database-id readable-database-id}
+   :ambiguous-table {:database-id readable-database-id}
+   :unknown-field   {:table-id :table-id}
+   :ambiguous-fk    {:table-id :source-table}})
+
+(defn payload
+  "The [[::payload]] for the pipeline exception `e`, whose `:error` code is `error`.
+
+  A database id is kept only when [[readable-database-id]] returns it."
+  [error e]
+  (let [{:keys [entity-type entity-id source-card source-card-type] :as data} (ex-data e)
+        {:keys [table-id database-id]} (update-vals (id-keys error) #(% data))]
+    (cond-> {:message (or (ex-message e) "")}
+      entity-type         (assoc :entity-type entity-type)
+      (some? entity-id)   (assoc :entity-id entity-id)
+      source-card         (assoc :source-card source-card
+                                 :source-card-type source-card-type)
+      ;; The pipeline checks permissions on the query's tables, but finds its database by name first.
+      (pos-int? table-id) (assoc :table-id table-id)
+      database-id         (assoc :database-id database-id))))
 
 ;;; ------------------------------------------- Shared recovery steps ----------------------------------------------
 
 ;; Each step names the tools its text mentions in `:uses`, so a profile without `read_resource` gets
 ;; the error with that step dropped rather than advice it cannot follow.
+
+(defn- with-id
+  "`step` with the `<numeric id>` in its text replaced by `id`, or unchanged when `id` is nil."
+  [step id]
+  (cond-> step
+    id (update :text str/replace "<numeric id>" (str id))))
 
 (def ^:private list-tables-step
   {:uses #{"read_resource"}
@@ -125,9 +174,12 @@
 
 ;;; Table resolution
 
-(defpipeline-error unknown-table!
+(defrecoverable unknown-table!
   "A portable FK `[db, schema, table]` in `source-table:` matched no active table."
-  [list-tables-step])
+  {:payload ::payload}
+  [{:keys [message database-id]}]
+  {:message  message
+   :recovery [(with-id list-tables-step database-id)]})
 
 (defpipeline-error unknown-table-id!
   "A numeric table id did not resolve."
@@ -139,11 +191,15 @@
                "`metabase://database/<numeric id>/tables` to find the table, then use its portable FK "
                "`[<db-name>, <schema>, <table-name>]` in `source-table:`.")}])
 
-(defpipeline-error ambiguous-table!
+(defrecoverable ambiguous-table!
   "A portable FK matched more than one table."
-  [{:uses #{"read_resource"}
-    :text (str "Call `read_resource` with `metabase://database/<numeric id>/tables` to list the available "
-               "tables and retry with a more specific portable FK.")}])
+  {:payload ::payload}
+  [{:keys [message database-id]}]
+  {:message  message
+   :recovery [(-> {:uses #{"read_resource"}
+                   :text (str "Call `read_resource` with `metabase://database/<numeric id>/tables` to list the "
+                              "available tables and retry with a more specific portable FK.")}
+                  (with-id database-id))]})
 
 ;;; Database resolution
 
@@ -162,9 +218,12 @@
 
 ;;; Field resolution
 
-(defpipeline-error unknown-field!
+(defrecoverable unknown-field!
   "A field reference named no column of its source."
-  [list-fields-step])
+  {:payload ::payload}
+  [{:keys [message table-id]}]
+  {:message  message
+   :recovery [(with-id list-fields-step table-id)]})
 
 (defpipeline-error unknown-field-id!
   "A numeric field id did not resolve."
@@ -206,9 +265,9 @@
 (defrecoverable ambiguous-fk!
   "More than one foreign key connects the two tables, so the join path is ambiguous."
   {:payload ::payload}
-  [payload]
-  {:message  (:message payload)
-   :recovery [(or (card-fields-step payload "foreign-key columns") list-fks-step)]})
+  [{:keys [message table-id] :as payload}]
+  {:message  message
+   :recovery [(or (card-fields-step payload "foreign-key columns") (with-id list-fks-step table-id))]})
 
 (defrecoverable unexportable-fk!
   "The only foreign key that reaches a field's table could not be resolved, so the field cannot be reached implicitly."

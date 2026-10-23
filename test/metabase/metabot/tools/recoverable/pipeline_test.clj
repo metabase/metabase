@@ -9,13 +9,20 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.recovery-hints :as v2-hints]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.test-util :as test-util]
+   [metabase.metabot.tools.construct :as construct]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.recoverable.pipeline :as pipeline]
-   [metabase.metabot.tools.recovery-hints :as v1-hints]))
+   [metabase.metabot.tools.recovery-hints :as v1-hints]
+   [metabase.metabot.tools.resources :as resources]
+   [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
@@ -178,6 +185,102 @@
                   "Read `metabase://question/<numeric id>` and copy its entity_id into `source-card:`."
                   "Call `search` to find the portable FK for `source-table:`."]]
       (is (nil? (mcp-vocabulary text)) text))))
+
+;;; ===== Recovery steps name the real table or database =====
+
+(defn- construct-failure
+  "Run `construct_notebook_query` on a one-stage test-data query that fails, and return the failure
+  as a profile with `read_resource` reads it. `stage` is string-keyed, as the model writes it."
+  [stage]
+  (test-util/tool-failure construct/construct-notebook-query-tool
+                          {:query       (walk/keywordize-keys
+                                         {"lib/type" "mbql/query"
+                                          "stages"   [(merge {"lib/type" "mbql.stage/mbql"} stage)]})
+                           :title       "Orders"
+                           :description "Orders by month."}
+                          #{"read_resource"}))
+
+(defn- recovery-uri
+  "The `metabase://` URI that a recovery step tells the agent to read."
+  [text]
+  (second (re-find #"`(metabase://[^`]+)`" text)))
+
+(defn- read-resource
+  [uri]
+  (test-util/call-tool resources/read-resource-tool {:uris [uri]} #{"read_resource"}))
+
+(deftest recovery-steps-name-the-real-table-or-database-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [db            (:name (mt/db))
+          tables-uri    (str "metabase://database/" (mt/id) "/tables")
+          orders-uri    (str "metabase://table/" (mt/id :orders) "/fields")
+          check-failure (fn [stage code uri]
+                          (let [failure (construct-failure stage)]
+                            (is (= code (:code failure)))
+                            (is (= uri (recovery-uri (:text failure))))
+                            (testing "and `read_resource` reads that URI"
+                              (is (some? (:structured-output (read-resource uri)))))))]
+      (testing "an unknown table names the query's database"
+        (check-failure {"source-table" [db "PUBLIC" "ORDRS"]
+                        "aggregation"  [["count" {}]]}
+                       :metabase.metabot.tools.recoverable.pipeline/unknown-table
+                       tables-uri))
+      (testing "an ambiguous table names the query's database"
+        ;; The app DB's unique keys forbid a duplicate table, so both tables exist only in the metadata provider
+        (let [mp (lib.tu/mock-metadata-provider
+                  (mt/metadata-provider)
+                  {:tables [{:id 99999901 :db-id (mt/id) :schema "PUBLIC" :name "SHIPMENTS"}
+                            {:id 99999902 :db-id (mt/id) :schema "PUBLIC" :name "SHIPMENTS"}]})]
+          (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (constantly mp)]
+            (check-failure {"source-table" [db "PUBLIC" "SHIPMENTS"]
+                            "aggregation"  [["count" {}]]}
+                           :metabase.metabot.tools.recoverable.pipeline/ambiguous-table
+                           tables-uri))))
+      (testing "an unknown column names its table"
+        (check-failure {"source-table" [db "PUBLIC" "ORDERS"]
+                        "aggregation"  [["count" {}]]
+                        "breakout"     [["field" {} [db "PUBLIC" "ORDERS" "CREATD_AT"]]]}
+                       :metabase.metabot.tools.recoverable.pipeline/unknown-field
+                       orders-uri))
+      (testing "an unknown column on another table names that table"
+        (check-failure {"source-table" [db "PUBLIC" "ORDERS"]
+                        "aggregation"  [["count" {}]]
+                        "breakout"     [["field" {} [db "PUBLIC" "PRODUCTS" "CATEGRY"]]]}
+                       :metabase.metabot.tools.recoverable.pipeline/unknown-field
+                       (str "metabase://table/" (mt/id :products) "/fields")))
+      (testing "an ambiguous foreign key names the source table"
+        (mt/with-temp-vals-in-db :model/Field (mt/id :orders :user_id) {:fk_target_field_id (mt/id :products :id)}
+          (check-failure {"source-table" [db "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} [db "PUBLIC" "PRODUCTS" "CATEGORY"]]]}
+                         :metabase.metabot.tools.recoverable.pipeline/ambiguous-fk
+                         orders-uri))))))
+
+(deftest recovery-steps-name-the-database-only-when-the-user-can-read-it-test
+  (let [stage {"source-table" [(:name (mt/db)) "PUBLIC" "ORDRS"]
+               "aggregation"  [["count" {}]]}]
+    (testing "the database is found by name before any permission check, so a user who cannot read it
+             gets the placeholder instead of its id"
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [code text]} (construct-failure stage)]
+            (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
+            (is (= "metabase://database/<numeric id>/tables" (recovery-uri text)))))))
+    (testing "a user who can read it gets its id"
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [text]} (construct-failure stage)]
+            (is (= (str "metabase://database/" (mt/id) "/tables") (recovery-uri text)))))))))
+
+(deftest recovery-steps-do-not-name-a-routing-destination-test
+  (testing "`read_resource` never opens a routing destination, so even an admin gets the placeholder"
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-temp [:model/Database {router-id :id}     {}
+                     :model/Database {destination :name} {:router_database_id router-id}]
+        (let [{:keys [code text]} (construct-failure {"source-table" [destination "PUBLIC" "ORDERS"]
+                                                      "aggregation"  [["count" {}]]})]
+          (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
+          (is (= "metabase://database/<numeric id>/tables" (recovery-uri text))))))))
 
 (deftest ^:parallel structural-paths-payload-test
   (doseq [[paths expected-class] [["stages[0].filters: invalid type" :recoverable]
