@@ -15,7 +15,8 @@
 
   Each node heartbeats the runs it owns ([[heartbeat-tick!]]); [[reap-orphaned-runs!]] fails an active run whose
   heartbeat is stale, for example after its node died. The heartbeat does not show that the chunk calls progress, so
-  the worker fails a chunk call that runs longer than [[call-timeout-ms]] (decision `ghy-4721-chunk-call-timeout`).
+  the worker fails a chunk call that runs longer than [[call-timeout-ms]] (decision `ghy-4721-chunk-call-timeout`) and
+  aborts its request with [[llm/cancel-packet]], which frees the pool thread.
   The run's `usage` records `max_table_ms` and `slow_calls` so a slow provider is visible on the run."
   (:require
    [clojure.string :as str]

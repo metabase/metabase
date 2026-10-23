@@ -10,6 +10,7 @@
    [metabase-enterprise.data-sensitivity.runner :as runner]
    [metabase.api.common :as api]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.self.core :as metabot.self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [metabase.util :as u]
@@ -616,6 +617,41 @@
         (if (or (pred run) (> (u/since-ms timer) ms))
           run
           (do (Thread/sleep 50) (recur)))))))
+
+(defn- block-ignoring-interrupts!
+  "Block until `release` or `aborted` is realized, ignoring interrupts, as a blocking socket read does."
+  [release aborted]
+  (while (not (or (realized? release) (realized? aborted)))
+    (try (Thread/sleep 20) (catch InterruptedException _ nil))))
+
+(deftest hung-calls-do-not-hold-a-run-forever-test
+  (testing "a run whose chunk calls all hang ends within a bound of the call timeout, also when the hung calls fill the chunk pool"
+    (do-with-temp-tables
+     (inc llm/pool-size)
+     (fn [db _tables]
+       (let [release (promise)
+             calls   (atom 0)
+             run-id  (atom nil)]
+         (try
+           (core-test/do-with-llm!
+            (fn [& _args]
+              (swap! calls inc)
+              (let [aborted (promise)]
+                (some-> metabot.self.core/*on-abortable-request* (apply [#(deliver aborted true)]))
+                (block-ignoring-interrupts! release aborted))
+              (throw (ex-info "aborted" {})))
+            (fn []
+              (mt/with-dynamic-fn-redefs [runner/call-timeout-ms (constantly 300)]
+                (reset! run-id (:id (start! db {:attributes [:data_sensitivity]})))
+                (let [bound (* 2 (inc llm/pool-size) (+ 300 runner/poll-ms))
+                      ended (poll-run @run-id #(nil? (:is_active %)) bound)]
+                  (is (=? {:is_active nil :failed_tables (inc llm/pool-size)} ended))
+                  (is (= (inc llm/pool-size) @calls))))))
+           (finally
+             (deliver release true)
+             (when-let [id @run-id]
+               (u/ignore-exceptions (runner/cancel-run! id))
+               (wait-ended id)))))))))
 
 (defn- do-with-busy-workers!
   "Run `(f)` while every worker thread executes a run whose chunk call blocks, then release the blocked runs and wait

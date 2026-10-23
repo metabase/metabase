@@ -16,6 +16,7 @@
    [metabase.metabot.self :as metabot.self]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr])
   (:import
@@ -594,6 +595,25 @@ name, gets a chunk of its own. The size
    [:futures [:sequential [:fn #(instance? Future %)]]]
    [:timings [:sequential [:fn #(instance? clojure.lang.Atom %)]]]])
 
+(defn- abort-async!
+  "Call `abort` on a new daemon thread, because a client close can wait for the next byte from the provider."
+  [abort]
+  (doto (Thread. ^Runnable (fn []
+                             (try
+                               (abort)
+                               (catch Throwable e
+                                 (log/debug e "Ignored the error from the abort of a chunk call"))))
+                 "data-sensitivity-llm-abort")
+    (.setDaemon true)
+    (.start)))
+
+(defn- register-abort!
+  "Keep the `abort` function of the request of a chunk call in its `timing`. Abort the request at once when
+  [[cancel-packet]] has already cancelled the call, for example a retry that starts after the cancel."
+  [timing abort]
+  (when (:aborted (swap! timing assoc :abort abort))
+    (abort-async! abort)))
+
 (mu/defn submit-packet :- ::submitted
   "Submit one call per chunk of `packet` to [[pool]] and return without waiting. A chunk holds at most `chunk-size`
   fields and a user message within `char-budget` characters, see [[chunk-fields]]. `cp/future` runs each task under the
@@ -602,7 +622,8 @@ name, gets a chunk of its own. The size
   submits nothing. Only chunk calls run on the pool; a task never submits to it, so the pool cannot
   deadlock. A caller that stops before [[collect-packet]] returns must call [[cancel-packet]]. Each atom in `:timings`
   holds nil while its chunk waits, `{:timer t}` from [[u/start-timer]] once the call starts on the pool, and also
-  `:elapsed-ms` once the call ends."
+  `:elapsed-ms` once the call ends. While the call reads a response, the atom also holds the `:abort` function of
+  that request, see [[cancel-packet]]."
   [packet :- ::context/packet
    & {:keys [model attributes chunk-size char-budget]} :- [:maybe ::classify-options]]
   (let [model      (or model (metabot.settings/llm-mini-model))
@@ -618,7 +639,12 @@ name, gets a chunk of its own. The size
                       (cp/future pool
                                  (reset! timing {:timer (u/start-timer)})
                                  (try
-                                   (let [{:keys [result parts]} (call! model attributes packet fields)]
+                                   ;; a cancel that came before the reset! above found no timing to mark as aborted
+                                   (when (.isInterrupted (Thread/currentThread))
+                                     (throw (InterruptedException.)))
+                                   (let [{:keys [result parts]} (metabot.self/do-with-request-abort
+                                                                 (partial register-abort! timing)
+                                                                 #(call! model attributes packet fields))]
                                      (assoc (parse-response fields result attributes) :usage (usage-from-parts parts)))
                                    (finally
                                      (swap! timing #(assoc % :elapsed-ms (u/since-ms (:timer %))))))))
@@ -627,9 +653,16 @@ name, gets a chunk of its own. The size
 
 (defn cancel-packet
   "Cancel the chunk calls of a [[submit-packet]] result that have not finished, last chunk first. The pool runs chunks
-  in submit order, so every chunk that waits is cancelled before a running chunk is interrupted and frees a thread."
-  [{:keys [futures]}]
-  (run! #(.cancel ^Future % true) (reverse futures)))
+  in submit order, so every chunk that waits is cancelled before a running chunk is interrupted and frees a thread.
+  A running call also has its request aborted: an interrupt does not stop a blocking socket read, so a provider that
+  sends a byte now and then could hold the pool thread without limit."
+  [{:keys [futures timings]}]
+  (doseq [[^Future f timing] (reverse (map vector futures timings))]
+    (let [running? (not (.isDone f))]
+      (.cancel f true)
+      (when running?
+        (some-> (:abort (swap! timing #(some-> % (assoc :aborted true))))
+                abort-async!)))))
 
 (defn completed-usage
   "The summed token usage of the chunk calls of a [[submit-packet]] result that finished without a failure. A table that

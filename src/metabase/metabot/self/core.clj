@@ -370,12 +370,20 @@
        (nil? (:connection-manager request-options))
        (nil? (:http-client request-options))))
 
+;; Bound by the caller of the LLM call, because the request is made several adapter layers down, on the same thread.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic *on-abortable-request*
+  "When bound, [[abort-on-close]] calls it with a function of no arguments that closes the request's own client. A
+  caller on another thread can call that function to free the thread that reads the body: the blocked read throws."
+  nil)
+
 (defn abort-on-close
   "Return the body of a streamed clj-http `response`, changed so that a close drops the connection.
 
   A close of the returned body closes the request's own `:http-client` first, so the provider sees a disconnect.
   Then it closes the body, and it does not read the rest of the body. Over TLS 1.3 the client close can wait for
-  the next byte from the provider, up to the socket timeout.
+  the next byte from the provider, up to the socket timeout. When [[*on-abortable-request*]] is bound, it gets a
+  function that closes the client.
 
   Returns `:body` unchanged when it is not an `InputStream`, when the response has no `Closeable` `:http-client`,
   or when `request-options` (the clj-http options of the request) share a client or a connection manager with
@@ -385,14 +393,17 @@
   (if (and (instance? InputStream body)
            (instance? Closeable http-client)
            (own-client? request-options))
-    ;; Without this wrapper, a close of a chunked body reads the rest of the body. It returns only when the provider
-    ;; finishes, and the provider continues to generate until then.
-    (proxy [FilterInputStream] [body]
-      (close []
-        (try
-          (.close ^Closeable http-client)
-          (finally
-            (close-released-body! body)))))
+    (do
+      (when-let [on-abortable *on-abortable-request*]
+        (on-abortable #(.close ^Closeable http-client)))
+      ;; Without this wrapper, a close of a chunked body reads the rest of the body. It returns only when the provider
+      ;; finishes, and the provider continues to generate until then.
+      (proxy [FilterInputStream] [body]
+        (close []
+          (try
+            (.close ^Closeable http-client)
+            (finally
+              (close-released-body! body))))))
     body))
 
 ;;; AISDK5

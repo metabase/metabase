@@ -5,6 +5,7 @@
    [metabase-enterprise.data-sensitivity.context :as context]
    [metabase-enterprise.data-sensitivity.llm :as llm]
    [metabase.metabot.self :as metabot.self]
+   [metabase.metabot.self.core :as metabot.self.core]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -387,6 +388,51 @@
           (is (= 3 (:requests result)))
           (is (= (set (map :name fields)) (set (keys (:fields result)))))
           (is (every? #(= :labeled (:status %)) (vals (:fields result)))))))))
+
+(defn- await-ignoring-interrupts
+  "Wait until `p` is realized or `ms` milliseconds pass, ignoring interrupts, as a blocking socket read does. Returns
+  whether `p` is realized."
+  [p ms]
+  (let [deadline (+ (System/currentTimeMillis) ms)]
+    (while (and (not (realized? p)) (< (System/currentTimeMillis) deadline))
+      (try (Thread/sleep 10) (catch InterruptedException _ nil)))
+    (realized? p)))
+
+(deftest cancel-packet-aborts-running-requests-test
+  (testing "a cancel aborts the request of a running chunk call, and the call frees its thread"
+    (let [started  (promise)
+          aborted  (promise)
+          finished (promise)]
+      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace
+                                  (fn [& _]
+                                    (try
+                                      (some-> metabot.self.core/*on-abortable-request* (apply [#(deliver aborted true)]))
+                                      (deliver started true)
+                                      (await-ignoring-interrupts aborted 10000)
+                                      (throw (ex-info "aborted" {}))
+                                      (finally
+                                        (deliver finished true))))]
+        (let [submitted (llm/submit-packet (packet [(field "A")]) :model "test/model")]
+          (is (true? (deref started 5000 false)))
+          (llm/cancel-packet submitted)
+          (is (true? (deref aborted 2000 false)))
+          (is (true? (deref finished 2000 false)))))))
+  (testing "a request that starts after the cancel of its chunk call is aborted at once"
+    (let [started  (promise)
+          canceled (promise)
+          aborted  (promise)]
+      (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace
+                                  (fn [& _]
+                                    (deliver started true)
+                                    (await-ignoring-interrupts canceled 10000)
+                                    (some-> metabot.self.core/*on-abortable-request* (apply [#(deliver aborted true)]))
+                                    (await-ignoring-interrupts aborted 10000)
+                                    (throw (ex-info "aborted" {})))]
+        (let [submitted (llm/submit-packet (packet [(field "A")]) :model "test/model")]
+          (is (true? (deref started 5000 false)))
+          (llm/cancel-packet submitted)
+          (deliver canceled true)
+          (is (true? (deref aborted 2000 false))))))))
 
 (deftest classify-packet-defaults-test
   (let [calls (atom [])]

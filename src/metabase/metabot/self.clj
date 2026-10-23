@@ -694,6 +694,15 @@
     (incomplete-structured-output-error parts incomplete-reason)
     (ex-info "LLM returned no tool call in structured response" {:parts parts})))
 
+(defn do-with-request-abort
+  "Call `thunk` with `on-abortable` bound for the LLM requests it makes on this thread. Each request that has its own
+  HTTP client calls `(on-abortable abort)` once its response arrives. `abort` takes no arguments, can be called from
+  any thread, and drops the connection, so the thread that reads the response fails instead of waiting for the
+  provider. Over TLS 1.3 `abort` can wait for the next byte from the provider, up to the socket timeout."
+  [on-abortable thunk]
+  (binding [core/*on-abortable-request* on-abortable]
+    (thunk)))
+
 (defn call-llm-structured-with-trace
   "Like [[call-llm-structured]], but returns `{:result <map> :parts [<part>...]}`
   so callers can inspect everything the model emitted — any non-tool text, the
