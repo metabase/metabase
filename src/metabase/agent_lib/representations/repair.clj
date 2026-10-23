@@ -44,7 +44,6 @@
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
@@ -1851,8 +1850,8 @@
                                  (and inferred-type (not (contains? opts "effective-type")))
                                  (assoc "effective-type" inferred-type))]
              ["aggregation" new-opts uuid])
-           (throw (ex-info (tru "Aggregation index {0} out of range; stage has {1} aggregation(s): {2}"
-                                idx (count index->uuid) (agg-heads-summary aggs-for-error))
+           (throw (ex-info (format "Aggregation index %s out of range; stage has %s aggregation(s): %s"
+                                   idx (count index->uuid) (agg-heads-summary aggs-for-error))
                            {:agent-error? true
                             :error        :aggregation-ref-out-of-range
                             :index        idx
@@ -1884,7 +1883,7 @@
 
       ;; Integer ref(s) present but stage has no aggregation vector - agent-error.
       (not (and (vector? aggs) (seq aggs)))
-      (throw (ex-info (tru "Found an integer-indexed aggregation reference but this stage has no `aggregation:` clause")
+      (throw (ex-info "Found an integer-indexed aggregation reference but this stage has no `aggregation:` clause"
                       {:agent-error? true
                        :error        :aggregation-ref-no-aggregations}))
 
@@ -2101,7 +2100,7 @@
                     (some? clause)))
                 (map stage ["order-by" "limit" "fields"]))
           (throw (ex-info
-                  (tru "Detected a post-aggregation filter alongside `order-by:`, `limit:`, or `fields:` in the same stage. MBQL 5 requires the filter in a separate stage, but those trailing clauses cannot be safely relocated — they may reference pre-aggregation columns that don''t survive the split. Please author this as two stages explicitly: stage 0 with `source-table`, `aggregation`, `breakout`, and any pre-aggregation `filters`; stage 1 with the post-aggregation `filters`, plus `order-by` / `limit` / `fields` that reference the aggregation''s output via cross-stage `[\"field\", (empty opts), \"<column-name>\"]` refs.")
+                  "Detected a post-aggregation filter alongside `order-by:`, `limit:`, or `fields:` in the same stage. MBQL 5 requires the filter in a separate stage, but those trailing clauses cannot be safely relocated — they may reference pre-aggregation columns that don't survive the split. Please author this as two stages explicitly: stage 0 with `source-table`, `aggregation`, `breakout`, and any pre-aggregation `filters`; stage 1 with the post-aggregation `filters`, plus `order-by` / `limit` / `fields` that reference the aggregation's output via cross-stage `[\"field\", (empty opts), \"<column-name>\"]` refs."
                   {:agent-error? true
                    :status-code  400
                    :error-code   :post-agg-filter-with-trailing-clauses
@@ -2120,7 +2119,7 @@
                                  "filters"  moved-filters}]
               [s0 s1])
             (throw (ex-info
-                    (tru "Detected a post-aggregation filter (a filter referencing an aggregation from the same stage). MBQL 5 requires this in a separate stage. Auto-fix is unsafe here — either an aggregation''s output column name cannot be derived (e.g. a `metric` reference or unknown head), or two aggregations in this stage would produce the same column name (e.g. two `sum` aggregations on different fields, which lib disambiguates as `sum` / `sum_2` based on field order). Please refactor to multi-stage manually: put the aggregations in stage 0, and the filter in stage 1 referencing the column via a cross-stage `[\"field\", (empty opts), \"<column-name>\"]` clause. Use an explicit aggregation with a `name` opts override (e.g. `[\"sum\", (opts with key \"name\" → \"sum_total\"), …]`) if you need stable cross-stage names.")
+                    "Detected a post-aggregation filter (a filter referencing an aggregation from the same stage). MBQL 5 requires this in a separate stage. Auto-fix is unsafe here — either an aggregation's output column name cannot be derived (e.g. a `metric` reference or unknown head), or two aggregations in this stage would produce the same column name (e.g. two `sum` aggregations on different fields, which lib disambiguates as `sum` / `sum_2` based on field order). Please refactor to multi-stage manually: put the aggregations in stage 0, and the filter in stage 1 referencing the column via a cross-stage `[\"field\", (empty opts), \"<column-name>\"]` clause. Use an explicit aggregation with a `name` opts override (e.g. `[\"sum\", (opts with key \"name\" → \"sum_total\"), …]`) if you need stable cross-stage names."
                     {:agent-error? true
                      :status-code  400
                      :error-code   :post-agg-filter-needs-multi-stage
@@ -2605,10 +2604,10 @@
               ;; so listing them in the diagnostic is fine. The FK column portables are NOT
               ;; surfaced here — see the rationale on `:ambiguous-fk` above.
               (let [aliases (mapv :alias cands)]
-                (throw (ex-info (tru "Field {0} is reachable from {1} explicit joins via aliases {2}. Specify the `source-field-join-alias` option on the field clause to pick which join''s foreign key to use."
-                                     (display-portable fk)
-                                     (count cands)
-                                     (str/join ", " (map pr-str aliases)))
+                (throw (ex-info (format "Field %s is reachable from %s explicit joins via aliases %s. Specify the `source-field-join-alias` option on the field clause to pick which join's foreign key to use."
+                                        (display-portable fk)
+                                        (count cands)
+                                        (str/join ", " (map pr-str aliases)))
                                 {:status-code  400
                                  :error        :ambiguous-fk-via-join
                                  :agent-error? true
@@ -3013,13 +3012,13 @@
 (defn- unresolved-join-alias-fields-error
   [problems]
   (ex-info
-   (tru "Some join column references name a column their join doesn''t return: {0}. Reference a join column by its machine name (e.g. an aggregation is `min`, `count`, `sum` - never its display label like `Min of X`), and only columns the join returns: a grouped join returns just its breakouts and aggregations."
-        (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
-                         (tru "stage {0}, join {1} doesn''t return {2} (available: {3})"
-                              stage
-                              (quoting/quoted join-alias)
-                              (str/join ", " (map quoting/quoted columns))
-                              (str/join ", " (map quoting/quoted available))))))
+   (format "Some join column references name a column their join doesn't return: %s. Reference a join column by its machine name (e.g. an aggregation is `min`, `count`, `sum` - never its display label like `Min of X`), and only columns the join returns: a grouped join returns just its breakouts and aggregations."
+           (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
+                            (format "stage %s, join %s doesn't return %s (available: %s)"
+                                    stage
+                                    (quoting/quoted join-alias)
+                                    (str/join ", " (map quoting/quoted columns))
+                                    (str/join ", " (map quoting/quoted available))))))
    {:agent-error? true
     :error        :unresolved-join-alias-field
     :problems     problems}))
@@ -3120,9 +3119,9 @@
                         (pos? idx)                (mini-resolved-columns mp query idx content-store))]
         (when-let [bad (first-unresolved-cross-stage-ref stage cols)]
           (throw (ex-info
-                  (tru "No column named {0} is available to reference in this stage. Reference a column by its machine name (e.g. an aggregation is `max`, `count`, `sum` - never its display label like `Max of X`), not a UI label. Available column names: {1}."
-                       (quoting/quoted (nth bad 2))
-                       (str/join ", " (map (comp quoting/quoted :name) cols)))
+                  (format "No column named %s is available to reference in this stage. Reference a column by its machine name (e.g. an aggregation is `max`, `count`, `sum` - never its display label like `Max of X`), not a UI label. Available column names: %s."
+                          (quoting/quoted (nth bad 2))
+                          (str/join ", " (map (comp quoting/quoted :name) cols)))
                   {:agent-error? true
                    :error        :unresolved-cross-stage-field
                    :stage        idx
@@ -3169,8 +3168,8 @@
                    (>= (count entry) 1)
                    (= "field" (nth entry 0)))
           (throw (ex-info
-                  (tru "Stage {0} aggregation entry {1} is a `field` clause, not an aggregation. The `aggregation:` block expects aggregation functions like `count`, `sum`, `avg`, `metric`, etc. - or wrap the field in one (e.g. `[sum, <opts>, <field>]`). If you wanted to group by this column, use `breakout:` instead."
-                       stage-idx entry-idx)
+                  (format "Stage %s aggregation entry %s is a `field` clause, not an aggregation. The `aggregation:` block expects aggregation functions like `count`, `sum`, `avg`, `metric`, etc. - or wrap the field in one (e.g. `[sum, <opts>, <field>]`). If you wanted to group by this column, use `breakout:` instead."
+                          stage-idx entry-idx)
                   {:agent-error? true
                    :error        :aggregation-entry-not-aggregation
                    :stage-index  stage-idx
@@ -3195,7 +3194,7 @@
   (match/match-one form
     [#{"case" "if"} {"default" _} & _]
     (throw (ex-info
-            (tru "`case` (and `if`) uses its third positional argument as the fallback value, not a `default` key in the options map. Move the value out of the options map and append it as the third arg of the clause: `[case, <opts>, <branch-pairs>, <default>]`. Omit the third arg entirely if you have no fallback (the result will be null on miss).")
+            "`case` (and `if`) uses its third positional argument as the fallback value, not a `default` key in the options map. Move the value out of the options map and append it as the third arg of the clause: `[case, <opts>, <branch-pairs>, <default>]`. Omit the third arg entirely if you have no fallback (the result will be null on miss)."
             {:agent-error? true
              :error        :case-default-in-opts
              :clause       &match}))))
@@ -3226,8 +3225,8 @@
   (match/match-one form
     [(head :guard sexp-legacy-top-level-ops) & _]
     (throw (ex-info
-            (tru "`{0}` is not a clause in repr; it was a top-level operation in the older sexp pipeline. {1}"
-                 head (get sexp-legacy-top-level-ops head))
+            (format "`%s` is not a clause in repr; it was a top-level operation in the older sexp pipeline. %s"
+                    head (get sexp-legacy-top-level-ops head))
             {:agent-error? true
              :error        :sexp-legacy-op-as-clause
              :head         head
@@ -3247,7 +3246,7 @@
   (match/match-one form
     ["expression" #'map? (name-slot :guard (or (not (string? name-slot)) (str/blank? name-slot)))]
     (throw (ex-info
-            (tru "`[expression, <opts>, <name>]` reference requires a non-blank string identifier in the third slot, matching an entry in some stage''s `expressions:` block.")
+            "`[expression, <opts>, <name>]` reference requires a non-blank string identifier in the third slot, matching an entry in some stage's `expressions:` block."
             {:agent-error? true
              :error        :blank-expression-ref
              :clause       &match}))))
@@ -3270,7 +3269,7 @@
     (match/match-one form
       ["field" #'map? #'integer?]
       (throw (ex-info
-              (tru "`field` clause needs a portable FK in its third slot, not a numeric id. Use a vector `[<database>, <schema>, <table>, <column>]` (resolved against the metadata provider) or a string column-name (for cross-stage references).")
+              "`field` clause needs a portable FK in its third slot, not a numeric id. Use a vector `[<database>, <schema>, <table>, <column>]` (resolved against the metadata provider) or a string column-name (for cross-stage references)."
               {:agent-error? true
                :error        :numeric-field-id
                :clause       &match})))))
@@ -3342,8 +3341,8 @@
                                            (some? (get (nth node 1) "unit")))
                   false))
        (throw (ex-info
-               (tru "Move the temporal unit in `{0}` off the literal. Write a range with `>=` the first day of the period and `<` the first day after the period, both as plain date strings (not `between`, which drops everything after midnight on its last day). To exclude `2025-01-31`, use an `or` of `< \"2025-01-31\"` and `>= \"2025-02-01\"` on the column. These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count. Join `conditions:` cannot hold an `or`, so a date exclusion cannot be written there; tell the user that it cannot be added to the join. You can instead put the unit on the column with `temporal-unit` in `filters:` and `expressions:`, then compare the column to the first day of the period as a plain date string. Do not put the unit on the column in `aggregation:` or join `conditions:`, where the query engine does not turn it into a range. Use the range for `year` on an `expression` reference, which the query engine reads as a number."
-                    (pr-str node))
+               (format "Move the temporal unit in `%s` off the literal. Write a range with `>=` the first day of the period and `<` the first day after the period, both as plain date strings (not `between`, which drops everything after midnight on its last day). To exclude `2025-01-31`, use an `or` of `< \"2025-01-31\"` and `>= \"2025-02-01\"` on the column. These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count. Join `conditions:` cannot hold an `or`, so a date exclusion cannot be written there; tell the user that it cannot be added to the join. You can instead put the unit on the column with `temporal-unit` in `filters:` and `expressions:`, then compare the column to the first day of the period as a plain date string. Do not put the unit on the column in `aggregation:` or join `conditions:`, where the query engine does not turn it into a range. Use the range for `year` on an `expression` reference, which the query engine reads as a number."
+                       (pr-str node))
                {:agent-error? true
                 :error        :unencodable-temporal-clause
                 :clause       node})))
@@ -3547,8 +3546,8 @@
                      :aggregation "`aggregation:`"
                      :filter      "`filters:`")]
          (throw (ex-info
-                 (tru "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
-                      where original-idx (str/replace message #"\.$" ""))
+                 (format "The query builder's expression editor rejects a %s clause in stage %s: %s. The query would build but could not be visualized or saved - rewrite the offending clause."
+                         where original-idx (str/replace message #"\.$" ""))
                  {:agent-error? true
                   :error        :expression-editor-rejection
                   :status-code  400
@@ -3605,10 +3604,10 @@
             type-name   (name column-type)
             unit-name   (name temporal-unit)]
         (throw (ex-info (if (= :expression (nth clause 0))
-                          (tru "{0} is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
-                               column-name type-name unit-name)
-                          (tru "{0} is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
-                               column-name type-name unit-name))
+                          (format "%s is a %s custom column, so it cannot be bucketed by %s. Compare it to a plain value, or bucket a date / datetime column instead."
+                                  column-name type-name unit-name)
+                          (format "%s is a %s column, so it cannot be bucketed by %s. Compare it to a plain value, or bucket a date / datetime column instead."
+                                  column-name type-name unit-name))
                         {:agent-error?  true
                          :error         :temporal-unit-on-non-temporal-column
                          :status-code   400

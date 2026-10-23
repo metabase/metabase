@@ -35,7 +35,6 @@
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.query-processor.core :as qp]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -193,7 +192,7 @@
   (let [raw (get-in parsed-query ["stages" 0 "source-table"])]
     (when (string? raw)
       (when-let [[_ entity-type entity-id] (re-find metabase-uri-source-table-pattern raw)]
-        (throw (ex-info (tru "`source-table:` does not accept URIs like `{0}`." raw)
+        (throw (ex-info (format "`source-table:` does not accept URIs like `%s`." raw)
                         {:agent-error? true
                          :status-code  400
                          :error        :uri-in-source-table
@@ -458,7 +457,7 @@
       (cond
         (pos-int? ref)
         (when-not (visible-table metadata-provider ref)
-          (throw (ex-info (tru "No table found with id {0}." (str ref))
+          (throw (ex-info (format "No table found with id %s." (str ref))
                           {:agent-error? true
                            :status-code  400
                            :error        :unknown-table-id
@@ -467,7 +466,7 @@
         (and (vector? ref) (= ::field-id (nth ref 0 nil)))
         (let [field-id (nth ref 1)]
           (when-not (visible-field metadata-provider field-id)
-            (throw (ex-info (tru "No field found with id {0}." (str field-id))
+            (throw (ex-info (format "No field found with id %s." (str field-id))
                             {:agent-error? true
                              :status-code  400
                              :error        :unknown-field-id
@@ -477,8 +476,8 @@
         (let [[_ model id] ref]
           (when-not (resolve-table-fk metadata-provider nil ref)
             (throw (ex-info (if (= model :model/Measure)
-                              (tru "No measure found with id {0}." (str id))
-                              (tru "No segment found with id {0}." (str id)))
+                              (format "No measure found with id %s." (str id))
+                              (format "No segment found with id %s." (str id)))
                             {:agent-error? true
                              :status-code  400
                              :error        (if (= model :model/Measure)
@@ -514,7 +513,7 @@
       (api/query-check :model/Table table-id)
       (catch clojure.lang.ExceptionInfo e
         (if (= 403 (:status-code (ex-data e)))
-          (throw (ex-info (tru "No table found with id {0}." (str table-id))
+          (throw (ex-info (format "No table found with id %s." (str table-id))
                           {:agent-error? true
                            :status-code  400
                            :error        :unknown-table-id
@@ -575,14 +574,14 @@
       (let [db-name (nth source-table-fk 0)
             ids     (metabot.db/database-ids-by-name db-name)]
         (case (count ids)
-          0 (throw (ex-info (tru "Unknown database: `{0}`." db-name)
+          0 (throw (ex-info (format "Unknown database: `%s`." db-name)
                             {:agent-error? true
                              :status-code  400
                              :error        :unknown-database
                              :database     db-name}))
           1 (first ids)
-          (throw (ex-info (tru "Multiple databases share the name `{0}` (ids: {1})."
-                               db-name (pr-str (vec (sort ids))))
+          (throw (ex-info (format "Multiple databases share the name `%s` (ids: %s)."
+                                  db-name (pr-str (vec (sort ids))))
                           {:agent-error? true
                            :status-code  400
                            :error        :ambiguous-database-name
@@ -595,12 +594,10 @@
       ;; decides which provider to build), so an unchecked existence answer here would let the
       ;; id argument enumerate table ids across databases the caller cannot otherwise see.
       (or (metabot.db/readable-active-table-database-id numeric-table)
-          ;; the id renders via str, not as a number — tru's MessageFormat would add locale
-          ;; digit grouping ("999,999,999").
           ;; `:unknown-table-id`, not `:unknown-table`: a portable-FK miss (`:unknown-table`)
           ;; recovers by naming a portable FK, which is wrong advice for a numeric-id caller.
-          (throw (ex-info (tru "No table found with id {0}."
-                               (str numeric-table))
+          (throw (ex-info (format "No table found with id %s."
+                                  (str numeric-table))
                           {:agent-error? true
                            :status-code  400
                            :error        :unknown-table-id
@@ -609,7 +606,7 @@
       source-card-eid
       (if-let [card (tools.u/get-card-by-entity-id source-card-eid)]
         (:database_id card)
-        (throw (ex-info (tru "No saved question or model found with entity_id {0}." (pr-str source-card-eid))
+        (throw (ex-info (format "No saved question or model found with entity_id %s." (pr-str source-card-eid))
                         {:agent-error? true
                          :status-code  400
                          :error        :unknown-card
@@ -631,8 +628,8 @@
                              false
                              (throw e)))))]
         (when-not readable
-          (throw (ex-info (tru "No saved question or model found with id {0}."
-                               (str card-id))
+          (throw (ex-info (format "No saved question or model found with id %s."
+                                  (str card-id))
                           {:agent-error? true
                            :status-code  400
                            ;; the numeric-specific key, matching `export-card-by-id` — a numeric
@@ -642,7 +639,7 @@
         (:database_id card))
 
       :else
-      (throw (ex-info (tru "First stage must have either `source-table:` or `source-card:`; neither was found in `stages[0]`.")
+      (throw (ex-info "First stage must have either `source-table:` or `source-card:`; neither was found in `stages[0]`."
                       {:agent-error? true
                        :status-code  400
                        :error        :missing-source-in-first-stage})))))
@@ -850,17 +847,17 @@
       ;; normalization stamps `:lib/uuid` on every clause; one missing means normalizing a clause
       ;; inside it failed, often because it references something that doesn't exist
       (= :lib/uuid missing)
-      (tru "a reference inside it could not be resolved - often a field reference to a column, join alias, or expression that does not exist. Refer to a join''s or an earlier stage''s columns by their exact machine name (an aggregation is `min`, `count`, `sum`)")
+      "a reference inside it could not be resolved - often a field reference to a column, join alias, or expression that does not exist. Refer to a join's or an earlier stage's columns by their exact machine name (an aggregation is `min`, `count`, `sum`)"
 
       (= :base-type missing)
-      (tru "a field reference by name is missing `base-type`, usually because the name matches no real column")
+      "a field reference by name is missing `base-type`, usually because the name matches no real column"
 
       missing
-      (tru "missing `{0}`" (name missing))
+      (format "missing `%s`" (name missing))
 
       ;; the message of `::lib.schema.expression/expression.definition`'s aggregation check
       (= "non-aggregation expression" (me/error-message error))
-      (tru "{0}: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error)))))
+      (format "%s: aggregation and window functions such as `offset` cannot be custom columns - move them to `aggregation:` or `order-by:`" (me/error-message error)))))
 
 (defn- query-not-runnable-explanation
   "Explain why `pmbql-query` fails the query builder's `canRun` check, or return nil.
@@ -879,9 +876,9 @@
                               (take 3)
                               seq
                               (str/join "; "))
-                     (tru "the query does not match the query builder''s schema"))
+                     "the query does not match the query builder's schema")
            (not-any? not-runnable-problem errors)
-           (str ". " (tru "This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`"))))))))
+           (str ". This usually means a field reference is missing its type or names a column that does not exist, or an aggregation or window function such as `offset` is in `expressions:` instead of `aggregation:` or `order-by:`")))))))
 
 (defn- incompatible-metrics
   "Return the required sources of incompatible metrics in the first stage, sorted by metric ID.
@@ -1050,8 +1047,8 @@
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query repaired)]
-                            (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. Failing paths: {0}."
-                                                 why)
+                            (throw (ex-info (format "The constructed query is not runnable - it would fail the query builder's validation, so it cannot be visualized or saved. Failing paths: %s."
+                                                    why)
                                             {:agent-error? true
                                              :error        :query-not-runnable
                                              :status-code  400})))
