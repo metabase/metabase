@@ -895,13 +895,15 @@
 (defn- error-in-query?
   "Whether `e`, raised while reading rows, is the database rejecting the query.
   Only SQLState classes `21` (cardinality), `22` (data), `23` (integrity) and `42` (syntax or access rule), or a known
-  driver query error code, identify errors in the query. Unknown failures keep their QP classification. Cancellation
+  driver query error code, identify errors in the query. ClickHouse's class `22` also covers operational server failures
+  and is not evidence of a query error. Unknown failures keep their QP classification. Cancellation
   by the query processor or [[driver/query-canceled?]] takes precedence over that evidence."
   [driver ^SQLException e]
   (let [sql-state (.getSQLState e)]
     (and (not (or (some-> (driver-api/canceled-chan) a/poll!)
                   (driver/query-canceled? driver e)))
-         (or (boolean (re-find #"^(?:21|22|23|42)" (str sql-state)))
+         (or (and (boolean (re-find #"^(?:21|22|23|42)" (str sql-state)))
+                  (not (and (= driver :clickhouse) (str/starts-with? sql-state "22"))))
              (contains? (get-in query-error-codes [driver sql-state]) (.getErrorCode e))))))
 
 (defn execute-reducible-query

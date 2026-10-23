@@ -322,8 +322,12 @@
     (testing label
       (let [e (ex-info "Lookup failed" {:status-code status-code} cause)]
         (is (false? (construct/database-error? e)))
-        (is (= (contains? #{"JDBC" "nested JDBC" "declared JDBC"} label)
-               (construct/database-error? e {:ignore-status? true}))))))
+        (is (true? (construct/database-error? e {:ignore-status? true}))))))
+  (doseq [data [{:status-code 400} {:agent-error? true} {:error :unknown-field}]]
+    (is (false? (construct/database-error?
+                 (ex-info "Invalid input" {:status-code 400}
+                          (ex-info "Validation detail" (assoc data :toucan2/context-trace [])))
+                 {:ignore-status? true}))))
   (is (false? (construct/database-error? (ex-info "Bad input" {:status-code 400}) {:ignore-status? true}))))
 
 (deftest declared-errors-in-toucan-scopes-are-recoverable-test

@@ -1414,7 +1414,7 @@
 (deftest lock-timeout-while-reading-rows-is-qp-error-test
   (mt/test-driver :mysql
     (let [db             (mt/db)
-          statement      (mt/original-fn #'sql-jdbc.execute/statement-or-prepared-statement)
+          connection     (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection)
           row-thunk      (mt/original-fn #'sql-jdbc.execute/row-thunk)
           delivered      (atom 0)
           failure        (atom nil)]
@@ -1426,11 +1426,21 @@
            (.execute stmt "UPDATE venues SET name = name WHERE id = 100"))
          (try
            (mt/with-temporary-setting-values [sql-jdbc-fetch-size 20]
-             (mt/with-dynamic-fn-redefs [sql-jdbc.execute/statement-or-prepared-statement
-                                         (fn [driver ^Connection c & args]
-                                           (with-open [stmt (.createStatement c)]
-                                             (.execute stmt "SET SESSION innodb_lock_wait_timeout = 1"))
-                                           (apply statement driver c args))
+             (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection
+                                         (fn [driver db options f]
+                                           (connection driver db options
+                                                       (fn [^Connection c]
+                                                         (let [read-timeout #(-> (jdbc/query {:connection c}
+                                                                                             ["SELECT @@session.innodb_lock_wait_timeout AS timeout"])
+                                                                                 first :timeout)
+                                                               timeout (read-timeout)]
+                                                           (try
+                                                             (jdbc/execute! {:connection c} ["SET SESSION innodb_lock_wait_timeout = 1"])
+                                                             (f c)
+                                                             (finally
+                                                               (jdbc/execute! {:connection c}
+                                                                              [(str "SET SESSION innodb_lock_wait_timeout = " timeout)])
+                                                               (is (= timeout (read-timeout)))))))))
                                          sql-jdbc.execute/row-thunk
                                          (fn [& args]
                                            (let [next-row (apply row-thunk args)]
