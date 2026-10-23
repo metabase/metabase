@@ -5,7 +5,9 @@
  ;; Let Mage use the same module-resolution rules as the Kondo hooks.
  :paths ["mage/src" "mage/test" "bin/lint-migrations-file/src" "dev/src" ".clj-kondo/src"]
  ;; use Git version of dep temporarily until a new release > 0.16.4 is cut
- :deps {dev.weavejester/cljfmt {:git/sha "075eae26e3c8dad433b88f05927bcd50e3571328"
+ :deps {;; pinned to the same version as the backend's deps.edn; used by `mage clj-ts` to render HoneySQL as SQL
+        com.github.seancorfield/honeysql {:mvn/version "2.7.1437"}
+        dev.weavejester/cljfmt {:git/sha "075eae26e3c8dad433b88f05927bcd50e3571328"
                                 :git/url "https://github.com/weavejester/cljfmt"} ;; run cljfmt from bb
         io.github.paintparty/bling {:mvn/version "0.8.8"} ;; printing bells and whistles
         medley/medley {:mvn/version "1.3.0"} ;; utilities
@@ -234,6 +236,24 @@
            (if (:port opts)
              (nrepl-eval "metabase.comments.core" code (:port opts))
              (nrepl-eval "metabase.comments.core" code)))}
+
+  clj-ts
+  {:doc "Browse a PR, your local changes, or any Clojure file translated into TypeScript-ish code for easier reading"
+   :examples [["./bin/mage clj-ts" "start the viewer; its home page shows your local changes (vs. the merge-base with master)"]
+              ["./bin/mage clj-ts --pr 82600" "view a GitHub PR (a PR URL works too)"]
+              ["./bin/mage clj-ts --branch my-feature" "view a branch compared to the branch it was created from"]
+              ["./bin/mage clj-ts src/metabase/collections/models/collection.clj" "view one file"]
+              ["./bin/mage clj-ts --print src/metabase/collections/models/collection.clj" "print one file's translation"]
+              ["./bin/mage clj-ts --stats src" "translate every file under src and report fallbacks"]]
+   :options [["-p" "--pr PR" "GitHub PR number or URL to open"]
+             [nil "--branch BRANCH" "Branch to compare against its parent branch (or --base)"]
+             ["-b" "--base REF" "Base ref for local changes or --branch (default: origin/master / the parent branch)"]
+             [nil "--port PORT" "Port for the local server" :default 7788 :parse-fn parse-long]
+             [nil "--print FILE" "Print the translation of FILE instead of starting the server"]
+             [nil "--stats" "Translate files under the given directories and report coverage"]]
+   :arg-schema [:sequential [:string {:name "file-or-dir" :description "A file to open (or directories for --stats)"}]]
+   :requires [[mage.clj-ts.cli :as clj-ts-cli]]
+   :task (task! (clj-ts-cli/run parsed))}
 
   run-tests
   {:doc "Quickly run tests locally. Pass dirs, files, namespaces, or single tests as arguments."
