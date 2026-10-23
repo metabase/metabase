@@ -28,6 +28,7 @@ import type {
 } from "metabase-types/api";
 
 import type {
+  EntityPickerCustomFolder,
   EntityPickerOptions,
   OmniPickerCollectionItem,
   OmniPickerCollectionItemValue,
@@ -36,6 +37,7 @@ import type {
   OmniPickerTableValue,
   OmniPickerValue,
 } from "../types";
+import { getCustomFolderItem } from "../utils";
 
 import { getRootCollectionItem, personalCollectionsRoot } from "./utils";
 
@@ -92,11 +94,15 @@ const getDefaultPath = async ({
 
 export function useGetPathFromValue({
   value,
+  customFolders,
+  isLoadingCustomFolders = false,
   options,
   namespaces,
   models,
 }: {
   value?: OmniPickerValue;
+  customFolders?: EntityPickerCustomFolder[];
+  isLoadingCustomFolders?: boolean;
   options: EntityPickerOptions;
   namespaces: CollectionNamespace[];
   models: OmniPickerCollectionItem["model"][];
@@ -113,11 +119,26 @@ export function useGetPathFromValue({
     useGetPersonalCollection();
 
   useDeepCompareEffect(() => {
-    if (isLoadingLibraryCollection || isLoadingPersonalCollection) {
+    if (
+      isLoadingLibraryCollection ||
+      isLoadingPersonalCollection ||
+      isLoadingCustomFolders
+    ) {
       return;
     }
 
     setIsLoadingPath(true);
+
+    // Not a dependency: once the picker has opened, a change to the custom folders must not replace
+    // the folder the user is in.
+    const selectedCustomFolder = customFolders?.find((folder) =>
+      folder.items.some((item) => item.isSelected),
+    );
+    if (!value && selectedCustomFolder) {
+      setPath([getCustomFolderItem(selectedCustomFolder)]);
+      setIsLoadingPath(false);
+      return;
+    }
 
     if (!value) {
       getDefaultPath({
@@ -149,6 +170,7 @@ export function useGetPathFromValue({
     libraryCollection,
     isLoadingLibraryCollection,
     isLoadingPersonalCollection,
+    isLoadingCustomFolders,
   ]);
 
   return [path, setPath, { isLoadingPath }] as const;

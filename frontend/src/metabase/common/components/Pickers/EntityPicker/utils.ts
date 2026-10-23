@@ -7,6 +7,7 @@ import type { CollectionNamespace, CollectionType } from "metabase-types/api";
 import { isObject } from "metabase-types/guards";
 
 import {
+  type EntityPickerCustomFolder,
   type EntityPickerProps,
   type OmniPickerCollectionItem,
   type OmniPickerFolderItem,
@@ -76,6 +77,28 @@ export const isSelectedItem = (
   );
 };
 
+// Built-in root folders have ids such as "root" and "recents", which a caller's folder id must not
+// take over.
+const CUSTOM_FOLDER_ID_PREFIX = "custom-folder:";
+
+export const getCustomFolderItem = (
+  folder: EntityPickerCustomFolder,
+): OmniPickerCollectionItem => ({
+  id: `${CUSTOM_FOLDER_ID_PREFIX}${folder.id}`,
+  model: "collection",
+  name: folder.name,
+  location: "/",
+  can_write: false,
+});
+
+export const findCustomFolder = (
+  customFolders: EntityPickerCustomFolder[] = [],
+  item: OmniPickerItem,
+): EntityPickerCustomFolder | undefined =>
+  item.model === "collection"
+    ? customFolders.find((folder) => getCustomFolderItem(folder).id === item.id)
+    : undefined;
+
 const isValidItem = (item: unknown): item is OmniPickerItem => {
   return (
     isObject(item) &&
@@ -94,18 +117,26 @@ const isValidItem = (item: unknown): item is OmniPickerItem => {
 
 export function getItemFunctions({
   models,
+  customFolders = [],
   isFolderItem,
   isHiddenItem,
   isDisabledItem,
   isSelectableItem,
 }: {
   models: EntityPickerProps["models"];
+  customFolders?: EntityPickerProps["customFolders"];
 } & Partial<PickerItemFunctions>): PickerItemFunctions {
   const modelSet = new Set(models);
+  const isCustomFolder = (item: OmniPickerItem) =>
+    findCustomFolder(customFolders, item) !== undefined;
 
   const isFolderBase = (item: OmniPickerItem | unknown) => {
     if (!isValidItem(item)) {
       return false;
+    }
+
+    if (isCustomFolder(item)) {
+      return true;
     }
 
     if (
@@ -163,7 +194,7 @@ export function getItemFunctions({
   // selectable should be narrower than hidden or disabled because
   // intermediate items should not be disabled, but can't ultimately be selected
   const isSelectableBase = (item: OmniPickerItem) => {
-    if (!isValidItem(item)) {
+    if (!isValidItem(item) || isCustomFolder(item)) {
       return false;
     }
 
