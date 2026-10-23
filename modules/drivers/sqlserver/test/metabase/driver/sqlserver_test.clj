@@ -32,12 +32,20 @@
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
+   [metabase.test.data.sql :as sql.tx]
+   [metabase.test.data.sqlserver]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [next.jdbc]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (java.sql Types)))
+
+(comment metabase.test.data.sqlserver/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -1181,6 +1189,209 @@
           (testing "known base types are untouched"
             (is (=? {:database_type "int"     :base_type :type/Integer} (get fields "id")))
             (is (=? {:database_type "varchar" :base_type :type/Text}    (get fields "plain")))))))))
+
+(deftest ^:parallel ms-description-sql-test
+  (testing "table and column queries read MS_Description as text, and column names stay parameters"
+    (let [table-sql  @#'sqlserver/table-ms-descriptions-sql
+          column-sql @#'sqlserver/column-ms-descriptions-sql]
+      (doseq [sql [table-sql column-sql]]
+        (is (str/includes? sql "ep.name = N'MS_Description'"))
+        (is (str/includes? sql "SQL_VARIANT_PROPERTY(ep.value, 'BaseType')"))
+        (is (str/includes? sql "N'char', N'varchar', N'nchar', N'nvarchar'"))
+        (is (str/includes? sql "CONVERT(nvarchar(max), ep.value)"))
+        (is (not (str/includes? sql "TRY_CAST")))
+        (is (str/includes? sql "o.type IN ('U', 'V')")))
+      (is (not (str/includes? table-sql "?")))
+      (is (str/includes? column-sql "s.name = ? AND o.name = ?"))
+      (is (= 2 (count (re-seq #"\?" column-sql))))
+      (is (not (str/includes? column-sql "o'brien")))
+      (is (not (str/includes? column-sql "Weird Schema")))))
+  (testing "blank and non-character rows are dropped; lookup keys keep the stored spelling"
+    (is (= {["dbo" "weird name"] "café 學生"
+            ["dbo" "padded"]      " hello "}
+           (#'sqlserver/description-index
+            [{:table_schema "dbo" :table_name "weird name" :description "café 學生"}
+             {:table_schema "dbo" :table_name "padded" :description " hello "}
+             {:table_schema "dbo" :table_name "empty" :description ""}
+             {:table_schema "dbo" :table_name "spaces" :description "  "}
+             {:table_schema "DBO" :table_name "Other" :description nil}]
+            (juxt :table_schema :table_name)))))
+  (testing "a nil schema is not queried, so it cannot attach another object's description"
+    (is (= {} (#'sqlserver/column-ms-descriptions :sqlserver nil nil "shared_name")))
+    (is (= {} (#'sqlserver/column-ms-descriptions :sqlserver nil "dbo" nil)))))
+
+(deftest ^:parallel ms-description-metadata-merge-test
+  (testing "table merge keeps JDBC keys and only fills a non-blank MS_Description"
+    (is (= {:schema "dbo" :name "weird name" :is_writable false :description "café 學生"}
+           (#'sqlserver/assoc-table-description
+            {:schema "dbo" :name "weird name" :is_writable false}
+            {["dbo" "weird name"] "café 學生"})))
+    (is (= {:schema "dbo" :name "plain" :description "from-jdbc"}
+           (#'sqlserver/assoc-table-description
+            {:schema "dbo" :name "plain" :description "from-jdbc"}
+            {})))
+    (is (= {:schema "dbo" :name "t"}
+           (#'sqlserver/assoc-table-description
+            {:schema "dbo" :name "t"}
+            {["DBO" "T"] "wrong case"}))))
+  (testing "column merge keeps the UDT base-type fallback and a JDBC comment when MS_Description is absent"
+    (let [alias-column {:name "alias_col" :database-type "Key10" :base-type :type/* :jdbc-type Types/VARCHAR}]
+      (is (= {:name "alias_col" :database-type "Key10" :base-type :type/Text :jdbc-type Types/VARCHAR
+              :field-comment "alias column"}
+             (-> alias-column
+                 (#'sqlserver/with-jdbc-base-type)
+                 (#'sqlserver/with-field-comment {"alias_col" "alias column"}))))
+      (is (= {:name "alias_col" :database-type "Key10" :base-type :type/Text :jdbc-type Types/VARCHAR}
+             (-> alias-column
+                 (#'sqlserver/with-jdbc-base-type)
+                 (#'sqlserver/with-field-comment {}))))
+      (is (= {:name "kept" :base-type :type/Integer :field-comment "from-jdbc"}
+             (#'sqlserver/with-field-comment
+              {:name "kept" :base-type :type/Integer :field-comment "from-jdbc"}
+              {}))))))
+
+(deftest ^:parallel extended-property-comment-sql-test
+  (testing "fixtures attach MS_Description with escaped string literals, not bracketed identifiers"
+    (is (= (str "EXEC sp_addextendedproperty "
+                "@name=N'MS_Description', @value=N'it''s a café', "
+                "@level0type=N'Schema', @level0name=N'dbo', "
+                "@level1type=N'TABLE', @level1name=N'weird name';")
+           (sql.tx/standalone-table-comment-sql :sqlserver
+                                                {:database-name "db"}
+                                                {:table-name "weird name" :table-comment "it's a café"})))
+    (is (= (str "EXEC sp_addextendedproperty "
+                "@name=N'MS_Description', @value=N'column', "
+                "@level0type=N'Schema', @level0name=N'dbo', "
+                "@level1type=N'TABLE', @level1name=N'basic_field_comments', "
+                "@level2type=N'Column', @level2name=N'with_comment';")
+           (sql.tx/standalone-column-comment-sql :sqlserver
+                                                 {:database-name "db"}
+                                                 {:table-name "basic_field_comments"}
+                                                 {:field-name "with_comment" :field-comment "column"})))
+    (is (nil? (sql.tx/standalone-table-comment-sql :sqlserver {} {:table-name "t" :table-comment nil})))))
+
+(def ^:private ms-description-db-details
+  (delay (mt/dbdef->connection-details :sqlserver :db {:database-name "ms_description_sync_test"})))
+
+(def ^:private ms-description-db-ddl
+  ["CREATE TYPE dbo.Key10 FROM varchar(10);"
+   "CREATE SCHEMA other;"
+   (str "CREATE TABLE other.described ("
+        "  id int NOT NULL PRIMARY KEY,"
+        "  note nvarchar(50) NULL,"
+        "  undescribed nvarchar(50) NULL);")
+   (str "CREATE TABLE dbo.[weird name] ("
+        "  id int NOT NULL PRIMARY KEY,"
+        "  [o'brien] nvarchar(50) NULL,"
+        "  empty_desc nvarchar(20) NULL,"
+        "  numeric_desc int NULL,"
+        "  alias_col dbo.Key10 NULL,"
+        "  later nvarchar(50) NULL);")
+   "CREATE VIEW dbo.described_view AS SELECT id, note, undescribed FROM other.described;"
+   (str "EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'café 學生', "
+        "@level0type=N'Schema', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N'weird name';")
+   (str "EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'it''s a name', "
+        "@level0type=N'Schema', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N'weird name', "
+        "@level2type=N'Column', @level2name=N'o''brien';")
+   (str "EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'', "
+        "@level0type=N'Schema', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N'weird name', "
+        "@level2type=N'Column', @level2name=N'empty_desc';")
+   (str "EXEC sp_addextendedproperty @name=N'MS_Description', @value=42, "
+        "@level0type=N'Schema', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N'weird name', "
+        "@level2type=N'Column', @level2name=N'numeric_desc';")
+   (str "EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'alias column', "
+        "@level0type=N'Schema', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N'weird name', "
+        "@level2type=N'Column', @level2name=N'alias_col';")
+   (str "EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'other schema', "
+        "@level0type=N'Schema', @level0name=N'other', @level1type=N'TABLE', @level1name=N'described';")
+   (str "EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'note column', "
+        "@level0type=N'Schema', @level0name=N'other', @level1type=N'TABLE', @level1name=N'described', "
+        "@level2type=N'Column', @level2name=N'note';")
+   (str "EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'view description', "
+        "@level0type=N'Schema', @level0name=N'dbo', @level1type=N'VIEW', @level1name=N'described_view';")
+   (str "EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'view note', "
+        "@level0type=N'Schema', @level0name=N'dbo', @level1type=N'VIEW', @level1name=N'described_view', "
+        "@level2type=N'Column', @level2name=N'note';")])
+
+(defn- create-ms-description-db! []
+  (tx/drop-if-exists-and-create-db! :sqlserver "ms_description_sync_test")
+  (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver @ms-description-db-details)]
+    (doseq [stmt ms-description-db-ddl]
+      (jdbc/execute! spec [stmt] {:transaction? false}))))
+
+(defn- described-tables
+  [database]
+  (into {}
+        (map (juxt (juxt :schema :name) :description))
+        (t2/select [:model/Table :schema :name :description] :db_id (:id database) :active true)))
+
+(defn- described-fields
+  [table-id]
+  (into {}
+        (map (juxt :name identity))
+        (t2/select [:model/Field :id :name :description :database_type :base_type] :table_id table-id)))
+
+(deftest ms-description-sync-test
+  (testing "SQL Server MS_Description extended properties sync onto tables, views, and columns (#18500)"
+    (mt/test-driver :sqlserver
+      (create-ms-description-db!)
+      (mt/with-temp [:model/Database database {:engine :sqlserver, :details @ms-description-db-details}]
+        (testing "driver metadata, before it is written to the application database"
+          (let [tables (into [] (:tables (driver/describe-database :sqlserver database)))
+                by-name (fn [schema table-name]
+                          (first (filter #(and (= schema (:schema %)) (= table-name (:name %))) tables)))
+                weird-fields (:fields (driver/describe-table :sqlserver database
+                                                             {:db_id (:id database) :schema "dbo" :name "weird name"}))
+                weird-by-name (into {} (map (juxt :name identity)) weird-fields)]
+            (is (= "café 學生" (:description (by-name "dbo" "weird name"))))
+            (is (= "other schema" (:description (by-name "other" "described"))))
+            (is (= "view description" (:description (by-name "dbo" "described_view"))))
+            (is (= "it's a name" (:field-comment (get weird-by-name "o'brien"))))
+            (is (= "alias column" (:field-comment (get weird-by-name "alias_col"))))
+            (is (=? {:database-type "Key10" :base-type :type/Text} (get weird-by-name "alias_col")))
+            (is (some? (get weird-by-name "empty_desc")))
+            (is (nil? (:field-comment (get weird-by-name "empty_desc"))))
+            (is (nil? (:field-comment (get weird-by-name "numeric_desc"))))
+            (is (nil? (:field-comment (get weird-by-name "later"))))))
+        (sync/sync-database! database)
+        (let [weird-id (t2/select-one-pk :model/Table :db_id (:id database) :schema "dbo" :name "weird name")
+              other-id (t2/select-one-pk :model/Table :db_id (:id database) :schema "other" :name "described")
+              view-id  (t2/select-one-pk :model/Table :db_id (:id database) :schema "dbo" :name "described_view")
+              weird    (described-fields weird-id)
+              note-id  (:id (get weird "o'brien"))]
+          (is (= {["dbo" "weird name"] "café 學生"
+                  ["other" "described"] "other schema"
+                  ["dbo" "described_view"] "view description"}
+                 (select-keys (described-tables database)
+                              [["dbo" "weird name"] ["other" "described"] ["dbo" "described_view"]])))
+          (is (= "it's a name" (:description (get weird "o'brien"))))
+          (is (nil? (:description (get weird "empty_desc"))))
+          (is (nil? (:description (get weird "numeric_desc"))))
+          (is (nil? (:description (get weird "later"))))
+          (is (=? {:database_type "Key10" :base_type :type/Text :description "alias column"}
+                  (get weird "alias_col")))
+          (is (= "note column" (:description (get (described-fields other-id) "note"))))
+          (is (nil? (:description (get (described-fields other-id) "undescribed"))))
+          (is (= "view note" (:description (get (described-fields view-id) "note"))))
+          (t2/update! :model/Table weird-id {:description "custom table"})
+          (field-user-settings/upsert-user-settings {:id note-id} {:description "user description"})
+          (let [spec (sql-jdbc.conn/connection-details->spec :sqlserver @ms-description-db-details)]
+            (jdbc/execute! spec
+                           [(str "EXEC sp_updateextendedproperty @name=N'MS_Description', @value=N'changed at source', "
+                                 "@level0type=N'Schema', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N'weird name'")]
+                           {:transaction? false})
+            (jdbc/execute! spec
+                           [(str "EXEC sp_addextendedproperty @name=N'MS_Description', @value=N'added later', "
+                                 "@level0type=N'Schema', @level0name=N'dbo', @level1type=N'TABLE', @level1name=N'weird name', "
+                                 "@level2type=N'Column', @level2name=N'later'")]
+                           {:transaction? false}))
+          (sync/sync-database! database)
+          (is (= "custom table" (t2/select-one-fn :description :model/Table :id weird-id)))
+          (is (= "it's a name" (t2/select-one-fn :description :model/Field :id note-id)))
+          (is (= "added later" (t2/select-one-fn :description :model/Field :table_id weird-id :name "later")))
+          (is (= "user description"
+                 (:description (t2/select-one :model/Field :id note-id
+                                              {:from [(warehouse-schema-overlay/field-query)]})))))))))
 
 (deftest ^:parallel type->database-type-test
   (testing "type->database-type multimethod returns correct SQL Server types"

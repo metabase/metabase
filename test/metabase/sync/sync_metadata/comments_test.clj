@@ -31,7 +31,7 @@
   [_driver _feature _database]
   false)
 
-(doseq [driver [:h2 :postgres :starburst]]
+(doseq [driver [:h2 :postgres :starburst :sqlserver]]
   (defmethod driver/database-supports? [driver ::field-comments-sync]
     [_driver _feature _database]
     true))
@@ -109,7 +109,7 @@
   [_driver _feature _database]
   false)
 
-(doseq [driver [:h2 :postgres :starburst]]
+(doseq [driver [:h2 :postgres :starburst :sqlserver]]
   (defmethod driver/database-supports? [driver ::table-comments-sync]
     [_driver _feature _database]
     true))
