@@ -9,7 +9,7 @@
    [metabase.auth-identity.core :as auth-identity]
    [metabase.embedding.settings :as embed.settings]
    [metabase.embedding.util :as embed.util]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.util.i18n :refer [tru]]
    [ring.util.response :as response]))
@@ -40,6 +40,14 @@
   "Given a JWT, return a valid session token for the associated user (creating the user if necessary)."
   [jwt request]
   (-> (session-data jwt (assoc request :token-exchange? true)) :session :key))
+
+(defenterprise jwt-bearer-grant-enabled?
+  "Return whether JWT authentication is enabled and configured.
+
+  The JWT bearer grant (RFC 7523) requires this."
+  :feature :sso-jwt
+  []
+  (sso-settings/jwt-enabled-and-configured))
 
 (defn- throw-react-sdk-embedding-disabled
   []

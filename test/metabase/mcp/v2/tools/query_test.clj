@@ -987,6 +987,28 @@
         (is (str/includes? msg "1"))
         (is (str/includes? msg "fields"))))))
 
+(deftest ^:parallel malformed-clauses-name-the-offending-path-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [orders   (first (:stages (numeric-orders-query)))
+          post-agg (assoc orders :aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]])]
+      (doseq [[label path stages] [["a number as `aggregation`" "[0] \"aggregation\":"
+                                    [(assoc orders :aggregation 42)]]
+                                   ["an empty aggregation clause used in `order-by`" "[0] \"aggregation\":"
+                                    [(assoc orders :aggregation [[]] :order-by [["desc" {} []]])]]
+                                   ["a number as `joins`" "[0] \"joins\":"
+                                    [(assoc orders :joins 42)]]
+                                   ["a post-aggregation filter with a number as `order-by`" "[0] \"order-by\":"
+                                    [(assoc post-agg :order-by 42)]]
+                                   ["a post-aggregation filter with a number as `fields`" "[0] \"fields\":"
+                                    [(assoc post-agg :fields 42)]]
+                                   ["a number as a later stage" "[1]" [orders 42]]
+                                   ["an aggregation list as a later stage" "[1]" [orders [["count" {}]]]]]]
+        (testing label
+          (is (str/starts-with? (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
+                                                                {:query {:lib/type "mbql/query" :stages stages}}))
+                                (str "\"Representations query has an invalid structure.\" "
+                                     "Invalid at \"stages\": " path " "))))))))
+
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest repair-forgiven-shortcuts-still-execute-test
   (testing "GHY-4313: the shortcuts the repair layer exists to forgive are not schema failures"
@@ -1120,7 +1142,7 @@
       (mt/with-current-user (mt/user->id :rasta)
         (is (str/includes? (error-text (call! (str (random-uuid))
                                               {:query (assoc (numeric-orders-query {:limit 1}) :evil "x")}))
-                           ":evil"))))))
+                           "Failing paths: evil: disallowed key"))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest query-shape-still-reaches-the-qp-test

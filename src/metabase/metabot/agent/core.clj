@@ -186,24 +186,17 @@
   (and (= (:type part) :tool-output)
        (nil? (get-in part [:result :error]))))
 
+(def ^:private legacy-terminal-tool-names
+  #{"document_construct_sql_chart" "document_construct_model_chart"})
+
 (defn- answer-producing?
-  "Whether this `:tool-output` part delivered an answer, rather than reporting a failure.
+  "Return whether a tool output contains a successful answer.
 
-  Success is the absence of `:error` ([[successful-tool-output?]]), and that is the rule everywhere
-  else. Ending a turn needs more, for exactly as long as the terminal tools are unconverted: each of
-  them catches its own exceptions and *returns* `{:output \"Query 3 not found\"}` — a failure with
-  no `:error` anywhere on it, because nothing was thrown for the adapter to classify. Ending the
-  turn on the absence of `:error` would hand that sentence to the user as the answer.
-
-  An unconverted tool's one remaining signal is that it attaches `:structured-output` when it really
-  produced something, which is the signal this branch otherwise removed for being unreliable. It is
-  reliable for this one set, because every tool in it is answer-producing by definition.
-
-  `metabase.metabot.agent.profiles-test/terminal-tools-are-still-unconverted-test` fails the day one
-  of them is converted, which is when this goes away."
-  [part]
+  Legacy terminal tools must return structured output to distinguish answers from failures."
+  [tool-name part]
   (and (successful-tool-output? part)
-       (some? (get-in part [:result :structured-output]))))
+       (or (not (contains? legacy-terminal-tool-names tool-name))
+           (some? (get-in part [:result :structured-output])))))
 
 (defn- terminal-tool-call?
   "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
@@ -217,11 +210,11 @@
   [terminal-tools parts]
   (boolean
    (when (seq terminal-tools)
-     (let [success-ids (into #{} (comp (filter answer-producing?) (map :id)) parts)]
+     (let [outputs (u/index-by :id (filter #(= :tool-output (:type %)) parts))]
        (some (fn [p]
                (and (= (:type p) :tool-input)
                     (contains? terminal-tools (:function p))
-                    (contains? success-ids (:id p))))
+                    (answer-producing? (:function p) (get outputs (:id p)))))
              parts)))))
 
 (defn- truncated?

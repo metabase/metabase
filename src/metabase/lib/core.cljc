@@ -1744,6 +1744,7 @@
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids
+  all-metric-ids
   all-segment-ids
   all-source-card-ids
   all-source-card-ids-recursive

@@ -8,7 +8,8 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]])
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.quoting :as quoting])
   (:import
    (java.util.concurrent ScheduledFuture ScheduledThreadPoolExecutor ThreadFactory TimeUnit)))
 
@@ -123,7 +124,7 @@
       (throw e))
     (when-not (= (:status result) :completed)
       (throw (ex-info (if-let [error (:error result)]
-                        (tru "Query failed: {0}" error)
+                        (tru "Query failed: {0}" (quoting/quoted error))
                         (tru "Query failed: unknown error"))
                       {:agent-error?       true
                        :error              :query-failed
@@ -137,7 +138,7 @@
   "Run `serialized-query` for one page of at most `row-limit` rows, recorded under the QP `context`.
    Returns `{:cols :rows :returned :truncated?}`.
    The `truncated?` flag is true only when more rows exist, so a result that fills the page exactly is complete.
-   A run that doesn't complete throws an agent error whose message carries the QP's error text.
+   A query failure throws an agent error with the QP's error text in quotes.
    Its ex-data is `{:agent-error? true :error :query-failed :query-error <QP error text or nil>}`, with a true
    `:permissions-error?` when the QP refused the query because the current user may not run it, and a true
    `:caller-facing?` when [[caller-facing-failure?]] accepts the failure.
