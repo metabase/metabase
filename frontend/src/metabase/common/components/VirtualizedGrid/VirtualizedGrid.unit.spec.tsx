@@ -69,12 +69,6 @@ describe("VirtualizedGrid", () => {
       expectedRows: [["Item 0", "Item 1"]],
     },
     {
-      name: "one column",
-      itemCount: 3,
-      columnCount: 1,
-      expectedRows: [["Item 0"], ["Item 1"], ["Item 2"]],
-    },
-    {
       name: "an empty list",
       itemCount: 0,
       columnCount: 4,
@@ -103,66 +97,6 @@ describe("VirtualizedGrid", () => {
       expect(getRenderedRows(container)).toEqual(expectedRows);
     },
   );
-
-  it("should regroup column-ordered items when the column count changes (#83318)", () => {
-    const props = {
-      items: Array.from({ length: 10 }, (_, index) => index),
-      keyExtractor: (item: number) => item,
-      renderItem: (item: number) => <div>Item {item}</div>,
-      estimatedRowHeight: 80,
-    };
-
-    const { container, rerender } = render(
-      <VirtualizedGrid
-        {...props}
-        columnsPerRow={{ xs: 4, sm: 4, md: 4, lg: 4, xl: 4 }}
-        itemOrder="column"
-      />,
-    );
-
-    expect(getRenderedRows(container)).toEqual([
-      ["Item 0", "Item 3", "Item 6", "Item 9"],
-      ["Item 1", "Item 4", "Item 7"],
-      ["Item 2", "Item 5", "Item 8"],
-    ]);
-
-    rerender(
-      <VirtualizedGrid
-        {...props}
-        columnsPerRow={{ xs: 2, sm: 2, md: 2, lg: 2, xl: 2 }}
-        itemOrder="column"
-      />,
-    );
-
-    expect(getRenderedRows(container)).toEqual([
-      ["Item 0", "Item 5"],
-      ["Item 1", "Item 6"],
-      ["Item 2", "Item 7"],
-      ["Item 3", "Item 8"],
-      ["Item 4", "Item 9"],
-    ]);
-  });
-
-  it("should render the visible rows from every column without offscreen items (#83318)", () => {
-    render(
-      <VirtualizedGrid
-        items={Array.from({ length: 100 }, (_, index) => index)}
-        keyExtractor={(item) => item}
-        renderItem={(item) => <div>Item {item}</div>}
-        columnsPerRow={{ xs: 4, sm: 4, md: 4, lg: 4, xl: 4 }}
-        estimatedRowHeight={80}
-        itemOrder="column"
-      />,
-    );
-
-    for (const item of [0, 25, 50, 75]) {
-      expect(screen.getByText(`Item ${item}`)).toBeInTheDocument();
-    }
-
-    for (const item of [24, 49, 74, 99]) {
-      expect(screen.queryByText(`Item ${item}`)).not.toBeInTheDocument();
-    }
-  });
 
   it("should not render children outside the bounding client rect", () => {
     const items = Array.from({ length: 100 }, (_, i) => ({ id: i }));

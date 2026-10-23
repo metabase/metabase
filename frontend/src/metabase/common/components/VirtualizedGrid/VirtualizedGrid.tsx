@@ -47,11 +47,9 @@ export const VirtualizedGrid = <T,>({
     }
 
     const rowCount = Math.ceil(items.length / currentColumns);
-    const rows = Array.from({ length: rowCount }, (): T[] => []);
-    items.forEach((item, index) => {
-      rows[index % rowCount].push(item);
-    });
-    return rows;
+    return _.range(rowCount).map((rowIndex) =>
+      _.range(rowIndex, items.length, rowCount).map((index) => items[index]),
+    );
   }, [items, currentColumns, itemOrder]);
 
   const virtualizer = useVirtualizer({
