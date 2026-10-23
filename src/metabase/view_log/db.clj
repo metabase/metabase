@@ -46,7 +46,8 @@
 (mu/defn insert-view-logs!
   "Insert the ViewLog rows `views`, returning the number inserted."
   [views :- [:sequential ::view-log.schema/view-log.update]]
-  (t2/insert! :model/ViewLog views))
+  (t2/with-transaction [_conn]
+    (t2/insert! :model/ViewLog views)))
 
 (mu/defn card-type
   "The `:type` of the Card with `card-id`, or nil."

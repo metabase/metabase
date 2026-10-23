@@ -28,7 +28,11 @@ import {
   getRawTableFieldId,
   hasAiProposals,
 } from "metabase/metadata/utils/field";
-import { PLUGIN_LIBRARY, PLUGIN_METADATA_GENERATION } from "metabase/plugins";
+import {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_LIBRARY,
+  PLUGIN_METADATA_GENERATION,
+} from "metabase/plugins";
 import { useParams } from "metabase/router";
 import {
   ActionIcon,
@@ -91,7 +95,9 @@ function DataModelContent() {
     data: databasesData,
     error: databasesError,
     isLoading: isLoadingDatabases,
-  } = useListDatabasesQuery();
+  } = useListDatabasesQuery(
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  );
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );

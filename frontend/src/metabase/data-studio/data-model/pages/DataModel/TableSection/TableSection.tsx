@@ -81,6 +81,7 @@ const TableSectionBase = ({
   const [modalType, setModalType] = useState<TableModalType>();
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const readOnly = !table.can_write;
   const isLibraryEnabled = PLUGIN_LIBRARY.isEnabled;
   const isDependencyGraphEnabled = PLUGIN_DEPENDENCIES.isEnabled;
   const remoteSyncReadOnly = useSelector(
@@ -165,6 +166,7 @@ const TableSectionBase = ({
                   nameIcon="table2"
                   nameMaxLength={254}
                   namePlaceholder={t`Give this table a name`}
+                  readOnly={readOnly}
                   onNameChange={handleNameChange}
                   onDescriptionChange={handleDescriptionChange}
                 />
@@ -222,7 +224,7 @@ const TableSectionBase = ({
           <Tabs.Panel value="field">
             <Stack gap="lg">
               <Group gap="lg" justify="flex-start" wrap="nowrap">
-                {!isSorting && hasFields && (
+                {!isSorting && hasFields && !readOnly && (
                   <ResponsiveButton
                     icon="sort_arrows"
                     showLabel

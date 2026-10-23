@@ -4,6 +4,7 @@
   methods."
   (:require
    [metabase.app-db.core :as mdb]
+   [metabase.collections.core :as collections]
    [metabase.dashboards.schema :as dashboards.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -366,14 +367,10 @@
    collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/update! :model/Action :model_id [:in model-ids] {:collection_id collection-id}))
 
-(mu/defn set-actions-of-model-archived!
-  "Archive the unarchived Actions of the Card with `model-id` along with it, or unarchive the ones archived along with
-  it, returning the number updated."
-  [model-id  :- ms/PositiveInt
-   archived? :- :boolean]
-  (if archived?
-    (t2/update! :model/Action {:model_id model-id, :archived false} {:archived true, :archived_directly false})
-    (t2/update! :model/Action {:model_id model-id, :archived true, :archived_directly false} {:archived false})))
+(mu/defn delete-actions-of-model!
+  "Delete the Actions of the Card with `model-id`, returning the number deleted."
+  [model-id :- ms/PositiveInt]
+  (t2/delete! :model/Action :model_id model-id))
 
 (mu/defn actions-for-model
   "The Actions of the model Card with `model-id`."
@@ -384,25 +381,6 @@
   "Delete the Actions with `action-ids`, returning the number deleted."
   [action-ids :- [:set ::lib.schema.id/action]]
   (t2/delete! :model/Action :id [:in action-ids]))
-
-(mu/defn delete-dashcards-for-model-actions!
-  "Delete the DashboardCards of the Actions of the model Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (if-let [action-ids (not-empty (t2/select-pks-set :model/Action :model_id model-id))]
-    (t2/delete! :model/DashboardCard :action_id [:in action-ids])
-    0))
-
-(mu/defn archive-explicit-actions-for-model!
-  "Archive the unarchived non-implicit Actions of the model Card with `model-id` directly, returning the number
-  updated."
-  [model-id :- ms/PositiveInt]
-  (t2/update! :model/Action {:model_id model-id, :type [:not= :implicit], :archived false}
-              {:archived true, :archived_directly true}))
-
-(mu/defn delete-implicit-actions-for-model!
-  "Delete the implicit Actions of the model Card with `model-id`, returning the number deleted."
-  [model-id :- ms/PositiveInt]
-  (t2/delete! :model/Action :model_id model-id :type :implicit))
 
 (mu/defn delete-card-moderation-reviews!
   "Delete the ModerationReviews of the Card with `card-id`, returning the number deleted."
@@ -589,6 +567,23 @@
              :id [:in ^:allow-subquery {:select [:stored_result_id]
                                         :from   [:stored_result_use]
                                         :where  [:= :card_id card-id]}]))
+
+(mu/defn unpublished-table-names :- [:set :string]
+  "Among the Tables with `table-ids`, the names of those not published to the Library."
+  [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
+  (or (t2/select-fn-set :name [:model/Table :name] :id [:in table-ids] :is_published false
+                        {:from [(warehouse-schema-overlay/table-query)]})
+      #{}))
+
+(mu/defn library-metric-ids :- [:set ::lib.schema.id/card]
+  "Among `card-ids`, the IDs of the metrics in the Library's Metrics collection or one of its subcollections."
+  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
+  (or (t2/select-fn-set :id [:model/Card :report_card.id] {:join  [:collection [:= :collection.id :report_card.collection_id]]
+                                                           :where [:and
+                                                                   [:in :report_card.id card-ids]
+                                                                   [:= :report_card.type "metric"]
+                                                                   [:= :collection.type collections/library-metrics-collection-type]]})
+      #{}))
 
 (defn card-ids-outside-collection
   "Among `card-ids`, the IDs of the cards that are not in the collection with `collection-id`."

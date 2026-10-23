@@ -1,6 +1,7 @@
 (ns metabase.metabot.self.core
   (:require
    [clj-http.client :as http]
+   [clj-http.conn-mgr :as conn]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -21,7 +22,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.o11y :refer [with-span]])
   (:import
-   (java.io BufferedReader Closeable InputStream)
+   (java.io BufferedReader Closeable FilterInputStream InputStream IOException)
    (java.util.concurrent Callable Executors ExecutorService)))
 
 (set! *warn-on-reflection* true)
@@ -345,6 +346,54 @@
     Closeable
     (close [_]
       (.close input))))
+
+(defn- close-released-body!
+  "Close a streamed `body` whose client is already closed. Ignore the error that this close is known to throw,
+  and log it at debug level."
+  [^InputStream body]
+  ;; The body close releases the connection to a manager that is shut down. Apache HttpClient then throws
+  ;; `IllegalStateException: Connection not obtained from this manager`, or an `IOException` from the closed
+  ;; socket. See https://github.com/dakrone/clj-http/issues/627
+  (try
+    (.close body)
+    (catch IllegalStateException e
+      (log/debug e "Ignored the error from the body close after the client close"))
+    (catch IOException e
+      (log/debug e "Ignored the error from the body close after the client close"))))
+
+(defn- own-client?
+  "True when clj-http made the client of a request for that request only.
+
+  A bound or passed connection manager, or a passed client, can serve other requests."
+  [request-options]
+  (and (nil? conn/*connection-manager*)
+       (nil? (:connection-manager request-options))
+       (nil? (:http-client request-options))))
+
+(defn abort-on-close
+  "Return the body of a streamed clj-http `response`, changed so that a close drops the connection.
+
+  A close of the returned body closes the request's own `:http-client` first, so the provider sees a disconnect.
+  Then it closes the body, and it does not read the rest of the body. Over TLS 1.3 the client close can wait for
+  the next byte from the provider, up to the socket timeout.
+
+  Returns `:body` unchanged when it is not an `InputStream`, when the response has no `Closeable` `:http-client`,
+  or when `request-options` (the clj-http options of the request) share a client or a connection manager with
+  other requests. Call it on the thread that made the request, so it sees the same bound connection manager.
+  This is the workaround from https://github.com/dakrone/clj-http/issues/627."
+  [{:keys [body http-client]} request-options]
+  (if (and (instance? InputStream body)
+           (instance? Closeable http-client)
+           (own-client? request-options))
+    ;; Without this wrapper, a close of a chunked body reads the rest of the body. It returns only when the provider
+    ;; finishes, and the provider continues to generate until then.
+    (proxy [FilterInputStream] [body]
+      (close []
+        (try
+          (.close ^Closeable http-client)
+          (finally
+            (close-released-body! body)))))
+    body))
 
 ;;; AISDK5
 

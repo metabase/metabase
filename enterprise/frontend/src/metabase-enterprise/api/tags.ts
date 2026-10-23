@@ -14,6 +14,7 @@ import {
   type CardDependencyNode,
   DEPENDENCY_TYPES,
   type DashboardDependencyNode,
+  type DataAppDependencyNode,
   type DependencyGraph,
   type DependencyNode,
   type DocumentDependencyNode,
@@ -27,6 +28,8 @@ import {
   type SupportAccessGrant,
   type TableDependencyNode,
   type TransformDependencyNode,
+  type TransformTest,
+  type TransformTestRun,
 } from "metabase-types/api";
 
 export const ENTERPRISE_TAG_TYPES = [
@@ -57,6 +60,8 @@ export const ENTERPRISE_TAG_TYPES = [
   "metadata-generation-proposal",
   "metadata-generation-run",
   "session",
+  "transform-test",
+  "transform-test-run",
 ] as const;
 
 export type EnterpriseTagType = TagType | (typeof ENTERPRISE_TAG_TYPES)[number];
@@ -208,6 +213,13 @@ function provideActionDependencyNodeTags(
   ];
 }
 
+function provideDataAppDependencyNodeTags(
+  node: DataAppDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  // the data app endpoints tag apps by their slug, not their id
+  return [idTag("data-app", node.data.name)];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -232,6 +244,8 @@ export function provideDependencyNodeTags(
       return provideMeasureDependencyNodeTags(node);
     case "action":
       return provideActionDependencyNodeTags(node);
+    case "data-app":
+      return provideDataAppDependencyNodeTags(node);
   }
 }
 
@@ -287,5 +301,35 @@ export function provideSourceReplacementRunListTags(
   return [
     listTag("source-replacement-run"),
     ...runs.flatMap(provideSourceReplacementRunTags),
+  ];
+}
+
+export function provideTransformTestTags(
+  test: TransformTest,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("transform-test", test.id)];
+}
+
+export function provideTransformTestListTags(
+  tests: TransformTest[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("transform-test"),
+    ...tests.flatMap(provideTransformTestTags),
+  ];
+}
+
+export function provideTransformTestRunTags(
+  run: TransformTestRun,
+): TagDescription<EnterpriseTagType>[] {
+  return [idTag("transform-test-run", run.id)];
+}
+
+export function provideTransformTestRunListTags(
+  runs: TransformTestRun[],
+): TagDescription<EnterpriseTagType>[] {
+  return [
+    listTag("transform-test-run"),
+    ...runs.flatMap(provideTransformTestRunTags),
   ];
 }

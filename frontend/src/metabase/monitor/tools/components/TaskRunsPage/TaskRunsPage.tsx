@@ -6,6 +6,7 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { useUrlState } from "metabase/common/hooks/use-url-state";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { useLocation } from "metabase/router";
 import { Center, Flex, Group } from "metabase/ui";
 
@@ -14,10 +15,9 @@ import { TaskRunTypePicker } from "../RunTypePicker";
 import { TaskRunEntityPicker } from "../TaskRunEntityPicker";
 import { TaskRunDatePicker } from "../TaskRunStartedAtPicker";
 import { TaskRunStatusPicker } from "../TaskRunStatusPicker";
-import { TasksTabs } from "../TasksTabs";
+import { TasksPageLayout } from "../TasksPageLayout";
 
 import { TaskRunsTable } from "./TaskRunsTable";
-import { PAGE_SIZE } from "./constants";
 import { urlStateConfig } from "./utils";
 
 export const TaskRunsPage = () => {
@@ -70,7 +70,7 @@ export const TaskRunsPage = () => {
   const entityValue = entityType && entityId ? { entityType, entityId } : null;
 
   return (
-    <TasksTabs>
+    <TasksPageLayout>
       <Group gap="lg" align="center" wrap="wrap">
         <TaskRunTypePicker
           value={runType}
@@ -155,6 +155,6 @@ export const TaskRunsPage = () => {
           />
         </Flex>
       )}
-    </TasksTabs>
+    </TasksPageLayout>
   );
 };

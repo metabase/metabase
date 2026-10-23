@@ -824,38 +824,29 @@
     (mt/with-additional-premium-features #{:tenants}
       (mt/with-temporary-setting-values [use-tenants true]
         (mt/with-temp [:model/PermissionsGroup _my-group {:name (str ::my-group)}
-                       :model/Tenant {tenant-id :id} {:slug "tenant-mctenantson"
-                                                      :name "Tenant McTenantson"
-                                                      :is_active false}
+                       :model/Tenant {tenant-id :id
+                                      collection-id :tenant_collection_id} {:slug "tenant-mctenantson"
+                                                                            :name "Tenant McTenantson"}
                        :model/User {existing-email :email} {:tenant_id tenant-id}]
-          (mt/with-temporary-setting-values [use-tenants true]
-            (testing "a new user can log into a deactivated tenant"
-              (mt/with-model-cleanup [:model/User]
+          (mt/with-model-cleanup [:model/User]
+            (doseq [[user-type email] [["new" "newuser@metabase.com"] ["existing" existing-email]]]
+              (testing (str "a " user-type " user can log into a deactivated tenant")
+                (mt/user-http-request :crowberto :put 200 (str "/api/ee/tenant/" tenant-id) {:is_active false})
+                (is (true? (t2/select-one-fn :archived :model/Collection :id collection-id)))
                 (let [response (client/client-real-response :get 302 "/auth/sso"
                                                             {:request-options {:redirect-strategy :none}}
                                                             :return_to default-redirect-uri
                                                             :jwt
                                                             (jwt/sign
-                                                             {:email "newuser@metabase.com"
+                                                             {:email email
                                                               "@tenant" "tenant-mctenantson"
-                                                              :first_name "New"
+                                                              :first_name "Test"
                                                               :last_name "User"}
                                                              default-jwt-secret))]
                   (is (sso.test-setup/successful-login? response))
-                  (is (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))))
-            (testing "an existing user also fails to log in with correct error message"
-              (let [response (client/client-real-response :get 302 "/auth/sso"
-                                                          {:request-options {:redirect-strategy :none}}
-                                                          :return_to default-redirect-uri
-                                                          :jwt
-                                                          (jwt/sign
-                                                           {:email existing-email
-                                                            "@tenant" "tenant-mctenantson"
-                                                            :first_name "Existing"
-                                                            :last_name "User"}
-                                                           default-jwt-secret))]
-                (is (sso.test-setup/successful-login? response))
-                (is (t2/select-one-fn :is_active :model/Tenant :id tenant-id))))))))))
+                  (is (true? (t2/select-one-fn :is_active :model/Tenant :id tenant-id)))
+                  (is (true? (t2/select-one-fn :is_active :model/User :email email)))
+                  (is (false? (t2/select-one-fn :archived :model/Collection :id collection-id))))))))))))
 
 (deftest users-cannot-log-into-deactivated-tenant-with-provisioning-disabled
   (with-jwt-default-setup!

@@ -41,7 +41,7 @@
                 ((requiring-resolve 'metabase.premium-features.token-check/-token-status))))
 
 (defsetting locked-meters
-  (deferred-tru "Locally-mirrored is-locked state per meter, refreshed on each successful token-check.")
+  "Locally-mirrored is-locked state per meter, refreshed on each successful token-check."
   :encryption :no
   :type       :json
   :visibility :internal
@@ -335,7 +335,7 @@
   :library)
 
 (defsetting security-center-disabled
-  (deferred-tru "Globally disable Security Center as a customer-controlled escape hatch.")
+  "Globally disable Security Center as a customer-controlled escape hatch."
   :type             :boolean
   :feature          :admin-security-center
   :default          false

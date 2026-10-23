@@ -3,7 +3,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase-enterprise.serialization.test-util :as ts]
    [metabase-enterprise.serialization.v2.extract :as serdes.extract]
    [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
@@ -380,6 +382,21 @@
         (testing "an empty list deletes them"
           (load! (assoc field :dimensions []))
           (is (not (t2/exists? :model/Dimension :field_id (:id email)))))))))
+
+(deftest table-owner-import-test
+  (testing "a Table's owner is imported by email, and an older file's local id is kept"
+    (mt/with-empty-h2-app-db!
+      (let [db    (ts/create! :model/Database :name "my-db")
+            owner (ts/create! :model/User :first_name "Table" :last_name "Owner" :email "owner@example.com")
+            other (ts/create! :model/User :first_name "Other" :last_name "User" :email "other@example.com")
+            table (ts/create! :model/Table :name "customers" :db_id (:id db) :owner_user_id (:id owner))
+            file  (ts/extract-one "Table" (:id table))
+            load! (fn [entity] (serdes.load/load-metabase! (ts/ingestion-in-memory [entity])))]
+        (t2/update! :model/Table (:id table) {:owner_user_id nil})
+        (load! file)
+        (is (= (:id owner) (t2/select-one-fn :owner_user_id :model/Table (:id table))))
+        (load! (assoc file :owner_user_id (:id other)))
+        (is (= (:id other) (t2/select-one-fn :owner_user_id :model/Table (:id table))))))))
 
 (deftest legacy-table-user-settings-fields-import-test
   (testing "a settings file written before Field settings got files of their own replaces its Table's Field settings"
@@ -1906,7 +1923,14 @@
             (reset! target1s target)
             (reset! target-eid (:entity_id target))
             (reset! native-eid "nativecardtagseid0001")
-            (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))))
+            (reset! serialized (into [] (serdes.extract/extract {:no-settings true})))
+            (testing "the export names the referenced card by its entity_id, not its local id"
+              (let [exported-name (str "#" (:entity_id target) "-bh-population-model")]
+                (is (=? {:dataset_query {:stages [{:native        (format "SELECT * FROM {{%s}}" exported-name)
+                                                   :template-tags [{:name         exported-name
+                                                                    :display-name (u.humanization/name->human-readable-name
+                                                                                   :simple exported-name)}]}]}}
+                        (m/find-first #(= "nativecardtagseid0001" (:entity_id %)) @serialized)))))))
         (ts/with-db dest-db
           ;; pre-create some cards so the referenced card can't land on its source id
           (let [db    (ts/create! :model/Database :name "other-db")
@@ -1938,7 +1962,45 @@
                     (-> query :stages first :template-tags)))
             (testing "re-importing over the existing card (the update path) repairs the same way"
               (serdes.load/load-metabase! (ts/ingestion-in-memory @serialized))
+              (is (= query (stored-query))))
+            (testing "an export that names the referenced card by its source id loads the same way"
+              (let [tag-name     #(str "#" % "-bh-population-model")
+                    display-name #(u.humanization/name->human-readable-name :simple (tag-name %))
+                    source-id    (:id @target1s)]
+                (serdes.load/load-metabase!
+                 (ts/ingestion-in-memory
+                  (walk/postwalk #(cond
+                                    (= % (display-name @target-eid)) (display-name source-id)
+                                    (string? %)                      (str/replace % (tag-name @target-eid) (tag-name source-id))
+                                    :else                            %)
+                                 @serialized))))
+              (is (= query (stored-query))))
+            (testing "an export whose tag name names another card's entity_id is repaired from :card-id"
+              (let [tag-name     #(str "#" % "-bh-population-model")
+                    display-name #(u.humanization/name->human-readable-name :simple (tag-name %))
+                    other-eid    "otherCardEntityId0001"]
+                (serdes.load/load-metabase!
+                 (ts/ingestion-in-memory
+                  (walk/postwalk #(cond
+                                    (= % (display-name @target-eid)) (display-name other-eid)
+                                    (string? %)                      (str/replace % (tag-name @target-eid) (tag-name other-eid))
+                                    :else                            %)
+                                 @serialized))))
               (is (= query (stored-query))))))))))
+
+(deftest load-database-with-user-scheduled-syncs-test
+  (testing "a Database file from an older export whose details let the user schedule syncs keeps its schedules"
+    (mt/with-empty-h2-app-db!
+      (let [db   (ts/create! :model/Database :name "scheduled-db" :engine :postgres)
+            file (assoc (ts/extract-one "Database" (:id db))
+                        :details                     {:let-user-control-scheduling true}
+                        :metadata_sync_schedule      "0 10 * * * ? *"
+                        :cache_field_values_schedule "0 0 16 * * ? *")]
+        (t2/delete! :model/Database (:id db))
+        (serdes.load/load-metabase! (ts/ingestion-in-memory [file]))
+        (is (=? {:metadata_sync_schedule      "0 10 * * * ? *"
+                 :cache_field_values_schedule "0 0 16 * * ? *"}
+                (t2/select-one :model/Database :name "scheduled-db")))))))
 
 (deftest load-action-test
   (let [serialized (atom nil)
