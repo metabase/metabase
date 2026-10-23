@@ -197,6 +197,8 @@
   | `:recoverable`   | the message, then each kept recovery step on its own line  |
   | `:unrecoverable` | a fixed sentence carrying only the code                    |
 
+  Failure text is capped at [[max-output-length]] characters.
+
   `:user-message` is copied onto the outcome for unrecoverable errors so the agent loop can show it
   to the user. It never becomes part of `:output`."
   [{:keys [class code message recovery user-message] :as error} tool-names]
