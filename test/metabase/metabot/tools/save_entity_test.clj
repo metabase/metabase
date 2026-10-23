@@ -295,26 +295,20 @@
                (failure {:target_type "collection"})))))))
 
 (deftest unreadable-destination-test
-  (testing "a destination that is hidden from the user or in the trash is reported as not found"
+  (testing "a destination that is hidden from the user or does not exist is reported as not found"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-model-cleanup [:model/Card]
-        (mt/with-temp [:model/Collection hidden       {}
-                       :model/Dashboard  trashed-dash {:archived true}
-                       :model/Document   trashed-doc  {:archived true :document document-ast}]
+        (mt/with-temp [:model/Collection hidden {}]
           (doseq [[user target-type id] [[:rasta     "collection" (:id hidden)]
                                          [:crowberto "dashboard"  Integer/MAX_VALUE]
-                                         [:crowberto "dashboard"  (:id trashed-dash)]
-                                         [:crowberto "document"   Integer/MAX_VALUE]
-                                         [:crowberto "document"   (:id trashed-doc)]]
+                                         [:crowberto "document"   Integer/MAX_VALUE]]
                   :let [entity (str (str/capitalize target-type) " " id)]]
             (testing (str (name user) " saving to " entity)
               (mt/with-current-user (mt/user->id user)
                 (is (=? {:class :recoverable
                          :code  ::recoverable.common/not-found
                          :text  #(str/starts-with? % (str entity " was not found."))}
-                        (failure {:target_type target-type, (keyword (str target-type "_id")) id}))))))
-          (testing "the trashed dashboard has no saved card"
-            (is (not (t2/exists? :model/Card :dashboard_id (:id trashed-dash))))))))))
+                        (failure {:target_type target-type, (keyword (str target-type "_id")) id})))))))))))
 
 (deftest read-only-destination-test
   (testing "a read-only destination produces a recoverable error that offers another collection"
@@ -476,3 +470,17 @@
                 (is (= question-name
                        (t2/select-one-fn :name :model/Card :id (get-in outcome [:structured-output :card-id])))))))
           (is (= 2 (t2/count :model/Card :collection_id (:id coll)))))))))
+
+(deftest trashed-destination-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Dashboard dash {:archived true}
+                     :model/Document doc {:archived true :document document-ast}]
+        (doseq [[kind id] [["dashboard" (:id dash)] ["document" (:id doc)]]]
+          (is (= {:class :recoverable
+                  :code ::save-entity/destination-archived
+                  :text (str (str/capitalize kind) " " id " is in the trash.\n"
+                             "Ask the user to restore it or choose another destination.")}
+                 (failure {:target_type kind (keyword (str kind "_id")) id}))))
+        (is (not (t2/exists? :model/Card :dashboard_id (:id dash))))
+        (is (not (t2/exists? :model/Card :document_id (:id doc))))))))

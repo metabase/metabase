@@ -184,6 +184,24 @@
     (:name (collection/root-collection-with-ui-details nil))
     (metabot.db/collection-name collection-id)))
 
+(tools/defrecoverable destination-archived!
+  "The destination is in the trash."
+  {:payload [:map {:closed true}
+             [:kind [:enum :dashboard :document]]
+             [:id :int]]
+   :status-code 404}
+  [{:keys [kind id]}]
+  {:message (str (case kind :dashboard "Dashboard" :document "Document") " " id " is in the trash.")
+   :recovery [{:uses #{}
+               :text "Ask the user to restore it or choose another destination."}]})
+
+(defn- check-not-archived!
+  "Reject a destination in the trash and return it otherwise."
+  [destination entity]
+  (when (:archived entity)
+    (destination-archived! destination))
+  entity)
+
 (defn- save-to-collection!
   [{:keys [name description dataset_query display destination]}]
   (let [collection-id (if (contains? destination :collection_id)
@@ -211,8 +229,10 @@
 (defn- save-to-dashboard!
   [{:keys [name description dataset_query display destination]}]
   (let [dashboard-id (:dashboard_id destination)
-        dashboard    (tools/with-entity {:kind :dashboard :id dashboard-id}
-                       (api/check-not-archived (api/read-check :model/Dashboard dashboard-id)))]
+        dashboard    (check-not-archived!
+                      {:kind :dashboard :id dashboard-id}
+                      (tools/with-entity {:kind :dashboard :id dashboard-id}
+                        (api/read-check :model/Dashboard dashboard-id)))]
     (check-writable! {:kind :dashboard :id dashboard-id} #(api/write-check dashboard))
     (let [card (queries/create-card!
                 {:name                   name
@@ -231,8 +251,10 @@
 (defn- save-to-document!
   [{:keys [name description dataset_query display destination]}]
   (let [document-id (:document_id destination)
-        document    (tools/with-entity {:kind :document :id document-id}
-                      (api/check-not-archived (documents/get-document document-id :log-view? false)))]
+        document    (check-not-archived!
+                     {:kind :document :id document-id}
+                     (tools/with-entity {:kind :document :id document-id}
+                       (documents/get-document document-id :log-view? false)))]
     (check-writable! {:kind :document :id document-id} #(api/write-check document))
     (let [card (queries/create-card!
                 {:name                   name
