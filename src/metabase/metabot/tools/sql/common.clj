@@ -133,6 +133,15 @@
    [:validation-result ::metabot.tools.sql.validation/validation-result]
    [:action-result {:optional true} ::action-result]])
 
+(defn validated-sql-action!
+  "Return the action result from an operation result, or raise the recoverable error for SQL that failed validation."
+  [{:keys [validation-result action-result]}]
+  (let [{:keys [valid? dialect error-message reason]} validation-result]
+    (cond
+      valid?                          action-result
+      (= :multiple-statements reason) (multiple-sql-statements! {})
+      :else                           (sql-syntax-error! {:dialect dialect :error-message error-message}))))
+
 (defn native-query-access?
   "Whether the current user may write and run native queries against `database-id`.
   No nil-user escape, unlike `qp.perms/current-user-has-adhoc-native-query-perms?`, and a

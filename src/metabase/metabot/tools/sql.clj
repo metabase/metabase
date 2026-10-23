@@ -66,14 +66,6 @@
                        :query (links/->frontend-query query)
                        :title title}))
 
-(defn- validated-sql-action!
-  [{:keys [validation-result action-result]}]
-  (let [{:keys [valid? dialect error-message reason]} validation-result]
-    (cond
-      valid?                          action-result
-      (= :multiple-statements reason) (sql.common/multiple-sql-statements! {})
-      :else                           (sql.common/sql-syntax-error! {:dialect dialect :error-message error-message}))))
-
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Create SQL query
 ;;; ──────────────────────────────────────────────────────────────────
@@ -99,7 +91,7 @@
                       (or (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
                           (tools/unrecoverable! ::missing-editor
                                                 {:user-message (tru "No active SQL editor was found. Open a SQL editor and try again.")})))
-          action-result (validated-sql-action!
+          action-result (sql.common/validated-sql-action!
                          (create-sql-query-tools/create-sql-query {:database-id database-id :sql sql-query}))
           {:keys [query-id query-content]} action-result
           structured (assoc action-result :result-type :query)
@@ -136,7 +128,7 @@
 
 (defn- sql-edit-result
   [operation-result title instruction-fn ctx]
-  (let [{:keys [query-id query-content] :as action-result} (validated-sql-action! operation-result)
+  (let [{:keys [query-id query-content] :as action-result} (sql.common/validated-sql-action! operation-result)
         structured (assoc action-result :result-type :query)
         buffer-id (first-code-editor-buffer-id (some-> (:memory-atom ctx) deref))
         instr (instruction-fn query-id (some? buffer-id))]
