@@ -3,7 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { setupBugReportingDetailsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor } from "__support__/ui";
+import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { PLUGIN_SECURITY_CENTER, reinitialize } from "metabase/plugins";
 import type { AdminPath } from "metabase/redux/store";
 import { Route } from "metabase/router";
 import {
@@ -69,6 +70,35 @@ const setupTabs = async (adminPaths: AdminPath[] = ADMIN_PATHS) => {
 };
 
 describe("AdminNavbar", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
+  describe("security center nav item", () => {
+    it("renders the nav item when the plugin is enabled", () => {
+      PLUGIN_SECURITY_CENTER.isEnabled = true;
+      PLUGIN_SECURITY_CENTER.SecurityCenterNavItem = () => (
+        <a href="/admin/security-center">Security</a>
+      );
+
+      setup({ isAdmin: true, adminPaths: ADMIN_PATHS });
+
+      expect(
+        within(screen.getByTestId("admin-navbar")).getByRole("link", {
+          name: "Security",
+        }),
+      ).toHaveAttribute("href", "/admin/security-center");
+    });
+
+    it("does not render the nav item when the plugin is disabled", () => {
+      setup({ isAdmin: true, adminPaths: ADMIN_PATHS });
+
+      expect(
+        within(screen.getByTestId("admin-navbar")).queryByText("Security"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe("StoreLink visibility", () => {
     it("does not show store link when user is not an admin", () => {
       setup({ isAdmin: false, isPaidPlan: true });
