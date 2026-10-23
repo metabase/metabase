@@ -15,3 +15,6 @@ resources/frontend_client/app/iframeResizer.js
 
 # a fixture whose exact bytes a test asserts
 test_resources/static_test/app.js
+
+# custom viz bundle files in the serialization baseline, which the round-trip test compares byte for byte
+test_resources/serialization_baseline/custom_viz_plugins/**/*.js
