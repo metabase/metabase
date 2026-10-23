@@ -192,9 +192,9 @@ const config = {
     styles: "./css/index.module.css",
     ...(isEEBuild && {
       "app-data-app":
-        ENTERPRISE_SRC_PATH + "/data_apps/runtime/app-data-app.tsx",
+        ENTERPRISE_SRC_PATH + "/data-apps/runtime/app-data-app.tsx",
       "data-app-vendors":
-        ENTERPRISE_SRC_PATH + "/data_apps/runtime/iframe-vendors.ts",
+        ENTERPRISE_SRC_PATH + "/data-apps/runtime/iframe-vendors.ts",
     }),
   },
 
