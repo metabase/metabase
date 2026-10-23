@@ -37,3 +37,8 @@
   flex-shrink: 0;
   color: var(--mb-color-core-filter);
 }
+
+/* A draft isn't a segment yet, so its icon is disabled-gray. */
+.segmentIcon[data-status="draft"] {
+  color: var(--mb-color-icon-disabled);
+}

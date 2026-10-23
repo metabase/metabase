@@ -9,7 +9,9 @@ import {
   getRetentionCurvesSettings,
 } from "../cohorts/retention-curves";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
+import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
+import { pointString } from "../sql/analyses/base";
 import { toCohortPeriod } from "../sql/analyses/cohorts";
 
 import {
@@ -99,7 +101,7 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
     isValid: (value) => isOptionalEventDefinition(value),
     getProps: (context) => ({
       ...getEventDefinitionProps(context),
-      emptyLabel: t`Any action or event`,
+      emptyLabel: t`Any event`,
     }),
   }),
   "cohorts.return": withWidgetProps({
@@ -110,7 +112,7 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
     isValid: (value) => isOptionalEventDefinition(value),
     getProps: (context) => ({
       ...getEventDefinitionProps(context),
-      emptyLabel: t`Any action or event`,
+      emptyLabel: t`Any event`,
     }),
   }),
   "cohorts.view": withWidgetProps({
@@ -215,7 +217,7 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
 export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
   kind: "cohorts",
   get name() {
-    return t`Cohorts`;
+    return t`Cohort retention`;
   },
   get question() {
     return t`Do people keep coming back?`;
@@ -260,4 +262,35 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
           ...getRetentionCurvesSettings(getView(settings)),
           ...getBreakoutSeriesSettings(settings.breakout),
         },
+  describePoint: (settings, point) => {
+    const offset = pointString(point.offset);
+    if (offset === null) {
+      return null;
+    }
+    const unit = Lib.describeTemporalUnit(
+      toCohortPeriod(settings.granularity),
+    ).toLowerCase();
+    const isExactly = settings["cohorts.return_rule"] === "exactly";
+    const cohort = pointString(point.cohort);
+    // An averaged line pools every cohort, so its points name no cohort.
+    if (cohort === null) {
+      return isExactly
+        ? c(
+            "{0} is a time unit like week, {1} how many of them after the start",
+          ).t`Came back in ${unit} ${offset}`
+        : c(
+            "{0} is a time unit like week, {1} how many of them after the start",
+          ).t`Came back in ${unit} ${offset} or later`;
+    }
+    const returned = isExactly
+      ? c("{0} is a time unit like week, {1} how many of them after the start")
+          .t`came back in ${unit} ${offset}`
+      : c("{0} is a time unit like week, {1} how many of them after the start")
+          .t`came back in ${unit} ${offset} or later`;
+    if (isGrouped(settings)) {
+      return t`${cohort}, ${returned}`;
+    }
+    const started = formatPeriod(cohort, settings.granularity);
+    return t`Started ${started} and ${returned}`;
+  },
 };

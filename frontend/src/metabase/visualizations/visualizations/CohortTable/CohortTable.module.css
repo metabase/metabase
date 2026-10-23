@@ -1,4 +1,6 @@
 .root {
+  --cohort-cell-min-width: 4.5rem;
+
   display: grid;
   align-content: start;
   gap: 0.125rem;
@@ -61,8 +63,17 @@
   text-align: right;
 }
 
+/* Cells the host can drill into, e.g. to the people in them. */
+.clickable {
+  cursor: pointer;
+
+  &:hover {
+    filter: brightness(0.95);
+  }
+}
+
 .cell {
-  min-width: 4.5rem;
+  min-width: var(--cohort-cell-min-width);
   min-height: 3rem;
   display: flex;
   align-items: center;
@@ -75,4 +86,41 @@
 
 .lightText {
   color: var(--mb-color-text-white);
+}
+
+/* Compact: the pivot table's sizing — 12px text, 30px rows and 8px of
+   horizontal cell padding — with hairline gaps instead of its borders. The
+   cohort column keeps its left padding, so the chart title still lines up. */
+.root[data-density="compact"] {
+  --cohort-cell-min-width: 3.5rem;
+
+  gap: 1px;
+  font-size: 12px;
+
+  .headerRow {
+    box-shadow: 0 1px 0 var(--mb-color-background-primary);
+  }
+
+  .frozen {
+    box-shadow: 1px 0 0 var(--mb-color-background-primary);
+  }
+
+  .header,
+  .label {
+    padding-block: 0;
+    padding-inline: 0.5rem;
+    line-height: 30px;
+  }
+
+  .headerLabel,
+  .label {
+    padding-left: 0.75rem;
+  }
+
+  .cell {
+    min-height: 30px;
+    padding: 0 0.5rem;
+    border-radius: 0;
+    font-weight: normal;
+  }
 }

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { useMetadataProvider } from "metabase/metadata-store";
@@ -88,16 +88,30 @@ export const useAnalysis = <K extends AnalysisKind>({
     () => computeSettings(config.settings, context, stored),
     [config, context, stored],
   );
+  // Only the widgets see the picked colors, so picking one doesn't recompute
+  // the settings or the query.
+  const widgetContext = useMemo<AnalysisContext>(
+    () => ({ ...context, displayColors: colors }),
+    [context, colors],
+  );
+  const handleChangeSettings = useCallback(
+    (changes: Partial<AnalysisSettingsByKind[K]>) =>
+      onChangeSettings({
+        ...changes,
+        ...config.getFollowingChanges?.(changes, computed),
+      }),
+    [config, computed, onChangeSettings],
+  );
   const widgets = useMemo(
     () =>
       getSettingWidgets(
         config.settings,
-        context,
+        widgetContext,
         stored,
         computed,
-        onChangeSettings,
+        handleChangeSettings,
       ),
-    [config, context, stored, computed, onChangeSettings],
+    [config, widgetContext, stored, computed, handleChangeSettings],
   );
 
   const flags = createFlagAllocator();

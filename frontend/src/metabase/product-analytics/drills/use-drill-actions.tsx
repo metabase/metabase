@@ -9,66 +9,31 @@ import type {
   ClickObject,
 } from "metabase/visualizations/types";
 import * as Lib from "metabase-lib";
-import type { ConcreteTableId } from "metabase-types/api";
 
-import type { CommonSettings } from "../analyses/types";
 import { BreakoutPopover } from "../components/drills/BreakoutPopover";
-import { NewAnalysisPopover } from "../components/drills/NewAnalysisPopover";
 import type { CohortFilter } from "../filters";
-import type { StoredSettings } from "../settings/types";
-import type { AnalysisKind } from "../spec/types";
 import type { DrillPoint } from "../sql/compose";
-import { encodeSettings } from "../url-state";
 
 import { getDrillCount, getDrillPoint } from "./describe";
-import {
-  getSaveSegmentTitle,
-  getSeeMembersTitle,
-  getStartAnalysisTitle,
-} from "./labels";
+import { getSeeMembersTitle } from "./labels";
 import type { ChartDrill } from "./types";
 import type { DrillQueries } from "./use-drill-queries";
 
 const STAGE = -1;
 
-export type DrillModal =
-  | { type: "members"; drill: ChartDrill }
-  | { type: "segment"; drill: ChartDrill };
+export type DrillModal = { type: "members"; drill: ChartDrill };
 
 type UseDrillActionsArgs = {
-  tableId: ConcreteTableId | undefined;
-  stored: StoredSettings;
-  settings: CommonSettings;
   /** The chart's count column, e.g. "people". */
   countColumn: string;
   describePoint: (point: DrillPoint) => string | null;
   queries: DrillQueries;
 };
 
-/** Settings a new analysis keeps from this one: who it counts, and how. */
-const getCarriedSettings = (
-  stored: StoredSettings,
-  settings: CommonSettings,
-  cohort: CohortFilter,
-): StoredSettings => ({
-  ...Object.fromEntries(
-    Object.entries(stored).filter(([key]) => key.startsWith("columns.")),
-  ),
-  counting: settings.counting,
-  date_range: settings.date_range,
-  filters: {
-    ...settings.filters,
-    cohorts: [...settings.filters.cohorts, cohort],
-  },
-});
-
 /**
  * The click actions on an analysis's chart, and the modal one of them opened.
  */
 export const useDrillActions = ({
-  tableId,
-  stored,
-  settings,
   countColumn,
   describePoint,
   queries,
@@ -97,18 +62,6 @@ export const useDrillActions = ({
       ids: await fetchMemberIds(drill.point),
     }),
     [grain, fetchMemberIds],
-  );
-
-  const startAnalysis = useCallback(
-    async (kind: AnalysisKind, drill: ChartDrill) => {
-      if (tableId === undefined) {
-        return;
-      }
-      const cohort = await toCohort(drill);
-      const hash = encodeSettings(getCarriedSettings(stored, settings, cohort));
-      navigateAway(`${Urls.eventAnalysis(kind, tableId)}#${hash}`);
-    },
-    [tableId, stored, settings, toCohort, navigateAway],
   );
 
   const breakout = useCallback(
@@ -183,39 +136,14 @@ export const useDrillActions = ({
               setModal({ type: "members", drill });
             },
           },
-          {
-            name: "product-analytics.start-analysis",
-            section: "custom",
-            buttonType: "horizontal",
-            icon: "sparkles",
-            title: getStartAnalysisTitle(grain),
-            popover: ({ onClose }) => (
-              <NewAnalysisPopover
-                onSelect={(kind) => startAnalysis(kind, drill)}
-                onClose={onClose}
-              />
-            ),
-          },
-          {
-            name: "product-analytics.save-segment",
-            type: "custom",
-            section: "custom",
-            buttonType: "horizontal",
-            icon: "segment",
-            title: getSaveSegmentTitle(grain),
-            onClick: ({ closePopover }) => {
-              closePopover();
-              setModal({ type: "segment", drill });
-            },
-          },
         ];
         if (breakoutQuery !== undefined) {
           actions.push({
             name: "product-analytics.breakout",
             section: "custom",
             buttonType: "horizontal",
-            icon: "external",
-            title: t`Break this count out by…`,
+            icon: "arrow_split",
+            title: t`Break out by…`,
             popover: ({ onClose }) => (
               <BreakoutPopover
                 query={breakoutQuery}
@@ -228,15 +156,7 @@ export const useDrillActions = ({
         return actions;
       },
     };
-  }, [
-    canDrill,
-    grain,
-    countColumn,
-    describePoint,
-    startAnalysis,
-    breakout,
-    breakoutQuery,
-  ]);
+  }, [canDrill, grain, countColumn, describePoint, breakout, breakoutQuery]);
 
   return {
     mode,
@@ -244,6 +164,5 @@ export const useDrillActions = ({
     closeModal: () => setModal(null),
     /** Lets a drill's navigation through the unsaved-changes guard. */
     isDrilling: () => isDrillingRef.current,
-    toCohort,
   };
 };
