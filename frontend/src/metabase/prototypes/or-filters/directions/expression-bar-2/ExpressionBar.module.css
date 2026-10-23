@@ -92,7 +92,7 @@
 }
 
 .opNot {
-  color: var(--mb-color-feedback-negative);
+  color: var(--mb-color-text-secondary);
 }
 
 .paren {
