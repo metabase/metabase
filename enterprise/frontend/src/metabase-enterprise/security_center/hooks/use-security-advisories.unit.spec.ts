@@ -1,5 +1,7 @@
+import { act } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { findRequests } from "__support__/server-mocks";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
 import { createAdvisory } from "metabase-types/api/mocks/security-center";
 
@@ -36,5 +38,44 @@ describe("useSecurityAdvisories", () => {
 
     expect(result.current.data).toEqual([]);
     expect(result.current.lastCheckedAt).toBeNull();
+  });
+
+  it("acknowledges one advisory through the hook", async () => {
+    const advisory = createAdvisory({ advisory_id: "SA-001" });
+    fetchMock.get(LIST_URL, { advisories: [advisory], last_checked_at: null });
+    fetchMock.post("path:/api/ee/security-center/SA-001/acknowledge", advisory);
+
+    const { result } = renderHookWithProviders(
+      () => useSecurityAdvisories(),
+      {},
+    );
+
+    await act(async () => {
+      await result.current.acknowledgeAdvisory("SA-001").unwrap();
+    });
+
+    const posts = await findRequests("POST");
+    expect(posts.map((post) => post.url)).toEqual([
+      expect.stringContaining("/api/ee/security-center/SA-001/acknowledge"),
+    ]);
+  });
+
+  it("acknowledges advisories in bulk through the hook", async () => {
+    fetchMock.get(LIST_URL, { advisories: [], last_checked_at: null });
+    fetchMock.post("path:/api/ee/security-center/acknowledge", []);
+
+    const { result } = renderHookWithProviders(
+      () => useSecurityAdvisories(),
+      {},
+    );
+
+    await act(async () => {
+      await result.current.acknowledgeAdvisories(["SA-002", "SA-003"]).unwrap();
+    });
+
+    const posts = await findRequests("POST");
+    expect(posts).toHaveLength(1);
+    expect(posts[0].url).toContain("/api/ee/security-center/acknowledge");
+    expect(posts[0].body).toEqual({ advisory_ids: ["SA-002", "SA-003"] });
   });
 });
