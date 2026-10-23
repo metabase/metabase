@@ -133,13 +133,16 @@ describe("DashCardFilterMenu", () => {
     expect(dropdown.getByRole("menuitem", { name: /Vendor/ })).toBeVisible();
 
     await userEvent.click(dropdown.getByRole("menuitem", { name: /Vendor/ }));
-    expect(dropdown.getByRole("button", { name: /Vendor/ })).toBeVisible();
-    expect(dropdown.getByPlaceholderText("Enter some text")).toBeVisible();
-    expect(dropdown.queryByRole("menuitem")).not.toBeInTheDocument();
+    // the dropdown remounts when its content changes, so query it again
+    const widget = within(screen.getByTestId("show-filter-parameter-dropdown"));
+    expect(widget.getByRole("button", { name: /Vendor/ })).toBeVisible();
+    expect(widget.getByPlaceholderText("Enter some text")).toBeVisible();
+    expect(widget.queryByRole("menuitem")).not.toBeInTheDocument();
 
-    await userEvent.click(dropdown.getByRole("button", { name: /Vendor/ }));
-    expect(dropdown.getByRole("menuitem", { name: /Category/ })).toBeVisible();
-    expect(dropdown.getByRole("menuitem", { name: /Vendor/ })).toBeVisible();
+    await userEvent.click(widget.getByRole("button", { name: /Vendor/ }));
+    const list = within(screen.getByTestId("show-filter-parameter-dropdown"));
+    expect(list.getByRole("menuitem", { name: /Category/ })).toBeVisible();
+    expect(list.getByRole("menuitem", { name: /Vendor/ })).toBeVisible();
   });
 
   it("should set the filter value and close when a value is applied", async () => {

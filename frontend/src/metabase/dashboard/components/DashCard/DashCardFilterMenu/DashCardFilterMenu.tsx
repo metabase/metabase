@@ -118,6 +118,9 @@ export function DashCardFilterMenu({
         </Tooltip>
       </Menu.Target>
       <Menu.Dropdown
+        // Remount on content swap so the dropdown is positioned for the widget's
+        // own size: a tall date list can then flip above the card.
+        key={selectedParameterId ?? "list"}
         className={S.dropdown}
         // The dropdown keeps the max-width measured for the filter list, which
         // would clip a double calendar (metabase#52918).

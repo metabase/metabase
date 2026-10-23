@@ -30,7 +30,9 @@
 }
 
 .dropdown {
-  overflow: visible;
+  &&[data-menu-dropdown] {
+    overflow: auto;
+  }
 }
 
 .backButton {
