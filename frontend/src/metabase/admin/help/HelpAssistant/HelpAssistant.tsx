@@ -1,4 +1,5 @@
 import { useClipboard, useDisclosure } from "@mantine/hooks";
+import cx from "classnames";
 import { useLayoutEffect, useRef } from "react";
 import { jt, t } from "ttag";
 
@@ -67,6 +68,7 @@ export const HelpAssistant = () => {
     <HelpAssistantInput
       value={chat.draft}
       isConfigured={isConfigured}
+      isFollowUp={hasMessages}
       isLoading={chat.isLoading}
       onChange={chat.setDraft}
       onSubmit={() => chat.send(chat.draft)}
@@ -84,9 +86,7 @@ export const HelpAssistant = () => {
     <Flex className={S.page} direction="column">
       <HelpAssistantHeader
         entries={chat.entries}
-        canDelete={chat.conversations.some(
-          ({ id }) => id === chat.conversationId,
-        )}
+        canDelete={chat.isConversationSaved}
         onNewChat={chat.startNewChat}
         onDelete={() => {
           if (chat.conversationId) {
@@ -104,7 +104,7 @@ export const HelpAssistant = () => {
             onRate={chat.rateAnswer}
           />
           <Box px="xl" pb="lg">
-            <Stack className={S.column} gap="sm">
+            <Stack className={cx(S.column, S.composer)} gap="sm">
               {input}
               {footer}
             </Stack>
@@ -119,21 +119,29 @@ export const HelpAssistant = () => {
                 {t`Describe a problem or ask how to set something up. The assistant answers from the Metabase docs.`}
               </Text>
             </Stack>
-            {input}
+            <Stack gap="sm">
+              {input}
+              {footer}
+            </Stack>
             {isConfigured && (
-              <Stack gap="xxs" align="flex-start">
-                {getSuggestedPrompts().map((prompt) => (
-                  <UnstyledButton
-                    key={prompt}
-                    className={S.promptSuggestion}
-                    onClick={() => chat.send(prompt)}
-                  >
-                    {prompt}
-                  </UnstyledButton>
-                ))}
+              <Stack gap="xs" align="flex-start">
+                {/* The same inset as the text of the suggestions below. */}
+                <Text size="sm" fw="bold" c="text-secondary" px="md">
+                  {t`Common questions`}
+                </Text>
+                <Stack gap="xxs" align="flex-start">
+                  {getSuggestedPrompts().map((prompt) => (
+                    <UnstyledButton
+                      key={prompt}
+                      className={S.promptSuggestion}
+                      onClick={() => chat.send(prompt)}
+                    >
+                      {prompt}
+                    </UnstyledButton>
+                  ))}
+                </Stack>
               </Stack>
             )}
-            {footer}
           </Stack>
         </Box>
       )}
@@ -223,7 +231,13 @@ function ConversationMenu({
           {t`Copy conversation`}
         </Menu.Item>
         {canDelete && (
-          <Menu.Item leftSection={<Icon name="trash" />} onClick={onDelete}>
+          <Menu.Item
+            leftSection={<Icon name="trash" />}
+            onClick={() => {
+              onDelete();
+              sendToast({ message: t`Chat deleted` });
+            }}
+          >
             {t`Delete chat`}
           </Menu.Item>
         )}
@@ -290,6 +304,7 @@ function ContactSupportButton({
 interface HelpAssistantInputProps {
   value: string;
   isConfigured: boolean;
+  isFollowUp: boolean;
   isLoading: boolean;
   onChange: (value: string) => void;
   onSubmit: () => void;
@@ -299,6 +314,7 @@ interface HelpAssistantInputProps {
 function HelpAssistantInput({
   value,
   isConfigured,
+  isFollowUp,
   isLoading,
   onChange,
   onSubmit,
@@ -314,7 +330,11 @@ function HelpAssistantInput({
         // next question can be typed. Enter only sends once the answer is in.
         <Textarea
           variant="unstyled"
-          placeholder={t`e.g. Why does my dashboard take a minute to load?`}
+          placeholder={
+            isFollowUp
+              ? t`Ask a follow-up question`
+              : t`e.g. Why does my dashboard take a minute to load?`
+          }
           value={value}
           onChange={(event) => onChange(event.currentTarget.value)}
           onKeyDown={(event) => {
@@ -325,7 +345,7 @@ function HelpAssistantInput({
           }}
           autosize
           autoFocus
-          minRows={2}
+          minRows={isFollowUp ? 1 : 2}
           maxRows={8}
           aria-label={t`Ask the help assistant`}
           data-testid="help-assistant-input"
@@ -386,15 +406,19 @@ function HelpAssistantFooter({
         onChange={(event) =>
           onIncludeDiagnosticInfoChange(event.currentTarget.checked)
         }
-        label={jt`Include ${(
-          <Link
-            key="diagnostics"
-            to={Urls.adminHelpDiagnostics()}
-            variant="brand"
-          >
-            {t`diagnostic info`}
-          </Link>
-        )}`}
+        label={
+          <Text component="span" size="sm" c="text-secondary">
+            {jt`Include ${(
+              <Link
+                key="diagnostics"
+                to={Urls.adminHelpDiagnostics()}
+                variant="brand"
+              >
+                {t`diagnostic info`}
+              </Link>
+            )}`}
+          </Text>
+        }
       />
       <Text size="sm" c="text-secondary">
         {t`Answers can be wrong. Check the sources.`}

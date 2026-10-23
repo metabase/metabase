@@ -29,6 +29,26 @@
   width: auto;
 }
 
+/* Fades the conversation out where it scrolls under the input. */
+.composer {
+  position: relative;
+
+  &::before {
+    content: "";
+    position: absolute;
+    right: 0;
+    bottom: 100%;
+    left: 0;
+    height: 1.5rem;
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      var(--mb-color-background_page-primary)
+    );
+    pointer-events: none;
+  }
+}
+
 .inputContainer {
   display: flex;
   flex-direction: column;

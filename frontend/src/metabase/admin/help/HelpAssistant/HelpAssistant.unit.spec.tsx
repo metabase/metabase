@@ -11,6 +11,7 @@ import {
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { UndoListing } from "metabase/common/components/UndoListing";
 import { Route } from "metabase/router";
 import type {
   HelpAssistantChatResponse,
@@ -59,7 +60,15 @@ const setup = ({
   setupHelpAssistantConversationsEndpoints(conversations);
 
   renderWithProviders(
-    <Route path="/admin/help" element={<HelpLayout />}>
+    <Route
+      path="/admin/help"
+      element={
+        <>
+          <HelpLayout />
+          <UndoListing />
+        </>
+      }
+    >
       <Route index element={<HelpAssistant />} />
       <Route path="diagnostics" element={<div>Diagnostics page</div>} />
     </Route>,
@@ -310,6 +319,7 @@ describe("HelpAssistant", () => {
     expect(
       screen.getByRole("heading", { name: "How can we help?" }),
     ).toBeInTheDocument();
+    expect(await screen.findByText("Chat deleted")).toBeInTheDocument();
     await waitFor(() =>
       expect(
         fetchMock.callHistory.lastCall(HELP_ASSISTANT_ROUTES.deleteConversation)
@@ -317,6 +327,44 @@ describe("HelpAssistant", () => {
       ).toMatch(/\/key\/saved-chat$/),
     );
     expect(screen.queryByLabelText("Recent chats")).not.toBeInTheDocument();
+  });
+
+  it("marks only the open chat as active in the sidebar", async () => {
+    setup({ conversations: { "saved-chat": SAVED_CONVERSATION } });
+
+    const assistantLink = screen.getByRole("link", { name: /Help assistant/ });
+    expect(assistantLink).toHaveAttribute("data-active", "true");
+
+    const savedChat = await within(
+      await screen.findByLabelText("Recent chats"),
+    ).findByRole("button", { name: "How often does sync run?" });
+    await userEvent.click(savedChat);
+    await screen.findByText("hourly");
+
+    expect(savedChat).toHaveAttribute("data-active", "true");
+    expect(assistantLink).not.toHaveAttribute("data-active");
+
+    await userEvent.click(screen.getByRole("button", { name: /New chat/ }));
+
+    expect(assistantLink).toHaveAttribute("data-active", "true");
+    expect(savedChat).not.toHaveAttribute("data-active");
+  });
+
+  it("asks for a follow-up question after the first answer", async () => {
+    setup();
+
+    expect(screen.getByLabelText("Ask the help assistant")).toHaveAttribute(
+      "placeholder",
+      "e.g. Why does my dashboard take a minute to load?",
+    );
+
+    await ask("Why is sync slow?");
+    await screen.findByText("connection string");
+
+    expect(screen.getByLabelText("Ask the help assistant")).toHaveAttribute(
+      "placeholder",
+      "Ask a follow-up question",
+    );
   });
 
   it("sends positive and negative feedback on an answer", async () => {

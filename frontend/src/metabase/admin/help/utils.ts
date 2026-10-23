@@ -1,6 +1,11 @@
 import _ from "underscore";
 
+import * as Urls from "metabase/urls";
 import { getBasename } from "metabase/utils/basename";
+
+export function isHelpAssistantPath(pathname: string) {
+  return pathname.replace(/\/$/, "") === Urls.adminHelp();
+}
 
 export function navigatorInfo() {
   return _.pick(navigator, "language", "platform", "userAgent", "vendor");

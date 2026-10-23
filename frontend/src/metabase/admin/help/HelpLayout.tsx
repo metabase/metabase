@@ -1,13 +1,13 @@
 import { AdminSettingsLayout } from "metabase/admin/components/AdminLayout/AdminSettingsLayout";
 import { Outlet, useLocation } from "metabase/router";
-import * as Urls from "metabase/urls";
 
 import { HelpAssistantChatProvider } from "./HelpAssistant";
 import { HelpNav } from "./HelpNav";
+import { isHelpAssistantPath } from "./utils";
 
 export const HelpLayout = () => {
   const { pathname } = useLocation();
-  const isAssistantPage = pathname.replace(/\/$/, "") === Urls.adminHelp();
+  const isAssistantPage = isHelpAssistantPath(pathname);
 
   return (
     <HelpAssistantChatProvider>

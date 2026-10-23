@@ -1,3 +1,6 @@
 export * from "./HelpAssistant";
-export { HelpAssistantChatProvider } from "./HelpAssistantChatContext";
+export {
+  HelpAssistantChatProvider,
+  useHelpAssistantChatContext,
+} from "./HelpAssistantChatContext";
 export { HelpAssistantRecentChats } from "./HelpAssistantRecentChats";

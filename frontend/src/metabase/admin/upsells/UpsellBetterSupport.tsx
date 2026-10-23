@@ -33,7 +33,7 @@ export const UpsellBetterSupport = ({
   const title = t`Get expert help`;
   const buttonText = t`Try for free`;
   const description = (
-    <Text size="sm">
+    <Text size="sm" lh="1rem">
       {t`Unlimited support from success engineers whenever you need it with any paid plan.`}{" "}
       {c("Reasons why paid support is better.")
         .t`No hold lines, no customer service runaround.`}
@@ -48,7 +48,8 @@ export const UpsellBetterSupport = ({
         buttonText={buttonText}
         buttonLink={UPGRADE_URL}
         location={location}
-        style={{ maxWidth: 242 }}
+        fullWidth
+        maxWidth="initial"
         onClick={triggerUpsellFlow}
       >
         {description}

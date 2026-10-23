@@ -49,6 +49,9 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
     () => getRecentConversations(savedConversations ?? {}),
     [savedConversations],
   );
+  const isConversationSaved = conversations.some(
+    ({ id }) => id === conversationId,
+  );
 
   const save = useCallback(
     (
@@ -217,6 +220,7 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
     () => ({
       conversationId,
       conversations,
+      isConversationSaved,
       entries,
       draft,
       setDraft,
@@ -235,6 +239,7 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
     [
       conversationId,
       conversations,
+      isConversationSaved,
       entries,
       draft,
       includeDiagnosticInfo,

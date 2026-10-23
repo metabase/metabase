@@ -16,15 +16,19 @@ import { Divider, Icon, NavLink, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 
-import { HelpAssistantRecentChats } from "./HelpAssistant";
+import {
+  HelpAssistantRecentChats,
+  useHelpAssistantChatContext,
+} from "./HelpAssistant";
 import { useDiagnosticInfo } from "./use-diagnostic-info";
-import { getGithubIssueUrl, getHelpUrl } from "./utils";
+import { getGithubIssueUrl, getHelpUrl, isHelpAssistantPath } from "./utils";
 
 export function HelpNav() {
   const { tag } = useSetting("version");
   const isPaidPlan = useSelector(getIsPaidPlan);
   const canSeeLogs = useSelector(canAccessMonitoringTools);
   const { diagnosticInfo, compactDiagnosticInfo } = useDiagnosticInfo();
+  const { isConversationSaved } = useHelpAssistantChatContext();
   const { pathname } = useLocation();
 
   return (
@@ -34,6 +38,8 @@ export function HelpNav() {
           icon="metabot"
           label={t`Help assistant`}
           path={Urls.adminHelp()}
+          // A saved chat has its own item in the recent chats.
+          active={isHelpAssistantPath(pathname) && !isConversationSaved}
         />
         <HelpAssistantRecentChats />
         <AdminNavItem
