@@ -10,7 +10,7 @@
    [metabase.util.log :as log]))
 
 (defsetting metabot-id
-  (deferred-tru "Override Metabot ID for agent streaming requests.")
+  "Override Metabot ID for agent streaming requests."
   :type       :string
   :visibility :internal
   :encryption :no
@@ -18,7 +18,7 @@
   :doc        false)
 
 (defsetting metabot-chat-turn-async-timeout-ms
-  (deferred-tru "Maximum duration of a Metabot chat turn in milliseconds.")
+  "Maximum duration of a Metabot chat turn in milliseconds."
   :type       :positive-integer
   :visibility :internal
   :default    1800000
@@ -101,7 +101,7 @@
   :export?    true)
 
 (defsetting metabot-recent-views-enabled?
-  (deferred-tru "Whether the user''s recently viewed items are included in the Metabot system prompt.")
+  "Whether the user's recently viewed items are included in the Metabot system prompt."
   :type       :boolean
   :visibility :internal
   :default    true
@@ -115,14 +115,14 @@
   :export?    false)
 
 (defsetting metabot-sql-execution-enabled?
-  (deferred-tru "Whether Metabot can also run SQL queries it wrote, for questions a notebook query can''t express. Applies only when Metabot can run queries, and only on databases where the user may write SQL.")
+  "Whether Metabot can also run SQL queries it wrote, for questions a notebook query can't express. Applies only when Metabot can run queries, and only on databases where the user may write SQL."
   :type       :boolean
   :visibility :internal
   :default    true
   :export?    false)
 
 (defsetting metabot-eval-profiles-enabled?
-  (deferred-tru "Whether Metabot accepts the profiles that exist only for evals, such as one that answers only in SQL. Set it only on instances that run evals.")
+  "Whether Metabot accepts the profiles that exist only for evals, such as one that answers only in SQL. Set it only on instances that run evals."
   :type       :boolean
   :visibility :internal
   :default    false

@@ -14,6 +14,7 @@
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.sql.common :as sql.common]
@@ -88,46 +89,6 @@
                   " rows too.")
    :recovery [{:uses #{}
                :text "Ask the user to continue in their own Metabot chat."}]})
-
-(def ^:private max-listed-query-ids
-  "The refusal lists at most this many known query IDs.
-
-   This leaves room for a recovery step within the runtime's limit on failure text."
-  100)
-
-(def ^:private max-echoed-query-id-chars
-  "The refusal repeats at most this many characters from an unknown query ID.
-
-   The model supplies the ID, so its length is otherwise unbounded."
-  100)
-
-(tools/defrecoverable unknown-query-id!
-  "The query ID matches no stored query or saved question that this tool can run for the current user."
-  {:payload [:map {:closed true}
-             [:query-id  :string]
-             [:known-ids [:sequential :string]]
-             [:hint      [:enum :notebook-query :sql-query :no-values]]]}
-  [{:keys [query-id known-ids hint]}]
-  (let [more    (- (count known-ids) max-listed-query-ids)
-        unknown (str "No query with ID " (llm-shape/truncate query-id max-echoed-query-id-chars) ". Known query IDs: ["
-                     (str/join ", " (take max-listed-query-ids known-ids)) "]"
-                     (when (pos? more) (str " and " more " more"))
-                     ".")]
-    (case hint
-      :notebook-query
-      {:message  (str unknown " Use the ID of a query that you built, or a saved question or model that the user"
-                      " can read.")
-       :recovery []}
-
-      :sql-query
-      {:message  (str unknown " A saved question or model has no query ID.")
-       :recovery [{:uses #{"create_sql_query" "run_query"}
-                   :text (str "To run one, write SQL that reads it with `create_sql_query`, then run that query"
-                              " with `run_query`.")}]}
-
-      :no-values
-      {:message  (str unknown " A saved question or model has no query ID, and no SQL can run here.")
-       :recovery [(:no-values hint-steps)]})))
 
 (tools/defrecoverable metric-not-runnable!
   "The ID names a metric that the user can read, and a metric does not run by its ID.
@@ -292,16 +253,17 @@
   "Return the query named by `query-id` in a map under `:query`.
 
    Saved questions are available only when `allow-non-sql?` is true and the user can read them;
-   the result then includes the card under `:saved-card`. Throw [[unknown-query-id!]] if no query is found."
+   the result then includes the card under `:saved-card`. Throw [[recoverable.common/unknown-query-id!]] if no query
+   is found."
   [query-id allow-non-sql?]
   (let [queries (shared/current-queries-state)]
     (or (when-let [query (get queries query-id)]
           {:query query})
         (when allow-non-sql?
           (saved-question query-id))
-        (unknown-query-id! {:query-id  query-id
-                            :known-ids (vec (keys queries))
-                            :hint      (recovery-hint allow-non-sql?)}))))
+        (recoverable.common/unknown-query-id! {:query-id  query-id
+                                               :available (sort (keys queries))
+                                               :hint      (recovery-hint allow-non-sql?)}))))
 
 (defn- check-private-conversation!
   "Refuse unless the current conversation belongs to the current user alone.

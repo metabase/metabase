@@ -6,6 +6,7 @@ import {
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { createMockState } from "__support__/state";
 import {
   act,
   renderWithProviders,
@@ -16,7 +17,7 @@ import {
 import { loadActionCreator } from "metabase/querying/action-creator";
 import { setOpenModal } from "metabase/redux/ui";
 import { Route } from "metabase/router";
-import { createMockDatabase } from "metabase-types/api/mocks";
+import { createMockDatabase, createMockUser } from "metabase-types/api/mocks";
 
 import { NewModals } from "./NewModals";
 
@@ -31,7 +32,12 @@ async function setup() {
 
   const { store } = renderWithProviders(
     <Route path="/" element={<NewModals />} />,
-    { withRouter: true },
+    {
+      withRouter: true,
+      storeInitialState: createMockState({
+        currentUser: createMockUser({ is_superuser: true }),
+      }),
+    },
   );
 
   act(() => {

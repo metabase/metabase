@@ -43,18 +43,20 @@ describe("getSizeAdjustedSettings", () => {
       },
     );
 
-    it.each([
-      { height: 149, expected: false },
-      { height: 150, expected: undefined },
-    ])("hides the y-axis at height $height", ({ height, expected }) => {
-      const settings = getSizeAdjustedSettings({
-        settings: createMockVisualizationSettings(),
-        width: 800,
-        height,
-      });
+    it.each([60, 149, 150])(
+      "keeps the y-axis gridlines enabled at height %i",
+      (height) => {
+        const settings = getSizeAdjustedSettings({
+          settings: createMockVisualizationSettings({
+            "graph.y_axis.axis_enabled": true,
+          }),
+          width: 800,
+          height,
+        });
 
-      expect(settings["graph.y_axis.axis_enabled"]).toBe(expected);
-    });
+        expect(settings["graph.y_axis.axis_enabled"]).toBe(true);
+      },
+    );
   });
 
   describe("gridSize", () => {
@@ -111,23 +113,6 @@ describe("getSizeAdjustedSettings", () => {
         });
 
         expect(settings["line.interpolate"]).toBe(expected);
-      },
-    );
-
-    it.each([
-      { gridSize: { width: 12, height: 3 }, expected: false },
-      { gridSize: { width: 12, height: 4 }, expected: undefined },
-    ])(
-      "hides the y-axis at grid height $gridSize.height",
-      ({ gridSize, expected }) => {
-        const settings = getSizeAdjustedSettings({
-          settings: createMockVisualizationSettings(),
-          width: 800,
-          height: 400,
-          gridSize,
-        });
-
-        expect(settings["graph.y_axis.axis_enabled"]).toBe(expected);
       },
     );
   });

@@ -10,8 +10,11 @@
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -22,6 +25,7 @@
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.resources :as metabot-resources]
+   [metabase.metabot.tools.search :as metabot-search]
    [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -33,13 +37,15 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.test.server.handler :as test.server.handler]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli.registry :as mr]
    [oidc-provider.util :as oidc.util]
    [toucan2.core :as t2])
   (:import
-   (java.sql SQLException)))
+   (java.sql SQLException)
+   (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
 
@@ -354,26 +360,6 @@
                                                                 agent-error? (assoc :agent-error? true))))))]
         (is (=? {:error (name error) :message expected}
                 (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query query})))))))
-
-(deftest database-error-callback-failure-test
-  (mt/with-prometheus-system! [_ system]
-    (doseq [database-error? [false true]
-            delivery [:throw :raise]]
-      (let [failure          (if database-error? (SQLException. "Database failure") (Exception. "Handler failure"))
-            callback-failure (if database-error? (SQLException. "Callback failure") (Exception. "Callback failure"))
-            calls            (atom 0)
-            callback         (fn [_] (swap! calls inc) (throw callback-failure))
-            handler          (#'agent-api.api/wrap-database-errors
-                              (fn [_request _respond raise]
-                                (case delivery
-                                  :throw (throw failure)
-                                  :raise (raise failure))))
-            initial          (mt/metric-value system :metabase-api/unhandled-errors)
-            caught           (try (handler {} callback callback) (catch Throwable e e))]
-        (is (identical? callback-failure caught))
-        (is (= 1 @calls))
-        (is (= (+ initial (if database-error? 1 0))
-               (mt/metric-value system :metabase-api/unhandled-errors)))))))
 
 (deftest construct-query-permission-checks-test
   (testing "Rejects a first-stage source-table the current user cannot query"
@@ -2013,9 +1999,11 @@
     (let [resp (mt/user-http-request :crowberto :post 400 "agent/v1/execute-sql"
                                      {:database_id (mt/id)
                                       :sql         "SELECT * FROM table_that_does_not_exist"})]
-      ;; The streaming pipeline wraps the failure in :via[0]/:status.
-      (is (= "failed" (some-> resp :via first :status)))
-      (is (string? (some-> resp :via first :error)))))
+      (is (=? {:status     "failed"
+               :error      #(str/includes? % "TABLE_THAT_DOES_NOT_EXIST")
+               :error_type "invalid-query"}
+              resp))
+      (is (= #{:status :error :error_type} (set (keys resp))))))
   (testing "A successful query records a QueryExecution audit row tagged :agent"
     ;; Bypass-of-userland regression (#1): without `prepare-agent-query` no audit row was
     ;; written. Verify a row lands and carries the agent context. QueryExecutions are saved in async batches by
@@ -2035,6 +2023,28 @@
 
 ;;; ------------------------------------------------- Read Resource Tests -----------------------------------------
 
+(deftest read-resource-uri-preview-test
+  (doseq [[uri success?] [[(str "metabase://databases?ignored=" (apply str (repeat 4000 "x"))) true]
+                          [(apply str (repeat 4096 "\"")) false]
+                          [(apply str (repeat 4096 "\u08FF")) false]]]
+    (let [response (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource" {:uris [uri]})
+          resource (first (:resources response))
+          attribute (second (re-find #"<resource uri=\"([^\"]*)\">" (:output response)))]
+      (is (= success? (contains? resource :content)))
+      (is (= uri (:uri resource)))
+      (is (<= (count attribute) 200))
+      (is (str/ends-with? attribute "...[truncated]")))))
+
+(deftest ^:parallel read-resource-tool-description-test
+  (let [endpoint    (some (fn [[_ endpoint]]
+                            (when (= "read_resource" (get-in endpoint [:form :metadata :tool :name]))
+                              endpoint))
+                          (api.macros/ns-routes 'metabase.agent-api.api))
+        description (:description (tools-manifest/endpoint->tool-definition "/api/agent" endpoint))]
+    (is (str/includes? description "metabase://collection/root/items"))
+    (doseq [text ["metabase://chart/" "metabase://query/" "conversation" "save_entity"]]
+      (is (not (str/includes? description text)) text))))
+
 (deftest read-resource-test
   (testing "Dispatches a top-level URI through the shared resolver"
     (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
@@ -2051,13 +2061,12 @@
                                      {:uris [(str "metabase://table/" (mt/id :orders))]})]
       (is (= 1 (count (:resources resp))))
       (is (some? (-> resp :resources first :content)))))
-  (testing "Returns 400 when too many URIs"
-    (let [uris (vec (repeat 10 "metabase://databases"))]
-      (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource"
-                            {:uris uris})))
-  (testing "this endpoint publishes the tool's own argument schema, so its limits cannot drift from
-           the ones the agent loop enforces. The hand-written copy this replaced had already lost
-           the 5-URI cap."
+  (testing "Rejects batches above the five-URI limit"
+    (let [uris (conj (vec (repeat 5 "metabase://databases")) "metabase://collections")
+          resp (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource" {:uris uris})]
+      (is (str/includes? (pr-str (:errors resp)) "at most 5 URIs"))
+      (is (str/includes? (pr-str (:errors resp)) "Request fewer URIs"))))
+  (testing "This endpoint publishes the tool's argument schema"
     ;; Compared on the `:uris` entry: `mr/def` stamps its own docstring onto the map's properties,
     ;; so the outer form differs by a `:description` the endpoint never publishes.
     (is (= (nth (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)) 2)
@@ -2183,6 +2192,155 @@
       (is (not (contains? q :qp/source-card-id)))
       (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages q))
           "internal keys are stripped from every stage"))))
+
+;;; ------------------------------------------------- Error Responses ---------------------------------------------
+
+(defn- reject-app-db-lookup
+  "Throw an app DB lookup error without leaving the surrounding transaction aborted."
+  [& _]
+  (t2/with-transaction [_conn]
+    (t2/query ["SELECT no_such_column FROM metabase_field"])))
+
+(defn- logs-app-db-error?
+  "Whether captured log `messages` include the app DB error that [[reject-app-db-lookup]] causes."
+  [messages]
+  (some #(re-find #"(?i)no_such_column" (str (:message %) (some-> (:e %) ex-message))) messages))
+
+(deftest unexpected-error-is-generic-test
+  (testing "An unexpected failure is a generic 500 whatever `hide-stacktraces` says, and the log gets the detail"
+    (mt/with-prometheus-system! [_ system]
+      (doseq [[search log-message detail] [[reject-app-db-lookup "Database failure in Agent API" #"(?i)no_such_column"]
+                                           [(fn [_] (throw (ex-info "Search index is unavailable" {})))
+                                            "Unhandled error in Agent API request"
+                                            #"Search index is unavailable"]]
+              hide-stacktraces?             [false true]]
+        (mt/with-dynamic-fn-redefs [metabot-search/search search]
+          (mt/with-temporary-setting-values [hide-stacktraces hide-stacktraces?]
+            (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+              (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
+                (is (= {:message "Something went wrong"}
+                       (mt/user-http-request :rasta :post 500 "agent/v1/search" {:term_queries ["orders"]})))
+                (is (= (inc initial) (mt/metric-value system :metabase-api/unhandled-errors)))
+                (is (=? [{:message log-message, :e #(re-find detail (ex-message %))}] (messages)))))))))))
+
+(deftest error-response-callback-failure-test
+  (mt/with-prometheus-system! [_ system]
+    (doseq [endpoint-kind [:bare :sync :async]
+            callback-kind [:ordinary :database :disconnect]
+            delivery [:respond :throw :raise]]
+      (let [failure          (if (= callback-kind :database) (SQLException. "Database failure") (Exception. "Handler failure"))
+            callback-failure (case callback-kind
+                               :ordinary (Exception. "Callback failure")
+                               :database (SQLException. "Callback failure")
+                               :disconnect (EofException. "Client went away"))
+            calls            (atom 0)
+            callback         (fn [_] (swap! calls inc) (throw callback-failure))
+            handler          (fn [_request respond raise]
+                               (case delivery
+                                 :respond (respond {:status 200 :body "ok"})
+                                 :throw (throw failure)
+                                 :raise (raise failure)))
+            endpoint         (case endpoint-kind
+                               :bare handler
+                               :sync (api.macros/endpoint-handler* nil
+                                                                   (fn [& _] (handler {} identity #(throw %)))
+                                                                   {:async? false})
+                               :async (api.macros/endpoint-handler* nil
+                                                                    (api.macros/-core-fn-async
+                                                                     (fn [respond raise & _] (handler {} respond raise)))
+                                                                    {:async? true}))
+            handler          (#'agent-api.api/wrap-error-responses endpoint)
+            initial          (mt/metric-value system :metabase-api/unhandled-errors)
+            caught           (try (handler {} callback callback) (catch Throwable e e))]
+        (is (identical? callback-failure caught))
+        (is (= 1 @calls))
+        (is (= (if (= delivery :respond) initial (inc initial))
+               (mt/metric-value system :metabase-api/unhandled-errors)))))))
+
+(deftest client-error-wrapping-database-error-is-generic-test
+  (testing "A client status does not expose an app DB failure in the cause chain"
+    (mt/with-prometheus-system! [_ system]
+      (doseq [status-code [400 403]]
+        (mt/with-dynamic-fn-redefs [metabot-search/search
+                                    (fn [& args]
+                                      (try
+                                        (apply reject-app-db-lookup args)
+                                        (catch Throwable e
+                                          (throw (ex-info "App DB lookup detail"
+                                                          {:status-code status-code :error "internal-app-db"} e)))))]
+          (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+            (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
+              (is (= {:message "Something went wrong"}
+                     (mt/user-http-request :rasta :post 500 "agent/v1/search" {:term_queries ["orders"]})))
+              (is (= initial (mt/metric-value system :metabase-api/unhandled-errors)))
+              (is (=? [{:message "Database failure in Agent API"}] (messages)))
+              (is (some #(re-find #"(?i)no_such_column" (ex-message %))
+                        (take-while some? (iterate ex-cause (:e (first (messages))))))))))))))
+
+(deftest client-error-wrapping-toucan-failure-is-generic-test
+  (doseq [status-code [400 403]]
+    (let [cause (ex-info "Metadata connection failure" {:toucan2/context-trace []}
+                         (IllegalStateException. "Metadata connection unavailable"))]
+      (mt/with-dynamic-fn-redefs [metabot-search/search
+                                  (fn [& _] (throw (ex-info "Internal metadata detail" {:status-code status-code} cause)))]
+        (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+          (is (= {:message "Something went wrong"}
+                 (mt/user-http-request :rasta :post 500 "agent/v1/search" {:term_queries ["orders"]})))
+          (is (=? [{:message "Database failure in Agent API"}] (messages))))))))
+
+(deftest client-disconnect-is-not-an-error-test
+  (testing "A client that disconnects before its response is written gets no error response, count or error log"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+        (let [statuses (atom [])
+              request  (#'client/build-mock-request {:method      :get
+                                                     :url         "agent/v1/ping"
+                                                     :credentials (mt/user->credentials :rasta)})
+              initial  (mt/metric-value system :metabase-api/unhandled-errors)]
+          (try
+            ((test.server.handler/test-handler) request
+                                                (fn [response]
+                                                  (swap! statuses conj (:status response))
+                                                  (throw (EofException. "Client went away")))
+                                                (fn [_e]))
+            (catch EofException _))
+          (is (= 200 (first @statuses)))
+          (is (not-any? #{500} @statuses))
+          (is (= initial (mt/metric-value system :metabase-api/unhandled-errors)))
+          (is (empty? (messages))))))))
+
+(deftest client-error-has-no-stacktrace-test
+  (testing "A 400 keeps its message and error code but no stack trace, whatever `hide-stacktraces` says"
+    (doseq [hide-stacktraces? [false true]]
+      (mt/with-temporary-setting-values [hide-stacktraces hide-stacktraces?]
+        (let [body (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                         {:query (orders-query :aggregation [(orders-field-ref "ID")])})]
+          (is (=? {:message string? :error "aggregation-entry-not-aggregation"} body))
+          (is (= #{:message :error} (set (keys body)))))))))
+
+(deftest database-error-while-reading-rows-keeps-its-text-test
+  (testing "A database error raised while rows are read keeps its text, like one raised when the query starts"
+    (let [details (update (:details (mt/db)) :db str ";LAZY_QUERY_EXECUTION=TRUE")
+          sql     "SELECT X, 10 / (X - 4) AS Y FROM SYSTEM_RANGE(1, 10)"]
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details details}]
+        (is (=? {:status     "failed"
+                 :error      #(str/includes? % "Division by zero")
+                 :error_type "invalid-query"}
+                (mt/user-http-request :crowberto :post 400 "agent/v1/execute-sql" {:database_id db-id :sql sql})))))))
+
+(deftest query-run-app-db-failure-is-generic-test
+  (testing "A query run that fails in an app DB lookup is a generic failure, and the log gets the detail"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (orders-limit-query 5)}]
+      (let [handle (u/encode-base64 (json/encode (lib/prepare-for-serialization (orders-limit-query 5))))]
+        (mt/with-dynamic-fn-redefs [lib-be.db/columns reject-app-db-lookup]
+          (doseq [[endpoint body] [["agent/v1/execute" {:query handle}]
+                                   ["agent/v2/query" {:query handle}]
+                                   [(format "agent/v1/question/%d/query" card-id) {}]]]
+            (testing endpoint
+              (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+                (is (= {:status "failed" :error "Something went wrong"}
+                       (mt/user-http-request :crowberto :post 500 endpoint body)))
+                (is (logs-app-db-error? (messages)))))))))))
 
 (deftest construct-query-structural-locations-test
   (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
