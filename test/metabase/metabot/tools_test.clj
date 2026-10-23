@@ -362,6 +362,26 @@
     :stages   (-> (mapv #(merge {:lib/type "mbql.stage/mbql"} %) stages)
                   (assoc-in [0 :source-table] [db "PUBLIC" "CHECKINS"]))}))
 
+(deftest construct-notebook-query-summary-fields-test
+  (let [db       (t2/select-one-fn :name :model/Database (mt/id))
+        fk       (fn [table column] [db "PUBLIC" table column])
+        wrong    ["field" {:source-field (fk "CHECKINS" "VENUE_ID")} (fk "CATEGORIES" "NAME")]
+        non-fk   ["field" {:source-field (fk "CHECKINS" "DATE")} (fk "VENUES" "NAME")]
+        breakout ["field" {} (fk "CHECKINS" "VENUE_ID")]]
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [stage [{:aggregation [["count" {}]] :fields [wrong]}
+                     {:aggregation [["count" {}]] :fields [non-fk]}
+                     {:breakout [breakout] :fields [wrong]}]]
+        (testing (pr-str stage)
+          (let [build!  #(construct-checkins-query db [stage])
+                control (source-field-qp-control! build!)
+                actual  (qp/process-query (get-in (build!) [:structured-output :query]))]
+            (is (= :completed (:status control) (:status actual)))
+            (is (seq (mt/rows actual)))
+            (is (= (set (mt/rows control)) (set (mt/rows actual))))
+            (when (:aggregation stage)
+              (is (= [[1000]] (mt/rows actual))))))))))
+
 (deftest construct-notebook-query-supported-source-fields-test
   (let [db          (t2/select-one-fn :name :model/Database (mt/id))
         fk          (fn [table column] [db "PUBLIC" table column])
@@ -442,6 +462,49 @@
         (is (str/includes? (or (ex-message e) "") (str "Use `source-field` " (pr-str user-id)))))
       (testing "the direct key suggested by the hint builds and runs"
         (is (seq (mt/rows (qp/process-query (get-in (query user-id) [:structured-output :query])))))))))
+
+(deftest construct-notebook-query-model-source-field-hint-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [mp              (mt/metadata-provider)
+          db              (t2/select-one-fn :name :model/Database (mt/id))
+          key-id          (mt/id :checkins :venue_id)
+          original-target (t2/select-one-fn :fk_target_field_id :model/Field key-id)
+          key-path        [db "PUBLIC" "CHECKINS" "VENUE_ID"]
+          target-path     [db "PUBLIC" "VENUES" "NAME"]
+          query           (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                            [(lib.metadata/field mp key-id)])
+          result          (qp/process-query query)]
+      (is (= :completed (:status result)))
+      (mt/with-temp [:model/Card {eid :entity_id card-id :id}
+                     {:name "Stored venue key" :type :model :dataset_query query :result_metadata (get-in result [:data :cols])}]
+        (let [metadata-before (t2/select-one-fn :result_metadata :model/Card card-id)
+              build!          #(construct/execute-representations-query
+                                {:lib/type "mbql/query"
+                                 :stages [{:lib/type "mbql.stage/mbql" :source-card eid
+                                           :aggregation [["count" {}]]
+                                           :breakout [["field" {:source-field key-path} target-path]]}]})]
+          (try
+            (let [updated (mt/user-http-request :crowberto :put 200 (str "field/" key-id)
+                                                {:fk_target_field_id (mt/id :users :id)})
+                  error   (try (build!) (catch clojure.lang.ExceptionInfo e e))]
+              (is (= (mt/id :users :id) (:id (:target updated))))
+              (is (= metadata-before (t2/select-one-fn :result_metadata :model/Card card-id)))
+              (is (= :wrong-source-field (:error (ex-data error))))
+              (assert-source-field-qp-failure! build!)
+              (is (not (str/includes? (or (ex-message error) "")
+                                      (str "Use `source-field` " (pr-str key-path) " to reach \"VENUES\" directly."))))
+              (is (str/includes? (or (ex-message error) "") "join \"VENUES\" explicitly"))
+              (let [corrected (construct/execute-representations-query
+                               {:lib/type "mbql/query"
+                                :stages [{:lib/type "mbql.stage/mbql" :source-card eid
+                                          :joins [(checkins-venues-join db)] :aggregation [["count" {}]]
+                                          :breakout [["field" {:join-alias "Venues"} target-path]]}]})
+                    rows      (qp/process-query (get-in corrected [:structured-output :query]))]
+                (is (= :completed (:status rows)))
+                (is (= 100 (count (mt/rows rows))))))
+            (finally
+              (mt/user-http-request :crowberto :put 200 (str "field/" key-id)
+                                    {:fk_target_field_id original-target}))))))))
 
 (deftest construct-notebook-query-source-field-join-alias-hint-test
   (let [db            (t2/select-one-fn :name :model/Database (mt/id))

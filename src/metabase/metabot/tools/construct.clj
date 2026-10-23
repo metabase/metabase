@@ -33,6 +33,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
+   [metabase.query-processor.core :as qp]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -657,6 +658,10 @@
     field-ref
     (serdes.resolve/export-mbql (resolve.mp/export-resolver metadata-provider permission-aware-content-store) field-ref)))
 
+(defn- foreign-key-target-table-id
+  [metadata-provider field]
+  (some->> (:fk-target-field-id field) (lib.metadata/field metadata-provider) :table-id))
+
 (defn- direct-source-field-hint
   [metadata-provider columns table-id table-name]
   (when-let [field-ids (seq (distinct (keep (fn [column]
@@ -669,7 +674,7 @@
           fields          (->> fields
                                (filter #(contains? queryable-tables (:table-id %)))
                                entity-details/permission-filter-columns
-                               (filter :fk-target-field-id))]
+                               (filter #(= table-id (foreign-key-target-table-id metadata-provider %))))]
       (when (seq fields)
         (format "Use `source-field` %s to reach %s directly."
                 (str/join " or " (map #(pr-str (nth (field-ref-for-error metadata-provider [:field {} (:id %)]) 2)) fields))
@@ -710,7 +715,7 @@
   [query]
   (let [contexts (volatile! [])]
     (lib.walk/walk-clauses
-     query
+     (qp/drop-fields-in-summaries query)
      (fn [query path-type path clause]
        (when (and (lib.util/clause? clause)
                   (= :field (first clause))
@@ -730,11 +735,11 @@
   (when (and (pos-int? source-field) (pos-int? target))
     (let [field       (lib.metadata/field metadata-provider target)
           key-field   (lib.metadata/field metadata-provider source-field)
-          fk-target   (some->> (:fk-target-field-id key-field) (lib.metadata/field metadata-provider))]
+          fk-table-id (foreign-key-target-table-id metadata-provider key-field)]
       (and (:table-id field)
            key-field
            (if (:fk-target-field-id key-field)
-             (and (:table-id fk-target) (not= (:table-id field) (:table-id fk-target)))
+             (and fk-table-id (not= (:table-id field) fk-table-id))
              true)))))
 
 (defn- assert-source-fields-reach-their-tables!
@@ -753,7 +758,7 @@
                                         {:agent-error? true :status-code 400 :error :wrong-source-field})))
           table-id    (:table-id (get fields target))
           fk-field    (get fields source-field)
-          fk-table-id (some->> (:fk-target-field-id fk-field) (lib.metadata/field mp) :table-id)
+          fk-table-id (foreign-key-target-table-id mp fk-field)
           field-ref   (field-ref-for-error mp field-ref)]
       (throw (wrong-source-field-error mp field-ref table-id fk-table-id (lib/visible-columns query stage-number))))))
 
