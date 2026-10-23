@@ -20,6 +20,7 @@
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.warehouse-schema.models.table :as table]))
 
@@ -73,6 +74,12 @@
                           (tracing/with-span :sync "sync.metadata.fetch-metadata" {:db/id (:id database)}
                             (fetch-metadata/db-metadata database))
                           (catch Throwable e
+                            ;; `log-if-error` logs a transient failure only at DEBUG, and the sync operation rethrows
+                            ;; it without logging, so a caller that drops the exception (e.g. a `future`) leaves no
+                            ;; other trace
+                            (when (sync-util/transient-exception? e)
+                              (log/warnf "Could not fetch metadata for %s: %s"
+                                         (sync-util/name-for-logging database) (ex-message e)))
                             (sync-util/set-initial-database-sync-aborted! database e)
                             (throw e)))
         ;; holder the `sync-tables` step fills with any `_metabase_metadata` table(s) as it streams

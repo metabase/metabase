@@ -77,3 +77,15 @@
       (#'sync-metadata/sync-db-metadata!* (t2/select-one :model/Database :id (mt/id)))
       (is (= {:initial_sync_status "complete", :initial_sync_error nil}
              (t2/select-one [:model/Database :initial_sync_status :initial_sync_error] :id (mt/id)))))))
+
+(deftest transient-db-metadata-failure-is-logged-test
+  (testing "an unreachable warehouse logs a WARN even when the caller drops the exception (e.g. POST /api/notify/db)"
+    (mt/with-dynamic-fn-redefs [fetch-metadata/db-metadata
+                                (fn [_database]
+                                  (throw (java.sql.SQLException.
+                                          "Connections could not be acquired from the underlying database!"
+                                          (com.mchange.v2.resourcepool.CannotAcquireResourceException. "x"))))]
+      (mt/with-log-messages-for-level [messages [metabase.sync.sync-metadata :warn]]
+        (is (thrown? Throwable (sync-metadata/sync-db-metadata! (mt/db))))
+        (is (=? [{:level :warn, :message #"Could not fetch metadata for .*Connections could not be acquired.*"}]
+                (messages)))))))
