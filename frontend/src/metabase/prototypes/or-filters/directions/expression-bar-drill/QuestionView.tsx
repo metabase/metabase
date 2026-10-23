@@ -5,11 +5,9 @@ import { useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
 import { defaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
-import { FilterPanelPopover } from "metabase/querying/filters/components/FilterPanel/FilterPanelPopover";
 import {
   ActionIcon,
   Box,
-  Flex,
   Group,
   Icon,
   Loader,
@@ -23,6 +21,7 @@ import type { RawSeries } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import type { FilterCanvasProps } from "../../types";
+import S from "../expression-bar-2/ExpressionBar.module.css";
 
 import { ExpressionBar, type ExpressionBarProps } from "./ExpressionBar";
 
@@ -127,8 +126,7 @@ export function QuestionView({
       </Group>
 
       <Box style={{ borderTop: "1px solid var(--mb-color-border-neutral)" }}>
-        <Bar query={query} stageIndex={STAGE_INDEX} onChange={onChange} />
-        <LaterStageFilters query={query} onChange={onChange} />
+        <StagedBars query={query} onChange={onChange} Bar={Bar} />
       </Box>
 
       <Chart
@@ -140,43 +138,49 @@ export function QuestionView({
   );
 }
 
+type StagedBarsProps = {
+  query: Lib.Query;
+  onChange: (query: Lib.Query) => void;
+  Bar: ComponentType<ExpressionBarProps>;
+};
+
 /**
  * Drills on an aggregated column ("Sum of Total > 1,000") filter a new stage
- * after the summary. The bar edits stage 0, so those show as plain pills.
+ * after the summary. Each stage with filters gets its own row of the same bar,
+ * numbered like the inline stages prototype.
  */
-function LaterStageFilters({ query, onChange }: FilterCanvasProps) {
-  const stages = Array.from(
+function StagedBars({ query, onChange, Bar }: StagedBarsProps) {
+  const laterStages = Array.from(
     { length: Lib.stageCount(query) - 1 },
     (_, index) => index + 1,
   ).filter((stageIndex) => Lib.filters(query, stageIndex).length > 0);
 
-  if (stages.length === 0) {
-    return null;
+  if (laterStages.length === 0) {
+    return <Bar query={query} stageIndex={STAGE_INDEX} onChange={onChange} />;
   }
 
   return (
-    <Flex
-      align="center"
-      wrap="wrap"
-      gap="sm"
-      px="xxl"
-      py="sm"
-      style={{ borderBottom: "1px solid var(--mb-color-border-neutral)" }}
-    >
-      <Text size="sm" c="text-secondary">{t`After summarizing`}</Text>
-      {stages.flatMap((stageIndex) =>
-        Lib.filters(query, stageIndex).map((filter, filterIndex) => (
-          <FilterPanelPopover
-            key={`${stageIndex}-${filterIndex}`}
+    <>
+      {[STAGE_INDEX, ...laterStages].map((stageIndex, index) => (
+        <Box key={stageIndex} pos="relative">
+          <Box
+            component="span"
+            className={S.stageBadge}
+            pos="absolute"
+            left="0.75rem"
+            top="1.125rem"
+            style={{ zIndex: 1 }}
+          >
+            {index + 1}
+          </Box>
+          <Bar
             query={query}
             stageIndex={stageIndex}
-            filter={filter}
-            filterIndex={filterIndex}
             onChange={(next) => onChange(Lib.dropEmptyStages(next))}
           />
-        )),
-      )}
-    </Flex>
+        </Box>
+      ))}
+    </>
   );
 }
 
