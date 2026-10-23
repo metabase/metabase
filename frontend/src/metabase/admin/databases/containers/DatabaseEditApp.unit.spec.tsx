@@ -125,25 +125,27 @@ describe("DatabaseEditApp", () => {
     expect(
       await screen.findByRole("heading", { name: "Sample Database" }),
     ).toBeInTheDocument();
+    expect(fetchMock.callHistory.called("database-7-null-details")).toBe(true);
     expect(
       screen.getByRole("button", { name: "Remove this database" }),
     ).toBeEnabled();
   });
 
-  it("disables editing an attached DWH sample database with null details", async () => {
+  it("disables editing and removing an attached DWH database with null details", async () => {
     setup({
       database: createMockDatabase({
-        id: 7,
-        name: "Sample Database",
-        is_sample: true,
+        id: 8,
+        name: "Cloud Warehouse",
+        features: ["actions"],
         is_attached_dwh: true,
       }),
       hasNullDetails: true,
     });
 
     expect(
-      await screen.findByRole("heading", { name: "Sample Database" }),
+      await screen.findByRole("heading", { name: "Cloud Warehouse" }),
     ).toBeInTheDocument();
+    expect(fetchMock.callHistory.called("database-8-null-details")).toBe(true);
     const editButton = screen.getByRole("button", {
       name: "Edit connection details",
     });
@@ -151,9 +153,15 @@ describe("DatabaseEditApp", () => {
     await userEvent.hover(editButton);
     expect(
       await screen.findByRole("tooltip", {
-        name: "The sample database cannot be edited.",
+        name: "This database is managed by Metabase Cloud and cannot be modified.",
       }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Remove this database" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("database-data-actions-section"),
+    ).not.toBeInTheDocument();
   });
 
   describe("database routing", () => {

@@ -27,7 +27,7 @@ interface SetupOpts {
 
 const setup = ({
   listErrorMessage,
-  hasAdvancedPermissions,
+  hasAdvancedPermissions = false,
 }: SetupOpts = {}) => {
   setupEnginesEndpoint({});
   if (listErrorMessage) {
@@ -39,20 +39,26 @@ const setup = ({
   }
   setupEnginesEndpoint(createMockEngines());
 
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures({
+      advanced_permissions: hasAdvancedPermissions,
+    }),
+  });
   if (hasAdvancedPermissions) {
-    mockSettings({
-      "token-features": createMockTokenFeatures({
-        advanced_permissions: true,
-      }),
-    });
     setupEnterpriseOnlyPlugin("feature_level_permissions");
   }
 
   renderWithProviders(<DatabaseListApp />, {
     storeInitialState: createMockState({
       currentUser: createMockUser({ is_superuser: true }),
+      settings,
     }),
   });
+};
+
+const getListRequestParams = () => {
+  const [call] = fetchMock.callHistory.calls("path:/api/database");
+  return new URL(call.url).searchParams;
 };
 
 describe("DatabaseListApp", () => {
@@ -64,8 +70,19 @@ describe("DatabaseListApp", () => {
     setup();
 
     expect(await screen.findByText("Stubbed DB")).toBeInTheDocument();
-    const [call] = fetchMock.callHistory.calls("path:/api/database");
-    expect(new URL(call.url).searchParams.get("include_stubs")).toBe("true");
+    expect(getListRequestParams().get("include_stubs")).toBe("true");
+    expect(getListRequestParams().has("exclude_uneditable_details")).toBe(
+      false,
+    );
+  });
+
+  it("requests the list without uneditable details with advanced permissions", async () => {
+    setup({ hasAdvancedPermissions: true });
+
+    expect(await screen.findByText("Stubbed DB")).toBeInTheDocument();
+    expect(getListRequestParams().get("exclude_uneditable_details")).toBe(
+      "true",
+    );
   });
 
   describe("when listing databases fails (metabase#20471)", () => {
@@ -87,18 +104,6 @@ describe("DatabaseListApp", () => {
       await userEvent.click(screen.getByText("Show error details"));
 
       expect(screen.getByText(errorMessage)).toBeVisible();
-    });
-
-    it("requests the list without uneditable details with advanced permissions", async () => {
-      setup({ listErrorMessage: errorMessage, hasAdvancedPermissions: true });
-
-      expect(
-        await screen.findByText(/Something.s gone wrong/),
-      ).toBeInTheDocument();
-      const [call] = fetchMock.callHistory.calls("database-list-error");
-      expect(
-        new URL(call.url).searchParams.get("exclude_uneditable_details"),
-      ).toBe("true");
     });
   });
 });
