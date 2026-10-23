@@ -29,17 +29,18 @@
     (assoc field :target target-field)))
 
 (defn get-field
-  "Get `Field` with ID. `preview-ai-proposals?` needs `include-editable-data-model?`: the Field reads its pending AI
-  proposals as if accepted, see [[warehouse-schema.db/field]]."
+  "Get `Field` with ID. `preview-ai-proposals?` needs `include-editable-data-model?`: for a superuser, the Field reads
+  its pending AI proposals as if accepted, see [[warehouse-schema.db/field]]. Other users get the normal read."
   [id {:keys [include-editable-data-model? preview-ai-proposals?]}]
   (api/check-400 (or (not preview-ai-proposals?) include-editable-data-model?)
                  "preview_ai_proposals requires include_editable_data_model")
-  (let [field (-> (api/check-404 (warehouse-schema.db/field id {:ai-proposals? (boolean preview-ai-proposals?)}))
-                  (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
-        field (if include-editable-data-model?
-                (-> (hydrate-target-with-data-model-perms field)
-                    (t2/hydrate :data_sensitivity_source))
-                (t2/hydrate field :target))]
+  (let [ai-proposals? (boolean (and preview-ai-proposals? api/*is-superuser?*))
+        field         (-> (api/check-404 (warehouse-schema.db/field id {:ai-proposals? ai-proposals?}))
+                          (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
+        field         (if include-editable-data-model?
+                        (-> (hydrate-target-with-data-model-perms field)
+                            (t2/hydrate :data_sensitivity_source))
+                        (t2/hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;
     ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for

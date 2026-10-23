@@ -3,12 +3,15 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.db :as warehouse-schema.db]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
+
+(use-fixtures :each (fn [f] (mt/with-premium-features #{:data-sensitivity} (f))))
 
 (def ^:private attributes
   "Per attribute: a deterministic, an AI, a human and a proposed value, as the Field reads them."
@@ -109,3 +112,54 @@
                 (fields-of :include_editable_data_model true :preview_ai_proposals true)))
         (mt/user-http-request :crowberto :get 400 (format "table/%d/query_metadata" table-id)
                               :preview_ai_proposals true)))))
+
+(deftest preview-hides-reasoning-from-users-who-cannot-view-data-test
+  (testing "a metadata manager whose view-data is blocked reads neither the reasoning nor the value of a proposal"
+    (mt/with-premium-features #{:advanced-permissions :data-sensitivity}
+      (mt/with-temp [:model/Database         {db-id :id}    {}
+                     :model/Table            {table-id :id} {:db_id db-id}
+                     :model/Field            {field-id :id} {:table_id table-id :base_type :type/Text}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _    {:group_id group-id :user_id (mt/user->id :rasta)}]
+        (propose! table-id field-id :data_sensitivity :PII
+                  :reasoning "Values such as alice.secret@acme.com are emails.")
+        (propose! table-id field-id :description "Emails such as bob.secret@acme.com")
+        (t2/delete! :model/DataPermissions :db_id db-id)
+        (perms/set-database-permission! group-id db-id :perms/view-data :blocked)
+        (perms/set-database-permission! group-id db-id :perms/create-queries :no)
+        (perms/set-table-permission! group-id table-id :perms/manage-table-metadata :yes)
+        (mt/user-http-request :rasta :get 403 (format "field/%d/values" field-id))
+        (doseq [[url fields-of] {(str "field/" field-id)                    vector
+                                 (format "table/%d/query_metadata" table-id) :fields}]
+          (testing url
+            (let [response (mt/user-http-request :rasta :get 200 url
+                                                 :include_editable_data_model true
+                                                 :preview_ai_proposals true)]
+              (is (=? [{:id field-id}] (fields-of response)))
+              (is (not-any? :ai_proposals (fields-of response)))
+              (is (not (str/includes? (pr-str response) "alice.secret@acme.com")))
+              (is (not (str/includes? (pr-str response) "bob.secret@acme.com"))))))
+        (testing "a superuser reads both"
+          (is (=? {:description  "Emails such as bob.secret@acme.com"
+                   :ai_proposals {:data_sensitivity {:reasoning "Values such as alice.secret@acme.com are emails."}}}
+                  (mt/user-http-request :crowberto :get 200 (str "field/" field-id)
+                                        :include_editable_data_model true :preview_ai_proposals true))))))))
+
+(deftest preview-needs-data-sensitivity-feature-test
+  (testing "without the :data-sensitivity feature the preview reads no pending proposal"
+    (mt/with-temp [:model/Database {db-id :id}    {}
+                   :model/Table    {table-id :id} {:db_id db-id}
+                   :model/Field    {field-id :id} {:table_id table-id :semantic_type :type/Category}]
+      (propose! table-id field-id :semantic_type :type/City)
+      (mt/with-premium-features #{}
+        (testing "GET /api/field/:id"
+          (let [field (mt/user-http-request :crowberto :get 200 (str "field/" field-id)
+                                            :include_editable_data_model true :preview_ai_proposals true)]
+            (is (= "type/Category" (:semantic_type field)))
+            (is (empty? (:ai_proposals field)))))
+        (testing "GET /api/table/:id/query_metadata"
+          (let [[field] (:fields (mt/user-http-request :crowberto :get 200
+                                                       (format "table/%d/query_metadata" table-id)
+                                                       :include_editable_data_model true :preview_ai_proposals true))]
+            (is (= "type/Category" (:semantic_type field)))
+            (is (empty? (:ai_proposals field)))))))))

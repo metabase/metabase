@@ -70,8 +70,8 @@
 (defn fetch-query-metadata*
   "Returns the query metadata used to power the Query Builder for the given `table`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings.
-  `preview-ai-proposals?` needs `include-editable-data-model?`: the fields read their pending AI proposals as if
-  accepted, see [[warehouse-schema.db/ai-proposal-previews]]."
+  `preview-ai-proposals?` needs `include-editable-data-model?`: for a superuser, the fields read their pending AI
+  proposals as if accepted, see [[warehouse-schema.db/ai-proposal-previews]]. Other users get the normal read."
   [table {:keys [include-sensitive-fields? include-hidden-fields? include-editable-data-model? preview-ai-proposals?]}]
   (api/check-400 (or (not preview-ai-proposals?) include-editable-data-model?)
                  "preview_ai_proposals requires include_editable_data_model")
@@ -87,7 +87,7 @@
     (-> table
         (update :collection nil-if-unreadable)
         (#(apply t2/hydrate % hydration-keys))
-        (cond-> preview-ai-proposals? (update :fields with-ai-proposal-previews))
+        (cond-> (and preview-ai-proposals? api/*is-superuser?*) (update :fields with-ai-proposal-previews))
         (m/dissoc-in [:db :details])
         format-fields-for-response
         present-table

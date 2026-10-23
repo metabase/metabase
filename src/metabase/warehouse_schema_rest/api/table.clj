@@ -328,7 +328,8 @@
    Defaults to `false`.
 
    Passing `preview_ai_proposals=true` together with `include_editable_data_model=true` makes the fields read their
-   pending AI proposals as if accepted, with an `ai_proposals` map per field (see `GET /api/field/:id`).
+   pending AI proposals as if accepted, with an `ai_proposals` map per field (see `GET /api/field/:id`). It applies
+   only to superusers on an instance with the `:data-sensitivity` feature; other users get the read without it.
 
    The response includes `can_write`, which is false when the user cannot edit the table's metadata right now.
 

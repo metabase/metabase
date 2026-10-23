@@ -3,6 +3,7 @@
   in its user-settings table. `metabase_field_user_settings` holds human values and, for the columns of
   [[field-ai-columns]], accepted AI values too."
   (:require
+   [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -77,18 +78,14 @@
         [:case [:= [:coalesce settings-column field-column] true] true :else false]
         [:coalesce settings-column field-column]))))
 
-(defmulti field-ai-proposal
+(defenterprise field-ai-proposal
   "Honey SQL for the pending AI proposal of `attribute`, a key of [[field-ai-columns]], for the Field aliased
   `field-alias`, with the proposal table aliased `proposal-alias`: a map of `:join`, a `:left-join` pair that adds at
   most one row per Field, and the `:value`, `:reasoning` and `:confidence` expressions, NULL when there is no pending
-  proposal. Dispatches on `source`. The proposals live in an EE table, so EE implements `:ai-proposals`. Without a
-  method, `{:ai-proposals? true}` reads the same as the default."
-  {:arglists '([source field-alias proposal-alias attribute])}
-  (fn [source _field-alias _proposal-alias _attribute]
-    source))
-
-(defmethod field-ai-proposal :default
-  [_source _field-alias _proposal-alias _attribute]
+  proposal. The proposals live in an EE table. Without the `:data-sensitivity` feature this returns nil, and
+  `{:ai-proposals? true}` reads the same as the default."
+  metabase-enterprise.data-sensitivity.overlay
+  [_field-alias _proposal-alias _attribute]
   nil)
 
 (defn- ai-proposal-column
@@ -102,7 +99,7 @@
   (into {}
         (keep (fn [attribute]
                 (let [proposal-alias (keyword (str "p_" (name attribute)))]
-                  (when-let [proposal (field-ai-proposal :ai-proposals :f proposal-alias attribute)]
+                  (when-let [proposal (field-ai-proposal :f proposal-alias attribute)]
                     [attribute proposal]))))
         (sort (filter (set merged) (keys field-ai-columns)))))
 

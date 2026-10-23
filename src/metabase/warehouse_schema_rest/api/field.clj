@@ -54,9 +54,10 @@
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
   "Get `Field` with ID. With `include_editable_data_model`, also `data_sensitivity_source`: `human`, `ai`,
-  `deterministic`, or null. With `preview_ai_proposals` too, the Field reads its pending AI proposals as if accepted,
-  and `ai_proposals` maps each attribute with a proposal to its `value`, `reasoning`, `confidence` and `conflict` (the
-  proposal is over a human value)."
+  `deterministic`, or null. With `preview_ai_proposals` too, a superuser on an instance with the `:data-sensitivity`
+  feature gets the Field with its pending AI proposals read as if accepted, and `ai_proposals` maps each attribute
+  with a proposal to its `value`, `reasoning`, `confidence` and `conflict` (the proposal is over a human value).
+  Other users get the read without `preview_ai_proposals`."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
