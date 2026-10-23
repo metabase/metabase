@@ -1310,6 +1310,14 @@
                :order-by [:a.table_name]}
               :dialect (sql.qp/quote-style driver)))
 
+(def ^:private ^:const mariadb-json-table-field-error-code 4176)
+
+(defmethod sql-jdbc.execute/impl-error-in-query? :mysql
+  [driver ^SQLException e]
+  (or ((get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc) driver e)
+      (and (= "HY000" (.getSQLState e))
+           (= mariadb-json-table-field-error-code (.getErrorCode e)))))
+
 (defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
   ;; ok to hardcode driver name here because this function only supports app DB types
   (driver-api/query-canceled-exception? :mysql e))
