@@ -104,6 +104,7 @@
     "[Q]Q YYYY" "Q YYYY"      "expected `[xx]`"
     "[Q]Q YYYY" "[T]T YYYY"   "expected `Q`"
     "[Q]Q YYYY" "[C]Q yyyy"   "expected `YYYY`"
+    "[Q]Q YYYY" "[T]T"        "expected `Q`, expected `YYYY`"
 
     "[Q]Q"      "[Q]Q"        nil
     "[Q]Q"      "[K]Q"        nil

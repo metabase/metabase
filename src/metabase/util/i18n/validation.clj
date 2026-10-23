@@ -97,25 +97,23 @@
 
 (defn- dayjs-quarter-pattern-error
   "If `s` is not a valid dayjs format string containing a quarter number, returns an error message"
-  [^String s, needs-yyyy]
-  (let
-   [matches (re-matches #"(.*)\[(.+)\](.*)" s)]
+  [s needs-yyyy?]
+  (let [matches (re-matches #"(.*)\[(.+)\](.*)" s)]
     (if (nil? matches)
       "expected `[xx]`"
-      (let
-       [[_ before _ after] matches
-        pattern (str before after)
-        has-q (str/includes? pattern "Q")
-        has-yyyy (str/includes? pattern "YYYY")
-        errors (cond-> #{}
-                 (not has-q) (conj "expected `Q`")
-                 (and needs-yyyy (not has-yyyy)) (conj "expected `YYYY`"))]
-        (when-not (empty? errors) (str/join ", " errors))))))
+      (let [[_ before _ after] matches
+            pattern (str before after)]
+        (not-empty (str/join ", " (cond-> []
+                                    (not (str/includes? pattern "Q"))
+                                    (conj "expected `Q`")
+
+                                    (and needs-yyyy? (not (str/includes? pattern "YYYY")))
+                                    (conj "expected `YYYY`"))))))))
 
 (defn regex-message-format-error
   "If `s` is not a valid pattern for `msgid`, returns an error message, else `nil`.
   This is used for special cases, like dayjs format strings."
-  [msgid, ^String s]
+  [msgid s]
   (cond
     (= msgid "[Q]Q YYYY") (dayjs-quarter-pattern-error s true)
     (= msgid "[Q]Q") (dayjs-quarter-pattern-error s false)))
