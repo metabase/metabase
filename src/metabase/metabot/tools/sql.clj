@@ -7,6 +7,7 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.run-query :as tools.run-query]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.sql.common :as sql.common]
@@ -159,7 +160,7 @@
                       {:query-id query-id
                        :edits edits
                        :checklist checklist
-                       :queries-state (get-in (some-> (:memory-atom ctx) deref) [:state :queries] {})})
+                       :queries-state (shared/current-queries-state (:memory-atom ctx))})
                      title instructions/edit-sql-query-instructions-for ctx)))
 
 (def edit-sql-query-tool
@@ -191,7 +192,7 @@
                       {:query-id query-id
                        :sql new-query
                        :checklist checklist
-                       :queries-state (get-in (some-> (:memory-atom ctx) deref) [:state :queries] {})})
+                       :queries-state (shared/current-queries-state (:memory-atom ctx))})
                      title instructions/replace-sql-query-instructions-for ctx)))
 
 (def replace-sql-query-tool
