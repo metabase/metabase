@@ -232,9 +232,16 @@ describe("DatabaseConnectionInfoSection", () => {
   describe("Sample database", () => {
     it("should disable editing the connection details", async () => {
       setup({ database: createMockDatabase({ is_sample: true }) });
+      const editButton = await screen.findByRole("button", {
+        name: /Edit connection details/i,
+      });
+      expect(editButton).toBeDisabled();
+      await userEvent.hover(editButton);
       expect(
-        await screen.findByRole("button", { name: /Edit connection details/i }),
-      ).toBeDisabled();
+        await screen.findByRole("tooltip", {
+          name: "The sample database cannot be edited.",
+        }),
+      ).toBeInTheDocument();
     });
   });
 });
