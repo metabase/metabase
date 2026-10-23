@@ -1,10 +1,4 @@
-import {
-  type ChangeEventHandler,
-  type JSX,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { type ChangeEventHandler, type JSX, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
@@ -14,6 +8,7 @@ import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getTimelineName } from "metabase/common/utils/timelines";
 import {
   TimelineModal,
+  TimelineModalLoadingState,
   TimelineModalScrollArea,
 } from "metabase/timelines/common/components/TimelineModal";
 import { ActionIcon, Button, Flex, Icon, Menu, TextInput } from "metabase/ui";
@@ -27,7 +22,9 @@ import SearchEmptyState from "../SearchEmptyState";
 import TimelineEmptyState from "../TimelineEmptyState";
 
 export interface TimelineDetailsModalProps {
-  timeline: Timeline;
+  timeline: Timeline | undefined;
+  loading?: boolean;
+  error?: unknown;
   isArchive?: boolean;
   isOnlyTimeline?: boolean;
   onArchive?: (event: TimelineEvent) => void;
@@ -36,8 +33,13 @@ export interface TimelineDetailsModalProps {
   onGoBack?: (timeline: Timeline) => void;
 }
 
+// Renders `TimelineModal` while loading too, so the modal isn't remounted when
+// the data arrives. A remount puts it above an undo toast that is already showing.
+// TODO GDGT-3419: move the shell into the containers and drop `loading`/`error`.
 const TimelineDetailsModal = ({
   timeline,
+  loading = false,
+  error,
   isArchive = false,
   isOnlyTimeline = false,
   onArchive,
@@ -45,40 +47,23 @@ const TimelineDetailsModal = ({
   onClose,
   onGoBack,
 }: TimelineDetailsModalProps): JSX.Element => {
-  const title = isArchive ? t`Archived events` : getTimelineName(timeline);
-  const [inputText, setInputText] = useState("");
+  if (loading || error || !timeline) {
+    return (
+      <TimelineModal tall animated={false} onClose={onClose}>
+        <TimelineModalLoadingState loading={loading} error={error} />
+      </TimelineModal>
+    );
+  }
 
-  const searchText = useDebouncedValue(
-    inputText.toLowerCase(),
-    SEARCH_DEBOUNCE_DURATION,
-  );
-
-  const events = useMemo(() => {
-    return getEvents(timeline.events, searchText, isArchive);
-  }, [timeline, searchText, isArchive]);
-
-  const menuItems = useMemo(() => {
-    return getMenuItems(timeline, isArchive, isOnlyTimeline);
-  }, [timeline, isArchive, isOnlyTimeline]);
-
-  const handleGoBack = useCallback(() => {
-    onGoBack?.(timeline);
-  }, [timeline, onGoBack]);
-
-  const isNotEmpty = events.length > 0;
-  const isSearching = searchText.length > 0;
-  const canWrite = timeline.collection?.can_write;
+  const menuItems = getMenuItems(timeline, isArchive, isOnlyTimeline);
   const canGoBack = isArchive || !isOnlyTimeline;
-
-  const handleSearchChange: ChangeEventHandler<HTMLInputElement> = (e) =>
-    setInputText(e.target.value);
 
   return (
     <TimelineModal
       tall
       animated={false}
       onClose={onClose}
-      title={title}
+      title={isArchive ? t`Archived events` : getTimelineName(timeline)}
       actions={
         menuItems.length > 0 && (
           <Menu position="bottom-end" shadow="sm">
@@ -95,8 +80,51 @@ const TimelineDetailsModal = ({
           </Menu>
         )
       }
-      onGoBack={canGoBack ? handleGoBack : undefined}
+      onGoBack={canGoBack ? () => onGoBack?.(timeline) : undefined}
     >
+      <TimelineDetailsBody
+        timeline={timeline}
+        isArchive={isArchive}
+        onArchive={onArchive}
+        onUnarchive={onUnarchive}
+      />
+    </TimelineModal>
+  );
+};
+
+interface TimelineDetailsBodyProps {
+  timeline: Timeline;
+  isArchive: boolean;
+  onArchive?: (event: TimelineEvent) => void;
+  onUnarchive?: (event: TimelineEvent) => void;
+}
+
+const TimelineDetailsBody = ({
+  timeline,
+  isArchive,
+  onArchive,
+  onUnarchive,
+}: TimelineDetailsBodyProps): JSX.Element => {
+  const [inputText, setInputText] = useState("");
+
+  const searchText = useDebouncedValue(
+    inputText.toLowerCase(),
+    SEARCH_DEBOUNCE_DURATION,
+  );
+
+  const events = useMemo(() => {
+    return getEvents(timeline.events, searchText, isArchive);
+  }, [timeline, searchText, isArchive]);
+
+  const isNotEmpty = events.length > 0;
+  const isSearching = searchText.length > 0;
+  const canWrite = timeline.collection?.can_write;
+
+  const handleSearchChange: ChangeEventHandler<HTMLInputElement> = (e) =>
+    setInputText(e.target.value);
+
+  return (
+    <>
       {(isNotEmpty || isSearching) && (
         <Flex gap="lg" mb="lg">
           <TextInput
@@ -132,7 +160,7 @@ const TimelineDetailsModal = ({
             <TimelineEmptyState timeline={timeline} />
           ))}
       </TimelineModalScrollArea>
-    </TimelineModal>
+    </>
   );
 };
 

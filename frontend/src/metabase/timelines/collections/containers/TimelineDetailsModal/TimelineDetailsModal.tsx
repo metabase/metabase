@@ -5,10 +5,6 @@ import {
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import { useNavigate } from "metabase/router";
-import {
-  TimelineModal,
-  TimelineModalLoadingState,
-} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
@@ -44,14 +40,6 @@ function TimelineDetailsModalContainer({
   const isLoading = isTimelineLoading || isTimelinesLoading;
   const error = timelineError ?? timelinesError;
 
-  if (isLoading || error || !timeline) {
-    return (
-      <TimelineModal tall onClose={onClose} animated={false}>
-        <TimelineModalLoadingState loading={isLoading} error={error} />
-      </TimelineModal>
-    );
-  }
-
   const handleArchive = (event: TimelineEvent) =>
     archive({ id: event.id, model: "timeline-event" }, true);
 
@@ -61,6 +49,8 @@ function TimelineDetailsModalContainer({
 
   return (
     <TimelineDetailsModal
+      loading={isLoading}
+      error={error}
       onClose={onClose}
       timeline={timeline}
       isOnlyTimeline={timelines.length <= 1}

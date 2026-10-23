@@ -1,4 +1,4 @@
-import { type JSX, useCallback, useMemo } from "react";
+import type { JSX } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -9,6 +9,7 @@ import {
 } from "metabase/common/utils/timelines";
 import {
   TimelineModal,
+  TimelineModalLoadingState,
   TimelineModalScrollArea,
 } from "metabase/timelines/common/components/TimelineModal";
 import { ActionIcon, Icon, Menu } from "metabase/ui";
@@ -21,33 +22,42 @@ import TimelineList from "../TimelineList";
 
 export interface TimelineListModalProps {
   timelines: Timeline[];
-  collection: Collection;
+  collection: Collection | undefined;
+  loading?: boolean;
+  error?: unknown;
   isArchive?: boolean;
   onUnarchive?: (timeline: Timeline) => void;
   onClose: () => void;
   onGoBack?: (collection: Collection) => void;
 }
 
+// Renders `TimelineModal` while loading too, so the modal isn't remounted when
+// the data arrives. A remount puts it above an undo toast that is already showing.
+// TODO GDGT-3419: move the shell into the containers and drop `loading`/`error`.
 const TimelineListModal = ({
   timelines,
   collection,
+  loading = false,
+  error,
   isArchive = false,
   onUnarchive,
   onClose,
   onGoBack,
 }: TimelineListModalProps): JSX.Element => {
+  if (loading || error || !collection) {
+    return (
+      <TimelineModal tall animated={false} onClose={onClose}>
+        <TimelineModalLoadingState loading={loading} error={error} />
+      </TimelineModal>
+    );
+  }
+
   const title = getTitle(timelines, collection, isArchive);
   const menuItems = getMenuItems(collection, isArchive);
   const hasTimelines = timelines.length > 0;
   const hasMenuItems = menuItems.length > 0;
 
-  const sortedTimelines = useMemo(() => {
-    return getSortedTimelines(timelines, collection);
-  }, [timelines, collection]);
-
-  const handleGoBack = useCallback(() => {
-    onGoBack?.(collection);
-  }, [collection, onGoBack]);
+  const sortedTimelines = getSortedTimelines(timelines, collection);
 
   return (
     <TimelineModal
@@ -72,7 +82,7 @@ const TimelineListModal = ({
           </Menu>
         )
       }
-      onGoBack={isArchive ? handleGoBack : undefined}
+      onGoBack={isArchive ? () => onGoBack?.(collection) : undefined}
     >
       <TimelineModalScrollArea justify={hasTimelines ? undefined : "center"}>
         {match({ hasTimelines, isArchive })

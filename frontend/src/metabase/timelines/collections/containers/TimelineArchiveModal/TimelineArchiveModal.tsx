@@ -2,10 +2,6 @@ import { skipToken, useGetTimelineQuery } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useNavigate } from "metabase/router";
-import {
-  TimelineModal,
-  TimelineModalLoadingState,
-} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
@@ -26,14 +22,6 @@ function TimelineArchiveModalContainer({
     id != null ? { id, include: "events", archived: true } : skipToken,
   );
 
-  if (isLoading || error || !timeline) {
-    return (
-      <TimelineModal tall onClose={onClose} animated={false}>
-        <TimelineModalLoadingState loading={isLoading} error={error} />
-      </TimelineModal>
-    );
-  }
-
   const handleUnarchive = (event: TimelineEvent) =>
     archive({ id: event.id, model: "timeline-event" }, false);
 
@@ -43,6 +31,8 @@ function TimelineArchiveModalContainer({
 
   return (
     <TimelineDetailsModal
+      loading={isLoading}
+      error={error}
       onClose={onClose}
       timeline={timeline}
       isArchive

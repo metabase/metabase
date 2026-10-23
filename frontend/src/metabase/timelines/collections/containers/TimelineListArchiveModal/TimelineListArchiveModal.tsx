@@ -5,10 +5,6 @@ import {
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import { useNavigate } from "metabase/router";
-import {
-  TimelineModal,
-  TimelineModalLoadingState,
-} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 
@@ -47,14 +43,6 @@ function TimelineListArchiveModalContainer({
   const isLoading = isTimelinesLoading || isCollectionLoading;
   const error = timelinesError ?? collectionError;
 
-  if (isLoading || error || !collection) {
-    return (
-      <TimelineModal tall onClose={onClose} animated={false}>
-        <TimelineModalLoadingState loading={isLoading} error={error} />
-      </TimelineModal>
-    );
-  }
-
   const onUnarchive = (timeline: Timeline) =>
     archive({ id: timeline.id, model: "timeline" }, false);
 
@@ -64,6 +52,8 @@ function TimelineListArchiveModalContainer({
 
   return (
     <TimelineListModal
+      loading={isLoading}
+      error={error}
       onClose={onClose}
       collection={collection}
       timelines={timelines}

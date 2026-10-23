@@ -1,8 +1,4 @@
 import { skipToken, useListCollectionTimelinesQuery } from "metabase/api";
-import {
-  TimelineModal,
-  TimelineModalLoadingState,
-} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 
 import TimelineIndexModal from "../../components/TimelineIndexModal";
@@ -18,21 +14,9 @@ function TimelineIndexModalContainer({
   onClose,
 }: TimelineIndexModalContainerProps) {
   const collectionId = Urls.extractCollectionId(params.slug);
-  const {
-    data: timelines = [],
-    isLoading,
-    error,
-  } = useListCollectionTimelinesQuery(
+  const { data: timelines = [] } = useListCollectionTimelinesQuery(
     collectionId != null ? { id: collectionId, include: "events" } : skipToken,
   );
-
-  if (isLoading || error) {
-    return (
-      <TimelineModal tall onClose={onClose} animated={false}>
-        <TimelineModalLoadingState loading={isLoading} error={error} />
-      </TimelineModal>
-    );
-  }
 
   return (
     <TimelineIndexModal

@@ -3,10 +3,6 @@ import {
   useGetCollectionQuery,
   useListCollectionTimelinesQuery,
 } from "metabase/api";
-import {
-  TimelineModal,
-  TimelineModalLoadingState,
-} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 
 import TimelineListModal from "../../components/TimelineListModal";
@@ -40,16 +36,10 @@ function TimelineListModalContainer({
   const isLoading = isTimelinesLoading || isCollectionLoading;
   const error = timelinesError ?? collectionError;
 
-  if (isLoading || error || !collection) {
-    return (
-      <TimelineModal tall onClose={onClose} animated={false}>
-        <TimelineModalLoadingState loading={isLoading} error={error} />
-      </TimelineModal>
-    );
-  }
-
   return (
     <TimelineListModal
+      loading={isLoading}
+      error={error}
       onClose={onClose}
       collection={collection}
       timelines={timelines}
