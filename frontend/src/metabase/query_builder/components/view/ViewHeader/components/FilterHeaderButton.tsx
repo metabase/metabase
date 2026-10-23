@@ -20,6 +20,7 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 
 import { updateQuestion } from "../../../../actions";
+import { isExploreModeQuestion } from "../../ExploreBar";
 import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 
 interface FilterHeaderButtonProps {
@@ -129,6 +130,8 @@ FilterHeaderButton.shouldRender = ({
 }: RenderCheckOpts) => {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   return (
+    // filters live in the explore bar instead
+    !isExploreModeQuestion(question, queryBuilderMode) &&
     queryBuilderMode === "view" &&
     !isNative &&
     isEditable &&

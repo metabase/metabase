@@ -1,0 +1,132 @@
+.root {
+  height: 100%;
+  min-height: 0;
+}
+
+.header {
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.wells {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.wellTitle {
+  margin-bottom: 0.375rem;
+  color: var(--mb-color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.well {
+  min-height: 2.75rem;
+  padding: 0.5rem;
+  border: 1px dashed var(--mb-color-border);
+  border-radius: 0.5rem;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    opacity 120ms ease;
+}
+
+.wellAcceptsDrop {
+  border-color: var(--mb-color-brand);
+}
+
+.wellIsOver {
+  border-style: solid;
+  background-color: var(--mb-color-background-brand);
+}
+
+.wellRejectsDrop {
+  opacity: 0.5;
+}
+
+.wellPlaceholder {
+  color: var(--mb-color-text-tertiary);
+  font-size: 0.8125rem;
+}
+
+.draggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+.isDragging {
+  opacity: 0.4;
+}
+
+.addButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.5rem;
+  color: var(--mb-color-text-secondary);
+}
+
+.addButton:hover {
+  color: var(--mb-color-brand);
+  background-color: var(--mb-color-background-hover);
+}
+
+.fieldList {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  padding: 1rem 1rem 0;
+}
+
+.fieldListScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 1rem;
+}
+
+.fieldGroupName {
+  margin: 0.25rem 0;
+  color: var(--mb-color-text-tertiary);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.fieldItem {
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  cursor: grab;
+  touch-action: none;
+}
+
+.fieldItem:hover {
+  background-color: var(--mb-color-background-hover);
+}
+
+.grabber {
+  color: var(--mb-color-text-tertiary);
+  opacity: 0;
+}
+
+.fieldItem:hover .grabber {
+  opacity: 1;
+}
+
+.dragOverlay {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 0.5rem;
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-brand);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  box-shadow: 0 4px 12px var(--mb-color-shadow);
+  cursor: grabbing;
+}
