@@ -20,7 +20,12 @@ import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
 import { Route, useLocation, useParams } from "metabase/router";
 import { parseSearchQuery } from "metabase/utils/browser";
-import type { CollectionItem, RecentItem, Settings } from "metabase-types/api";
+import type {
+  CollectionItem,
+  RecentItem,
+  SearchResult,
+  Settings,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -131,7 +136,7 @@ export interface CommonSetupProps {
   query?: string;
   settings?: Partial<Settings>;
   recents?: RecentItem[];
-  searchItems?: CollectionItem[];
+  searchItems?: (CollectionItem | SearchResult)[];
   isEE?: boolean;
   isAdmin?: boolean;
 }

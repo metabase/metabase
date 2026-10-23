@@ -6,6 +6,7 @@ import { EntityIcon } from "metabase/common/components/EntityIcon";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { VirtualizedList } from "metabase/common/components/VirtualizedList";
 import { NoObjectError } from "metabase/common/components/errors/NoObjectError";
+import type { IconData } from "metabase/common/utils/icon";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { PLUGIN_LIBRARY, PLUGIN_MODERATION } from "metabase/plugins";
 import {
@@ -19,6 +20,8 @@ import {
 } from "metabase/ui";
 
 import type {
+  EntityPickerCustomFolder,
+  EntityPickerCustomItem,
   OmniPickerItem,
   OmniPickerMeasureItem,
   OmniPickerTableItem,
@@ -31,13 +34,20 @@ import {
 } from "../../hooks/use-current-search-scope";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 
+export type CustomSearchResult = {
+  folder: EntityPickerCustomFolder;
+  item: EntityPickerCustomItem;
+};
+
 export const SearchResults = ({
   searchResults,
+  customResults = [],
   isLoading,
   error,
   onClick,
 }: {
   searchResults: OmniPickerItem[];
+  customResults?: CustomSearchResult[];
   isLoading?: boolean;
   error?: unknown;
   onClick?: (item: OmniPickerItem, index: number) => void;
@@ -63,7 +73,7 @@ export const SearchResults = ({
     );
   }
 
-  if (searchResults.length === 0) {
+  if (searchResults.length === 0 && customResults.length === 0) {
     return (
       <EmptyState
         title={t`We didn't find anything`}
@@ -71,6 +81,42 @@ export const SearchResults = ({
       />
     );
   }
+
+  const customRows = customResults.map(({ folder, item }) => (
+    <Box
+      key={`custom-${folder.id}-${item.id}`}
+      pb="xxs"
+      px="sm"
+      data-testid="result-item"
+    >
+      <NavLink
+        w={"auto"}
+        mb={0}
+        label={<Ellipsified maw="21rem">{item.name}</Ellipsified>}
+        rightSection={
+          <LocationLabel
+            icon={{ name: "folder" }}
+            text={folder.name}
+            isSelected={Boolean(item.isSelected)}
+          />
+        }
+        active={item.isSelected}
+        leftSection={
+          <EntityIcon
+            name={item.icon}
+            c={item.isSelected ? "text-primary-inverse" : "core-brand"}
+            size="1rem"
+          />
+        }
+        onClick={(e: React.MouseEvent) => {
+          e.preventDefault(); // prevent form submission
+          e.stopPropagation(); // prevent parent onClick
+          item.onSelect();
+        }}
+        variant="primary"
+      />
+    </Box>
+  ));
 
   return (
     <VirtualizedList
@@ -81,64 +127,68 @@ export const SearchResults = ({
       )}
       estimatedItemSize={66}
     >
-      {searchResults?.map((item, index) => {
-        const isSelected = isSelectedItem(item, selectedItem);
-        const isSelectable = isSelectableItem(item);
+      {customRows.concat(
+        searchResults.map((item, index) => {
+          const isSelected = isSelectedItem(item, selectedItem);
+          const isSelectable = isSelectableItem(item);
 
-        return (
-          <Box
-            key={`${item.model}-${item.id}`}
-            pb="xxs"
-            px="sm"
-            data-testid="result-item"
-            data-model-type={item.model}
-          >
-            <NavLink
-              w={"auto"}
-              disabled={isDisabledItem(item) || !isSelectable}
-              rightSection={
-                <LocationInfo item={item} isSelected={isSelected} />
-              }
-              mb={0}
-              label={
-                <Flex align="center">
-                  <Ellipsified maw="21rem">{item.name} </Ellipsified>
-                  <PLUGIN_MODERATION.ModerationStatusIcon
-                    status={"moderated_status" in item && item.moderated_status}
-                    filled
-                    size={14}
-                    ml="0.5rem"
+          return (
+            <Box
+              key={`${item.model}-${item.id}`}
+              pb="xxs"
+              px="sm"
+              data-testid="result-item"
+              data-model-type={item.model}
+            >
+              <NavLink
+                w={"auto"}
+                disabled={isDisabledItem(item) || !isSelectable}
+                rightSection={
+                  <LocationInfo item={item} isSelected={isSelected} />
+                }
+                mb={0}
+                label={
+                  <Flex align="center">
+                    <Ellipsified maw="21rem">{item.name} </Ellipsified>
+                    <PLUGIN_MODERATION.ModerationStatusIcon
+                      status={
+                        "moderated_status" in item && item.moderated_status
+                      }
+                      filled
+                      size={14}
+                      ml="0.5rem"
+                    />
+                  </Flex>
+                }
+                active={isSelected}
+                leftSection={
+                  <EntityIcon
+                    {...getEntityPickerIcon(item, { isSelected })}
+                    size="1rem"
                   />
-                </Flex>
-              }
-              active={isSelected}
-              leftSection={
-                <EntityIcon
-                  {...getEntityPickerIcon(item, { isSelected })}
-                  size="1rem"
-                />
-              }
-              onClick={(e: React.MouseEvent) => {
-                e.preventDefault(); // prevent form submission
-                e.stopPropagation(); // prevent parent onClick
-
-                if (onClick) {
-                  onClick(item, index);
                 }
+                onClick={(e: React.MouseEvent) => {
+                  e.preventDefault(); // prevent form submission
+                  e.stopPropagation(); // prevent parent onClick
 
-                if (isSelectable) {
-                  setPath((prevPath) => [...prevPath.slice(0, 1), item]);
-
-                  if (!options?.hasConfirmButtons) {
-                    onChange(item);
+                  if (onClick) {
+                    onClick(item, index);
                   }
-                }
-              }}
-              variant="primary"
-            />
-          </Box>
-        );
-      })}
+
+                  if (isSelectable) {
+                    setPath((prevPath) => [...prevPath.slice(0, 1), item]);
+
+                    if (!options?.hasConfirmButtons) {
+                      onChange(item);
+                    }
+                  }
+                }}
+                variant="primary"
+              />
+            </Box>
+          );
+        }),
+      )}
     </VirtualizedList>
   );
 };
@@ -210,19 +260,31 @@ const LocationInfo = ({
   }
 
   return (
-    <Flex gap="xxs" align="center">
-      {iconProps && <Icon {...iconProps} size={12} />}
-      <Text
-        size="sm"
-        c={isSelected ? "text-secondary-inverse" : "text-secondary"}
-      >
-        <Ellipsified maw="12rem" data-testid="picker-item-location">
-          {itemText}
-        </Ellipsified>
-      </Text>
-    </Flex>
+    <LocationLabel icon={iconProps} text={itemText} isSelected={isSelected} />
   );
 };
+
+const LocationLabel = ({
+  icon,
+  text,
+  isSelected,
+}: {
+  icon: IconData | null;
+  text: string;
+  isSelected: boolean;
+}) => (
+  <Flex gap="xxs" align="center">
+    {icon && <Icon {...icon} size={12} />}
+    <Text
+      size="sm"
+      c={isSelected ? "text-secondary-inverse" : "text-secondary"}
+    >
+      <Ellipsified maw="12rem" data-testid="picker-item-location">
+        {text}
+      </Ellipsified>
+    </Text>
+  </Flex>
+);
 
 export function SearchScopeSelector() {
   const { setSearchScope, options: pickerOptions } = useOmniPickerContext();

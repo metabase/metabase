@@ -322,3 +322,7 @@
       (let [hydrated (t2/hydrate card :can_query)]
         (is (contains? hydrated :can_query))
         (is (boolean? (:can_query hydrated)))))))
+
+(deftest ^:parallel ->integer-test
+  (testing "casts to an integer on every app DB, though MySQL and MariaDB have no INTEGER cast type"
+    (is (= 42 (:n (t2/query-one {:select [[(mi/->integer "42") :n]]}))))))

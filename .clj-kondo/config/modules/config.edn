@@ -2521,6 +2521,7 @@
            appearance
            audit-app
            collections
+           data-apps
            events
            health-inspector
            lib
@@ -2543,6 +2544,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DataApp
                     :model/Database
                     :model/Table
                     :model/User}}
@@ -3828,8 +3830,8 @@
            premium-features
            remote-sync
            request
+           search
            settings
-           users
            util
            util.graph
            warehouse-schema-overlay
@@ -3890,6 +3892,7 @@
            app-db
            batch-processing
            collections
+           data-apps
            database-routing
            documents
            driver
@@ -3925,6 +3928,7 @@
                     :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/DashboardTab
+                    :model/DataApp
                     :model/Database
                     :model/Dimension
                     :model/Document
