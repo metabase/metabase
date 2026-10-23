@@ -122,6 +122,19 @@
    :requires [[mage.start-maildev :as start-maildev]]
    :task (task! (start-maildev/start-maildev!))}
 
+  docs-preview
+  {:doc "Preview the docs of a Metabase repo in your metabase-dot-com checkout, at http://localhost:4000/docs/latest/"
+   :examples [["./bin/mage docs-preview" "Preview the docs of this repo"]
+              ["./bin/mage docs-preview .claude/worktrees/my-feature" "Preview the docs of a worktree (a relative path starts at this repo)"]
+              ["./bin/mage docs-preview ~/code/other-metabase" "Preview the docs of another checkout"]
+              ["./bin/mage docs-preview --site ~/code/www" "Use the metabase-dot-com checkout at ~/code/www"]
+              ["METABASE_DOT_COM_DIR=~/code/www ./bin/mage docs-preview" "The same, from the env. Set it in your shell profile to use it always"]]
+   :requires [[mage.docs-preview :as docs-preview]]
+   :options [[nil "--site DIR" "The metabase-dot-com checkout. A relative path starts at this repo. Default: $METABASE_DOT_COM_DIR, then ~/metabase-dot-com"]
+             [nil "--no-open" "Do not open the browser"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "repo-path" :description "The Metabase repo or worktree with the docs. Default: this repo"}]]]
+   :task (task! (docs-preview/docs-preview! parsed))}
+
   tail-d
   {:doc     "Tail the #d debug log in real time (see dev.debug). Asks the running REPL for the exact path; falls back to DEV_DEBUG_LOG or /tmp/<dir>_debug.log."
    :examples [["./bin/mage tail-d" "tail the #d log, with bat syntax highlighting if available"]]
