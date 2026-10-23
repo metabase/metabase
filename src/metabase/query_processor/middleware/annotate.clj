@@ -71,11 +71,11 @@
   returned a base type more specific than :type/*, use that; otherwise look at the sample of rows and infer the base
   type based on the classes of the values"
   [{:keys [cols]} :- ::metadata]
-  (apply analyze/col-wise
-         (for [{driver-base-type :base_type} cols]
-           (if (contains? #{nil :type/*} driver-base-type)
-             (driver.common/values->base-type)
-             (analyze/constant-fingerprinter driver-base-type)))))
+  (analyze/col-wise
+   (for [{driver-base-type :base_type} cols]
+     (if (contains? #{nil :type/*} driver-base-type)
+       (driver.common/values->base-type)
+       (analyze/constant-rf driver-base-type)))))
 
 (defn- enrich-with-inferred-type
   "Set :base_type and :effective_type to `base-type` in `col`.

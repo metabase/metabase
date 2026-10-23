@@ -79,12 +79,20 @@ async function handleQueryApiError(
   }
 }
 
+// Display types whose rendering actually reads `data.insights`. Every other display can safely skip the backend's
+// per-row fingerprint/insights scan -- see `:skip-insights?` in `metabase.lib.schema.middleware-options`.
+const DISPLAYS_NEEDING_INSIGHTS = new Set(["scalar", "smartscalar", "pivot"]);
+
 // Dispatches the RTK `datasetApi` ad-hoc query endpoint (pivot or non-pivot).
 let adhocDatasetQueryCounter = 0;
 export function runAdhocDatasetQuery(
   dispatch: Dispatch,
   question: Question,
-  body: DatasetQuery & { parameters?: unknown[]; ignore_cache?: boolean },
+  body: DatasetQuery & {
+    parameters?: unknown[];
+    ignore_cache?: boolean;
+    middleware?: { "skip_insights?"?: boolean };
+  },
   signal?: AbortSignal,
 ): Promise<Dataset> {
   const isPivot = shouldUsePivotEndpoint(question);
@@ -203,7 +211,13 @@ export async function runQuestionQuery(
       runAdhocDatasetQuery(
         dispatch,
         question,
-        { ...question.datasetQuery(), parameters },
+        {
+          ...question.datasetQuery(),
+          parameters,
+          ...(DISPLAYS_NEEDING_INSIGHTS.has(question.display())
+            ? {}
+            : { middleware: { "skip_insights?": true } }),
+        },
         signal,
       ),
     ),
