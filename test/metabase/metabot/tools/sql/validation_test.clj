@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest testing is]]
    [metabase.metabot.tools.sql.validation :as metabot.tools.sql.validation]
-   [metabase.sql-parsing.core :as sql-parsing]))
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.test-util :as sql-tools.tu]))
 
 ;;;; contains-template-tags?
 
@@ -178,5 +179,5 @@
              ["snowflake" "WITH x AS (SELECT * FROM orders) SELECT subtotal FROM x"
               "PUBLIC" {"PUBLIC" {"ORDERS" {"SUBTOTAL" "FLOAT"}}}]]]
       (testing sql
-        (is (= "ok" (:status (sql-parsing/validate-query
-                              dialect (transpiled-sql dialect sql) default-schema sqlglot-schema))))))))
+        (is (= "ok" (:status (sql-parsing/validate-query (sql-tools.tu/sqlglot-parser)
+                                                         dialect (transpiled-sql dialect sql) default-schema sqlglot-schema))))))))

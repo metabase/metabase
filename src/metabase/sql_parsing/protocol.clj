@@ -1,13 +1,13 @@
 (ns metabase.sql-parsing.protocol
-  "The strongly-typed protocol implemented by the sqlglot SQL parsers (currently
-  [[metabase.sql-parsing.graal]]). Callers go through [[metabase.sql-parsing.core]], which owns the
-  JVM-side pre/post-processing and invokes these methods on the implementation.")
+  "The strongly-typed protocol implemented by the sqlglot SQL parsers (currently [[metabase.sql-parsing.graal]] and
+  [[metabase.sql-parsing.sqlglot-java]]). Callers go through [[metabase.sql-parsing.core]], which owns the JVM-side
+  pre/post-processing and invokes these methods on the implementation.")
 
 (set! *warn-on-reflection* true)
 
 (defprotocol SqlParser
-  "Dialect-aware SQL parsing via sqlglot. Each method calls the corresponding `sql_tools` Python function
-  and returns its result parsed from JSON into Clojure data, except the SQL-rewriting methods
+  "Dialect-aware SQL parsing via sqlglot. Each method implements the corresponding `sql_tools` function
+  and returns Clojure data, except the SQL-rewriting methods
   ([[add-into-clause]], [[replace-names]]) which return the rewritten SQL string. `dialect` is a sqlglot
   dialect string, or nil for sqlglot's default dialect."
   (referenced-tables [parser dialect sql]

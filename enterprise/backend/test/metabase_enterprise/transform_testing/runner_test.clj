@@ -8,6 +8,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.settings :as sql-tools.settings]
+   [metabase.sql-tools.test-util :as sql-tools.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -327,7 +328,7 @@
 
 (deftest run-transform-test-rejects-unparseable-source-test
   (testing "a SQLGlot parse failure cannot masquerade as a source with no table reads"
-    (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (binding [sql-tools.settings/*parser-backend-override* (sql-tools.tu/sqlglot-backend)]
       (mt/test-drivers (mt/normal-drivers-with-feature :transforms/testing)
         (let [mp (mt/metadata-provider)]
           (mt/with-temp [:model/Transform {transform-id :id}

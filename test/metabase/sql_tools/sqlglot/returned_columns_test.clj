@@ -12,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sql-tools.core :as sql-tools]
+   [metabase.sql-tools.test-util :as sql-tools.tu]
    [metabase.test :as mt]
    [metabase.util :as u]))
 
@@ -38,7 +39,7 @@
   "Get returned columns for a SQL query using the test metadata provider."
   [sql]
   (let [driver (:engine (lib.metadata/database (mt/metadata-provider)))]
-    (sql-tools/returned-columns-impl :sqlglot driver (make-query sql))))
+    (sql-tools/returned-columns-impl (sql-tools.tu/sqlglot-backend) driver (make-query sql))))
 
 ;;; Basic SELECT Tests
 

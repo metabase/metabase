@@ -14,6 +14,8 @@
    [clojure.test :as t]
    [colorize.core :as colorize]
    [environ.core :as env]
+   [metabase.sql-parsing.core :as sql-parsing]
+   [metabase.sql-tools.interface :as sql-tools.interface]
    [metabase.sql-tools.settings :as sql-tools.settings]))
 
 (def ^:private all-backends [:macaw :sqlglot])
@@ -24,6 +26,19 @@
   (if-let [explicit (env/env :mb-sql-tools-parser-backend)]
     [(keyword explicit)]
     all-backends))
+
+(defn sqlglot-backend
+  "The sqlglot backend for tests that only make sense on sqlglot: the current backend when it is a sqlglot one (so
+  under MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-java the tests run on the Java port), else `:sqlglot`."
+  []
+  (let [backend (sql-tools.settings/current-parser-backend)]
+    (if (isa? sql-tools.interface/backend-hierarchy backend :sqlglot) backend :sqlglot)))
+
+(defn sqlglot-parser
+  "The [[metabase.sql-parsing.core/parser]] for [[sqlglot-backend]], for tests that call `metabase.sql-parsing.core`
+  directly."
+  []
+  (sql-parsing/parser (sqlglot-backend)))
 
 (defmacro test-parser-backends
   "Run body against both parser backends (or just one if env var is set)."

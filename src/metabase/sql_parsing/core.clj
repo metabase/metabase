@@ -1,23 +1,23 @@
 (ns metabase.sql-parsing.core
-  "Stateless SQL parsing via sqlglot (Python) and GraalVM Polyglot.
+  "Stateless SQL parsing via GraalPy or Java SQLGlot.
 
   This module provides dialect-aware SQL parsing with no Metabase dependencies.
   All functions take strings and return strings/simple data structures.
 
-  API:
-    (referenced-tables sql dialect) → [[catalog schema table] ...]
-    (referenced-fields dialect sql) → [[catalog schema table field] ...]
-    (returned-columns-lineage dialect sql schema schema-map) → [[col pure? deps] ...]
-    (validate-query dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
+  API (`parser` is a [[parser]], chosen by the caller):
+    (referenced-tables parser dialect sql) → [[catalog schema table] ...]
+    (referenced-fields parser dialect sql) → [[catalog schema table field] ...]
+    (returned-columns-lineage parser dialect sql schema schema-map) → [[col pure? deps] ...]
+    (validate-query parser dialect sql schema schema-map) → {:status :ok} | {:status :error ...}
 
   The parsing itself happens behind the [[metabase.sql-parsing.protocol/SqlParser]] protocol (the
-  GraalPy or native-CPython implementation, per [[metabase.sql-parsing.parser/parser]]); this namespace
-  owns the JVM-side pre- and post-processing around it."
+  GraalPy or Java implementation); this namespace owns the JVM-side pre- and post-processing around it."
   (:require
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.sql-parsing.parser :as parser]
    [metabase.sql-parsing.protocol :as protocol]
+   [metabase.sql-parsing.shadow :as shadow]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
@@ -26,14 +26,26 @@
 
 (set! *warn-on-reflection* true)
 
-(defn- parser
-  "The [[metabase.sql-parsing.protocol/SqlParser]] implementation for the configured mode."
-  []
-  (parser/parser))
+(defn parser
+  "The [[metabase.sql-parsing.protocol/SqlParser]] for `backend`: `:sqlglot` (GraalPy) or `:sqlglot-java` (the Java
+  port). Every parsing function in this namespace takes it as its first argument."
+  [backend]
+  (parser/parser backend))
+
+(defn shadow-parser
+  "A parser that answers with `primary-backend` and compares `shadow-backend` on the same input in the background,
+  when `(sample? method)` says to (see [[metabase.sql-parsing.shadow/parser]]). It owns a thread pool, so keep it for
+  the life of the process."
+  [primary-backend shadow-backend sample?]
+  (shadow/parser {:primary-backend primary-backend
+                  :primary         (parser/parser primary-backend)
+                  :shadow-backend  shadow-backend
+                  :shadow          (parser/parser shadow-backend)
+                  :sample?         sample?}))
 
 (defn parse-error?
   "True if `e` is a sqlglot ParseError — the SQL could not be parsed — regardless of which parser
-  backend threw it. Other Python-side failures (and non-sqlglot exceptions) are false."
+  backend threw it. Other parser failures (and non-sqlglot exceptions) are false."
   [e]
   (let [data (ex-data e)]
     (boolean (and (:sql-parsing/error data)
@@ -301,8 +313,8 @@
 
    This is the pure parsing layer - it returns what's literally in the SQL.
    Default schema resolution happens in the matching layer (core.clj)."
-  [dialect sql]
-  (protocol/referenced-tables (parser) dialect (strip-large-literal-lists sql)))
+  [parser dialect sql]
+  (protocol/referenced-tables parser dialect (strip-large-literal-lists sql)))
 
 (defn referenced-fields
   "Extract field references from SQL, returning only fields from actual database tables.
@@ -319,16 +331,16 @@
    - Table aliases (returns actual table names)
 
    Examples:
-   (referenced-fields \"postgres\" \"SELECT id FROM users\")
+   (referenced-fields parser \"postgres\" \"SELECT id FROM users\")
    => [[nil nil \"users\" \"id\"]]
 
-   (referenced-fields \"postgres\" \"SELECT * FROM public.users\")
+   (referenced-fields parser \"postgres\" \"SELECT * FROM public.users\")
    => [[nil \"public\" \"users\" \"*\"]]
 
-   (referenced-fields \"bigquery\" \"SELECT * FROM myproject.analytics.events\")
+   (referenced-fields parser \"bigquery\" \"SELECT * FROM myproject.analytics.events\")
    => [[\"myproject\" \"analytics\" \"events\" \"*\"]]"
-  [dialect sql]
-  (protocol/referenced-fields (parser) dialect (strip-large-literal-lists sql)))
+  [parser dialect sql]
+  (protocol/referenced-fields parser dialect (strip-large-literal-lists sql)))
 
 (defn returned-columns-lineage
   "Extract column lineage from SQL query, showing which output columns depend on which source columns.
@@ -342,13 +354,13 @@
    {\"schema_name\" {\"table_name\" {\"column_name\" \"TYPE\"}}}
 
    Examples:
-   (returned-columns-lineage \"postgres\" \"SELECT id FROM users\" nil {nil {\"users\" {\"id\" \"INT\"}}})
+   (returned-columns-lineage parser \"postgres\" \"SELECT id FROM users\" nil {nil {\"users\" {\"id\" \"INT\"}}})
    => [[\"id\" true [[[nil \"users\" \"id\"]]]]]
 
-   (returned-columns-lineage \"postgres\" \"SELECT id + 1 as computed FROM users\" nil schema)
+   (returned-columns-lineage parser \"postgres\" \"SELECT id + 1 as computed FROM users\" nil schema)
    => [[\"computed\" false [[[nil \"users\" \"id\"]]]]]"
-  [dialect sql default-table-schema sqlglot-schema]
-  (protocol/returned-columns-lineage (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
+  [parser dialect sql default-table-schema sqlglot-schema]
+  (protocol/returned-columns-lineage parser dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
 
 (defn validate-query
   "Validate a SQL query against a schema using sqlglot's qualify optimizer.
@@ -379,8 +391,8 @@
    - \"column_not_resolved\": Column not found (includes :column key)
    - \"invalid_expression\": Syntax/parse error
    - \"unhandled\": Other errors"
-  [dialect sql default-table-schema & [sqlglot-schema]]
-  (protocol/validate-query (parser) dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
+  [parser dialect sql default-table-schema & [sqlglot-schema]]
+  (protocol/validate-query parser dialect (strip-large-literal-lists sql) default-table-schema sqlglot-schema))
 
 (defn simple-query?
   "Check if SQL is a simple SELECT without LIMIT, OFFSET, or CTEs.
@@ -394,13 +406,13 @@
    - :reason - string explaining why query is not simple (when false)
 
    Examples:
-   (simple-query? \"postgres\" \"SELECT * FROM users\")
+   (simple-query? parser \"postgres\" \"SELECT * FROM users\")
    => {:is_simple true}
 
-   (simple-query? nil \"SELECT * FROM users LIMIT 10\")
+   (simple-query? parser nil \"SELECT * FROM users LIMIT 10\")
    => {:is_simple false :reason \"Contains a LIMIT\"}"
-  [dialect sql]
-  (protocol/simple-query (parser) dialect (strip-large-literal-lists sql)))
+  [parser dialect sql]
+  (protocol/simple-query parser dialect (strip-large-literal-lists sql)))
 
 (defn add-into-clause
   "Add an INTO clause to a SELECT statement for SQL Server SELECT INTO syntax.
@@ -417,8 +429,8 @@
    - table-name: The target table name (already formatted/quoted)
 
    Returns: Modified SQL string with INTO clause"
-  [dialect sql table-name]
-  (protocol/add-into-clause (parser) dialect sql table-name))
+  [parser dialect sql table-name]
+  (protocol/add-into-clause parser dialect sql table-name))
 
 (defn- convert-field-type
   "Convert field type string (snake_case) to keyword (kebab-case)."
@@ -530,9 +542,9 @@
 
    On timeout, returns an error map instead of throwing, consistent with the
    'fail soft' pattern used for parsing failures."
-  [dialect sql]
+  [parser dialect sql]
   (try
-    (let [raw (protocol/field-references (parser) dialect (strip-large-literal-lists sql))
+    (let [raw (protocol/field-references parser dialect (strip-large-literal-lists sql))
           used-fields (or (:used-fields raw) (:used_fields raw) (get raw "used_fields") [])
           returned-fields (or (:returned-fields raw) (:returned_fields raw) (get raw "returned_fields") [])
           errors (or (:errors raw) (get raw "errors") [])]
@@ -562,10 +574,10 @@
    See sql_tools.py replace_names for details.
 
    Examples:
-   (replace-names \"postgres\" \"SELECT * FROM people\" {:tables [[{:table \"people\"} \"users\"]]})
+   (replace-names parser \"postgres\" \"SELECT * FROM people\" {:tables [[{:table \"people\"} \"users\"]]})
    => \"SELECT * FROM users\""
-  [dialect sql replacements]
-  (protocol/replace-names (parser) dialect sql replacements))
+  [parser dialect sql replacements]
+  (protocol/replace-names parser dialect sql replacements))
 
 ;; Parsing time and memory grow with the length of the SQL, whatever it holds, and the "read-only" check runs on SQL
 ;; a user or a model wrote.
@@ -581,7 +593,7 @@
    read statement that also holds nothing that writes or locks anywhere in its tree.
    For \"read-only\", SQL that is not allowed carries a `:reason`, and SQL that is too long or holds a literal list
    too large to parse whole is refused without being parsed."
-  [dialect sql stmt-type]
+  [parser dialect sql stmt-type]
   ;; The length is checked before anything scans the SQL: stripping literal lists is itself work that grows with it.
   (if (and (= stmt-type "read-only") (< max-read-only-sql-chars (count sql)))
     {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason "too-long"}
@@ -591,7 +603,7 @@
       ;; refuses.
       (if (and (= stmt-type "read-only") (not= sql stripped-sql))
         {:is-single-stmt? false, :allowed-stmt-type? false, :sql sql, :reason "large-literal-list"}
-        (let [result (-> (protocol/single-stmt-of-type (parser) dialect stripped-sql stmt-type)
+        (let [result (-> (protocol/single-stmt-of-type parser dialect stripped-sql stmt-type)
                          (perf/update-keys (comp keyword u/->kebab-case-en)))]
           ;; The `:sql` in the `result` is the reconstructed SQL from the SQLGlot parser.
           ;; We generally want to use the reconstructed SQL, but if the original SQL had its VALUES/IN
@@ -601,11 +613,11 @@
             (not= sql stripped-sql) (assoc :sql sql)))))))
 
 (comment
-  (referenced-tables "postgres" "select * from transactions")
+  (referenced-tables (parser :sqlglot) "postgres" "select * from transactions")
 
-  (validate-query "postgres" "SELECT * FROM users" nil)
+  (validate-query (parser :sqlglot-java) "postgres" "SELECT * FROM users" nil)
 
-  (referenced-fields "postgres" "SELECT id, name FROM users WHERE active = true"))
+  (referenced-fields (parser :sqlglot) "postgres" "SELECT id, name FROM users WHERE active = true"))
 
 ;;;; Transpile sql
 
@@ -618,6 +630,6 @@
 
 (defn transpile-sql
   "Transpiles sql string from one dialect to another."
-  [sql from-dialect to-dialect]
+  [parser sql from-dialect to-dialect]
   (normalize-transpilation-result
-   (protocol/transpile-sql (parser) sql from-dialect to-dialect)))
+   (protocol/transpile-sql parser sql from-dialect to-dialect)))

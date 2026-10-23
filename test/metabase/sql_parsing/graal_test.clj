@@ -52,7 +52,9 @@
           (Files/deleteIfExists zip-file))))))
 
 (deftest timeout-surfaces-even-when-metric-inc-fails-test
-  (testing (str "A fired Python-call timeout still surfaces as TimeoutException from the API even if "
+  ;; The 30 s call timeout belongs to the GraalPy transport; the Java backend has none by design. So this test always
+  ;; runs on the GraalPy parser, whichever backend the setting selects.
+  (testing (str "A fired GraalPy Python-call timeout still surfaces as TimeoutException from the API even if "
                 "the timeout-metric bump throws — a misconfigured analytics registry must not shadow "
                 "the timeout (#77084).")
     (dynamic-redefs/with-dynamic-fn-redefs [;; force the timeout branch of do-with-python-context without waiting 30s
@@ -62,4 +64,4 @@
                                                                        (when (= k :metabase-sql-parsing/context-timeouts)
                                                                          (throw (Exception. "boom"))))]
       (is (thrown? TimeoutException
-                   (sql-parsing/referenced-tables "postgres" "SELECT 1"))))))
+                   (sql-parsing/referenced-tables (sql-parsing/parser :sqlglot) "postgres" "SELECT 1"))))))

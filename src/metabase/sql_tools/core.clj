@@ -230,13 +230,20 @@
   [sql :- :string
    from-dialect :- [:maybe :string]
    to-dialect :- [:maybe :string]]
-  (interface/transpile-sql-impl (sql-tools.settings/sql-tools-parser-backend)
+  (interface/transpile-sql-impl (sql-tools.settings/current-parser-backend)
                                 sql from-dialect to-dialect))
+
+(defn- sqlglot-parser
+  "The sqlglot parser for the current backend. Statement checks always parse with sqlglot, so with Macaw selected
+  they use GraalPy."
+  []
+  (let [backend (sql-tools.settings/current-parser-backend)]
+    (sqlglot/parser (if (isa? interface/backend-hierarchy backend :sqlglot) backend :sqlglot))))
 
 (defn is-single-stmt-of-type?
   "Wrapper around `sql-parsing/is-single-stmt-of-type?`."
   [driver sql stmt-type]
-  (sql-parsing/is-single-stmt-of-type? (sqlglot/driver->dialect driver) sql stmt-type))
+  (sql-parsing/is-single-stmt-of-type? (sqlglot-parser) (sqlglot/driver->dialect driver) sql stmt-type))
 
 (mu/defn read-only-select? :- :boolean
   "Whether `sql` is exactly one plain query, a SELECT or a set operation of SELECTs, holding nothing known to write,

@@ -1,15 +1,24 @@
 (ns metabase.sql-tools.settings
   "Settings for the sql-tools module.
 
-  ## Swapping Between Macaw and SQLGlot
+  ## Choosing the SQL parser backend
 
   The SQL parser backend can be switched using the `MB_SQL_TOOLS_PARSER_BACKEND` env var:
 
   ```bash
-  # Use SQLGlot (default)
+  # SQLGlot on GraalPy (default)
   MB_SQL_TOOLS_PARSER_BACKEND=sqlglot
 
-  # Use Macaw (legacy)
+  # SQLGlot, Java port (opt-in)
+  MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-java
+
+  # GraalPy answers; the Java port runs on the same SQL in the background and the results are compared
+  MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-shadow
+
+  # The Java port answers; GraalPy runs in the background and the results are compared
+  MB_SQL_TOOLS_PARSER_BACKEND=sqlglot-java-shadow
+
+  # Macaw (legacy)
   MB_SQL_TOOLS_PARSER_BACKEND=macaw
   ```
 
@@ -26,7 +35,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]))
 
 (def ^:private available-parser-backends
-  #{:macaw :sqlglot})
+  #{:macaw :sqlglot :sqlglot-java :sqlglot-shadow :sqlglot-java-shadow})
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *parser-backend-override*
@@ -53,3 +62,10 @@
   []
   (or *parser-backend-override*
       (sql-tools-parser-backend)))
+
+(defsetting sql-tools-parser-shadow-sample-rate
+  (deferred-tru "Share of calls, from 0.0 to 1.0, that a shadow parser backend also runs on its second parser.")
+  :visibility :internal
+  :export? false
+  :type :double
+  :default 1.0)

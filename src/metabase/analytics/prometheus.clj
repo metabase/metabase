@@ -737,6 +737,13 @@
                        {:description "Number of new Python contexts created."})
    (prometheus/counter :metabase-sql-parsing/context-disposals-expired
                        {:description "Number of Python contexts disposed due to TTL expiry."})
+   (prometheus/counter :metabase-sql-parsing/shadow-comparisons
+                       {:description "Comparisons of the primary and shadow SQL parsers, by outcome."
+                        :labels [:method :dialect :outcome]})
+   (prometheus/histogram :metabase-sql-parsing/shadow-duration-ms
+                         {:description "Duration in milliseconds of each parser's call in a shadow comparison."
+                          :labels [:parser :method]
+                          :buckets [1 5 10 25 50 100 250 500 1000 2500 5000 10000 30000]})
    ;; SQL tools operation metrics
    (prometheus/counter :metabase-sql-tools/operations-total
                        {:description "Total number of sql-tools operations started."

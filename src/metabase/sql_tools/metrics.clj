@@ -13,7 +13,7 @@
 
 ;;; -------------------------------------------------- Known labels --------------------------------------------------
 
-(def ^:private parsers ["macaw" "sqlglot"])
+(def ^:private parsers ["macaw" "sqlglot" "sqlglot-java" "sqlglot-shadow" "sqlglot-java-shadow"])
 
 (def ^:private operations
   ["returned-columns"
