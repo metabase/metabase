@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
 import type { RelativeIntervalDirection } from "metabase/querying/common/types";
-import { RunMethodFilterWidget } from "metabase/transforms/pages/RunListPage/RunFilterBar/RunMethodFilterWidget";
-import { StatusFilterWidget } from "metabase/transforms/pages/RunListPage/RunFilterBar/StatusFilterWidget";
-import { TimeFilterWidget } from "metabase/transforms/pages/RunListPage/RunFilterBar/TimeFilterWidget";
-import { TransformFilterWidget } from "metabase/transforms/pages/RunListPage/RunFilterBar/TransformFilterWidget";
+import { RunMethodFilterWidget } from "metabase/transforms/components/RunMethodFilterWidget";
+import { StatusFilterWidget } from "metabase/transforms/components/StatusFilterWidget";
+import { TimeFilterWidget } from "metabase/transforms/components/TimeFilterWidget";
+import { TransformFilterWidget } from "metabase/transforms/components/TransformFilterWidget";
+import { getRunStatusOptions } from "metabase/transforms/utils";
 import { Group } from "metabase/ui";
 import type {
   Transform,
@@ -86,6 +87,7 @@ export function TransformGraphRunFilterBar({
       <StatusFilterWidget
         label={t`Status`}
         statuses={filterOptions.statuses ?? []}
+        options={getRunStatusOptions()}
         onChange={handleStatusesChange}
       />
       <RunMethodFilterWidget

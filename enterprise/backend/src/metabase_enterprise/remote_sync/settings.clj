@@ -184,7 +184,7 @@
        (throw (ex-info "Invalid branch name" {:url remote-sync-url :branch remote-sync-branch}))))))
 
 (defsetting remote-sync-allow
-  (deferred-tru "Allow specific remote sync behaviors. Set to overwrite-unpublished to allow overwriting unpublished changes on startup.")
+  "Allow specific remote sync behaviors. Set to overwrite-unpublished to allow overwriting unpublished changes on startup."
   :type :string
   :visibility :internal
   :export? false

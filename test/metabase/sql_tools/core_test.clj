@@ -144,10 +144,33 @@
 (deftest ^:parallel transpile-sql-multi-statement-rejected-test
   (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
     (testing "Multiple SQL statements should be rejected"
-      (let [{:keys [status error-message]} (sql-tools/transpile-sql "SELECT 1; SELECT 2"
-                                                                    "postgres" "postgres")]
+      (let [{:keys [status reason error-message]} (sql-tools/transpile-sql "SELECT 1; SELECT 2"
+                                                                           "postgres" "postgres")]
         (is (= :error status))
+        (is (= :multiple-statements reason))
         (is (str/includes? error-message "Multiple SQL statements"))))))
+
+(deftest ^:parallel transpile-sql-counts-statements-like-the-read-only-check-test
+  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (testing "a comment after a semicolon, or an empty statement, is not a second statement"
+      (doseq [sql ["SELECT 1; -- note" "SELECT 1; /* note */" "SELECT 1;;" "; SELECT 1"]]
+        (testing (pr-str sql)
+          (is (= :success (:status (sql-tools/transpile-sql sql "postgres" "postgres"))))
+          (is (nil? (sql-tools/read-only-select-problem :postgres sql))))))
+    (testing "a second query is a second statement for both checks"
+      (doseq [sql ["SELECT 1; SELECT 2" "SELECT 1; SELECT 2; -- note"]]
+        (testing (pr-str sql)
+          (is (= :multiple-statements (:reason (sql-tools/transpile-sql sql "postgres" "postgres"))))
+          (is (= :multiple-statements (:reason (sql-tools/read-only-select-problem :postgres sql)))))))))
+
+(deftest ^:parallel transpile-sql-parse-error-message-test
+  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (testing "a parse error names the token and its place, without the parser's internals or terminal escapes"
+      (is (= {:status        :error
+              :error-message (str "Expected table name but got 'where'. Line 1, Col: 17.\n"
+                                  "  select from where venues\n"
+                                  "              ^^^^^")}
+             (sql-tools/transpile-sql "select from where venues" "postgres" "postgres"))))))
 
 (deftest ^:parallel transpile-sql-preserves-query-structure-test
   (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
