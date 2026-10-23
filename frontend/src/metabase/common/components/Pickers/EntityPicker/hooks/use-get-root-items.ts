@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
@@ -31,6 +31,7 @@ import type {
   OmniPickerCollectionItem,
   OmniPickerItem,
 } from "../types";
+import { getCustomFolderItem } from "../utils";
 
 import { getRootCollectionItem } from "./utils";
 
@@ -49,7 +50,14 @@ const personalCollectionsRoot: OmniPickerCollectionItem = mergeLazily(
  * This will generate a list of the top level items for the entity picker
  */
 export const useRootItems = () => {
-  const { options, models, searchQuery, namespaces } = useOmniPickerContext();
+  const {
+    options,
+    models,
+    searchQuery,
+    namespaces,
+    customFolders,
+    isLoadingCustomFolders = false,
+  } = useOmniPickerContext();
   const isAdmin = useSelector(getUserIsAdmin);
   const hasTenants = useSetting("use-tenants");
   const transformsEnabled = useHasTokenFeature("transforms-basic");
@@ -83,6 +91,13 @@ export const useRootItems = () => {
   );
   const totalPersonalCollectionItems = personalCollectionItems?.total ?? 0;
 
+  // Folders without their items: the effect below deep-compares its deps, and callers may pass new
+  // item handlers on any render.
+  const customRootItems = useMemo(
+    () => (customFolders ?? []).map(getCustomFolderItem),
+    [customFolders],
+  );
+
   useDeepCompareEffect(() => {
     const databases = databaseData?.data ?? [];
     setIsLoadingCollections(true);
@@ -100,6 +115,7 @@ export const useRootItems = () => {
       transformsEnabled,
       currentUser,
       hasTenants,
+      customRootItems,
       dispatch,
     })
       .then((rootItems) => {
@@ -122,6 +138,7 @@ export const useRootItems = () => {
     transformsEnabled,
     currentUser,
     hasTenants,
+    customRootItems,
     setIsLoadingCollections,
     dispatch,
   ]);
@@ -130,7 +147,8 @@ export const useRootItems = () => {
     isLoadingDatabases ||
     isLoadingCollections ||
     isLoadingPersonalCollection ||
-    isLoadingPersonalCollectionItems;
+    isLoadingPersonalCollectionItems ||
+    isLoadingCustomFolders;
 
   return { items: rootItems, isLoading };
 };
@@ -149,6 +167,7 @@ async function getRootItems({
   transformsEnabled,
   currentUser,
   hasTenants,
+  customRootItems,
   dispatch,
 }: {
   searchQuery?: string;
@@ -164,6 +183,7 @@ async function getRootItems({
   transformsEnabled: boolean;
   currentUser: User | null;
   hasTenants: boolean;
+  customRootItems: OmniPickerCollectionItem[];
   dispatch: DispatchFn;
 }): Promise<OmniPickerCollectionItem[]> {
   const collectionItems: OmniPickerCollectionItem[] = [];
@@ -300,6 +320,8 @@ async function getRootItems({
       collectionItems.push(tenantSpecificRoot);
     }
   }
+
+  collectionItems.push(...customRootItems);
 
   if (
     options?.hasPersonalCollections &&
