@@ -195,6 +195,26 @@ describe("Visualization", () => {
     ).toBeInTheDocument();
   });
 
+  it("should render the no results illustration for an empty result on a dashboard", async () => {
+    await renderViz(
+      [
+        {
+          card: createMockCard({ name: "Card", display: "bar" }),
+          data: createMockDatasetData({
+            cols: [
+              createMockCategoryColumn({ name: "Dimension" }),
+              createMockNumericColumn({ name: "Count" }),
+            ],
+            rows: [],
+          }),
+        },
+      ],
+      { isDashboard: true },
+    );
+
+    expect(screen.getByAltText("No results")).toBeInTheDocument();
+  });
+
   describe("with a component that loads on demand", () => {
     it("should render the chart once its chunk resolves", async () => {
       // Registered here rather than at module scope so the shared setup hook,
