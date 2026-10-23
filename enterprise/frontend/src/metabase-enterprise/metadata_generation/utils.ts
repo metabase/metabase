@@ -89,8 +89,6 @@ export function getRunStatusLabel(status: MetadataGenerationRunStatus): string {
       return t`Failed`;
     case "canceled":
       return t`Canceled`;
-    case "timeout":
-      return t`Timed out`;
     case "usage_limit":
       return t`Stopped at the AI usage limit`;
   }

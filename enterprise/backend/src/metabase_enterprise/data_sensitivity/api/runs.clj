@@ -14,8 +14,8 @@
 
 (api.macros/defendpoint :post "/runs" :- ::run/metadata-generation-run
   "Start a background metadata generation run over the active tables of a database: all of them, those in `schemas`,
-  or `table_ids`. `attributes` defaults to data sensitivity and semantic type. The run writes suggestions only. A
-  database has at most one active run: a second start is a 409. Poll `GET /runs/:id` for progress."
+  or `table_ids`. `attributes` defaults to data sensitivity and semantic type. The run writes proposals only, never
+  field metadata. A database has at most one active run: a second start is a 409. Poll `GET /runs/:id` for progress."
   [_route-params
    _query-params
    {:keys [database_id] :as body} :- [:merge
@@ -35,7 +35,8 @@
 
 (api.macros/defendpoint :get "/runs/estimate" :- ::runner/estimate
   "The size of the run that `POST /runs` would start with the same parameters: tables, fields, and about how many
-  tokens and USD it uses, from bench ratios. Query params are kebab-case: `database-id`, `table-ids`. `unavailable_reason` is why a start would fail now, or nil."
+  tokens and USD it uses, from bench ratios. Query params are kebab-case: `database-id`, `table-ids`.
+  `unavailable_reason` is why a start would fail now, or nil."
   [_route-params
    {:keys [database-id schemas table-ids attributes]}
    :- [:map {:closed true}
@@ -57,8 +58,9 @@
   (api/check-404 (db/run id)))
 
 (api.macros/defendpoint :post "/runs/:id/cancel" :- ::run/metadata-generation-run
-  "Cancel a pending or running run. The run is `canceling` until its worker stops, at most one chunk call later, and
-  then `canceled`. A run that has ended is a 409."
+  "Cancel a pending or running run. A pending run is `canceled` at once. A running run is `canceling` until its
+  worker stops, and then `canceled`. The worker stops about one second after the cancel while it waits on chunk calls,
+  or when the current table's row sample ends. A run that has ended is a 409."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/check-superuser)
   (api/check-404 (runner/cancel-run! id)))

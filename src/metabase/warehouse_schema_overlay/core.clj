@@ -144,10 +144,10 @@
               attributes))))
 
 (mu/defn field-query :- [:tuple :any :keyword]
-  "The source a query over Fields reads from: `metabase_field` merged with the human and accepted AI values. `:alias` names it for
-  joins; `{:user-settings? false}` gives sync's own values. `{:deterministic-ai-columns? true}` reads the columns of
-  [[field-ai-columns]] from `metabase_field` and merges the rest: the view of the classifiers, which write that layer
-  under the human and AI values but must respect the other user settings, such as a coercion.
+  "The source a query over Fields reads from: `metabase_field` merged with the human and accepted AI values.
+  `:alias` names it for joins; `{:user-settings? false}` gives sync's own values. `{:deterministic-ai-columns? true}`
+  reads the columns of [[field-ai-columns]] from `metabase_field` and merges the rest: the view of the classifiers,
+  which write that layer under the human and AI values but must respect the other user settings, such as a coercion.
 
   `{:ai-proposals? true}` is the preview of Data Studio: each merged column of [[field-ai-columns]] with a pending AI
   proposal reads the proposal, also over a human value, and `ai_proposal_*` columns describe the proposals (see

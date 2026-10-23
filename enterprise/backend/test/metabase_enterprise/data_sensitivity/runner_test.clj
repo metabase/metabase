@@ -303,7 +303,7 @@
                      (table-proposals (:id table))))))))))))
 
 (deftest cancel-via-run-row-test
-  (testing "a cancel written to the run row from elsewhere stops the run within one chunk call"
+  (testing "a cancel written to the run row from elsewhere stops the run without waiting for the chunk call in flight"
     (do-with-temp-tables
      4
      (fn [db tables]

@@ -1,16 +1,16 @@
 (ns metabase-enterprise.data-sensitivity.review
   "Review of the pending AI proposals of a database or its tables: counts per table, the proposals, and apply. The
   review UI keeps the selection and the edits until apply, which takes the accepted proposals and the edited values
-  in one request. Apply writes the accepted proposals as AI values (decision `ghy-4721-metadata-layer-precedence`) and
-  deletes their rows. Apply with `reject_all` marks every pending proposal of a database `rejected` (decision
-  `ghy-4721-ai-proposal-model`). A rejected proposal is hidden until the next run that covers its field.
+  in one request. Apply writes the accepted proposals as AI values, which readers see over the deterministic value
+  and under a person's value, and deletes their rows. Apply with `reject_all` marks every pending proposal of a
+  database `rejected`. A rejected proposal is hidden until the next run that covers its field and attribute.
 
   `source` and `current_value` are computed when a proposal is read or applied, from the value readers see now. A
   proposal with source `human` would replace a value a person set; apply of such a proposal clears the person's
   value.
 
   An edited value replaces the proposed value of a proposal at apply. Apply writes it as the person's value, not as
-  an AI value (decision `ghy-4721-edited-suggestion-layer`).
+  an AI value, because a person chose it.
 
   A run can replace or delete a proposal after the client read it. The request gives the proposed values that the
   client saw, and apply skips a proposal whose value is not that value any more, or that is gone, with reason

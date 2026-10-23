@@ -110,15 +110,14 @@
 
 (def all-attributes
   "The attributes one call can propose, in the order of the response properties. The description comes before the
-  semantic type: when the model answered the semantic type first, a right semantic type made it skip the
-  description."
+  semantic type so that a correct semantic type does not make the model skip the description."
   [:data_sensitivity :description :semantic_type])
 
 (mr/def ::attributes
   [:set {:min 1} (into [:enum] all-attributes)])
 
 (def default-attributes
-  "The attributes of a call that names none: the attributes the classifier has always proposed."
+  "The attributes of a call that names none."
   #{:data_sensitivity :semantic_type})
 
 (def description-cap
@@ -137,8 +136,8 @@
 (defn- prompt-intro [attributes]
   (let [extras (cond-> []
                  (attributes :semantic_type) (conj "a semantic type when the current one is missing or wrong")
-                 (attributes :description)   (conj (str "a short description for every column that has none, or whose current one is "
-                                                        "wrong")))]
+                 (attributes :description)   (conj (str "a short description when the column has none or its current one is wrong, "
+                                                        "unless a person set it")))]
     (if (attributes :data_sensitivity)
       (str "You classify the columns of one database table by the sensitivity of the data they hold."
            (when (seq extras)
@@ -158,8 +157,7 @@
 
 (mu/defn system-prompt-for :- :string
   "The system message for a call that proposes `attributes`. Rules, categories and output order cover only those
-  attributes, so a call pays only for what it asks. For [[default-attributes]] it is the classifier's
-  prompt."
+  attributes, so a call pays only for what it asks."
   [attributes :- ::attributes]
   (let [sensitivity? (attributes :data_sensitivity)
         category?    (= #{:data_sensitivity} attributes)]
@@ -304,8 +302,8 @@
 
 (mu/defn response-schema-for :- :map
   "JSON schema for the forced tool call of a call that proposes `attributes`. Property order puts `reasoning` before
-  the proposals so the model reasons before it answers. `confidence` sits after `data_sensitivity`, where the
-  classifier always had it. The description cap is checked in [[parse-response]], not here: not every provider
+  the proposals so the model reasons before it answers. `confidence` comes right after `data_sensitivity` when
+  the call proposes it. The description cap is checked in [[parse-response]], not here: not every provider
   adapter accepts `maxLength`."
   [attributes :- ::attributes]
   (let [proposals (filter attributes all-attributes)

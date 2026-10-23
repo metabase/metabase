@@ -532,6 +532,8 @@
       (is (not (str/includes? prompt "Categories")))
       (is (not (str/includes? prompt "PUBLIC")))
       (is (not (str/includes? prompt "semantic_type:")))
+      (is (str/includes? prompt (str "For each column you propose a short description when the column has none or its "
+                                     "current one is wrong, unless a person set it.")))
       (is (str/includes? prompt (str "at most " llm/description-cap " characters")))
       (is (str/includes? prompt "\"description: none\" and no [human-set] marker always gets a new description"))
       (is (str/includes? prompt "including \"none [human-set]\", keeps it"))
@@ -596,7 +598,7 @@
     (testing "each refusal is counted"
       (is (= {:description-human-set 2 :description-too-long 1 :description-unsafe 1}
              (select-keys (:counts parsed) [:description-human-set :description-too-long :description-unsafe]))))
-    (testing "the other attributes parse as before"
+    (testing "data_sensitivity parses the same when descriptions are asked"
       (is (= :PUBLIC (get-in parsed [:fields "A" :data-sensitivity]))))))
 
 (deftest parse-response-description-markup-test

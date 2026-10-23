@@ -1,9 +1,8 @@
 (ns metabase-enterprise.data-sensitivity.models.metadata-generation-run
   "A `metadata_generation_run` is one LLM metadata generation run over a database, a list of schemas or a list of
   tables. It is the job record only: the run upserts `metadata_generation_proposal` rows, which belong to no run, and
-  sets their `last_run_id`. `is_active` is true while the run is pending,
-  running or canceling and NULL after, so the unique (database_id, is_active) constraint allows one active run per
-  database."
+  sets their `last_run_id`. `is_active` is true while the run is pending, running or canceling and NULL after,
+  so the unique (database_id, is_active) constraint allows one active run per database."
   (:require
    [metabase.models.interface :as mi]
    [metabase.util.malli.registry :as mr]
@@ -22,7 +21,7 @@
   [:enum :data_sensitivity :semantic_type :description])
 
 (mr/def ::status
-  [:enum :pending :running :canceling :succeeded :failed :canceled :timeout :usage_limit])
+  [:enum :pending :running :canceling :succeeded :failed :canceled :usage_limit])
 
 (def active-statuses
   "Statuses of a run that has not ended. A `:canceling` run stays active until its worker stops."

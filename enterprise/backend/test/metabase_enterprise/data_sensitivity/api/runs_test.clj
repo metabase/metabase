@@ -94,18 +94,18 @@
        (core-test/do-with-llm!
         (core-test/canned-llm (constantly {}))
         (fn []
-          (testing "unknown database"
+          (testing "an unknown database is a 404"
             (mt/user-http-request :crowberto :post 404 "ee/data-sensitivity/runs" {:database_id Integer/MAX_VALUE}))
-          (testing "unknown schema"
+          (testing "an unknown schema is a 400"
             (mt/user-http-request :crowberto :post 400 "ee/data-sensitivity/runs"
                                   {:database_id (:id db) :schemas ["nope"]}))
-          (testing "a table of another database"
+          (testing "a table of another database is a 400"
             (mt/user-http-request :crowberto :post 400 "ee/data-sensitivity/runs"
                                   {:database_id (:id db) :table_ids [(mt/id :people)]}))
-          (testing "schemas and table_ids together"
+          (testing "schemas and table_ids together are a 400"
             (mt/user-http-request :crowberto :post 400 "ee/data-sensitivity/runs"
                                   {:database_id (:id db) :schemas ["S0"] :table_ids [1]}))
-          (testing "retry of a run with no failed tables"
+          (testing "retry of a run with no failed tables is a 400"
             (let [run (mt/user-http-request :crowberto :post 200 "ee/data-sensitivity/runs" {:database_id (:id db)})]
               (wait-ended (:id run))
               (mt/user-http-request :crowberto :post 400 (str "ee/data-sensitivity/runs/" (:id run) "/retry-failed"))))))))))
@@ -130,7 +130,7 @@
             (is (=? {:table_count 2 :field_count 2 :total_tokens (* 2 253)}
                     (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
                                           :database-id (:id db) :schemas "S0" :attributes "data_sensitivity"))))
-          (testing "tables"
+          (testing "a table scope counts only those tables and their fields"
             (is (=? {:table_count 2 :field_count 2}
                     (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/runs/estimate"
                                           :database-id (:id db) :table-ids (:id (first tables))

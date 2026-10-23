@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-sensitivity.db
-  "Application database queries for the data-sensitivity module. Every function here is a direct Toucan 2 call
-  with no additional logic."
+  "Application database queries for the data-sensitivity module."
   (:require
    [metabase-enterprise.data-sensitivity.models.metadata-generation-proposal :as proposal]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]

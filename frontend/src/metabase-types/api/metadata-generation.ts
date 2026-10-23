@@ -17,7 +17,6 @@ export type MetadataGenerationRunStatus =
   | "succeeded"
   | "failed"
   | "canceled"
-  | "timeout"
   | "usage_limit";
 
 export type MetadataGenerationScope =

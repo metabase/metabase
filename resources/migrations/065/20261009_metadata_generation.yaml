@@ -48,13 +48,13 @@ databaseChangeLog:
               - column:
                   name: status
                   type: varchar(32)
-                  remarks: pending, running, succeeded, failed, canceled or timeout
+                  remarks: pending, running, canceling, succeeded, failed, canceled or usage_limit
                   constraints:
                     nullable: false
               - column:
                   name: is_active
                   type: ${boolean.type}
-                  remarks: True while the run is pending or running, NULL after; with database_id unique, so a database has at most one active run
+                  remarks: True while the run is pending, running or canceling, NULL after; with database_id unique, so a database has at most one active run
                   constraints:
                     nullable: true
               - column:
@@ -81,7 +81,7 @@ databaseChangeLog:
               - column:
                   name: table_errors
                   type: ${text.type}
-                  remarks: "JSON: per-table errors, each a table id and a message"
+                  remarks: "JSON: per-table errors, each with the table id, name and schema, a message, an error code and the elapsed time"
                   constraints:
                     nullable: true
               - column:
@@ -93,7 +93,7 @@ databaseChangeLog:
               - column:
                   name: message
                   type: ${text.type}
-                  remarks: Error message for the whole run, when it failed
+                  remarks: Message for the whole run, the error of a failed run, or why it was canceled or stopped
                   constraints:
                     nullable: true
               - column:
@@ -264,7 +264,7 @@ databaseChangeLog:
               - column:
                   name: status
                   type: varchar(16)
-                  remarks: pending or rejected; the next run that covers the field replaces a rejected proposal
+                  remarks: pending or rejected; the next run that covers the field and the attribute replaces or deletes a rejected proposal
                   defaultValue: pending
                   constraints:
                     nullable: false

@@ -1,23 +1,22 @@
 (ns metabase-enterprise.data-sensitivity.runner
   "Background metadata generation runs. [[start-run!]] saves a `metadata_generation_run` row and starts a worker that
   classifies the tables of the run in sequence and upserts the `metadata_generation_proposal` rows of each table; it
-  writes no field metadata. The chunk calls of a table run on the shared pool of [[llm/submit-packet]]. One run per database can be
-  active.
+  writes no field metadata. The chunk calls of a table run on the shared pool of [[llm/submit-packet]]. One run per
+  database can be active.
 
-  Cancel and stop (decision `ghy-4721-run-cancel-and-stop-statuses`): [[cancel-run!]] ends a pending run as
-  `canceled` at once. For a running run it sets the status to `canceling` on the run row, so a cancel from any node
-  reaches the worker, and interrupts the worker when it runs on this node. The worker reads the status between tables
-  and every [[poll-ms]] while it waits on chunk calls, cancels the chunks in flight, and writes `canceled`. A usage limit ends the
-  run with status `usage_limit`. A table that fails is recorded on the run and the run continues. The run records
-  the tables it finished in `done_table_ids`. When a run ends before its last table (cancel, usage limit, an unexpected
-  failure, or the reaper), the tables of its scope that it did not finish go to `table_errors` with error code
-  `not_processed`, so [[retry-failed!]] covers them.
+  Cancel and stop: [[cancel-run!]] ends a pending run as `canceled` at once. For a running run it sets the status to
+  `canceling` on the run row, so a cancel from any node reaches the worker, and interrupts the worker when it runs on
+  this node. The worker reads the status between tables and every [[poll-ms]] while it waits on chunk calls, cancels
+  the chunks in flight, and writes `canceled`. A usage limit ends the run with status `usage_limit`. A table that
+  fails is recorded on the run and the run continues. The run records the tables it finished in `done_table_ids`.
+  When a run ends before its last table (cancel, usage limit, an unexpected failure, or the reaper), the tables of its
+  scope that it did not finish go to `table_errors` with error code `not_processed`, so [[retry-failed!]] covers them.
 
   Each node heartbeats the runs it owns ([[heartbeat-tick!]]); [[reap-orphaned-runs!]] fails an active run whose
   heartbeat is stale, for example after its node died. The heartbeat does not show that the chunk calls progress, so
-  the worker fails a chunk call that runs longer than [[call-timeout-ms]] (decision `ghy-4721-chunk-call-timeout`) and
-  aborts its request with [[llm/cancel-packet]], which frees the pool thread.
-  The run's `usage` records `max_table_ms` and `slow_calls` so a slow provider is visible on the run."
+  the worker fails a chunk call that runs longer than [[call-timeout-ms]] and aborts its request with
+  [[llm/cancel-packet]], which frees the pool thread. The run's `usage` records `max_table_ms` and `slow_calls` so a
+  slow provider is visible on the run."
   (:require
    [clojure.string :as str]
    [com.climate.claypoole :as cp]
@@ -496,8 +495,8 @@
 ;;; Estimate
 
 (def ^:private per-field-cost
-  "Total tokens and USD per field for an attribute set: medians of the Haiku 4.5 bench on the whole synthetic database
-  (TSP-164, 75 tables, 1,380 fields, 3 runs each). Attribute sets with no bench row use the all-three row, the
+  "Total tokens and USD per field for an attribute set: medians of a Haiku 4.5 bench over a synthetic database of
+  75 tables and 1,380 fields, 3 runs each. Attribute sets with no bench row use the all-three row, the
   highest."
   {#{:data_sensitivity :semantic_type}              {:tokens 281 :cost_usd 0.00059}
    #{:data_sensitivity}                             {:tokens 253 :cost_usd 0.00051}
