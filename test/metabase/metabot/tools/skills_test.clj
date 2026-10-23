@@ -7,6 +7,7 @@
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.runtime :as tools.runtime]
    [metabase.metabot.tools.skills :as tools.skills]
    [metabase.test :as mt]
    [metabase.util.log.capture :as log.capture]
@@ -71,6 +72,19 @@
       (is (str/starts-with? output "<skill id=\"read-resource\">"))
       (is (str/ends-with? output (str "</skill>\n\nNo skill with ID \"does-not-exist\" can be loaded here. "
                                       "Skill IDs you can load: read-resource."))))))
+
+(deftest ^:parallel load-skill-lists-loadable-skills-once-test
+  (testing "several IDs that don't load list the skills that can be loaded once, after the first of them"
+    (is (= {:output (str "No skill with ID \"nope-1\" can be loaded here. Skill IDs you can load: read-resource.\n\n"
+                         "No skill with ID \"nope-2\" can be loaded here.")
+            :error  {:class :recoverable :code ::tools.core/all-items-failed}}
+           (load-skills [:read-resource] ["nope-1" "nope-2"]))))
+  (testing "a call whose failures run past the failure text limit is cut short, and still lists the skills"
+    (let [ids                    (for [i (range 40)] (str i (apply str (repeat 200 "x"))))
+          {:keys [output error]} (load-skills [:read-resource] ids)]
+      (is (= {:class :recoverable :code ::tools.core/all-items-failed} error))
+      (is (= tools.runtime/max-output-length (count output)))
+      (is (= 1 (count (re-seq #"Skill IDs you can load: read-resource\." output)))))))
 
 (deftest ^:parallel load-skill-logs-refused-ids-test
   (testing "a missing or hidden skill leaves an info line, so operators can see a model guessing skill IDs"
