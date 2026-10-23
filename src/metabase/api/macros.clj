@@ -961,18 +961,19 @@
   ::route-template-carrier)
 
 (mu/defn- build-ns-handler :- ::handler
-  "Build a combined Ring handler for all `endpoints` that routes requests to the matching handler (if any)."
-  [endpoints :- ::ns-endpoints]
-  (let [handler-map (ns-handler-map endpoints)]
-    (open-api/handler-with-open-api-spec
-     (fn ns-handler* [request respond raise]
-       (if-let [[request* handler] (find-matching-handler handler-map request)]
-         (do
-           (some-> (get request route-template-carrier-key) (vreset! (:route-template request*)))
-           (handler request* respond raise))
-         (respond nil)))
-     (fn [prefix]
-       (metabase.api.macros.defendpoint.open-api/open-api-spec endpoints prefix)))))
+  "Build a combined Ring handler for all `endpoints`, routed by their `handler-map`, that routes requests to the matching
+  handler (if any)."
+  [endpoints   :- ::ns-endpoints
+   handler-map :- ::handler-map]
+  (open-api/handler-with-open-api-spec
+   (fn ns-handler* [request respond raise]
+     (if-let [[request* handler] (find-matching-handler handler-map request)]
+       (do
+         (some-> (get request route-template-carrier-key) (vreset! (:route-template request*)))
+         (handler request* respond raise))
+       (respond nil)))
+   (fn [prefix]
+     (metabase.api.macros.defendpoint.open-api/open-api-spec endpoints prefix))))
 
 (mu/defn update-ns-endpoints!
   "Update the information about and handler stored in namespace metadata for the endpoints defined by [[defendpoint]]."
@@ -994,7 +995,10 @@
                (update-info [metadata]
                  (update metadata :api/endpoints update-api-endpoints))
                (rebuild-handler [metadata]
-                 (assoc metadata :api/handler (build-ns-handler (:api/endpoints metadata))))]
+                 (let [handler-map (ns-handler-map (:api/endpoints metadata))]
+                   (assoc metadata
+                          :api/handler-map handler-map
+                          :api/handler     (build-ns-handler (:api/endpoints metadata) handler-map))))]
          (-> metadata update-info rebuild-handler))))
     ;; Publish event for API handler update (e.g., for OpenAPI regeneration)
     ;; Set MB_ENABLE_OPENAPI_AUTO_REGEN=true to enable auto-regeneration on defendpoint evaluation
@@ -1151,6 +1155,19 @@
    method :- ::method
    route  :- string?]
   (:core-fn (find-route nmspace method route)))
+
+(mu/defn matching-route :- [:maybe [:map
+                                    [:route        [:tuple ::method :string]]
+                                    [:route-params [:map-of :keyword :string]]]]
+  "The `[method route]` pair and decoded route params of the endpoint in `nmspace` that `request` reaches, matched as
+  the namespace's own handler matches it, or nil when it reaches none."
+  [nmspace :- ::nmspace
+   request :- ::request]
+  (when-let [[request* _handler] (find-matching-handler (or (-> nmspace the-ns meta :api/handler-map)
+                                                            (ns-handler-map (ns-routes nmspace)))
+                                                        (dissoc request :route-prefix :compojure/route-context))]
+    {:route        [(:request-method request) (:route-template request*)]
+     :route-params (:route-params request*)}))
 
 (defn call-core-fn
   "Call this on the return value of [[defendpoint]] to get the core function for the endpoint.

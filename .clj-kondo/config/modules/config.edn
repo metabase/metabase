@@ -865,7 +865,10 @@
   data-apps
   {:team "Embedding"
    :api #{metabase.data-apps.core}
-   :uses #{premium-features}}
+   :uses #{api
+           api-scope
+           premium-features
+           util}}
 
   data-studio
   {:team "Gadget"
