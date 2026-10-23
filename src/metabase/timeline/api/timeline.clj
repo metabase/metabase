@@ -1,7 +1,6 @@
 (ns metabase.timeline.api.timeline
   "/api/timeline endpoints."
   (:require
-   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
@@ -60,7 +59,6 @@
 
 (api.macros/defendpoint :get "/" :- [:sequential ::Timeline]
   "Fetch a list of `Timeline`s. Can include `archived=true` to return archived timelines."
-  {:scope api-scope/data-app}
   [_route-params
    {:keys [include], archived? :archived} :- [:map {:closed true}
                                               [:include  {:optional true} ::include]

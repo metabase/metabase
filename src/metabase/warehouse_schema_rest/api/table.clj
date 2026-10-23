@@ -376,7 +376,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/fks"
   "Get all foreign keys whose destination is a `Field` that belongs to this `Table`."
-  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/read-check :model/Table id)

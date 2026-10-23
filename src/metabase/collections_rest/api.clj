@@ -71,7 +71,6 @@
   `?exclude-other-user-collections=true`.
 
   If personal-only is `true`, then return only personal collections where `personal_owner_id` is not `nil`."
-  {:scope api-scope/data-app}
   [_route-params
    {:keys [archived exclude-other-user-collections namespace personal-only]} :- [:map {:closed true}
                                                                                  [:archived                       {:default false} [:maybe ms/BooleanValue]]
@@ -595,7 +594,6 @@
 
 (api.macros/defendpoint :get "/:id" :- ::Collection
   "Fetch a specific Collection with standard details added"
-  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]]
   (let [resolved-id (eid-translation/->id-or-404 :collection id)]

@@ -10,7 +10,6 @@
    [metabase-enterprise.data-apps.models.data-app :as data-app]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase-enterprise.data-apps.typed-schema :as data-apps.typed-schema]
-   [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
@@ -329,10 +328,6 @@
   (api/check-superuser)
   (data-app.group-access/remove-group! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-id))
 
-;; Not tagged `data-apps:base`, though the bundle route below is — which looks backwards until
-;; you place the two callers. `DataAppView` fetches this metadata on the *host* page to decide
-;; what iframe to render, before any data-app realm exists, so the request never carries the
-;; marker. The bundle is fetched from inside that iframe, where it does.
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single data app by its slug, disabled ones to superusers only."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
@@ -342,7 +337,6 @@
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
   "Serve the cached JS bundle for a single data app by slug, disabled ones to superusers only. Honors
    `If-None-Match` against the content-hash ETag with a 304."
-  {:scope api-scope/data-app}
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    _body

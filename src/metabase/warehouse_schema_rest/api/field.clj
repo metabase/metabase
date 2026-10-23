@@ -230,7 +230,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/summary"
   "Get the count and distinct count of `Field` with ID."
-  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (let [field (api/read-check :model/Field id)]
@@ -426,7 +425,6 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id/related"
   "Return related entities."
-  {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (-> (warehouse-schema-rest.db/field id) api/read-check xrays/related))

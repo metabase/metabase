@@ -1,11 +1,11 @@
 (ns metabase.server.middleware.data-app-scope-test
   (:require
    [clojure.test :refer :all]
+   [metabase.api-routes.routes]
    [metabase.api-scope.core :as api-scope]
    [metabase.api-scope.data-app :as api-scope.data-app]
+   [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as scope]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.server.middleware.data-app-scope :as mw.data-app-scope]
    [metabase.test :as mt]))
 
@@ -96,31 +96,69 @@
         (is (= "scope_not_permitted"
                (:error (mt/user-http-request :crowberto :get 403 endpoint as-data-app)))
             endpoint)))
-    (testing "the user-key-value key a marked request writes is one it can also clear"
-      ;; The delete body is irrelevant — reaching the handler at all is what the tag buys.
-      (is (not= "scope_not_permitted"
-                (:error (mt/user-http-request :crowberto :delete
-                                              "user-key-value/namespace/data-app-test/key/format"
-                                              as-data-app)))))
     (testing "the InteractiveQuestion.Editor data-source surface is reachable when marked"
       (is (mt/user-http-request :crowberto :get 200 "database" as-data-app)))
     (testing "a pre-built-def route (table-routes, mounted by value not ns-symbol) enforces the tag"
       (is (mt/user-http-request :crowberto :get 200
                                 (format "table/%d/query_metadata" (mt/id :venues)) as-data-app)))))
 
-(deftest data-app-marker-reaches-object-detail-action-reads-test
-  ;; The SDK's "Detail" visualization renders `ObjectDetailPanel`, which lists a writable model's
-  ;; actions, and its `ActionExecuteModal` fetches the one clicked. Both are reads, and both must
-  ;; carry the tag or the menu silently disappears for an admin inside a data app.
-  (mt/with-actions-test-data-and-actions-enabled
-    (mt/with-actions [_ {:type          :model
-                         :dataset_query (lib/query (mt/metadata-provider)
-                                                   (lib.metadata/table (mt/metadata-provider) (mt/id :categories)))}
-                      {:keys [action-id model-id]} {:type :implicit :kind "row/update"}]
-      (let [as-data-app {:request-options {:headers {"x-metabase-client" "data-app"}}}]
-        (testing "GET /api/action?model-id= -- the object-detail action menu"
-          (is (=? [{:id action-id}]
-                  (mt/user-http-request :crowberto :get 200 "action" as-data-app :model-id model-id))))
-        (testing "GET /api/action/:id -- the execute modal's definition fetch"
-          (is (=? {:id action-id}
-                  (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id) as-data-app))))))))
+(deftest data-app-marker-refuses-denied-routes-test
+  (let [as-data-app {:request-options {:headers {"x-metabase-client" "data-app"}}}]
+    (testing "dashboards, native queries, parameters, model actions and raw table browsing fail closed when marked"
+      (doseq [[method endpoint] [[:get "dashboard/1"]
+                                 [:get "card/1/params/x/values"]
+                                 [:post "dataset/native"]
+                                 [:post "dataset/parameter/values"]
+                                 [:get "native-query-snippet"]
+                                 [:get "timeline"]
+                                 [:get "collection"]
+                                 [:get "collection/1"]
+                                 [:get "action"]
+                                 [:get "action/1"]
+                                 [:get (format "database/%d/schemas" (mt/id))]
+                                 [:get (format "table/%d/fks" (mt/id :venues))]
+                                 [:get (format "field/%d/summary" (mt/id :venues :name))]
+                                 [:delete "user-key-value/namespace/data-app-test/key/format"]]]
+        (is (= "scope_not_permitted"
+               (:error (mt/user-http-request :crowberto method 403 endpoint as-data-app)))
+            endpoint)))))
+
+(def ^:private data-app-endpoints
+  "API namespace => the endpoints that SDK components and hooks call inside a data app."
+  {'metabase.users-rest.api                   #{[:get "/current"]}
+   'metabase.session.api                      #{[:get "/properties"]}
+   'metabase.query-processor.api              #{[:post "/"] [:post "/query_metadata"] [:post "/pivot"]
+                                                [:post "/:export-format"]}
+   'metabase.queries-rest.api.card            #{[:get "/:id"] [:get "/:id/query_metadata"] [:post "/:card-id/query"]
+                                                [:post "/:card-id/query/:export-format"] [:post "/pivot/:card-id/query"]}
+   'metabase.warehouse-schema-rest.api.table  #{[:get "/:id"] [:get "/:id/query_metadata"]
+                                                [:get "/card__:id/query_metadata"]}
+   'metabase-enterprise.sandbox.api.table     #{[:get "/:id/query_metadata"]}
+   'metabase.warehouse-schema-rest.api.field  #{[:get "/:id"] [:get "/:id/values"] [:get "/:id/search/:search-id"]
+                                                [:get "/:id/remapping/:remapped-id"]}
+   'metabase.warehouses-rest.api              #{[:get "/"] [:get "/:id"]}
+   'metabase.search.api                       #{[:get "/"]}
+   'metabase.collections-rest.api             #{[:get "/tree"] [:get "/root"] [:get "/root/items"] [:get "/:id/items"]}
+   'metabase.user-key-value.api               #{[:get "/namespace/:namespace/key/:key"]
+                                                [:put "/namespace/:namespace/key/:key"]}
+   'metabase.actions-rest.api                 #{[:post "/:id/execute"]}
+   'metabase-enterprise.custom-viz-plugin.api #{[:get "/list"] [:get "/:id/bundle"] [:get "/:id/asset"]}
+   'metabase-enterprise.content-translation.routes #{[:get "/dictionary"]}})
+
+(defn- tagged-endpoints
+  "API namespace => its endpoints tagged with the data-app scope, among loaded namespaces."
+  []
+  (into {}
+        (keep (fn [a-namespace]
+                (when-let [endpoints (not-empty (into #{}
+                                                      (for [[[method route] info] (api.macros/ns-routes a-namespace)
+                                                            :when (= api-scope.data-app/data-app
+                                                                     (get-in info [:form :metadata :scope]))]
+                                                        [method route])))]
+                  [(ns-name a-namespace) endpoints])))
+        (all-ns)))
+
+(deftest data-app-tagged-endpoints-test
+  (testing "exactly the endpoints that SDK components and hooks call inside a data app carry the data-app scope"
+    (is (= (into {} (filter (comp find-ns key)) data-app-endpoints)
+           (tagged-endpoints)))))
