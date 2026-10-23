@@ -47,7 +47,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [metabase.util.quoting :as quoting]))
 
 (set! *warn-on-reflection* true)
 
@@ -3055,9 +3056,9 @@
         (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
                          (tru "stage {0}, join {1} doesn''t return {2} (available: {3})"
                               stage
-                              (pr-str join-alias)
-                              (str/join ", " (map pr-str columns))
-                              (str/join ", " available)))))
+                              (quoting/quoted join-alias)
+                              (str/join ", " (map quoting/quoted columns))
+                              (str/join ", " (map quoting/quoted available))))))
    {:agent-error? true
     :error        :unresolved-join-alias-field
     :problems     problems}))
@@ -3159,8 +3160,8 @@
         (when-let [bad (first-unresolved-cross-stage-ref stage cols)]
           (throw (ex-info
                   (tru "No column named {0} is available to reference in this stage. Reference a column by its machine name (e.g. an aggregation is `max`, `count`, `sum` - never its display label like `Max of X`), not a UI label. Available column names: {1}."
-                       (pr-str (nth bad 2))
-                       (str/join ", " (map :name cols)))
+                       (quoting/quoted (nth bad 2))
+                       (str/join ", " (map (comp quoting/quoted :name) cols)))
                   {:agent-error? true
                    :error        :unresolved-cross-stage-field
                    :stage        idx
@@ -3639,13 +3640,13 @@
     (when (and column-type
                (not= column-type :type/*)
                (not (isa? column-type :type/Temporal)))
-      (let [column-name (lib/display-name query stage-number bare-ref)
+      (let [column-name (quoting/quoted (lib/display-name query stage-number bare-ref))
             type-name   (name column-type)
             unit-name   (name temporal-unit)]
         (throw (ex-info (if (= :expression (nth clause 0))
-                          (tru "`{0}` is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+                          (tru "{0} is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
                                column-name type-name unit-name)
-                          (tru "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
+                          (tru "{0} is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
                                column-name type-name unit-name))
                         {:agent-error?  true
                          :error         :temporal-unit-on-non-temporal-column
