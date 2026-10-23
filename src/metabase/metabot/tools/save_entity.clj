@@ -36,28 +36,25 @@
   "A chart ID must fit `report_card.metabot_chart_id`, a `varchar(36)`."
   [:string {:min 1 :max 36}])
 
-(defn- question-name-schema
-  "Return the name schema for the application database."
+(defn- h2-app-db?
+  "Return whether the app DB is H2, which counts VARCHAR limits in UTF-16 units.
+  PostgreSQL and MySQL count Unicode code points."
   []
-  ;; H2 measures VARCHAR limits in UTF-16 units; PostgreSQL and MySQL count Unicode code points.
-  (let [h2? (= :h2 (mdb/db-type))]
-    (mr/cached ::question-name-schema h2?
-               (fn []
-                 [:and {:json-schema {:type "string" :minLength 1 :maxLength 254}}
-                  :string
-                  [:fn {:error/fn (fn [{:keys [value]} _]
-                                    (if (mr/validate ms/NonBlankString value)
-                                      (str "must contain 1 to 254 "
-                                           (if h2? "UTF-16 code units" "Unicode code points"))
-                                      "must be a non-blank string"))}
-                   (fn [^String s]
-                     (and (mr/validate ms/NonBlankString s)
-                          (<= (if h2? (.length s) (.codePointCount s 0 (.length s))) 254)))]]))))
+  (= :h2 (mdb/db-type)))
 
-(defn- save-entity-schema []
+(def ^:private save-entity-schema
   [:map {:closed true}
    [:chart_id chart-id-schema]
-   [:name (question-name-schema)]
+   [:name [:and {:json-schema {:type "string" :minLength 1 :maxLength 254}}
+           :string
+           [:fn {:error/fn (fn [{:keys [value]} _]
+                             (if (mr/validate ms/NonBlankString value)
+                               (str "must contain 1 to 254 "
+                                    (if (h2-app-db?) "UTF-16 code units" "Unicode code points"))
+                               "must be a non-blank string"))}
+            (fn [^String s]
+              (and (mr/validate ms/NonBlankString s)
+                   (<= (if (h2-app-db?) (.length s) (.codePointCount s 0 (.length s))) 254)))]]]
    [:description :string]
    [:destination
     [:multi {:dispatch :target_type}
@@ -356,7 +353,7 @@
     {:name        "save_entity"
      :description tool-description
      :scope       scope/agent-question-create
-     :args        (save-entity-schema)})
+     :args        save-entity-schema})
 
   (handle [_ {:keys [chart_id destination description] question-name :name} _ctx]
     (let [{:keys [dataset_query display]} (resolve-chart chart_id)
