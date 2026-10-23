@@ -181,13 +181,16 @@
                       {:status-code 400})))))
 
 (defn- check-identifier-case!
-  "Throws when `existing`, the identifier of a stored plugin, equals `identifier` except for case: it would be a second
+  "Throws when a stored plugin's identifier equals `identifier` except for case: it would be a second
   plugin wherever identifiers are case-sensitive, and a renamed one wherever they are not."
-  [identifier existing]
-  (when (and existing (not= existing identifier))
-    (throw (ex-info (format "Custom viz plugin \"%s\" differs only in case from the existing plugin \"%s\""
-                            identifier existing)
-                    {:status-code 400}))))
+  [identifier maybe-local]
+  ;; On case-insensitive app DBs (MySQL), `maybe-local` may already have a different case.
+  (when-let [existing (or (:identifier maybe-local)
+                          (custom-viz-plugin.db/plugin-identifier-ignoring-case identifier))]
+    (when (not= existing identifier)
+      (throw (ex-info (format "Custom viz plugin \"%s\" differs only in case from the existing plugin \"%s\""
+                              identifier existing)
+                      {:status-code 400})))))
 
 (defmethod serdes/load-one! "CustomVizPlugin"
   [{:keys [identifier] :as ingested} maybe-local]
@@ -196,9 +199,7 @@
   (when (nil? maybe-local)
     (when-let [error (manifest/directory-name-error identifier)]
       (throw (ex-info error {:status-code 400}))))
-  ;; on an app DB that compares identifiers case-insensitively (MySQL), `maybe-local` is found in another case
-  (check-identifier-case! identifier (or (:identifier maybe-local)
-                                         (custom-viz-plugin.db/plugin-identifier-ignoring-case identifier)))
+  (check-identifier-case! identifier maybe-local)
   (serdes/default-load-one! ingested maybe-local))
 
 (defmethod serdes/load-insert! "CustomVizPlugin"
