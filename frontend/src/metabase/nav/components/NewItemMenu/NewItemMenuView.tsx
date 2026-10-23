@@ -52,9 +52,9 @@ export const NewItemMenuView = ({
   hasDatabaseWithJsonEngine,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
-  // Picking "Event analysis" swaps the menu for the kinds of analysis.
+  // Picking "Product analysis" swaps the menu for the kinds of analysis.
   const [isPickingAnalysisKind, setIsPickingAnalysisKind] = useState(false);
-  // The swap unmounts the focused "Event analysis" item, which leaves focus on
+  // The swap unmounts the focused "Product analysis" item, which leaves focus on
   // the page, where a modifier key like Cmd (to open an item in a new tab)
   // closes the menu. Focusing the menu keeps it open.
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -96,7 +96,7 @@ export const NewItemMenuView = ({
           onClick={() => setIsPickingAnalysisKind(true)}
           leftSection={<Icon name="funnel" />}
         >
-          {t`Event analysis`}
+          {t`Product analysis`}
         </Menu.Item>,
       );
     }
