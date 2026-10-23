@@ -1879,6 +1879,8 @@
                        (vreset! callback-called? true)
                        (respond response)))
           raise'   (fn [e]
+                     (when @callback-called?
+                       (throw e))
                      (vreset! callback-called? true)
                      (if (instance? EofException e)
                        (raise e)

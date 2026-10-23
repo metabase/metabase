@@ -10,6 +10,7 @@
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
+   [metabase.api.macros :as api.macros]
    [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.db :as lib-be.db]
@@ -2184,7 +2185,8 @@
 
 (deftest error-response-callback-failure-test
   (mt/with-prometheus-system! [_ system]
-    (doseq [callback-kind [:ordinary :database :disconnect]
+    (doseq [endpoint-kind [:bare :sync :async]
+            callback-kind [:ordinary :database :disconnect]
             delivery [:respond :throw :raise]]
       (let [failure          (if (= callback-kind :database) (SQLException. "Database failure") (Exception. "Handler failure"))
             callback-failure (case callback-kind
@@ -2193,12 +2195,21 @@
                                :disconnect (EofException. "Client went away"))
             calls            (atom 0)
             callback         (fn [_] (swap! calls inc) (throw callback-failure))
-            handler          (#'agent-api.api/wrap-error-responses
-                              (fn [_request respond raise]
-                                (case delivery
-                                  :respond (respond {:status 200 :body "ok"})
-                                  :throw (throw failure)
-                                  :raise (raise failure))))
+            handler          (fn [_request respond raise]
+                               (case delivery
+                                 :respond (respond {:status 200 :body "ok"})
+                                 :throw (throw failure)
+                                 :raise (raise failure)))
+            endpoint         (case endpoint-kind
+                               :bare handler
+                               :sync (api.macros/endpoint-handler* nil
+                                                                   (fn [& _] (handler {} identity #(throw %)))
+                                                                   {:async? false})
+                               :async (api.macros/endpoint-handler* nil
+                                                                    (api.macros/-core-fn-async
+                                                                     (fn [respond raise & _] (handler {} respond raise)))
+                                                                    {:async? true}))
+            handler          (#'agent-api.api/wrap-error-responses endpoint)
             initial          (mt/metric-value system :metabase-api/unhandled-errors)
             caught           (try (handler {} callback callback) (catch Throwable e e))]
         (is (identical? callback-failure caught))
