@@ -484,3 +484,16 @@
                  (failure {:target_type kind (keyword (str kind "_id")) id}))))
         (is (not (t2/exists? :model/Card :dashboard_id (:id dash))))
         (is (not (t2/exists? :model/Card :document_id (:id doc))))))))
+
+(deftest blank-name-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-model-cleanup [:model/Card]
+      (mt/with-temp [:model/Collection coll {}]
+        (doseq [question-name ["" "   " "\t\r\n"]]
+          (let [outcome (invoke-save-entity
+                         (assoc chart-args
+                                :name question-name
+                                :destination {:target_type "collection" :collection_id (:id coll)}))]
+            (is (= {:class :validation :code :invalid-arguments} (:error outcome)))
+            (is (str/includes? (:output outcome) "`name`"))))
+        (is (not (t2/exists? :model/Card :collection_id (:id coll))))))))

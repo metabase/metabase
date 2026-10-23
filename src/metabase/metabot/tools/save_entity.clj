@@ -27,6 +27,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -39,7 +40,7 @@
   [:map {:closed true}
    [:chart_id chart-id-schema]
    [:name [:and {:json-schema {:type "string" :minLength 1 :maxLength 254}}
-           :string
+           ms/NonBlankString
            [:fn {:error/fn (fn [_ _]
                              (str "must contain 1 to 254 "
                                   (if (= :h2 (mdb/db-type)) "UTF-16 code units" "Unicode code points")))}
