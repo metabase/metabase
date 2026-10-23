@@ -125,6 +125,25 @@
                 (some? (collection/user->personal-collection api/*current-user-id*))))
         (throw e)))))
 
+(tools/defrecoverable save-rejected!
+  "The save request was rejected with an API client error."
+  {:payload [:map {:closed true} [:message :string]]}
+  [{:keys [message]}]
+  {:message message :recovery []})
+
+(defn- do-with-save-rejections
+  "Return `thunk`'s result, converting undeclared API 4xx failures into recoverable save errors."
+  [thunk]
+  (try
+    (thunk)
+    (catch clojure.lang.ExceptionInfo e
+      (let [data (ex-data e)
+            status-code (:status-code data)]
+        (if (and (not (contains? data tools.error/error-key))
+                 (int? status-code) (<= 400 status-code 499))
+          (save-rejected! {:message (ex-message e)})
+          (throw e))))))
+
 (tools/defrecoverable invalid-query!
   "The query cannot be saved until its invalid content is corrected."
   {:payload [:map {:closed true} [:message :string]]}
@@ -295,12 +314,6 @@
       ;; The agent may retry a failed call and save a second copy of the card.
       (log/error e "Failed to publish the card-create event for a card saved by Metabot" {:card-id (:id card)}))))
 
-(tools/defrecoverable save-rejected!
-  "The save request was rejected with an API client error."
-  {:payload [:map {:closed true} [:message :string]]}
-  [{:keys [message]}]
-  {:message message :recovery []})
-
 (def ^:private tool-description
   "Describe how to call `save_entity`."
   (str
@@ -360,22 +373,15 @@
           ;; event is delayed until after the transaction commits so subscribers see
           ;; the card.
           {:keys [card link destination-name] saved-destination :destination}
-          (try
-            (t2/with-transaction [_conn]
+          (do-with-save-rejections
+           #(t2/with-transaction [_conn]
               (let [saved (case (:target_type destination)
                             "collection" (save-to-collection! args)
                             "dashboard"  (save-to-dashboard! args)
                             "document"   (save-to-document! args))]
                 (when-let [conversation-id (shared/current-conversation-id)]
                   (metabot.db/link-card-to-conversation! (:id (:card saved)) conversation-id chart_id))
-                saved))
-            (catch clojure.lang.ExceptionInfo e
-              (let [data (ex-data e)
-                    status-code (:status-code data)]
-                (if (and (not (contains? data tools.error/error-key))
-                         (int? status-code) (<= 400 status-code 499))
-                  (save-rejected! {:message (ex-message e)})
-                  (throw e)))))
+                saved)))
           _ (publish-card-create! card)
           instruction-text (te/lines
                             (str "Saved \"" question-name "\" to " destination-name ".")
