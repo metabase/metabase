@@ -55,15 +55,21 @@
   [slug :- :string]
   (t2/exists? :model/DataApp :name slug))
 
-(mu/defn data-app-entity-id-named
-  "The `:entity_id` of the DataApp named `slug`, or nil."
-  [slug :- :string]
-  (t2/select-one-fn :entity_id :model/DataApp :name slug))
-
 (mu/defn resource-collection?
   "Whether the Collection with `collection-id` is the resource collection of a DataApp."
   [collection-id :- pos-int?]
   (t2/exists? :model/DataApp :resource_collection_id collection-id))
+
+(mu/defn other-app-has-collection?
+  "Whether a DataApp other than the one with `app-id`, or any when it is nil, has the Collection with `collection-id`."
+  [collection-id :- pos-int?
+   app-id        :- [:maybe pos-int?]]
+  (t2/exists? :model/DataApp :resource_collection_id collection-id :id [:not= (or app-id -1)]))
+
+(mu/defn data-apps-namespace-collection?
+  "Whether the Collection with `collection-id` is in the data-apps namespace."
+  [collection-id :- pos-int?]
+  (t2/exists? :model/Collection :id collection-id :namespace "data-apps"))
 
 (mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
   "Insert the DataApp `row`, returning its ID."
@@ -90,49 +96,6 @@
   "The ID of the resource collection owned by the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]
   (t2/select-one-fn :resource_collection_id :model/DataApp :id data-app-id))
-
-(defn resource-collection-owned?
-  "Whether a data app owns the collection with `collection-id`."
-  [collection-id]
-  (t2/exists? :model/DataApp :resource_collection_id collection-id))
-
-(defn data-app-by-entity-id
-  "The `:id`, `:entity_id`, and `:resource_collection_id` of the DataApp with `entity-id`, or nil."
-  [entity-id]
-  (t2/select-one [:model/DataApp :id :entity_id :resource_collection_id] :entity_id entity-id))
-
-(defn active-table?
-  "Whether the table with `table-id` is active."
-  [table-id]
-  (some? (t2/select-one-pk :model/Table :id table-id :active true
-                           {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]})))
-
-(defn active-field?
-  "Whether the field with `field-id` is active."
-  [field-id]
-  (some? (t2/select-one-pk :model/Field :id field-id :active true
-                           {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]})))
-
-(defn collections-by-entity-ids
-  "The `:id`, `:entity_id` and `:namespace` of the collections with `entity-ids`."
-  [entity-ids]
-  (if (seq entity-ids)
-    (t2/query {:select [:id :entity_id :namespace] :from [:collection] :where [:in :entity_id entity-ids]})
-    []))
-
-(defn cards-by-entity-ids
-  "The `:entity_id` and `:collection_id` of the cards with `entity-ids`."
-  [entity-ids]
-  (if (seq entity-ids)
-    (t2/query {:select [:entity_id :collection_id] :from [:report_card] :where [:in :entity_id entity-ids]})
-    []))
-
-(defn actions-by-entity-ids
-  "The `:entity_id` and `:collection_id` of the actions with `entity-ids`."
-  [entity-ids]
-  (if (seq entity-ids)
-    (t2/select [:model/Action :entity_id :collection_id] :entity_id [:in entity-ids])
-    []))
 
 (defn collection-card-ids
   "The IDs of the cards in the collection with `collection-id`."
@@ -172,6 +135,36 @@
   (if (seq app-ids)
     (t2/select :model/DataAppGroupAssignment :data_app_id [:in app-ids])
     []))
+
+(mu/defn readable-data-app-ids-select
+  "A HoneySQL query of the ids of the DataApps that the User with `user-id` can read: every app for a superuser, else
+  the enabled apps assigned to one of their groups, and none for a tenant user."
+  [user-id    :- [:maybe ms/PositiveInt]
+   superuser? :- :boolean]
+  (if superuser?
+    ^:allow-subquery {:select [:id] :from [(t2/table-name :model/DataApp)]}
+    ^:allow-subquery {:select [:assignment.data_app_id]
+                      :from   [[(t2/table-name :model/DataAppGroupAssignment) :assignment]]
+                      :join   [[(t2/table-name :model/DataApp) :app]
+                               [:= :app.id :assignment.data_app_id]
+                               [:permissions_group_membership :membership]
+                               [:= :membership.group_id :assignment.permission_group_id]
+                               [:core_user :member]
+                               [:= :member.id :membership.user_id]]
+                      ;; No `[:auto/param]` marker: this query also runs inside queries compiled outside Toucan, such
+                      ;; as the search index's, which reject it. Both compilers bind the integer id as a parameter.
+                      :where  [:and
+                               [:= :app.enabled true]
+                               [:= :membership.user_id user-id]
+                               [:= :member.tenant_id nil]]}))
+
+(mu/defn readable-data-app?
+  "Whether the non-superuser User with `user-id` can read the DataApp with `app-id`."
+  [user-id :- ms/PositiveInt
+   app-id  :- ms/PositiveInt]
+  (t2/exists? :model/DataApp {:where [:and
+                                      [:= :id [:auto/param app-id]]
+                                      [:in :id (readable-data-app-ids-select user-id false)]]}))
 
 (defn insert-assignments!
   "Assign groups to an app. The unique constraint rejects concurrent duplicates."

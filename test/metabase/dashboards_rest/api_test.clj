@@ -2653,6 +2653,18 @@
                   (is (partial= {:dashcards [{:action {:database_enabled_actions enable-actions?}}]}
                                 (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))))
 
+(deftest dashcard-action-can-write-test
+  (testing "Dashcard actions hydrate can_write, which only admins have"
+    (mt/test-driver :h2
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [{:keys [action-id model-id]} {}]
+          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                         :model/DashboardCard _ {:action_id action-id :card_id model-id :dashboard_id dashboard-id}]
+            (doseq [[user can-write?] [[:crowberto true] [:rasta false]]]
+              (testing user
+                (is (partial= {:dashcards [{:action {:id action-id :can_write can-write?}}]}
+                              (mt/user-http-request user :get 200 (format "dashboard/%s" dashboard-id))))))))))))
+
 (deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"
     (testing "Should check current user's data permissions for the `parameter_mapping`"
@@ -4289,6 +4301,23 @@
 
 (defn- has-valid-action-execution-error-message? [response]
   (string? (:message response)))
+
+(deftest dashcard-archived-action-execution-test
+  (testing "A dashcard can't run an archived action until an admin unarchives it"
+    (mt/test-driver :h2
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [{:keys [action-id model-id]} {}]
+          (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                         :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
+                                                                  :action_id    action-id
+                                                                  :card_id      model-id}]
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
+              (t2/update! :model/Action action-id {:archived true :archived_directly true})
+              (is (= "Not found."
+                     (mt/user-http-request :crowberto :post 404 execute-path {:parameters {"id" 1}})))
+              (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived false})
+              (is (partial= {:rows-affected 1}
+                            (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1}}))))))))))
 
 (deftest dashcard-query-action-execution-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)

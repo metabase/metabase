@@ -9,6 +9,7 @@ import type {
   CollectionType,
   DashboardId,
   DatabaseId,
+  IconName,
   Measure,
   MeasureId,
   NativeQuerySnippet,
@@ -47,11 +48,38 @@ export type PickerItemFunctions = {
   isSelectableItem: (item: OmniPickerItem) => boolean;
 };
 
+/**
+ * A root folder a caller adds for things the picker doesn't know. Its `id` must be unique among the
+ * caller's folders. A search that isn't scoped to a collection lists its matching items; recent
+ * items never do. Picking one of its items calls that item's `onSelect` right away, instead of
+ * `onChange`, also when the picker has confirm buttons.
+ */
+export type EntityPickerCustomFolder = {
+  id: string;
+  name: string;
+  items: EntityPickerCustomItem[];
+};
+
+export type EntityPickerCustomItem = {
+  id: string | number;
+  name: string;
+  icon: IconName;
+  /**
+   * Shows the item as selected. When the picker has no `value`, it opens on the first folder that
+   * has a selected item.
+   */
+  isSelected?: boolean;
+  onSelect: () => void;
+};
+
 export type EntityPickerProps = {
   onChange: (value: OmniPickerItem) => void;
   onClose: () => void;
   models: OmniPickerItem["model"][];
   namespaces?: CollectionNamespace[];
+  customFolders?: EntityPickerCustomFolder[];
+  /** While true, the picker waits for `customFolders` before it chooses the folder to open. */
+  isLoadingCustomFolders?: boolean;
   options: EntityPickerOptions;
   searchParams?: Partial<SearchRequest>;
   value?: OmniPickerValue;
