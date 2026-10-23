@@ -9,6 +9,7 @@
   only be called when the user asks to save the chart."
   (:require
    [metabase.api.common :as api]
+   [metabase.app-db.core :as mdb]
    [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.events.core :as events]
@@ -37,11 +38,13 @@
 (def ^:private save-entity-schema
   [:map {:closed true}
    [:chart_id chart-id-schema]
-   ;; PostgreSQL and MySQL measure `report_card.name` (`varchar(254)`) in Unicode code points.
    [:name [:and {:json-schema {:type "string" :minLength 1 :maxLength 254}}
            :string
-           [:fn {:error/message "must contain 1 to 254 Unicode code points"}
-            (fn [^String s] (<= 1 (.codePointCount s 0 (.length s)) 254))]]]
+           [:fn {:error/fn (fn [_ _]
+                             (str "must contain 1 to 254 "
+                                  (if (= :h2 (mdb/db-type)) "UTF-16 code units" "Unicode code points")))}
+            (fn [^String s]
+              (<= 1 (if (= :h2 (mdb/db-type)) (.length s) (.codePointCount s 0 (.length s))) 254))]]]
    [:description :string]
    [:destination
     [:multi {:dispatch :target_type}

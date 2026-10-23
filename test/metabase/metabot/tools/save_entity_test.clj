@@ -4,6 +4,7 @@
    [clojure.test :refer :all]
    [malli.json-schema :as mjs]
    [metabase.api-scope.core :as api-scope]
+   [metabase.app-db.core :as mdb]
    [metabase.documents.core :as documents]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
@@ -241,19 +242,22 @@
     (is (=? #"Invalid tool arguments: `destination` .*"
             (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
                                            (assoc chart-args :destination {:target_type "document"})))))
-  (testing "a name cannot exceed 254 Unicode code points"
-    (is (=? #"Invalid tool arguments: `name` must contain 1 to 254 Unicode code points.*"
+  (testing "a name must fit the application database column"
+    (is (=? #"Invalid tool arguments: `name` must contain 1 to 254 .*"
             (test-util/tool-boundary-error "save_entity" #'save-entity/save-entity-tool
                                            (assoc chart-args
                                                   :name        (apply str (repeat 255 "x"))
                                                   :destination {:target_type "collection"}))))))
 
-(deftest ^:parallel name-length-counts-code-points-test
-  (let [args-schema   (:args (tools.core/declaration save-entity/save-entity-tool))
+(deftest ^:parallel name-length-matches-app-db-test
+  (let [args-schema (:args (tools.core/declaration save-entity/save-entity-tool))
         ^String ducks (apply str (repeat 128 "\uD83E\uDD86"))]
-    (testing "the name limit counts Unicode code points, matching PostgreSQL and MySQL"
-      (is (= [256 128] [(.length ducks) (.codePointCount ducks 0 (.length ducks))]))
-      (is (mr/validate args-schema (assoc chart-args :name ducks :destination {:target_type "collection"}))))
+    (is (= [256 128] [(.length ducks) (.codePointCount ducks 0 (.length ducks))]))
+    (doseq [db-type [:h2 :postgres :mysql]]
+      (testing (str "the name limit matches " db-type)
+        (mt/with-dynamic-fn-redefs [mdb/db-type (constantly db-type)]
+          (is (= (not= :h2 db-type)
+                 (mr/validate args-schema (assoc chart-args :name ducks :destination {:target_type "collection"})))))))
     (testing "the tool schema gives the LLM the same name length limit"
       (is (= {:type "string" :minLength 1 :maxLength 254}
              (get-in (mjs/transform args-schema) [:properties :name]))))))
@@ -453,3 +457,22 @@
             (is (str/includes? text "`can_write=true`"))
             (is (str/includes? text "ask the user"))
             (is (not (str/includes? text "personal collection")))))))))
+
+(deftest h2-emoji-name-test
+  (when (= :h2 (mdb/db-type))
+    (mt/with-current-user (mt/user->id :crowberto)
+      (mt/with-model-cleanup [:model/Card]
+        (mt/with-temp [:model/Collection coll {}]
+          (doseq [[question-name expected-class] [[(apply str (repeat 140 "\uD83E\uDD86")) :validation]
+                                                  [(apply str (repeat 128 "\uD83E\uDD86")) :validation]
+                                                  [(apply str (repeat 127 "\uD83E\uDD86")) nil]
+                                                  [(apply str (repeat 254 "x")) nil]]]
+            (let [outcome (invoke-save-entity
+                           (assoc chart-args
+                                  :name question-name
+                                  :destination {:target_type "collection" :collection_id (:id coll)}))]
+              (is (= expected-class (get-in outcome [:error :class])))
+              (when-not expected-class
+                (is (= question-name
+                       (t2/select-one-fn :name :model/Card :id (get-in outcome [:structured-output :card-id])))))))
+          (is (= 2 (t2/count :model/Card :collection_id (:id coll)))))))))
