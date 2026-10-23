@@ -15,8 +15,13 @@ const EMPTY_STATE_TEXT =
 describe("scenarios > data apps > data studio permissions", () => {
   beforeEach(() => {
     H.restore();
+    H.resetSnowplow();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+  });
+
+  afterEach(() => {
+    H.expectNoBadSnowplowEvents();
   });
 
   describe("group access", () => {
@@ -80,6 +85,7 @@ describe("scenarios > data apps > data studio permissions", () => {
       );
       H.modal().findByRole("button", { name: "Add" }).click();
       cy.wait("@addGroups");
+      H.expectUnstructuredSnowplowEvent({ event: "data_app_groups_added" });
 
       cy.get<string>("@groupName").then((name) =>
         H.main().findByText(name).should("be.visible"),
@@ -111,6 +117,7 @@ describe("scenarios > data apps > data studio permissions", () => {
         .click();
       H.modal().findByRole("button", { name: "Remove access" }).click();
       cy.wait("@removeGroup");
+      H.expectUnstructuredSnowplowEvent({ event: "data_app_group_removed" });
       H.main().findByText(EMPTY_STATE_TEXT).should("be.visible");
 
       cy.log("admins can still open the app");

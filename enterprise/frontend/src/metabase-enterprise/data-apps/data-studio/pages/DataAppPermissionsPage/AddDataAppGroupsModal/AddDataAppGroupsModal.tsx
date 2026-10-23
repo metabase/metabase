@@ -14,6 +14,8 @@ import {
 } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
+import { trackDataAppGroupsAdded } from "../../../analytics";
+
 const DROPDOWN_WIDTH = 300;
 
 type AddDataAppGroupsModalProps = {
@@ -57,6 +59,7 @@ export function AddDataAppGroupsModal({
     if (error) {
       sendErrorToast(t`Failed to add groups`);
     } else {
+      trackDataAppGroupsAdded(app.id);
       onClose();
     }
   };
