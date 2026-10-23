@@ -72,11 +72,6 @@
   "Set of all valid models to search for. "
   (set (keys model-to-db-model)))
 
-(def default-models
-  "The models a search covers when it names none."
-  ;; Global search doesn't show data apps yet, so only a search that asks for them finds them.
-  (disj all-models "data-app"))
-
 (def curated-search-models
   "Search models that can carry a curation signal, so the `:curated?` filter restricts to these (and
   keeps them consistent across the appdb and in-place engines). Includes `table`, which is exactly why

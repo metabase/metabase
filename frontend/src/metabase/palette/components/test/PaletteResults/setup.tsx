@@ -24,6 +24,7 @@ import type {
   CollectionItem,
   Database,
   RecentItem,
+  SearchResult,
   Settings,
 } from "metabase-types/api";
 import {
@@ -136,7 +137,7 @@ export interface CommonSetupProps {
   query?: string;
   settings?: Partial<Settings>;
   recents?: RecentItem[];
-  searchItems?: CollectionItem[];
+  searchItems?: (CollectionItem | SearchResult)[];
   isEE?: boolean;
   isAdmin?: boolean;
   databases?: Database[];

@@ -139,7 +139,9 @@
    ;; returned for Table
    :is_published        :boolean
    :data_authority      :text
-   :data_layer          :text))
+   :data_layer          :text
+   ;; returned for DataApp
+   :data_app_slug       :text))
 
 (def ^:private SearchColumn
   "Enum of every key of [[all-search-columns]]."
@@ -293,10 +295,11 @@
                                (map first)
                                ;; data_authority/data_layer are curation signals, not name/text fields —
                                ;; exclude them from exact-match ranking (and to keep in-place ordering stable).
+                               ;; data_app_slug repeats a data app's name.
                                (remove #{:collection_authority_level :moderated_status
                                          :initial_sync_status :pk_ref :location
                                          :collection_location :data_authority
-                                         :data_layer :document}))
+                                         :data_layer :document :data_app_slug}))
         case-clauses      (as-> columns-to-search <>
                             (map (fn [col] [:like [:lower col] match]) <>)
                             (interleave <> (repeat [:inline 0]))
@@ -456,7 +459,7 @@
 
 (defmethod columns-for-model "data-app"
   [_]
-  [:id :name :display_name :description :created_at :updated_at])
+  [:id :name :display_name :description :created_at :updated_at [:name :data_app_slug]])
 
 (mu/defn- select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
