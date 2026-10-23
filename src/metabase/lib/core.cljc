@@ -1170,6 +1170,15 @@
                      [:ref :mbql.clause/field]]]
   (lib.join.util/current-join-alias field-or-join))
 
+(mu/defn maybe-resolve-join :- [:maybe ::lib.schema.join/join]
+  "Resolve the join on `stage-number` of `query` with alias `join-alias`, or nil if there is no such join.
+
+  **Code Health:** Healthy."
+  [query        :- ::lib.schema/query
+   stage-number :- :int
+   join-alias   :- ::lib.schema.common/non-blank-string]
+  (lib.join/maybe-resolve-join query stage-number join-alias))
+
 (mu/defn with-join-alias :- [:or
                              ::lib.schema.metadata/column
                              ::lib.join.util/partial-join
