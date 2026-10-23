@@ -217,18 +217,22 @@
 
 (defn- write-table!
   "Write the accepted proposals `proposals` of one table in one transaction and delete their rows; a proposal that
-  fails is set back to pending. An edited proposal is written as the person's value; any other is written as an AI
-  value, and when it is over a human value now, the person's value is cleared. Returns the outcome of each proposal
-  and the ids of the written fields."
-  [proposals user-id]
+  fails keeps its row and status. The rows are locked first, and a proposal whose row is gone or whose value or status
+  is not the one in `proposals` fails as `changed`. An edited proposal is written as the person's value; any other is
+  written as an AI value, and when it is over a human value now, the person's value is cleared. Returns the outcome
+  of each proposal and the ids of the written fields."
+  [proposals]
   (t2/with-transaction [_conn]
-    (let [field-ids (vec (distinct (map :field_id proposals)))
+    (let [rows      (db/lock-proposals (mapv :id proposals))
+          field-ids (vec (distinct (map :field_id proposals)))
           fields    (db/active-fields-by-id field-ids)
           settings  (db/user-settings-by-field field-ids)
-          outcomes  (mapv (fn [{:keys [field_id attribute] :as s}]
+          outcomes  (mapv (fn [{:keys [id field_id attribute] :as s}]
                             (let [field (get fields field_id)]
                               (assoc s
-                                     ::outcome (outcome field s)
+                                     ::outcome (if (= (rows id) (select-keys s [:proposed_value :status]))
+                                                 (outcome field s)
+                                                 :changed)
                                      :source   (when field (current-source (get settings field_id) field attribute)))))
                           proposals)
           writes    (filter #(= :write (::outcome %)) outcomes)
@@ -250,9 +254,7 @@
                     new-type (some #(when (= :semantic_type (:attribute %)) (value-to-write %)) (by-field field-id))]
               :when (not (warehouse-schema.field/internal-remapping-allowed? (:base_type field) new-type))]
         (db/delete-dimensions! ids))
-      (let [{writes true failures false} (group-by #(= :write (::outcome %)) outcomes)]
-        (db/delete-proposals! (mapv :id writes))
-        (db/set-proposal-status! (mapv :id failures) :pending user-id))
+      (db/delete-proposals! (mapv :id writes))
       {:outcomes  outcomes
        :field-ids (vec (keys by-field))})))
 
@@ -269,18 +271,32 @@
      :failed   (count failures)
      :failures (mapv #(failure % (::outcome %)) failures)}))
 
+(defn- publish-field-updates!
+  "Publish `:event/field-update` for each active field in `field-ids` as `user-id`. A handler that throws is logged and
+  does not stop the events of the other fields."
+  [field-ids user-id]
+  (doseq [field (vals (db/active-fields-by-id field-ids))]
+    (try
+      (events/publish-event! :event/field-update {:object field :user-id user-id})
+      (catch Exception e
+        (log/errorf e "Publishing the update of field %d failed" (:id field))))))
+
 (defn- apply-table!
   "Write `proposals`, the accepted proposals of one table, then publish `:event/field-update` for each written field
-  as `user-id`. A table that throws counts all its proposals as failed and leaves their status."
+  as `user-id`. A table whose write throws counts all its proposals as failed and leaves their status."
   [table-id proposals user-id]
-  (try
-    (let [{:keys [outcomes field-ids]} (write-table! proposals user-id)]
-      (doseq [field (vals (db/active-fields-by-id field-ids))]
-        (events/publish-event! :event/field-update {:object field :user-id user-id}))
+  (if-let [{:keys [outcomes field-ids]} (try
+                                          (write-table! proposals)
+                                          (catch Exception e
+                                            (log/errorf e "Applying the AI proposals of table %d failed" table-id)
+                                            nil))]
+    (do
+      (try
+        (publish-field-updates! field-ids user-id)
+        (catch Exception e
+          (log/errorf e "Publishing the field updates of table %d failed" table-id)))
       (table-result outcomes))
-    (catch Exception e
-      (log/errorf e "Applying the AI proposals of table %d failed" table-id)
-      (table-result (map #(assoc % ::outcome :error) proposals)))))
+    (table-result (map #(assoc % ::outcome :error) proposals))))
 
 (defn- check-request [{:keys [accept all except database_id schema table_ids field_ids include_human_set reject edits]}]
   (when (and (seq accept) all)
@@ -327,8 +343,9 @@
   "Apply the review that `request` gives, as `user-id`: write the accepted proposals, the edited ones as the person's
   values and the others as AI values, and delete their rows, and mark the rejected ones `rejected`. Ids that name no
   proposal are ignored, unless `proposed_values` has them: then they are listed in `failures` as `changed`, as is a
-  proposal whose value is not the one in `proposed_values`. An invalid edit is a 400 and nothing is written. Each
-  table is one transaction. A proposal that cannot be written stays pending and is listed in `failures`."
+  proposal whose value is not the one in `proposed_values`, and a proposal in `accept` that is not pending. An edit of
+  a proposal that is not pending is applied. An invalid edit is a 400 and nothing is written. Each table is one
+  transaction. A proposal that cannot be written keeps its status and is listed in `failures`."
   [request :- ::apply-request
    user-id :- ms/PositiveInt]
   (check-request request)
@@ -338,10 +355,11 @@
         by-id     (m/index-by :id (db/proposals-by-id ids))
         gone      (for [id ids :when (and (contains? seen id) (not (by-id id)))] {:id id})
         changed?  (fn [{:keys [id proposed_value]}] (and (contains? seen id) (not= (seen id) proposed_value)))
+        decided   (filter #(and (not (contains? edits (:id %))) (not= :pending (:status %))) (keep by-id accept))
         candidate (concat (keep by-id (concat accept (keys edits)))
                           (when all (in-scope request (into (set except) reject))))
         rejecting (keep by-id (distinct reject))
-        changed   (m/distinct-by :id (filter changed? (concat candidate rejecting)))
+        changed   (m/distinct-by :id (concat decided (filter changed? (concat candidate rejecting))))
         skip      (into #{} (map :id) changed)
         accepted  (->> (remove #(skip (:id %)) candidate)
                        (m/distinct-by :id)

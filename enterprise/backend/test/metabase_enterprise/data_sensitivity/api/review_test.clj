@@ -106,3 +106,17 @@
        (testing "a table without pending proposals has none"
          (t2/update! :model/MetadataGenerationProposal b1-sem {:status :rejected})
          (is (= [] (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :table-id b))))))))
+
+(deftest inactive-field-proposals-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-proposals!
+     (fn [db-id {:keys [a]} {:keys [a1-sem a1-ds a2-human]}]
+       (t2/update! :model/Field (t2/select-one-fn :field_id :model/MetadataGenerationProposal :id a2-human)
+                   {:active false})
+       (testing "proposals of an inactive field are not counted"
+         (is (=? [{:table_id a :pending 2 :human_set_pending 0}]
+                 (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals/tables" :table-id a))))
+       (testing "proposals of an inactive field are not listed"
+         (is (= [a1-ds a1-sem]
+                (map :id (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals"
+                                               :database-id db-id :table-id a)))))))))

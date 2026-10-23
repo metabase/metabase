@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-sensitivity.context :as context]
+   [metabase-enterprise.data-sensitivity.db :as db]
    [metabase-enterprise.data-sensitivity.review :as review]
    [metabase.events.core :as events]
    [metabase.test :as mt]
@@ -119,10 +120,7 @@
            (is (=? {:decided_by (mt/user->id :crowberto) :decided_at some?}
                    (t2/select-one :model/MetadataGenerationProposal rejected))))
          (testing "a rejected proposal is hidden from the review"
-           (is (= [] (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :table-id b))))
-         (testing "a rejected proposal can be accepted by a later apply"
-           (is (= (assoc nothing :written 1) (apply! {:accept [rejected]})))
-           (is (= :deleted (get (statuses [rejected]) rejected)))))))))
+           (is (= [] (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :table-id b)))))))))
 
 (deftest apply-all-test
   (mt/with-premium-features #{:data-sensitivity}
@@ -287,6 +285,57 @@
          (testing "failed proposals stay pending and write nothing"
            (is (= #{:pending} (set (vals (statuses [key-field misfit missing])))))
            (is (nil? (settings a-fk)))))))))
+
+(deftest apply-does-not-accept-rejected-proposals-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-run
+     (fn [run-id {:keys [a a-plain a-fk]}]
+       (let [desc (suggestion! run-id a a-plain :attribute :description :proposed_value "AI text"
+                               :status :rejected :decided_by (mt/user->id :crowberto))
+             key  (suggestion! run-id a a-fk :proposed_value "type/Category"
+                               :status :rejected :decided_by (mt/user->id :crowberto))]
+         (testing "a rejected proposal accepted by id is not written and is listed as changed"
+           (is (=? {:written 0 :failed 1 :failures [{:proposal_id desc :reason "changed"}]}
+                   (apply! {:accept [desc] :proposed_values {desc "AI text"}})))
+           (is (nil? (settings a-plain)))
+           (is (= {desc :rejected} (statuses [desc]))))
+         (testing "a rejected proposal accepted by id stays rejected when it cannot be written"
+           (is (=? {:written 0} (apply! {:accept [key]})))
+           (is (= {key :rejected} (statuses [key])))))))))
+
+(deftest apply-counts-written-proposals-when-an-event-handler-fails-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-run
+     (fn [run-id {:keys [a a-plain]}]
+       (let [desc (suggestion! run-id a a-plain :attribute :description :proposed_value "AI text")]
+         (with-redefs [events/publish-event! (fn [& _] (throw (ex-info "handler failed" {})))]
+           (testing "a proposal whose table transaction committed counts as written"
+             (is (= (assoc nothing :written 1)
+                    (apply! {:accept [desc]})))))
+         (is (= {desc :deleted} (statuses [desc])))
+         (is (=? {:ai_description "AI text"} (settings a-plain))))))))
+
+(deftest apply-keeps-a-proposal-a-run-changes-during-apply-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-run
+     (fn [run-id {:keys [a a-plain]}]
+       (let [desc   (suggestion! run-id a a-plain :attribute :description :proposed_value "v1")
+             orig   db/active-fields-by-id
+             upsert (promise)]
+         (mt/with-dynamic-fn-redefs [db/active-fields-by-id (fn [ids]
+                                                              (when-not (realized? upsert)
+                                                                (deliver upsert
+                                                                         (future
+                                                                           (t2/update! :model/MetadataGenerationProposal desc
+                                                                                       {:proposed_value "v2" :status :pending})))
+                                                                (deref @upsert 2000 nil))
+                                                              (orig ids))]
+           (apply! {:accept [desc] :proposed_values {desc "v1"}}))
+         @@upsert
+         (testing "a value a run upserts after the staleness check is not lost"
+           (is (=? {:proposed_value "v2" :status :pending}
+                   (t2/select-one :model/MetadataGenerationProposal :id desc)))
+           (is (nil? (:ai_description (settings a-plain))))))))))
 
 (deftest apply-side-effects-test
   (mt/with-premium-features #{:data-sensitivity}

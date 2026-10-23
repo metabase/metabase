@@ -207,16 +207,16 @@
    [:field_ids   {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]])
 
 (defn- scope-where [{:keys [database_id schema table_ids field_ids]}]
-  (cond-> [:and [:= :t.active true]]
+  (cond-> [:and [:= :t.active true] [:= :f.active true]]
     database_id     (conj [:= :t.db_id database_id])
     schema          (conj [:= :t.schema schema])
     (seq table_ids) (conj [:in :p.table_id table_ids])
     (seq field_ids) (conj [:in :p.field_id field_ids])))
 
 (mu/defn pending-proposals :- [:sequential (ms/InstanceOf :model/MetadataGenerationProposal)]
-  "The pending proposals in `scope` of active tables, with the field's `field_name`, `field_display_name`,
-  `field_base_type` and `field_effective_type`, ordered by schema, table name, field position, field id and
-  attribute."
+  "The pending proposals in `scope` of active fields of active tables, with the field's `field_name`,
+  `field_display_name`, `field_base_type` and `field_effective_type`, ordered by schema, table name, field position,
+  field id and attribute."
   [scope :- ::scope]
   (t2/select :model/MetadataGenerationProposal
              {:select   [:p.* [:f.name :field_name] [:f.display_name :field_display_name]
@@ -233,12 +233,14 @@
                                                 [:table_id  ms/PositiveInt]
                                                 [:field_id  ms/PositiveInt]
                                                 [:attribute ::run/attribute]]]
-  "The id, table, field and attribute of the pending proposals in `scope` of active tables, ordered by id."
+  "The id, table, field and attribute of the pending proposals in `scope` of active fields of active tables, ordered
+  by id."
   [scope :- ::scope]
   (t2/select :model/MetadataGenerationProposal
              {:select   [:p.id :p.table_id :p.field_id :p.attribute]
               :from     [[:metadata_generation_proposal :p]]
-              :join     [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :p.table_id]]
+              :join     [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :p.table_id]
+                         (warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :p.field_id]]
               :where    (conj (scope-where scope) [:= :p.status "pending"])
               :order-by [[:p.id :asc]]}))
 
@@ -248,6 +250,17 @@
   (if (seq ids)
     (t2/select :model/MetadataGenerationProposal :id [:in ids] {:order-by [[:id :asc]]})
     []))
+
+(mu/defn lock-proposals :- [:map-of ms/PositiveInt [:map [:proposed_value [:maybe :string]] [:status ::proposal/status]]]
+  "A map of proposal id to the `proposed_value` and `status` of the proposals with `ids`, with their rows locked
+  until the current transaction ends."
+  [ids :- [:sequential ms/PositiveInt]]
+  (if (seq ids)
+    (into {}
+          (map (juxt :id #(select-keys % [:proposed_value :status])))
+          (t2/select [:model/MetadataGenerationProposal :id :proposed_value :status]
+                     {:where [:in :id ids] :for [:update]}))
+    {}))
 
 ;;; Apply
 
