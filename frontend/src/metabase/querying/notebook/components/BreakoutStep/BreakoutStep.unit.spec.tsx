@@ -578,7 +578,7 @@ describe("BreakoutStep", () => {
         createNativeCardField({ name: "ID", baseType: "type/BigInteger" }),
         createNativeCardField({
           name: "CREATED_AT",
-          baseType: "type/DateTime",
+          baseType: "type/DateTimeWithLocalTZ",
         }),
       ],
     });
@@ -659,7 +659,7 @@ describe("BreakoutStep", () => {
           },
         ],
       });
-      const { getNextBreakouts } = setup({
+      const { getNextQuery, getNextBreakouts } = setup({
         step: createMockNotebookStep({ query }),
       });
 
@@ -676,6 +676,21 @@ describe("BreakoutStep", () => {
       expect(getNextBreakouts()).toMatchObject([
         { longDisplayName: "Native products - Product → CREATED_AT: Month" },
       ]);
+      expect(Lib.toLegacyQuery(getNextQuery())).toMatchObject({
+        query: {
+          breakout: [
+            [
+              "field",
+              "CREATED_AT",
+              {
+                "base-type": "type/DateTimeWithLocalTZ",
+                "join-alias": "Native products - Product",
+                "temporal-unit": "month",
+              },
+            ],
+          ],
+        },
+      });
     });
   });
 
