@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { MUTANT_GLOBAL } from "./mutants";
+import { MUTANT_GLOBAL, type Mutant } from "./mutants";
 
 /**
  * Runs jest once and reads its JSON output. Wrapper specs register every test
@@ -30,29 +30,49 @@ export interface JestRun {
 /** Where the progress reporter appends its lines. */
 const PROGRESS_ENV = "E2E_VERIFY_PROGRESS";
 
+/** Where the same reporter appends which scoped files each spec loaded. */
+const COVERAGE_MAP_ENV = "E2E_VERIFY_COVERAGE_MAP";
+
 /**
  * Jest writes its --json output once, at the end, so a pass that is killed
  * leaves nothing behind. This reporter appends one line per test as each file
  * finishes, which is what a killed pass can still be judged on.
+ *
+ * On a coverage run it also records which scoped files each spec loaded. Jest
+ * merges coverage across the whole run before it reports, but each spec's own
+ * `v8Coverage` is on its result, already restricted to --collectCoverageFrom.
  */
 const PROGRESS_REPORTER_SOURCE = `const fs = require("node:fs");
 module.exports = class ProgressReporter {
   onTestFileResult(_test, result) {
-    const target = process.env.${PROGRESS_ENV};
-    if (!target) {
-      return;
+    const progress = process.env.${PROGRESS_ENV};
+    if (progress) {
+      const lines = result.testResults.map((test) =>
+        JSON.stringify({
+          file: result.testFilePath,
+          fullName: test.fullName,
+          title: test.title,
+          status: test.status,
+          failureMessages: test.failureMessages,
+        }),
+      );
+      if (lines.length > 0) {
+        fs.appendFileSync(progress, lines.join("\\n") + "\\n");
+      }
     }
-    const lines = result.testResults.map((test) =>
-      JSON.stringify({
-        file: result.testFilePath,
-        fullName: test.fullName,
-        title: test.title,
-        status: test.status,
-        failureMessages: test.failureMessages,
-      }),
-    );
-    if (lines.length > 0) {
-      fs.appendFileSync(target, lines.join("\\n") + "\\n");
+    const coverageMap = process.env.${COVERAGE_MAP_ENV};
+    if (coverageMap) {
+      // A spec that loaded nothing in scope has no v8Coverage at all, and it
+      // still needs a line, so the reader can tell it apart from a spec that
+      // never ran.
+      const entries = Array.isArray(result.v8Coverage) ? result.v8Coverage : [];
+      const files = entries
+        .map((entry) => (entry.result || {}).url)
+        .filter((url) => typeof url === "string" && url !== "");
+      fs.appendFileSync(
+        coverageMap,
+        JSON.stringify({ spec: result.testFilePath, files }) + "\\n",
+      );
     }
   }
 };
@@ -143,12 +163,23 @@ function parseJestJson(file: string): JestRun {
   return { success, results, timedOut: false };
 }
 
+export interface RunOptions {
+  timeoutMs?: number;
+  /** Judge what finished when the pass is killed, instead of throwing. */
+  allowPartial?: boolean;
+  /** Collect which scoped files each spec loaded, for a coverage run. */
+  coverageMapFile?: string;
+}
+
 export function runJest(
   repoRoot: string,
   args: string[],
   log: (line: string) => void,
-  timeoutMs = DEFAULT_PASS_TIMEOUT_MS,
-  allowPartial = false,
+  {
+    timeoutMs = DEFAULT_PASS_TIMEOUT_MS,
+    allowPartial = false,
+    coverageMapFile,
+  }: RunOptions = {},
 ): JestRun {
   const workDir = fs.mkdtempSync(path.join(os.tmpdir(), "e2e-verify-"));
   const outputFile = path.join(workDir, "jest.json");
@@ -178,7 +209,11 @@ export function runJest(
         stdio: ["ignore", logFd, logFd],
         timeout: timeoutMs,
         killSignal: "SIGKILL",
-        env: { ...process.env, [PROGRESS_ENV]: progressFile },
+        env: {
+          ...process.env,
+          [PROGRESS_ENV]: progressFile,
+          ...(coverageMapFile && { [COVERAGE_MAP_ENV]: coverageMapFile }),
+        },
       },
     );
   } finally {
@@ -213,14 +248,22 @@ export function runJest(
 /**
  * Line coverage per product file from one jest run with the v8 provider.
  */
+export interface CoverageRun {
+  /** Scoped file to the lines any spec executed. */
+  executed: Map<string, Set<number>>;
+  /** Scoped file to the specs that loaded it. */
+  specsByFile: Map<string, Set<string>>;
+}
+
 export function runJestCoverage(
   repoRoot: string,
   specs: string[],
   files: string[],
   log: (line: string) => void,
   timeoutMs = DEFAULT_PASS_TIMEOUT_MS,
-): Map<string, Set<number>> {
+): CoverageRun {
   const coverageDir = fs.mkdtempSync(path.join(os.tmpdir(), "e2e-verify-cov-"));
+  const coverageMapFile = path.join(coverageDir, "spec-files.ndjson");
   runJest(
     repoRoot,
     [
@@ -232,22 +275,63 @@ export function runJestCoverage(
       ...files.map((file) => `--collectCoverageFrom=${file}`),
     ],
     log,
-    timeoutMs,
+    { timeoutMs, coverageMapFile },
   );
   const executed = new Map<string, Set<number>>();
   const parsed: unknown = JSON.parse(
     fs.readFileSync(path.join(coverageDir, "coverage-final.json"), "utf8"),
   );
-  if (typeof parsed !== "object" || parsed === null) {
-    return executed;
+  if (typeof parsed === "object" && parsed !== null) {
+    for (const [absolute, fileCoverage] of Object.entries(parsed)) {
+      executed.set(
+        path.relative(repoRoot, absolute),
+        executedLines(fileCoverage),
+      );
+    }
   }
-  for (const [absolute, fileCoverage] of Object.entries(parsed)) {
-    executed.set(
-      path.relative(repoRoot, absolute),
-      executedLines(fileCoverage),
-    );
+  return {
+    executed,
+    specsByFile: parseCoverageMap(repoRoot, coverageMapFile),
+  };
+}
+
+/**
+ * Inverts the reporter's per-spec lines into scoped file to the specs that
+ * loaded it. A mutant sits behind a switch inside its own file, so a spec that
+ * never loaded that file cannot tell the mutant from the original.
+ */
+export function parseCoverageMap(
+  repoRoot: string,
+  file: string,
+): Map<string, Set<string>> {
+  const specsByFile = new Map<string, Set<string>>();
+  if (!fs.existsSync(file)) {
+    return specsByFile;
   }
-  return executed;
+  const relative = (value: string) =>
+    path.isAbsolute(value) ? path.relative(repoRoot, value) : value;
+  for (const line of fs.readFileSync(file, "utf8").split("\n")) {
+    if (line.trim() === "") {
+      continue;
+    }
+    try {
+      const row: unknown = JSON.parse(line);
+      if (typeof row !== "object" || row === null || !("spec" in row)) {
+        continue;
+      }
+      const spec = relative(String(Reflect.get(row, "spec")));
+      const files: unknown = "files" in row ? Reflect.get(row, "files") : [];
+      for (const covered of Array.isArray(files) ? files : []) {
+        const key = relative(String(covered));
+        const specs = specsByFile.get(key) ?? new Set<string>();
+        specs.add(spec);
+        specsByFile.set(key, specs);
+      }
+    } catch {
+      // A truncated line costs one spec's entry, not the whole map.
+    }
+  }
+  return specsByFile;
 }
 
 interface StatementRange {
@@ -400,6 +484,35 @@ export function chunk<T>(items: T[], parts: number): T[][] {
   const chunks: T[][] = Array.from({ length: count }, () => []);
   items.forEach((item, index) => chunks[index % count].push(item));
   return chunks;
+}
+
+/**
+ * The mutants each unit spec has to run. A mutant is a switched expression
+ * inside its own file, so a spec that never loaded that file behaves
+ * identically with the mutant on, and running the pair only costs time. The
+ * coverage pass already measured which specs loaded which scoped file.
+ */
+export function pairSpecsWithMutants(
+  byFile: Map<string, Mutant[]>,
+  specs: string[],
+  specsByFile: Map<string, Set<string>>,
+  prune: boolean,
+): Map<string, number[]> {
+  const allIds = [...byFile.values()].flat().map((mutant) => mutant.id);
+  const pairs = new Map<string, number[]>();
+  for (const spec of specs) {
+    if (!prune) {
+      pairs.set(spec, allIds);
+      continue;
+    }
+    const ids = [...byFile]
+      .filter(([file]) => specsByFile.get(file)?.has(spec))
+      .flatMap(([, mutants]) => mutants.map((mutant) => mutant.id));
+    if (ids.length > 0) {
+      pairs.set(spec, ids);
+    }
+  }
+  return pairs;
 }
 
 /** Writes one wrapper file per group of mutant ids, each with the clean run 0 first. */

@@ -19,7 +19,7 @@
  *     [--test "<spec>::<it title>"]... [--unit-spec <path>]...
  *     [--run <nightly run id>] [--boot-threshold 0.2] [--per-function 4]
  *     [--mutate-ceiling 0.1] [--max-mutants 300] [--wrappers 4] [--exclude <path prefix>]...
- *     [--pass-timeout 40] [--no-siblings]
+ *     [--pass-timeout 40] [--no-siblings] [--no-prune]
  *     [--scope-only] [--no-confirm] [--out <report.md>] [--json <open-rows.json>]
  */
 import { execFileSync } from "node:child_process";
@@ -36,6 +36,7 @@ import {
   DEFAULT_PASS_TIMEOUT_MS,
   chunk,
   colocatedSpecs,
+  pairSpecsWithMutants,
   removeWrappers,
   runJest,
   runJestCoverage,
@@ -93,6 +94,7 @@ interface Options {
   passTimeoutMs: number;
   exclude: string[];
   siblings: boolean;
+  prune: boolean;
   scopeOnly: boolean;
   confirm: boolean;
   out?: string;
@@ -113,6 +115,7 @@ function parseArgs(argv: string[]): Options {
     passTimeoutMs: DEFAULT_PASS_TIMEOUT_MS,
     exclude: ["frontend/src/metabase/ui/"],
     siblings: true,
+    prune: true,
     scopeOnly: false,
     confirm: true,
   };
@@ -166,6 +169,9 @@ function parseArgs(argv: string[]): Options {
         break;
       case "--pass-timeout":
         options.passTimeoutMs = Number(next(index++, flag)) * 60 * 1000;
+        break;
+      case "--no-prune":
+        options.prune = false;
         break;
       case "--no-siblings":
         options.siblings = false;
@@ -395,6 +401,7 @@ function runMutants(
   repoRoot: string,
   byFile: Map<string, Mutant[]>,
   options: Options,
+  specsByFile: Map<string, Set<string>>,
 ): { fast: PassResults; confirm: PassResults | null; timedOut: boolean } {
   const files = [...byFile.keys()];
   const dirty = dirtyFiles(repoRoot, files);
@@ -427,22 +434,29 @@ function runMutants(
     for (const [file, mutants] of byFile) {
       writeSchemata(repoRoot, file, mutants);
     }
-    wrappers = options.unitSpecs.flatMap((spec) =>
-      write(spec, chunk(allIds, options.wrappers)),
+    const pairs = pairSpecsWithMutants(
+      byFile,
+      options.unitSpecs,
+      specsByFile,
+      options.prune,
+    );
+    wrappers = [...pairs].flatMap(([spec, ids]) =>
+      write(spec, chunk(ids, options.wrappers)),
     );
     const timeout = `--testTimeout=${options.testTimeoutMs}`;
+    const pairCount = [...pairs.values()].reduce(
+      (total, ids) => total + ids.length,
+      0,
+    );
     log(
-      `fast pass: ${allIds.length} mutants, ${wrappers.length} wrapper specs`,
+      `fast pass: ${allIds.length} mutants over ${pairs.size} of ${options.unitSpecs.length} specs, ${pairCount} spec and mutant pairs, ${wrappers.length} wrapper specs`,
     );
     let timedOut = false;
     const fast = timed("fast pass", () => {
-      const run = runJest(
-        repoRoot,
-        [...wrappers, timeout],
-        log,
-        options.passTimeoutMs,
-        true,
-      );
+      const run = runJest(repoRoot, [...wrappers, timeout], log, {
+        timeoutMs: options.passTimeoutMs,
+        allowPartial: true,
+      });
       timedOut = timedOut || run.timedOut;
       return collectPass(run.results, wrapperSpecs);
     });
@@ -470,8 +484,10 @@ function runMutants(
         repoRoot,
         [...wrappers, timeout, "-t", pattern],
         log,
-        options.passTimeoutMs,
-        true,
+        {
+          timeoutMs: options.passTimeoutMs,
+          allowPartial: true,
+        },
       );
       timedOut = timedOut || run.timedOut;
       return collectPass(run.results, wrapperSpecs);
@@ -665,7 +681,7 @@ async function main() {
   let passTimedOut = false;
   if (pending.length > 0 && options.unitSpecs.length > 0) {
     const files = [...new Set(pending.map((scoped) => scoped.file))];
-    const executed = timed("coverage pass", () =>
+    const { executed, specsByFile } = timed("coverage pass", () =>
       runJestCoverage(
         repoRoot,
         options.unitSpecs,
@@ -688,6 +704,7 @@ async function main() {
           repoRoot,
           byFile,
           options,
+          specsByFile,
         );
         passTimedOut = timedOut;
         const { cleanRerunVoids } = judgeFunctions(

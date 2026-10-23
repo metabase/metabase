@@ -16,6 +16,8 @@ import {
   chunk,
   colocatedSpecs,
   mutantOf,
+  pairSpecsWithMutants,
+  parseCoverageMap,
   parseProgress,
   stripMutant,
   wrapperPath,
@@ -930,5 +932,89 @@ describe("the pass-timeout warning in the report", () => {
   it("says nothing when no pass was killed", () => {
     expect(renderMarkdown(report(false))).not.toContain("--pass-timeout");
     expect(renderMarkdown(report(undefined))).not.toContain("--pass-timeout");
+  });
+});
+
+describe("pairing specs with the mutants they can observe", () => {
+  const mutant = (id: number, file: string) =>
+    ({ id, file, line: 1, kind: "return-undefined", description: "" }) as never;
+  const byFile = new Map([
+    ["src/help.ts", [mutant(1, "src/help.ts"), mutant(2, "src/help.ts")]],
+    ["src/logo.ts", [mutant(3, "src/logo.ts")]],
+  ]);
+  const specs = [
+    "help.unit.spec.tsx",
+    "logo.unit.spec.tsx",
+    "far.unit.spec.tsx",
+  ];
+  const specsByFile = new Map([
+    ["src/help.ts", new Set(["help.unit.spec.tsx"])],
+    ["src/logo.ts", new Set(["logo.unit.spec.tsx", "help.unit.spec.tsx"])],
+  ]);
+
+  it("gives each spec only the mutants in files it loaded", () => {
+    const pairs = pairSpecsWithMutants(byFile, specs, specsByFile, true);
+    expect(pairs.get("help.unit.spec.tsx")).toEqual([1, 2, 3]);
+    expect(pairs.get("logo.unit.spec.tsx")).toEqual([3]);
+    // A spec that loaded nothing in scope cannot observe anything, so it is
+    // left out of the run rather than given an empty wrapper.
+    expect(pairs.has("far.unit.spec.tsx")).toBe(false);
+  });
+
+  it("falls back to every pair when pruning is off", () => {
+    const pairs = pairSpecsWithMutants(byFile, specs, specsByFile, false);
+    expect(pairs.size).toBe(3);
+    for (const spec of specs) {
+      expect(pairs.get(spec)).toEqual([1, 2, 3]);
+    }
+  });
+
+  it("drops every spec when the coverage map came back empty", () => {
+    // Better to report `no test ran it on clean code` than to spend a pass on
+    // pairs that measurement says cannot matter.
+    expect(pairSpecsWithMutants(byFile, specs, new Map(), true).size).toBe(0);
+  });
+});
+
+describe("the per-spec coverage map", () => {
+  const write = (contents: string) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "verify-covmap-"));
+    const file = path.join(dir, "spec-files.ndjson");
+    fs.writeFileSync(file, contents);
+    return file;
+  };
+
+  it("inverts absolute per-spec lines into repo-relative files to specs", () => {
+    const file = write(
+      [
+        JSON.stringify({
+          spec: "/repo/a/a.unit.spec.tsx",
+          files: ["/repo/src/help.ts", "/repo/src/logo.ts"],
+        }),
+        JSON.stringify({
+          spec: "/repo/b/b.unit.spec.tsx",
+          files: ["/repo/src/help.ts"],
+        }),
+        JSON.stringify({ spec: "/repo/c/c.unit.spec.tsx", files: [] }),
+        "",
+      ].join("\n"),
+    );
+    const map = parseCoverageMap("/repo", file);
+    expect([...(map.get("src/help.ts") ?? [])].sort()).toEqual([
+      "a/a.unit.spec.tsx",
+      "b/b.unit.spec.tsx",
+    ]);
+    expect([...(map.get("src/logo.ts") ?? [])]).toEqual(["a/a.unit.spec.tsx"]);
+    expect(map.has("src/nothing.ts")).toBe(false);
+  });
+
+  it("keeps the whole lines when the file is truncated or missing", () => {
+    const file = write(
+      `${JSON.stringify({ spec: "/repo/a.unit.spec.tsx", files: ["/repo/src/help.ts"] })}\n{"spec":"/repo/b`,
+    );
+    expect([
+      ...(parseCoverageMap("/repo", file).get("src/help.ts") ?? []),
+    ]).toEqual(["a.unit.spec.tsx"]);
+    expect(parseCoverageMap("/repo", "/no/such/file.ndjson").size).toBe(0);
   });
 });
