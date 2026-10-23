@@ -70,6 +70,9 @@ Rules:
 - Use your world knowledge for values. Example: \"west coast states\" gives CA, OR and WA.
 - Groups of countries, states or other places, like G7, EU, NATO, BRICS or the Nordics, map to a list of codes
   with your world knowledge. Never reject them.
+- Regions, like Eastern Europe, Southeast Asia, Latin America, the Middle East or the Midwest, are groups of places
+  too. When no column names the region exactly, use a column of countries or states with the list of its members.
+  A region does not need its own column. A broader column, like a continent, is not a match for a smaller region.
 - Do not invent constraints that the request does not ask for.
 - Return `rejected`, with no filters, when the request is gibberish, is not a filter, or a part of it cannot be
   expressed with the given columns and operators. Do not guess a column for it. Give a short, neutral reason that
