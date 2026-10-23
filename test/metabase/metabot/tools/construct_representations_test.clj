@@ -403,6 +403,28 @@
           (testing "source-field is populated with ORDERS.PRODUCT_ID (102)"
             (is (= 102 (:source-field field-opts)))))))))
 
+(deftest ambiguous-field-recovery-hint-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [ambiguous-mp (lib.tu/mock-metadata-provider
+                          {:database (lib.metadata/database mp)
+                           :tables   [(lib.metadata/table mp 10)]
+                           :fields   (conj (vec (lib.metadata/fields mp 10))
+                                           (assoc (lib.metadata/field mp 101) :id 103))})]
+        (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (constantly ambiguous-mp)]
+          (let [e (try
+                    (construct/execute-representations-query
+                     (query-data {"lib/type" "mbql/query"
+                                  "stages" [{"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                             "fields" [["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]}]})
+                     {:recovery-hint v1-hints/recovery-hint})
+                    (catch clojure.lang.ExceptionInfo e e))]
+            (is (=? {:error :ambiguous-field :agent-error? true} (ex-data e)))
+            (is (str/ends-with? (ex-message e)
+                                (str "The field name matches more than one column in this table, "
+                                     "so it cannot be referenced by name. "
+                                     "Tell the user about the ambiguous column name.")))))))))
+
 (deftest implicit-join-ambiguous-surfaces-agent-error-test
   (with-ambiguous-mp-and-stubs!
     (fn []
