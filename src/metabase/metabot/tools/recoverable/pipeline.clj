@@ -216,7 +216,7 @@
   [metric-dimensions-step])
 
 (defpipeline-error wrong-source-field!
-  "A field cannot be reached through its `source-field` in this stage."
+  "A field reference's `source-field` is not a foreign key to the table its column is on."
   [list-fks-step])
 
 ;;; Saved entities

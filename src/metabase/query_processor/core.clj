@@ -53,6 +53,7 @@
  ;; Constraints — metabase.query-processor.middleware.constraints
  [qp.constraints
   default-query-constraints]
+ ;; Summary fields – metabase.query-processor.middleware.drop-fields-in-summaries
  [qp.drop-fields
   drop-fields-in-summaries]
  ;; Limit — metabase.query-processor.middleware.limit

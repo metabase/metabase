@@ -510,7 +510,7 @@
         (is (str/includes? message "join \"CATEGORIES\" explicitly"))
         (assoc stage :joins explicit-joins :breakout [["field" {:join-alias "Categories"} target]])))))
 
-(defn- assert-category-hint! [db source-kind source prefix-field stage explicit-joins]
+(defn- assert-category-hint! [db source-kind source prefix-field stage explicit-joins expected-hint]
   (let [query (fn [stage]
                 {:lib/type "mbql/query"
                  :stages (if (= source-kind :later-stage)
@@ -527,6 +527,7 @@
     (is (= :completed (:status expected)))
     (is (= 28 (count (mt/rows expected))))
     (is (= :wrong-source-field (:error (ex-data error))))
+    (is (str/includes? message expected-hint))
     (assert-source-field-qp-failure! #(build! stage))
     (let [corrected (follow-source-field-hint! db stage message explicit-joins)
           result (qp/process-query (get-in (build! corrected) [:structured-output :query]))]
@@ -543,15 +544,23 @@
           checkins (assoc-in (join-on-field db "Checkins" "CHECKINS" ["field" {} (fk "USERS" "ID")])
                              [:conditions 0 3 2] (fk "CHECKINS" "USER_ID"))
           aliased-venues (assoc-in venues [:conditions 0 2 1 :join-alias] "Checkins")
-          categories #(join-on-field db "Categories" "CATEGORIES" ["field" % (fk "VENUES" "CATEGORY_ID")])]
-      (doseq [{:keys [label table prefix-key key key-alias joins explicit-joins]}
-              [{:label "direct key" :table :venues :prefix-key :category_id :key (fk "VENUES" "ID")
+          categories #(join-on-field db "Categories" "CATEGORIES" ["field" % (fk "VENUES" "CATEGORY_ID")])
+          generic-hint "Use a `source-field` that is a foreign key to \"CATEGORIES\", or join \"CATEGORIES\" explicitly and reference the field with its `join-alias`."
+          intermediate-hint (str "then reference the field with `source-field` " (pr-str (fk "VENUES" "CATEGORY_ID"))
+                                 " and `source-field-join-alias` set to the new join's alias.")]
+      (doseq [{:keys [label table prefix-key key key-alias joins explicit-joins hint native-hint]}
+              [{:label "non-FK venue key" :table :venues :prefix-key :category_id :key (fk "VENUES" "ID")
+                :hint (str "Use `source-field` " (pr-str (fk "VENUES" "CATEGORY_ID")) " to reach \"CATEGORIES\" directly.")
+                :native-hint generic-hint
                 :explicit-joins [(categories {})]}
                {:label "intermediate join" :table :checkins :prefix-key :venue_id :key (fk "CHECKINS" "VENUE_ID")
+                :hint intermediate-hint
                 :explicit-joins [venues (categories {:join-alias "Venues"})]}
                {:label "explicit target join" :table :checkins :prefix-key :venue_id :key (fk "CHECKINS" "DATE")
+                :hint generic-hint
                 :explicit-joins [venues (categories {:join-alias "Venues"})]}
                {:label "aliased intermediate join" :table :users :prefix-key :id :key (fk "CHECKINS" "VENUE_ID")
+                :hint (str "(set `join-alias` \"Checkins\" on this source key), " intermediate-hint)
                 :key-alias "Checkins" :joins [checkins]
                 :explicit-joins [checkins aliased-venues (categories {:join-alias "Venues"})]}]
               source-kind [:table :question :model :later-stage :native-question :native-model]]
@@ -565,7 +574,8 @@
                                            (fk "CATEGORIES" "NAME")]]}
                         (seq joins) (assoc :joins joins))
                 check! #(assert-category-hint! db source-kind % (fk table-name (:name (lib.metadata/field mp (mt/id table prefix-key))))
-                                               stage explicit-joins)]
+                                               stage explicit-joins
+                                               (if (#{:native-question :native-model} source-kind) (or native-hint hint) hint))]
             (if (#{:table :later-stage} source-kind)
               (check! source)
               (let [native? (#{:native-question :native-model} source-kind)
