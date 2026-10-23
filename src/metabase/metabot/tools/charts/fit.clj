@@ -58,7 +58,8 @@
 
 (def ^:private requirements
   "What each chart type, other than `table` and `object`, needs from a query's columns.
-  `:needs` says it to the model, and `:fits?` checks the query and its columns. `scalar` and `gauge` show the first
+  `:needs` says it to the model, and `:fits?` checks the query and its columns. `:counts`, when there, says what the
+  columns hold in the terms that `:fits?` counts them in, for the error to print. `scalar` and `gauge` show the first
   value of the first column, so they also need that column not to come from a breakout, in the last stage or an earlier
   one: a breakout's first value is one group's label rather than a result. `smartscalar` compares values over time, so
   it also needs a date as its only column to group by."
@@ -78,7 +79,14 @@
                     :fits? (fn [_query cols] (and (some grouping? cols) (some metric? cols)))}
      "funnel"      {:needs "exactly 1 column to group by and exactly 1 number to measure"
                     :fits? (fn [_query cols] (= 1 (n-of grouping? cols) (n-of metric? cols)))}
-     "scatter"     {:needs "2 or 3 numbers to measure, or 1 number to measure and 1 or 2 columns to plot it against"
+     "scatter"     {:needs (str "1 number to measure and 1 or 2 columns to plot it against, counting the number "
+                                "itself, or 2 or 3 numbers to measure")
+                    :counts (fn [cols]
+                              (let [metrics (n-of metric? cols)
+                                    axes    (n-of dimension? cols)]
+                                (str metrics " " (u/format-plural metrics "number") " to measure and " axes " "
+                                     (u/format-plural axes "column") " to plot against, counting "
+                                     (u/format-plural metrics "the number" "the numbers") " to measure")))
                     :fits? (fn [_query cols]
                              (let [metrics (n-of metric? cols)]
                                (or (<= 2 metrics 3)
@@ -115,8 +123,8 @@
                                       (some metric? cols))))}}))
 
 (def ^:private suggested-chart-types
-  "The chart types that the error can suggest. Not `sunburst`: the frontend has no visualization of that name and draws a
-  `sunburst` card as a table, while a `pie` chart draws the same rings."
+  "The chart types that the error can suggest. Not `sunburst`: the frontend has no visualization of that name and
+  draws a `sunburst` card as a table, while a `pie` chart draws the same rings."
   (remove #{"sunburst"} shared/chart-types))
 
 (defn- fits?
@@ -130,14 +138,12 @@
   {:payload [:map {:closed true}
              [:chart-type (into [:enum] (keys requirements))]
              [:columns    [:int {:min 0}]]
-             [:groupings  [:int {:min 0}]]
-             [:metrics    [:int {:min 0}]]
+             [:counts     :string]
              [:fitting    [:sequential {:min 1} (into [:enum] shared/chart-types)]]]}
-  [{:keys [chart-type columns groupings metrics fitting]}]
+  [{:keys [chart-type columns counts fitting]}]
   {:message  (str "Chart type \"" chart-type "\" can't show this query's columns. "
                   "It needs " (:needs (requirements chart-type)) ". "
-                  "The query returns " columns " " (u/format-plural columns "column") ": "
-                  groupings " to group by and " metrics " " (u/format-plural metrics "number") " to measure. "
+                  "The query returns " columns " " (u/format-plural columns "column") ": " counts ". "
                   "Chart types that fit these columns: " (str/join ", " fitting) ".")
    :recovery [{:uses #{"construct_notebook_query"}
                :text (str "To keep this chart type, call `construct_notebook_query` with a query that returns the "
@@ -166,6 +172,12 @@
       (log/debug e "Could not work out the columns that a chart's query returns")
       nil)))
 
+(defn- groupings-and-metrics-counts
+  "What `cols` hold, as most errors print it: the columns to group by and the numbers to measure."
+  [cols]
+  (let [metrics (n-of metric? cols)]
+    (str (n-of grouping? cols) " to group by and " metrics " " (u/format-plural metrics "number") " to measure")))
+
 (defn check-chart-type!
   "Throw [[incompatible-chart-type!]] when the frontend can't draw `chart-type` from the columns that `query` returns.
   A query whose columns can't be known without running it, such as a SQL query, passes."
@@ -175,6 +187,5 @@
       (when-not (fits? chart-type query cols)
         (incompatible-chart-type! {:chart-type chart-type
                                    :columns    (count cols)
-                                   :groupings  (n-of grouping? cols)
-                                   :metrics    (n-of metric? cols)
+                                   :counts     ((:counts (requirements chart-type) groupings-and-metrics-counts) cols)
                                    :fitting    (filterv #(fits? % query cols) suggested-chart-types)})))))
