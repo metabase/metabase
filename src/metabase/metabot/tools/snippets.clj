@@ -2,40 +2,20 @@
   (:require
    [clojure.string :as str]
    [metabase.metabot.scope :as scope]
-   [metabase.metabot.tools.util :as metabot.tools.u]
-   [metabase.native-query-snippets.core :as snippets]
-   [metabase.util.malli :as mu]))
+   [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.native-query-snippets.core :as snippets]))
 
 (set! *warn-on-reflection* true)
-
-(defn get-snippets
-  "Lists SQL snippets available to the current user."
-  [_args]
-  (try
-    {:structured_output
-     (->> (snippets/list-native-query-snippets)
-          (map #(select-keys % [:id :name :description])))}
-    (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
-
-(defn get-snippet-details
-  "Retrieve a specific SQL snippet by ID, including its content."
-  [{:keys [snippet-id]}]
-  (try
-    {:structured_output
-     (when snippet-id
-       (when-let [snippet (snippets/get-native-query-snippet snippet-id)]
-         (select-keys snippet [:id :name :description :content])))}
-    (catch Exception e
-      (metabot.tools.u/handle-agent-error e))))
 
 (defn- format-snippet-list-output
   [snippets]
   (if (seq snippets)
     (str "<snippets>\n"
          (str/join "\n" (map (fn [{:keys [id name description]}]
-                               (str "<snippet id=\"" id "\" name=\"" name "\">"
-                                    (when description description)
+                               (str "<snippet id=\"" id "\" name=\"" (llm-shape/escape-xml name) "\">"
+                                    (llm-shape/escape-xml-content description)
                                     "</snippet>"))
                              snippets))
          "\n</snippets>")
@@ -43,35 +23,47 @@
 
 (defn- format-snippet-details-output
   [{:keys [id name description content]}]
-  (str "<snippet id=\"" id "\" name=\"" name "\">\n"
-       (when description (str "<description>" description "</description>\n"))
-       (when content (str "<content>\n" content "\n</content>\n"))
+  (str "<snippet id=\"" id "\" name=\"" (llm-shape/escape-xml name) "\">\n"
+       (when description (str "<description>" (llm-shape/escape-xml-content description) "</description>\n"))
+       (when content
+         (str "<content><![CDATA[" (str/replace content "]]>" "]]]]><![CDATA[>") "]]></content>\n"))
        "</snippet>"))
 
-(defn- add-output
-  "Add :output to a tool result. Handles both :structured_output and :structured-output."
-  [result format-fn]
-  (if-let [structured (or (:structured_output result) (:structured-output result))]
-    (assoc result :output (format-fn structured))
-    result))
-
-(mu/defn ^{:tool-name    "list_snippets"
-           :scope        scope/agent-snippets-read}
-  list-snippets-tool
-  "List all SQL snippets available in the Metabase instance.
+(defrecord ListSnippetsTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "list_snippets"
+     :description "List all SQL snippets available in the Metabase instance.
 
   Use this tool before editing or creating SQL transforms to understand what
   snippets are available. If any snippets may be relevant to the user's request,
   fetch their content using the get_snippet_details tool."
-  [_args :- [:map {:closed true}]]
-  (add-output (get-snippets {}) format-snippet-list-output))
+     :scope       scope/agent-snippets-read
+     :args        [:map {:closed true}]})
+  (handle [_ _args _ctx]
+    {:output (format-snippet-list-output (snippets/list-native-query-snippets))}))
 
-(mu/defn ^{:tool-name    "get_snippet_details"
-           :scope        scope/agent-snippets-read}
-  get-snippet-details-tool
-  "Get the full details of a SQL snippet including its content.
+(def list-snippets-tool
+  "The `list_snippets` tool."
+  (->ListSnippetsTool))
+
+(defrecord GetSnippetDetailsTool []
+  tools/Tool
+  (declaration [_]
+    {:name        "get_snippet_details"
+     :description "Get the full details of a SQL snippet including its content.
 
   Use this tool to retrieve the actual SQL content of a snippet after identifying
   it with list_snippets."
-  [{:keys [snippet_id]} :- [:map {:closed true} [:snippet_id :int]]]
-  (add-output (get-snippet-details {:snippet-id snippet_id}) format-snippet-details-output))
+     :scope       scope/agent-snippets-read
+     :args        [:map {:closed true} [:snippet_id :int]]})
+  (handle [_ {snippet-id :snippet_id} _ctx]
+    (let [snippet (tools/with-entity {:kind :snippet :id snippet-id}
+                    (or (when (pos-int? snippet-id)
+                          (snippets/get-native-query-snippet snippet-id))
+                        (recoverable.common/not-found! {:kind :snippet :id snippet-id})))]
+      {:output (format-snippet-details-output snippet)})))
+
+(def get-snippet-details-tool
+  "The `get_snippet_details` tool."
+  (->GetSnippetDetailsTool))
