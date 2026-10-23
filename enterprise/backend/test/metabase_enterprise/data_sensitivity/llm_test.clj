@@ -487,7 +487,7 @@
 (deftest default-attributes-parity-test
   (testing "the default attribute set sends the classifier's prompt and tool schema byte for byte"
     (is (= llm/system-prompt (llm/system-prompt-for #{:data_sensitivity :semantic_type})))
-    (is (= "dd90c5fed1ec1e0760536faef842e69cae3c62585b0629e92d245248bcc7fdb0" (sha256 llm/system-prompt)))
+    (is (= "ae3580b36d34c5fe5d33ee853fe3bfe6beede5dc53f08dac58c8ac236ab559dd" (sha256 llm/system-prompt)))
     (is (= "291e6b101e6b924be5c3bfdc6f4aed2f9b47bb71a48e254389ef82f7fff0b18f"
            (sha256 (json/encode (llm/response-schema-for #{:data_sensitivity :semantic_type}))))))
   (testing "the default attribute set renders the same user message and token budget"
@@ -518,7 +518,15 @@
       (is (not (str/includes? prompt "semantic_type:")))
       (is (not (str/includes? prompt "description:")))
       (is (str/includes? prompt "PUBLIC is an affirmative claim"))
-      (is (str/ends-with? prompt "then the category and confidence. Respond only with the structured object."))))
+      (is (str/ends-with? prompt "then the category and confidence. Respond only with the structured object."))
+      (is (str/includes? prompt "- confidence: rates the category:"))
+      (is (str/includes? prompt "naming the signals that decided the category."))))
+  (testing "a prompt with more than one attribute asks for reasoning and confidence about all proposals of the column"
+    (doseq [attributes [llm/default-attributes #{:data_sensitivity :description} #{:semantic_type :description} everything]]
+      (let [prompt (llm/system-prompt-for attributes)]
+        (is (str/includes? prompt "- confidence: rates your proposals as a whole:") (pr-str attributes))
+        (is (str/includes? prompt "naming the signals that decided your proposals.") (pr-str attributes))
+        (is (not (str/includes? prompt "decided the category")) (pr-str attributes)))))
   (testing "a description-only prompt has no categories and no sensitivity rules"
     (let [prompt (llm/system-prompt-for #{:description})]
       (is (not (str/includes? prompt "Categories")))
