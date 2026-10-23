@@ -8,6 +8,10 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { UnsubscribePage } from "./Unsubscribe";
 
+jest.mock("metabase/common/components/LighthouseIllustration", () => ({
+  LighthouseIllustration: () => <div data-testid="lighthouse-illustration" />,
+}));
+
 const ILLUSTRATION_URL =
   "api/session/illustration/login-page-illustration-custom?v=0123456789abcdef";
 
@@ -48,6 +52,15 @@ describe("UnsubscribePage (EE with whitelabel)", () => {
     });
   });
 
+  it("should show the lighthouse illustration by default", async () => {
+    setup({ loginPageIllustration: "default" });
+
+    expect(
+      await screen.findByText(/from the "Orders alert" alert/),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("lighthouse-illustration")).toBeInTheDocument();
+  });
+
   it("should not show an illustration when it is turned off", async () => {
     setup({ loginPageIllustration: "none" });
 
@@ -56,6 +69,9 @@ describe("UnsubscribePage (EE with whitelabel)", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByTestId("unsubscribe-page-illustration"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("lighthouse-illustration"),
     ).not.toBeInTheDocument();
   });
 });

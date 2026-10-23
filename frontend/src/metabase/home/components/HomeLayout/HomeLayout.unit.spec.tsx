@@ -10,6 +10,10 @@ import {
 
 import { HomeLayout } from "./HomeLayout";
 
+jest.mock("metabase/common/components/LighthouseIllustration", () => ({
+  LighthouseIllustration: () => <div data-testid="lighthouse-illustration" />,
+}));
+
 const ILLUSTRATION_URL =
   "api/session/illustration/landing-page-illustration-custom?v=0123456789abcdef";
 
@@ -67,12 +71,21 @@ describe("HomeLayout", () => {
       });
     });
 
+    it("should show the lighthouse illustration by default", () => {
+      setup({ landingPageIllustration: "default" });
+
+      expect(screen.getByTestId("lighthouse-illustration")).toBeInTheDocument();
+    });
+
     it("should not show an illustration when it is turned off", () => {
       setup({ landingPageIllustration: "none" });
 
       expect(screen.getByTestId("home-page")).toBeInTheDocument();
       expect(
         screen.queryByTestId("landing-page-illustration"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId("lighthouse-illustration"),
       ).not.toBeInTheDocument();
     });
   });
