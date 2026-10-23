@@ -588,6 +588,12 @@
   [_ _]
   "NONE")
 
+(defmethod sql-jdbc.execute/impl-error-in-query? :clickhouse
+  [driver ^SQLException e]
+  ;; ClickHouse also uses class 22 for operational failures such as memory and result limits.
+  (and (not (str/starts-with? (str (.getSQLState e)) "22"))
+       ((get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc) driver e)))
+
 (defmethod sql-jdbc/impl-table-known-to-not-exist? :clickhouse
   [_ ^SQLException e]
   ;; the clickhouse driver doesn't set ErrorCode, we must parse it from the message

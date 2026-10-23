@@ -421,15 +421,15 @@
 (deftest create-defaults-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (testing "an app created from its slug alone is a disabled app with an empty bundle and its collection"
+      (testing "app created from its slug alone is enabled, with an empty bundle and its collection"
         (is (=? {:name                   "demo"
                  :display_name           "demo"
                  :bundle_path            "dist/index.js"
-                 :enabled                false
+                 :enabled                true
                  :resource_collection_id pos-int?}
                 (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})))
         (is (= 0 (alength ^bytes (t2/select-one-fn :bundle :model/DataApp :name "demo"))))
-        (is (=? {:name "demo" :enabled false} (mt/user-http-request :crowberto :get 200 "ee/apps/demo")))))))
+        (is (=? {:name "demo" :enabled true} (mt/user-http-request :crowberto :get 200 "ee/apps/demo")))))))
 
 (deftest replace-bundle-endpoint-test
   (mt/test-helpers-set-global-values!
@@ -537,7 +537,7 @@
 (deftest disabled-apps-are-listed-only-to-superusers-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})]
+      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo" :enabled false})]
         (group-access/add-groups! (t2/select-one :model/DataApp :id id) [(:id (perms/all-users-group))])
         (testing "an assigned user doesn't see the disabled app"
           (is (not-any? #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))

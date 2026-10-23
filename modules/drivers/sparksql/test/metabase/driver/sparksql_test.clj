@@ -12,6 +12,7 @@
    [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.test :as qp]
+   [metabase.system.core :as system]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -89,7 +90,7 @@
                                                                 (orig driver conn sql params)))]
             (is (=? {:status :completed}
                     (qp/process-query query)))
-            (is (= ["-- Metabase"
+            (is (= [(format "-- Metabase accountID: %s databaseID: %d" (system/site-uuid) (mt/id))
                     "SELECT"
                     "  COUNT(*) AS `count`"
                     "FROM"
