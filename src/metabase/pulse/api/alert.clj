@@ -6,17 +6,12 @@
    [clojure.set :as set]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.classloader.core :as classloader]
-   [metabase.config.core :as config]
    [metabase.notification.api :as notification.api]
    [metabase.pulse.db :as pulse.db]
    [metabase.util.cron :as u.cron]
    [metabase.util.malli.schema :as ms]))
 
 (set! *warn-on-reflection* true)
-
-(when config/ee-available?
-  (classloader/require 'metabase-enterprise.advanced-permissions.common))
 
 (defn- notification->pulse
   "Convert a notification to the legacy pulse structure for backward compatibility."
