@@ -67,6 +67,12 @@ export type PrototypeFiltersResponse =
     }
   | { status: "rejected"; reason: string };
 
+// Prototype: the response of GET /api/prototype/samples.
+export type PrototypeSamples = {
+  tables: { table_id: TableId; row_count: number; sample_count: number }[];
+  columns: { field_id: FieldId; min: number; max: number }[];
+};
+
 export const prototypeApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     suggestPrototypeFilterValues: builder.mutation<
@@ -104,6 +110,12 @@ export const prototypeApi = Api.injectEndpoints({
         url: "/api/prototype/field-categories",
       }),
     }),
+    getPrototypeSamples: builder.query<PrototypeSamples | null, void>({
+      query: () => ({
+        method: "GET",
+        url: "/api/prototype/samples",
+      }),
+    }),
   }),
 });
 
@@ -112,4 +124,5 @@ export const {
   useSuggestPrototypeFiltersMutation,
   useListPrototypeFilterUsageQuery,
   useListPrototypeFieldCategoriesQuery,
+  useGetPrototypeSamplesQuery,
 } = prototypeApi;

@@ -1,27 +1,33 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { Box } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting/numbers";
 
 import S from "./NumberColumnStats.module.css";
-import type { NumberColumnStats as Stats } from "./utils";
+import type { NumberMatchCount } from "./use-number-column-stats";
+import { type NumberColumnStats as Stats, roundEstimate } from "./utils";
 
 interface NumberColumnStatsProps {
   stats: Stats;
+  isEstimate: boolean;
 }
 
-export function NumberColumnStats({ stats }: NumberColumnStatsProps) {
+export function NumberColumnStats({
+  stats,
+  isEstimate,
+}: NumberColumnStatsProps) {
+  const prefix = isEstimate ? "≈ " : "";
   const rows = [
-    { label: t`Count`, value: formatStat(stats.count) },
+    { label: t`Count`, value: prefix + formatStat(stats.count) },
     {
       label: t`Range`,
       value:
         stats.min != null && stats.max != null
-          ? `${formatStat(stats.min)} – ${formatStat(stats.max)}`
+          ? `${prefix}${formatStat(stats.min)} – ${formatStat(stats.max)}`
           : formatStat(null),
     },
-    { label: t`Average`, value: formatStat(stats.avg) },
-    { label: t`Sum`, value: formatStat(stats.sum) },
+    { label: t`Average`, value: prefix + formatStat(stats.avg) },
+    { label: t`Sum`, value: prefix + formatStat(stats.sum) },
   ];
 
   return (
@@ -32,7 +38,44 @@ export function NumberColumnStats({ stats }: NumberColumnStatsProps) {
           <span className={S.value}>{value}</span>
         </div>
       ))}
+      {isEstimate && <SampleNote />}
     </Box>
+  );
+}
+
+export function MatchCount({ matchCount }: { matchCount: NumberMatchCount }) {
+  const { count, isEstimate, isFew } = matchCount;
+  const value = isEstimate ? roundEstimate(count) : count;
+  const formatted = (isEstimate ? "~" : "") + formatNumber(value);
+  return (
+    <div className={S.matchCount} data-testid="number-filter-match-count">
+      {isFew
+        ? t`Matches very few rows`
+        : ngettext(
+            msgid`Matches ${formatted} row`,
+            `Matches ${formatted} rows`,
+            value,
+          )}
+    </div>
+  );
+}
+
+export function SampleNote() {
+  return (
+    <div className={S.sampleNote} data-testid="number-column-stats-sample">
+      {t`Estimated from a sample of the data.`}
+    </div>
+  );
+}
+
+export function UnavailableNote() {
+  return (
+    <div
+      className={S.unavailableNote}
+      data-testid="number-column-stats-unavailable"
+    >
+      {t`Preview is unavailable for these filters.`}
+    </div>
   );
 }
 

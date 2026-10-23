@@ -16,7 +16,12 @@ import {
   canSearchFieldValues,
 } from "metabase/querying/filters/components/FilterPicker/FilterValuePicker/utils";
 import { HistogramSlider } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/HistogramSlider";
-import { useNumberColumnStats } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberColumnStats";
+import {
+  MatchCount,
+  SampleNote,
+  UnavailableNote,
+  useNumberColumnStats,
+} from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberColumnStats";
 import { Icon, Loader, Popover, Stack, Tooltip } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
 import * as Lib from "metabase-lib";
@@ -982,7 +987,8 @@ interface NumberHistogramPopoverProps {
 
 /**
  * Prototype: the histogram and the slider from the filter widgets prototype,
- * under the number inputs. It shows for the fast prototype tables only.
+ * under the number inputs. It shows for the fast prototype tables, and for a
+ * slow table with a sample.
  */
 function NumberHistogramPopover({
   query,
@@ -994,17 +1000,23 @@ function NumberHistogramPopover({
   onChange,
   children,
 }: NumberHistogramPopoverProps) {
-  const { result } = useNumberColumnStats({
+  const { numberOperator } = operator;
+  const numberValues = values.map((value) => {
+    const number = parseNumber(value);
+    return typeof number === "number" ? number : null;
+  });
+  const { result, isUnavailable, matchCount } = useNumberColumnStats({
     query,
     stageIndex,
     column,
     filter,
+    operator: numberOperator,
+    values: numberValues,
   });
-  const { numberOperator } = operator;
 
   return (
     <Popover
-      opened={result != null && numberOperator != null}
+      opened={(result != null || isUnavailable) && numberOperator != null}
       position="bottom-start"
       withinPortal={false}
       shadow="md"
@@ -1012,6 +1024,11 @@ function NumberHistogramPopover({
       <Popover.Target>
         <span className={S.fixedValues}>{children}</span>
       </Popover.Target>
+      {isUnavailable && numberOperator != null && (
+        <Popover.Dropdown className={S.histogramDropdown}>
+          <UnavailableNote />
+        </Popover.Dropdown>
+      )}
       {result != null && numberOperator != null && (
         <Popover.Dropdown
           className={S.histogramDropdown}
@@ -1024,12 +1041,11 @@ function NumberHistogramPopover({
             min={result.range.min}
             max={result.range.max}
             step={result.step}
-            values={values.map((value) => {
-              const number = parseNumber(value);
-              return typeof number === "number" ? number : null;
-            })}
+            values={numberValues}
             onChange={(newValues) => onChange(newValues.map(String))}
           />
+          {matchCount != null && <MatchCount matchCount={matchCount} />}
+          {result.isEstimate && <SampleNote />}
         </Popover.Dropdown>
       )}
     </Popover>

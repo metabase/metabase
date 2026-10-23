@@ -7,6 +7,7 @@
    [metabase.prototype.field-categories :as field-categories]
    [metabase.prototype.filter-usage :as filter-usage]
    [metabase.prototype.filter-values :as filter-values]
+   [metabase.prototype.samples :as samples]
    [metabase.util.malli.schema :as ms]))
 
 (api.macros/defendpoint :get "/filter-usage"
@@ -95,3 +96,18 @@
                                                               [:options    {:optional true}
                                                                [:maybe [:sequential :string]]]]]]]]]]]
   (ai-filters/suggest-filters body))
+
+(api.macros/defendpoint :get "/samples"
+  :- [:maybe [:map
+              [:tables  [:sequential [:map
+                                      [:table_id     ms/PositiveInt]
+                                      [:row_count    :int]
+                                      [:sample_count :int]]]]
+              [:columns [:sequential [:map
+                                      [:field_id ms/PositiveInt]
+                                      [:min      number?]
+                                      [:max      number?]]]]]]
+  "Prototype: the samples of the slow tables. For each table, its row count and the size of its sample. For each
+  number column of these tables, its exact min and max."
+  []
+  (samples/sample-info))

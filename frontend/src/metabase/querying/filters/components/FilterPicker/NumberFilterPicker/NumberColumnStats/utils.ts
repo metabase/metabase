@@ -244,3 +244,55 @@ export function getSliderRange(min: number, max: number, step: number) {
   const end = roundToStep(max, step, Math.ceil);
   return { min: start, max: end > start ? end : start + step };
 }
+
+export interface MatchFilterParts {
+  operator: Lib.NumberFilterOperator;
+  values: number[];
+}
+
+/**
+ * The filter that the slider makes now, or null when it does not filter yet.
+ * A range with one end only is a filter on that end.
+ */
+export function getMatchFilterParts(
+  operator: Lib.NumberFilterOperator,
+  values: (number | null)[],
+): MatchFilterParts | null {
+  if (operator === "between") {
+    const [start = null, end = null] = values;
+    if (start != null && end != null) {
+      return { operator, values: [start, end] };
+    }
+    if (start != null) {
+      return { operator: ">=", values: [start] };
+    }
+    if (end != null) {
+      return { operator: "<=", values: [end] };
+    }
+    return null;
+  }
+  const numbers = values.filter((value) => value != null);
+  return numbers.length > 0 ? { operator, values: numbers } : null;
+}
+
+/** The count of the rows that the filter of the slider keeps. */
+export function getMatchCountQuery(
+  { query, stageIndex, column }: StatsBase,
+  { operator, values }: MatchFilterParts,
+): Lib.Query | null {
+  const newQuery = Lib.filter(
+    query,
+    stageIndex,
+    Lib.numberFilterClause({ operator, column, values }),
+  );
+  return aggregate(newQuery, stageIndex, null, "count");
+}
+
+/** A rounded count that looks like an estimate: 2 significant digits. */
+export function roundEstimate(count: number) {
+  if (count < 100) {
+    return Math.round(count);
+  }
+  const magnitude = 10 ** (Math.floor(Math.log10(count)) - 1);
+  return Math.round(count / magnitude) * magnitude;
+}

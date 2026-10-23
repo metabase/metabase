@@ -18,8 +18,11 @@ import { useReportDraftFilter } from "../use-report-draft-filter";
 import { HistogramSlider, getHistogramWidth } from "./HistogramSlider";
 import {
   BUCKET_COUNT,
+  MatchCount,
   NumberColumnStats,
   type NumberColumnStatsResult,
+  type NumberMatchCount,
+  UnavailableNote,
   useNumberColumnStats,
 } from "./NumberColumnStats";
 import S from "./NumberFilterPicker.module.css";
@@ -66,11 +69,18 @@ export function NumberFilterPicker({
     isValid ? getFilterClause(operator, values) : undefined,
   );
 
-  const { isFast, result: columnStats } = useNumberColumnStats({
+  const {
+    hasStats,
+    result: columnStats,
+    isUnavailable,
+    matchCount,
+  } = useNumberColumnStats({
     query,
     stageIndex,
     column,
     filter,
+    operator,
+    values: values.map(toNumber),
   });
 
   const handleOperatorChange = (newOperator: Lib.NumberFilterOperator) => {
@@ -98,7 +108,9 @@ export function NumberFilterPicker({
     <Box
       component="form"
       // Prototype: the histogram has a fixed width, and the popover grows to it.
-      w={isFast ? Math.max(WIDTH, getHistogramWidth(BUCKET_COUNT) + 48) : WIDTH}
+      w={
+        hasStats ? Math.max(WIDTH, getHistogramWidth(BUCKET_COUNT) + 48) : WIDTH
+      }
       data-testid="number-filter-picker"
       onSubmit={handleFormSubmit}
     >
@@ -124,9 +136,20 @@ export function NumberFilterPicker({
           valueCount={valueCount}
           hasMultipleValues={hasMultipleValues}
           columnStats={columnStats}
+          matchCount={matchCount}
           onChange={setValues}
         />
-        {columnStats != null && <NumberColumnStats stats={columnStats.stats} />}
+        {columnStats != null && (
+          <NumberColumnStats
+            stats={columnStats.stats}
+            isEstimate={columnStats.isEstimate}
+          />
+        )}
+        {isUnavailable && (
+          <Box px="xl" pt="md">
+            <UnavailableNote />
+          </Box>
+        )}
         <FilterPickerFooter
           isNew={isNew}
           isValid={isValid}
@@ -149,6 +172,7 @@ interface NumberValueInputProps {
   valueCount: number;
   hasMultipleValues?: boolean;
   columnStats: NumberColumnStatsResult | null;
+  matchCount: NumberMatchCount | null;
   onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
@@ -162,6 +186,7 @@ function NumberValueInput({
   valueCount,
   hasMultipleValues,
   columnStats,
+  matchCount,
   onChange,
 }: NumberValueInputProps) {
   const inputCount = hasMultipleValues ? 1 : valueCount;
@@ -180,6 +205,7 @@ function NumberValueInput({
         min={columnStats.range.min}
         max={columnStats.range.max}
         step={columnStats.step}
+        matchCount={matchCount}
         onChange={onChange}
       />
     );
@@ -247,6 +273,7 @@ interface SliderValueInputProps {
   min: number;
   max: number;
   step: number;
+  matchCount: NumberMatchCount | null;
   onChange: (values: NumberOrEmptyValue[]) => void;
 }
 
@@ -261,6 +288,7 @@ function SliderValueInput({
   min,
   max,
   step,
+  matchCount,
   onChange,
 }: SliderValueInputProps) {
   const numberValues = Array.from({ length: inputCount }, (_, index) =>
@@ -312,6 +340,7 @@ function SliderValueInput({
           values={numberValues}
           onChange={onChange}
         />
+        {matchCount != null && <MatchCount matchCount={matchCount} />}
       </Box>
     </Box>
   );
