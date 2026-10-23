@@ -1453,6 +1453,7 @@
               collections
               documents
               driver
+              embedding
               events
               explorations
               interestingness

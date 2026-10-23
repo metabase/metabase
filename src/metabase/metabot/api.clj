@@ -202,8 +202,12 @@
   it seeds the agent loop as the immutable baseline for this turn's state."
   [{:keys [metabot-id profile-id message context history conversation-id state debug?
            eval-session-id assistant-msg-id external-id user-external-id title-job]}]
-  (let [enriched-context (metabot.context/create-context context {:metabot-id metabot-id
-                                                                  :profile-id (keyword profile-id)})
+  (let [enriched-context (metabot.context/create-context
+                          ;; Server-authoritative: decided from the request's client header here, on the
+                          ;; handler thread, before the agent moves to the streaming thread.
+                          (assoc context :in_host_app (metabot.context/host-app-request? (request/current-request)))
+                          {:metabot-id metabot-id
+                           :profile-id (keyword profile-id)})
         messages         (concat history [message])]
     (sr/streaming-response {:content-type "text/event-stream"} [^OutputStream os canceled-chan]
       (let [parts-atom  (atom [])
