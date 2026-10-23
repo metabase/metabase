@@ -67,6 +67,15 @@ export const useChartSettingsSections = ({
   const [currentSection, setCurrentSection] = useState<string | null>(
     initial?.section ?? null,
   );
+  const [previousInitial, setPreviousInitial] = useState(initial);
+
+  // every request to open the settings brings a new `initial`, even for the same section
+  if (initial !== previousInitial) {
+    setPreviousInitial(initial);
+    if (initial?.section) {
+      setCurrentSection(initial.section);
+    }
+  }
 
   const { orderedSectionNames, chartSettingCurrentSection, visibleWidgets } =
     useMemo(() => {

@@ -237,6 +237,7 @@ export {
 } from "./lib/custom-viz/setting-keys";
 export { groupRawSeriesMetrics, sumMetric } from "./lib/dataset";
 export {
+  getGoalErrorMessage,
   getGoalErrors,
   getGoalSegmentBounds,
   getNumericGoalValue,
@@ -510,6 +511,7 @@ export type {
   GoalData,
   GoalRefError,
   GoalValueResult,
+  ReferencedEntityKind,
   ResolvedGoalSegment,
   ResolvedOpenEndedGoalSegment,
 } from "./types/dynamic-goals";

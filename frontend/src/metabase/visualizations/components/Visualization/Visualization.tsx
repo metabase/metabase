@@ -43,6 +43,7 @@ import {
   type ClickActionsMode,
   type ClickObject,
   type OnBrush,
+  type OnOpenChartSettings,
   type VisualizationPassThroughProps,
   isRegularClickAction,
 } from "metabase/visualizations/types";
@@ -171,10 +172,7 @@ type VisualizationOwnProps = {
   tc?: ContentTranslationFunction;
   zoomedRowIndex?: number;
   onZoomRow?: (rowIndex: number) => void;
-  onOpenChartSettings?: (data: {
-    initialChartSettings?: { section: string };
-    showSidebarTitle?: boolean;
-  }) => void;
+  onOpenChartSettings?: OnOpenChartSettings;
   onChangeCardAndRun?: ((opts: OnChangeCardAndRunOpts) => void) | null;
   onBrush?: OnBrush | null;
   onHeaderColumnReorder?: (columnIndex: number) => void;
@@ -987,6 +985,7 @@ class Visualization extends PureComponent<
                       onBrush={this.props.onBrush}
                       onDeselectTimelineEvents={onDeselectTimelineEvents}
                       onHoverChange={this.handleHoverChange}
+                      onOpenChartSettings={onOpenChartSettings}
                       onOpenTimelines={onOpenTimelines}
                       onRender={this.onRender}
                       onRenderError={this.onRenderError}

@@ -1,9 +1,14 @@
 import { useRef } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
+import {
+  GOAL_WARNING_ICON_SIZE,
+  GoalWarningIcon,
+} from "metabase/visualizations/components/GoalWarning";
 import {
   ScalarCardShell,
   useScalarCardShell,
@@ -23,6 +28,7 @@ import type {
 import { BarChart } from "metabase/visualizations/visualizations/BarChart";
 import {
   type ComputedVisualizationSettings,
+  getGoalErrors,
   getGoalSegmentBounds,
   resolveOpenEndedGoalSegments,
 } from "metabase/viz-core";
@@ -30,6 +36,8 @@ import {
 import { ScalarValueContainer } from "./ScalarValueContainer";
 import { SCALAR_CHART_DEFINITION } from "./definition";
 import { scalarToBarTransform } from "./scalars-bar-transform";
+
+const GOAL_WARNING_GAP_PX = 6;
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(
@@ -56,6 +64,8 @@ function ScalarComponent(
     onVisualizationClick,
     rawSeries,
     actionButtons,
+    isQueryBuilder,
+    onOpenChartSettings,
   } = props;
   const { cols, rows } = data;
 
@@ -122,12 +132,25 @@ function ScalarComponent(
   };
 
   const segments = resolveOpenEndedGoalSegments(goalData.data, scalarSegments);
+  const hasGoalErrors = getGoalErrors(goalData.results).length > 0;
   const color = getColor(value, segments);
   const tooltipContent = getTooltipContent(segments, formatOptions);
 
+  const handleGoalWarningClick =
+    isQueryBuilder && hasGoalErrors && onOpenChartSettings
+      ? () =>
+          onOpenChartSettings({
+            initialChartSettings: { section: t`Conditional colors` },
+          })
+      : undefined;
+  // reserved on both sides so the value stays centered
+  const goalWarningWidthPx = handleGoalWarningClick
+    ? GOAL_WARNING_ICON_SIZE + GOAL_WARNING_GAP_PX
+    : 0;
+
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
-    availableWidth,
+    Math.max(availableWidth - 2 * goalWarningWidthPx, 0),
     tier.valueFontSize,
     formatOptions,
   );
@@ -164,7 +187,12 @@ function ScalarComponent(
       actionButtons={actionButtons}
       innerTooltipHoverHandlers={innerTooltipHoverHandlers}
     >
-      <Box maw="100%" {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}>
+      <Box
+        maw="100%"
+        pos="relative"
+        px={`${goalWarningWidthPx}px`}
+        {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}
+      >
         <ScalarValueContainer
           className={DashboardS.fullscreenNormalText}
           tooltip={fullScalarValue}
@@ -199,6 +227,14 @@ function ScalarComponent(
             </Stack>
           </Tooltip>
         </ScalarValueContainer>
+        {handleGoalWarningClick && (
+          <Box pos="absolute" top={0} right={0}>
+            <GoalWarningIcon
+              source="color-ranges"
+              onClick={handleGoalWarningClick}
+            />
+          </Box>
+        )}
       </Box>
       {titleElement}
     </ScalarCardShell>
