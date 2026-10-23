@@ -42,16 +42,16 @@ RowValues
 
 <!-- [<snippet properties>] -->
 
-| Property                                | Type                                                                               |
-| :-------------------------------------- | :--------------------------------------------------------------------------------- |
-| <a id="columns"></a> `columns`          | `DatasetColumn`[]                                                                  |
-| <a id="description"></a> `description?` | [`QueryQuestionResult`](./api/QueryQuestionResult.md)\[`"description"`\]           |
-| <a id="entityid"></a> `entityId?`       | \| [`QueryQuestionResult`](./api/QueryQuestionResult.md)\[`"entityId"`\] \| `null` |
-| <a id="id"></a> `id?`                   | [`QueryQuestionResult`](./api/QueryQuestionResult.md)\[`"id"`\] \| `null`          |
-| <a id="name"></a> `name?`               | \| [`QueryQuestionResult`](./api/QueryQuestionResult.md)\[`"name"`\] \| `null`     |
-| <a id="rawrows"></a> `rawRows`          | `RowValues`[]                                                                      |
-| <a id="rowcount"></a> `rowCount`        | `number` \| `null`                                                                 |
-| <a id="rows"></a> `rows`                | `TRow`[]                                                                           |
-| <a id="runningtime"></a> `runningTime`  | `number` \| `null`                                                                 |
+| Property                                | Type                                                                                   |
+| :-------------------------------------- | :------------------------------------------------------------------------------------- |
+| <a id="columns"></a> `columns`          | `DatasetColumn`[]                                                                      |
+| <a id="description"></a> `description?` | [`QueryQuestionResult`](./sdk/api/QueryQuestionResult.md)\[`"description"`\]           |
+| <a id="entityid"></a> `entityId?`       | \| [`QueryQuestionResult`](./sdk/api/QueryQuestionResult.md)\[`"entityId"`\] \| `null` |
+| <a id="id"></a> `id?`                   | [`QueryQuestionResult`](./sdk/api/QueryQuestionResult.md)\[`"id"`\] \| `null`          |
+| <a id="name"></a> `name?`               | \| [`QueryQuestionResult`](./sdk/api/QueryQuestionResult.md)\[`"name"`\] \| `null`     |
+| <a id="rawrows"></a> `rawRows`          | `RowValues`[]                                                                          |
+| <a id="rowcount"></a> `rowCount`        | `number` \| `null`                                                                     |
+| <a id="rows"></a> `rows`                | `TRow`[]                                                                               |
+| <a id="runningtime"></a> `runningTime`  | `number` \| `null`                                                                     |
 
 <!-- [<endsnippet properties>] -->

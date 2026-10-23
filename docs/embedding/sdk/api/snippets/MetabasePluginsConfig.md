@@ -9,9 +9,9 @@ type MetabasePluginsConfig = {
 
 <!-- [<snippet properties>] -->
 
-| Property                                                        | Type                                                                            |
-| :-------------------------------------------------------------- | :------------------------------------------------------------------------------ |
-| <a id="dashboard"></a> `dashboard?`                             | [`MetabaseDashboardPluginsConfig`](./api/MetabaseDashboardPluginsConfig.md)     |
-| <a id="mapquestionclickactions"></a> `mapQuestionClickActions?` | [`MetabaseClickActionPluginsConfig`](./api/MetabaseClickActionPluginsConfig.md) |
+| Property                                                        | Type                                                                                |
+| :-------------------------------------------------------------- | :---------------------------------------------------------------------------------- |
+| <a id="dashboard"></a> `dashboard?`                             | [`MetabaseDashboardPluginsConfig`](./sdk/api/MetabaseDashboardPluginsConfig.md)     |
+| <a id="mapquestionclickactions"></a> `mapQuestionClickActions?` | [`MetabaseClickActionPluginsConfig`](./sdk/api/MetabaseClickActionPluginsConfig.md) |
 
 <!-- [<endsnippet properties>] -->

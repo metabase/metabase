@@ -11,6 +11,6 @@ Paths are relative to the data-app root: `/`, `/customers/42`, etc.
 
 <!-- [<snippet returns>] -->
 
-[`UseDataAppLocationResult`](./api/UseDataAppLocationResult.md)
+[`UseDataAppLocationResult`](./sdk/api/UseDataAppLocationResult.md)
 
 <!-- [<endsnippet returns>] -->

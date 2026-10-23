@@ -10,10 +10,10 @@ type CustomDashboardCardMenuItem = ({
 
 <!-- [<snippet parameters>] -->
 
-| Parameter                 | Type                                                                |
-| :------------------------ | :------------------------------------------------------------------ |
-| `{ question, }`           | \{ `question?`: [`MetabaseQuestion`](./api/MetabaseQuestion.md); \} |
-| `{ question, }.question?` | [`MetabaseQuestion`](./api/MetabaseQuestion.md)                     |
+| Parameter                 | Type                                                                    |
+| :------------------------ | :---------------------------------------------------------------------- |
+| `{ question, }`           | \{ `question?`: [`MetabaseQuestion`](./sdk/api/MetabaseQuestion.md); \} |
+| `{ question, }.question?` | [`MetabaseQuestion`](./sdk/api/MetabaseQuestion.md)                     |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -21,6 +21,6 @@ type CustomDashboardCardMenuItem = ({
 
 <!-- [<snippet returns>] -->
 
-[`DashCardMenuItem`](./api/DashCardMenuItem.md)
+[`DashCardMenuItem`](./sdk/api/DashCardMenuItem.md)
 
 <!-- [<endsnippet returns>] -->

@@ -10,9 +10,9 @@ Defines a Metabase auth config.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                |
-| :-------- | :-------------------------------------------------- |
-| `config`  | [`MetabaseAuthConfig`](./api/MetabaseAuthConfig.md) |
+| Parameter | Type                                                    |
+| :-------- | :------------------------------------------------------ |
+| `config`  | [`MetabaseAuthConfig`](./sdk/api/MetabaseAuthConfig.md) |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -20,6 +20,6 @@ Defines a Metabase auth config.
 
 <!-- [<snippet returns>] -->
 
-[`MetabaseAuthConfig`](./api/MetabaseAuthConfig.md)
+[`MetabaseAuthConfig`](./sdk/api/MetabaseAuthConfig.md)
 
 <!-- [<endsnippet returns>] -->

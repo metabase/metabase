@@ -10,8 +10,8 @@ Response from a single-row delete — the affected primary keys.
 
 <!-- [<snippet properties>] -->
 
-| Property                                 | Type                                       |
-| :--------------------------------------- | :----------------------------------------- |
-| <a id="rows-deleted"></a> `rows-deleted` | readonly [`RowValue`](./api/RowValue.md)[] |
+| Property                                 | Type                                           |
+| :--------------------------------------- | :--------------------------------------------- |
+| <a id="rows-deleted"></a> `rows-deleted` | readonly [`RowValue`](./sdk/api/RowValue.md)[] |
 
 <!-- [<endsnippet properties>] -->

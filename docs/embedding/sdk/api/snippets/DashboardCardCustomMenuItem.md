@@ -10,10 +10,10 @@ type DashboardCardCustomMenuItem = {
 
 <!-- [<snippet properties>] -->
 
-| Property                                    | Type                                                                                                                             | Description  |
-| :------------------------------------------ | :------------------------------------------------------------------------------------------------------------------------------- | :----------- |
-| <a id="customitems"></a> `customItems?`     | ( \| [`DashCardMenuItem`](./api/DashCardMenuItem.md) \| [`CustomDashboardCardMenuItem`](./api/CustomDashboardCardMenuItem.md))[] | **`Expand`** |
-| <a id="withdownloads"></a> `withDownloads?` | `boolean`                                                                                                                        | -            |
-| <a id="witheditlink"></a> `withEditLink?`   | `boolean`                                                                                                                        | -            |
+| Property                                    | Type                                                                                                                                     | Description  |
+| :------------------------------------------ | :--------------------------------------------------------------------------------------------------------------------------------------- | :----------- |
+| <a id="customitems"></a> `customItems?`     | ( \| [`DashCardMenuItem`](./sdk/api/DashCardMenuItem.md) \| [`CustomDashboardCardMenuItem`](./sdk/api/CustomDashboardCardMenuItem.md))[] | **`Expand`** |
+| <a id="withdownloads"></a> `withDownloads?` | `boolean`                                                                                                                                | -            |
+| <a id="witheditlink"></a> `withEditLink?`   | `boolean`                                                                                                                                | -            |
 
 <!-- [<endsnippet properties>] -->

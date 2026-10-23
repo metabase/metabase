@@ -8,8 +8,8 @@ type MetabaseDashboardPluginsConfig = {
 
 <!-- [<snippet properties>] -->
 
-| Property                                            | Type                                              |
-| :-------------------------------------------------- | :------------------------------------------------ |
-| <a id="dashboardcardmenu"></a> `dashboardCardMenu?` | [`DashboardCardMenu`](./api/DashboardCardMenu.md) |
+| Property                                            | Type                                                  |
+| :-------------------------------------------------- | :---------------------------------------------------- |
+| <a id="dashboardcardmenu"></a> `dashboardCardMenu?` | [`DashboardCardMenu`](./sdk/api/DashboardCardMenu.md) |
 
 <!-- [<endsnippet properties>] -->

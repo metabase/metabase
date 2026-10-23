@@ -13,11 +13,11 @@ Payload passed to `onParametersChange` callback
 
 <!-- [<snippet properties>] -->
 
-| Property                                             | Type                                                      |
-| :--------------------------------------------------- | :-------------------------------------------------------- |
-| <a id="defaultparameters"></a> `defaultParameters`   | [`ParameterValues`](./api/ParameterValues.md)             |
-| <a id="lastusedparameters"></a> `lastUsedParameters` | [`ParameterValues`](./api/ParameterValues.md)             |
-| <a id="parameters"></a> `parameters`                 | [`ParameterValues`](./api/ParameterValues.md)             |
-| <a id="source"></a> `source`                         | [`ParameterChangeSource`](./api/ParameterChangeSource.md) |
+| Property                                             | Type                                                          |
+| :--------------------------------------------------- | :------------------------------------------------------------ |
+| <a id="defaultparameters"></a> `defaultParameters`   | [`ParameterValues`](./sdk/api/ParameterValues.md)             |
+| <a id="lastusedparameters"></a> `lastUsedParameters` | [`ParameterValues`](./sdk/api/ParameterValues.md)             |
+| <a id="parameters"></a> `parameters`                 | [`ParameterValues`](./sdk/api/ParameterValues.md)             |
+| <a id="source"></a> `source`                         | [`ParameterChangeSource`](./sdk/api/ParameterChangeSource.md) |
 
 <!-- [<endsnippet properties>] -->

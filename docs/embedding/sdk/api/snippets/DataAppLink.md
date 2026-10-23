@@ -22,9 +22,9 @@ to load as a top-level page. A plain click navigates inside the app.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter                                         | Type                                            |
-| :------------------------------------------------ | :---------------------------------------------- |
-| `{ to, children, onClick, target, rel, ...rest }` | [`DataAppLinkProps`](./api/DataAppLinkProps.md) |
+| Parameter                                         | Type                                                |
+| :------------------------------------------------ | :-------------------------------------------------- |
+| `{ to, children, onClick, target, rel, ...rest }` | [`DataAppLinkProps`](./sdk/api/DataAppLinkProps.md) |
 
 <!-- [<endsnippet parameters>] -->
 
