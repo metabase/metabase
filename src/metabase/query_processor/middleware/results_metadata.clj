@@ -12,48 +12,55 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
+   ;; still passes state via the store's miscellaneous-value slot; general-cached-value migration pending
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :refer [mapv select-keys get-in]]
-   ^{:clj-kondo/ignore [:discouraged-namespace]}
-   [toucan2.core :as t2]))
+   [metabase.util.performance :refer [mapv select-keys get-in]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (mu/defn- comparable-metadata
-  "Smooth out any unimportant differences in metadata so we can do an easy equality check."
-  [metadata :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
-  (letfn [(remove-underscore-nil-keys
-            ;; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a
-            ;; dash. Remove the nil value
-            [m]
-            (reduce-kv
-             (fn [acc k v]
-               (let [kebab-cased-key (when (str/includes? (name k) "_")
-                                       (keyword (str/replace (name k) "_" "-")))]
-                 (if (and kebab-cased-key
-                          (nil? v)
-                          (contains? m kebab-cased-key))
-                   acc
-                   (assoc acc k v))))
-             {} m))
-          (standardize-metadata [m]
-            (cond
-              (keyword? m) (u/qualified-name m)
-              (map? m) (-> (update-vals m standardize-metadata)
-                           (dissoc :ident) ; `:ident` is deprecated and should no longer be present, but better safe than sorry.
-                           (remove-underscore-nil-keys))
-              (sequential? m) (mapv standardize-metadata m)
-              (set? m) (into #{} (map standardize-metadata) m)
-              :else m))]
-    (mapv standardize-metadata metadata)))
+  "A comparable representation of `metadata`, normalized so inconsequential differences don't register as a
+  change. With `parameter-independent?` true, two runs over different parameter values compare equal when the
+  column structure matches."
+  ([metadata :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]
+   (comparable-metadata metadata false))
+  ([metadata              :- [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]
+    parameter-independent? :- :boolean]
+   (letfn [(remove-underscore-nil-keys
+             ;; Sometimes we get an underscore version of a key with a nil value which is a duplicate of a key with a
+             ;; dash. Remove the nil value
+             [m]
+             (reduce-kv
+              (fn [acc k v]
+                (let [kebab-cased-key (when (str/includes? (name k) "_")
+                                        (keyword (str/replace (name k) "_" "-")))]
+                  (if (and kebab-cased-key
+                           (nil? v)
+                           (contains? m kebab-cased-key))
+                    acc
+                    (assoc acc k v))))
+              {} m))
+           (standardize-metadata [m]
+             (cond
+               (keyword? m) (u/qualified-name m)
+               (map? m) (cond-> (-> (update-vals m standardize-metadata)
+                                    (dissoc :ident) ; `:ident` is deprecated and should no longer be present, but better safe than sorry.
+                                    (remove-underscore-nil-keys))
+                          parameter-independent? (dissoc :fingerprint))
+               (sequential? m) (mapv standardize-metadata m)
+               (set? m) (into #{} (map standardize-metadata) m)
+               :else m))]
+     (mapv standardize-metadata metadata))))
 
 (mu/defn- record-metadata!
   [{{:keys [card-id]} :info, :as query} :- ::lib.schema/query
@@ -69,25 +76,26 @@
                  driver/*driver*
                  ;; pivot queries can run multiple queries, only record metadata for the main query
                  (not= actual-metadata :none)
-                 ;; Don't persist result_metadata for parameterized queries with non-default values.
-                 ;; MBQL queries with any parameters are skipped because filters change fingerprints.
-                 ;; Native queries are only skipped when parameter values differ from template tag defaults.
-                 ;; See QUE2-502 for details.
-                 (not (:qp/skip-result-metadata-persistence query))
                  (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database query))
                  card-id
                  ;; don't want to update metadata when we use a Card as a source Card.
                  (not (:qp/source-card-id query))
-                 ;; Only update changed metadata
-                 (not= (comparable-metadata actual-metadata)
-                       (comparable-metadata
-                        ;; existing usage -- don't use going forward
-                        #_{:clj-kondo/ignore [:deprecated-var]}
-                        (qp.store/miscellaneous-value [::card-stored-metadata]))))
+                 ;; `:qp/skip-result-metadata-persistence` is an absolute skip set by callers (e.g.
+                 ;; `qp.card/process-query-for-card` when a `card-transform` rewrites the query) to tell us
+                 ;; this run's output is not the Card's canonical shape.
+                 (not (:qp/skip-result-metadata-persistence query))
+                 ;; Only update changed metadata; a non-default parameterized run writes only on
+                 ;; parameter-independent column changes, not fingerprint drift (#83734, see also #72007).
+                 (let [parameter-independent? (boolean (:qp/non-default-parameterized? query))]
+                   (not= (comparable-metadata actual-metadata parameter-independent?)
+                         (comparable-metadata
+                          ;; existing usage -- don't use going forward
+                          #_{:clj-kondo/ignore [:deprecated-var]}
+                          (qp.store/miscellaneous-value [::card-stored-metadata])
+                          parameter-independent?))))
         (when-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] actual-metadata))]
           (throw (ex-info "Invalid result metadata!" {:error error, :metadata actual-metadata})))
-        (t2/update! :model/Card card-id {:result_metadata actual-metadata
-                                         :updated_at      :updated_at})))
+        (query-processor.db/set-card-result-metadata! card-id actual-metadata)))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e
@@ -124,7 +132,7 @@
    insights-col-metadata))
 
 (mu/defn- insights-xform :- fn?
-  [orig-metadata :- [:maybe :map]
+  [orig-metadata :- [:maybe ::qp.schema/metadata]
    record!       :- ifn?
    rf            :- ifn?]
   (qp.reducible/combine-additional-reducing-fns
@@ -158,9 +166,7 @@
 
 (mu/defn store-previous-result-metadata!
   "Store the previous value of a card's result metadata in the qp.store"
-  [card :- [:maybe
-            [:map
-             [:result_metadata {:optional true} [:maybe [:sequential ::lib.schema.metadata/lib-or-legacy-column]]]]]]
+  [card :- [:maybe ::queries.schema/card]]
   (when-let [result-metadata (:result_metadata card)]
     (if-let [error (me/humanize (mr/explain [:sequential ::lib.schema.metadata/lib-or-legacy-column] result-metadata))]
       (log/errorf "Invalid card result metadata, ignoring  it: %s" (pr-str error))

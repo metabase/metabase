@@ -1,4 +1,10 @@
-import type { NavigateFunction, NavigateOptions, To } from "react-router";
+import type {
+  DataRouter,
+  Location,
+  NavigateFunction,
+  NavigateOptions,
+  To,
+} from "react-router";
 
 import type { Location as HistoryLocation } from "./types";
 
@@ -37,6 +43,75 @@ let isRouterExpected = false;
 
 export function setRouterExpected(expected: boolean): void {
   isRouterExpected = expected;
+}
+
+/**
+ * The live router, registered as it is built. Only `getIsNavigationPending`
+ * reads it, and only for state react-router publishes nowhere else outside a
+ * component.
+ */
+let currentRouter: DataRouter | null = null;
+
+export function setRouter(router: DataRouter | null): void {
+  currentRouter = router;
+}
+
+/**
+ * Clears every module-level router holder. These outlive a single React tree,
+ * so without a reset one test leaks router state into the next: a test that
+ * never mounts a router can queue a navigation (because `isRouterExpected`
+ * stayed true from an earlier test) that the next test's router then flushes.
+ * The jest harness calls this after each test.
+ */
+export function resetRouterForTests(): void {
+  currentNavigate = null;
+  pendingNavigations = [];
+  isRouterExpected = false;
+  currentRouter = null;
+  locationListeners.clear();
+}
+
+/**
+ * Whether the router has accepted a navigation it has not committed yet.
+ *
+ * `useIsNavigating` answers the same question during a render. This is for the
+ * callers that cannot hold a hook, the same ones `navigate` below exists for.
+ *
+ * A `route.lazy` destination is what makes the window real: the router resolves
+ * the module before it commits the location, so the old page stays mounted at
+ * the old URL. Anything that navigates in that window replaces the pending
+ * navigation rather than queueing behind it, and the destination the user asked
+ * for is dropped. Effects that mirror state into the URL have to sit it out.
+ *
+ * Read from the router rather than tracked alongside it, because the router
+ * updates this synchronously and a React render does not: a caller navigating
+ * from a promise callback can run again before anything re-renders. It is
+ * precise in the other direction too. A navigation to a route that is already
+ * loaded commits during the call, so the window is never open for one, and a
+ * URL sync that follows it still runs.
+ */
+export function getIsNavigationPending(): boolean {
+  return (
+    currentRouter != null && currentRouter.state.navigation.state !== "idle"
+  );
+}
+
+export const getRouterLocation = (): Location | undefined =>
+  currentRouter?.state.location;
+
+/**
+ * The pathname of the navigation the router has accepted but not committed, or
+ * null when none is pending.
+ *
+ * Callers that only want to avoid clobbering a navigation to a *different*
+ * destination need the target, not just whether one is pending: a pending
+ * navigation to the same path they are about to write is theirs to keep, not a
+ * redirect to sit out. Under React 19 the pending window stays open across the
+ * lazy chunk load a render longer, so a blanket "is anything pending" check
+ * drops legitimate same-destination URL syncs.
+ */
+export function getPendingNavigationPath(): string | null {
+  return currentRouter?.state.navigation.location?.pathname ?? null;
 }
 
 export function setRouterNavigate(navigate: NavigateFunction | null): void {

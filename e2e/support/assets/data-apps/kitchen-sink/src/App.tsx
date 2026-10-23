@@ -1,16 +1,14 @@
 import {
   InteractiveQuestion,
   StaticQuestion,
-  useAction,
 } from "@metabase/embedding-sdk-react";
 import {
-  aggregations,
-  breakout,
   copy,
   DataAppLink,
   DataAppRouter,
-  filter,
-  orderBy,
+  defineAction,
+  defineQuery,
+  useAction,
   useDataAppLocation,
   useMetabaseQuery,
   useMetabaseQueryObject,
@@ -28,9 +26,9 @@ const PROBE_COLOR = "rgb(0, 128, 0)";
 
 function Overview() {
   const { scalarQuery, questionQuery } = getTestEnv();
-  const ordersCount = useMetabaseQuery(scalarQuery);
+  const ordersCount = useMetabaseQuery(defineQuery(scalarQuery));
   const totalOrders = ordersCount.data?.rawRows?.[0]?.[0];
-  const ordersQuery = useMetabaseQueryObject(questionQuery);
+  const ordersQuery = useMetabaseQueryObject(defineQuery(questionQuery));
 
   return (
     <div data-testid="data-app-content" style={{ padding: 24 }}>
@@ -66,7 +64,10 @@ function Overview() {
       <h2 style={{ margin: "0 0 8px" }}>All orders</h2>
       <div style={{ height: 400 }}>
         {ordersQuery.query ? (
-          <InteractiveQuestion card={{ query: ordersQuery.query }} />
+          <InteractiveQuestion
+            card={{ query: ordersQuery.query }}
+            withDownloads
+          />
         ) : (
           <div>…</div>
         )}
@@ -86,8 +87,8 @@ function Details() {
 
 function QueryStates() {
   const { scalarQuery, errorQuery } = getTestEnv();
-  const broken = useMetabaseQuery(errorQuery!);
-  const working = useMetabaseQuery(scalarQuery);
+  const broken = useMetabaseQuery(defineQuery(errorQuery!));
+  const working = useMetabaseQuery(defineQuery(scalarQuery));
   const count = working.data?.rawRows?.[0]?.[0];
 
   return (
@@ -134,7 +135,7 @@ function DownloadQuestionPage() {
 // to a custom viz — the example `demo-viz` requires exactly one result column.
 function CustomVizPage() {
   const { scalarQuery } = getTestEnv();
-  const q = useMetabaseQueryObject(scalarQuery);
+  const q = useMetabaseQueryObject(defineQuery(scalarQuery));
 
   return (
     <div data-testid="data-app-custom-viz" style={{ padding: 24 }}>
@@ -152,7 +153,7 @@ function CustomVizPage() {
 
 function StaticQuestionPage() {
   const { questionQuery } = getTestEnv();
-  const q = useMetabaseQueryObject(questionQuery);
+  const q = useMetabaseQueryObject(defineQuery(questionQuery));
 
   return (
     <div data-testid="data-app-static-question" style={{ padding: 24 }}>
@@ -196,37 +197,13 @@ function NativeQueryPage() {
   );
 }
 
-function Combinators() {
-  const combinators = getTestEnv().combinators!;
-  const countAgg = aggregations.count();
-
-  const q = useMetabaseQuery({
-    source: combinators.source,
-    filters: [filter(combinators.filterField, ">", combinators.filterValue)],
-    aggregations: [countAgg],
-    breakouts: [breakout(combinators.breakoutField)],
-    orderBys: [orderBy(countAgg, "desc")],
-  });
-
-  return (
-    <div data-testid="data-app-combinators" style={{ padding: 24 }}>
-      <h1>Combinators</h1>
-      <div data-testid="combinators-loading">
-        {q.isLoading ? "loading" : "done"}
-      </div>
-      <div data-testid="combinators-error">
-        {q.error ? "error" : "no-error"}
-      </div>
-      <div data-testid="combinators-rowcount">
-        {String(q.data?.rows?.length ?? 0)}
-      </div>
-    </div>
-  );
-}
-
 function Actions() {
-  const { actionId, actionParams } = getTestEnv();
-  const action = useAction(actionId ?? null);
+  const { actionEntityId, actionParams } = getTestEnv();
+  const action = useAction(
+    actionEntityId
+      ? defineAction({ action: { id: actionEntityId, parameters: [] } })
+      : null,
+  );
   const [output, setOutput] = useState("idle");
 
   const onExecute = async () => {
@@ -451,7 +428,6 @@ const ROUTES: Record<string, ComponentType> = {
   "/native-query": NativeQueryPage,
   "/download-question": DownloadQuestionPage,
   "/custom-viz": CustomVizPage,
-  "/combinators": Combinators,
   "/actions": Actions,
   "/clipboard": Clipboard,
   "/missing-question": MissingQuestion,

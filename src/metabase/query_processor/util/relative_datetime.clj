@@ -2,6 +2,7 @@
   "Utility function for server side relative datetime computation."
   (:require
    [java-time.api :as t]
+   [metabase.lib-be.core :as lib-be]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]))
@@ -23,8 +24,7 @@
   "Compute relative datetime from [[qp.timezone/now]] shifted by `unit` and `amount`. Format the resulting value
    to literal string compatible with most sql databases, to avoid possible jdbc driver timezone conversions."
   [unit amount effective-or-base-type]
-  (-> (qp.timezone/now)
-      (u.date/truncate unit)
+  (-> (u.date/truncate (lib-be/time-config) (qp.timezone/now) unit)
       (u.date/add unit amount)
       (maybe-truncate-dt-value effective-or-base-type)
       (u.date/format-sql)))
@@ -40,7 +40,7 @@
       :or {base-type     :type/DateTimeWithTZ
            database-type "timestamp"}}]
   (if (use-server-side-relative-datetime? unit)
-    (h2x/cast database-type (relative-datetime-sql-str unit amount (or effective-type base-type)))
+    (h2x/maybe-cast database-type (relative-datetime-sql-str unit amount (or effective-type base-type)))
     ((-> 'metabase.driver.sql.query-processor/->honeysql
          requiring-resolve
          var-get

@@ -45,6 +45,10 @@ const getMockErrorStream = () =>
   createMockSSEStream([{ type: "error", errorText: "boom" }]);
 
 describe("processChatResponse", () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it("should be able to process a valid stream", async () => {
     const mockStream = getMockSuccessStream();
     const result = await processChatResponse(mockStream, expectNoStreamedError);
@@ -246,6 +250,39 @@ describe("processChatResponse", () => {
       "tell ",
       "anyone.",
     ]);
+  });
+
+  it("does not pace deltas while the document is hidden", async () => {
+    jest.spyOn(document, "hidden", "get").mockReturnValue(true);
+    const setTimeoutSpy = jest.spyOn(global, "setTimeout");
+    const config = getMockedCallbacks();
+
+    await processChatResponse(
+      createMockSSEStream([
+        { type: "reasoning-start", id: "r1" },
+        {
+          type: "reasoning-delta",
+          id: "r1",
+          delta: "let me check the orders table ",
+        },
+        { type: "reasoning-end", id: "r1" },
+        { type: "tool-input-start", toolCallId: "c1", toolName: "search" },
+        { type: "text-delta", id: "t1", delta: "Here is the answer." },
+      ]),
+      config,
+    );
+
+    expect(config.onReasoningDelta).toHaveBeenCalledTimes(1);
+    expect(config.onReasoningDelta).toHaveBeenCalledWith({
+      type: "reasoning-delta",
+      id: "r1",
+      delta: "let me check the orders table ",
+    });
+    expect(config.onTextPart.mock.calls).toEqual([["Here is the answer."]]);
+    const pacingWaits = setTimeoutSpy.mock.calls.filter(
+      ([, delayMs]) => delayMs === 10,
+    );
+    expect(pacingWaits).toEqual([]);
   });
 
   it("should resolve with partial response for aborted requests", async () => {

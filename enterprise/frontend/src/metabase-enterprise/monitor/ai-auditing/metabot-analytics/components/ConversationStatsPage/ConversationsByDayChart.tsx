@@ -1,9 +1,10 @@
-import dayjs from "dayjs";
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { dayjs } from "metabase/dayjs";
 import type { DateFilterValue } from "metabase/querying/common/types";
 import { Skeleton, useMantineTheme } from "metabase/ui";
+import { findColumn } from "metabase-enterprise/monitor/query-utils";
 import type { Query } from "metabase-lib";
 import * as Lib from "metabase-lib";
 
@@ -14,12 +15,9 @@ import {
   type GetColor,
   type StatsFilters,
   type UsageStatsMetric,
-  applyDateFilter,
-  applyIdFilter,
   applyUsageStatsAggregation,
-  findColumn,
+  buildFilteredQuery,
   getMetricSeriesSettings,
-  joinGroupMembers,
 } from "./query-utils";
 import {
   type ChartDataSources,
@@ -157,22 +155,11 @@ type BuildQueryOpts = StatsFilters &
   ChartDataSources & { bucketName: BucketName };
 
 export function buildTimeseriesBreakoutQuery({
-  provider,
-  table,
-  groupMembersTable,
-  dateFilter,
-  userId,
-  groupId,
-  tenantId,
   metric,
   bucketName,
+  ...filteredQueryOpts
 }: BuildQueryOpts): Query {
-  let q = Lib.queryFromTableOrCardMetadata(provider, table);
-  q = applyDateFilter(q, dateFilter);
-  q = applyIdFilter(q, "user_id", userId);
-  q = applyIdFilter(q, "tenant_id", tenantId);
-  q = groupId != null ? joinGroupMembers(q, groupMembersTable) : q;
-  q = groupId != null ? applyIdFilter(q, "group_id", groupId) : q;
+  let q = buildFilteredQuery(filteredQueryOpts);
   q = applyUsageStatsAggregation(q, metric);
   q = breakoutByCreatedAtBucket(q, bucketName);
   return q;

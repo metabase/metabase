@@ -239,8 +239,11 @@
             ;; future-cancel doesn't stop GraalVM execution, so interrupt the context itself
             ;; (1s grace period for the soft interrupt)
             (interrupt! context 1000)
-            (analytics/inc! :metabase-sql-parsing/context-timeouts)
             (log/warn "Python execution timed out after" call-timeout-ms "ms - GraalVM interrupted")
+            ;; Best-effort metric bump: a misconfigured registry must not mask the timeout (#77084).
+            (try (analytics/inc! :metabase-sql-parsing/context-timeouts)
+                 (catch Throwable e
+                   (log/warn e "Failed to increment :metabase-sql-parsing/context-timeouts")))
             (throw (TimeoutException. (str "Python execution timed out after " call-timeout-ms "ms"))))
           result))
       (finally

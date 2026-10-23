@@ -2,6 +2,7 @@ import { memo } from "react";
 
 import { skipToken, useGetCardQuery, useGetDatabaseQuery } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
+import { SidebarResizableBox } from "metabase/common/components/SidebarResizableBox";
 import { Box, Center, Stack } from "metabase/ui";
 import type { CardId } from "metabase-types/api";
 
@@ -11,7 +12,6 @@ import { InfoSection } from "./InfoSection";
 import { LocationSection } from "./LocationSection";
 import S from "./ModelSidebar.module.css";
 import { SidebarHeader } from "./SidebarHeader";
-import { SidebarResizableBox } from "./SidebarResizableBox";
 
 type ModelSidebarProps = {
   cardId: CardId;
@@ -53,7 +53,7 @@ export const ModelSidebar = memo(function ModelSidebar({
     >
       <Box
         className={S.sidebar}
-        p="lg"
+        p="xl"
         bg="background_page-primary"
         data-testid="model-sidebar"
       >
@@ -62,8 +62,8 @@ export const ModelSidebar = memo(function ModelSidebar({
             <DelayedLoadingAndErrorWrapper loading={isLoading} error={error} />
           </Center>
         ) : (
-          <Stack gap="xl">
-            <Stack gap="lg">
+          <Stack gap="xxl">
+            <Stack gap="xl">
               <SidebarHeader card={card} onClose={onClose} />
               <LocationSection card={card} />
               <ActionSection card={card} database={database} />

@@ -144,8 +144,9 @@
                   ;; Case has shape [:case opts [[cond expr]...] default-expr?].
                   ;; `:if` is an alias for `:case`.
                   (if (#{:case :if} tag)
-                    (or (some walk (ffirst args))
-                        (some walk (fnext args)))
+                    (let [[pairs fallback] args]
+                      (or (some walk (eduction cat pairs))
+                          (walk fallback)))
                     (some walk args)))))]
     (walk x)))
 
@@ -287,7 +288,7 @@
                          :description  (i18n/tru "Maximum value of a column")})}])
 
 (mr/def ::operator
-  [:map
+  [:map {:closed true}
    [:lib/type [:= :operator/aggregation]]
    [:short (into [:enum] (map :short) aggregation-operators)]
    [:supported-field {:optional true} [:maybe :keyword]] ; TODO more precise type?

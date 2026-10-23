@@ -11,8 +11,6 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.intercept("POST", "/api/card").as("createCard");
     cy.intercept("PUT", "/api/card/*").as("updateCard");
-    cy.intercept("POST", "/api/collection").as("createCollection");
-    cy.intercept("PUT", "/api/collection/*").as("updateCollection");
 
     createLibraryWithItems();
   });
@@ -113,13 +111,20 @@ describe("scenarios > data studio > library > metrics", () => {
     });
   });
 
-  it("should edit metric definition and save changes", () => {
+  it("should rename the metric, link to the metrics explorer, change caching settings, and revert or warn about unsaved changes", () => {
+    cy.intercept("PUT", "/api/cache").as("updateCacheConfig");
+
     visitMetricPage();
 
     cy.log("Verify metric overview page displays correct data");
     H.DataStudio.Metrics.aboutPage()
       .findByDisplayValue("Trusted Orders Metric")
       .should("be.visible");
+
+    cy.log("Verify the Explore button points to the metrics explorer");
+    H.DataStudio.Metrics.exploreLink()
+      .should("have.attr", "href")
+      .and("match", /\/explore\?metricId=\d+/);
 
     cy.log("Update the metric name");
     H.DataStudio.Metrics.aboutPage()
@@ -141,9 +146,38 @@ describe("scenarios > data studio > library > metrics", () => {
         .its("body.name")
         .should("eq", "Updated Orders Metric"),
     );
-  });
 
-  it("should cancel editing and revert changes", () => {
+    cy.log("Open the caching settings from the overflow menu");
+    H.DataStudio.Metrics.moreMenu().click();
+    H.popover().findByText("Caching").click();
+
+    cy.log("Change the strategy to Duration and save");
+    H.modal()
+      .findByTestId("cache-strategy-select")
+      .should("have.value", "Default")
+      .click();
+    // The Select dropdown renders in a portal; wait for it to open, then pick.
+    H.selectDropdown()
+      .findByRole("option", { name: /Duration/ })
+      .click();
+    H.fillCacheDuration(24);
+    H.modal().findByTestId("strategy-form-submit-button").click();
+
+    cy.wait("@updateCacheConfig");
+
+    cy.log("Saving persists the change and closes the modal");
+    H.modal().should("not.exist");
+
+    cy.log("Re-open the caching settings to verify the change is persisted");
+    H.DataStudio.Metrics.moreMenu().click();
+    H.popover().findByText("Caching").click();
+    H.modal()
+      .findByTestId("cache-strategy-select")
+      .should("have.value", "Duration");
+    cy.realPress("Escape");
+    H.modal().should("not.exist");
+
+    cy.log("Cancel reverts changes, navigating away warns about them");
     visitMetricPage();
 
     cy.log("Navigate to definition tab");
@@ -160,13 +194,6 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.log("Verify changes were reverted");
     H.getNotebookStep("summarize").findByText("Count").should("be.visible");
-  });
-
-  it("should show unsaved changes warning when navigating away", () => {
-    visitMetricPage();
-
-    cy.log("Navigate to definition tab");
-    H.DataStudio.Metrics.definitionTab().click();
 
     cy.log("Change aggregation from Count to Sum");
     H.DataStudio.Metrics.queryEditor().should("be.visible");
@@ -183,8 +210,11 @@ describe("scenarios > data studio > library > metrics", () => {
       cy.button("Cancel").click();
     });
 
-    cy.log("Verify we're still on the definition tab");
+    cy.log("Verify we're still on the definition tab with the unsaved change");
     H.DataStudio.Metrics.queryEditor().should("be.visible");
+    H.getNotebookStep("summarize")
+      .findByText("Sum of Total")
+      .should("be.visible");
   });
 
   it("should archive and restore a metric", () => {
@@ -204,10 +234,8 @@ describe("scenarios > data studio > library > metrics", () => {
 
     cy.wait("@updateCard");
 
-    cy.log("Verify redirected to the library");
-    cy.url().should("include", "/data-studio/library");
-
     cy.log("Verify the metric is archived");
+    cy.findByTestId("archive-banner").should("be.visible");
     cy.get<number>("@trustedMetricId").then((id) =>
       cy
         .request("GET", `/api/card/${id}`)
@@ -238,21 +266,7 @@ describe("scenarios > data studio > library > metrics", () => {
     );
   });
 
-  it("should view metric in the metrics explorer view via the Explore button", () => {
-    visitMetricPage();
-
-    cy.log("Verify metric is loaded");
-    H.DataStudio.Metrics.aboutPage()
-      .findByDisplayValue("Trusted Orders Metric")
-      .should("be.visible");
-
-    cy.log("Verify the Explore button points to the metrics explorer");
-    H.DataStudio.Metrics.exploreLink()
-      .should("have.attr", "href")
-      .and("match", /\/explore\?metricId=\d+/);
-  });
-
-  it("should duplicate metric via more menu", () => {
+  it("should duplicate and move a metric via more menu", () => {
     visitMetricPage();
 
     cy.log("Verify metric is loaded");
@@ -301,12 +315,10 @@ describe("scenarios > data studio > library > metrics", () => {
           expect(names).to.include("Trusted Orders Metric - Duplicate");
         }),
     );
-  });
 
-  it("should move metric to different collection via more menu", () => {
     visitMetricPage();
 
-    cy.log("Verify metric is loaded");
+    cy.log("Verify the original metric is loaded");
     H.DataStudio.Metrics.aboutPage()
       .findByDisplayValue("Trusted Orders Metric")
       .should("be.visible");
@@ -337,7 +349,23 @@ describe("scenarios > data studio > library > metrics", () => {
   });
 
   describe("analytics events", () => {
-    it("should track metric_create_started and metric_created from browse metrics", () => {
+    it("should track metric_create_started from the command palette and browse metrics, and metric_created", () => {
+      cy.visit("/");
+
+      cy.log("Open command palette and create metric");
+      H.openCommandPalette();
+      H.commandPaletteSearch("metric", false);
+      cy.findByRole("option", { name: /New metric/ }).click();
+
+      cy.log("Verify metric_create_started event was tracked");
+      H.expectUnstructuredSnowplowEvent({
+        event: "metric_create_started",
+        triggered_from: "command_palette",
+      });
+
+      cy.log("Verify we're on the new metric page");
+      cy.url().should("match", /\/metric\/new/);
+
       cy.visit("/browse/metrics");
 
       cy.log("Click the plus button to create a new metric");
@@ -367,59 +395,6 @@ describe("scenarios > data studio > library > metrics", () => {
       H.expectUnstructuredSnowplowEvent({
         event: "metric_created",
       });
-    });
-
-    it("should track metric_create_started from command palette", () => {
-      cy.visit("/");
-
-      cy.log("Open command palette and create metric");
-      H.openCommandPalette();
-      H.commandPaletteSearch("metric", false);
-      cy.findByRole("option", { name: /New metric/ }).click();
-
-      cy.log("Verify metric_create_started event was tracked");
-      H.expectUnstructuredSnowplowEvent({
-        event: "metric_create_started",
-        triggered_from: "command_palette",
-      });
-
-      cy.log("Verify we're on the new metric page");
-      cy.url().should("match", /\/metric\/new/);
-    });
-  });
-
-  describe("caching", () => {
-    it("should allow changing metric caching settings", () => {
-      cy.intercept("PUT", "/api/cache").as("updateCacheConfig");
-
-      visitMetricPage();
-
-      cy.log("Open the caching settings from the overflow menu");
-      H.DataStudio.Metrics.moreMenu().click();
-      H.popover().findByText("Caching").click();
-
-      cy.log("Change the strategy to Duration and save");
-      H.modal()
-        .findByTestId("cache-strategy-select")
-        .should("have.value", "Default")
-        .click();
-      // The Select dropdown renders in a portal; wait for it to open, then pick.
-      H.selectDropdown()
-        .findByRole("option", { name: /Duration/ })
-        .click();
-      H.modal().findByTestId("strategy-form-submit-button").click();
-
-      cy.wait("@updateCacheConfig");
-
-      cy.log("Saving persists the change and closes the modal");
-      H.modal().should("not.exist");
-
-      cy.log("Re-open the caching settings to verify the change is persisted");
-      H.DataStudio.Metrics.moreMenu().click();
-      H.popover().findByText("Caching").click();
-      H.modal()
-        .findByTestId("cache-strategy-select")
-        .should("have.value", "Duration");
     });
   });
 });

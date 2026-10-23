@@ -53,6 +53,50 @@ describe("dev diagnostics collector", () => {
     expect(forwarded).toContainEqual(["passed through"]);
   });
 
+  describe("%s substitution", () => {
+    const lastMessage = () =>
+      formatDevDiagnostic(getLastEntry(devDiagnostics.getEntries()));
+
+    it("substitutes them the way the browser console renders them", () => {
+      // The verbatim shape of a React warning: a format string plus its substitutions.
+      console.error(
+        'Warning: Each child in a list should have a unique "key" prop.%s%s See https://reactjs.org/link/warning-keys for more information.%s',
+        "",
+        "\n\nCheck the render method of `App`.",
+        "\n    in div",
+      );
+
+      expect(lastMessage()).toBe(
+        'Warning: Each child in a list should have a unique "key" prop.' +
+          "\n\nCheck the render method of `App`." +
+          " See https://reactjs.org/link/warning-keys for more information." +
+          "\n    in div",
+      );
+    });
+
+    it("leaves other specifiers to the console's raw text", () => {
+      // Only `%s` is substituted — React never emits these, and getting them verbatim in
+      // the toolbar is a cosmetic loss rather than a misleading one.
+      console.error("%d items", 3);
+
+      expect(lastMessage()).toBe("%d items 3");
+    });
+
+    it("leaves a specifier alone when no argument is left, and appends the extras", () => {
+      console.error("only %s and %s", "one");
+      expect(lastMessage()).toBe("only one and %s");
+
+      console.error("%s then", "first", "extra");
+      expect(lastMessage()).toBe("first then extra");
+    });
+
+    it("still space-joins when the first argument carries no specifier", () => {
+      console.error("boom", { code: 1 });
+
+      expect(lastMessage()).toBe('boom {"code":1}');
+    });
+  });
+
   it("survives arguments JSON cannot represent", () => {
     const noop = () => undefined;
 
@@ -314,5 +358,52 @@ describe("bounded entry size", () => {
     const message = entry.kind === "error" ? entry.message : "";
     expect(message.length).toBeLessThan(DATA_APP_DIAGNOSTIC_MAX_CHARS * 2);
     expect(message).toContain("truncated");
+  });
+});
+
+describe("build stamping", () => {
+  // The collector is a singleton, so an id set here would follow the module
+  // into every later test.
+  afterEach(() => devDiagnostics.setBuildId(0));
+
+  it("stamps entries with the bundle generation that was loaded", () => {
+    devDiagnostics.setBuildId(2);
+    console.error("from build two");
+
+    // What lets a reader drop errors an earlier, half-finished edit produced
+    // without dropping the ones the app is failing with now.
+    expect(getLastEntry(devDiagnostics.getEntries()).buildId).toBe(2);
+  });
+
+  it("re-stamps as the preview rebuilds", () => {
+    devDiagnostics.setBuildId(2);
+    console.error("from build two");
+    devDiagnostics.setBuildId(3);
+    console.error("from build three");
+
+    expect(devDiagnostics.getEntries().map((entry) => entry.buildId)).toEqual([
+      2, 3,
+    ]);
+  });
+
+  it("leaves entries unstamped until a bundle has loaded", () => {
+    console.error("thrown by the preview page itself");
+
+    // Nothing about the app's own code, so no build owns it: it stays visible
+    // however many times the bundle is rebuilt.
+    expect(getLastEntry(devDiagnostics.getEntries()).buildId).toBeNull();
+  });
+
+  it("treats a missing or unbuilt id as no build at all", () => {
+    // `Number(null)` for an absent response header, and 0 from a dev server
+    // that has not finished a build — neither may pass as a real generation,
+    // or every entry would be filtered as stale.
+    devDiagnostics.setBuildId(Number.NaN);
+    console.error("no header");
+    expect(getLastEntry(devDiagnostics.getEntries()).buildId).toBeNull();
+
+    devDiagnostics.setBuildId(0);
+    console.error("nothing built yet");
+    expect(getLastEntry(devDiagnostics.getEntries()).buildId).toBeNull();
   });
 });

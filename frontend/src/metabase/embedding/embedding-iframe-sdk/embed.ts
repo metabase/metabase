@@ -1,13 +1,16 @@
-import type { SqlParameterValues } from "embedding-sdk-bundle/types";
+import type {
+  NavigatedEntityParameters,
+  SqlParameterValues,
+} from "embedding-sdk-bundle/types";
 import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-shared/errors";
 import * as MetabaseErrors from "embedding-sdk-shared/errors";
+import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { PLUGIN_EMBED_JS_EE } from "metabase/embedding/embedding-iframe-sdk/plugin";
 import type {
   EmbedAuthManager,
   EmbedAuthManagerContext,
 } from "metabase/embedding/embedding-iframe-sdk/types/auth-manager";
 import type { ComponentToAttributes } from "metabase/embedding/embedding-iframe-sdk/types/modular-embedding";
-import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
 import { decodeJwt } from "metabase/utils/jwt";
 
 import { debouncedReportAnalytics } from "./analytics";
@@ -27,7 +30,6 @@ import type {
 } from "./types/embed";
 import { listenForEajsMessages } from "./utils/post-message";
 import { attributeToSettingKey, parseAttributeValue } from "./webcomponents";
-
 // Import EE Iframe Embedding script plugins
 import "sdk-iframe-embedding-script-ee-plugins";
 
@@ -372,6 +374,10 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
 
     this._iframe.setAttribute("data-metabase-embed", "true");
 
+    // Chrome blocks the Clipboard API in cross-origin iframes unless the host
+    // explicitly delegates the permission (e.g. copying a Metabot answer).
+    this._iframe.setAttribute("allow", "clipboard-write");
+
     this._removeMessageListener = listenForEajsMessages({
       messageSource: "iframe-content",
       iframe: this._iframe,
@@ -491,6 +497,14 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     if (message.type === "metabase.embed.sqlParametersChange") {
       this.dispatchEvent(
         new CustomEvent("sql-parameters-change", { detail: message.data }),
+      );
+    }
+
+    if (message.type === "metabase.embed.navigatedEntityParametersChange") {
+      this.dispatchEvent(
+        new CustomEvent("navigated-entity-parameters-change", {
+          detail: message.data,
+        }),
       );
     }
   };
@@ -660,7 +674,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     return data.jwt;
   }
 
-  // `parameters` and `sqlParameters` are JS properties whose value
+  // `parameters`, `sqlParameters` and `navigatedEntityParameters` are JS properties whose value
   // lives in the element's attribute of the same name. Reading the
   // property parses the attribute as JSON; writing the property
   // serializes the value back into the attribute. So setting the
@@ -794,6 +808,7 @@ export const MetabaseDashboardElement = createCustomElement(
     "parameters",
     "hidden-parameters",
     "enable-entity-navigation",
+    "navigated-entity-parameters",
   ],
   (Base) =>
     class extends Base {
@@ -802,6 +817,20 @@ export const MetabaseDashboardElement = createCustomElement(
       }
       set parameters(values: ParameterValues | undefined) {
         this._writeJsonProperty("parameters", "parameters", values);
+      }
+      get navigatedEntityParameters(): NavigatedEntityParameters | undefined {
+        return this._readJsonAttribute<NavigatedEntityParameters>(
+          "navigated-entity-parameters",
+        );
+      }
+      set navigatedEntityParameters(
+        values: NavigatedEntityParameters | undefined,
+      ) {
+        this._writeJsonProperty(
+          "navigatedEntityParameters",
+          "navigated-entity-parameters",
+          values,
+        );
       }
     },
 );

@@ -1,12 +1,13 @@
-import dayjs from "dayjs";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { dayjs } from "metabase/dayjs";
 import type { ExplorationSidebarTab } from "metabase/explorations/types";
 import type {
   Comment,
   Exploration,
+  ExplorationDocument,
   ExplorationId,
   ExplorationPageNodeId,
   ExplorationQuery,
@@ -18,12 +19,17 @@ import type {
 import {
   getExplorationPages,
   getExplorationQueryGroupStatus,
+  isRestartableExplorationThreadStatus,
+  isTerminalExplorationThreadStatus,
 } from "metabase-types/api";
 
 import {
   DEFAULT_SORT_ORDER,
   type ExplorationSortOrder,
 } from "../../sidebar-preferences";
+
+/** Stable tree id for the Summary document node prepended to the sidebar. */
+export const EXPLORATION_SUMMARY_TREE_ID = "summary";
 
 // Distinguishes the kinds of heading rows in the sidebar so each can carry its
 // own icon and reinforce where the user is in the investigation:
@@ -42,7 +48,6 @@ export interface ExplorationTreeHeading {
   thread?: ExplorationThread;
   status?: ExplorationQueryStatus;
   lastActivityAt?: string;
-  hideable?: boolean;
   pageIds?: number[];
   allHidden?: boolean;
 }
@@ -56,6 +61,16 @@ export interface ExplorationTreePage {
   interestingness_score: number | null;
   parent_id: ExplorationPageNodeId | null;
   hidden: boolean;
+}
+
+export interface ExplorationTreeDocument {
+  type: "document";
+}
+
+function isExplorationTreeHeading(
+  node: ITreeNodeItem<ExplorationTreeNode>,
+): node is ITreeNodeItem<ExplorationTreeHeading> {
+  return node.data?.type === "heading";
 }
 
 function isExplorationTreePage(
@@ -76,7 +91,7 @@ function threadHeadingStatus(
   return match(thread.status)
     .with("failed", () => "error" as const)
     .with("canceled", () => "canceled" as const)
-    .with("completed", "empty", () => "done" as const)
+    .with("completed", "empty", "forbidden", () => "done" as const)
     .with("pending", "running", () =>
       getExplorationQueryGroupStatus(thread.queries ?? []),
     )
@@ -89,9 +104,20 @@ export function isHiddenTreeItem(
   return isExplorationTreePage(node) && node.data?.hidden === true;
 }
 
-export type ExplorationTreeNode = ExplorationTreePage | ExplorationTreeHeading;
+export type ExplorationTreeItem = ExplorationTreePage | ExplorationTreeDocument;
 
-type TreeItemFilter = (treeItem: ITreeNodeItem<ExplorationTreeNode>) => boolean;
+export type ExplorationTreeNode = ExplorationTreeItem | ExplorationTreeHeading;
+
+export type InitialSidebarEntity =
+  | { type: "page"; id: ExplorationPageNodeId }
+  | { type: "summary" };
+
+export type SelectedSidebarEntity = InitialSidebarEntity;
+
+type TreeItemFilter = (treeItem: ITreeNodeItem<ExplorationTreeItem>) => boolean;
+type TreeHeadingFilter = (
+  treeHeading: ITreeNodeItem<ExplorationTreeHeading>,
+) => boolean;
 
 function collectHeadingPages(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
@@ -112,15 +138,27 @@ function getHeadingHideState(nodes: ITreeNodeItem<ExplorationTreeNode>[]): {
   };
 }
 
-interface GetExplorationSidebarTreeOptions {
-  keepEmptyInitialThread?: boolean;
+function getSummaryDocumentNode(
+  document: ExplorationDocument | null | undefined,
+): ITreeNodeItem<ExplorationTreeDocument> | null {
+  if (document == null) {
+    return null;
+  }
+  return {
+    id: EXPLORATION_SUMMARY_TREE_ID,
+    name: document.name || t`Summary`,
+    icon: "document",
+    data: {
+      type: "document",
+    },
+  };
 }
 
-export function getExplorationSidebarTree(
+function getExplorationSidebarTree(
   exploration: Exploration,
   treeItemFilter: TreeItemFilter,
+  treeHeadingFilter: TreeHeadingFilter,
   sortOrder: ExplorationSortOrder = DEFAULT_SORT_ORDER,
-  { keepEmptyInitialThread = false }: GetExplorationSidebarTreeOptions = {},
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   const threads = exploration.threads ?? [];
   const initialThreadId = threads[0]?.id;
@@ -183,8 +221,6 @@ export function getExplorationSidebarTree(
         lastActivityAt: latestTimestamp(
           (thread.queries ?? []).map((query) => query.finished_at),
         ),
-        // Every group is hideable except the first thread ("Initial investigation").
-        hideable: index > 0,
         ...getHeadingHideState(children),
       },
       children,
@@ -216,19 +252,46 @@ export function getExplorationSidebarTree(
     }
   });
 
-  return pruneEmptyHeadings(
-    topLevel,
-    keepEmptyInitialThread ? initialThreadId : undefined,
-  );
+  const pruned = pruneHeadings(topLevel, treeHeadingFilter);
+
+  const summaryNode = getSummaryDocumentNode(exploration.document);
+  if (summaryNode != null && treeItemFilter(summaryNode)) {
+    return [summaryNode, ...pruned];
+  }
+  return pruned;
 }
 
 type PageKey = string;
+type MetricDimensionKey = string;
 
 // every query in a page has the same card_id, dimension_id, and query_type
 // we use this to identify the same shaped pages across threads
 function getPageKey(query: ExplorationQuery): PageKey {
   const { card_id, dimension_id, query_type } = query;
   return `${card_id}-${dimension_id}-${query_type}`;
+}
+
+function metricDimensionKey(query: ExplorationQuery): MetricDimensionKey {
+  return `${query.card_id}-${query.dimension_id}`;
+}
+
+// Variant pages (hour-of-day, top-n, etc.) are bonus charts, not research-plan
+// rows. If the planned default for the same metric+dimension exists, hide a
+// failed variant rather than showing an error the user didn't ask for.
+function shouldOmitFailedVariantPage(
+  queries: ExplorationQuery[],
+  status: ExplorationQueryStatus,
+  defaultCombos: Set<MetricDimensionKey>,
+): boolean {
+  if (status !== "error") {
+    return false;
+  }
+  const query = queries[0];
+  return (
+    query != null &&
+    query.query_type !== "default" &&
+    defaultCombos.has(metricDimensionKey(query))
+  );
 }
 
 // max interestingness (contextual preferred) across all queries in a page
@@ -248,24 +311,21 @@ function getInterestingnessByPageKey(
   return interestingnessByPageKey;
 }
 
-function pruneEmptyHeadings(
+function pruneHeadings(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
-  initialThreadId: ExplorationThreadId | undefined,
+  treeHeadingFilter: TreeHeadingFilter,
 ): ITreeNodeItem<ExplorationTreeNode>[] {
   return nodes
     .map((node) =>
       node.children?.length
         ? {
             ...node,
-            children: pruneEmptyHeadings(node.children, initialThreadId),
+            children: pruneHeadings(node.children, treeHeadingFilter),
           }
         : node,
     )
     .filter(
-      (node) =>
-        node.data?.type !== "heading" ||
-        node.id === initialThreadId ||
-        (node.children?.length ?? 0) > 0,
+      (node) => !isExplorationTreeHeading(node) || treeHeadingFilter(node),
     );
 }
 
@@ -321,6 +381,11 @@ function getExplorationQueryTree(
   const queriesById = new Map<ExplorationQueryId, ExplorationQuery>(
     (thread.queries ?? []).map((query) => [query.id, query]),
   );
+  const defaultCombos = new Set(
+    (thread.queries ?? [])
+      .filter((query) => query.query_type === "default")
+      .map(metricDimensionKey),
+  );
 
   const blocks = (thread.blocks ?? []).filter(
     (block) => block.name != null, // don't show anything missing a name
@@ -328,7 +393,7 @@ function getExplorationQueryTree(
 
   const headings: ITreeNodeItem<ExplorationTreeNode>[] = blocks.map((block) => {
     const children: ITreeNodeItem<ExplorationTreeNode>[] = block.pages
-      .map((page): ITreeNodeItem<ExplorationTreeNode> | null => {
+      .map((page): ITreeNodeItem<ExplorationTreeItem> | null => {
         const queries = page.query_ids
           .map((id) => queriesById.get(id))
           .filter((q): q is ExplorationQuery => q != null);
@@ -336,6 +401,9 @@ function getExplorationQueryTree(
           return null;
         }
         const status = getExplorationQueryGroupStatus(queries);
+        if (shouldOmitFailedVariantPage(queries, status, defaultCombos)) {
+          return null;
+        }
         const pageKey = getPageKey(queries[0]);
         return {
           id: String(page.id),
@@ -357,7 +425,7 @@ function getExplorationQueryTree(
         };
       })
       .filter(
-        (node): node is ITreeNodeItem<ExplorationTreeNode> =>
+        (node): node is ITreeNodeItem<ExplorationTreeItem> =>
           node != null && treeItemFilter(node),
       );
 
@@ -373,7 +441,6 @@ function getExplorationQueryTree(
             isExplorationTreePage(child) ? (child.data?.queries ?? []) : [],
           ),
         ),
-        hideable: true,
         ...getHeadingHideState(children),
       },
       children,
@@ -486,6 +553,10 @@ export function flattenTree(
   );
 }
 
+/**
+ * Depth-first first page in the tree. Kept as a page-only walk so heading
+ * "copy link" and similar callers never land on the Summary node.
+ */
 export function pickInitialSidebarPage(
   nodes: ITreeNodeItem<ExplorationTreeNode>[],
 ): ExplorationPageNodeId | null {
@@ -503,12 +574,110 @@ export function pickInitialSidebarPage(
   return null;
 }
 
+export function treeHasPages(
+  tree: ITreeNodeItem<ExplorationTreeNode>[],
+): boolean {
+  return flattenTree(tree).some((node) => node.data?.type === "page");
+}
+
+export type ExplorationSidebarContentMode =
+  | "loading"
+  | "forbidden"
+  | "all-hidden"
+  | "empty"
+  | "tree";
+
+export interface ExplorationSidebarModel {
+  tree: ITreeNodeItem<ExplorationTreeNode>[];
+  contentMode: ExplorationSidebarContentMode;
+}
+
+export function getExplorationSidebarModel({
+  exploration,
+  selectedSidebarTab,
+  tabsInfo,
+  showHidden,
+  sortOrder = DEFAULT_SORT_ORDER,
+}: {
+  exploration: Exploration;
+  selectedSidebarTab: ExplorationSidebarTab;
+  tabsInfo: ExplorationSidebarTabsInfo;
+  showHidden: boolean;
+  sortOrder?: ExplorationSortOrder;
+}): ExplorationSidebarModel {
+  const { treeItemFilter: tabItemFilter, treeHeadingFilter } =
+    tabsInfo[selectedSidebarTab];
+  const treeItemFilter = showHidden
+    ? tabItemFilter
+    : (node: ITreeNodeItem<ExplorationTreeItem>) =>
+        tabItemFilter(node) && !isHiddenTreeItem(node);
+
+  const tree = getExplorationSidebarTree(
+    exploration,
+    treeItemFilter,
+    treeHeadingFilter,
+    sortOrder,
+  );
+  const treeWithHidden = getExplorationSidebarTree(
+    exploration,
+    tabItemFilter,
+    treeHeadingFilter,
+    sortOrder,
+  );
+
+  const hasPages = treeHasPages(tree);
+  const initialThread = exploration.threads?.[0];
+
+  let contentMode: ExplorationSidebarContentMode;
+  if (
+    selectedSidebarTab === "all" &&
+    initialThread != null &&
+    !isTerminalExplorationThreadStatus(initialThread.status) &&
+    !hasPages
+  ) {
+    contentMode = "loading";
+  } else if (
+    !hasPages &&
+    (exploration.threads ?? []).some((thread) => thread.status === "forbidden")
+  ) {
+    contentMode = "forbidden";
+  } else if (!showHidden && tree.length === 0 && treeWithHidden.length > 0) {
+    contentMode = "all-hidden";
+  } else if (tree.length === 0) {
+    contentMode = "empty";
+  } else {
+    contentMode = "tree";
+  }
+
+  return { tree, contentMode };
+}
+
+/**
+ * Initial sidebar selection. Prefer the Summary once it has been curated
+ * (`is_placeholder === false`); otherwise fall back to the first page.
+ */
+export function pickInitialSidebarEntity(
+  nodes: ITreeNodeItem<ExplorationTreeNode>[],
+  document?: Pick<ExplorationDocument, "is_placeholder"> | null,
+): InitialSidebarEntity | null {
+  if (
+    document != null &&
+    !document.is_placeholder &&
+    nodes.some((node) => node.data?.type === "document")
+  ) {
+    return { type: "summary" };
+  }
+  const pageId = pickInitialSidebarPage(nodes);
+  return pageId != null ? { type: "page", id: pageId } : null;
+}
+
 export type ExplorationSidebarTabsInfo = Record<
   ExplorationSidebarTab,
   {
     value: ExplorationSidebarTab;
     label: string;
     treeItemFilter: TreeItemFilter;
+    treeHeadingFilter: TreeHeadingFilter;
     emptyTreeMessage: string;
   }
 >;
@@ -531,6 +700,19 @@ export function getExplorationSidebarTabsInfo(
       value: "all",
       label: t`All`,
       treeItemFilter: () => true,
+      treeHeadingFilter: (node) => {
+        if ((node.children?.length ?? 0) > 0) {
+          return true;
+        }
+        const status = node.data?.thread?.status;
+        // Empty pending/running threads still show a loading row; empty
+        // failed/canceled threads stay so Restart remains reachable.
+        return (
+          status === "pending" ||
+          status === "running" ||
+          (status != null && isRestartableExplorationThreadStatus(status))
+        );
+      },
       emptyTreeMessage: t`Nothing to see here yet.`,
     },
     stars: {
@@ -540,6 +722,7 @@ export function getExplorationSidebarTabsInfo(
         isExplorationTreePage(node) &&
         node.data?.page_id != null &&
         starredPageIds.has(node.data.page_id),
+      treeHeadingFilter: (node) => (node.children?.length ?? 0) > 0,
       emptyTreeMessage: t`Nothing's been starred yet.`,
     },
     discussions: {
@@ -549,6 +732,7 @@ export function getExplorationSidebarTabsInfo(
         isExplorationTreePage(node) &&
         node.data?.page_id != null &&
         discussionPageIds.has(node.data.page_id),
+      treeHeadingFilter: (node) => (node.children?.length ?? 0) > 0,
       emptyTreeMessage: t`No discussions yet.`,
     },
   };

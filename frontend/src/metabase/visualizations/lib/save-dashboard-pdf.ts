@@ -4,6 +4,11 @@ import { t } from "ttag";
 import { isStorybookActive } from "metabase/env";
 import { getCspNonce } from "metabase/utils/csp";
 import { openImageBlobOnStorybook } from "metabase/utils/loki-utils";
+import {
+  fixParameterLegendOffsetForExport,
+  resolveSvgVarPaint,
+  restoreNestedSvgOverflow,
+} from "metabase/viz-core";
 import type { Dashboard } from "metabase-types/api";
 
 import {
@@ -11,11 +16,6 @@ import {
   getBrandingConfig,
   getBrandingSize,
 } from "./exports-branding-utils";
-import {
-  fixParameterLegendOffsetForExport,
-  resolveSvgVarPaint,
-  restoreNestedSvgOverflow,
-} from "./image-exports";
 import { SAVING_DOM_IMAGE_CLASS } from "./save-chart-image";
 
 // DOM ids on exportable nodes so the PDF exporter and downloads thunk can find them

@@ -71,20 +71,19 @@
 
   (def symb+analysis (first (things-that-should-be-private)))
 
-  (privatize-symbol! symb+analysis))
+  (privatize-symbol! symb+analysis)
 
-#_{:clj-kondo/ignore [:unused-private-var]}
-(defn- privacy-report
-  "Writes privacy report into a file, which is used by the privacy-reporter.yml github action."
-  [& _args]
-  (when-let [ttsbp (things-that-should-be-private)]
-    (spit "privacy_report.txt"
-          (str (->> ttsbp
-                    (take 10)
-                    (map (fn [ns-name] (str "- `" ns-name "`")))
-                    (into ["# 🚫🔒 Top 10 things to make private:"])
-                    (str/join "\n"))
-               "\n"))))
+  (defn- privacy-report
+    "Write the privacy report to a file for ad hoc inspection."
+    [& _args]
+    (when-let [ttsbp (things-that-should-be-private)]
+      (spit "privacy_report.txt"
+            (str (->> ttsbp
+                      (take 10)
+                      (map (fn [ns-name] (str "- `" ns-name "`")))
+                      (into ["# 🚫🔒 Top 10 things to make private:"])
+                      (str/join "\n"))
+                 "\n")))))
 
 (deftest ^:parallel things-not-used-elsewhere-should-be-private-test
   (testing (str/join \newline ["This var is only used in the namespace it is declared in. Make it private, so"

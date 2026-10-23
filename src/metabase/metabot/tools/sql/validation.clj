@@ -38,22 +38,12 @@
    "sqlserver" "tsql",
    ;; Embedded/lightweight
    "sqlite" "sqlite",
-   ;; H2 uses PostgreSQL compatibility mode in sqlglot but this causes incorrect identifier
-   ;; quoting (H2 folds to UPPERCASE internally, postgres quoting forces lowercase), so we
-   ;; skip validation. Vertica is not supported by sqlglot.
+   ;; sqlglot has no H2 dialect, and its nearest stand-in, postgres mode, folds the other
+   ;; way (H2 folds unquoted identifiers to uppercase, postgres to lowercase), so anything
+   ;; the transpiler folds or quotes comes out wrong for H2; skip validation. Vertica is
+   ;; not supported by sqlglot.
    "h2" nil
    "vertica" nil})
-
-;; Dialects where the Python transpilation layer (`sql_tools.py`) passes `identify=True` to
-;; sqlglot, quoting all identifiers. These dialects fold unquoted identifiers to a specific case
-;; and need quoting to preserve the LLM's intended casing. This set is defined in Python's
-;; `CASE_SENSITIVE_DIALECTS`; it is documented here so that any future pure-JVM replacement
-;; knows to replicate the behavior.
-;;
-;;   "snowflake"  — folds unquoted to UPPERCASE
-;;   "oracle"     — folds unquoted to UPPERCASE
-;;   "redshift"   — PostgreSQL-based, folds to lowercase
-;;   "postgres"   — folds unquoted to lowercase
 
 (defn database-id->dialect
   "Get dialect for database id."
@@ -76,6 +66,7 @@
    [:valid? :boolean]
    [:dialect {:optional true} [:maybe :string]]
    [:error-message {:optional true} :string]
+   [:reason {:optional true} :keyword]
    [:transpiled-sql {:optional true} :string]])
 
 (mu/defn validate-sql :- ::validation-result
@@ -88,7 +79,8 @@
   - sql contains Metabase template tags.
 
   When that is not the case, the query is transpiled from and into the same dialect. If that action
-  yields successfully, the query is considered valid.
+  yields successfully, the query is considered valid. Otherwise `:reason` says why, when the parser
+  knows (`:multiple-statements`).
 
   Returns the mapped dialect name in `:dialect` (not the raw driver name) for consistency
   with the Python ai-service."
@@ -103,7 +95,7 @@
       {:valid? true
        :dialect dialect
        :transpiled-sql sql}
-      (let [{:keys [error-message transpiled-sql status]}
+      (let [{:keys [error-message reason transpiled-sql status]}
             (sql-tools/transpile-sql sql mapped-dialect mapped-dialect)]
         (merge
          {:dialect dialect}
@@ -112,5 +104,6 @@
                      :transpiled-sql transpiled-sql}
            :skipped {:valid? true
                      :transpiled-sql transpiled-sql}
-           :error   {:valid? false
-                     :error-message error-message}))))))
+           :error   (cond-> {:valid? false
+                             :error-message error-message}
+                      reason (assoc :reason reason))))))))

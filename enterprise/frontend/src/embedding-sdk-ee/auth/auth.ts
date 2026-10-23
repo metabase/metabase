@@ -3,12 +3,6 @@
 import type { AsyncThunkAction } from "@reduxjs/toolkit";
 
 import { EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
-import {
-  connectToInstanceAuthSso,
-  jwtDefaultRefreshTokenFunction,
-  openSamlLoginPopup,
-  validateSession,
-} from "embedding/auth-common";
 import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
 import {
   PLUGIN_EMBEDDING_SDK_AUTH,
@@ -28,11 +22,18 @@ import { getWindow } from "embedding-sdk-shared/lib/get-window";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
 import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
-import { loadCurrentUser, refetchCurrentUser, userApi } from "metabase/api";
+import {
+  connectToInstanceAuthSso,
+  jwtDefaultRefreshTokenFunction,
+  openSamlLoginPopup,
+  validateSession,
+} from "embedding/auth-common";
 import { PLUGIN_API } from "metabase/api/client";
-import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
-import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
-import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
+import {
+  currentUserApi,
+  loadCurrentUser,
+  refetchCurrentUser,
+} from "metabase/current-user";
 import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
   isEmbeddingEajs,
@@ -40,6 +41,9 @@ import {
 } from "metabase/embedding-sdk/config";
 import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
+import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
+import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
+import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
 import { createAsyncThunk } from "metabase/redux/utils";
 import { refetchSiteSettings, settingsApi } from "metabase/settings";
 import MetabaseSettings from "metabase/utils/settings";
@@ -101,7 +105,7 @@ PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
         }),
       );
       dispatch(
-        userApi.util.upsertQueryData(
+        currentUserApi.util.upsertQueryData(
           "getCurrentUser",
           undefined,
           authState.user,
@@ -273,12 +277,23 @@ const getRefreshToken = async ({
         headers: getSdkRequestHeaders(),
       });
 
-  const { method, url: responseUrl, hash } = urlResponseJson || {};
-  if (method === "saml") {
-    const token = await openSamlLoginPopup(responseUrl);
-    samlTokenStorage.set(token);
+  const {
+    method,
+    url: responseUrl,
+    hash,
+    "saml-popup-url": samlPopupUrl,
+  } = urlResponseJson || {};
 
-    return token;
+  if (method === "saml") {
+    const sessionToken = await openSamlLoginPopup(
+      responseUrl,
+      metabaseInstanceUrl,
+      samlPopupUrl,
+    );
+
+    samlTokenStorage.set(sessionToken);
+
+    return sessionToken;
   }
   if (method === "jwt" && responseUrl) {
     return jwtDefaultRefreshTokenFunction(

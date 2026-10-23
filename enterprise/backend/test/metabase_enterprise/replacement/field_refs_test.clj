@@ -292,7 +292,7 @@
                     (lib/filter (lib/= (lib.metadata/field mp (mt/id :orders :id)) 1)))]
       (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
                                                           :source {:type "query" :query query}
-                                                          :target {:database (mt/id) :table "out"}}]
+                                                          :target {:database (mt/id) :type "table" :name "out"}}]
         (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
         (is (=? {:source {:type  :query
                           :query {:stages [{:source-table (mt/id :orders)
@@ -306,7 +306,7 @@
           query (lib/native-query mp "SELECT * FROM orders")]
       (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
                                                           :source {:type "query" :query query}
-                                                          :target {:database (mt/id) :table "out"}}]
+                                                          :target {:database (mt/id) :type "table" :name "out"}}]
         (is (nil? (replacement.field-refs/upgrade-field-refs! [:transform transform-id])))))))
 
 (deftest transform-upgrade-field-refs!-broken-query-test
@@ -314,7 +314,7 @@
     (let [mp (mt/metadata-provider)]
       (mt/with-temp [:model/Transform {transform-id :id} {:name   "test transform"
                                                           :source {:type "query" :query (lib/native-query mp "SELECT 1")}
-                                                          :target {:database (mt/id) :table "out"}}]
+                                                          :target {:database (mt/id) :type "table" :name "out"}}]
         ;; simulate a broken query by updating source directly in the DB
         (t2/query-one {:update :transform
                        :set    {:source "{\"type\":\"query\",\"query\":{}}"}
@@ -327,25 +327,11 @@
           query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
       (mt/with-temp [:model/Transform {transform-id :id, updated-at :updated_at} {:name   "test transform"
                                                                                   :source {:type "query" :query query}
-                                                                                  :target {:database (mt/id) :table "out"}}]
+                                                                                  :target {:database (mt/id) :type "table" :name "out"}}]
         (replacement.field-refs/upgrade-field-refs! [:transform transform-id])
         (is (= updated-at (:updated_at (t2/select-one :model/Transform transform-id))))))))
 
 ;;; ------------------------------------------------- Segment ----------------------------------------------------------
-
-(deftest segment-upgrade-field-refs!-mbql-query-test
-  (testing "should upgrade id-based field refs in a segment with a card source"
-    (let [mp         (mt/metadata-provider)
-          card-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
-      (mt/with-temp [:model/Card {card-id :id} {:dataset_query card-query}]
-        (let [seg-definition (-> (lib/query mp (lib.metadata/card mp card-id))
-                                 (lib/filter (lib/= (lib.metadata/field mp (mt/id :orders :id)) 10)))]
-          (mt/with-temp [:model/Segment {segment-id :id} {:table_id   (mt/id :orders)
-                                                          :definition seg-definition}]
-            (replacement.field-refs/upgrade-field-refs! [:segment segment-id])
-            (is (=? {:definition {:stages [{:source-card card-id
-                                            :filters     [[:= {} [:field {} "ID"] 10]]}]}}
-                    (t2/select-one :model/Segment segment-id)))))))))
 
 (deftest segment-upgrade-field-refs!-broken-query-test
   (testing "should not crash or update a segment with a broken definition"

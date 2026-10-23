@@ -29,7 +29,7 @@ export const NotificationOwner = ({ editingNotification, onChange }: Props) => {
   };
 
   return (
-    <Flex align="center" gap="md">
+    <Flex align="center" gap="lg">
       <Text fw="bold" size="md" c="text-primary" w={56}>
         {t`Owner`}
       </Text>

@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase-enterprise.content-translation.db :as content-translation.db]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n :refer [tru]]
@@ -13,6 +14,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private http-status-unprocessable 422)
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *header-adjustment* 0)
 
 (defn- translation-key
@@ -146,10 +148,10 @@
     (let [usable-rows (filter (comp is-msgstr-usable :msgstr) translations)]
       (t2/with-transaction [_tx]
         ;; Replace all existing entries
-        (t2/delete! :model/ContentTranslation)
+        (content-translation.db/delete-all-translations!)
         ;; Insert all usable rows at once
         (when-not (empty? usable-rows)
-          (t2/insert! :model/ContentTranslation usable-rows))))))
+          (content-translation.db/insert-translations! usable-rows))))))
 
 (defn- maybe-read
   [reader]

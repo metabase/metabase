@@ -9,10 +9,17 @@ import {
 } from "metabase/api/cloud-proxy";
 import { Center, Loader, Modal } from "metabase/ui";
 
-import { UpgradeModalError } from "./UpgradeModalError";
+import {
+  UpgradeModalError,
+  getUpgradeErrorModalProps,
+} from "./UpgradeModalError";
 import { UpgradeModalInitial } from "./UpgradeModalInitial";
-import { UpgradeModalLoading } from "./UpgradeModalLoading";
+import {
+  UpgradeModalLoading,
+  getUpgradeLoadingModalProps,
+} from "./UpgradeModalLoading";
 import type { ModalStep, UpgradeFlow } from "./types";
+import { useIsUpgradeSettingUp } from "./use-is-upgrade-setting-up";
 
 interface UpgradeModalProps {
   opened: boolean;
@@ -85,6 +92,10 @@ export function UpgradeModal({ opened, onClose }: UpgradeModalProps) {
       }
     : undefined;
 
+  const isSettingUp = useIsUpgradeSettingUp({
+    skip: !opened || step !== "loading",
+  });
+
   const [startTrial] = useStartTrialMutation();
   const [changePlan] = useChangePlanMutation();
 
@@ -104,8 +115,8 @@ export function UpgradeModal({ opened, onClose }: UpgradeModalProps) {
       } else if (planAlias) {
         await changePlan({ new_plan_alias: planAlias }).unwrap();
       }
-      // Stay in loading state - UpgradeModalLoading will poll for the
-      // no-upsell feature and show success when it arrives
+      // Stay in loading state - useIsUpgradeSettingUp polls for the
+      // no-upsell feature and the modal shows success when it arrives
     } catch {
       setStep("error");
     }
@@ -125,8 +136,23 @@ export function UpgradeModal({ opened, onClose }: UpgradeModalProps) {
     (!isTrialAvailable && isPreviewLoading) ||
     (showPlanPricing && isPlanLoading);
 
+  const isErrorShown =
+    step === "error" || (step === "initial" && hasQueryError);
+
+  const getStepModalProps = () => {
+    if (step === "loading") {
+      return getUpgradeLoadingModalProps({ flow, isSettingUp });
+    }
+    return isErrorShown ? getUpgradeErrorModalProps() : undefined;
+  };
+
   return (
-    <Modal opened={opened} onClose={handleClose} size="md" padding="lg">
+    <Modal
+      opened={opened}
+      onClose={handleClose}
+      size="md"
+      {...getStepModalProps()}
+    >
       {step === "initial" && isDataLoading && !hasQueryError && (
         <Center h={200}>
           <Loader />
@@ -143,11 +169,9 @@ export function UpgradeModal({ opened, onClose }: UpgradeModalProps) {
         />
       )}
       {step === "loading" && (
-        <UpgradeModalLoading flow={flow} onDone={handleClose} />
+        <UpgradeModalLoading isSettingUp={isSettingUp} onDone={handleClose} />
       )}
-      {(step === "error" || (step === "initial" && hasQueryError)) && (
-        <UpgradeModalError onClose={handleClose} />
-      )}
+      {isErrorShown && <UpgradeModalError onClose={handleClose} />}
     </Modal>
   );
 }

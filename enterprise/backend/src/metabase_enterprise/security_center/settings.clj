@@ -9,7 +9,7 @@
   (deferred-tru "List of email recipients for Security Center notifications.")
   :type       :json
   :default    nil
-  :encryption :no
+  :encryption :when-encryption-key-set
   :feature    :admin-security-center
   :visibility :admin
   :export?    false
@@ -32,7 +32,7 @@
   (deferred-tru "Slack channel for Security Center notifications. Null means Slack notifications are disabled.")
   :type       :string
   :default    nil
-  :encryption :no
+  :encryption :when-encryption-key-set
   :feature    :admin-security-center
   :visibility :admin
   :export?    false
@@ -49,7 +49,7 @@
   {:critical 1 :high 3 :medium 7 :low 7})
 
 (defsetting security-center-severity-repeat-days
-  (deferred-tru "Number of days between repeat notifications for each severity level.")
+  "Number of days between repeat notifications for each severity level."
   :type       :json
   :default    default-severity-repeat-days
   :encryption :no
@@ -63,7 +63,7 @@
                         (update-keys keyword))))
 
 (defsetting security-center-last-synced-at
-  (deferred-tru "Timestamp of the last successful Security Center advisory sync.")
+  "Timestamp of the last successful Security Center advisory sync."
   :type               :timestamp
   :default            nil
   :encryption         :no

@@ -18,12 +18,12 @@ To set up Metabot, see [Metabot settings](./settings.md).
 Here's a non-exhaustive list of things Metabot can help with:
 
 - [Answer data questions asked with natural language](#ai-exploration).
+- [Generate and rank many charts from a prompt](./research.md).
 - [Create a chart using the query builder](#how-metabot-uses-the-query-builder) from a natural language query.
 - [Generate SQL in the native editor](../questions/native-editor/writing-sql.md) from natural language. (Currently, only SQL is supported.)
 - [Edit SQL directly in the native editor](#inline-sql-editing).
 - [Analyze a chart](#analyze-charts-with-metabot).
 - [Fix errors in SQL code](#have-metabot-fix-sql-queries).
-- [Generate transforms](../data-studio/transforms/transforms-overview.md#use-metabot-to-generate-code-for-transforms)
 - [Generate charts in documents](../documents/introduction.md)
 - [Answer questions from Slack](./metabot-slack.md).
 
@@ -36,7 +36,7 @@ Like with all generative AI, you'll always need to double-check results.
 There are multiple ways to start a chat with Metabot:
 
 - Type cmd+e on Mac, ctrl+e on Windows, to open up the [chat sidebar](#the-metabot-chat-sidebar).
-- Click the Metabot icon in top right.
+- Click the Metabot icon in the top right.
 
 You can chat with Metabot (though predictably, it's only interested in helping you answer questions about your data).
 
@@ -48,7 +48,7 @@ Some tips:
 - Whenever you want Metabot to do something completely different, you should reset the conversation, as Metabot might find that irrelevant historical context to be confusing.
 - Once Metabot creates a question for you, you can follow up with more questions or take over yourself. You can drill through the chart or step into the editor to tweak the query (both in the query builder and the SQL editor).
 - Metabot works best with English prompts. While it might understand other languages, you'll get the most reliable results by asking your questions in English.
-- Define domain-specific terms in the [glossary](../exploration-and-organization/data-model-reference.md#glossary) to help Metabot understand your organization's terminology.
+- Define domain-specific terms in the [glossary](../data-modeling/semantic-layer/glossary.md) to help Metabot understand your organization's terminology.
 
 ### Metabot response menu
 
@@ -62,9 +62,9 @@ Hover over Metabot's response to:
 
 ![Metabot analyzes a chart](./images/metabot-response.png)
 
-When viewing a question, you can click the Metabot icon in the upper right to analyze a visualization. You can also open the command palette to tell Metabot to analyze the chart.
+When viewing a question, open the [chat sidebar](#the-metabot-chat-sidebar) and ask Metabot to analyze the chart.
 
-When viewing a table of results, Metabase won't display the Metabot button, but you can open the chat to ask Metabot to analyze the table, and it will produce an [X-ray](../exploration-and-organization/x-rays.md) of the results.
+When viewing a table of results, ask Metabot in the chat to analyze the table, and it will produce an [X-ray](../exploration-and-organization/x-rays.md) of the results.
 
 You can also ask Metabot to tell you about specific tables in your database.
 
@@ -125,6 +125,8 @@ Use **AI exploration** to start a new conversation with Metabot when you don’t
 Open it from **+ New → AI exploration**, then ask a question or pick one of the suggested prompts.
 
 When answering questions in AI exploration, Metabot searches a limited set of content instead of your entire Metabase. Admins can set a **Collection for natural language querying** to scope AI exploration to a specific collection and its subcollections. You can still refer to content outside that scope by explicitly @-mentioning it in your prompt. See [Metabot AI settings](../ai/settings.md) for more details.
+
+To ask a broad question and have Metabase generate and rank many charts at once, click **Research** in the top right of the AI exploration page. See [Research](./research.md) for more details.
 
 ## Current limitations
 

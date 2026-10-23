@@ -7,6 +7,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.indexes.reconcile :as reconcile]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -296,3 +297,33 @@
                       {:engine :postgres :id (mt/id)} (assoc (:target transform) :transform-id tid))))
         (is (= :failed (t2/select-one-fn :status :model/TableIndex idx-id)))
         (is (re-find #"ddl boom" (t2/select-one-fn :error_message :model/TableIndex idx-id)))))))
+
+(def ^:private access-denied-message
+  "A ClickHouse privilege error, as Cloud Storage's shared ClickHouse raises it for a tenant reading `system`."
+  "Code: 497. DB::Exception: Not enough privileges. (ACCESS_DENIED) (version 26.6.1.2047 (official build))")
+
+(deftest ^:synchronized unreadable-warehouse-marks-running-indexes-failed-test
+  (testing "a failed warehouse read fails the requests this run started, carrying the driver's own reason"
+    (mt/with-temp [:model/Transform {tid :id} {:name (mt/random-name)
+                                               :source {:type "query"}
+                                               :source_database_id (mt/id)
+                                               :target {:database (mt/id) :type "table" :schema "public" :name "t"}}
+                   :model/TableIndex {running-id :id} {:transform_id tid :index_name "running_idx"
+                                                       :status :running
+                                                       :structured {:kind :btree :name "running_idx"
+                                                                    :columns [{:name "a"}]}}
+                   :model/TableIndex {pending-id :id} {:transform_id tid :index_name "pending_idx"
+                                                       :structured {:kind :btree :name "pending_idx"
+                                                                    :columns [{:name "b"}]}}]
+      (with-redefs [driver/fetch-table-indexes (fn [& _] (throw (ex-info access-denied-message {})))]
+        (transforms-base.u/verify-managed-indexes!
+         {:id     tid
+          :source {:type "query"}
+          :target {:database (mt/id) :type "table" :schema "public" :name "t"}}))
+      (testing "the running request is failed, with the driver message trimmed of its version tail"
+        (is (= :failed (t2/select-one-fn :status :model/TableIndex running-id)))
+        (is (= (str "Couldn't read the table's indexes to verify this one: "
+                    (reconcile/driver-error-message (:engine (mt/db)) (ex-info access-denied-message {})))
+               (t2/select-one-fn :error_message :model/TableIndex running-id))))
+      (testing "a request this run never started is left for the next one"
+        (is (= :create-pending (t2/select-one-fn :status :model/TableIndex pending-id)))))))

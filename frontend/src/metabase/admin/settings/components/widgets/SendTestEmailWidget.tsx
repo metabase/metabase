@@ -1,10 +1,11 @@
 import { t } from "ttag";
 
-import { useSendTestEmailMutation } from "metabase/api/email";
 import { getErrorMessage } from "metabase/api/utils";
 import { useToast } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
 import { Button, Text } from "metabase/ui";
+
+import { useSendTestEmailMutation } from "../../api/email";
 
 export function SendTestEmailWidget() {
   const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
@@ -25,8 +26,7 @@ export function SendTestEmailWidget() {
       });
     } catch (error) {
       sendToast({
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "negative",
         message: getTestEmailErrorMessage(error),
       });
     }

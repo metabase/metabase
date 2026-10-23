@@ -1,13 +1,14 @@
 import cx from "classnames";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
+import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
 import CS from "metabase/css/core/index.css";
 import {
   addCardToDashboard,
   navigateToNewCardFromDashboard,
+  openSubscriptionsSidebarIfAllowed,
   setEditingDashboard,
   toggleSidebar,
 } from "metabase/dashboard/actions";
@@ -39,7 +40,7 @@ import {
   parseSearchQuery,
   stringifyHashOptions,
 } from "metabase/utils/browser";
-import type { DashboardId, Dashboard as IDashboard } from "metabase-types/api";
+import type { Dashboard as IDashboard } from "metabase-types/api";
 
 import { useRegisterDashboardMetabotContext } from "../../hooks/use-register-dashboard-metabot-context";
 import { getDocumentTitle, getFavicon } from "../../selectors";
@@ -89,8 +90,7 @@ export const DashboardApp = () => {
     () => parseSearchQuery(location.search),
     [location.search],
   );
-  // Unjustified type cast. FIXME
-  const dashboardId = Urls.extractEntityId(params.slug) as DashboardId;
+  const dashboardId = Urls.extractEntityId(params.slug);
 
   useRegisterDashboardMetabotContext();
   useDashboardUrlQuery(location);
@@ -108,6 +108,7 @@ export const DashboardApp = () => {
       window.location.hash,
     );
     const editingOnLoad = options.edit;
+    const subscriptionsOnLoad = options.subscriptions;
     const addCardOnLoad = options.add != null ? Number(options.add) : undefined;
 
     try {
@@ -116,7 +117,18 @@ export const DashboardApp = () => {
         options = await extractHashOption("edit", options);
       }
 
-      if (addCardOnLoad != null) {
+      if (subscriptionsOnLoad) {
+        dispatch(
+          openSubscriptionsSidebarIfAllowed(
+            dashboard,
+            // a numeric hash value is parsed into a number, whatever its type says
+            Urls.extractEntityId(String(subscriptionsOnLoad)),
+          ),
+        );
+        options = await extractHashOption("subscriptions", options);
+      }
+
+      if (addCardOnLoad != null && dashboardId != null) {
         options = await extractHashOption("add", options);
         const searchParams = new URLSearchParams(window.location.search);
         const tabParam = searchParams.get("tab");
@@ -156,9 +168,21 @@ export const DashboardApp = () => {
   const { autoScrollToDashcardId, reportAutoScrolledToDashcard } =
     useAutoScrollToDashcard(location);
 
+  // A slug that yields no id (e.g. /dashboard/not-a-number) would otherwise
+  // leave the provider waiting for a fetch that never starts (metabase#78725)
+  useEffect(() => {
+    if (dashboardId == null) {
+      dispatch(setErrorPage({ status: 404 }));
+    }
+  }, [dashboardId, dispatch]);
+
   // Prevent rendering the dashboard app if the route is out of sync
   // metabase#65500
   if (!isRouteInSync(location.pathname)) {
+    return null;
+  }
+
+  if (dashboardId == null) {
     return null;
   }
 
@@ -180,6 +204,7 @@ export const DashboardApp = () => {
           dispatch(toggleSidebar(SIDEBAR_NAME.addQuestion));
         }}
         dashboardActions={DASHBOARD_APP_ACTIONS}
+        withTimelineEvents
       >
         <DashboardAppInner location={location} />
       </DashboardContextProvider>

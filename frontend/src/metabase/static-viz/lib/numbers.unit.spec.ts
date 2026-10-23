@@ -1,4 +1,4 @@
-import { formatNumber, formatPercent } from "./numbers";
+import { formatNumber } from "./numbers";
 
 describe("formatNumber", () => {
   it("should format a number with default options", () => {
@@ -115,12 +115,5 @@ describe("formatNumber", () => {
     expect(formatNumber(0.00201)).toEqual("0.002");
     expect(formatNumber(-0.00119)).toEqual("-0.0012");
     expect(formatNumber(-0.00191)).toEqual("-0.0019");
-  });
-});
-
-describe("formatPercent", () => {
-  it("formats percent with two decimals", () => {
-    expect(formatPercent(0.12245)).toBe("12.25 %");
-    expect(formatPercent(0)).toBe("0.00 %");
   });
 });

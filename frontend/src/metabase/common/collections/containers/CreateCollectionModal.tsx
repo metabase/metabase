@@ -45,18 +45,7 @@ function CreateCollectionModal({
           return;
         }
 
-        let visitUrl = Urls.collection(collection);
-
-        if (
-          PLUGIN_LIBRARY.isLibraryCollectionType(collection.type) ||
-          collection.namespace === "snippets"
-        ) {
-          visitUrl = Urls.dataStudioLibrary({
-            expandedIds: getCollectionPathAsArray(collection),
-          });
-        }
-
-        navigate(visitUrl);
+        navigate(getCreatedCollectionUrl(collection));
       }
     },
     [createCollection, onCreate, onClose, shouldNavigateOnCreate, navigate],
@@ -64,11 +53,11 @@ function CreateCollectionModal({
 
   return (
     <Modal
+      density="relaxed"
       opened
       onClose={onClose}
       size="lg"
       data-testid="new-collection-modal"
-      padding="40px"
       title={t`New collection`}
     >
       <CreateCollectionForm
@@ -82,3 +71,27 @@ function CreateCollectionModal({
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CreateCollectionModal;
+
+// The Library root is a top-level collection and its sections are its direct
+// children, so a section's own folders start this deep in a collection's path
+const LIBRARY_SECTION_FOLDER_DEPTH = 2;
+
+export function getCreatedCollectionUrl(collection: Collection): string {
+  const expandedIds = getCollectionPathAsArray(collection);
+  if (collection.namespace === "snippets") {
+    return Urls.dataStudioSnippets({ expandedIds });
+  }
+  if (collection.namespace === "data-actions") {
+    return Urls.dataStudioActions({ expandedIds });
+  }
+  // The Dashboards page lists the section's contents, so only its folders are rows there
+  if (collection.type === "library-dashboards") {
+    return Urls.dataStudioDashboards({
+      expandedIds: expandedIds.slice(LIBRARY_SECTION_FOLDER_DEPTH),
+    });
+  }
+  if (PLUGIN_LIBRARY.isLibraryCollectionType(collection.type)) {
+    return Urls.dataStudioLibrary({ expandedIds });
+  }
+  return Urls.collection(collection);
+}

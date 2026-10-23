@@ -1,8 +1,10 @@
+import { getTenantsBasePath } from "metabase/common/tenants";
 import type {
   BaseUser,
   CustomVizPluginId,
   DatabaseId,
   FieldId,
+  GroupId,
   SchemaName,
   SegmentId,
   TableId,
@@ -14,38 +16,49 @@ export const isInternalUser = (user: Pick<BaseUser, "tenant_id">) =>
 export function newUser() {
   return `/admin/people/new`;
 }
+
 export function newTenantUser() {
-  return "/admin/people/tenants/people/new";
+  return `${getTenantsBasePath()}/people/new`;
 }
 
 export function editUser(user: Pick<BaseUser, "id" | "tenant_id">) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/edit`
-    : `/admin/people/tenants/people/${user.id}/edit`;
+    : `${getTenantsBasePath()}/people/${user.id}/edit`;
 }
 
 export function resetPassword(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/reset`
-    : `/admin/people/tenants/people/${user.id}/reset`;
+    : `${getTenantsBasePath()}/people/${user.id}/reset`;
 }
 
 export function newUserSuccess(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/success`
-    : `/admin/people/tenants/people/${user.id}/success`;
+    : `${getTenantsBasePath()}/people/${user.id}/success`;
 }
 
 export function deactivateUser(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/deactivate`
-    : `/admin/people/tenants/people/${user.id}/deactivate`;
+    : `${getTenantsBasePath()}/people/${user.id}/deactivate`;
 }
 
 export function reactivateUser(user: BaseUser) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/reactivate`
-    : `/admin/people/tenants/people/${user.id}/reactivate`;
+    : `${getTenantsBasePath()}/people/${user.id}/reactivate`;
+}
+
+export function unsubscribeUser(user: Pick<BaseUser, "id" | "tenant_id">) {
+  return isInternalUser(user)
+    ? `/admin/people/${user.id}/unsubscribe`
+    : `${getTenantsBasePath()}/people/${user.id}/unsubscribe`;
+}
+
+export function adminGroup(groupId: GroupId) {
+  return `/admin/people/groups/${groupId}`;
 }
 
 // TODO: move to EE urls
@@ -136,8 +149,15 @@ export function dataModelSegmentRevisions(segmentId: SegmentId) {
   return `${dataModelSegment(segmentId)}/revisions`;
 }
 
+/** Default `/admin/settings` page. The index route redirects here. */
+export const SETTINGS_INDEX_SLUG = "general";
+
 export function generalSettings() {
-  return "/admin/settings/general";
+  return `/admin/settings/${SETTINGS_INDEX_SLUG}`;
+}
+
+export function domainsSettings() {
+  return "/admin/settings/domains";
 }
 
 export function uploadsSettings() {

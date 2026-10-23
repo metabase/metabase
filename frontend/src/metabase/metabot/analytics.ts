@@ -20,9 +20,3 @@ export const trackQueryFixClicked = () => {
     event: "metabot_fix_query_clicked",
   });
 };
-
-export const trackExplainChartClicked = () => {
-  trackSimpleEvent({
-    event: "metabot_explain_chart_clicked",
-  });
-};

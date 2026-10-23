@@ -1,9 +1,10 @@
 import { parse as parseUrl } from "url";
 
 import { isEqualCard } from "metabase/common/utils/card";
+import { selectQuestionFromOptsBuilder } from "metabase/metadata-store";
 import { createThunkAction } from "metabase/redux";
 import type { Path } from "metabase/router";
-import { navigate } from "metabase/router";
+import { getPendingNavigationPath, navigate } from "metabase/router";
 import { getBasename } from "metabase/utils/basename";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -16,7 +17,7 @@ import {
   getQueryBuilderMode,
   getQuestion,
   getUiControls,
-} from "../selectors";
+} from "../store/selectors";
 import { getQueryBuilderModeFromLocation } from "../typed-utils";
 import {
   getCurrentQueryParams,
@@ -102,7 +103,10 @@ export const updateUrl = createThunkAction(
       );
       const tableUrl =
         isOnTableRoute && objectId == null && queryBuilderMode === "view"
-          ? getTableUrlForPristineQuestion(question)
+          ? getTableUrlForPristineQuestion(
+              question,
+              selectQuestionFromOptsBuilder(getState()),
+            )
           : null;
       const url =
         tableUrl ?? getURLForCardState(newState, dirty, queryParams, objectId);
@@ -126,6 +130,22 @@ export const updateUrl = createThunkAction(
         currentState && isEqualCard(currentState.card, newState.card);
 
       if (isSameCard && isSameURL) {
+        return;
+      }
+
+      // Saving a card finishes asynchronously, so this can run after the user
+      // has already been sent somewhere else, for instance to the dashboard the
+      // question was just saved into. A `route.lazy` destination keeps the query
+      // builder mounted until its chunk resolves, and this navigation would
+      // replace that pending one. The URL only mirrors the card, so there is
+      // nothing to write if we are leaving to a different destination.
+      //
+      // Only a pending navigation to a *different* path is someone else's, so
+      // sit out for that one alone. Under React 19 the lazy destination keeps
+      // the navigation pending a render longer, so a blanket check here dropped
+      // the post-save URL sync to the card's own page (metabase#51020).
+      const pendingPath = getPendingNavigationPath();
+      if (pendingPath != null && pendingPath !== to.pathname) {
         return;
       }
 

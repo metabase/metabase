@@ -1,4 +1,5 @@
 import { createAction } from "redux-actions";
 
-export const SET_CURRENT_STATE = "metabase/qb/SET_CURRENT_STATE";
+import { SET_CURRENT_STATE } from "../store/actions";
+
 export const setCurrentState = createAction(SET_CURRENT_STATE);

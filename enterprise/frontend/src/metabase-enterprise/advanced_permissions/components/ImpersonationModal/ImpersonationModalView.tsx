@@ -17,8 +17,7 @@ import {
 import { Alert, Button, Icon, Stack, Text } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
-import type Database from "metabase-lib/v1/metadata/Database";
-import type { UserAttributeKey } from "metabase-types/api";
+import type { Database, UserAttributeKey } from "metabase-types/api";
 
 import { ImpersonationWarning } from "../ImpersonationWarning";
 
@@ -86,7 +85,7 @@ export const ImpersonationModalView = ({
       t`When the person runs a query (including native queries), Metabase will impersonate the privileges of the database role you associate with the user attribute.`;
 
   return (
-    <Stack gap="sm" p="xl">
+    <Stack gap="sm" p="xxl">
       <h2>{modalTitle}</h2>
       <Text my="sm" lh="lg">
         {modalMessage}{" "}
@@ -105,7 +104,7 @@ export const ImpersonationModalView = ({
             >{t`Edit connection`}</Link>
           </Alert>
 
-          <FormFooter hasTopBorder>
+          <FormFooter>
             <Button type="button" onClick={onCancel}>{t`Close`}</Button>
           </FormFooter>
         </>
@@ -129,7 +128,7 @@ export const ImpersonationModalView = ({
 
               <ImpersonationWarning database={database} />
 
-              <FormFooter hasTopBorder>
+              <FormFooter>
                 <FormErrorMessage />
                 <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>
                 <FormSubmitButton
@@ -151,7 +150,7 @@ export const ImpersonationModalView = ({
             >{t`Edit user settings`}</Link>
           </Alert>
 
-          <FormFooter hasTopBorder>
+          <FormFooter>
             <Button type="button" onClick={onCancel}>{t`Close`}</Button>
           </FormFooter>
         </>

@@ -5,7 +5,8 @@
    [metabase-enterprise.audit-app.pages.common :as common]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]))
 
 (defn- run-query
   [query-type & {:as additional-query-params}]
@@ -20,20 +21,20 @@
   {:metadata [[:a {:display_name "A", :base_type :type/DateTime}]
               [:b {:display_name "B", :base_type :type/Integer}]]
    :results  (common/query
-              {:union-all [{:select [[[:inline a1] :A]
-                                     [[:inline 2] :B]]}
-                           {:select [[[:inline 3] :A]
-                                     [[:inline 4] :B]]}]})})
+              {:union-all [^:allow-subquery {:select [[[:inline a1] :A]
+                                                      [[:inline 2] :B]]}
+                           ^:allow-subquery {:select [[[:inline 3] :A]
+                                                      [[:inline 4] :B]]}]})})
 
 (defmethod audit.i/internal-query ::reducible-format-query-fn
   [_ a1]
   {:metadata [[:a {:display_name "A", :base_type :type/DateTime}]
               [:b {:display_name "B", :base_type :type/Integer}]]
    :results  (common/reducible-query
-              {:union-all [{:select [[[:inline a1] :A]
-                                     [[:inline 2] :B]]}
-                           {:select [[[:inline 3] :A]
-                                     [[:inline 4] :B]]}]})
+              {:union-all [^:allow-subquery {:select [[[:inline a1] :A]
+                                                      [[:inline 2] :B]]}
+                           ^:allow-subquery {:select [[[:inline 3] :A]
+                                                      [[:inline 4] :B]]}]})
    :xform    (map #(update (vec %) 0 inc))})
 
 (deftest transform-results-test
@@ -56,8 +57,8 @@
 (deftest ^:parallel add-search-clause-test
   (testing "add search clause"
     (is (= {:where [:or
-                    [:like [:lower :t.name] "%birds%"]
-                    [:like [:lower :db.name] "%birds%"]]}
+                    [:like [:lower :t.name] (h2x/like-substring "birds")]
+                    [:like [:lower :db.name] (h2x/like-substring "birds")]]}
            (#'common/add-search-clause {} "birds" :t.name :db.name)))))
 
 (deftest query-limit-and-offset-test

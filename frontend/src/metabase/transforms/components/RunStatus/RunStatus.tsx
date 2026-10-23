@@ -8,7 +8,7 @@ import { parseTimestampWithTimezone } from "../../utils";
 import { RunInfo } from "../RunInfo";
 
 type RunStatusSectionProps = {
-  run: TransformRun | null;
+  run: Pick<TransformRun, "status" | "end_time" | "message"> | null;
   neverRunMessage: string;
   runInfo?: React.ReactNode;
 };
@@ -69,7 +69,7 @@ export function RunStatus({
       return (
         <Group gap={0} data-testid="run-status">
           <Icon c="feedback-negative" name="warning" mr="sm" />
-          <Box mr={errorInfo ? "xs" : "sm"}>
+          <Box mr={errorInfo ? "xxs" : "sm"}>
             {endTimeText
               ? t`Last run failed ${endTimeText}.`
               : t`Last run failed.`}
@@ -100,7 +100,7 @@ export function RunStatus({
       return (
         <Group gap={0} data-testid="run-status">
           <Icon c="feedback-negative" name="warning" mr="sm" />
-          <Box mr={errorInfo ? "xs" : "sm"}>
+          <Box mr={errorInfo ? "xxs" : "sm"}>
             {endTimeText
               ? t`Last run timed out ${endTimeText}.`
               : t`Last run timed out.`}

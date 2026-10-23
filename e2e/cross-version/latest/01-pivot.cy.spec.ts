@@ -1,4 +1,4 @@
-import { Q1_NAME } from "../constants";
+import { Q1_NAME, XV_DATABASE_NAME } from "../constants";
 
 import * as X from "./helpers";
 
@@ -6,7 +6,6 @@ const { H } = cy;
 
 describe("Cross-version questions - pivot", () => {
   it("setup: creates a pivot table", { tags: ["@source"] }, () => {
-    H.restoreCrossVersionDev("00-complete");
     cy.signIn("admin", { skipCache: true });
 
     cy.log("-- Create a pivot table --");
@@ -14,7 +13,7 @@ describe("Cross-version questions - pivot", () => {
     // in the collection picker when we attempt to save the question
     cy.visit("/collection/root");
     H.newButton("Question").click();
-    X.selectFromPopover("Sample Database");
+    X.selectFromPopover(XV_DATABASE_NAME);
     X.selectFromPopover("People");
 
     cy.log(
@@ -72,7 +71,5 @@ describe("Cross-version questions - pivot", () => {
       .and("contain", "Organic")
       .and("contain", "Row totals")
       .and("contain", "KS");
-
-    H.snapshotCrossVersionDev("01-complete");
   });
 });

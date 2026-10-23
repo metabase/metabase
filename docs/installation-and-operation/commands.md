@@ -17,6 +17,13 @@ java --add-opens java.base/java.nio=ALL-UNNAMED -jar metabase.jar help
 
 Metabase will print out the help text for available commands.
 
+## `ai-providers-documentation`
+
+Generates a markdown file listing the AI providers Metabase can connect to, the credentials each one needs, and the models each one offers. This is written to a file called `docs/ai/providers.md`.
+
+## `all-documentation`
+
+Runs every documentation command in one process.
 
 ## `api-documentation`
 
@@ -43,6 +50,10 @@ Options:
 - `-k, --keep-existing` - Do not delete target H2 file if it exists.
 - `-p, --dump-plaintext` - Do not encrypt dumped contents.
 
+## `enable-encryption`
+
+Encrypts data in the metabase database with the key in the MB_ENCRYPTION_SECRET_KEY environment variable. Run this once, with Metabase stopped, after adding the key to an existing instance: Metabase refuses to start while the key is set but the database is not encrypted with it.
+
 ## `environment-variables-documentation`
 
 Generates a markdown file containing documentation for environment variables relevant to configuring Metabase. The command only includes environment variables registered as defsettings. For a full list of environment variables, see https://www.metabase.com/docs/latest/configuring-metabase/environment-variables.
@@ -58,7 +69,6 @@ Options:
 - `-S, --no-settings` - Do not export settings.yaml
 - `-D, --no-data-model` - Do not export any data model entities; useful for subsequent exports.
 - `-f, --include-field-values` - Include field values along with field metadata.
-- `-s, --include-database-secrets` - Include database connection details (in plain text; use caution).
 - `-e, --continue-on-error` - Do not break execution on errors.
 - `--full-stacktrace` - Output full stacktraces on errors.
 
@@ -82,6 +92,10 @@ Options:
 ## `load-from-h2 | load-from-h2 h2-connection-string`
 
 Transfer data from existing H2 database to the newly created MySQL or Postgres DB specified by env vars.
+
+## `mcp-tools-documentation`
+
+Generates `docs/ai/mcp-tools.md`, the reference for the tools Metabase's MCP server exposes to AI clients.
 
 ## `migrate direction`
 
@@ -112,4 +126,3 @@ Open an SQL shell for the Metabase H2 DB:
 ```sh
 java -cp metabase.jar org.h2.tools.Shell -url jdbc:h2:/path/to/metabase.db
 ```
-

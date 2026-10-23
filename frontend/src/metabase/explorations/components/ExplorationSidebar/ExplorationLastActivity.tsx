@@ -1,8 +1,8 @@
 import { useInterval } from "react-use";
 
 import { getFormattedTime } from "metabase/common/components/DateTime/DateTime";
-import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { Text, Tooltip } from "metabase/ui";
+import { useForceUpdate } from "metabase/utils/use-force-update";
 
 import { getCompactRelativeTime } from "./utils";
 

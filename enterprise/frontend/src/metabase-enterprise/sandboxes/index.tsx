@@ -35,11 +35,12 @@ import EditSandboxingModal from "./containers/EditSandboxingModal";
 import { getDraftPolicies, hasPolicyChanges } from "./selectors";
 
 const OPTION_SEGMENTED = {
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  label: t`Row and column security`,
+  get label() {
+    return t`Row and column security`;
+  },
   value: DataPermissionValue.SANDBOXED,
   icon: "permissions_limited",
-  iconColor: "brand",
+  iconColor: "core-brand",
 } satisfies PermissionOption;
 
 const getDatabaseViewSandboxModalUrl = (
@@ -96,8 +97,10 @@ export function initializePlugin() {
     );
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(OPTION_SEGMENTED);
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[OPTION_SEGMENTED.value].push({
-      label: t`Edit row and column security`,
-      iconColor: "brand",
+      get label() {
+        return t`Edit row and column security`;
+      },
+      iconColor: "core-brand",
       icon: "pencil",
       onSelect: (entityId, groupId, view) =>
         navigate(getEditSegementedAccessUrl(entityId, groupId, view)),

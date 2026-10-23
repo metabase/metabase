@@ -2,19 +2,24 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 import * as Yup from "yup";
 
+import { findErrorMessage } from "metabase/api/utils/errors";
+import { hasActionsEnabled } from "metabase/common/utils/database";
 import type { ButtonProps } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type Field from "metabase-lib/v1/metadata/Field";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import type {
   ActionDashboardCard,
+  ActionDisplayType,
   ActionFormOption,
   ActionFormSettings,
   BaseDashboardCard,
   Card,
+  Database,
   FieldSettings,
   FieldSettingsMap,
   FieldType,
+  IconName,
   InputComponentType,
   InputSettingType,
   Parameter,
@@ -165,6 +170,18 @@ export function isActionDashCard(
 export const isActionCard = (card?: Card | VirtualCard) =>
   card?.display === "action";
 
+/**
+ * How an action dashcard is shown: the given `actionDisplayType` (from the
+ * dashcard's visualization settings), else the action's own setting, else a
+ * button.
+ */
+export function getActionDisplayType(
+  actionDisplayType: ActionDisplayType | undefined,
+  action: Pick<WritebackAction, "visualization_settings"> | undefined,
+): ActionDisplayType {
+  return actionDisplayType ?? action?.visualization_settings?.type ?? "button";
+}
+
 export const getFormTitle = (action: WritebackAction): string => {
   return action.visualization_settings?.name || action.name || t`Action form`;
 };
@@ -206,7 +223,7 @@ export function getActionExecutionMessage(
 
 export function getActionErrorMessage(error: unknown) {
   return (
-    Errors.getResponseErrorMessage(error) ??
+    findErrorMessage(error) ??
     t`Something went wrong while executing the action`
   );
 }
@@ -311,15 +328,15 @@ export const getSubmitButtonColor = (
   action: WritebackAction,
 ): ButtonProps["color"] => {
   if (isImplicitDeleteAction(action)) {
-    return "feedback-negative";
+    return "negative";
   }
 
   return match(action.visualization_settings?.submitButtonColor)
     .returnType<ButtonProps["color"]>()
-    .with("danger", () => "feedback-negative")
-    .with("success", () => "feedback-positive")
-    .with("warning", () => "feedback-warning")
-    .otherwise(() => "core-brand");
+    .with("danger", () => "negative")
+    .with("success", () => "positive")
+    .with("warning", () => "warning")
+    .otherwise(() => "brand");
 };
 
 export const getSubmitButtonLabel = (action: WritebackAction): string => {
@@ -353,3 +370,56 @@ export const isImplicitDeleteAction = (action: WritebackAction): boolean =>
 
 export const isImplicitUpdateAction = (action: WritebackAction): boolean =>
   action.type === "implicit" && action.kind === "row/update";
+
+export const isValidImplicitDeleteAction = (action: WritebackAction): boolean =>
+  isImplicitDeleteAction(action) && !action.archived;
+
+export const isValidImplicitUpdateAction = (action: WritebackAction): boolean =>
+  isImplicitUpdateAction(action) && !action.archived;
+
+export type ActionItem = {
+  title: string;
+  icon: IconName;
+  action: () => void;
+};
+
+// Accepts both plain API databases and metabase-lib Database wrappers.
+type DatabaseActionsSource = Pick<Database, "id" | "settings">;
+
+const canRunActionOnDatabase = (
+  action: WritebackAction,
+  databases: DatabaseActionsSource[],
+) => {
+  const database = databases.find(({ id }) => id === action.database_id);
+  return database != null && hasActionsEnabled(database);
+};
+
+export const getActionItems = ({
+  actions,
+  databases,
+  onDelete,
+  onUpdate,
+}: {
+  actions: WritebackAction[];
+  databases: DatabaseActionsSource[];
+  onDelete: (action: WritebackAction) => void;
+  onUpdate: (action: WritebackAction) => void;
+}): ActionItem[] => {
+  const actionItems: ActionItem[] = [];
+  // There is no endpoint for running public actions (#32320).
+  const privateActions = actions.filter((action) => !action.public_uuid);
+  const deleteAction = privateActions.find(isValidImplicitDeleteAction);
+  const updateAction = privateActions.find(isValidImplicitUpdateAction);
+
+  if (updateAction && canRunActionOnDatabase(updateAction, databases)) {
+    const action = () => onUpdate(updateAction);
+    actionItems.push({ title: t`Update`, icon: "pencil", action });
+  }
+
+  if (deleteAction && canRunActionOnDatabase(deleteAction, databases)) {
+    const action = () => onDelete(deleteAction);
+    actionItems.push({ title: t`Delete`, icon: "trash", action });
+  }
+
+  return actionItems;
+};

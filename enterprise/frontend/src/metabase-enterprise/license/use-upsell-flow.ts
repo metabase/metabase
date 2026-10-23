@@ -3,8 +3,8 @@ import { t } from "ttag";
 
 import { useUpsellLink } from "metabase/common/components/upsells/components/use-upsell-link";
 import { useStoreUrl, useToast } from "metabase/common/hooks";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
-import { getUser } from "metabase/selectors/user";
 import { useSetting } from "metabase/settings";
 import { useLicense } from "metabase-enterprise/settings/hooks/use-license";
 
@@ -82,7 +82,7 @@ export function useUpsellFlow({
   useEffect(() => {
     if (error) {
       sendToast({
-        icon: "warning",
+        variant: "negative",
         message: error,
         timeout: NOTIFICATION_TIMEOUT,
       });

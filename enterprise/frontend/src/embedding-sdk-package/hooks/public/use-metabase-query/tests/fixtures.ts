@@ -105,7 +105,8 @@ export const TEST_SCHEMA = {
           type: "measure" as const,
           id: 21,
           tableId: 1,
-          columns: [{ name: "sum", displayName: "Sum", jsType: "number" }],
+          name: "Revenue",
+          columns: [{ name: "count", displayName: "Count", jsType: "number" }],
         },
       },
     },
@@ -132,6 +133,7 @@ export const TEST_SCHEMA = {
     revenue: {
       type: "metric" as const,
       id: 31,
+      name: "Revenue",
       sourceTableId: 1,
       mappedTableIds: [1, 2],
       columns: [{ name: "sum", displayName: "Revenue", jsType: "number" }],
@@ -158,23 +160,45 @@ export const TEST_SCHEMA = {
       sourceCardId: 41,
     },
   },
+  actions: {
+    createOrder: {
+      kind: "action" as const,
+      id: 51,
+      name: "Create Order",
+      type: "query" as const,
+      parameters: [
+        {
+          slug: "status",
+          displayName: "Status",
+          jsType: "string" as const,
+        },
+      ],
+    },
+    updateOrder: {
+      kind: "action" as const,
+      id: 52,
+      name: "Update Order",
+      type: "query" as const,
+      parameters: [
+        {
+          slug: "id",
+          displayName: "ID",
+          jsType: "number" as const,
+          required: true,
+        },
+      ],
+    },
+  },
   questions: {
+    // Generated question columns carry only `type`, `name`, and `jsType`; the
+    // display name is rendered as a comment, not as runtime metadata.
     ordersQuestion: {
       type: "card" as const,
       id: 41,
       columns: [
-        {
-          type: "column" as const,
-          name: "STATUS",
-          displayName: "Status",
-          jsType: "string",
-        },
-        {
-          type: "column" as const,
-          name: "AMOUNT",
-          displayName: "Amount",
-          jsType: "number",
-        },
+        { type: "column" as const, name: "STATUS", jsType: "string" },
+        { type: "column" as const, name: "AMOUNT", jsType: "number" },
+        { type: "column" as const, name: "CREATED_AT", jsType: "Date" },
       ],
     },
   },
@@ -195,7 +219,9 @@ export const TEST_METADATA = {
   fields: {
     100: metadataField(100, 1, "ID", "ID", "type/Integer"),
     101: metadataField(101, 1, "STATUS", "Status", "type/Text"),
-    102: metadataField(102, 1, "AMOUNT", "Amount", "type/Float"),
+    102: metadataField(102, 1, "AMOUNT", "Amount", "type/Float", {
+      fingerprint: { type: { "type/Number": { min: 0, max: 100 } } },
+    }),
     103: metadataField(103, 1, "CREATED_AT", "Created At", "type/DateTime"),
     104: metadataField(104, 1, "PRODUCT_ID", "Product ID", "type/Integer", {
       semantic_type: "type/FK",
@@ -215,12 +241,17 @@ export const TEST_METADATA = {
       name: "Revenue",
       table_id: 1,
       definition: {
-        type: "query",
+        "lib/type": "mbql/query",
         database: 1,
-        query: {
-          "source-table": 1,
-          aggregation: [["count"]],
-        },
+        stages: [
+          {
+            "lib/type": "mbql.stage/mbql",
+            "source-table": 1,
+            aggregation: [
+              ["count", { "lib/uuid": "00000000-0000-4000-8000-000000000021" }],
+            ],
+          },
+        ],
       },
     },
   },

@@ -4,7 +4,7 @@ import { t } from "ttag";
 import { useListJobRunTransformRunsQuery } from "metabase/api";
 import { ListEmptyState } from "metabase/common/components/ListEmptyState";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { SidebarResizableBox } from "metabase/transforms/components/SidebarResizableBox";
+import { SidebarResizableBox } from "metabase/common/components/SidebarResizableBox";
 import { POLLING_INTERVAL } from "metabase/transforms/constants";
 import {
   ActionIcon,
@@ -80,13 +80,13 @@ export const JobRunSidebar = memo(function JobRunSidebar({
         bg="background_page-primary"
         data-testid="job-run-list-sidebar"
       >
-        <Box className={S.header} p="lg">
+        <Box className={S.header} p="xl">
           <JobRunSidebarHeader onClose={onClose} />
         </Box>
-        <Box className={S.scrollArea} flex={1} mih={0} p="lg">
-          <Stack gap="xl">
+        <Box className={S.scrollArea} flex={1} mih={0} p="xl">
+          <Stack gap="xxl">
             <JobRunInfoSection run={run} />
-            <Stack gap="md">
+            <Stack gap="lg">
               <Group gap="sm" wrap="nowrap">
                 <Badge color="brand" size="sm" variant="filled">
                   {transformRuns.length}
@@ -147,7 +147,7 @@ function JobRunSidebarHeader({ onClose }: JobRunSidebarHeaderProps) {
       data-testid="job-run-list-sidebar-header"
     >
       <Title order={3}>{t`Job run`}</Title>
-      <ActionIcon aria-label={t`Close`} onClick={onClose}>
+      <ActionIcon variant="subtle" aria-label={t`Close`} onClick={onClose}>
         <FixedSizeIcon name="close" />
       </ActionIcon>
     </Group>

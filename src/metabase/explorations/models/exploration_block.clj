@@ -9,6 +9,10 @@
    entries carry their `dimension_mappings`, `:dimensions` entries carry the dim type
    snapshot — so a block is self-contained for both planning and per-row materialization."
   (:require
+   [metabase.explorations.db :as explorations.db]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.metrics.core :as metrics]
    [metabase.models.interface :as mi]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -36,53 +40,67 @@
   {:in  (:in mi/transform-json)
    :out (comp keywordize-dim-types (:out mi/transform-json))})
 
+(defn- normalize-explore-filters
+  "The explore filters on a metric selection store the legacy `field_ref` of the chart column that was clicked; read
+  it back as the normalized reference the API validates and hands out. A reference that will not normalize is left as
+  it is stored."
+  [metrics]
+  (when metrics
+    (mapv (fn [metric]
+            (cond-> metric
+              (seq (:explore_filters metric))
+              (update :explore_filters
+                      (fn [explore-filters]
+                        (mapv (fn [{:keys [field_ref] :as explore-filter}]
+                                (cond-> explore-filter
+                                  field_ref (assoc :field_ref
+                                                   (try
+                                                     (lib/normalize ::lib.schema.parameter/dimension.target field_ref)
+                                                     (catch Exception _ field_ref)))))
+                              explore-filters)))))
+          metrics)))
+
+(defn- normalize-dimension-mappings
+  "Normalize the `:dimension_mappings` of each metric selection read back from JSON."
+  [metrics]
+  (when metrics
+    (mapv (fn [metric]
+            (cond-> metric
+              (seq (:dimension_mappings metric))
+              (update :dimension_mappings
+                      (fn [mappings]
+                        (mapv (fn [mapping]
+                                (cond-> mapping
+                                  (:target mapping) (update :target metrics/normalize-target-ref)
+                                  (:type mapping)   (update :type keyword)))
+                              mappings)))))
+          metrics)))
+
+(def ^:private transform-metrics
+  {:in  (:in mi/transform-json)
+   :out (comp normalize-dimension-mappings normalize-explore-filters (:out mi/transform-json))})
+
 (t2/deftransforms :model/ExplorationBlock
-  {:metrics    mi/transform-json
+  {:metrics    transform-metrics
    :dimensions transform-dimensions})
 
 (defmethod mi/can-read? :model/ExplorationBlock
   ([instance]
    (mi/can-read? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [g (t2/select-one [:model/ExplorationBlock :exploration_thread_id] :id pk)]
+   (when-let [g (explorations.db/block-thread-id-row pk)]
      (mi/can-read? :model/ExplorationThread (:exploration_thread_id g)))))
 
 (defmethod mi/can-write? :model/ExplorationBlock
   ([instance]
    (mi/can-write? :model/ExplorationThread (:exploration_thread_id instance)))
   ([_model pk]
-   (when-let [g (t2/select-one [:model/ExplorationBlock :exploration_thread_id] :id pk)]
+   (when-let [g (explorations.db/block-thread-id-row pk)]
      (mi/can-write? :model/ExplorationThread (:exploration_thread_id g)))))
 
-(defn enrich-with-card-group
-  "Look up `:group` for `dim` (a group dimension snapshot) on a `card-dim-by-id` map (the
-  metric Card's `:dimensions` snapshot indexed by id) and `assoc` it onto the dim. Returns
-  `dim` unchanged when no group is recorded. The group label is metadata authored on the
-  Card's dimension; it doesn't live on the snapshot, so any consumer that wants to render it
-  needs this lookup."
-  [dim card-dim-by-id]
-  (if-let [group (get-in card-dim-by-id [(:dimension-id dim) :group])]
-    (assoc dim :group group)
-    dim))
-
-(defn- thread-blocks [thread-id]
-  (t2/select :model/ExplorationBlock
-             :exploration_thread_id thread-id
-             {:order-by [[:position :asc] [:id :asc]]}))
-
-(defn selected-metric-names
-  "Distinct names of the metric Cards selected across `thread-id`'s blocks, in authoring order."
-  [thread-id]
-  (let [card-ids (distinct (mapcat #(map :card_id (:metrics %)) (thread-blocks thread-id)))
-        names    (when (seq card-ids)
-                   (t2/select-pk->fn :name [:model/Card :id :name] :id [:in card-ids]))]
-    (keep names card-ids)))
-
-(defn selected-dimension-names
-  "Distinct display names (falling back to the raw `dimension-id`) of the dimensions
-  selected across `thread-id`'s blocks, in authoring order."
-  [thread-id]
-  (->> (thread-blocks thread-id)
-       (mapcat :dimensions)
-       (keep (fn [d] (or (:display-name d) (:dimension-id d))))
-       distinct))
+(defn dimension-label
+  "User-facing label for a dimension: the curated `:display-name` when set, else the raw
+  `:dimension-id` (block snapshots) or `:name` (metric Card dimensions). Returns nil when
+  none of those are present."
+  [dim]
+  (or (:display-name dim) (:dimension-id dim) (:name dim)))

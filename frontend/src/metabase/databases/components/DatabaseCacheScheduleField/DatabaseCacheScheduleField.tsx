@@ -1,10 +1,11 @@
 import { useField, useFormikContext } from "formik";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { useCallback } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { Schedule, toCronString } from "metabase/common/components/Schedule";
+import { Schedule } from "metabase/common/components/Schedule";
+import type { ScheduleChangeEvent } from "metabase/common/components/Schedule/types";
 import { FormField } from "metabase/forms";
 import { Box, rem } from "metabase/ui";
 import type {
@@ -40,9 +41,7 @@ export const DatabaseCacheScheduleField = ({
   const [{ value }, , { setValue }] = useField(name);
 
   const handleScheduleChange = useCallback(
-    (value: ScheduleSettings) => {
-      setValue(value);
-    },
+    ({ value }: ScheduleChangeEvent) => setValue(value),
     [setValue],
   );
 
@@ -83,7 +82,7 @@ export const DatabaseCacheScheduleField = ({
   };
 
   return (
-    <FormField title={title} description={description}>
+    <FormField mb="lg" title={title} description={description}>
       <ScheduleModePicker
         value={scheduleMode}
         onChange={handleScheduleModeChange}
@@ -91,12 +90,10 @@ export const DatabaseCacheScheduleField = ({
 
       {scheduleMode === "full" && (
         <Schedule
-          mt="md"
-          cronString={toCronString(value ?? DEFAULT_SCHEDULE)}
+          mt="lg"
+          value={value ?? DEFAULT_SCHEDULE}
           scheduleOptions={SCHEDULE_OPTIONS}
-          onScheduleChange={(_cronString, nextSchedule) =>
-            handleScheduleChange(nextSchedule)
-          }
+          onScheduleChange={handleScheduleChange}
         />
       )}
 

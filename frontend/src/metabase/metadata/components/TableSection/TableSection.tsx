@@ -1,14 +1,9 @@
 import { memo, useState } from "react";
 import { t } from "ttag";
 
-import {
-  useUpdateTableFieldsOrderMutation,
-  useUpdateTableMutation,
-} from "metabase/api";
 import { EmptyState } from "metabase/common/components/EmptyState";
 import { Link } from "metabase/common/components/Link";
-import { useMetadataToasts } from "metabase/metadata/hooks";
-import { getRawTableFieldId } from "metabase/metadata/utils/field";
+import { useTableUpdateHandlers } from "metabase/metadata/hooks";
 import {
   ActionIcon,
   Group,
@@ -20,7 +15,7 @@ import {
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { FieldId, Table, TableFieldOrder } from "metabase-types/api";
+import type { FieldId, Table } from "metabase-types/api";
 
 import { FieldOrderPicker } from "../FieldOrderPicker";
 import { NameDescriptionInput } from "../NameDescriptionInput";
@@ -47,14 +42,17 @@ const TableSectionBase = ({
   onSyncOptionsClick,
   ...props
 }: TableSectionBaseProps) => {
-  const [updateTable] = useUpdateTableMutation();
-  const [updateTableSorting, { isLoading: isUpdatingSorting }] =
-    useUpdateTableMutation();
-  const [updateTableFieldsOrder] = useUpdateTableFieldsOrderMutation();
-  const { sendErrorToast, sendSuccessToast, sendUndoToast } =
-    useMetadataToasts();
+  const {
+    handleNameChange,
+    handleDescriptionChange,
+    handleFieldOrderTypeChange,
+    handleCustomFieldOrderChange,
+    isUpdatingSorting,
+  } = useTableUpdateHandlers({ table });
   const [isSorting, setIsSorting] = useState(false);
   const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const readOnly = !table.can_write;
+  const canSort = hasFields && !readOnly;
   const {
     buttonsContainerRef,
     showButtonLabel,
@@ -62,101 +60,19 @@ const TableSectionBase = ({
     setSortingButtonWidth,
     setSyncButtonWidth,
   } = useResponsiveButtons({
-    hasFields,
+    canSort,
     isSorting,
     isUpdatingSorting,
   });
 
-  const handleNameChange = async (name: string) => {
-    const { error } = await updateTable({
-      id: table.id,
-      display_name: name,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update table name`);
-    } else {
-      sendSuccessToast(t`Table name updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          display_name: table.display_name,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleDescriptionChange = async (description: string) => {
-    const { error } = await updateTable({ id: table.id, description });
-
-    if (error) {
-      sendErrorToast(t`Failed to update table description`);
-    } else {
-      sendSuccessToast(t`Table description updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          description: table.description ?? "",
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleFieldOrderTypeChange = async (fieldOrder: TableFieldOrder) => {
-    const { error } = await updateTableSorting({
-      id: table.id,
-      field_order: fieldOrder,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update field order`);
-    } else {
-      sendSuccessToast(t`Field order updated`, async () => {
-        const { error } = await updateTable({
-          id: table.id,
-          field_order: table.field_order,
-        });
-        sendUndoToast(error);
-      });
-    }
-  };
-
-  const handleCustomFieldOrderChange = async (fieldOrder: FieldId[]) => {
-    const { error } = await updateTableFieldsOrder({
-      id: table.id,
-      field_order: fieldOrder,
-    });
-
-    if (error) {
-      sendErrorToast(t`Failed to update field order`);
-    } else {
-      sendSuccessToast(t`Field order updated`, async () => {
-        const { error: fieldsOrderError } = await updateTableFieldsOrder({
-          id: table.id,
-          field_order: table.fields?.map(getRawTableFieldId) ?? [],
-        });
-
-        if (table.field_order !== "custom") {
-          const { error: tableError } = await updateTable({
-            id: table.id,
-            field_order: table.field_order,
-          });
-          sendUndoToast(fieldsOrderError ?? tableError);
-        } else {
-          sendUndoToast(fieldsOrderError);
-        }
-      });
-    }
-  };
-
   return (
-    <Stack data-testid="table-section" gap={0} pb="lg" px="lg" {...props}>
+    <Stack data-testid="table-section" gap={0} pb="xl" px="xl" {...props}>
       <Stack
         className={S.header}
-        gap="lg"
+        gap="xl"
         pb={12}
         pos="sticky"
-        pt="lg"
+        pt="xl"
         top={0}
         bg="background_page-secondary"
       >
@@ -174,7 +90,6 @@ const TableSectionBase = ({
                   component={Link}
                   to={Urls.queryBuilderTable(table.id, table.db_id)}
                   variant="subtle"
-                  color="text-disabled"
                   size="sm"
                   mr="sm"
                   aria-label={t`Go to this table`}
@@ -183,6 +98,7 @@ const TableSectionBase = ({
                 </ActionIcon>
               </Tooltip>
             }
+            readOnly={readOnly}
             onNameChange={handleNameChange}
             onDescriptionChange={handleDescriptionChange}
           />
@@ -190,7 +106,7 @@ const TableSectionBase = ({
 
         <Group
           align="center"
-          gap="md"
+          gap="lg"
           justify="space-between"
           miw={0}
           wrap="nowrap"
@@ -199,7 +115,7 @@ const TableSectionBase = ({
 
           <Group
             flex="1"
-            gap="md"
+            gap="lg"
             justify="flex-end"
             miw={0}
             ref={buttonsContainerRef}
@@ -209,7 +125,7 @@ const TableSectionBase = ({
 
             {isUpdatingSorting && <Loader size="xs" />}
 
-            {!isSorting && hasFields && (
+            {!isSorting && canSort && (
               <ResponsiveButton
                 icon="sort_arrows"
                 showLabel={showButtonLabel}
@@ -249,7 +165,7 @@ const TableSectionBase = ({
         </Group>
       </Stack>
 
-      <Stack gap="lg">
+      <Stack gap="xl">
         <Stack gap={12}>
           {!hasFields && <EmptyState message={t`This table has no fields`} />}
 

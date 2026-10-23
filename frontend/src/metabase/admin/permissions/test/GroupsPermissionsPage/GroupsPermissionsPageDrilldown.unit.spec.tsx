@@ -12,7 +12,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import DataPermissionsPage from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
+import { DataPermissionsPage } from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
 import { GroupsPermissionsPage } from "metabase/admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
 import { Route } from "metabase/router";
 import { createMockGroup } from "metabase-types/api/mocks/group";

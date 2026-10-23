@@ -18,6 +18,8 @@
 
 (defmethod do-init-step! :load-namespace [{nmspace :namespace}]
   (log/debug (u/format-color 'blue "Loading plugin namespace %s..." nmspace))
+  ;; Plugin namespaces are supplied by plugin manifests at runtime.
+  #_{:clj-kondo/ignore [:metabase/modules]}
   (classloader/require (symbol nmspace)))
 
 (defmethod do-init-step! :register-jdbc-driver [{class-name :class}]

@@ -33,7 +33,7 @@ jobs:
       MB_EDITION: ${{ inputs.edition || 'ee' }}
       INSTRUMENT_COVERAGE: "true"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
@@ -66,7 +66,8 @@ jobs:
   # one place (SHARDS below); the matrix is generated from it.
   setup:
     name: Build shard matrix
-    runs-on: ubuntu-22.04
+    runs-on: ${{ vars.SLIM_RUNNER_KEY }}
+    timeout-minutes: 5
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
       count: ${{ steps.gen.outputs.count }}
@@ -103,7 +104,7 @@ jobs:
       actions: read
       contents: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       # merge-multiple unions every shard's per-spec dir into one tree; the

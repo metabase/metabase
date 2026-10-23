@@ -13,6 +13,7 @@
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.util.malli :as mu]
    [metabase.util.number :as u.number]
    [metabase.util.time :as u.time]))
@@ -165,7 +166,7 @@
         segments-db  {:segments [{:id          segment-id
                                   :name        segment-name
                                   :table-id    (meta/id :venues)
-                                  :definition  {}
+                                  :definition  nil
                                   :description segment-description}]}
         metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider segments-db)
         query (lib/query metadata-provider (meta/table-metadata :venues))
@@ -191,7 +192,7 @@
         metrics-db  {:segments [{:id          metric-id
                                  :name        metric-name
                                  :table-id    (meta/id :venues)
-                                 :definition  {}
+                                 :definition  nil
                                  :description metric-description}]}
         metadata-provider (lib.tu/mock-metadata-provider meta/metadata-provider metrics-db)
         query (lib/query metadata-provider (meta/table-metadata :venues))
@@ -218,9 +219,7 @@
                   (lib/expression expression-name
                                   (lib/* (lib.tu/field-clause :venues :price {:base-type :type/Integer}) 2))
                   (lib/expression other-expression-name
-                                  [:expression {:base-type :type/Integer} expression-name]))
-        ;;
-
+                                  [:expression {:base-type :type/Integer, :lib/uuid (str (random-uuid))} expression-name]))
         stage-number -1]
     (testing "expression references"
       (mu/disable-enforcement
@@ -882,6 +881,34 @@
                          :lib/source-uuid string?}]}
             (lib.fe-util/expression-parts query (second (lib/aggregations query)))))))
 
+(deftest ^:parallel expression-parts-preserves-join-disambiguation-test
+  (testing (str "same-named aggregations from different joins keep their disambiguated long display names "
+                "when their :field refs are read back via expression-parts (#76986)")
+    (let [q0    (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                    (lib/join (lib/join-clause (meta/table-metadata :products)
+                                               [(lib/= (meta/field-metadata :orders :product-id)
+                                                       (meta/field-metadata :products :id))])))
+          orders-id   (lib.tu.notebook/find-col-with-spec
+                       q0 (lib/orderable-columns q0) {:is-main-group true} {:display-name "ID"})
+          products-id (lib.tu.notebook/find-col-with-spec
+                       q0 (lib/orderable-columns q0) {:display-name "Products"} {:display-name "ID"})
+          q1    (-> q0
+                    (lib/aggregate (lib/distinct orders-id))
+                    (lib/aggregate (lib/distinct products-id))
+                    lib/append-stage)
+          agg1  (lib.tu.notebook/find-col-with-spec
+                 q1 (lib/expressionable-columns q1 1 nil)
+                 {:is-main-group true} {:long-display-name "Distinct values of ID"})
+          agg2  (lib.tu.notebook/find-col-with-spec
+                 q1 (lib/expressionable-columns q1 1 nil)
+                 {:is-main-group true} {:long-display-name "Distinct values of Products → ID"})
+          q2    (lib/expression q1 1 "diff" (lib/- agg2 agg1))
+          expr  (first (lib/expressions q2 1))
+          parts (lib.fe-util/expression-parts q2 1 expr)]
+      (is (= ["Distinct values of Products → ID" "Distinct values of ID"]
+             (mapv #(:long-display-name (lib/display-info q2 1 %))
+                   (:args parts)))))))
+
 (deftest ^:parallel join-condition-clause-test
   (let [lhs (lib/ref (meta/field-metadata :orders :product-id))
         rhs (lib/ref (meta/field-metadata :products :id))]
@@ -1166,7 +1193,8 @@
               "2024-05-13T16:35"]]
     (testing "Expandable temporal units"
       (are [unit start end] (=? [:between map? [:field {:temporal-unit unit} int?] start end]
-                                (#'lib.fe-util/expand-temporal-expression (update-temporal-unit expr unit)))
+                                (#'lib.fe-util/expand-temporal-expression {:start-of-week :sunday}
+                                                                          (update-temporal-unit expr unit)))
         :hour "2024-05-13T16:00:00" "2024-05-13T16:59:59"
         :week "2024-05-12" "2024-05-18"
         :month "2024-05-01" "2024-05-31"
@@ -1189,7 +1217,7 @@
                                             (field-with-unit unit) value])]
       (are [unit value start end]
            (=? [:between map? [:field {:temporal-unit unit} int?] start end]
-               (#'lib.fe-util/expand-temporal-expression (expr-with unit value)))
+               (#'lib.fe-util/expand-temporal-expression {:start-of-week :sunday} (expr-with unit value)))
         :day   "2024-05-13T00:00:00Z"      "2024-05-13" "2024-05-13"
         :day   "2024-05-13T00:00:00+08:00" "2024-05-13" "2024-05-13"
         :day   "2024-05-13T00:00:00-08:00" "2024-05-13" "2024-05-13"

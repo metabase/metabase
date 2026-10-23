@@ -2,7 +2,7 @@ import type { Row, Table } from "@tanstack/react-table";
 import { useMemo } from "react";
 
 import { BaseCell, type ColumnOptions } from "metabase/data-grid";
-import { Checkbox, Flex, Group, Icon, Tooltip, rem } from "metabase/ui";
+import { Checkbox, Flex, Group, Icon, Tooltip } from "metabase/ui";
 import type { RowValue, RowValues } from "metabase-types/api";
 
 import S from "./EditTableDataGrid.module.css";
@@ -34,7 +34,6 @@ export function getRowSelectColumn({
     header: ({ table }: { table: Table<RowValues> }) => (
       <Flex p="0.75rem" h="100%" align="center" className={S.tableHeaderCell}>
         <Checkbox
-          size={rem(16)}
           checked={table.getIsAllRowsSelected()}
           indeterminate={table.getIsSomeRowsSelected()}
           onChange={table.getToggleAllRowsSelectedHandler()}
@@ -57,7 +56,6 @@ export function getRowSelectColumn({
       <BaseCell className={CellS.cell}>
         <Group align="center" justify="flex-start" h="100%">
           <Checkbox
-            size={rem(16)}
             checked={row.getIsSelected()}
             disabled={!row.getCanSelect()}
             onChange={row.getToggleSelectedHandler()}

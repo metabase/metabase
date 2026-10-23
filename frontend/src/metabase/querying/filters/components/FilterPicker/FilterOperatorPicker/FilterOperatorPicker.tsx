@@ -23,7 +23,6 @@ export function FilterOperatorPicker<T extends Lib.FilterOperator>({
     <Menu>
       <Menu.Target>
         <Button
-          fw="normal"
           rightSection={<Icon name="chevrondown" />}
           aria-label={t`Filter operator`}
           className={S.root}

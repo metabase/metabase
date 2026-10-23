@@ -1,6 +1,5 @@
 import { NumberInput } from "metabase/ui";
-
-import type { ChartSettingWidgetProps } from "./types";
+import type { ChartSettingWidgetProps } from "metabase/viz-core";
 
 interface ChartSettingNumberInputProps extends Omit<
   ChartSettingWidgetProps<number>,

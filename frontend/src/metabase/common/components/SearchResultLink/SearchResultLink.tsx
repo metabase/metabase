@@ -1,4 +1,4 @@
-import type { MouseEvent } from "react";
+import type { JSX, MouseEvent } from "react";
 
 import { Anchor, Group, Text, Tooltip } from "metabase/ui";
 import { useIsTruncated } from "metabase/ui/hooks/use-is-truncated";
@@ -22,7 +22,7 @@ export const SearchResultLink = ({
       <Group
         className={S.resultLinkWrapper}
         data-testid="result-link-wrapper"
-        gap="xs"
+        gap="xxs"
         wrap="nowrap"
       >
         {leftIcon}

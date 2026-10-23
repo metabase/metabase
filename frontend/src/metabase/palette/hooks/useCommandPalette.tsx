@@ -8,11 +8,15 @@ import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { getCollection } from "metabase/common/collections/utils";
 import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { trackSearchClick } from "metabase/common/search/analytics";
+import {
+  canAccessSettings,
+  getUserIsAdmin,
+  isSettingsManagerPath,
+} from "metabase/current-user";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
 import { queryToSearch } from "metabase/router";
 import { getDocsUrl } from "metabase/selectors/settings";
-import { canAccessSettings, getUserIsAdmin } from "metabase/selectors/user";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import { getSettings, useSetting } from "metabase/settings";
 import { Icon, Text } from "metabase/ui";
@@ -283,12 +287,12 @@ export const useCommandPalette = ({
     }
 
     return Object.entries(getAdminSettingsSections(settingValues))
-      .filter(([_slug, section]) => {
+      .filter(([slug, section]) => {
         if (section.hidden) {
           return false;
         }
 
-        if (section.adminOnly && !isAdmin) {
+        if (!isAdmin && !isSettingsManagerPath(slug)) {
           return false;
         }
 

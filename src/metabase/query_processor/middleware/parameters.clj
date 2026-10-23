@@ -27,8 +27,11 @@
     stage
     (let [f        (case (:lib/type stage)
                      :mbql.stage/mbql   qp.mbql/expand
-                     :mbql.stage/native (fn [query _path stage]
-                                          (qp.native/expand-stage query stage)))
+                     :mbql.stage/native (mu/fn :- ::lib.schema/stage.native
+                                          [query path _stage]
+                                          (let [{query* :query, :keys [stage-number]} (lib.walk/query-for-path query path)]
+                                            (-> (qp.native/expand-stage query* stage-number)
+                                                (lib/query-stage stage-number)))))
           expanded (f query path stage)]
       (dissoc expanded :parameters :template-tags))))
 
@@ -113,15 +116,12 @@
                                          (not= value default)))))]
         (some non-default-param? params)))))
 
-(defn- maybe-skip-result-metadata-persistence
-  "Sets :qp/skip-result-metadata-persistence to true/false."
+(defn- mark-non-default-parameterized
+  "Set `:qp/non-default-parameterized?` to true when any stage carries parameters whose values diverge from
+  their template tag defaults."
   [query]
-  (->> (:stages query)
-       (some stage-has-non-default-params?)
-       boolean
-       ;; `qp/skip-result-metadata-persistence` is used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]]
-       ;; to decide whether to record metadata.
-       (assoc query :qp/skip-result-metadata-persistence)))
+  (assoc query :qp/non-default-parameterized?
+         (boolean (some stage-has-non-default-params? (:stages query)))))
 
 (mu/defn- move-top-level-params-to-stage :- ::lib.schema/query
   "Move any top-level parameters to the stage they affect."
@@ -141,7 +141,7 @@
 
     (seq parameters)
     (-> (move-top-level-params-to-stage* parameters)
-        maybe-skip-result-metadata-persistence)))
+        mark-non-default-parameterized)))
 
 (mu/defn- expand-parameters :- ::lib.schema/query
   "If any parameters were supplied then substitute them into the query."

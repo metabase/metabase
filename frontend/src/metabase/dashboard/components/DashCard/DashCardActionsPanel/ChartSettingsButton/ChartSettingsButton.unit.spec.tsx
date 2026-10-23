@@ -7,16 +7,16 @@ import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
 import { registerVisualizations } from "metabase/visualizations/register";
 import {
   createMockColumn,
+  createMockDashCardDataSeries,
   createMockDashboard,
   createMockDatabase,
-  createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
 registerVisualizations();
 
 const rows = [["John", "John Smith Jr"]];
 const MOCK_SERIES = [
-  createMockSingleSeries(
+  createMockDashCardDataSeries(
     { display: "line" },
     {
       data: {

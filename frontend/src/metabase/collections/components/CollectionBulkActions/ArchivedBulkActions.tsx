@@ -8,10 +8,7 @@ import {
   useSetArchive,
 } from "metabase/archive/hooks";
 import { isRootTrashCollection } from "metabase/common/collections/utils";
-import {
-  BulkActionButton,
-  BulkActionDangerButton,
-} from "metabase/common/components/BulkActionBar";
+import { BulkActionButton } from "metabase/common/components/BulkActionBar";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { canMoveItem } from "metabase/common/hooks";
 import { useDispatch } from "metabase/redux";
@@ -101,6 +98,7 @@ export const ArchivedBulkActions = ({
       dispatch(
         addUndo({
           message: t`There was an error permanently deleting these items.`,
+          variant: "negative",
         }),
       );
     } finally {
@@ -128,12 +126,13 @@ export const ArchivedBulkActions = ({
       <BulkActionButton onClick={handleBulkMoveStart} disabled={!canMove}>
         {t`Move`}
       </BulkActionButton>
-      <BulkActionDangerButton
+      <BulkActionButton
+        danger
         onClick={handleBulkDeletePermanentlyStart}
         disabled={!canDeleteAll}
       >
         {t`Delete permanently`}
-      </BulkActionDangerButton>
+      </BulkActionButton>
 
       {/* This should probably be external so that we can hide
           the bar when any other modals are displayed */}

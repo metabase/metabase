@@ -1,57 +1,47 @@
 import cx from "classnames";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { usePrevious } from "react-use";
 
 import CS from "metabase/css/core/index.css";
-import { connect, useSelector } from "metabase/redux";
-import * as metadataActions from "metabase/redux/metadata";
+import { connect, useDispatch, useSelector } from "metabase/redux";
 import { SidebarLayout } from "metabase/reference/components/SidebarLayout";
+import { fetchSegmentRevisionsData } from "metabase/reference/fetch-data";
 import * as actions from "metabase/reference/reference";
 import SegmentRevisions from "metabase/reference/segments/SegmentRevisions";
+import { useReferenceFetch } from "metabase/reference/use-reference-fetch-state";
 import { useLocation, useParams } from "metabase/router";
 
-import type { ClearStateProps, FetchProps } from "../reference";
+import type { ClearStateProps } from "../reference";
 import {
   type ReferenceRouteParams,
   getIsEditing,
-  getSegment,
   getSegmentId,
   getUser,
 } from "../selectors";
 
 import SegmentSidebar from "./SegmentSidebar";
+import { useSegmentPage } from "./use-segment-page";
 
 const mapDispatchToProps = {
-  ...metadataActions,
   ...actions,
 };
 
-interface SegmentRevisionsContainerProps extends FetchProps, ClearStateProps {
-  fetchSegments: (id?: number) => Promise<unknown>;
-  fetchSegmentRevisions: (id: number) => Promise<unknown>;
-  fetchSegmentTable: (id: number) => Promise<unknown>;
-}
+type SegmentRevisionsContainerProps = ClearStateProps;
 
 function SegmentRevisionsContainer(props: SegmentRevisionsContainerProps) {
   const { pathname } = useLocation();
   const previousPathname = usePrevious(pathname);
+  const dispatch = useDispatch();
   const params = useParams<ReferenceRouteParams>();
 
   const user = useSelector(getUser);
-  const segment = useSelector((state) => getSegment(state, { params }));
   const segmentId = useSelector((state) => getSegmentId(state, { params }));
   const isEditing = useSelector(getIsEditing);
+  const { segment, table } = useSegmentPage(segmentId);
 
-  // Dispatched during render, not from an effect, to reproduce the
-  // `UNSAFE_componentWillMount` this replaced: the child reads `loading` from
-  // the store, so it has to be true before the child's first render. From an
-  // effect (even `useLayoutEffect`) the tree commits once with no data, and the
-  // reference header lays out wrong — see DEV-2430.
-  const didFetch = useRef(false);
-  if (!didFetch.current) {
-    didFetch.current = true;
-    actions.wrappedFetchSegmentRevisions(props, segmentId);
-  }
+  const { loading, loadingError } = useReferenceFetch(() =>
+    fetchSegmentRevisionsData(dispatch, segmentId),
+  );
 
   useEffect(() => {
     const pathnameChanged =
@@ -65,9 +55,21 @@ function SegmentRevisionsContainer(props: SegmentRevisionsContainerProps) {
     <SidebarLayout
       className={cx(CS.flexFull, CS.relative)}
       style={isEditing ? { paddingTop: "43px" } : {}}
-      sidebar={<SegmentSidebar segment={segment} user={user} />}
+      sidebar={
+        <SegmentSidebar
+          segmentId={segmentId}
+          segmentName={segment?.name}
+          user={user}
+        />
+      }
     >
-      <SegmentRevisions params={params} />
+      <SegmentRevisions
+        params={params}
+        segment={segment}
+        table={table}
+        loading={loading}
+        loadingError={loadingError}
+      />
     </SidebarLayout>
   );
 }

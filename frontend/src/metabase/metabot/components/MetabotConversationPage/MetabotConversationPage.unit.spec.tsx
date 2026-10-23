@@ -1,34 +1,49 @@
 import fetchMock, { type RouteResponse } from "fetch-mock";
+import { assocIn } from "icepick";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   createMockMetabotConversationDetail,
+  createMockMetabotGeneratedCardPart,
+  createMockMetabotMessage,
+  createMockMetabotTextMessage,
+  setupCardDataset,
   setupDatabaseListEndpoint,
   setupGetMetabotConversationEndpoint,
   setupListMetabotConversationsEndpoint,
+  setupTableEndpoints,
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import { createMockUser } from "metabase-types/api/mocks";
+import { createMockTable, createMockUser } from "metabase-types/api/mocks";
 
-import { FIXED_METABOT_IDS } from "../../constants";
+import { FIXED_METABOT_ENTITY_IDS } from "../../constants";
 import { MetabotProvider } from "../../context";
-import { getMetabotConversationId, metabotReducer } from "../../state";
-import { getMetabotInitialState } from "../../state/reducer-utils";
+import { getMetabotState, metabotReducer } from "../../state";
+import {
+  createConversation,
+  getMetabotInitialState,
+} from "../../state/reducer-utils";
 
 import {
   IN_PROGRESS_POLL_MS,
   MetabotConversationPage,
 } from "./MetabotConversationPage";
 
+jest.mock("metabase/visualizations/components/Visualization", () => ({
+  __esModule: true,
+  default: () => <div data-testid="visualization" />,
+}));
+
 const ASYNC_TIMEOUT = 3000;
 const CONVERSATION_ROUTE = "/metabot/conversation/:convoId";
 const CONVERSATION_ID = "11111111-1111-1111-1111-111111111111";
 const OTHER_CONVERSATION_ID = "22222222-2222-2222-2222-222222222222";
+const TABLE_ID = 2;
 
 const GREETING_TITLE =
   /What would you like to know\?|What do you want to explore\?|What are you looking to learn\?/;
@@ -43,29 +58,21 @@ const mockConversationDetail = (response: RouteResponse, delay?: number) => {
   });
 };
 
-const createAskState = ({
+const stateWithConversation = ({
   conversationId = OTHER_CONVERSATION_ID,
   message,
 }: {
   conversationId?: string;
   message?: string;
-} = {}) => {
-  const state = getMetabotInitialState();
-  const ask = state.conversations.ask;
-  if (!ask) {
-    throw new Error("Expected ask conversation");
-  }
-  ask.conversationId = conversationId;
-  if (message) {
-    ask.messages.push({
-      id: "seed-message",
-      role: "user",
-      type: "text",
-      message,
-    });
-  }
-  return state;
-};
+} = {}) =>
+  assocIn(
+    getMetabotInitialState(),
+    ["conversations", conversationId],
+    createConversation({
+      conversationId,
+      messages: message ? [createMockMetabotTextMessage("user", message)] : [],
+    }),
+  );
 
 const TestConversationPage = () => (
   <MetabotProvider>
@@ -89,7 +96,7 @@ const setup = ({
   setupDatabaseListEndpoint([]);
   setupListMetabotConversationsEndpoint([]);
   fetchMock.get(
-    `path:/api/metabot/metabot/${FIXED_METABOT_IDS.DEFAULT}/prompt-suggestions`,
+    `path:/api/metabot/metabot/${FIXED_METABOT_ENTITY_IDS.DEFAULT}/prompt-suggestions`,
     { prompts: [], offset: 0, limit: 3, total: 3 },
   );
 
@@ -112,8 +119,11 @@ const inProgressDetail = () =>
   createMockMetabotConversationDetail({
     conversation_id: CONVERSATION_ID,
     messages: [
-      { id: "m1", role: "user", type: "text", message: "Loaded question" },
-      { id: "m2", role: "agent", type: "turn_in_progress" },
+      createMockMetabotTextMessage("user", "Loaded question"),
+      createMockMetabotMessage({
+        role: "agent",
+        status: { type: "in_progress" },
+      }),
     ],
   });
 
@@ -121,8 +131,8 @@ const finishedDetail = () =>
   createMockMetabotConversationDetail({
     conversation_id: CONVERSATION_ID,
     messages: [
-      { id: "m1", role: "user", type: "text", message: "Loaded question" },
-      { id: "m3", role: "agent", type: "text", message: "Here is the answer" },
+      createMockMetabotTextMessage("user", "Loaded question"),
+      createMockMetabotTextMessage("agent", "Here is the answer"),
     ],
   });
 
@@ -135,20 +145,13 @@ describe("MetabotConversationPage", () => {
     mockConversationDetail(
       createMockMetabotConversationDetail({
         conversation_id: CONVERSATION_ID,
-        messages: [
-          {
-            id: "m1",
-            role: "user",
-            type: "text",
-            message: "Loaded question",
-          },
-        ],
+        messages: [createMockMetabotTextMessage("user", "Loaded question")],
       }),
       150,
     );
 
     const { store } = setup({
-      metabotInitialState: createAskState(),
+      metabotInitialState: stateWithConversation(),
     });
 
     expect(
@@ -161,13 +164,13 @@ describe("MetabotConversationPage", () => {
       screen.queryByTestId("metabot-conversation-loading"),
     ).not.toBeInTheDocument();
     await waitFor(() => {
-      expect(getMetabotConversationId(store.getState(), "ask")).toBe(
-        CONVERSATION_ID,
-      );
+      expect(
+        getMetabotState(store.getState()).conversations[CONVERSATION_ID],
+      ).toBeDefined();
     });
   });
 
-  it("does not load when the ask agent already holds the URL conversation", async () => {
+  it("does not load when the store already holds the URL conversation", async () => {
     setupGetMetabotConversationEndpoint(
       createMockMetabotConversationDetail({
         conversation_id: CONVERSATION_ID,
@@ -175,7 +178,7 @@ describe("MetabotConversationPage", () => {
     );
 
     setup({
-      metabotInitialState: createAskState({
+      metabotInitialState: stateWithConversation({
         conversationId: CONVERSATION_ID,
         message: "Existing question",
       }),
@@ -190,11 +193,36 @@ describe("MetabotConversationPage", () => {
     ).toHaveLength(0);
   });
 
+  it("renders generated charts inline", async () => {
+    setupCardDataset();
+    setupTableEndpoints(createMockTable({ id: TABLE_ID }));
+    mockConversationDetail(
+      createMockMetabotConversationDetail({
+        conversation_id: CONVERSATION_ID,
+        messages: [
+          createMockMetabotTextMessage("user", "Chart of orders"),
+          createMockMetabotMessage({
+            role: "agent",
+            parts: [createMockMetabotGeneratedCardPart({ tableId: TABLE_ID })],
+          }),
+        ],
+      }),
+    );
+
+    setup({
+      metabotInitialState: stateWithConversation(),
+    });
+
+    expect(
+      await screen.findByTestId("metabot-inline-chart"),
+    ).toBeInTheDocument();
+  });
+
   it("shows an error when the conversation cannot be loaded", async () => {
     mockConversationDetail(404);
 
     const { router } = setup({
-      metabotInitialState: createAskState(),
+      metabotInitialState: stateWithConversation(),
     });
 
     expect(
@@ -211,11 +239,12 @@ describe("MetabotConversationPage", () => {
     mockConversationDetail(inProgressDetail());
 
     setup({
-      metabotInitialState: createAskState(),
+      metabotInitialState: stateWithConversation(),
     });
 
     expect(await screen.findByText("Loaded question")).toBeInTheDocument();
     expect(await screen.findByText("Thinking")).toBeInTheDocument();
+    expect(screen.getByTestId("metabot-response-loader")).toBeInTheDocument();
     expect(screen.getByTestId("metabot-stop-response")).toBeInTheDocument();
     expect(
       screen.queryByTestId("metabot-send-message"),
@@ -232,7 +261,7 @@ describe("MetabotConversationPage", () => {
     });
 
     setup({
-      metabotInitialState: createAskState(),
+      metabotInitialState: stateWithConversation(),
     });
 
     expect(await screen.findByText("Thinking")).toBeInTheDocument();

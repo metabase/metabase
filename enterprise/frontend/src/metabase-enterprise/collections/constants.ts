@@ -8,8 +8,9 @@ import type { BaseEntityId } from "metabase-types/api";
 
 export const REGULAR_COLLECTION: CollectionAuthorityLevelConfig = {
   type: null,
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  name: t`Regular`,
+  get name() {
+    return t`Regular`;
+  },
   icon: "folder",
 };
 
@@ -20,23 +21,27 @@ export const REMOTE_SYNC_COLLECTION: CollectionInstanceAnaltyicsConfig = {
 
 export const OFFICIAL_COLLECTION: CollectionAuthorityLevelConfig = {
   type: "official",
-  // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-  name: t`Official`,
+  get name() {
+    return t`Official`;
+  },
   icon: "official_collection",
   color: "core-yellow-saturated" as const,
   tooltips: {
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    default: t`Official collection`,
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    belonging: t`Belongs to an Official collection`,
+    get default() {
+      return t`Official collection`;
+    },
+    get belonging() {
+      return t`Belongs to an Official collection`;
+    },
   },
 };
 
 export const INSTANCE_ANALYTICS_COLLECTION: CollectionInstanceAnaltyicsConfig =
   {
     type: "instance-analytics",
-    // eslint-disable-next-line ttag/no-module-declaration -- see metabase#55045
-    name: t`Instance Analytics`,
+    get name() {
+      return t`Instance Analytics`;
+    },
     icon: "audit",
   };
 

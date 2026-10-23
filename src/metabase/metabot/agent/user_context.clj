@@ -7,13 +7,16 @@
    [clojure.string :as str]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.query-export :as query-export]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.resources :as resources-tools]
+   [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.util :as metabot.u]
-   [metabase.models.interface :as mi]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.quoting :as quoting])
   (:import
    (java.time OffsetDateTime)
    (java.time.format DateTimeFormatter)))
@@ -135,31 +138,53 @@
         (te/lines preamble (format-fn structured-output))
         (format-simple-entity entity)))
     (catch Exception e
-      (log/error "Error fetching entity details for viewing context" {:type (:type entity) :id (:id entity)} (ex-message e))
-      (format-simple-entity entity))))
+      (let [status-code (:status-code (ex-data e))]
+        (cond
+          (= 403 status-code)
+          (do (log/debugf "Omitting viewing-context entity the current user cannot read: %s %s"
+                          (:type entity) (:id entity))
+              nil)
+
+          ;; A 404 is always an intentional, expected signal here (from api/check-404), never an
+          ;; accidental failure -- either the entity plainly doesn't exist, or (per
+          ;; check-resource-database) it's a routing-internal destination database masquerading as
+          ;; "not found" so as not to disclose its existence. Neither warrants an ERROR log; both
+          ;; still render best-effort from the caller's own claimed fields, same as before.
+          (= 404 status-code)
+          (do (log/debugf "Falling back to simple rendering for an unresolvable viewing-context entity: %s %s"
+                          (:type entity) (:id entity))
+              (format-simple-entity entity))
+
+          :else
+          (do (log/error "Error fetching entity details for viewing context"
+                         {:type (:type entity) :id (:id entity)}
+                         (ex-message e))
+              (format-simple-entity entity)))))))
 
 (defmethod format-entity "table"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the rows of a table:"
-                    #(entity-details/get-table-details {:entity-type :table
-                                                        :entity-id (:id entity)
-                                                        :with-field-values? false
-                                                        :with-metrics? false
-                                                        :with-measures? true
-                                                        :with-segments? true})
+                    #(do (resources-tools/check-table-resource-database (:id entity))
+                         (entity-details/get-table-details {:entity-type :table
+                                                            :entity-id (:id entity)
+                                                            :with-field-values? false
+                                                            :with-metrics? false
+                                                            :with-measures? true
+                                                            :with-segments? true}))
                     llm-shape/table->xml))
 
 (defmethod format-entity "model"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the rows of a model:"
-                    #(entity-details/get-table-details {:entity-type :model
-                                                        :entity-id (:id entity)
-                                                        :with-field-values? false
-                                                        :with-metrics? false
-                                                        :with-measures? true
-                                                        :with-segments? true})
+                    #(do (resources-tools/check-card-resource-database (:id entity))
+                         (entity-details/get-table-details {:entity-type :model
+                                                            :entity-id (:id entity)
+                                                            :with-field-values? false
+                                                            :with-metrics? false
+                                                            :with-measures? true
+                                                            :with-segments? true}))
                     llm-shape/model->xml))
 
 (defn- format-chart-config-ids
@@ -178,18 +203,22 @@
    :query-str   (metabot.u/extract-sql-content query)})
 
 (defn- format-native-query
-  "Format viewing `item`"
+  "Format viewing `item`. In a host app (`:in_host_app`, stamped on the item by
+  [[format-viewing-context]]) there is no SQL editor, so the item is described as a query the user is
+  looking at rather than an editor they are in."
   [item]
   (let [{:keys [database-id query-str]} (native-query-details (:query item))]
     (te/lines
-     "The user is currently in the SQL editor."
+     (if (:in_host_app item)
+       "The user is currently looking at a SQL query."
+       "The user is currently in the SQL editor.")
      (when (:id item)
        (te/field "Query ID" (:id item)))
      (te/field "Current SQL query" (te/code query-str "sql"))
      (te/field "Database ID" database-id)
      (te/field "Database SQL engine" (:sql_engine item))
      (when-some [error (:error item)]
-       (te/field "Query error" (te/code error)))
+       (te/field "Query error" (quoting/quoted error)))
      (when-let [config-ids (format-chart-config-ids item)]
        (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
      (te/field "Tables used" (some->> (:used_tables item)
@@ -202,16 +231,18 @@
     (format-native-query entity)
     (fetch-and-format entity
                       "The user is currently looking at the results of a report:"
-                      #(entity-details/get-report-details {:report-id (:id entity)
-                                                           :with-field-values? false})
+                      #(do (resources-tools/check-card-resource-database (:id entity))
+                           (entity-details/get-report-details {:report-id (:id entity)
+                                                               :with-field-values? false}))
                       llm-shape/question->xml)))
 
 (defmethod format-entity "metric"
   [entity]
   (fetch-and-format entity
                     "The user is currently looking at the details of a metric:"
-                    #(entity-details/get-metric-details {:metric-id (:id entity)
-                                                         :with-field-values? false})
+                    #(do (resources-tools/check-card-resource-database (:id entity))
+                         (entity-details/get-metric-details {:metric-id (:id entity)
+                                                             :with-field-values? false}))
                     llm-shape/metric->xml))
 
 (defmethod format-entity "dashboard"
@@ -223,16 +254,13 @@
 
 ;;; Viewing Context Formatting
 
-(defn- query-if-database-readable
-  "The client-supplied adhoc query, only when the current user can read its database.
-  Exporting resolves table/field ids to names through an unfiltered metadata provider,
-  so gate it like the metabase://chart|query resources do. Queries with no :database
-  only ever pprint (no name resolution), so they pass through."
+(defn- exported-query-text
+  "The client-supplied query rendered for the LLM, only when the current user can read its
+  database and query the tables it references. The database refusal is audited for the same
+  reason the query's card ids get the audited store: the id is the caller's own."
   [query]
-  (let [database-id (and (map? query) (:database query))]
-    (when (or (not database-id)
-              (mi/can-read? :model/Database database-id))
-      query)))
+  (some-> (shared.content-store/query-for-export query true)
+          (query-export/export->text shared.content-store/audited-store)))
 
 ;; Format adhoc query (notebook editor) viewing context.
 (defmethod format-entity "adhoc"
@@ -242,84 +270,12 @@
     (te/lines "The user is currently in the notebook editor viewing a query."
               (te/field "Query ID" (:id item))
               (te/field "Database ID" (get-in item [:query :database]))
-              (te/field "Query" (some-> (:query item) query-if-database-readable llm-shape/export-query-for-llm))
+              (te/field "Query" (exported-query-text (:query item)))
               (when-let [config-ids (format-chart-config-ids item)]
                 (te/field "Chart Config IDs (for analyze_chart tool)" config-ids))
               (te/field "Tables used" (some->> (:used_tables item)
                                                (map format-entity)
                                                te/lines)))))
-
-(defn- transform-query-source-text
-  "Format a transform's `:query` source for the LLM.
-
-  When the source carries a query map with a `:database` key, we normalise it and export to
-  the same canonical portable representations form the `construct_notebook_query` tool
-  consumes (rendered as a JSON code block). Both structured (`mbql.stage/mbql`) and native
-  (`mbql.stage/native`) stages go through this path - the latter is intentional: the repr
-  export preserves portable `card-id` / `snippet-id` references inside `template-tags`, and
-  stays in lockstep with the freshly-built-query payloads `construct_notebook_query` returns
-  to the LLM.
-
-  Pre-resolved string sources (`:query` is itself a string, or carries `:query-content` -
-  the SQL-tool's already-rendered shape) pass through unchanged: there's no map to
-  normalise.
-
-  Falls back to a `pprint`'d query map only as a last resort, when repr export is
-  unavailable (e.g. a partially-broken `dataset_query`)."
-  [source]
-  (llm-shape/export-query-for-llm (:query source)))
-
-(defn- transform-source-type
-  [source]
-  (normalize-context-type (:type source)))
-
-(defmulti format-transform-source
-  "Format a transform source for LLM representation."
-  {:arglists '([source])}
-  transform-source-type)
-
-(defmethod format-transform-source :default
-  [source]
-  (log/warn "Unknown transform source type:" (:type source))
-  (te/lines "Transform source"
-            (te/field "Type" (transform-source-type source))
-            (te/field "Value" (u/pprint-to-str source))))
-
-(defmethod format-transform-source "query"
-  [source]
-  (let [source-text (transform-query-source-text source)]
-    (te/lines "Transform source"
-              (te/field "Type" (:type source))
-              (te/field "Query type" (:transform-source-type source))
-              (te/field "Source database ID" (or (:source-database source)
-                                                 (get-in source [:query :database])))
-              (te/field "Query" (te/code source-text (when (= "native" (normalize-context-type (:transform-source-type source)))
-                                                       "sql"))))))
-
-(defmethod format-transform-source "python"
-  [source]
-  (te/lines "Transform source"
-            (te/field "Type" (:type source))
-            (te/field "Source database ID" (:source-database source))
-            (te/field "Source tables" (some-> (:source-tables source) u/pprint-to-str))
-            (te/field "Source code" (te/code (:body source) "python"))))
-
-(defmethod format-entity "transform"
-  [item]
-  (te/lines "The user is currently viewing a Transform."
-            (te/field "Transform ID" (:id item))
-            (te/field "Transform name" (:name item))
-            (te/field "Transform description" (:description item))
-            (te/field "Source type" (:source_type item))
-            (te/field "Source" (some-> (:source item)
-                                       (assoc :transform-source-type (:source_type item))
-                                       format-transform-source))
-            (te/field "Transform error" (te/code (:error item)))
-            (te/field "Tables used" (some->> (:used_tables item)
-                                             (map format-entity)
-                                             te/lines))
-            (te/field "Created at" (:created_at item))
-            (te/field "Updated at" (:updated_at item))))
 
 (defmethod format-entity "code_editor"
   [{:keys [buffers]}]
@@ -341,9 +297,8 @@
   "Format user's current viewing context.
 
   Handles different context types:
-  - adhoc: Notebook query editor
-  - native: SQL editor with schema context
-  - transform: Transform definition and code
+  - adhoc: Notebook query editor, or the SQL editor when the query is native (described as a query the
+    user is looking at when the context carries the server-set `:in_host_app`)
   - code_editor: Code editor buffers with cursor position
   - table/model/question/metric/dashboard: Entity details
 
@@ -352,7 +307,9 @@
   (str/join "\n\n"
             (for [item (:user_is_viewing context)]
               (try
-                (format-entity item)
+                ;; The server-decided host-app flag travels with each item so native items can be
+                ;; described without naming an editor that does not exist there.
+                (format-entity (cond-> item (:in_host_app context) (assoc :in_host_app true)))
                 (catch Exception e
                   (log/error "Error formatting viewing context item:" (:type item) (ex-message e))
                   "")))))

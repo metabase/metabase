@@ -2,6 +2,7 @@
 // Names absent here are module-private on purpose — add them only when a real consumer needs them.
 
 export {
+  joinSiteSettingsRequest,
   refetchSiteSettings,
   sessionPropertiesPath,
   settingsApi,
@@ -9,14 +10,30 @@ export {
   useGetSettingsQuery,
   useGetVersionInfoQuery,
   useLazyGetSettingsQuery,
+  useListTimezonesQuery,
   useUpdateSettingMutation,
   useUpdateSettingsMutation,
 } from "./api";
 export {
+  getCustomIllustrationUrl,
   getSetting,
   getSettings,
   getSettingsLoading,
   getTokenFeature,
 } from "./selectors";
 export { useAdminSetting, useAdminSettings } from "./use-admin-setting";
+export { useEolDate } from "./use-eol-date";
 export { useSetting, useUserSetting } from "./use-setting";
+export { useSettingSwitch } from "./use-setting-switch";
+export {
+  useTokenRefresh,
+  useTokenRefreshUntil,
+  WAITING_REFRESH_INTERVAL,
+} from "./use-token-refresh";
+export {
+  getPlan,
+  hasAnySsoFeature,
+  isProPlan,
+  type Plan,
+  type ProPlan,
+} from "./plan";

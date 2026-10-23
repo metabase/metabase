@@ -1,22 +1,22 @@
 import { useBeforeUnload } from "react-use";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
 import {
+  PLUGIN_AUDIT,
   PLUGIN_REMOTE_SYNC,
   PLUGIN_REPLACEMENT,
   PLUGIN_UPLOAD_MANAGEMENT,
 } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { hasActiveUploads } from "metabase/redux/uploads";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
+import { Box } from "metabase/ui";
 
-import { AnalyticsExportStatus } from "../AnalyticsExportStatus";
 import { DatabaseStatus } from "../DatabaseStatus";
 import { DownloadsStatus } from "../DownloadsStatus";
 import { FileUploadStatus } from "../FileUploadStatus";
-
-import { StatusListingRoot } from "./StatusListing.styled";
 
 export const StatusListing = () => {
   const isAdmin = useSelector(getUserIsAdmin);
@@ -33,14 +33,20 @@ export const StatusListing = () => {
 
   return (
     <>
-      <StatusListingRoot data-testid="status-root-container">
+      <Box
+        className={CS.z2}
+        pos="fixed"
+        right="1.5rem"
+        bottom="1.5rem"
+        data-testid="status-root-container"
+      >
         {isAdmin && <DatabaseStatus />}
         {isAdmin && <PLUGIN_REPLACEMENT.SourceReplacementStatus />}
         <FileUploadStatus />
-        <AnalyticsExportStatus />
+        <PLUGIN_AUDIT.AnalyticsExportStatus />
         <DownloadsStatus />
         {isAdmin && <PLUGIN_UPLOAD_MANAGEMENT.GdriveSyncStatus />}
-      </StatusListingRoot>
+      </Box>
       {progressModal}
     </>
   );

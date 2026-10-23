@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { t } from "ttag";
 
-import { useUpdateSlackSettingsMutation } from "metabase/api";
 import { useToast } from "metabase/common/hooks";
 import { useSetting } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components";
 import { Box, Text, TextInput } from "metabase/ui";
 
-import { SettingHeader } from "../components/SettingHeader";
+import { useUpdateSlackSettingsMutation } from "../api/slack";
 
 const getSlackError = (err: unknown): string =>
   // Unjustified type cast. FIXME

@@ -1,6 +1,7 @@
 import type { PropsWithChildren } from "react";
 
 import type { LoadQuestionHookResult } from "embedding-sdk-bundle/hooks/private/use-load-question";
+import type { NavigatedSqlEntityOptions } from "embedding-sdk-bundle/hooks/private/use-sdk-controlled-sql-parameters";
 import type { SdkEntityToken } from "embedding-sdk-bundle/types";
 import type { SdkCollectionId } from "embedding-sdk-bundle/types/collection";
 import type { MetabasePluginsConfig } from "embedding-sdk-bundle/types/plugins";
@@ -15,13 +16,13 @@ import type {
   EmbeddingDataPicker,
   EmbeddingEntityType,
 } from "metabase/redux/store/embedding-data-picker";
-import type {
-  ClickActionModeGetter,
-  ClickActionsMode,
-  QueryClickActionsMode,
-} from "metabase/visualizations/types";
+import type { ClickActionsMode } from "metabase/visualizations/types";
 import type Question from "metabase-lib/v1/Question";
-import type { Card, CardDisplayType, DashboardId } from "metabase-types/api";
+import type {
+  CardDisplayType,
+  DashboardId,
+  SeriesCard,
+} from "metabase-types/api";
 import type { EntityToken } from "metabase-types/api/entity";
 
 type SdkQuestionConfig = {
@@ -180,7 +181,7 @@ export type SdkQuestionProviderProps = PropsWithChildren<
       /**
        * @internal
        */
-      getClickActionMode?: ClickActionModeGetter | undefined;
+      clickActionMode?: ClickActionsMode | undefined;
 
       /**
        * @internal
@@ -197,10 +198,18 @@ export type SdkQuestionProviderProps = PropsWithChildren<
       onDrillThrough?: (
         params: {
           drillName: string | undefined;
-          nextCard: Card;
+          nextCard: SeriesCard;
         },
         defaultNavigate: () => Promise<void>,
       ) => Promise<void>;
+
+      /**
+       * For a SQL question opened by a click behavior: its raw click values, and a
+       * callback that gets each `onSqlParametersChange` payload plus `clickParameters`.
+       *
+       * @internal
+       */
+      navigatedEntity?: NavigatedSqlEntityOptions;
     }
 >;
 
@@ -222,7 +231,7 @@ export type SdkQuestionContextType = Omit<
     | "onVisualizationChange"
   > & {
     plugins: SdkQuestionConfig["componentPlugins"] | null;
-    mode: QueryClickActionsMode | ClickActionsMode | null | undefined;
+    mode: ClickActionsMode;
     originalId: SdkQuestionId | null;
     token: EntityToken | null | undefined;
     lastVisibleStageIndex: number;

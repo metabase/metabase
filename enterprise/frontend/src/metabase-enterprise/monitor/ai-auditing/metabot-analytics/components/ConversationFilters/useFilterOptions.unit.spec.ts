@@ -5,8 +5,8 @@ import {
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
 import { renderHookWithProviders, waitFor } from "__support__/ui";
-import { createMockState } from "metabase/redux/store/mocks";
 import type { Group } from "metabase-types/api";
 import {
   createMockGroup,
@@ -18,9 +18,11 @@ import { useFilterOptions } from "./useFilterOptions";
 const setup = ({
   tenantsEnabled,
   groups,
+  hasGroupAndTenantFilters,
 }: {
   tenantsEnabled: boolean;
   groups: Partial<Group>[];
+  hasGroupAndTenantFilters?: boolean;
 }) => {
   setupUsersEndpoints([]);
   setupGroupsEndpoint(groups.map(createMockGroup));
@@ -28,7 +30,10 @@ const setup = ({
 
   return renderHookWithProviders(
     () =>
-      useFilterOptions({ date: null, user: null, group: null, tenant: null }),
+      useFilterOptions(
+        { date: null, user: null, group: null, tenant: null },
+        { hasGroupAndTenantFilters },
+      ),
     {
       storeInitialState: createMockState({
         settings: mockSettings({
@@ -88,5 +93,22 @@ describe("useFilterOptions", () => {
     const labels = result.current.groupOptions.map((o) => o.label);
     expect(labels).toContain("All groups");
     expect(labels).not.toContain("All Users");
+  });
+
+  it("loads neither groups nor tenants for a page without those filters", async () => {
+    const { result } = setup({
+      tenantsEnabled: true,
+      groups: [{ id: 1, name: "All Users" }],
+      hasGroupAndTenantFilters: false,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    expect(fetchMock.callHistory.called("path:/api/permissions/group")).toBe(
+      false,
+    );
+    expect(fetchMock.callHistory.called("path:/api/ee/tenant")).toBe(false);
+    expect(result.current.hasTenants).toBe(false);
   });
 });

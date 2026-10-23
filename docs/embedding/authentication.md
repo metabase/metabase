@@ -17,7 +17,7 @@ You can set up SSO with JWT or SAML.
 
 ## Setting up JWT SSO
 
-To set up JWT SSO, you'll need [a Metabase Pro or Enterprise license](https://www.metabase.com/pricing/).
+To set up JWT SSO, you'll need [a Metabase Pro or Enterprise license](https://www.metabase.com/pricing).
 
 Here's a high-level overview:
 
@@ -27,9 +27,9 @@ Here's a high-level overview:
 
 ### 1. Enable JWT SSO in your Metabase
 
-1. Configure JWT by going to **Admin** > **Settings** > **Authentication** and clicking on **JWT**
+1. Go to **Embedding hub > Authentication**.
 2. Enter the JWT Identity Provider URI, for example `http://localhost:9090/sso/metabase`. This is a new endpoint you will add in your backend to handle authentication.
-3. Generate a key and copy it to your clipboard.
+3. Click **Set up key** and copy the key to your clipboard.
 
 ### 2. Add a new endpoint to your backend to handle authentication
 
@@ -187,7 +187,7 @@ Additionally, if you have SAML set up, but you'd prefer to use JWT SSO, you'll n
 
 **Admin setting changes in Metabase**:
 
-In **Admin** > **Authentication** > **JWT SSO**, set the `JWT Identity Provider URI` to the URL of your JWT SSO endpoint, e.g., `http://localhost:9090/sso/metabase`.
+In **Embedding hub** > **Authentication**, set the `JWT Identity Provider URI` to the URL of your JWT SSO endpoint, e.g., `http://localhost:9090/sso/metabase`.
 
 **Before:**
 
@@ -206,7 +206,7 @@ const authConfig = defineMetabaseAuthConfig({
 });
 ```
 
-The SDK now uses the JWT Identity Provider URI setting configured in your Metabase Admin (Admin > Settings > Authentication > JWT).
+The SDK now uses the JWT Identity Provider URI setting configured in your Metabase (**Embedding hub** > **Authentication**).
 
 ### Update the `fetchRequestToken` function signature
 
@@ -293,13 +293,13 @@ If you want to embed Metabase in another domain (say, if Metabase is hosted at `
 
 ### Allow your domain in CORS
 
-Go to **Admin** > **Embedding** > **Modular embedding** and add your embedding domain under **Cross-Origin Resource Sharing (CORS)** (such as `https://*.example.com`).
+Go to **Embedding hub** > **Security** and add your embedding domain under **Cross-Origin Resource Sharing (CORS)** (such as `https://*.example.com`).
 
 ### Configure session cookies when testing locally
 
 When you use `useExistingUserSession: true` during development on a different domain, the browser must send the existing Metabase session cookie cross-origin into the iframe. To allow this, you'll need to set the session cookie's SameSite value to "none".
 
-You can set session cookie's SameSite value in **Admin** > **Embedding** > **Security** > **SameSite cookie setting**.
+You can set session cookie's SameSite value in **Embedding hub** > **Security** > **SameSite cookie setting**.
 
 SameSite values include:
 
@@ -311,4 +311,4 @@ You can also set the [`MB_SESSION_COOKIE_SAMESITE` environment variable](../conf
 
 If you're using Safari, you'll need to [allow cross-site tracking](https://support.apple.com/en-tj/guide/safari/sfri40732/mac). Depending on the browser, you may also run into issues when viewing embedded items in private/incognito tabs.
 
-Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).
+Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/Set-Cookie#samesitesamesite-value).

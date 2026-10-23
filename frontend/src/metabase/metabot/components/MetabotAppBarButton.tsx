@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import {
-  useIsAskPage,
+  useIsFullPageMetabot,
   useMetabotAgent,
   useUserMetabotPermissions,
 } from "metabase/metabot/hooks";
@@ -24,7 +24,7 @@ export function MetabotAppBarButton({
   const { hasMetabotAccess } = useUserMetabotPermissions();
   const metabot = useMetabotAgent("omnibot");
   const metabotName = useSetting("metabot-name");
-  const isAskPage = useIsAskPage();
+  const isFullPageMetabot = useIsFullPageMetabot();
 
   if (!hasMetabotAccess) {
     return null;
@@ -44,17 +44,10 @@ export function MetabotAppBarButton({
     <Tooltip label={label}>
       <ActionIcon
         className={className}
-        variant="subtle"
-        c={isAskPage ? "text-disabled" : "text-primary"}
-        opacity={isAskPage ? 0.5 : undefined}
-        bd="1px solid var(--mb-color-border-neutral)"
-        p="sm"
-        h="2.25rem"
-        w="2.25rem"
         aria-label={label}
         onClick={handleClick}
         {...rest}
-        disabled={isAskPage}
+        disabled={isFullPageMetabot}
       >
         <MetabotIcon />
       </ActionIcon>

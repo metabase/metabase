@@ -30,6 +30,19 @@
 
 (driver/register! :athena, :parent #{:sql-jdbc})
 
+(defmethod driver/host-carrying-parameters :athena
+  [_driver]
+  ["AthenaEndpoint" "AthenaStreamingEndpoint" "S3Endpoint" "StsEndpoint" "LakeFormationEndpoint"
+   "SsoAdminEndpoint" "SsoOidcEndpoint" "SsoLoginUrl" "IdentityCenterIssuerUrl" "IdpHostName"
+   "IdpWellKnownConfigurationUrl" "DataZoneEndpointOverride" "ProxyHost"
+   ;; added by the 3.8.2 client
+   "GlueEndpoint" "SsoEndpoint" "SsoStartUrl"])
+
+(defmethod driver/non-host-parameters :athena
+  [_driver]
+  ["DataZoneDomainId" "DataZoneDomainRegion" "OutputLocation" "PingPartnerSpId" "ProxyEnabledForIdP"
+   "ProxyExemptHosts" "ProxyPassword" "ProxyPort" "ProxyUsername"])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -61,6 +74,14 @@
   "Returns the endpoint URL for a specific region"
   [region]
   (str "//athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn") ":443"))
+
+(defmethod driver/connection-hosts :athena
+  [_driver {:keys [hostname region]}]
+  (driver/hosts-from-details
+   {:host (if (str/blank? hostname)
+            (str "athena." region ".amazonaws.com" (when (str/starts-with? region "cn-") ".cn"))
+            hostname)}
+   [:host]))
 
 (defmethod sql-jdbc.conn/connection-details->spec :athena
   [_driver {:keys [region access_key secret_key s3_staging_dir workgroup catalog dbname hostname], :as details}]
@@ -151,6 +172,10 @@
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
 
+(defmethod sql.qp/use-ctes-for-stages? :athena
+  [_driver]
+  true)
+
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]
   (sql.qp/->honeysql driver [::sql.qp/cast {} expr "varchar"]))
@@ -187,6 +212,7 @@
 
 ;;; ------------------------------------------------- date functions -------------------------------------------------
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *loading-data*
   "HACK! Whether we're loading data (e.g. in [[metabase.test.data.athena]]). We can't use `timestamp with time zone`
   literals when loading data because Athena doesn't let you use a `timestamp with time zone` value for a `timestamp`
@@ -352,7 +378,7 @@
 
 (defmethod sql.qp/->honeysql [:athena :regex-match-first]
   [driver [_ _opts arg pattern]]
-  [:regexp_extract (sql.qp/->honeysql driver arg) pattern])
+  [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
 
 (defn- run-query
   "Workaround for avoiding the usage of 'advance' jdbc feature that are not implemented by the driver yet.
@@ -438,10 +464,23 @@
 (defn- table-has-nested-fields? [columns]
   (some #(= "struct" (:type_name %)) columns))
 
+(defn- escape-metadata-pattern
+  "Escape a literal schema or table name for JDBC metadata pattern arguments."
+  [^DatabaseMetaData metadata entity-name]
+  (when entity-name
+    (let [escape (.getSearchStringEscape metadata)]
+      (-> entity-name
+          (str/replace escape (str escape escape))
+          (str/replace "_" (str escape "_"))
+          (str/replace "%" (str escape "%"))))))
+
 (defn- get-columns
   [^DatabaseMetaData metadata catalog schema table-name]
   (try
-    (with-open [rs (.getColumns metadata catalog schema table-name nil)]
+    (with-open [rs (.getColumns metadata catalog
+                                (escape-metadata-pattern metadata schema)
+                                (escape-metadata-pattern metadata table-name)
+                                nil)]
       (jdbc/metadata-result rs))
     (catch Throwable e
       (log/warnf "`.getColumns` failed for catalog `%s`, schema `%s`, table name `%s` with message: `%s`"
@@ -485,7 +524,10 @@
      database
      nil
      (fn [^Connection conn]
-       (let [metadata (.getMetaData conn)]
+       (let [metadata (.getMetaData conn)
+             catalog  (if (and (str/blank? catalog) (not (str/blank? dbname)))
+                        (.getCatalog conn)
+                        catalog)]
          (assoc (select-keys table [:name :schema])
                 :fields (try
                           (describe-table-fields metadata database driver table catalog dbname)
@@ -495,15 +537,20 @@
 (defn- get-tables
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
-  (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
+  (with-open [rs (.getTables metadata db-name-or-nil
+                             (escape-metadata-pattern metadata schema-or-nil) "%"
                              (into-array String ["TABLE"
                                                  "VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
-#_:clj-kondo/ignore
+;; one-off REPL script kept for reference; requires test namespaces a driver module can't normally use
+#_{:clj-kondo/ignore [:discouraged-var :metabase/modules]}
 (comment
+  (require
+   '[metabase.test.data.dataset-definitions]
+   '[metabase.test.data.interface])
   ;; Script on following lines was used to get available table types, used in the `get-tables` implementation.
-  (with-open [conn (clojure.java.jdbc/get-connection
+  (with-open [conn (jdbc/get-connection
                     (sql-jdbc.conn/connection-details->spec
                      :athena
                      (metabase.test.data.interface/dbdef->connection-details

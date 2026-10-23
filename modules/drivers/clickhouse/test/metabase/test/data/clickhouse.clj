@@ -53,6 +53,7 @@
    :product_name                   (format "metabase/%s" (:tag config/mb-version-info))
    :jdbc_ignore_unsupported_values "true"
    :jdbc_schema_term               "schema",
+   :jdbc_metadata_use_show_statements false,
    :ignore_unknown_config_key      true
    :max_open_connections           100
    :remember_last_set_roles        true
@@ -191,7 +192,7 @@
 
 (defmethod sql.tx/add-fk-sql :clickhouse [& _] nil)
 
-(defmethod sql.tx/session-schema :clickhouse [_] "default")
+(defmethod sql.tx/session-schema :clickhouse [_] (-> (mt/db) :details :db))
 
 (defmethod sql.tx/generated-column-sql :clickhouse [_ expr]
   (format "ALIAS (%s)" expr))

@@ -5,8 +5,8 @@ import {
   setupSearchEndpoints,
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
+import { createMockSetupState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { createMockSetupState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import {
   createMockCollection,
@@ -325,7 +325,7 @@ describe("BrowseModels", () => {
         await within(emptyState).findByRole("link", { name: "Read the docs" }),
       ).toHaveAttribute(
         "href",
-        "https://www.metabase.com/docs/latest/data-modeling/models.html",
+        "https://www.metabase.com/docs/latest/data-modeling/models/models.html",
       );
     });
 
@@ -376,7 +376,7 @@ describe("BrowseModels", () => {
         await within(banner).findByRole("link", { name: "Read the docs" }),
       ).toHaveAttribute(
         "href",
-        "https://www.metabase.com/docs/latest/data-modeling/models.html",
+        "https://www.metabase.com/docs/latest/data-modeling/models/models.html",
       );
 
       const dismissButton = await within(banner).findByRole("button", {

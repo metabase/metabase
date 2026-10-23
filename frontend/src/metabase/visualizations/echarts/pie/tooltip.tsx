@@ -1,14 +1,14 @@
 import type { TooltipOption } from "echarts/types/dist/shared";
 
 import { reactNodeToHtmlString } from "metabase/utils/react-to-html";
-import { EChartsTooltip } from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
 import { getTooltipModel } from "metabase/visualizations/visualizations/PieChart/use-chart-events";
-
-import { getTooltipBaseOption } from "../tooltip";
-
-import type { PieChartFormatters } from "./format";
-import type { PieChartModel } from "./model/types";
-import { getSliceKeyPath } from "./util";
+import {
+  EChartsTooltip,
+  type PieChartFormatters,
+  type PieChartModel,
+  getSliceKeyPath,
+  getTooltipBaseOption,
+} from "metabase/viz-core";
 
 interface ChartItemTooltip {
   chartModel: PieChartModel;
@@ -28,7 +28,7 @@ const ChartItemTooltip = ({
 export const getTooltipOption = (
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
 ): TooltipOption => {
   return {
     ...getTooltipBaseOption(containerRef),

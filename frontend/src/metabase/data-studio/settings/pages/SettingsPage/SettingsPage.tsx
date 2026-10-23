@@ -6,8 +6,10 @@ import { PaneHeader } from "metabase/common/data-studio/components/PaneHeader";
 import { usePageTitle } from "metabase/hooks/use-page-title";
 import { Card, Center, Flex, Stack, Switch, Text, Title } from "metabase/ui";
 
-import { useDataStudioSettings, useLocalSetting } from "../../hooks";
+import { useDataStudioSettings } from "../../hooks/use-data-studio-settings";
 import type { DataStudioSetting } from "../../types";
+
+import { useLocalSetting } from "./hooks";
 
 export function SettingsPage() {
   usePageTitle(t`Settings`);
@@ -42,7 +44,7 @@ function Setting({ setting }: { setting: DataStudioSetting }) {
   const descriptionLines = setting.description.split("\n");
 
   return (
-    <Card p="xl" withBorder shadow="none" maw="40rem" w="100%">
+    <Card p="xxl" withBorder shadow="none" maw="40rem" w="100%">
       <Stack>
         <Flex justify="space-between" align="center">
           <Text fz="lg" lh="md" fw={700}>
@@ -54,7 +56,6 @@ function Setting({ setting }: { setting: DataStudioSetting }) {
               onChange={(e) => handleChange(e.target.checked)}
               disabled={isUpdating}
               aria-label={setting.name}
-              size="sm"
             />
           )}
         </Flex>
@@ -75,7 +76,7 @@ function Setting({ setting }: { setting: DataStudioSetting }) {
 function SettingsEmptyState() {
   return (
     <Center flex={1}>
-      <Stack align="center" maw="30rem" gap="md">
+      <Stack align="center" maw="30rem" gap="lg">
         <Title order={3} ta="center">
           {t`Nothing to configure yet`}
         </Title>

@@ -27,6 +27,6 @@ const getServerSnapshot = (): UseMetabotResult | null => null;
 export const useMetabot = (): UseMetabotResult | null =>
   useSyncExternalStore(
     subscribeMetabotState,
-    getMetabotStateSnapshot,
+    getMetabotStateSnapshot<UseMetabotResult>,
     getServerSnapshot,
   );

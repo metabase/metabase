@@ -1,20 +1,15 @@
+import cx from "classnames";
 import { msgid, ngettext, t } from "ttag";
 
-import { useGetFieldValuesQuery } from "metabase/api";
-import { useSelector } from "metabase/redux";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Flex, Loader } from "metabase/ui";
+import { useGetFieldQuery, useGetFieldValuesQuery } from "metabase/api";
+import CS from "metabase/css/core/index.css";
+import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import { formatNumber } from "metabase/utils/formatting";
 import type { FieldId, FieldValue } from "metabase-types/api";
 
-import {
-  Container,
-  Fade,
-  FadeAndSlide,
-  Li,
-  NoWrap,
-  RelativeContainer,
-} from "./GlobalFingerprint.styled";
+import { Fade } from "../MetadataInfo";
+
+import S from "./GlobalFingerprint.module.css";
 
 interface GlobalFingerprintProps {
   className?: string;
@@ -29,8 +24,7 @@ export function GlobalFingerprint({
   fieldId,
   showAllFieldValues,
 }: GlobalFingerprintProps) {
-  const metadata = useSelector(getMetadata);
-  const field = metadata.field(fieldId);
+  const { data: field } = useGetFieldQuery({ id: fieldId });
   const hasListValues = field?.has_field_values === "list";
   const { data: fieldData, isLoading } = useGetFieldValuesQuery(fieldId, {
     skip: !hasListValues,
@@ -46,10 +40,17 @@ export function GlobalFingerprint({
   const showComponent = showDistinctCount || showFieldValuesBlock;
 
   return showComponent ? (
-    <Container className={className}>
+    <Stack className={cx(CS.overflowHidden, className)} pos="relative" gap="sm">
       {showDistinctCount && (
-        <RelativeContainer>
-          <Fade aria-hidden={!isLoading} visible={!isLoading}>
+        <Box pos="relative" h="1em" lh="1em">
+          <Fade
+            pos="absolute"
+            top={0}
+            left={0}
+            w="100%"
+            aria-hidden={!isLoading}
+            visible={!isLoading}
+          >
             {ngettext(
               msgid`${formattedDistinctCount} distinct value`,
               `${formattedDistinctCount} distinct values`,
@@ -58,11 +59,15 @@ export function GlobalFingerprint({
           </Fade>
           {hasListValues && (
             <Fade
+              pos="absolute"
+              top={0}
+              left={0}
+              w="100%"
               aria-hidden={!isLoading}
               visible={isLoading}
             >{t`Getting distinct values...`}</Fade>
           )}
-        </RelativeContainer>
+        </Box>
       )}
       {showFieldValuesBlock &&
         (showAllFieldValues ? (
@@ -73,7 +78,7 @@ export function GlobalFingerprint({
             fieldValues={fieldValues}
           />
         ))}
-    </Container>
+    </Stack>
   ) : null;
 }
 
@@ -91,7 +96,16 @@ function ExtendedFieldValuesList({
         if (value === null) {
           return null;
         }
-        return <Li key={i}>{value.toString()}</Li>;
+        return (
+          <Box
+            component="li"
+            key={i}
+            className={cx(S.item, CS.overflowHidden, CS.textEllipsis)}
+            py="xxs"
+          >
+            {value.toString()}
+          </Box>
+        );
       })}
     </ul>
   );
@@ -113,15 +127,22 @@ function ShortenedFieldValuesList({
     .join(", ");
 
   return (
-    <RelativeContainer height={isLoading ? "1.8em" : "1.5em"}>
-      <Fade visible={isLoading}>
+    <Box pos="relative" h={isLoading ? "1.8em" : "1.5em"} lh="1em">
+      <Fade pos="absolute" top={0} left={0} w="100%" visible={isLoading}>
         <Flex justify="center">
           <Loader size={18} color="core-brand" />
         </Flex>
       </Fade>
-      <FadeAndSlide visible={!isLoading}>
-        <NoWrap>{shortenedValuesStr}</NoWrap>
-      </FadeAndSlide>
-    </RelativeContainer>
+      <Fade pos="absolute" w="100%" slide visible={!isLoading}>
+        <Text
+          className={cx(CS.textNoWrap, CS.overflowHidden, CS.textEllipsis)}
+          inherit
+          fw="bold"
+          lh="1.3em"
+        >
+          {shortenedValuesStr}
+        </Text>
+      </Fade>
+    </Box>
   );
 }

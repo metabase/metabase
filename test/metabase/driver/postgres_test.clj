@@ -40,6 +40,7 @@
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
+   [metabase.lib.test-util.notebook-helpers :as lib.tu.notebook]
    [metabase.notification.payload.temp-storage :as temp-storage]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -48,6 +49,7 @@
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.reducible :as qp.reducible]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.secrets.models.secret :as secret]
@@ -55,6 +57,7 @@
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.sync.util :as sync-util]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -70,6 +73,17 @@
    (org.postgresql.util PGobject PSQLException PSQLState)))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :postgres
+    (testing "default"
+      (is (= "public"
+             (driver.sql/default-schema :postgres (mt/db)))))
+    (testing "schema configured in the JDBC additional options"
+      (let [details (assoc (:details (mt/db)) :additional-options "currentSchema=information_schema")]
+        (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+          (is (= "information_schema"
+                 (driver.sql/default-schema :postgres database))))))))
 
 (use-fixtures :each (fn [thunk]
                       ;; 1. If sync fails when loading a test dataset, don't swallow the error; throw an Exception so we
@@ -197,7 +211,7 @@
 
 ;;; ------------------------------------------- Tests for sync edge cases --------------------------------------------
 
-(deftest ^:sequential edge-case-identifiers-test
+(deftest ^:synchronized edge-case-identifiers-test
   (mt/test-driver :postgres
     (testing "Make sure that Tables / Fields with dots in their names get escaped properly"
       (mt/dataset dots-in-names
@@ -287,10 +301,16 @@
                        ["DROP MATERIALIZED VIEW IF EXISTS test_mview;
                        CREATE MATERIALIZED VIEW test_mview AS
                        SELECT 'Toucans are the coolest type of bird.' AS true_facts;
+                       COMMENT ON COLUMN test_mview.true_facts IS 'Facts that are true';
                        ANALYZE test_mview;"])
         (mt/with-temp [:model/Database database {:engine :postgres, :details (assoc details :dbname "materialized_views_test")}]
           (is (=? [(default-table-result "test_mview")]
-                  (describe-database->tables :postgres database))))))))
+                  (describe-database->tables :postgres database)))
+          (is (=? [{:table-schema  "public"
+                    :table-name    "test_mview"
+                    :name          "true_facts"
+                    :field-comment "Facts that are true"}]
+                  (into [] (driver/describe-fields :postgres database {:table-names ["test_mview"]})))))))))
 
 (deftest foreign-tables-test
   (mt/test-driver :postgres
@@ -430,7 +450,11 @@
     (testing "Give us a bigint cast when the field is bigint (#22732)"
       (let [boolean-boop-field {:database-type "bigint" :nfc-path [:bleh "boop" :foobar 1234]}]
         (is (= ["(boop.bleh#>> (array[?, ?, 1234]::text[]))::bigint" "boop" "foobar"]
-               (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))))
+               (sql/format-expr (#'sql.qp/json-query :postgres boop-identifier boolean-boop-field))))))
+    (testing "a database-type that isn't a plain type name is quoted as an identifier instead of spliced raw"
+      (let [evil-field {:database-type "integer); select 1 --" :nfc-path [:bleh :meh]}]
+        (is (= ["(\"boop\".\"bleh\"#>> (array[?]::text[]))::\"integer); select 1 --\"" "meh"]
+               (sql.qp/format-honeysql :postgres (#'sql.qp/json-query :postgres boop-identifier evil-field))))))))
 
 (deftest ^:parallel json-query-survives-impersonation-validation-test
   (testing "JSON-extracted field SQL still extracts the same value after `validate-impersonated-query*` re-emits it (#73776)"
@@ -466,7 +490,8 @@
                                                             :nfc-path      ["jsons" "values" "qty"]
                                                             :database-type "integer"})]})
         (let [field-clause [:field
-                            {:binning
+                            {:lib/uuid (str (random-uuid))
+                             :binning
                              {:strategy  :num-bins
                               :num-bins  100
                               :min-value 0.75
@@ -583,21 +608,22 @@
                       {:database (meta/id)
                        :type     :query
                        :query    {:source-table "card__123"}})]
-          (is (= ["SELECT"
+          (is (= ["WITH \"__mb_stage_0\" AS ("
+                  "  SELECT"
+                  "    (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\","
+                  "    COUNT(*) AS \"count\""
+                  "  FROM"
+                  "    \"json_alias_test\""
+                  "  GROUP BY"
+                  "    \"json_alias_test\""
+                  "  ORDER BY"
+                  "    \"json_alias_test\" ASC"
+                  ")"
+                  "SELECT"
                   "  \"__mb_source\".\"json_alias_test\" AS \"json_alias_test\","
                   "  \"__mb_source\".\"count\" AS \"count\""
                   "FROM"
-                  "  ("
-                  "    SELECT"
-                  "      (\"json_alias_test\".\"bob\" #>> (array [ ?, ? ] :: text [ ])) :: VARCHAR AS \"json_alias_test\","
-                  "      COUNT(*) AS \"count\""
-                  "    FROM"
-                  "      \"json_alias_test\""
-                  "    GROUP BY"
-                  "      \"json_alias_test\""
-                  "    ORDER BY"
-                  "      \"json_alias_test\" ASC"
-                  "  ) AS \"__mb_source\""]
+                  "  \"__mb_stage_0\" AS \"__mb_source\""]
                  (str/split-lines (driver/prettify-native-form :postgres (:query nested))))))))))
 
 (deftest ^:parallel nested-field-pivot-compile-test
@@ -631,7 +657,15 @@
                         :show-column-totals true})]
         (qp.store/with-metadata-provider mp
           (let [sql (:query (qp.compile/compile (nest-for-pivot/wrap-nested-field-breakouts pivot-q)))]
-            (is (= ["SELECT"
+            (is (= ["WITH \"__mb_stage_0\" AS ("
+                    "  SELECT"
+                    "    (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"category\","
+                    "    \"json_table\".\"region\" AS \"region\","
+                    "    (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"__mb_pivot_nfc\""
+                    "  FROM"
+                    "    \"json_table\""
+                    ")"
+                    "SELECT"
                     "  \"__mb_source\".\"__mb_pivot_nfc\" AS \"__mb_pivot_nfc\","
                     "  \"__mb_source\".\"region\" AS \"region\","
                     "  GROUPING("
@@ -640,14 +674,7 @@
                     "  ) AS \"pivot-grouping\","
                     "  COUNT(*) AS \"count\""
                     "FROM"
-                    "  ("
-                    "    SELECT"
-                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"category\","
-                    "      \"json_table\".\"region\" AS \"region\","
-                    "      (\"json_table\".\"payload\" #>> (array [ ? ] :: text [ ])) :: text AS \"__mb_pivot_nfc\""
-                    "    FROM"
-                    "      \"json_table\""
-                    "  ) AS \"__mb_source\""
+                    "  \"__mb_stage_0\" AS \"__mb_source\""
                     "GROUP BY"
                     "  GROUPING SETS ("
                     "    ("
@@ -662,7 +689,7 @@
                     "  GROUPING("
                     "    \"__mb_source\".\"region\","
                     "    \"__mb_source\".\"__mb_pivot_nfc\""
-                    "  ) ASC,"
+                    "  ) DESC,"
                     "  \"__mb_source\".\"__mb_pivot_nfc\" ASC,"
                     "  \"__mb_source\".\"region\" ASC"]
                    (str/split-lines (driver/prettify-native-form :postgres sql))))))))))
@@ -1586,7 +1613,11 @@
           :type     :native
           :native   {:query "SELECT adsasdasd;"}})
         (catch Throwable e
-          (is (= "ERROR: column \"adsasdasd\" does not exist\n  Position: 20"
+          ;; The position counts the `-- <remark>\n` line that comes before the query.
+          (is (= (format "ERROR: column \"adsasdasd\" does not exist\n  Position: %d"
+                         (+ (count (format "-- Metabase accountID: %s databaseID: %d\n" (system/site-uuid) (mt/id)))
+                            (count "SELECT ")
+                            1))
                  (try
                    (-> e ex-cause ex-message)
                    (catch Throwable e
@@ -1641,6 +1672,43 @@
             (is (some? (sync/sync-database! database {:scan :schema}))))
           (is (= #{"table_with_perms"}
                  (t2/select-fn-set :name :model/Table :db_id (:id database)))))))))
+
+(deftest json-unfolding-skips-columns-without-select-privilege-test
+  (testing "JSON unfolding only samples JSON columns the connection user can read, so column-level grants don't break field sync (#83790)"
+    (mt/test-driver :postgres
+      (tx/drop-if-exists-and-create-db! driver/*driver* "json-column-grants-test")
+      (let [role          (str "mb_restricted_" (u/lower-case-en (mt/random-name)))
+            details       (mt/dbdef->connection-details :postgres :db {:database-name  "json-column-grants-test"
+                                                                       :json-unfolding true})
+            spec          (sql-jdbc.conn/connection-details->spec :postgres details)
+            active-fields (fn [database]
+                            (t2/select-fn-set :name :model/Field
+                                              :table_id (t2/select-one-pk :model/Table :db_id (:id database) :name "table_a")
+                                              :active true))]
+        (doseq [statement ["CREATE TABLE public.table_a (id INTEGER PRIMARY KEY, col_visible TEXT, col_json JSONB, col_json_hidden JSONB, col_hidden TEXT);"
+                           "INSERT INTO public.table_a VALUES (1, 'a', '{\"key_a\": 1}', '{\"key_b\": 2}', 'b');"
+                           (format "CREATE ROLE %s LOGIN PASSWORD 'password';" role)
+                           (format "GRANT SELECT (id, col_visible, col_json) ON public.table_a TO %s;" role)]]
+          (jdbc/execute! spec [statement]))
+        (try
+          (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
+            (testing "sanity check: a user that can read every column syncs all of them"
+              (sync/sync-database! database {:scan :schema})
+              (is (= #{"id" "col_visible" "col_json" "col_json → key_a" "col_json_hidden" "col_json_hidden → key_b" "col_hidden"}
+                     (active-fields database))))
+            (t2/update! :model/Database (:id database) {:details (assoc details :user role :password "password")})
+            (let [database (t2/select-one :model/Database (:id database))]
+              (binding [sync-util/*log-exceptions-and-continue?* false]
+                (sync/sync-database! database {:scan :schema}))
+              (testing "after switching to a user with column-level grants, unreadable columns are retired and readable JSON is still unfolded"
+                (is (= #{"id" "col_visible" "col_json" "col_json → key_a"}
+                       (active-fields database))))
+              (testing "a raw query on the table runs"
+                (mt/with-db database
+                  (is (= 1 (count (mt/rows (mt/run-mbql-query table_a)))))))))
+          (finally
+            (jdbc/execute! spec [(format "DROP OWNED BY %s;" role)])
+            (jdbc/execute! spec [(format "DROP ROLE %s;" role)])))))))
 
 (deftest json-operator-?-works
   (testing "Make sure the Postgres ? operators (for JSON types) work in native queries"
@@ -1730,6 +1798,70 @@
                       "ORDER BY attempts.date ASC")
                  (some-> (qp.compile/compile query) :query pretty-sql))))))))
 
+(defn- count-by-price-over-1-query
+  "Two-stage query: `venues` counted by `price`, then filtered to rows with more than one venue."
+  [mp]
+  (as-> (lib/query mp (lib.metadata/table mp (mt/id :venues))) $q
+    (lib/aggregate $q (lib/count))
+    (lib/breakout $q (lib.metadata/field mp (mt/id :venues :price)))
+    (lib/append-stage $q)
+    (lib/filter $q (lib/> (m/find-first (comp #{"count"} :name) (lib/filterable-columns $q)) 1))))
+
+(deftest ^:parallel multi-stage-query-test
+  (testing "a multi-stage query, compiled as chained CTEs on Postgres, runs and returns the right result"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [mp    (mt/metadata-provider)
+              query (as-> (count-by-price-over-1-query mp) $q
+                      (lib/append-stage $q)
+                      (lib/aggregate $q (lib/sum (m/find-first (comp #{"count"} :name) (lib/aggregable-columns $q nil)))))]
+          (is (= [[100]]
+                 (mt/formatted-rows [int] (qp/process-query query)))))))))
+
+(deftest ^:parallel multi-stage-join-source-test
+  (testing "a multi-stage join source, compiled as a WITH nested inside the JOIN parens on Postgres, runs"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [mp     (mt/metadata-provider)
+              venues (lib.metadata/table mp (mt/id :venues))
+              price  (lib.metadata/field mp (mt/id :venues :price))
+              source (count-by-price-over-1-query mp)
+              rhs    (m/find-first (comp #{"price"} :name) (lib/returned-columns source))
+              join   (-> (lib/join-clause source [(lib/= price rhs)])
+                         (lib/with-join-alias "J")
+                         (lib/with-join-fields :all))
+              query  (-> (lib/query mp venues)
+                         (lib/join join)
+                         (lib/limit 1))]
+          (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 3 13]]
+                 (mt/formatted-rows [int str int 4.0 4.0 int int int] (qp/process-query query)))))))))
+
+(deftest ^:parallel native-source-stage-test
+  (testing "a native first stage that has its own WITH, compiled as the body of a stage CTE on Postgres, runs"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [mp    (mt/metadata-provider)
+              ;; lib can't see the columns of an unsaved native stage, so the filter uses a literal ref
+              cnt   [:field {:lib/uuid (str (random-uuid)), :base-type :type/Integer} "cnt"]
+              query (-> (lib/native-query mp "WITH v AS (SELECT price, count(*) AS cnt FROM venues GROUP BY price) SELECT * FROM v;")
+                        (lib/append-stage)
+                        (lib/filter (lib/> cnt 1))
+                        (lib/aggregate (lib/count)))]
+          (is (= [[4]]
+                 (mt/formatted-rows [int] (qp/process-query query)))))))))
+
+(deftest ^:parallel multi-stage-card-referenced-from-native-query-test
+  (testing "a multi-stage card spliced into a native query via {{#id}}, with its CTEs inside the subquery parens, runs"
+    (mt/test-driver :postgres
+      (mt/dataset test-data
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card card {:dataset_query (count-by-price-over-1-query mp)}]
+            (let [tag   (format "#%d" (:id card))
+                  query (-> (lib/native-query mp (format "SELECT SUM(c.count) FROM {{%s}} AS c" tag))
+                            (lib/with-template-tags {tag {:name tag, :display-name tag, :type :card, :card-id (:id card)}}))]
+              (is (= [[100]]
+                     (mt/formatted-rows [int] (qp/process-query query)))))))))))
+
 (deftest ^:parallel do-not-cast-to-timestamp-if-column-if-timestamp-tz-or-date-test
   (testing "Don't cast a DATE or TIMESTAMPTZ to TIMESTAMP, it's not necessary (#19816)"
     (mt/test-driver :postgres
@@ -1752,6 +1884,88 @@
                   :params nil}
                  (-> (qp.compile/compile query)
                      (update :query #(str/split-lines (driver/prettify-native-form :postgres %)))))))))))
+
+(defn- ist-convert-timezone-expression
+  "Returns `[base ist-expr]` for a lib query on `attempts` with a `convert-timezone` expression `ist_dt`."
+  []
+  (let [mp       (mt/metadata-provider)
+        datetime (lib.metadata/field mp (mt/id :attempts :datetime))
+        base     (-> (lib/query mp (lib.metadata/table mp (mt/id :attempts)))
+                     (lib/expression "ist_dt" (lib/convert-timezone datetime "Asia/Kolkata" "UTC")))
+        ist-expr (lib.tu.notebook/find-col-with-spec base
+                                                     (lib/filterable-columns base)
+                                                     {}
+                                                     {:display-name "ist_dt"})]
+    [base ist-expr]))
+
+(defn- assert-now-wrapped-in-target-timezone
+  "Compile `query` and assert that every `NOW()` in the SQL is wrapped in `TIMEZONE(?, NOW())`."
+  [query]
+  (let [sql       (:query (qp.compile/compile query))
+        bare-nows (count (re-seq #"(?i)\bNOW\(\)" sql))
+        wrapped   (count (re-seq #"(?i)TIMEZONE\(\s*\?\s*,\s*NOW\(\)\s*\)" sql))]
+    (is (pos? bare-nows)
+        "sanity: the compiled SQL uses NOW() as a filter boundary")
+    (is (= bare-nows wrapped)
+        (str "Every NOW() must be wrapped in TIMEZONE(?, NOW()) so it lands in the"
+             " target timezone of the convertTimezone LHS.\nSQL:\n" sql))))
+
+(deftest ^:parallel convert-timezone-relative-datetime-filter-test
+  ;; Regression for #80155.
+  (testing "Relative-datetime filter on a convertTimezone expression compiles LHS and RHS in the same wall-clock frame"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        (let [[base ist-expr] (ist-convert-timezone-expression)]
+          (assert-now-wrapped-in-target-timezone
+           (lib/filter base (lib/time-interval ist-expr -3 :month))))))))
+
+(deftest ^:parallel convert-timezone-bucketed-lhs-filter-test
+  ;; Regression for #80155.
+  (testing "A bucketed convertTimezone LHS still compiles LHS and RHS in the same wall-clock frame"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        ;; Field bucket (week) and relative-datetime bucket (month) are incompatible, so
+        ;; `optimize-temporal-clauses` (an index-friendliness rewrite that otherwise unbuckets the LHS)
+        ;; leaves this alone.
+        (let [[base ist-expr] (ist-convert-timezone-expression)]
+          (assert-now-wrapped-in-target-timezone
+           (lib/filter base (lib/>= (lib/with-temporal-bucket ist-expr :week)
+                                    (lib/relative-datetime -2 :month)))))))))
+
+(deftest ^:parallel convert-timezone-now-filter-test
+  ;; Regression for #80155.
+  (testing "A :now filter RHS on a convertTimezone LHS compiles both sides in the same wall-clock frame"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        (let [[base ist-expr] (ist-convert-timezone-expression)]
+          (assert-now-wrapped-in-target-timezone
+           (lib/filter base (lib/< ist-expr (lib/now)))))))))
+
+(deftest ^:parallel convert-timezone-today-filter-test
+  ;; Regression for #80155.
+  (testing "A :today filter RHS on a convertTimezone LHS compiles both sides in the same wall-clock frame"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        (let [[base ist-expr] (ist-convert-timezone-expression)]
+          (assert-now-wrapped-in-target-timezone
+           (lib/filter base (lib/< ist-expr (lib/today)))))))))
+
+(deftest ^:parallel convert-timezone-wrapped-in-datetime-add-filter-test
+  ;; Regression for #80155.
+  (testing "A convertTimezone nested inside datetime-add still compiles LHS and RHS in the same wall-clock frame"
+    (mt/test-driver :postgres
+      (mt/dataset attempted-murders
+        (let [mp       (mt/metadata-provider)
+              datetime (lib.metadata/field mp (mt/id :attempts :datetime))
+              base     (-> (lib/query mp (lib.metadata/table mp (mt/id :attempts)))
+                           (lib/expression "shifted"
+                                           (lib/datetime-add
+                                            (lib/convert-timezone datetime "Asia/Kolkata" "UTC")
+                                            1 :hour)))
+              shifted  (lib.tu.notebook/find-col-with-spec base (lib/filterable-columns base)
+                                                           {} {:display-name "shifted"})]
+          (assert-now-wrapped-in-target-timezone
+           (lib/filter base (lib/time-interval shifted -3 :month))))))))
 
 (deftest postgres-ssl-connectivity-test
   (mt/test-driver :postgres
@@ -2086,6 +2300,7 @@
       (let [db-name "sync_writable_test"
             details (tx/dbdef->connection-details :postgres :db {:database-name db-name})]
         (tx/drop-if-exists-and-create-db! driver/*driver* db-name)
+        ;; fixture DDL on a scratch pg database with no :model/Database row, so raw jdbc on the spec
         #_{:clj-kondo/ignore [:discouraged-var]}
         (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
           (try
@@ -2461,6 +2676,7 @@
     (testing "`final` is allowed as identifier and parsed correctly"
       (mt/with-temp [:model/Database db {:engine "postgres"
                                          :name "final"
+                                         :default_schema "public"
                                          :initial_sync_status "complete"}
                      :model/Table t {:name "final"
                                      :schema "public"

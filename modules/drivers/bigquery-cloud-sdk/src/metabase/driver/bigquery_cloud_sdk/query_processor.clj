@@ -11,6 +11,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
+   [metabase.driver.sql.pivot :as sql.pivot]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
@@ -571,8 +572,8 @@
     (sql.u/validate-convert-timezone-args timestamptz? target-timezone source-timezone)
     (-> (if timestamptz?
           hsql-form
-          [:timestamp hsql-form (or source-timezone (driver-api/results-timezone-id))])
-        (datetime target-timezone)
+          [:timestamp hsql-form (sql.qp/->honeysql driver (or source-timezone (driver-api/results-timezone-id)))])
+        (datetime (sql.qp/->honeysql driver target-timezone))
         (with-temporal-type :datetime))))
 
 (defmethod sql.qp/float-dbtype :bigquery-cloud-sdk
@@ -629,6 +630,7 @@
 
 ;; this is a little hacky, I'm 99% sure we could just have the [[sql.qp/->honeysql]] method for `:field` swap out the
 ;; `::add/source-table` to a `[project.dataset table]` pair but this will have to do for now.
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *field-is-from-join-or-source-query?* false)
 
 (defn- should-qualify-identifier?
@@ -772,7 +774,10 @@
 
 (defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :day]
   [_driver _unit x y]
-  (timestamp-diff :day (trunc :day x) (trunc :day y)))
+  ;; Use `DATE_DIFF` over `TIMESTAMP_DIFF` so that we count calendar days instead of 24-hour periods,
+  ;; to handle DST transitions correctly (#82193).
+  (let [->date (get-method ->temporal-type :default)]
+    [:date_diff (->date :date y) (->date :date x) :'day]))
 
 (defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :hour] [_driver _unit x y] (timestamp-diff :hour x y))
 (defmethod sql.qp/datetime-diff [:bigquery-cloud-sdk :minute] [_driver _unit x y] (timestamp-diff :minute x y))
@@ -797,8 +802,8 @@
 
 (defmethod sql.qp/inline-value [:bigquery-cloud-sdk String]
   [_ s]
-  ;; escape single-quotes like Cam's String -> Cam\'s String
-  (str \' (str/replace s "'" "\\\\'") \'))
+  ;; escape single-quotes like Cam's String -> Cam\'s String.
+  (sql.u/quote-literal s :backslashes))
 
 (defmethod sql.qp/inline-value [:bigquery-cloud-sdk LocalTime]
   [_ t]
@@ -826,6 +831,7 @@
   [_ t]
   (format "timestamp \"%s %s\"" (u.date/format-sql (t/local-date-time t)) (.getId (t/zone-id t))))
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *compiling-cumulative-aggregation* false)
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :cum-count]
@@ -919,12 +925,31 @@
       driver
       clause))))
 
+(defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :case]
+  [driver clause]
+  ;; Bigquery requires all case expressions to have the same type, so coerce all temporal expressions to the same type
+  (let [[tag & args :as form] ((get-method sql.qp/->honeysql [:sql :case]) driver clause)]
+    (if-let [target-type (temporal-type form)]
+      (into [tag]
+            (map-indexed (fn [i arg]
+                           (let [arg-type (when (odd? i) (temporal-type arg))]
+                             (if (and arg-type (not= arg-type target-type))
+                               (->temporal-type target-type arg)
+                               arg))))
+            args)
+      form)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Other Driver / SQLDriver Method Implementations                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private bigquery-interval-units
+  #{:microsecond :millisecond :second :minute :hour :day :week :month :quarter :year})
+
 (defn- interval [amount unit]
   ;; todo: can bigquery have an expression here or just a numeric literal?
+  (when-not (contains? bigquery-interval-units unit)
+    (throw (ex-info (str "Invalid temporal unit: " (pr-str unit)) {:unit unit})))
   [:raw (format "INTERVAL %d %s" (int amount) (name unit))])
 
 ;; We can coerce the HoneySQL form this wraps to whatever we want and generate the appropriate SQL.
@@ -979,22 +1004,19 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk
   [_ hsql-form amount unit]
-  ;; `timestamp_add()` doesn't support month/quarter/year, so cast it to `datetime` so we can use `datetime_add()`
-  ;; instead in those cases.
-  (let [hsql-form (cond->> hsql-form
-                    (and (= (temporal-type hsql-form) :timestamp)
-                         (not (contains? (temporal-type->supported-units :timestamp) unit)))
-                    (h2x/cast :datetime))]
-    (add-interval-form hsql-form amount unit)))
+  ;; `timestamp_add()` doesn't support month/quarter/year, `add-interval-form` casts it to
+  ;; `datetime` so we can use `datetime_add()` instead in those cases. We then cast it back
+  ;; to the original temporal type if needed.
+  (->temporal-type (temporal-type hsql-form) (add-interval-form hsql-form amount unit)))
 
 (defmethod driver/mbql->native :bigquery-cloud-sdk
   [driver outer-query]
   (let [parent-method (get-method driver/mbql->native :sql)
         compiled      (parent-method driver outer-query)]
     (assoc compiled
-           :table-name (or (when-let [source-table-id (-> outer-query :stages last :source-table)]
-                             (:name (driver-api/table (driver-api/metadata-provider) source-table-id)))
-                           sql.qp/source-query-alias)
+           :qp/table-name (or (when-let [source-table-id (-> outer-query :stages last :source-table)]
+                                (:name (driver-api/table (driver-api/metadata-provider) source-table-id)))
+                              sql.qp/source-query-alias)
            :mbql?      true)))
 
 (defn- format-current-moment
@@ -1036,9 +1058,18 @@
   [driver [_ _opts field]]
   [:log (sql.qp/->honeysql driver field) [:inline 10]])
 
+(sql/register-dialect!
+ ::bigquery
+ (assoc (sql/get-dialect :mysql)
+        :quote (fn [s]
+                 (str \` (-> s
+                             (str/replace "\\" "\\\\")
+                             (str/replace "`" "\\`"))
+                      \`))))
+
 (defmethod sql.qp/quote-style :bigquery-cloud-sdk
   [_driver]
-  :mysql)
+  ::bigquery)
 
 (mu/defmethod sql.params.substitution/->replacement-snippet-info [:bigquery-cloud-sdk :metabase.lib.parameters.parse.types/field-filter]
   [driver                            :- :keyword
@@ -1081,3 +1112,13 @@
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->Time]
   [_driver _semantic_type expr]
   (h2x/->time expr))
+
+;; BigQuery infers untyped `NULL` in `UNION ALL` as `INT64` and then rejects the union against
+;; sibling `TIMESTAMP` / `STRING` columns. Emit `CAST(NULL AS <type>)` so the branch's null-padded
+;; column carries the same type as its counterpart in the full-breakout branch.
+(defmethod sql.pivot/null-pad-breakout-hsql :bigquery-cloud-sdk
+  [_driver [_tag opts _id-or-name] _breakout-expr]
+  (when-let [base-type (or (:effective-type opts) (:base-type opts))]
+    (try
+      (h2x/cast (bigquery.common/base-type->bigquery-type base-type) nil)
+      (catch IllegalArgumentException _ nil))))

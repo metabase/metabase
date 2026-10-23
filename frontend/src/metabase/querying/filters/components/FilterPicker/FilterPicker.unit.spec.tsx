@@ -1,18 +1,22 @@
 import userEvent from "@testing-library/user-event";
-import dayjs from "dayjs";
 
-import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
+import {
+  setupDatabaseEndpoints,
+  setupFieldsValuesEndpoints,
+} from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import { checkNotNull } from "metabase/utils/types";
 import * as Lib from "metabase-lib";
 import {
   PRODUCT_CATEGORY_VALUES,
   PRODUCT_VENDOR_VALUES,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 import { FilterPicker } from "./FilterPicker";
@@ -153,6 +157,7 @@ function setup({ query = createQuery(), filter }: SetupOpts = {}) {
   const onSelect = jest.fn();
 
   setupFieldsValuesEndpoints([PRODUCT_CATEGORY_VALUES, PRODUCT_VENDOR_VALUES]);
+  setupDatabaseEndpoints(createSampleDatabase());
 
   renderWithProviders(
     <FilterPicker
@@ -351,7 +356,9 @@ describe("FilterPicker", () => {
         const [filter] = Lib.filters(query, -1);
 
         setup({ query, filter });
-        expect(screen.getByText(/Custom expression/i)).toBeInTheDocument();
+        expect(
+          await screen.findByText(/Custom expression/i),
+        ).toBeInTheDocument();
         // the expression editor formats its source asynchronously; wait for it
         // to settle so the resulting state updates stay inside act()
         await waitFor(() =>
@@ -421,7 +428,7 @@ describe("FilterPicker", () => {
       text: string,
       { delay }: { delay: number } = { delay: 0 },
     ) {
-      const input = screen.getByTestId("custom-expression-query-editor");
+      const input = await screen.findByTestId("custom-expression-query-editor");
       const button = screen.getByRole("button", { name: /(Done|Update)/ });
 
       // The expression editor applies changes on blur,
@@ -451,7 +458,9 @@ describe("FilterPicker", () => {
 
     it("should open the expression editor for unsupported expressions", async () => {
       setup(createQueryWithNullStringFilter());
-      const editor = screen.getByTestId("custom-expression-query-editor");
+      const editor = await screen.findByTestId(
+        "custom-expression-query-editor",
+      );
       expect(editor).toBeInTheDocument();
       // the expression editor formats its source asynchronously; wait for it
       // to settle so the resulting state updates stay inside act()

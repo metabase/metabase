@@ -1,5 +1,5 @@
 import { type UnknownAction, createReducer } from "@reduxjs/toolkit";
-import { assoc, chain, merge, updateIn } from "icepick";
+import { chain, merge, updateIn } from "icepick";
 
 import { actionApi } from "metabase/api";
 import { combineReducers } from "metabase/redux";
@@ -7,6 +7,13 @@ import { CARD_UPDATED } from "metabase/redux/cards";
 import { SET_PARAMETER_VALUES, initialize } from "metabase/redux/dashboard";
 import type { Card } from "metabase-types/api";
 
+import type {
+  removeCardFromDashboard,
+  removeParameter,
+  resetParameters,
+  setParameterValue,
+  undoRemoveCardFromDashboard,
+} from "./actions";
 import {
   REMOVE_CARD_FROM_DASH,
   REMOVE_PARAMETER,
@@ -15,20 +22,16 @@ import {
   UNDO_REMOVE_CARD_FROM_DASH,
   addCardToDash,
   addManyCardsToDash,
-  fetchDashboard,
+  dashboardLayoutFetched,
+  fetchDashboardFulfilled,
   markNewCardSeen,
   onReplaceAllDashCardVisualizationSettings,
   onUpdateDashCardColumnSettings,
   onUpdateDashCardVisualizationSettings,
-  type removeCardFromDashboard,
-  type removeParameter,
-  type resetParameters,
   setDashCardAttributes,
   setMultipleDashCardAttributes,
-  type setParameterValue,
-  tabsReducer,
-  type undoRemoveCardFromDashboard,
-} from "./actions";
+} from "./actions/core";
+import { tabsReducer } from "./actions/tabs";
 import { INITIAL_DASHBOARD_STATE } from "./constants";
 import {
   autoApplyFilters,
@@ -38,12 +41,14 @@ import {
   editingDashboard,
   isAddParameterPopoverOpen,
   isNavigatingBackToDashboard,
+  linkTargets,
   loadingControls,
   loadingDashCards,
   missingActionParameters,
   parameterValues,
   sidebar,
   slowCards,
+  timelineEvents,
 } from "./reducers-typed";
 import { calculateDashCardRowAfterUndo } from "./utils";
 
@@ -61,9 +66,13 @@ const dashcards = createReducer(
   INITIAL_DASHBOARD_STATE.dashcards,
   (builder) => {
     builder
-      .addCase(fetchDashboard.fulfilled, (state, action) => ({
+      .addCase(fetchDashboardFulfilled, (state, action) => ({
         ...state,
         ...action.payload.entities.dashcard,
+      }))
+      .addCase(dashboardLayoutFetched, (state, { payload }) => ({
+        ...state,
+        ...payload.dashcard,
       }))
       .addCase(
         setDashCardAttributes,
@@ -215,7 +224,7 @@ const draftParameterValues = createReducer(
       .addCase(initialize, (state, { payload: { clearCache = true } = {} }) => {
         return clearCache ? {} : state;
       })
-      .addCase(fetchDashboard.fulfilled, (state, { payload }) =>
+      .addCase(fetchDashboardFulfilled, (state, { payload }) =>
         payload.preserveParameters && !payload.dashboard.auto_apply_filters
           ? state
           : payload.parameterValues,
@@ -226,9 +235,13 @@ const draftParameterValues = createReducer(
           type: string;
           payload: PayloadFromThunkActionCreator<typeof setParameterValue>;
         }
-      >(SET_PARAMETER_VALUE, (state, { payload: { id, value } }) =>
-        assoc(state ?? {}, id, value),
-      )
+      >(SET_PARAMETER_VALUE, (state, { payload: { id, value } }) => {
+        // Like icepick `assoc`: skip equal values, so `undefined` for a missing filter
+        // doesn't add a key and show a fake unapplied change
+        if (state[id] !== value) {
+          state[id] = value;
+        }
+      })
       .addCase<string, { type: string; payload: DraftParameterValuesState }>(
         SET_PARAMETER_VALUES,
         (_state, { payload }) => payload,
@@ -266,11 +279,13 @@ const combinedDashboardReducer = combineReducers({
   editingDashboard,
   loadingControls,
   sidebar,
+  timelineEvents,
   parameterValues,
   dashboards,
   loadingDashCards,
   dashcards,
   dashcardData,
+  linkTargets,
   draftParameterValues,
   // Combined reducer needs to init state for every slice
   selectedTabId: (state = INITIAL_DASHBOARD_STATE.selectedTabId) => state,

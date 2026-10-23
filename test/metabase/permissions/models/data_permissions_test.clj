@@ -1,10 +1,11 @@
-(ns metabase.permissions.models.data-permissions-test
+(ns ^:mb/app-db-migrations-test metabase.permissions.models.data-permissions-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api.common :as api]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as impl]
+   [metabase.config.core :as config]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -247,6 +248,8 @@
                    :model/Database         {normal-db-id :id} {}]
       (mt/with-restored-data-perms-for-group! group-id
         (testing "via raw t2/insert!"
+          ;; clear the default rows first — data_permissions has a unique constraint per scope
+          (t2/delete! :model/DataPermissions :db_id normal-db-id :group_id group-id)
           (is (t2/insert! :model/DataPermissions {:db_id      normal-db-id
                                                   :group_id   group-id
                                                   :perm_type  :perms/view-data
@@ -285,6 +288,38 @@
                ExceptionInfo
                #"Invalid permission value :invalid-value for permission type :perms/create-queries"
                (data-perms/set-database-permission! group-id database-id :perms/create-queries :invalid-value))))))))
+
+(deftest set-database-permission!-implied-rows-are-not-duplicated-test
+  (testing "Blocking view-data implies `:perms/transforms :no` both directly and via the implied
+            `create-queries :no`; the implied row must only be written once (UXW-4927)"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
+                   :model/Database         {database-id :id} {}]
+      (mt/with-restored-data-perms-for-group! group-id
+        (data-perms/set-database-permission! group-id database-id :perms/view-data :blocked)
+        (is (= 1 (t2/count :model/DataPermissions
+                           :db_id     database-id
+                           :group_id  group-id
+                           :perm_type :perms/transforms)))))))
+
+(deftest set-table-permission!-implied-rows-are-not-duplicated-test
+  (testing "Coalescing table perms to a DB-level row must not duplicate the implied view-data row:
+            the coalesced `create-queries` row implies DB-level `view-data :unrestricted`, and the
+            recursive table-level view-data call coalesces to that same row (UXW-4927)"
+    (mt/with-temp [:model/PermissionsGroup {group-id :id}    {}
+                   :model/Database         {database-id :id} {}
+                   :model/Table            {table-id-1 :id}  {:db_id database-id}
+                   :model/Table            {table-id-2 :id}  {:db_id database-id}]
+      (mt/with-restored-data-perms-for-group! group-id
+        ;; Start from a clean slate so we exercise the no-existing-db-permission path
+        (t2/delete! :model/DataPermissions :group_id group-id)
+        (data-perms/set-table-permission! group-id table-id-1 :perms/create-queries :query-builder)
+        ;; This call makes all tables agree on :query-builder, so both the create-queries rows and the
+        ;; implied view-data rows coalesce to DB-level rows
+        (data-perms/set-table-permission! group-id table-id-2 :perms/create-queries :query-builder)
+        (is (= 1 (t2/count :model/DataPermissions
+                           :db_id     database-id
+                           :group_id  group-id
+                           :perm_type :perms/view-data)))))))
 
 (deftest set-table-permissions!-test
   (mt/with-temp [:model/PermissionsGroup {group-id :id}      {}
@@ -915,11 +950,15 @@
             (mt/with-premium-features #{}
               (data-perms/set-database-permission! group-id db-id-2 :perms/view-data :blocked)
               (let [new-db-id (t2/insert-returning-pk! :model/Database {:name "Test" :engine "h2" :details "{}"})]
-                (is (= :unrestricted (t2/select-one-fn :perm_value
-                                                       :model/DataPermissions
-                                                       :db_id     new-db-id
-                                                       :group_id  group-id
-                                                       :perm_type :perms/view-data))))))))
+                ;; When EE code is on the classpath the new database fails CLOSED to :blocked for the
+                ;; blocked group regardless of token features (UXW-4927); only a true OSS jar (no EE
+                ;; code at all) falls back to :unrestricted.
+                (is (= (if config/ee-available? :blocked :unrestricted)
+                       (t2/select-one-fn :perm_value
+                                         :model/DataPermissions
+                                         :db_id     new-db-id
+                                         :group_id  group-id
+                                         :perm_type :perms/view-data))))))))
       (t2/delete! :model/DataPermissions :group_id group-id)
       (testing "Query permissions... "
         (testing "A new database gets `query-builder-and-native` query permissions if a group only has `query-builder-and-native` for other databases"
@@ -1257,6 +1296,49 @@
                                                 :group_id group-id :db_id db-id
                                                 :table_id table-id-4 :perm_type :perms/create-queries))
             "should inherit :query-builder from PUBLIC schema, not the :no default")))))
+
+(defn- new-table-view-data-perm!
+  "Setup helper that mirrors the UXW-3217 repro: schema `\"public\"` is fully granted to the group, schema
+  `\"blocked-schema\"` is blocked. Because the group has a `:blocked` table in the DB, the usual EE rules will make
+  a new table also `:blocked`. Uploads have a special case that this is intended to test.
+
+  Parameterized by the `:upload?` and `:sandboxed?` options.
+
+  Returns the new table's `view-data` permission."
+  [{:keys [upload? sandboxed?]}]
+  (mt/with-temp [:model/Database         {db-id :id}      {}
+                 :model/PermissionsGroup {group-id :id}   {}
+                 :model/Table            {table-id-1 :id} {:db_id db-id :schema "public"}
+                 :model/Table            {table-id-2 :id} {:db_id db-id :schema "public"}
+                 :model/Table            {table-id-3 :id} {:db_id db-id :schema "blocked-schema"}]
+    (data-perms/set-table-permission! group-id table-id-1 :perms/view-data :unrestricted)
+    (data-perms/set-table-permission! group-id table-id-2 :perms/view-data :unrestricted)
+    (data-perms/set-table-permission! group-id table-id-3 :perms/view-data :blocked)
+    (mt/with-temp [:model/Table {table-id-4 :id} {:db_id db-id :schema "public"}]
+      (t2/delete! :model/DataPermissions :group_id group-id :table_id table-id-4 :perm_type :perms/view-data)
+      (mt/with-dynamic-fn-redefs [data-perms/new-table-view-data-permission-levels
+                                  (fn [_db-id group-ids] (zipmap group-ids (repeat :blocked)))
+                                  data-perms/new-table-sandboxed-groups
+                                  (fn [_db-id group-ids] (if sandboxed? (set group-ids) #{}))]
+        (data-perms/set-default-table-permissions!
+         {:id          table-id-4
+          :db_id       db-id
+          :schema      "public"
+          :data_source (if upload? :upload :ingested)}
+         [{:group-id      group-id
+           :perm-type     :perms/view-data
+           :default-value :unrestricted}]))
+      (t2/select-one-fn :perm_value :model/DataPermissions
+                        :group_id group-id :db_id db-id
+                        :table_id table-id-4 :perm_type :perms/view-data))))
+
+(deftest set-default-table-permissions!-view-data-granted-schema-test
+  (testing "Sync (default): a new table fails safe to :blocked because the group has only partial DB access"
+    (is (= :blocked      (new-table-view-data-perm! {:upload? false :sandboxed? false}))))
+  (testing "Upload (`:data_source :upload`): a new table inherits the granted schema's :unrestricted (UXW-3217)"
+    (is (= :unrestricted (new-table-view-data-perm! {:upload? true  :sandboxed? false}))))
+  (testing "Upload + sandbox: a sandbox still forces :blocked, schema be damned"
+    (is (= :blocked      (new-table-view-data-perm! {:upload? true  :sandboxed? true})))))
 
 (defn- distinct-schema-vals-count
   "Count the *distinct* (group, perm-type, schema, value) tuples for `db-id` —

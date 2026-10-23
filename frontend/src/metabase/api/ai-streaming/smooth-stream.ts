@@ -12,6 +12,13 @@ const DEFAULT_SMOOTHING_DELAY_MS = 10;
 const wait = (ms: number) =>
   new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+// Browsers slow timers in hidden tabs: a wait can take one second or more.
+// https://developer.mozilla.org/en-US/docs/Web/API/Window/setTimeout#timeouts_in_inactive_tabs
+// One wait per word then delays the stream by minutes, so a hidden tab does not pace the text.
+// Outside a browser, `document` does not exist, and the text is paced.
+const isDocumentHidden = () =>
+  typeof document !== "undefined" && document.hidden;
+
 const takeWord = (buffer: string) => {
   const match = WORD_PATTERN.exec(buffer);
   return match ? buffer.slice(0, match.index + match[0].length) : null;
@@ -26,7 +33,8 @@ export type SmoothTextOptions = { delayInMs?: number };
 
 // Re-emits text/reasoning deltas one word at a time on a fixed cadence, so they
 // render steadily however unevenly the server chunks them. Awaiting between words
-// backpressures the stream, which is what paces it.
+// backpressures the stream, which is what paces it. While the document is hidden,
+// it emits the whole buffer at once and starts no new wait.
 export async function* smoothStreamEvents(
   events: AsyncIterable<SSEEvent>,
   { delayInMs = DEFAULT_SMOOTHING_DELAY_MS }: SmoothTextOptions = {},
@@ -58,11 +66,18 @@ export async function* smoothStreamEvents(
     pending = event;
 
     let word = takeWord(buffer);
-    while (word !== null) {
+    while (word !== null && !isDocumentHidden()) {
       yield { ...pending, delta: word };
       buffer = buffer.slice(word.length);
+      if (isDocumentHidden()) {
+        break;
+      }
       await wait(delayInMs);
       word = takeWord(buffer);
+    }
+
+    if (isDocumentHidden()) {
+      yield* flush();
     }
   }
 

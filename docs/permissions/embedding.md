@@ -78,7 +78,7 @@ When, for example, Tenant A logs in, they'll only see the `Tenant_ID` and `Metri
 
 Impersonation lets you map user attributes to database roles, which lets you do row-level security based on the database privileges you give each role.
 
-Check out this [article on impersonation](https://www.metabase.com/learn/metabase-basics/administration/permissions/impersonation).
+Check out [impersonation access](./impersonation.md).
 
 ## One database per customer
 
@@ -121,7 +121,7 @@ Say you have a single database with ten different tables, each corresponding to 
 
 1. **Create a group** for your first customer in **Admin** > **People**. If you need different permission levels within a company (some employees can ask questions, others can only view), create multiple groups like **Company A (Self-service)** and **Company A (View only)**.
 
-2. **Grant table access** by going to **Permissions** > **Data** > **Databases** and granting your new group access to the customer's table. If you want customers to create questions and dashboards within their table, set **Create query** permissions to **Query builder**.
+2. **Grant table access** by going to **Admin** > **Permissions** > **Data** > **Databases** and granting your new group access to the customer's table. If you want customers to create questions and dashboards within their table, set **Create query** permissions to **Query builder**.
 
    For employees who should only view data and create collections to house those specific questions and dashboards, see [collection permissions](./collections.md).
 

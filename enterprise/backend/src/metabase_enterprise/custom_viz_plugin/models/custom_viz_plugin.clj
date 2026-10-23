@@ -1,6 +1,9 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
    [buddy.core.codecs :as codecs]
+   [metabase-enterprise.custom-viz-plugin.cache :as cache]
+   [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
+   [metabase-enterprise.custom-viz-plugin.schema]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -39,16 +42,6 @@
    :manifest :metabase_version :bundle_hash :dev_bundle_url
    :created_at :updated_at])
 
-(defn select-one-non-blob
-  "Like `t2/select-one` on `:model/CustomVizPlugin`, but excludes the bundle blob."
-  [& conditions]
-  (apply t2/select-one (into [:model/CustomVizPlugin] non-blob-columns) conditions))
-
-(defn select-non-blob
-  "Like `t2/select` on `:model/CustomVizPlugin`, but excludes the bundle blob."
-  [& conditions]
-  (apply t2/select (into [:model/CustomVizPlugin] non-blob-columns) conditions))
-
 (defmethod mi/can-read? :model/CustomVizPlugin
   ([_instance]   (some? api/*current-user-id*))
   ([_model _pk]  (some? api/*current-user-id*)))
@@ -77,13 +70,36 @@
 (defmethod serdes/make-spec "CustomVizPlugin"
   [_model-name _opts]
   {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
-   :skip      [:dev_bundle_url :error_message]
+   :skip      [;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
+               :status :error_message
+               ;; dev-only plugins are never served from another instance
+               :dev_bundle_url]
    :defaults  {:enabled true}
-   :transform {:created_at (serdes/date)
-               :status     {:export (constantly ::serdes/skip)
-                            :import (constantly "pending")}
-               :bundle     {:export bundle->b64
+   :transform {:bundle     {:export bundle->b64
                             :import b64->bundle}}})
+
+(defn- bundle-columns
+  "Columns derived from validating the imported `bundle` bytes against the imported `identifier`: the `:active` state
+  plus manifest-derived metadata when the bundle is valid and named for this plugin, or the `:error` state with the
+  reason when it is not. The same checks guard a bundle upload."
+  [{:keys [identifier bundle]}]
+  (try
+    (->> (cache/validate-bundle! bundle)
+         (cache/check-bundle-identifier! identifier)
+         cache/derived-columns)
+    (catch Exception e
+      {:status        :error
+       :error_message (ex-message e)})))
+
+(defmethod serdes/load-insert! "CustomVizPlugin"
+  [_model-name ingested]
+  (custom-viz-plugin.db/insert-plugin! (merge ingested (bundle-columns ingested))))
+
+(defmethod serdes/load-update! "CustomVizPlugin"
+  [_model-name ingested {:keys [id]}]
+  (custom-viz-plugin.db/update-plugin! id (merge ingested (bundle-columns ingested)))
+  (cache/purge-plugin-cache! {:id id})
+  (custom-viz-plugin.db/non-blob-plugin id))
 
 (defmethod serdes/entity-id "CustomVizPlugin" [_ {:keys [identifier]}]
   identifier)
@@ -95,7 +111,7 @@
 
 (defmethod serdes/load-find-local "CustomVizPlugin" [path]
   (let [{:keys [id]} (last path)]
-    (t2/select-one :model/CustomVizPlugin :identifier id)))
+    (custom-viz-plugin.db/plugin-by-identifier id)))
 
 (defmethod serdes/storage-path "CustomVizPlugin" [entity _ctx]
   [{:label "custom_viz_plugins"} {:label (:identifier entity)}])

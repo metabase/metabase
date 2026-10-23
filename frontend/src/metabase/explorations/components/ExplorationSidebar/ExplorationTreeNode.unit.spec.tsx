@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { dayjs } from "metabase/dayjs";
 import { trackExplorationPageHiddenToggled } from "metabase/explorations/analytics";
 import { DEFAULT_SORT_ORDER } from "metabase/explorations/sidebar-preferences";
 import {
@@ -178,17 +178,15 @@ describe("ExplorationTreeNode", () => {
       );
     });
 
-    it("does not offer Hide for the first thread group", async () => {
+    it("offers Hide for thread and metric-group headings", async () => {
       setup({ queries: [revenueQuery], blocks: [revenueBlock] });
 
-      // the first thread ("Initial investigation") is not hideable...
       await openGroupMenu(/Initial investigation/);
       expect(
-        screen.queryByRole("menuitem", { name: /Hide/ }),
-      ).not.toBeInTheDocument();
+        screen.getByRole("menuitem", { name: /Hide/ }),
+      ).toBeInTheDocument();
       await userEvent.keyboard("{Escape}");
 
-      // ...but metric sub-groups are
       await openGroupMenu(/Revenue/);
       expect(
         screen.getByRole("menuitem", { name: /Hide/ }),
@@ -523,6 +521,22 @@ describe("ExplorationTreeNode", () => {
       ).toBeInTheDocument();
     });
 
+    it("offers Restart on an empty failed thread (planning failed before pages)", async () => {
+      setup({
+        queries: [],
+        thread: { status: "failed", completed_at: "2026-04-30T00:01:00Z" },
+      });
+
+      expect(screen.getByLabelText("Failed")).toBeInTheDocument();
+
+      const threadHeading = findThreadMenuButton();
+      await userEvent.click(within(threadHeading!).getByRole("button"));
+
+      expect(
+        screen.getByRole("menuitem", { name: /Restart/ }),
+      ).toBeInTheDocument();
+    });
+
     it("does not offer Restart when the user lacks write access", async () => {
       setup({
         queries: [pendingQuery],
@@ -792,9 +806,9 @@ describe("ExplorationTreeNode", () => {
               selectedSidebarTab={selectedSidebarTab}
               getSelectedSidebarTabUrl={getSelectedSidebarTabUrl}
               tree={getTree()}
-              selectedPageId={String(PAGE_ID)}
-              setSelectedPageId={jest.fn()}
+              selectedEntity={{ type: "page", id: String(PAGE_ID) }}
               getSelectedPageUrl={() => path}
+              getSelectedSummaryUrl={() => path}
               shouldScrollSelectionRef={shouldScrollSelectionRef}
               isOpen
               readPageIds={new Set<string>()}
@@ -802,6 +816,10 @@ describe("ExplorationTreeNode", () => {
               onToggleShowHidden={jest.fn()}
               sortOrder={DEFAULT_SORT_ORDER}
               onChangeSortOrder={jest.fn()}
+              contentMode="tree"
+              onPreviousPage={jest.fn()}
+              onNextPage={jest.fn()}
+              onPrefetchPage={jest.fn()}
             />
           }
         />,

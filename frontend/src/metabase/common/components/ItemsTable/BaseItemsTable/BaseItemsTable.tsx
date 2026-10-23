@@ -1,4 +1,5 @@
-import type { HTMLAttributes, PropsWithChildren } from "react";
+import cx from "classnames";
+import type { HTMLAttributes, JSX, PropsWithChildren } from "react";
 import { useMemo } from "react";
 
 import type { CollectionContentTableColumnsMap } from "metabase/common/collections/columns";
@@ -11,27 +12,26 @@ import type {
 } from "metabase/common/collections/types";
 import { isTrashedCollection } from "metabase/common/collections/utils";
 import { BaseItemsTableBody } from "metabase/common/components/ItemsTable/BaseItemsTableBody/BaseItemsTableBody";
+import { SkeletonItemsTableBody } from "metabase/common/components/ItemsTable/BaseItemsTableBody/SkeletonItemsTableBody";
 import type { ItemRendererProps } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { DefaultItemRenderer } from "metabase/common/components/ItemsTable/DefaultItemRenderer";
 import { canSelectItems } from "metabase/common/components/ItemsTable/utils";
-import type Database from "metabase-lib/v1/metadata/Database";
+import { FixedSizeIcon, Flex } from "metabase/ui";
 import type {
   Bookmark,
   Collection,
   CollectionItem,
+  Database,
   ListCollectionItemsSortColumn,
   SortDirection,
   SortingOptions,
 } from "metabase-types/api";
 
-import {
-  ColumnHeader,
-  SortingControlContainer,
-  SortingIcon,
-  Table,
-} from "../BaseItemsTable.styled";
 import { Columns } from "../Columns";
+import { ColumnHeader, Table } from "../TableElements";
 import type { ResponsiveProps } from "../utils";
+
+import S from "./BaseItemsTable.module.css";
 
 export type SortableColumnHeaderProps<SortColumn extends string> = {
   name?: SortColumn;
@@ -48,8 +48,8 @@ export const SortableColumnHeader = <SortColumn extends string>({
   onSortingOptionsChange,
   children,
   hideAtContainerBreakpoint,
-  containerName,
   columnHeaderProps,
+  className,
   ...props
 }: SortableColumnHeaderProps<SortColumn> & ResponsiveProps) => {
   const isSortable = !!onSortingOptionsChange && !!name;
@@ -76,23 +76,29 @@ export const SortableColumnHeader = <SortColumn extends string>({
   return (
     <ColumnHeader
       hideAtContainerBreakpoint={hideAtContainerBreakpoint}
-      containerName={containerName}
       {...columnHeaderProps}
     >
-      <SortingControlContainer
+      <Flex
         {...props}
-        isActive={isSortingThisColumn}
+        className={cx(
+          S.sortingControl,
+          { [S.sortable]: isSortable, [S.active]: isSortingThisColumn },
+          className,
+        )}
+        align="center"
         onClick={onSortingControlClick}
         role="button"
-        isSortable={isSortable}
       >
         {children}
         {isSortable && (
-          <SortingIcon
+          <FixedSizeIcon
+            className={S.sortingIcon}
             name={direction === "asc" ? "chevronup" : "chevrondown"}
+            size={8}
+            ms="xxs"
           />
         )}
-      </SortingControlContainer>
+      </Flex>
     </ColumnHeader>
   );
 };
@@ -121,6 +127,7 @@ export type BaseItemsTableProps = {
   ItemComponent?: (props: ItemRendererProps) => JSX.Element;
   onClick?: (item: CollectionItem) => void;
   visibleColumnsMap: CollectionContentTableColumnsMap;
+  withSkeleton?: boolean;
 } & Partial<Omit<HTMLAttributes<HTMLTableElement>, "onCopy" | "onClick">>;
 
 export const BaseItemsTable = ({
@@ -145,6 +152,7 @@ export const BaseItemsTable = ({
   ItemComponent = DefaultItemRenderer,
   visibleColumnsMap,
   onClick,
+  withSkeleton = false,
   ...props
 }: BaseItemsTableProps) => {
   const canSelect = canSelectItems(collection, onToggleSelected);
@@ -167,14 +175,17 @@ export const BaseItemsTable = ({
         data-testid={isPinned ? "pinned-items-table-head" : "items-table-head"}
       >
         <tr>
-          {canSelect && (
-            <Columns.Select.Header
-              selectedItems={selectedItems}
-              hasUnselected={hasUnselected}
-              onSelectAll={onSelectAll}
-              onSelectNone={onSelectNone}
-            />
-          )}
+          {canSelect &&
+            (withSkeleton ? (
+              <ColumnHeader />
+            ) : (
+              <Columns.Select.Header
+                selectedItems={selectedItems}
+                hasUnselected={hasUnselected}
+                onSelectAll={onSelectAll}
+                onSelectNone={onSelectNone}
+              />
+            ))}
           {visibleColumnsMap["type"] && (
             <Columns.Type.Header
               sortingOptions={sortingOptions}
@@ -212,24 +223,31 @@ export const BaseItemsTable = ({
           <Columns.RightEdge.Header />
         </tr>
       </thead>
-      <BaseItemsTableBody
-        items={items}
-        getIsSelected={getIsSelected}
-        isPinned={isPinned}
-        collection={collection}
-        selectedItems={selectedItems}
-        onDrop={onDrop}
-        ItemComponent={ItemComponent}
-        databases={databases}
-        bookmarks={bookmarks}
-        createBookmark={createBookmark}
-        deleteBookmark={deleteBookmark}
-        onCopy={onCopy}
-        onMove={onMove}
-        onToggleSelected={onToggleSelected}
-        onClick={onClick}
-        visibleColumnsMap={visibleColumnsMap}
-      />
+      {withSkeleton ? (
+        <SkeletonItemsTableBody
+          canSelect={canSelect}
+          visibleColumnsMap={visibleColumnsMap}
+        />
+      ) : (
+        <BaseItemsTableBody
+          items={items}
+          getIsSelected={getIsSelected}
+          isPinned={isPinned}
+          collection={collection}
+          selectedItems={selectedItems}
+          onDrop={onDrop}
+          ItemComponent={ItemComponent}
+          databases={databases}
+          bookmarks={bookmarks}
+          createBookmark={createBookmark}
+          deleteBookmark={deleteBookmark}
+          onCopy={onCopy}
+          onMove={onMove}
+          onToggleSelected={onToggleSelected}
+          onClick={onClick}
+          visibleColumnsMap={visibleColumnsMap}
+        />
+      )}
     </Table>
   );
 };

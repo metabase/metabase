@@ -3,9 +3,14 @@
 // Node-targeted builds for the SDK package: the `npx` CLI and the data-app dev
 // preset (`@metabase/embedding-sdk-react/data-app-dev/config`). Both run
 // in Node (not the browser), so they can't go through the browser rspack bundle.
+const fs = require("fs");
 const path = require("path");
 
 const rspack = require("@rspack/core");
+
+const {
+  SIDE_EFFECT_FREE_RULE,
+} = require("./frontend/build/shared/rspack/side-effect-free-modules");
 
 const SDK_DIST_PATH = path.join(__dirname, "/resources/embedding-sdk/dist");
 const SDK_PACKAGE_SRC_PATH =
@@ -37,6 +42,7 @@ const sharedResolve = {
 
 const sharedModule = {
   rules: [
+    SIDE_EFFECT_FREE_RULE,
     {
       test: /\.(tsx?|js)$/,
       exclude: /node_modules/,
@@ -67,6 +73,14 @@ const cliConfig = {
   module: sharedModule,
   plugins: [
     new rspack.BannerPlugin({ banner: "#!/usr/bin/env node", raw: true }),
+    {
+      // npm sets a bin's executable bit when it installs a packed package, but not when the
+      // package is linked (`file:`), where the bin link points at this file itself.
+      apply: (compiler) =>
+        compiler.hooks.afterEmit.tap("ExecutableCli", () =>
+          fs.chmodSync(path.join(SDK_DIST_PATH, "cli.js"), 0o755),
+        ),
+    },
   ],
   optimization: { minimize: true, minimizer },
 };

@@ -1,5 +1,4 @@
 import type { Row } from "@tanstack/react-table";
-import dayjs from "dayjs";
 import { type ReactNode, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
@@ -13,10 +12,12 @@ import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/Loadin
 import { PaginationControls } from "metabase/common/components/PaginationControls";
 import { useAbortableQuery } from "metabase/common/hooks/use-abortable-query";
 import { usePagination } from "metabase/common/hooks/use-pagination";
+import { dayjs } from "metabase/dayjs";
 import { MonitorEmptyState } from "metabase/monitor/components/MonitorEmptyState";
 import { MonitorHeaderTitle } from "metabase/monitor/components/MonitorHeaderTitle";
 import { MonitorMain } from "metabase/monitor/components/MonitorLayout";
 import { MonitorTableCard } from "metabase/monitor/components/MonitorTableCard";
+import { PAGE_SIZE } from "metabase/monitor/constants";
 import { Outlet, useNavigate } from "metabase/router";
 import {
   ActionIcon,
@@ -36,8 +37,6 @@ import * as Urls from "metabase/urls";
 import { capitalize } from "metabase/utils/formatting";
 import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
 import type { ModelCacheRefreshStatus } from "metabase-types/api";
-
-const PAGE_SIZE = 20;
 
 const COLUMN_WIDTHS = [0.22, 0.16, 0.28, 0.14, 0.14, 0.06];
 
@@ -230,6 +229,7 @@ function getColumns(
           <Flex justify="flex-end" w="100%">
             <Tooltip label={t`Refresh`}>
               <ActionIcon
+                variant="subtle"
                 aria-label={t`Refresh`}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -265,7 +265,7 @@ function ModelCacheStatus({
           to={Urls.monitorModelCacheRefreshJob(job.id)}
           onClick={(event) => event.stopPropagation()}
         >
-          <Ellipsified ff="monospace" c="error">
+          <Ellipsified ff="monospace" c="feedback-negative">
             {job.error}
           </Ellipsified>
         </Link>

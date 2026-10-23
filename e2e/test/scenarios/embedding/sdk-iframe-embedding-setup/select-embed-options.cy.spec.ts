@@ -17,6 +17,12 @@ const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 const DASHBOARD_NAME = "Orders in a dashboard";
 const QUESTION_NAME = "Orders, Count";
 
+// Toggling a sidebar option re-renders (and re-runs the query of) the embedded
+// question inside the already-loaded preview iframe. That round-trip can exceed
+// Cypress's default 4s command timeout, so lookups that depend on the re-render
+// finishing get a longer budget to wait it out.
+const RERENDER_TIMEOUT = 15000;
+
 const suiteTitle =
   "scenarios > embedding > sdk iframe embed setup > select embed options";
 
@@ -27,10 +33,9 @@ describe("OSS", { tags: "@OSS" }, () => {
       H.resetSnowplow();
       cy.signInAsAdmin();
       H.enableTracking();
-      H.updateSetting("enable-embedding-simple", true);
+      H.updateSetting("enable-embedding-modular", true);
 
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
       mockEmbedJsToDevServer();
     });
@@ -63,10 +68,9 @@ describe("EE without license", () => {
       cy.signInAsAdmin();
       H.activateToken("starter");
       H.enableTracking();
-      H.updateSetting("enable-embedding-simple", true);
+      H.updateSetting("enable-embedding-modular", true);
 
       cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-      cy.intercept("POST", "/api/card/*/query").as("cardQuery");
 
       mockEmbedJsToDevServer();
     });
@@ -89,11 +93,10 @@ describe(suiteTitle, () => {
     cy.signInAsAdmin();
     H.activateToken("pro-self-hosted");
     H.enableTracking();
-    H.updateSetting("enable-embedding-simple", true);
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.updateSetting("enable-embedding-modular", true);
+    H.setupAnthropicLlmProvider();
 
     cy.intercept("GET", "/api/dashboard/**").as("dashboard");
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
     cy.intercept("PUT", "/api/setting/sdk-iframe-embed-setup-settings").as(
       "persistSettings",
     );
@@ -105,48 +108,7 @@ describe(suiteTitle, () => {
     H.expectNoBadSnowplowEvents();
   });
 
-  it("toggles drill-throughs for dashboards when SSO auth method is selected", () => {
-    navigateToEmbedOptionsStep({
-      experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
-      preselectSso: true,
-    });
-
-    getEmbedSidebar()
-      .findByLabelText("Allow people to drill through on data points")
-      .should("be.checked");
-
-    cy.log("drill-through should be enabled in the preview");
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("110.93").click();
-      cy.findByText("Filter by this value").should("be.visible");
-    });
-
-    cy.log("turn off drill-through");
-    getEmbedSidebar()
-      .findByLabelText("Allow people to drill through on data points")
-      .click()
-      .should("not.be.checked");
-
-    cy.log("drill-through should be disabled in the preview");
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("110.93").click();
-      cy.findByText("Filter by this value").should("not.exist");
-    });
-
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get code").click();
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_options_completed",
-      event_detail:
-        "settings=custom,experience=dashboard,authType=sso,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,theme=default",
-    });
-
-    codeBlock().should("contain", 'drills="false"');
-  });
-
-  it("toggles downloads for dashboard", () => {
+  it("toggles downloads and drill-throughs for dashboards when SSO auth method is selected", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
@@ -157,6 +119,9 @@ describe(suiteTitle, () => {
       .findByLabelText("Allow downloads")
       .should("not.be.checked");
 
+    H.getSimpleEmbedIframeContent()
+      .findByText(DASHBOARD_NAME)
+      .should("be.visible");
     H.getSimpleEmbedIframeContent()
       .findByTestId("export-as-pdf-button")
       .should("not.exist");
@@ -180,7 +145,53 @@ describe(suiteTitle, () => {
         "settings=custom,experience=dashboard,authType=sso,drills=true,withDownloads=true,withSubscriptions=false,withTitle=true,theme=default",
     });
 
+    codeBlock().should("contain", 'with-downloads="true"');
     codeBlock().should("contain", 'with-subscriptions="false"');
+
+    cy.log("go back and turn off downloads");
+    getEmbedSidebar().findByText("Back").click();
+    getEmbedSidebar()
+      .findByLabelText("Allow downloads")
+      .should("be.checked")
+      .click()
+      .should("not.be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByTestId("export-as-pdf-button")
+      .should("not.exist");
+
+    getEmbedSidebar()
+      .findByLabelText("Allow people to drill through on data points")
+      .should("be.checked");
+
+    cy.log("drill-through should be enabled in the preview");
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("110.93").should("be.visible").click();
+      cy.findByText("Filter by this value").should("be.visible");
+    });
+
+    cy.log("turn off drill-through");
+    getEmbedSidebar()
+      .findByLabelText("Allow people to drill through on data points")
+      .click()
+      .should("not.be.checked");
+
+    cy.log("drill-through should be disabled in the preview");
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("110.93").should("be.visible").click();
+      cy.findByText("Filter by this value").should("not.exist");
+    });
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=dashboard,authType=sso,drills=false,withDownloads=false,withSubscriptions=false,withTitle=true,theme=default",
+    });
+
+    codeBlock().should("contain", 'drills="false"');
   });
 
   it("cannot select subscriptions for dashboard when email is not set up", () => {
@@ -379,84 +390,6 @@ describe(suiteTitle, () => {
     codeBlock().should("contain", 'with-subscriptions="true"');
   });
 
-  it("toggles dashboard title for dashboards", () => {
-    navigateToEmbedOptionsStep({
-      experience: "dashboard",
-      resourceName: DASHBOARD_NAME,
-      preselectGuest: true,
-    });
-
-    H.publishChanges("dashboard");
-
-    cy.button("Unpublish").should("be.visible");
-
-    getEmbedSidebar()
-      .findByLabelText("Show dashboard title")
-      .should("be.checked");
-
-    H.getSimpleEmbedIframeContent()
-      .findByText("Orders in a dashboard")
-      .should("be.visible");
-
-    cy.log("turn off title");
-    getEmbedSidebar()
-      .findByLabelText("Show dashboard title")
-      .click()
-      .should("not.be.checked");
-
-    H.getSimpleEmbedIframeContent()
-      .findByText("Orders in a dashboard")
-      .should("not.exist");
-
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get code").click();
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_options_completed",
-      event_detail:
-        'settings=custom,experience=dashboard,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=false,withSubscriptions=false,withTitle=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
-    });
-
-    codeBlock().should("contain", 'with-title="false"');
-  });
-
-  it("toggles drill-through for charts for SSO auth mode", () => {
-    navigateToEmbedOptionsStep({
-      experience: "chart",
-      resourceName: QUESTION_NAME,
-      preselectSso: true,
-    });
-
-    getEmbedSidebar()
-      .findByLabelText("Allow people to drill through on data points")
-      .should("be.checked");
-
-    cy.log("drill-through should be disabled by default in chart preview");
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("18,760").click();
-      cy.findByText("See these Orders").should("exist");
-    });
-
-    cy.log("turn off drill-through");
-    getEmbedSidebar()
-      .findByLabelText("Allow people to drill through on data points")
-      .click()
-      .should("not.be.checked");
-
-    cy.log("drill-through should be disabled in chart preview");
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByText("18,760").click();
-      cy.findByText("See these Orders").should("not.exist");
-    });
-
-    cy.log("allow downloads should be visible when drills are off (EMB-712)");
-    getEmbedSidebar().findByLabelText("Allow downloads").should("be.visible");
-
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get code").click();
-    codeBlock().should("contain", 'drills="false"');
-  });
-
   it("toggles downloads for charts", () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
@@ -472,6 +405,9 @@ describe(suiteTitle, () => {
       .findByLabelText("Allow downloads")
       .should("not.be.checked");
 
+    H.getSimpleEmbedIframeContent()
+      .findByText(QUESTION_NAME)
+      .should("be.visible");
     H.getSimpleEmbedIframeContent()
       .findByTestId("question-download-widget-button")
       .should("not.exist");
@@ -498,11 +434,22 @@ describe(suiteTitle, () => {
     codeBlock().should("contain", 'with-downloads="true"');
   });
 
-  it("toggles chart title for charts", () => {
+  it("toggles chart title and drill-through for charts for SSO auth mode", () => {
     navigateToEmbedOptionsStep({
       experience: "chart",
       resourceName: QUESTION_NAME,
       preselectSso: true,
+    });
+
+    getEmbedSidebar().within(() => {
+      cy.findByText("Parameters are not available for this chart.").should(
+        "be.visible",
+      );
+
+      cy.findByTestId("behavior-docs-link").should("be.visible");
+      cy.findByTestId("behavior-docs-link")
+        .should("have.attr", "href")
+        .and("include", "embedding/question-reference");
     });
 
     cy.log("chart title should be visible by default");
@@ -522,12 +469,32 @@ describe(suiteTitle, () => {
       .findByText("Orders, Count")
       .should("not.exist");
 
+    cy.log("drill-through should be enabled by default in chart preview");
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByTestId("interactive-question-result-toolbar").should("exist");
+      cy.findByText("18,760").should("be.visible").click();
+      cy.findByText("See these Orders").should("exist");
+    });
+
     cy.log("set drills to false");
     getEmbedSidebar()
       .findByLabelText("Allow people to drill through on data points")
       .should("be.checked")
       .click()
       .should("not.be.checked");
+
+    cy.log("allow downloads should be visible when drills are off (EMB-712)");
+    getEmbedSidebar().findByLabelText("Allow downloads").should("be.visible");
+
+    cy.log("drill-through should be disabled in chart preview");
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.log("the static question has no interactive toolbar");
+      cy.findByTestId("interactive-question-result-toolbar", {
+        timeout: RERENDER_TIMEOUT,
+      }).should("not.exist");
+      cy.findByText("18,760").should("be.visible").click();
+      cy.findByText("See these Orders").should("not.exist");
+    });
 
     cy.log("chart title state should remain unchecked");
     getEmbedSidebar()
@@ -542,6 +509,7 @@ describe(suiteTitle, () => {
     cy.log("snippet should be updated");
     getEmbedSidebar().findByText("Get code").click();
     codeBlock().should("contain", 'with-title="false"');
+    codeBlock().should("contain", 'drills="false"');
 
     cy.log("go back to embed options step");
     getEmbedSidebar().findByText("Back").click();
@@ -557,6 +525,17 @@ describe(suiteTitle, () => {
     H.getSimpleEmbedIframeContent()
       .findByText("Orders, Count")
       .should("be.visible");
+
+    cy.log("docs link should not be shown for metabot");
+    getEmbedSidebar().within(() => {
+      cy.findByText("Back").click();
+
+      cy.findByText("Metabot").click();
+      cy.findByText("Next").click();
+
+      cy.findByLabelText("Auto").should("exist");
+      cy.findByTestId("behavior-docs-link").should("not.exist");
+    });
   });
 
   it("cannot select alerts for question when email is not set up", () => {
@@ -641,7 +620,7 @@ describe(suiteTitle, () => {
 
     cy.log("assert that alert button appears in preview");
     H.getSimpleEmbedIframeContent()
-      .findByRole("button", { name: "Alerts" })
+      .findByRole("button", { name: "Alerts", timeout: RERENDER_TIMEOUT })
       .should("be.visible");
 
     cy.log(
@@ -653,18 +632,31 @@ describe(suiteTitle, () => {
       .click()
       .should("not.be.checked");
     H.getSimpleEmbedIframeContent()
-      .findByRole("button", { name: "Alerts" })
+      .findByRole("button", { name: "Alerts", timeout: RERENDER_TIMEOUT })
       .should("be.visible");
 
     cy.log("assert that unchecking alerts will close the alert modal");
     const newAlertModalTitle = "New alert";
-    H.getSimpleEmbedIframeContent().within(() => {
-      cy.findByRole("button", { name: "Alerts" }).should("be.visible").click();
-
-      cy.findByRole("heading", { name: newAlertModalTitle }).should(
-        "be.visible",
-      );
-    });
+    // Re-query the iframe body for the click instead of caching it via
+    // within(): toggling the sidebar options above re-renders the embedded
+    // question, so a cached body (and the element found inside it) goes stale
+    // and the "Alerts" ActionIcon detaches mid-click. Asserting visibility and
+    // clicking as separate re-queried chains lets Cypress re-run the full query
+    // for the action and land on a freshly-attached, stable button. The re-render
+    // re-executes the question's query inside the already-loaded iframe, which can
+    // exceed the default 4s command timeout, so give these lookups a longer budget.
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts", timeout: RERENDER_TIMEOUT })
+      .should("be.visible");
+    H.getSimpleEmbedIframeContent()
+      .findByRole("button", { name: "Alerts", timeout: RERENDER_TIMEOUT })
+      .click();
+    H.getSimpleEmbedIframeContent()
+      .findByRole("heading", {
+        name: newAlertModalTitle,
+        timeout: RERENDER_TIMEOUT,
+      })
+      .should("be.visible");
 
     getEmbedSidebar()
       .findByLabelText("Allow alerts")
@@ -690,28 +682,6 @@ describe(suiteTitle, () => {
     });
 
     codeBlock().should("contain", 'with-alerts="true"');
-  });
-
-  it("shows a docs icon in behavior section depending on a component", () => {
-    navigateToEmbedOptionsStep({
-      experience: "chart",
-      resourceName: QUESTION_NAME,
-      preselectSso: true,
-    });
-
-    getEmbedSidebar().within(() => {
-      cy.findByTestId("behavior-docs-link").should("be.visible");
-      cy.findByTestId("behavior-docs-link")
-        .should("have.attr", "href")
-        .and("include", "embedding/components.html#question");
-
-      cy.findByText("Back").click();
-
-      cy.findByText("Metabot").click();
-      cy.findByText("Next").click();
-
-      cy.findByTestId("behavior-docs-link").should("not.exist");
-    });
   });
 
   ["exploration", "chart"].forEach((experience) => {
@@ -777,31 +747,6 @@ describe(suiteTitle, () => {
     });
   });
 
-  it("toggles save button for metabot", () => {
-    navigateToEmbedOptionsStep({ experience: "metabot" });
-
-    getEmbedSidebar()
-      .findByLabelText("Allow people to save new questions")
-      .should("not.be.checked");
-
-    cy.log("turn on save option");
-    getEmbedSidebar()
-      .findByLabelText("Allow people to save new questions")
-      .click()
-      .should("be.checked");
-
-    cy.log("snippet should be updated");
-    getEmbedSidebar().findByText("Get code").click();
-
-    H.expectUnstructuredSnowplowEvent({
-      event: "embed_wizard_options_completed",
-      event_detail:
-        "settings=custom,experience=metabot,authType=sso,isSaveEnabled=true,theme=default",
-    });
-
-    codeBlock().should("contain", 'is-save-enabled="true"');
-  });
-
   it("can toggle read-only setting for browser", () => {
     navigateToEmbedOptionsStep({
       experience: "browser",
@@ -813,6 +758,7 @@ describe(suiteTitle, () => {
       .should("not.be.checked");
 
     H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Second collection").should("be.visible");
       cy.findByText("New dashboard").should("not.exist");
     });
 
@@ -838,7 +784,7 @@ describe(suiteTitle, () => {
     codeBlock().should("contain", 'read-only="false"');
   });
 
-  it("can change brand color and reset colors", () => {
+  it("can change brand color, reset colors and toggle dashboard title", () => {
     navigateToEmbedOptionsStep({
       experience: "dashboard",
       resourceName: DASHBOARD_NAME,
@@ -916,6 +862,38 @@ describe(suiteTitle, () => {
       event: "embed_wizard_options_completed",
       event_detail: "settings=default",
     });
+
+    cy.log("go back to embed options step to toggle the dashboard title");
+    getEmbedSidebar().findByText("Back").click();
+
+    getEmbedSidebar()
+      .findByLabelText("Show dashboard title")
+      .should("be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders in a dashboard")
+      .should("be.visible");
+
+    cy.log("turn off title");
+    getEmbedSidebar()
+      .findByLabelText("Show dashboard title")
+      .click()
+      .should("not.be.checked");
+
+    H.getSimpleEmbedIframeContent()
+      .findByText("Orders in a dashboard")
+      .should("not.exist");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        'settings=custom,experience=dashboard,guestEmbedEnabled=true,guestEmbedType=guest-embed,authType=guest-embed,drills=false,withDownloads=false,withSubscriptions=false,withTitle=false,params={"disabled":0,"locked":0,"enabled":0},theme=default',
+    });
+
+    codeBlock().should("contain", 'with-title="false"');
   });
 
   it("derives colors for dark theme palette", () => {
@@ -988,9 +966,47 @@ describe(suiteTitle, () => {
     cy.wait("@persistSettings");
   });
 
-  it("can toggle the Metabot layout from auto to stacked to sidebar", () => {
+  it("shows Metabot and toggles its save button and layout", () => {
     navigateToEmbedOptionsStep({ experience: "metabot" });
 
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_experience_completed",
+      event_detail: "authType=sso,experience=metabot,isDefaultExperience=false",
+    });
+
+    H.getSimpleEmbedIframeContent().within(() => {
+      cy.findByText("Ask questions to AI.").should("be.visible");
+    });
+
+    getEmbedSidebar()
+      .findByLabelText("Allow people to save new questions")
+      .should("not.be.checked");
+
+    cy.log("turn on save option");
+    getEmbedSidebar()
+      .findByLabelText("Allow people to save new questions")
+      .click()
+      .should("be.checked");
+
+    cy.log("snippet should be updated");
+    getEmbedSidebar().findByText("Get code").click();
+
+    H.expectUnstructuredSnowplowEvent({
+      event: "embed_wizard_options_completed",
+      event_detail:
+        "settings=custom,experience=metabot,authType=sso,isSaveEnabled=true,theme=default",
+    });
+
+    codeBlock().should("contain", 'is-save-enabled="true"');
+
+    cy.log("go back and turn off save option");
+    getEmbedSidebar().findByText("Back").click();
+    getEmbedSidebar()
+      .findByLabelText("Allow people to save new questions")
+      .click()
+      .should("not.be.checked");
+
+    cy.log("toggle the layout from auto to stacked to sidebar");
     getEmbedSidebar().findByLabelText("Auto").should("be.checked");
     getEmbedSidebar().findByLabelText("Stacked").click().should("be.checked");
 

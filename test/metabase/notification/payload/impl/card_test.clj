@@ -533,15 +533,15 @@
                                                       (if (= :channel/slack (first args))
                                                         (throw (ex-info "Slack failed" {}))
                                                         (apply original-render-noti args)))]
-            ;; slack failed but email should still be sent
-            (notification.tu/test-send-notification!
-             notification
-             {:channel/email
-              (fn [emails]
-                (is (pos-int? (count emails))))
-              :channel/slack
-              (fn [messages]
-                (is (nil?  messages)))})))))))
+            ;; slack failed but email should still be sent; the synchronous caller then learns that slack
+            ;; failed (GDGT-3144)
+            (notification.tu/with-channel-fixtures [:channel/email :channel/slack]
+              (let [messages (notification.tu/with-captured-channel-send!
+                               (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                                                     #"Failed to deliver to channel/slack$"
+                                                     (notification/send-notification! notification))))]
+                (is (pos-int? (count (:channel/email messages))))
+                (is (nil? (:channel/slack messages)))))))))))
 
 (deftest skip-for-archived-cards-test
   (testing "should not send for archived cards"

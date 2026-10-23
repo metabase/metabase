@@ -12,6 +12,7 @@
    [metabase-enterprise.serialization.v2.round-trip-test :as round-trip-test]
    [metabase.actions.models :as action]
    [metabase.audit-app.core :as audit]
+   [metabase.collections.test-utils :refer [personal-collection]]
    [metabase.core.core :as mbc]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -67,13 +68,7 @@
                        {mark-id :id}
                        {:first_name "Mark"
                         :last_name  "Knopfler"
-                        :email      "mark@direstrai.ts"}
-                       :model/Collection
-                       {pc-id   :id
-                        pc-eid  :entity_id
-                        pc-slug :slug}
-                       {:name              "Mark's Personal Collection"
-                        :personal_owner_id mark-id}]
+                        :email      "mark@direstrai.ts"}]
       (testing "a top-level collection is extracted correctly"
         (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id coll-id))]
           (is (=? {:serdes/meta [{:model "Collection" :id coll-eid :label coll-slug}]}
@@ -91,8 +86,9 @@
           (is (not (contains? ser :location)))
           (is (not (contains? ser :id)))))
       (testing "personal collections are extracted with email as key"
-        (let [ser (serdes/extract-one "Collection" {} (t2/select-one :model/Collection :id pc-id))]
-          (is (=? {:serdes/meta       [{:model "Collection" :id pc-eid :label pc-slug}]
+        (let [pc  (personal-collection mark-id)
+              ser (serdes/extract-one "Collection" {} pc)]
+          (is (=? {:serdes/meta       [{:model "Collection" :id (:entity_id pc) :label (:slug pc)}]
                    :personal_owner_id "mark@direstrai.ts"}
                   ser))
           (is (not (contains? ser :parent_id)))
@@ -103,12 +99,13 @@
           (is (= #{coll-eid child-eid}
                  (ids-by-model "Collection" (extract/extract nil)))))
         (testing "valid user specified"
-          (is (= #{coll-eid child-eid pc-eid}
+          (is (= #{coll-eid child-eid (:entity_id (personal-collection mark-id))}
                  (ids-by-model "Collection" (extract/extract {:user-id mark-id})))))
         (testing "invalid user specified"
           (is (= #{coll-eid child-eid}
                  (ids-by-model "Collection" (extract/extract {:user-id 218921})))))))))
 
+;; dozens of extraction cases share one hand-built dashboard/card graph; splitting duplicates the fixture
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-and-cards-test
   (mt/with-empty-h2-app-db!
@@ -126,15 +123,6 @@
                        {:first_name "David"
                         :last_name  "Knopfler"
                         :email      "david@direstrai.ts"}
-                       :model/Collection
-                       {mark-coll-eid :entity_id}
-                       {:name              "MK Personal"
-                        :personal_owner_id mark-id}
-                       :model/Collection
-                       {dave-coll-id  :id
-                        dave-coll-eid :entity_id}
-                       {:name              "DK Personal"
-                        :personal_owner_id dave-id}
                        :model/Database
                        {db-id :id}
                        {:name "My Database"}
@@ -261,14 +249,14 @@
                        {other-dash-id :id
                         other-dash    :entity_id}
                        {:name          "Dave's Dash"
-                        :collection_id dave-coll-id
+                        :collection_id (:id (personal-collection dave-id))
                         :creator_id    mark-id
                         :parameters    []}
                        :model/Dashboard
                        {param-dash-id :id
                         param-dash    :entity_id}
                        {:name          "Dave's Dash with parameters"
-                        :collection_id dave-coll-id
+                        :collection_id (:id (personal-collection dave-id))
                         :creator_id    mark-id
                         :parameters    [{:id                   "abc"
                                          :type                 "category"
@@ -312,7 +300,8 @@
                        :model/DashboardCard
                        _
                        {:action_id    action-id
-                        :dashboard_id other-dash-id}]
+                        :dashboard_id other-dash-id
+                        :row          1}]
       (testing "table and database are extracted as [db schema table] triples"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c1-id))]
           (is (=? {:serdes/meta   [{:model "Card" :id c1-eid :label "some_question"}]
@@ -323,13 +312,11 @@
                                                                [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]
                                                                18]]
                                                :aggregation  [[:count {}]]}]
-                                   :database "My Database"}
-                   :created_at    string?}
+                                   :database "My Database"}}
                   ser))
           (is (not (contains? ser :id)))
-          (testing "cards depend on their Collection and the query's Database (not the Tables/Fields it references)"
-            (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Collection" :id coll-eid}]}
+          (testing "cards depend on their Collection (not the Database/Tables/Fields the query references)"
+            (is (= #{[{:model "Collection" :id coll-eid}]}
                    (set (serdes/deserialization-dependencies ser))))))
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c2-id))]
           (is (=? {:serdes/meta        [{:model "Card" :id c2-eid :label "second_question"}]
@@ -339,15 +326,13 @@
                    :parameter_mappings [{:parameter_id "deadbeef"
                                          :card_id      c1-eid
                                          :target       [:dimension [:field ["My Database" nil "Schemaless Table" "Some Field"]
-                                                                    {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}]
-                   :created_at         string?}
+                                                                    {:source-field ["My Database" "PUBLIC" "Schema'd Table" "Other Field"]}]]}]}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :table_id)) "table_id always skipped for cards — re-derived on import")
           (is (contains? ser :database_id) "database_id kept when query is empty")
-          (testing "cards depend on their Database (kept because query is empty), Collection, and parameter_mappings card refs (not the Fields)"
-            (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Collection" :id coll-eid}]
+          (testing "cards depend on their Collection and parameter_mappings card refs (not the Database or the Fields)"
+            (is (= #{[{:model "Collection" :id coll-eid}]
                      [{:model "Card" :id c1-eid}]}
                    (set (serdes/deserialization-dependencies ser))))))
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c3-id))]
@@ -375,13 +360,11 @@
                       :fieldRef [:field "Average order total" {:base-type :type/Float}]
                       :enabled  true}]
                     :column_settings
-                    {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}
-                   :created_at    string?}
+                    {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}}
                   ser))
           (is (not (contains? ser :id)))
-          (testing "cards depend on their Database (kept, query empty) and Collection (not the Fields in visualization_settings)"
-            (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Collection" :id coll-eid}]}
+          (testing "cards depend on their Collection (not the Database or the Fields in visualization_settings)"
+            (is (= #{[{:model "Collection" :id coll-eid}]}
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "Cards can be based on other cards"
         (let [ser (serdes/extract-one "Card" {} (t2/select-one :model/Card :id c5-id))]
@@ -390,15 +373,13 @@
                    :collection_id coll-eid
                    :dataset_query {:stages   [{:source-card c4-eid
                                                :aggregation [[:count {}]]}]
-                                   :database "My Database"}
-                   :created_at    string?}
+                                   :database "My Database"}}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :table_id)) "table_id stripped")
           (is (not (contains? ser :database_id)) "database_id stripped — derivable from query")
-          (testing "and depend on their Collection, Database (from query), and the upstream Card"
-            (is (= #{[{:model "Database" :id "My Database"}]
-                     [{:model "Collection" :id coll-eid}]
+          (testing "and depend on their Collection and the upstream Card"
+            (is (= #{[{:model "Collection" :id coll-eid}]
                      [{:model "Card" :id c4-eid}]}
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "Dashboards include their Dashcards"
@@ -422,17 +403,14 @@
                                                 :fieldRef [:field "Average order total" {:base-type :type/Float}]
                                                 :enabled  true}]
                                               :column_settings
-                                              {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}
-                     :created_at             string?}
-                    {:action_id action-eid}]
-                   :created_at  string?}
+                                              {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {:column_title "Locus"}}}}
+                    {:action_id action-eid}]}
                   ser))
           (is (not (contains? ser :id)))
-          (testing "and depend on all referenced cards and actions, plus the Database of fields referenced in visualization_settings"
+          (testing "and depend on all referenced cards and actions"
             (is (= #{[{:model "Card" :id c2-eid}]
                      [{:model "Action" :id action-eid}]
-                     [{:model "Database" :id "My Database"}]
-                     [{:model "Collection" :id dave-coll-eid}]}
+                     [{:model "Collection" :id (:entity_id (personal-collection dave-id))}]}
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "Dashboards with parameters where the source is a card"
         (let [ser (ts/extract-one "Dashboard" param-dash-id)]
@@ -446,10 +424,8 @@
                                                           nil]},
                      :values_source_type   :card}]}
                   ser))
-          (is (= #{[{:model "Collection" :id dave-coll-eid}]
-                   [{:model "Card" :id c1-eid}]
-                   ;; the parameter's value_field references a Field, but only its Database is a dependency
-                   [{:model "Database", :id "My Database"}]}
+          (is (= #{[{:model "Collection" :id (:entity_id (personal-collection dave-id))}]
+                   [{:model "Card" :id c1-eid}]}
                  (set (serdes/deserialization-dependencies ser))))))
       (testing "Cards with parameters where the source is a card"
         (let [ser (ts/extract-one "Dashboard" param-dash-id)]
@@ -463,10 +439,8 @@
                                                           nil]},
                      :values_source_type   :card}]}
                   ser))
-          (is (= #{[{:model "Collection" :id dave-coll-eid}]
-                   [{:model "Card" :id c1-eid}]
-                   ;; the parameter's value_field references a Field, but only its Database is a dependency
-                   [{:model "Database", :id "My Database"}]}
+          (is (= #{[{:model "Collection" :id (:entity_id (personal-collection dave-id))}]
+                   [{:model "Card" :id c1-eid}]}
                  (set (serdes/deserialization-dependencies ser))))))
       (testing "collection filtering based on :user option"
         (testing "only unowned collections are returned with no user"
@@ -475,11 +449,11 @@
                       (into [])
                       (map :name)))))
         (testing "unowned collections and the personal one with a user"
-          (is (= #{coll-eid mark-coll-eid}
+          (is (= #{coll-eid (:entity_id (personal-collection mark-id))}
                  (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                       (serdes/extract-all "Collection")
                       (ids-by-model "Collection"))))
-          (is (= #{coll-eid dave-coll-eid}
+          (is (= #{coll-eid (:entity_id (personal-collection dave-id))}
                  (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                       (serdes/extract-all "Collection")
                       (ids-by-model "Collection"))))))
@@ -499,6 +473,24 @@
                       (serdes/extract-all "Dashboard")
                       (ids-by-model "Dashboard")))))))))
 
+(deftest dashcard-order-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc
+      [:model/Collection    {coll-id :id}                 {:name "Some Collection"}
+       :model/Card          {card-id :id}                 {:name "Some Question", :collection_id coll-id}
+       :model/Dashboard     {dash-id :id}                 {:name "Some Dashboard", :collection_id coll-id}
+       :model/DashboardTab  {second-tab :id}              {:dashboard_id dash-id :name "Second" :position 1}
+       :model/DashboardTab  {first-tab :id}               {:dashboard_id dash-id :name "First" :position 0}
+       :model/DashboardCard {in-second :entity_id}        {:card_id card-id :dashboard_id dash-id
+                                                           :dashboard_tab_id second-tab}
+       :model/DashboardCard {in-first-b :entity_id}       {:card_id card-id :dashboard_id dash-id
+                                                           :dashboard_tab_id first-tab :entity_id "bbbbbbbbbbbbbbbbbbbbb"}
+       :model/DashboardCard {in-first-a :entity_id}       {:card_id card-id :dashboard_id dash-id
+                                                           :dashboard_tab_id first-tab :entity_id "aaaaaaaaaaaaaaaaaaaaa"}]
+      (testing "dashcards are ordered by their tab's position, not its local id, then by entity_id at the same place"
+        (is (= [in-first-a in-first-b in-second]
+               (map :entity_id (:dashcards (ts/extract-one "Dashboard" dash-id)))))))))
+
 (deftest dashboard-card-series-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc
@@ -508,7 +500,7 @@
        :model/Card {c3-id :id, c3-eid :entity_id} {:name "Series Question B", :collection_id coll-id}
        :model/Dashboard {dash-id :id, dash-eid :entity_id} {:name "Shared Dashboard", :collection_id coll-id}
        :model/DashboardCard {dc1-id :id, dc1-eid :entity_id} {:card_id c1-id, :dashboard_id dash-id}
-       :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id}
+       :model/DashboardCard {dc2-eid :entity_id}             {:card_id c1-id, :dashboard_id dash-id, :row 1}
        :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
        :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
       (testing "Inlined dashcards include their series' card entity IDs"
@@ -558,46 +550,49 @@
                                                                     :type     "external"
                                                                     :field_id fk-id
                                                                     :human_readable_field_id cust-name}]
-      (testing "dimensions without foreign keys are inlined into their Fields\n"
-        (let [ser (ts/extract-one "Field" email-id)]
+      (testing "a dimension without a foreign key is its own entity under its Field\n"
+        (let [ser (ts/extract-one "Dimension" dim1-eid)]
           (is (malli= [:map
                        [:serdes/meta [:= [{:model "Database", :id "My Database"}
                                           {:model "Table", :id "Schemaless Table"}
-                                          {:model "Field", :id "email"}]]]
-                       [:dimensions  [:sequential
-                                      [:map
-                                       [:created_at :string]
-                                       [:human_readable_field_id {:optional true} [:maybe [:sequential [:maybe :string]]]]]]]]
+                                          {:model "Field", :id "email"}
+                                          {:model "Dimension", :id dim1-eid}]]]
+                       [:human_readable_field_id {:optional true} [:maybe [:sequential [:maybe :string]]]]]
                       ser))
           (is (not (contains? ser :id)))
-          (testing "As of #27062 a Field can only have one Dimension. For historic reasons it comes back as a list"
-            (is (= [dim1-eid]
-                   (->> ser :dimensions (map :entity_id)))))
-          (testing "depend only on the Database; the Table is synthesized on import if missing"
-            (is (= #{[{:model "Database"   :id "My Database"}]}
+          (is (= ["My Database" nil "Schemaless Table" "email"] (:field_id ser))
+              ":field_id is exported so the path can be rebuilt from the file")
+          (testing "have no dependencies; the Database, Table and Field are synthesized on import if missing"
+            (is (= #{}
                    (set (serdes/deserialization-dependencies ser)))))))
-      (testing "foreign key dimensions are inlined into their Fields"
-        (let [ser (ts/extract-one "Field" fk-id)]
-          (is (malli= [:map
-                       [:serdes/meta        [:= [{:model "Database" :id "My Database"}
-                                                 {:model "Schema" :id "PUBLIC"}
-                                                 {:model "Table" :id "Orders"}
-                                                 {:model "Field" :id "customer_id"}]]]
-                       [:name               [:= "customer_id"]]
-                       [:fk_target_field_id [:= ["My Database" "PUBLIC" "Customers" "id"]]]
-                       [:dimensions         [:sequential
-                                             [:map
-                                              [:human_readable_field_id [:maybe [:sequential [:maybe :string]]]]
-                                              [:created_at              :string]]]]]
-                      ser))
-          (is (not (contains? ser :id)))
-          (testing "dimensions are properly inlined"
-            (is (=? [{:human_readable_field_id ["My Database" "PUBLIC" "Customers" "name"]
-                      :created_at              string?}]
-                    (:dimensions ser))))
-          (testing "depend only on the Database; the Table, FK target and human-readable Fields are synthesized on import if missing"
-            (is (= #{[{:model "Database"   :id "My Database"}]}
-                   (set (serdes/deserialization-dependencies ser))))))))))
+      (testing "a foreign key dimension is its own entity under its Field"
+        (let [ser (ts/extract-one "Dimension" (t2/select-one-fn :entity_id :model/Dimension :field_id fk-id))]
+          (is (=? {:serdes/meta             [{:model "Database" :id "My Database"}
+                                             {:model "Schema" :id "PUBLIC"}
+                                             {:model "Table" :id "Orders"}
+                                             {:model "Field" :id "customer_id"}
+                                             {:model "Dimension" :id string?}]
+                   :human_readable_field_id ["My Database" "PUBLIC" "Customers" "name"]}
+                  ser))
+          (testing "have no dependencies; the Database, FK target and human-readable Fields are synthesized on import if missing"
+            (is (= #{}
+                   (set (serdes/deserialization-dependencies ser)))))))
+      (testing "Fields carry no dimensions"
+        (is (not (contains? (ts/extract-one "Field" fk-id) :dimensions)))))))
+
+(deftest snippet-descendants-test
+  (testing "Exporting a snippet also exports the snippets and cards its template tags reference"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/NativeQuerySnippet {b-eid :entity_id} {:name "B" :content "1 = 1"}
+                     :model/Card               {d-id :id d-eid :entity_id} {:name "D"}
+                     :model/NativeQuerySnippet {a-id :id a-eid :entity_id}
+                     {:name "A" :content (format "{{snippet: B}} AND id IN ({{#%d-d}})" d-id)}]
+        (let [extraction (into [] (extract/extract {:targets       [["NativeQuerySnippet" a-id]]
+                                                    :no-settings   true
+                                                    :no-data-model true
+                                                    :no-transforms true}))]
+          (is (= #{a-eid b-eid} (ids-by-model "NativeQuerySnippet" extraction)))
+          (is (= #{d-eid} (ids-by-model "Card" extraction))))))))
 
 (deftest native-query-snippets-test
   (mt/with-empty-h2-app-db!
@@ -630,7 +625,7 @@
                                                                                             :name         "snippet",
                                                                                             :snippet-id   s1-id,
                                                                                             :snippet-name "snip",
-                                                                                            :type         :number}}})}]
+                                                                                            :type         :snippet}}})}]
       (testing "native query snippets"
         (testing "can belong to :snippets collections"
           (let [ser (serdes/extract-one "NativeQuerySnippet" {} (t2/select-one :model/NativeQuerySnippet :id s1-id))]
@@ -638,8 +633,7 @@
                                       :id    s1-eid
                                       :label "snippet_1"}]
                      :collection_id coll-eid
-                     :creator_id    "ann@heart.band"
-                     :created_at    string?}
+                     :creator_id    "ann@heart.band"}
                     ser))
             (is (not (contains? ser :id)))
             (testing "and depend on the Collection"
@@ -655,7 +649,6 @@
                                              :id    s2-eid
                                              :label "snippet_2"}]]]
                          [:creator_id  [:= "ann@heart.band"]]
-                         [:created_at  :string]
                          [:collection_id {:optional true} :nil]]
                         ser))
             (is (not (contains? ser :id)))
@@ -699,6 +692,44 @@
             (is (contains? targets-without-skip ["Collection" archived-child-id]))
             (is (contains? targets-without-skip ["Card" card-in-active-id]))
             (is (contains? targets-without-skip ["Card" card-in-archived-id]))))))))
+
+(defn- resolve-targets-ex
+  "Returns the ExceptionInfo thrown by `resolve-targets` for `targets`, or nil if it did not throw."
+  [targets]
+  (try
+    (#'extract/resolve-targets {:targets targets} nil)
+    nil
+    (catch clojure.lang.ExceptionInfo e e)))
+
+(deftest resolve-targets-missing-id-test
+  (testing "a target id that does not exist is rejected as client input, not left to fail deep in extraction"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Collection {coll-id :id} {:name "Real Collection"}
+                         :model/Card       {card-id :id} {:name          "Real Card"
+                                                          :collection_id coll-id}]
+        (let [missing-id Integer/MAX_VALUE]
+          (testing "nonexistent Collection id"
+            (let [e (resolve-targets-ex [["Collection" missing-id]])]
+              (is (some? e))
+              (is (re-find #"Could not find Collection with ID" (ex-message e)))
+              (is (re-find (re-pattern (str missing-id)) (ex-message e))
+                  "the offending id is named so the user can correct it")
+              (is (= {:status-code 400 :model "Collection" :id missing-id}
+                     (select-keys (ex-data e) [:status-code :model :id]))
+                  "carries a :status-code so the API layer renders a 4xx instead of a server error")))
+          (testing "nonexistent id of a model other than Collection"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Could not find Card with ID"
+                                  (#'extract/resolve-targets {:targets [["Card" missing-id]]} nil))))
+          (testing "nil id, which a caller can produce by parsing a non-numeric id"
+            ;; without this check nil reaches `serdes/descendants`, which happily queries
+            ;; `collection_id IS NULL` and exports root-level content instead of failing
+            (let [e (resolve-targets-ex [["Collection" nil]])]
+              (is (some? e))
+              (is (= 400 (:status-code (ex-data e))))))
+          (testing "ids that do exist still resolve"
+            (let [targets (#'extract/resolve-targets {:targets [["Collection" coll-id]]} nil)]
+              (is (contains? targets ["Collection" coll-id]))
+              (is (contains? targets ["Card" card-id])))))))))
 
 (deftest extract-skip-archived-test
   (testing "extract with skip-archived: true excludes archived items from final extraction"
@@ -748,7 +779,7 @@
                         :collection_id coll-id
                         :creator_id    ann-id}
                        :model/TimelineEvent
-                       _
+                       {event-eid :entity_id}
                        {:name        "First Event"
                         :creator_id  ann-id
                         :timestamp   #t "2020-04-11T00:00Z"
@@ -758,8 +789,7 @@
           (let [ser (ts/extract-one "Timeline" empty-id)]
             (is (=? {:serdes/meta   [{:model "Timeline" :id empty-eid :label "empty_timeline"}]
                      :collection_id coll-eid
-                     :creator_id    "ann@heart.band"
-                     :created_at    string?}
+                     :creator_id    "ann@heart.band"}
                     ser))
             (is (not (contains? ser :id)))
             (testing "depend on the Collection"
@@ -770,10 +800,11 @@
             (is (=? {:serdes/meta   [{:model "Timeline" :id line-eid :label "populated_timeline"}]
                      :collection_id coll-eid
                      :creator_id    "ann@heart.band"
-                     :created_at    string?
-                     :events        [{:timestamp  "2020-04-11T00:00:00Z"
-                                      :creator_id "ann@heart.band"
-                                      :created_at string?}]}
+                     :events        [{:entity_id  event-eid
+                                      :serdes/meta [{:model "Timeline" :id line-eid}
+                                                    {:model "TimelineEvent" :id event-eid}]
+                                      :timestamp  "2020-04-11T00:00:00Z"
+                                      :creator_id "ann@heart.band"}]}
                     ser))
             (is (not (contains? ser :id)))
             (is (not (contains? (-> ser :events first) :id)))
@@ -806,12 +837,11 @@
                                  :stages   [{:source-table ["My Database" nil "Schemaless Table"],
                                              :filters      [[:< {}
                                                              [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]
-                                                             18]]}]}
-                   :created_at  string?}
+                                                             18]]}]}}
                   ser))
           (is (not (contains? ser :id)))
-          (testing "depend only on the Database; the Table/Fields from the definition are not dependencies"
-            (is (= #{[{:model "Database" :id "My Database"}]}
+          (testing "have no dependencies; the Database/Table/Fields from the definition are not dependencies"
+            (is (= #{}
                    (set (serdes/deserialization-dependencies ser))))))))))
 
 (defn- mbql5-measure-definition
@@ -847,12 +877,11 @@
                        :definition  {:database "My Database"
                                      :lib/type :mbql/query
                                      :stages [{:source-table ["My Database" nil "Schemaless Table"]
-                                               :aggregation  [[:sum {} [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]]]}]}
-                       :created_at  string?}
+                                               :aggregation  [[:sum {} [:field {} ["My Database" nil "Schemaless Table" "Some Field"]]]]}]}}
                       ser))
               (is (not (contains? ser :id)))
-              (testing "depend only on the Database; the Table/Fields from the definition are not dependencies"
-                (is (= #{[{:model "Database" :id "My Database"}]}
+              (testing "have no dependencies; the Database/Table/Fields from the definition are not dependencies"
+                (is (= #{}
                        (set (serdes/deserialization-dependencies ser))))))))))))
 
 (deftest measure-referencing-measure-test
@@ -977,6 +1006,41 @@
           (testing "collection_id is nil"
             (is (nil? (:collection_id ser)))))))))
 
+(deftest table-owner-serdes-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/User     {user-id :id}  {:email "owner@example.com"}
+                       :model/Database {db-id :id}    {:name "My Database"}
+                       :model/Table    {table-id :id} {:name "Owned Table" :db_id db-id :owner_user_id user-id}]
+      (testing "the owner is exported by email, not by local id"
+        (is (= "owner@example.com" (:owner_user_id (ts/extract-one "Table" table-id))))))))
+
+(deftest sync-state-serdes-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database {db-id :id}    {:name                        "My Database"
+                                                       :engine                      :postgres
+                                                       :dbms_version                {:version "14.0"}
+                                                       :initial_sync_status         "aborted"
+                                                       :initial_sync_error          "Connection refused"
+                                                       :metadata_sync_schedule      "0 10 * * * ? *"
+                                                       :cache_field_values_schedule "0 0 16 * * ? *"}
+                       :model/Table    {table-id :id} {:name "My Table" :db_id db-id :initial_sync_status "incomplete"}]
+      (testing "what sync detects or schedules on the exporting instance is not exported"
+        (is (=? {:name "My Database"} (ts/extract-one "Database" db-id)))
+        (is (= #{} (set (keys (select-keys (ts/extract-one "Database" db-id)
+                                           [:dbms_version :initial_sync_status :initial_sync_error
+                                            :metadata_sync_schedule :cache_field_values_schedule])))))
+        (is (not (contains? (ts/extract-one "Table" table-id) :initial_sync_status)))))))
+
+(deftest setting-from-env-var-test
+  (let [exported-site-name #(some (fn [{k :key v :value}] (when (= :site-name k) [v]))
+                                  (serdes/extract-all "Setting" {}))]
+    (mt/with-temporary-setting-values [site-name "From the app DB"]
+      (testing "a Setting set in the app DB is exported"
+        (is (= ["From the app DB"] (exported-site-name))))
+      (mt/with-temp-env-var-value! [mb-site-name "From an env var"]
+        (testing "a Setting set by an env var is not exported"
+          (is (nil? (exported-site-name))))))))
+
 (deftest implicit-action-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
@@ -1004,7 +1068,6 @@
                 (is (=? {:serdes/meta [{:model "Action" :id (:entity_id action) :label "my_action"}]
                          :creator_id  "ann@heart.band"
                          :type        "implicit"
-                         :created_at  string?
                          :model_id    card-eid-1
                          :implicit    [{:kind :row/update}]}
                         ser))
@@ -1012,6 +1075,31 @@
                 (testing "depends on the Model"
                   (is (= #{[{:model "Card" :id card-eid-1}]}
                          (set (serdes/deserialization-dependencies ser)))))))))))))
+
+(deftest collection-export-includes-model-actions-test
+  (testing "GHY-4722: exporting a collection exports the actions of its models, though a model doesn't reference them"
+    (mt/with-empty-h2-app-db!
+      (ts/with-temp-dpc [:model/Database   {db-id :id}      {:name "My Database"}
+                         :model/Collection {coll-id :id}    {:name "Models"}
+                         :model/Card       {model-id :id}   {:name          "Model"
+                                                             :type          :model
+                                                             :database_id   db-id
+                                                             :collection_id coll-id
+                                                             :dataset_query {:database db-id
+                                                                             :type     :native
+                                                                             :native   {:query "select 1"}}}
+                         :model/Action     {action-id :id}  {:name "My Action" :type :implicit :model_id model-id}
+                         :model/Action     {archived-id :id} {:name "Old Action" :type :implicit :model_id model-id
+                                                              :archived true}]
+        (let [eid (fn [id] (t2/select-one-fn :entity_id :model/Action :id id))]
+          (is (= #{(eid action-id) (eid archived-id)}
+                 (ids-by-model "Action" (extract/extract {:targets       [["Collection" coll-id]]
+                                                          :no-data-model true}))))
+          (testing "with :skip-archived, the archived action is left out"
+            (is (= #{(eid action-id)}
+                   (ids-by-model "Action" (extract/extract {:targets       [["Collection" coll-id]]
+                                                            :no-data-model true
+                                                            :skip-archived true}))))))))))
 
 (deftest query-action-test
   (mt/with-empty-h2-app-db!
@@ -1043,7 +1131,6 @@
                                         :label "my_action"}]
                          :type        "query"
                          :creator_id  "ann@heart.band"
-                         :created_at  string?
                          :query       [{:dataset_query {:database "My Database"
                                                         :lib/type :mbql/query
                                                         :stages   [{:lib/type :mbql.stage/native
@@ -1051,9 +1138,8 @@
                          :model_id    card-eid-1}
                         ser))
                 (is (not (contains? ser :id)))
-                (testing "depends on the Model and Database"
-                  (is (= #{[{:model "Database" :id "My Database"}]
-                           [{:model "Card" :id card-eid-1}]}
+                (testing "depends on the Model"
+                  (is (= #{[{:model "Card" :id card-eid-1}]}
                          (set (serdes/deserialization-dependencies ser)))))))))))))
 
 (deftest field-values-test
@@ -1085,14 +1171,13 @@
                                  {:model "Table"    :id "Schemaless Table"}
                                  {:model "Field"    :id "Some Field"}
                                  {:model "FieldValues" :id "0"}] ; Always 0.
-                   :created_at  string?
                    :values      values}
                   ser))
           (is (not (contains? ser :id)))
-          (is (not (contains? ser :field_id))
-              ":field_id is dropped; its implied by the path")
-          (testing "depend only on the Database; the parent Field is synthesized on import if missing"
-            (is (= #{[{:model "Database"   :id "My Database"}]}
+          (is (= ["My Database" nil "Schemaless Table" "Some Field"] (:field_id ser))
+              ":field_id is exported so the path can be rebuilt from the file")
+          (testing "have no dependencies; the Database and parent Field are synthesized on import if missing"
+            (is (= #{}
                    (set (serdes/deserialization-dependencies ser)))))))
       (testing "extract-metabase behavior"
         (testing "without :include-field-values"
@@ -1108,66 +1193,84 @@
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database {db-id        :id} {:name "My Database"}
                        :model/Table    {no-schema-id :id} {:name "Schemaless Table" :db_id db-id}
-                       :model/Field    {field-id     :id} {:name "Some Field" :table_id no-schema-id}
+                       :model/Field    {field-id     :id} {:name             "Some Field"
+                                                           :table_id         no-schema-id
+                                                           :data_sensitivity :PII}
+                       :model/Field    {plain-id     :id} {:name "Plain Field" :table_id no-schema-id}
                        :model/FieldUserSettings {description :description}
-                       {:field_id              field-id
-                        :description "Some custom Description"}]
+                       {:field_id         field-id
+                        :description      "Some custom Description"
+                        :data_sensitivity :PII}]
       (testing "field values"
         (let [ser (serdes/extract-one "FieldUserSettings" {} (t2/select-one :model/FieldUserSettings :field_id field-id))]
-          (is (=? {:serdes/meta [{:model "Database" :id "My Database"}
-                                 {:model "Table"    :id "Schemaless Table"}
-                                 {:model "Field"    :id "Some Field"}
-                                 {:model "FieldUserSettings" :id "1"}] ; Always 1.
-                   :created_at  string?
-                   :description description}
+          (is (=? {:serdes/meta      [{:model "Database" :id "My Database"}
+                                      {:model "Table"    :id "Schemaless Table"}
+                                      {:model "Field"    :id "Some Field"}
+                                      {:model "FieldUserSettings" :id "1"}] ; Always 1.
+                   :description      description
+                   :data_sensitivity :PII}
                   ser))
-          (is (not (contains? ser :field_id))
-              ":field_id is dropped; its implied by the path")
-          (testing "depend only on the Database; the parent Field is synthesized on import if missing"
-            (is (= #{[{:model "Database"   :id "My Database"}]}
-                   (set (serdes/deserialization-dependencies ser)))))))
+          (is (= ["My Database" nil "Schemaless Table" "Some Field"] (:field_id ser))
+              ":field_id is exported so the path can be rebuilt from the file")))
+      (testing "data_sensitivity on the Field itself"
+        (is (= :PII (:data_sensitivity (ts/extract-one "Field" field-id)))
+            "a labeled field exports the keyword as-is")
+        (is (not (contains? (ts/extract-one "Field" plain-id) :data_sensitivity))
+            "an unlabeled field exports no key, so nil never reaches the YAML"))
       (testing "extract-metabase behavior"
-        (let [models (->> {} (extract/extract) (map (comp :model last :serdes/meta)))]
-          (is (= 1
-                 (t2/count :model/FieldUserSettings)
-                 (count (filter #{"FieldUserSettings"} models)))))))))
+        (let [entities (into [] (extract/extract {}))
+              models   (map (comp :model last :serdes/meta) entities)]
+          (is (= 1 (count (filter #{"FieldUserSettings"} models)))
+              "written as its own entity, only for the Field that has settings")
+          (is (empty? (filter #{"TableUserSettings"} models))
+              "no TableUserSettings for a Table without a settings row"))))))
 
-(deftest table-descendants-user-edits-only-test
+(deftest table-descendants-user-settings-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database {db-id    :id} {:name "DB"}
                        :model/Table    {table-id :id} {:name "T" :db_id db-id}
                        :model/Field    {f1-id    :id} {:name "F1" :table_id table-id}
                        :model/Field    {f2-id    :id} {:name "F2" :table_id table-id}
                        :model/Field    {f3-id    :id} {:name "F3" :table_id table-id}]
-      (testing "without user-edits-only: all fields returned as Field descendants"
-        (let [desc (serdes/descendants "Table" table-id {})]
-          (is (= #{["Field" f1-id] ["Field" f2-id] ["Field" f3-id]}
-                 (set (keys desc))))))
-      (testing "with user-edits-only and no FieldUserSettings rows: no field descendants"
-        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
-          (is (empty? (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
-      (testing "with user-edits-only and one FieldUserSettings row: only that field appears as FieldUserSettings"
+      (testing "every Field is a descendant, and none has user settings to speak of yet"
+        (is (= #{["Field" f1-id] ["Field" f2-id] ["Field" f3-id]}
+               (set (keys (serdes/descendants "Table" table-id {}))))))
+      (testing "a Field's settings and Dimension are descendants of their own"
         (t2/insert! :model/FieldUserSettings {:field_id f2-id :description "edited"})
-        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
-          (is (= #{["FieldUserSettings" f2-id]}
-                 (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc))))))
-        (t2/delete! :model/FieldUserSettings :field_id f2-id))
-      (testing "with user-edits-only and all fields edited: all appear as FieldUserSettings, not Field"
-        (t2/insert! :model/FieldUserSettings {:field_id f1-id})
-        (t2/insert! :model/FieldUserSettings {:field_id f2-id})
-        (t2/insert! :model/FieldUserSettings {:field_id f3-id})
-        (let [desc (serdes/descendants "Table" table-id {:user-edits-only true})]
-          (is (= #{["FieldUserSettings" f1-id] ["FieldUserSettings" f2-id] ["FieldUserSettings" f3-id]}
-                 (set (filter (fn [[model _]] (#{"Field" "FieldUserSettings"} model)) (keys desc)))))))
-      (testing "Field and FieldUserSettings are leaf nodes in the descendants graph"
-        ;; Table's descendants method is the only source of field-level entries; if Field ever
-        ;; grows its own descendants (e.g. Field -> FieldUserSettings), traversal would visit
-        ;; every field and full exports would change shape. Cement the leaf-ness here.
-        (doseq [opts [{} {:user-edits-only true}]]
-          (is (empty? (serdes/descendants "Field" f1-id opts)))
-          (is (empty? (serdes/descendants "FieldUserSettings" f1-id opts))))))))
+        (let [dimension-id (t2/insert-returning-pk! :model/Dimension {:field_id f3-id :name "F3" :type :internal})]
+          (is (= #{["Field" f1-id] ["Field" f2-id] ["Field" f3-id]
+                   ["FieldUserSettings" f2-id] ["Dimension" dimension-id]}
+                 (set (keys (serdes/descendants "Table" table-id {}))))))
+        (t2/delete! :model/FieldUserSettings :field_id f2-id)
+        (t2/delete! :model/Dimension :field_id f3-id))
+      (testing "a Table with user settings appears as TableUserSettings"
+        (t2/insert! :model/TableUserSettings {:table_id table-id :display_name "Renamed"})
+        (is (contains? (set (keys (serdes/descendants "Table" table-id {})))
+                       ["TableUserSettings" table-id])))
+      (testing "Field is a leaf node in the descendants graph"
+        (is (empty? (serdes/descendants "Field" f1-id {})))))))
 
-(deftest user-edits-only-extract-test
+(deftest table-user-settings-extract-test
+  (mt/with-empty-h2-app-db!
+    (ts/with-temp-dpc [:model/Database          {db-id    :id} {:name "DB"}
+                       :model/Table             {table-id :id} {:name "T" :db_id db-id}
+                       :model/Table             {other-id :id} {:name "Unedited T" :db_id db-id}
+                       :model/Field             {f1-id    :id} {:name "F1" :table_id table-id}
+                       :model/FieldUserSettings _              {:field_id f1-id :description "edited"}
+                       :model/TableUserSettings _              {:table_id table-id :display_name "Renamed"}]
+      (testing "a Table's settings carry only its own values, not its Fields'"
+        (is (=? [{:display_name "Renamed"
+                  :serdes/meta  [{:model "Database" :id "DB"}
+                                 {:model "Table"    :id "T"}
+                                 {:model "TableUserSettings" :id "1"}]}]
+                (into [] (serdes/extract-all "TableUserSettings" {:filter-column :table_id
+                                                                  :filter-ids    [table-id]}))))
+        (is (not (contains? (ts/extract-one "TableUserSettings" table-id) :fields))))
+      (testing "a Table with no settings row yields nothing"
+        (is (empty? (into [] (serdes/extract-all "TableUserSettings" {:filter-column :table_id
+                                                                      :filter-ids    [other-id]}))))))))
+
+(deftest collection-export-includes-user-settings-test
   (mt/with-empty-h2-app-db!
     (ts/with-temp-dpc [:model/Database    {db-id    :id} {:name "DB"}
                        :model/Collection  {coll-id  :id} {:name "Library" :type "library-data"}
@@ -1176,24 +1279,19 @@
                                                           :collection_id coll-id}
                        :model/Field       _              {:name "F1" :table_id table-id}
                        :model/Field       {f2-id    :id} {:name "F2" :table_id table-id}
-                       :model/FieldUserSettings _ {:field_id f2-id :description "curated"}]
-      (testing "targeting the collection with user-edits-only: produces FieldUserSettings, not Field"
-        (let [entities (into [] (extract/extract {:targets         [["Collection" coll-id]]
-                                                  :user-edits-only true
-                                                  :no-data-model   true}))
-              by-model (group-by (comp :model last :serdes/meta) entities)]
-          (is (contains? by-model "FieldUserSettings") "should include FieldUserSettings")
-          (is (not (contains? by-model "Field")) "should not include Field")
-          (is (= #{"F2"}
-                 (set (map #(-> % :serdes/meta (nth 2) :id) (by-model "FieldUserSettings"))))
-              "only the edited field's FieldUserSettings (identified by field name in path)")
-          (is (some #(= "T" (:name %)) (by-model "Table")) "the table itself is included")))
-      (testing "without user-edits-only: produces Field, not FieldUserSettings"
+                       :model/FieldUserSettings _ {:field_id f2-id :description "curated"}
+                       :model/TableUserSettings _ {:table_id table-id :display_name "Renamed"}]
+      (testing "targeting the collection exports the Table and its Fields, each beside its user settings"
         (let [entities (into [] (extract/extract {:targets       [["Collection" coll-id]]
                                                   :no-data-model true}))
               by-model (group-by (comp :model last :serdes/meta) entities)]
-          (is (contains? by-model "Field") "should include Field")
-          (is (not (contains? by-model "FieldUserSettings")) "should not include FieldUserSettings"))))))
+          (is (some #(= "T" (:name %)) (by-model "Table")))
+          (is (= #{"F1" "F2"}
+                 (set (map :name (by-model "Field")))))
+          (is (= 1 (count (by-model "TableUserSettings"))))
+          (is (= #{"F2"}
+                 (set (map #(-> % :serdes/meta (nth 2) :id) (by-model "FieldUserSettings"))))
+              "only the field the user edited has settings to export"))))))
 
 (deftest cards-test
   (mt/with-empty-h2-app-db!
@@ -1241,10 +1339,7 @@
                    :values_source_config {:card_id card-eid-1,
                                           :value_field [:field ["My Database" nil "Schemaless Table" "A Field"] nil]}}]
                  (:parameters ser)))
-          ;; The parameter's value_field references a Field, but Tables/Fields are not dependencies — only their
-          ;; Database is.
-          (is (= #{[{:model "Database"   :id "My Database"}]
-                   [{:model "Collection" :id coll-eid-2}]
+          (is (= #{[{:model "Collection" :id coll-eid-2}]
                    [{:model "Card"       :id card-eid-1}]}
                  (set (serdes/deserialization-dependencies ser))))))
       (testing "Nullable transformations are omitted"
@@ -1291,6 +1386,7 @@
           (is (= [{:id "def" :type :category :name "CATEGORY" :position 0}]
                  (:parameters (first (get by-model "Dashboard"))))))))))
 
+;; the selective-serialization cases all walk one shared entity graph; splitting duplicates the fixture
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest selective-serialization-basic-test
   (mt/with-empty-h2-app-db!
@@ -1633,7 +1729,7 @@
                     (map serdes/path)
                     (into #{})))))
       (testing "the click behavior looks sane"
-        (is (= #{{:column_settings nil}
+        (is (= #{{}
                  {:column_settings {"[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Other Field\"],null]]" {}
                                     "[\"ref\",[\"field\",[\"My Database\",\"PUBLIC\",\"Schema'd Table\",\"Field To Click 2\"],null]]" {}}}}
                (->> {:targets [["Collection" coll-id]]
@@ -1715,6 +1811,13 @@
           (is (= #{"Postgres DB"} (ids-by-model "Database" ser))
               "Only non-H2 databases should appear in the extract"))))))
 
+(deftest skip-stub-databases-test
+  (testing "Stub databases are not extracted, so an import can never turn a real database into a stub"
+    (mt/with-empty-h2-app-db!
+      (mt/with-temp [:model/Database _stub {:name "Stub DB"     :engine :postgres :is_stub true}
+                     :model/Database _real {:name "Postgres DB" :engine :postgres}]
+        (is (= #{"Postgres DB"} (ids-by-model "Database" (extract/extract {:no-settings true}))))))))
+
 (deftest xray-of-analytics-model-export-test
   (testing "X-rays of analytics models can be exported without errors"
     (mt/with-empty-h2-app-db!
@@ -1772,14 +1875,14 @@
         (is (= {(:id dc1) [s]}
                (#'serdes/transform->nested (-> spec :transform :series) {} [dc1])))
         (is (=? (assoc dc1 :series [s])
-                (u/rfirst (serdes/extract-query "DashboardCard" {:where [:= :id (:id dc1)]})))))
+                (u/rfirst (serdes/extract-query "DashboardCard" {:filter-column :id :filter-ids [(:id dc1)]})))))
       (let [spec (serdes/make-spec "Dashboard" nil)]
         (is (= {(:id d) [(assoc dc1 :series [s])]}
                (#'serdes/transform->nested (-> spec :transform :dashcards) {} [d])))
         (is (=? (assoc d
                        :dashcards [(assoc dc1 :series [s])]
                        :tabs nil)
-                (u/rfirst (serdes/extract-query "Dashboard" {:where [:= :id (:id d)]}))))))))
+                (u/rfirst (serdes/extract-query "Dashboard" {:filter-column :id :filter-ids [(:id d)]}))))))))
 
 (deftest extract-nested-efficient-test
   (testing "extract-nested is efficient"
@@ -1803,7 +1906,7 @@
                          :tabs nil)}
                 (into #{} (map (fn [dashboard]
                                  (update dashboard :dashcards #(sort-by :id %))))
-                      (serdes/extract-query "Dashboard" {:where [:in :id [(:id d1) (:id d2)]]}))))
+                      (serdes/extract-query "Dashboard" {:filter-column :id :filter-ids [(:id d1) (:id d2)]}))))
         ;; 1 per dashboard/dashcard/series/tabs
         (is (= 4 (qc)))))))
 
@@ -1817,8 +1920,9 @@
                                                          :card_id      (:id c1)})))]
         (t2/with-call-count [qc]
           (is (=? [(assoc d :dashcards dcs)]
-                  (into [] (serdes/extract-query "Dashboard" {:batch-limit 5
-                                                              :where [:= :id (:id d)]}))))
+                  (into [] (serdes/extract-query "Dashboard" {:batch-limit   5
+                                                              :filter-column :id
+                                                              :filter-ids    [(:id d)]}))))
           ;; query count breakdown:
           ;; - 1 for dashboard
           ;; - 1 for tabs, there are none
@@ -1908,13 +2012,15 @@
                                                      :collection_id coll-id}
        :model/DashboardTab  {tab-id-1 :id
                              tab-eid-1 :entity_id}  {:dashboard_id dash-id
-                                                     :name "Tab 1"}
+                                                     :name "Tab 1"
+                                                     :position 0}
        :model/DashboardCard  _                      {:dashboard_id dash-id
                                                      :dashboard_tab_id tab-id-1
                                                      :card_id card-id-1}
        :model/DashboardTab  {tab-id-2 :id
                              tab-eid-2 :entity_id}  {:dashboard_id dash-id
-                                                     :name "Tab 2"}
+                                                     :name "Tab 2"
+                                                     :position 1}
        :model/DashboardCard _                       {:dashboard_id dash-id
                                                      :dashboard_tab_id tab-id-2
                                                      :card_id card-id-2}]
@@ -1957,9 +2063,7 @@
                               :entity_id metabot-prompt-eid
                               :card_id model-eid
                               :serdes/meta [{:model "Metabot" :id metabot-eid}
-                                            {:model "MetabotPrompt" :id metabot-prompt-eid}]
-                              :created_at string?}]
-                   :created_at string?}
+                                            {:model "MetabotPrompt" :id metabot-prompt-eid}]}]}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :use_verified_content)))
@@ -2002,9 +2106,7 @@
                               :entity_id metabot-prompt-eid
                               :card_id card-eid
                               :serdes/meta [{:model "Metabot" :id metabot-eid}
-                                            {:model "MetabotPrompt" :id metabot-prompt-eid}]
-                              :created_at string?}]
-                   :created_at string?}
+                                            {:model "MetabotPrompt" :id metabot-prompt-eid}]}]}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :use_verified_content)))
@@ -2031,16 +2133,16 @@
                        :model/Table table {:name "linked_table"}]
       (t2/update! :model/Document :id (u/the-id document) {:document {:type "doc"
                                                                       :content [{:type "cardEmbed"
-                                                                                 :attrs {:id (u/the-id card)}}
+                                                                                 :attrs {"id" (u/the-id card)}}
                                                                                 {:type "smartLink"
-                                                                                 :attrs {:entityId (u/the-id linked-card)
-                                                                                         :model "card"}}
+                                                                                 :attrs {"entityId" (u/the-id linked-card)
+                                                                                         "model" "card"}}
                                                                                 {:type "smartLink"
-                                                                                 :attrs {:entityId (u/the-id table)
-                                                                                         :model "table"}}
+                                                                                 :attrs {"entityId" (u/the-id table)
+                                                                                         "model" "table"}}
                                                                                 {:type "smartLink"
-                                                                                 :attrs {:entityId (u/the-id dashboard)
-                                                                                         :model "dashboard"}}]}})
+                                                                                 :attrs {"entityId" (u/the-id dashboard)
+                                                                                         "model" "dashboard"}}]}})
       (testing "document extraction"
         (let [ser (ts/extract-one "Document" (u/the-id document))]
           (is (=? {:serdes/meta [{:model "Document" :id (:entity_id document)}]
@@ -2048,21 +2150,19 @@
                    :entity_id (:entity_id document)
                    :document {:type "doc"
                               :content [{:type "cardEmbed"
-                                         :attrs {:id [{:model "Card" :id (:entity_id card)}]}}
+                                         :attrs {"id" [{:model "Card" :id (:entity_id card)}]}}
                                         {:type "smartLink"
-                                         :attrs {:entityId [{:model "Card" :id (:entity_id linked-card)}]
-                                                 :model "card"}}
+                                         :attrs {"entityId" [{:model "Card" :id (:entity_id linked-card)}]
+                                                 "model" "card"}}
                                         {:type "smartLink"
-                                         :attrs {:entityId (serdes/generate-path "Table" table)
-                                                 :model "table"}}
+                                         :attrs {"entityId" (serdes/generate-path "Table" table)
+                                                 "model" "table"}}
                                         {:type "smartLink"
-                                         :attrs {:entityId [{:model "Dashboard" :id (:entity_id dashboard)}]
-                                                 :model "dashboard"}}]}
+                                         :attrs {"entityId" [{:model "Dashboard" :id (:entity_id dashboard)}]
+                                                 "model" "dashboard"}}]}
                    :creator_id (:email user)
                    :collection_id (:entity_id collection)
-                   :content_type "application/json+vnd.prose-mirror"
-                   :updated_at string?
-                   :created_at string?}
+                   :content_type "application/json+vnd.prose-mirror"}
                   ser))
           (is (not (contains? ser :archived)))
           (is (not (contains? ser :archived_directly)))
@@ -2115,12 +2215,14 @@
             (is (= expected result))))))))
 
 (deftest glossary-test
-  (testing "Glossary entries are extracted well"
-    (mt/with-temp [:model/Glossary _ {:term       "foobar"
-                                      :definition "It's foobar2000 actually"}]
+  (testing "Glossary entries are keyed on entity_id and carry the term"
+    (mt/with-temp [:model/Glossary {eid :entity_id} {:term       "foobar"
+                                                     :definition "It's foobar2000 actually"}]
       (let [ser (serdes/extract-one "Glossary" {} (t2/select-one :model/Glossary :term "foobar"))]
-        (is (=? {:serdes/meta [{:model "Glossary" :id "foobar"}]
-                 :term        "foobar"}
+        (is (=? {:serdes/meta [{:model "Glossary" :id eid}]
+                 :entity_id   eid
+                 :term        "foobar"
+                 :definition  "It's foobar2000 actually"}
                 ser))))))
 
 (deftest transform-tag-extraction-test
@@ -2147,8 +2249,7 @@
               (is (=? {:serdes/meta [{:model "TransformTag"
                                       :id hourly-tag-eid}]
                        :name "hourly"
-                       :built_in_type "hourly"
-                       :created_at string?}
+                       :built_in_type "hourly"}
                       ser))
               (is (not (contains? ser :id)))
               (is (empty? (serdes/deserialization-dependencies ser)))))
@@ -2156,8 +2257,7 @@
             (let [ser (serdes/extract-one "TransformTag" {} (t2/hydrate (t2/select-one :model/TransformTag :id custom-tag-id) :tags))]
               (is (=? {:serdes/meta [{:model "TransformTag"
                                       :id custom-tag-eid}]
-                       :name "custom-etl"
-                       :created_at string?}
+                       :name "custom-etl"}
                       ser))
               (is (not (contains? ser :built_in_type)))
               (is (not (contains? ser :id)))
@@ -2253,8 +2353,7 @@
               (is (=? {:serdes/meta [{:model "Transform"
                                       :id transform-eid}]
                        :name "Test Transform"
-                       :description "A test transform for serialization"
-                       :created_at string?}
+                       :description "A test transform for serialization"}
                       ser))
               (is (not (contains? ser :id))))
             (testing "source and target MBQL export"
@@ -2269,10 +2368,10 @@
                     positions (map :position (:tags ser))]
                 (is (= [hourly-tag-eid custom-tag-eid daily-tag-eid] tag-ids))
                 (is (= [0 1 2] positions))))
-            (testing "dependencies include collection, source database, and tags (the source Table itself is not a dependency)"
+            (testing "dependencies include collection and tags (the source Database and Table are not dependencies)"
               (let [deps (set (serdes/deserialization-dependencies ser))]
                 (is (contains? deps [{:model "Collection" :id coll-eid}]))
-                (is (contains? deps [{:model "Database" :id "My Database"}]))
+                (is (not (contains? deps [{:model "Database" :id "My Database"}])))
                 (is (not (contains? deps [{:model "Database" :id "My Database"}
                                           {:model "Table" :id "Schemaless Table"}])))
                 (is (contains? deps [{:model "TransformTag" :id hourly-tag-eid}]))
@@ -2425,8 +2524,7 @@
                        :name "Hourly job"
                        :description "Executes transforms tagged with 'hourly' every hour"
                        :schedule "0 0 * * * ? *"
-                       :built_in_type "hourly"
-                       :created_at string?}
+                       :built_in_type "hourly"}
                       ser))
               (is (not (contains? ser :id)))
               (testing "job has associated tags"
@@ -2442,8 +2540,7 @@
                                       :id custom-job-eid}]
                        :name "Custom ETL Job"
                        :description "Custom data processing job"
-                       :schedule "0 0 2 * * ? *"
-                       :created_at string?}
+                       :schedule "0 0 2 * * ? *"}
                       ser))
               (is (not (contains? ser :built_in_type)))
               (is (not (contains? ser :id)))
@@ -2553,8 +2650,7 @@
                                   :id    lib-entity-id}]
                    :path        "common.py"
                    :source      "def helper():\n    return 42"
-                   :entity_id   lib-entity-id
-                   :created_at  string?}
+                   :entity_id   lib-entity-id}
                   ser))
           (is (not (contains? ser :id)))
           (testing "has no dependencies"
@@ -2579,8 +2675,7 @@
                    :identifier   "test-plugin"
                    :manifest     {}
                    :bundle_hash  "deadbeef"
-                   :bundle       string?
-                   :created_at   string?}
+                   :bundle       string?}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :status)))
@@ -2706,8 +2801,7 @@
                    :name "Email Channel"
                    :type :channel/email
                    :description "An email channel"
-                   :details {:host "smtp.example.com" :port 587}
-                   :created_at string?}
+                   :details {:host "smtp.example.com" :port 587}}
                   ser))
           (is (not (contains? ser :id)))
           (is (not (contains? ser :active)))))
@@ -2719,8 +2813,7 @@
                    :description "An HTTP channel"
                    :details {:url "https://example.com/webhook"
                              :method "POST"
-                             :auth-method "none"}
-                   :created_at string?}
+                             :auth-method "none"}}
                   ser))))
       (testing "channel storage-path uses top-level channels directory"
         (let [ser (ts/extract-one "Channel" email-id)]
@@ -2786,13 +2879,8 @@
                                                     :display :table}]
         (let [ser  (serdes/extract-one "Card" {} (t2/select-one :model/Card card-id))
               deps (serdes/deserialization-dependencies ser)]
-          ;; Database dep comes from mbql-deps on the query's :database key
-          (is (contains? (set deps) [{:model "Database" :id "Test DB"}])
-              "Database dependency should come from the query")
-          ;; Tables/Fields are intentionally not dependencies — they're synthesized as inactive rows on import
-          ;; if missing, and upserted otherwise.
-          (is (not-any? #(some (fn [step] (#{"Table" "Field"} (:model step))) %) deps)
-              "Table/Field should not be dependencies"))))))
+          (is (not-any? #(some (fn [step] (#{"Database" "Table" "Field"} (:model step))) %) deps)
+              "Database/Table/Field should not be dependencies"))))))
 
 (deftest segment-export-strips-table-id-test
   (testing "Segment export omits table_id — derivable from definition"
@@ -2850,9 +2938,7 @@
                                   :label "light"}]
                    :entity_id  light-eid
                    :name       "Light"
-                   :settings   {}
-                   :created_at string?
-                   :updated_at string?}
+                   :settings   {}}
                   ser))
           (is (not (contains? ser :id)))
           (testing "embedding themes have no dependencies"

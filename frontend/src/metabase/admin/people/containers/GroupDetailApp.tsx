@@ -1,14 +1,14 @@
 import { t } from "ttag";
 
-import { SettingsPageWrapper } from "metabase/admin/components/SettingsSection";
 import {
   useGetPermissionsGroupQuery,
   useListUserMembershipsQuery,
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useParams } from "metabase/router";
-import { getUser } from "metabase/selectors/user";
+import { SettingsPageWrapper } from "metabase/settings-components";
 
 import { GroupDetail } from "../components/GroupDetail";
 

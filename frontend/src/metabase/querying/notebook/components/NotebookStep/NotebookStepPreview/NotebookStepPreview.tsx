@@ -3,10 +3,10 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
-import type { QuestionResultLoaderChildrenProps } from "metabase/common/components/QuestionResultLoader";
-import { QuestionResultLoader } from "metabase/common/components/QuestionResultLoader";
 import CS from "metabase/css/core/index.css";
+import { HEADER_HEIGHT, ROW_HEIGHT } from "metabase/data-grid/constants";
 import { Box, Button, Flex, Icon } from "metabase/ui";
+import { getScrollBarSize } from "metabase/utils/dom";
 import { checkNotNull } from "metabase/utils/types";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
@@ -16,6 +16,8 @@ import type { Dataset } from "metabase-types/api";
 import type { NotebookStep } from "../../../types";
 
 import S from "./NotebookStepPreview.module.css";
+import type { QuestionResultLoaderChildrenProps } from "./QuestionResultLoader";
+import { QuestionResultLoader } from "./QuestionResultLoader";
 
 const PREVIEW_ROWS_LIMIT = 10;
 
@@ -55,7 +57,7 @@ export const NotebookStepPreview = ({
   );
 
   return (
-    <Box pt="md" data-testid="preview-root">
+    <Box pt="lg" data-testid="preview-root">
       <Flex justify="space-between" align="center" mb="sm">
         <span className={CS.textBold}>{t`Preview`}</span>
         <Flex align="flex-end">
@@ -139,5 +141,5 @@ export const VisualizationPreview = ({
 
 function getPreviewHeightForResult(result: Dataset | null) {
   const rowCount = result ? result.data.rows.length : 1;
-  return rowCount * 36 + 36 + 2;
+  return rowCount * ROW_HEIGHT + HEADER_HEIGHT + getScrollBarSize() + 2;
 }

@@ -1,4 +1,7 @@
-import type { BugReportDetails, ErrorPayload } from "metabase-types/api";
+import type {
+  BugReportDetails,
+  DiagnosticInfoPayload,
+} from "metabase-types/api";
 
 import { Api } from "./api";
 
@@ -10,7 +13,7 @@ export const bugReportApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     sendBugReport: builder.mutation<
       BugReportResponse,
-      { diagnosticInfo: ErrorPayload }
+      { diagnosticInfo: DiagnosticInfoPayload }
     >({
       query: (body) => ({
         method: "POST",

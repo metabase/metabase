@@ -64,7 +64,7 @@ export function ColumnsField({
       description={description}
       error={touched ? error : null}
     >
-      <Stack gap="sm" mt="xs">
+      <Stack gap="sm" mt="xxs">
         <MultiSelect
           data={options}
           value={selectedColumns.map((column) => column.name)}

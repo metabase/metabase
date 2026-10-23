@@ -12,15 +12,18 @@ import {
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import {
+  setupLlmModelsEndpoint,
+  setupLlmProviderTypesEndpoint,
+  setupLlmProvidersEndpoint,
   setupMetabotPromptSuggestionsEndpoint,
   setupMetabotsEndpoints,
 } from "__support__/server-mocks/metabot";
 import { mockSettings } from "__support__/settings";
+import { createMockSettingsState } from "__support__/state";
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
-import { FIXED_METABOT_IDS } from "metabase/metabot/constants";
+import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { buildDefaultMetabots } from "metabase/metabot/tests/utils";
 import { reinitialize } from "metabase/plugins";
-import { createMockSettingsState } from "metabase/redux/store/mocks";
 import { Route } from "metabase/router";
 import {
   createMockCollection,
@@ -101,28 +104,11 @@ const setup = async ({
       key: "llm-metabot-provider",
       value: null,
     }),
-    createMockSettingDefinition({
-      key: "llm-anthropic-api-key",
-      value: undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-openai-api-key",
-      value: undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-openrouter-api-key",
-      value: undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-zai-api-key",
-      value: undefined,
-    }),
-    createMockSettingDefinition({
-      key: "llm-mistral-api-key",
-      value: undefined,
-    }),
   ]);
   setupUpdateSettingEndpoint();
+  setupLlmProviderTypesEndpoint();
+  setupLlmProvidersEndpoint();
+  setupLlmModelsEndpoint();
   setupCollectionByIdEndpoint({ collections });
   setupRootCollectionItemsEndpoint({ rootCollectionItems: [] });
   setupCollectionsEndpoints({ collections: [] });
@@ -130,7 +116,7 @@ const setup = async ({
   setupRecentViewsAndSelectionsEndpoints(defaultSeedCollections as any);
   setupMetabotsEndpoints(metabots);
 
-  [FIXED_METABOT_IDS.DEFAULT, FIXED_METABOT_IDS.EMBEDDED].forEach((metabotId) =>
+  metabots.forEach(({ id: metabotId }) =>
     setupMetabotPromptSuggestionsEndpoint({
       metabotId,
       prompts: [],
@@ -238,23 +224,30 @@ describe("AISettingsPage", () => {
     expect(screen.getByRole("switch", { name: "Agent API" })).toBeDisabled();
   });
 
-  it("keeps the embedded deep link working by selecting the embedded tab", async () => {
-    await setup({
-      enableEmbedding: true,
-      initialRoute: `/admin/metabot?metabot_id=${FIXED_METABOT_IDS.EMBEDDED}`,
-    });
+  it.each([FIXED_METABOT_ENTITY_IDS.EMBEDDED, "2"])(
+    "selects the embedded Metabot for %s",
+    async (metabotId) => {
+      await setup({
+        enableEmbedding: true,
+        initialRoute: `/admin/metabot?metabot_id=${metabotId}`,
+        metabots: buildDefaultMetabots({
+          default: { id: 41 },
+          embedded: { id: 42 },
+        }),
+      });
 
-    expect(
-      screen.getByRole("tab", { name: "Embedded", selected: true }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Enable Embedded Metabot")).toBeInTheDocument();
-  });
+      expect(
+        screen.getByRole("tab", { name: "Embedded", selected: true }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Enable Embedded Metabot")).toBeInTheDocument();
+    },
+  );
 
   it("reflects the persisted use_verified_content state from the API", async () => {
     await setup({
       contentVerification: true,
       metabots: buildDefaultMetabots({
-        default: { use_verified_content: true },
+        default: { id: 41, use_verified_content: true },
       }),
     });
 
@@ -296,7 +289,7 @@ describe("AISettingsPage", () => {
 
     expect(router?.location).toMatchObject({
       pathname: "/admin/metabot",
-      search: `?metabot_id=${FIXED_METABOT_IDS.EMBEDDED}`,
+      search: `?metabot_id=${FIXED_METABOT_ENTITY_IDS.EMBEDDED}`,
       hash: "",
     });
   });

@@ -1,6 +1,6 @@
 import fetchMock from "fetch-mock";
 
-import { screen, waitFor } from "__support__/ui";
+import { screen, waitFor, within } from "__support__/ui";
 import * as Urls from "metabase/urls";
 
 import { setup } from "./setup";
@@ -24,7 +24,31 @@ describe("DataStudioLayout", () => {
         expect(screen.getByTestId("data-studio-nav")).toBeInTheDocument();
       });
 
-      expect(screen.getByText("Tables")).toBeInTheDocument();
+      expect(screen.getByText("Connected data")).toBeInTheDocument();
+    });
+
+    it("should render the library tabs", async () => {
+      setup({ remoteSyncBranch: "main" });
+
+      const nav = await screen.findByTestId("data-studio-nav");
+      for (const label of [
+        "Semantic layer",
+        "Dashboards",
+        "SQL snippets",
+        "Data actions",
+        "Glossary",
+      ]) {
+        expect(within(nav).getByText(label)).toBeInTheDocument();
+      }
+      expect(
+        within(nav).getByRole("link", { name: /Dashboards/ }),
+      ).toHaveAttribute("href", "/data-studio/dashboards");
+      expect(
+        within(nav).getByRole("link", { name: /SQL snippets/ }),
+      ).toHaveAttribute("href", "/data-studio/snippets");
+      expect(
+        within(nav).getByRole("link", { name: /Data actions/ }),
+      ).toHaveAttribute("href", "/data-studio/actions");
     });
 
     it("should render content area", async () => {
@@ -38,35 +62,31 @@ describe("DataStudioLayout", () => {
     });
   });
 
-  describe("transforms nav tabs", () => {
-    it("shows Transforms but not Jobs or Runs when setup is incomplete", async () => {
+  describe("transforms nav tab", () => {
+    it("shows Data transformation when setup is incomplete", async () => {
       setup({ transformsSetupComplete: false, transformsEnabled: false });
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
-      expect(screen.getByLabelText("Transforms")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Jobs")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Runs")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
     });
 
-    it("hides Transforms, Jobs, and Runs when setup is complete but transforms are disabled", async () => {
+    it("hides Data transformation when setup is complete but transforms are disabled", async () => {
       setup({ transformsSetupComplete: true, transformsEnabled: false });
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Transforms")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Jobs")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Runs")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Data transformation"),
+      ).not.toBeInTheDocument();
     });
 
-    it("shows Transforms, Jobs, and Runs when setup is complete and transforms are enabled", async () => {
+    it("shows Data transformation when transforms are enabled", async () => {
       setup({ transformsSetupComplete: true, transformsEnabled: true });
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
-      expect(screen.getByLabelText("Transforms")).toBeInTheDocument();
-      expect(screen.getByLabelText("Jobs")).toBeInTheDocument();
-      expect(screen.getByLabelText("Runs")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
     });
 
-    it("shows Transforms for non-admins when setup is incomplete", async () => {
+    it("shows Data transformation for non-admins when setup is incomplete", async () => {
       setup({
         isAdmin: false,
         transformsSetupComplete: false,
@@ -74,11 +94,11 @@ describe("DataStudioLayout", () => {
       });
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
-      expect(screen.getByLabelText("Transforms")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
       expect(screen.queryByLabelText("Jobs")).not.toBeInTheDocument();
     });
 
-    it("hides transform tabs for non-admins without access when setup is complete", async () => {
+    it("hides the transform nav tab for non-admins without access when setup is complete", async () => {
       setup({
         isAdmin: false,
         canAccessTransforms: false,
@@ -87,12 +107,12 @@ describe("DataStudioLayout", () => {
       });
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
-      expect(screen.queryByLabelText("Transforms")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Jobs")).not.toBeInTheDocument();
-      expect(screen.queryByLabelText("Runs")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Data transformation"),
+      ).not.toBeInTheDocument();
     });
 
-    it("shows Jobs and Runs for non-admins with transform access when enabled", async () => {
+    it("shows Data transformation for non-admins with transform access when enabled", async () => {
       setup({
         isAdmin: false,
         canAccessTransforms: true,
@@ -101,12 +121,9 @@ describe("DataStudioLayout", () => {
       });
 
       expect(await screen.findByTestId("data-studio-nav")).toBeInTheDocument();
-      expect(screen.getByLabelText("Transforms")).toBeInTheDocument();
-      expect(screen.getByLabelText("Jobs")).toBeInTheDocument();
-      expect(screen.getByLabelText("Runs")).toBeInTheDocument();
+      expect(screen.getByLabelText("Data transformation")).toBeInTheDocument();
     });
   });
-
   describe("settings tab", () => {
     it("shows Settings for admins after transform setup is complete", async () => {
       setup({ isAdmin: true, transformsSetupComplete: true });

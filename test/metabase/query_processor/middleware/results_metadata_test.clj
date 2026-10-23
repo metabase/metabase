@@ -11,14 +11,17 @@
    [clojure.test :refer :all]
    [malli.error :as me]
    [metabase.analyze.query-results :as qr]
+   [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-util :as lib.tu]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.results-metadata :as middleware.results-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util :as qp.util]
@@ -114,6 +117,25 @@
         ;; updated_at should not be modified when saving result metadata
         (is (= (:updated_at card)
                (t2/select-one-fn :updated_at :model/Card :id (u/the-id card))))))))
+
+(deftest data-sensitivity-in-result-metadata-test
+  (testing "a Field's data_sensitivity label reaches query results through the Lib column metadata"
+    (mt/with-temp-vals-in-db :model/Field (mt/id :venues :name) {:data_sensitivity :PII}
+      (let [query (mt/mbql-query venues {:fields [$id $name]})]
+        (mt/with-temp [:model/Card card {:dataset_query query}]
+          (let [result (qp/process-query
+                        (qp/userland-query
+                         query
+                         {:card-id    (u/the-id card)
+                          :query-hash (qp.util/query-hash {})}))]
+            (when-not (= :completed (:status result))
+              (throw (ex-info "Query failed." result)))
+            (testing "the label reaches the live query response through the Lib column metadata"
+              (is (= [nil :PII]
+                     (map :data_sensitivity (get-in result [:data :cols])))))
+            (testing "the persisted Card result_metadata stores the label as its string form, and only on the labeled column"
+              (is (= [nil "PII"]
+                     (map :data_sensitivity (card-metadata card)))))))))))
 
 (defn- test-card-1 []
   (let [eid (u/generate-nano-id)]
@@ -545,35 +567,68 @@
             "result_metadata should update when the query changes back")))))
 
 (deftest parameterized-queries-do-not-thrash-result-metadata-test
-  ;; When parameters are applied via :parameters, result_metadata should not be updated.
-  ;; See QUE2-502 for details.
-  (mt/with-temp [:model/Card {card-id :id, :as card}
+  ;; A parameterized run that changes nothing but the fingerprint-worthy slice of the data should not rewrite
+  ;; result_metadata (see #72007).
+  (mt/with-temp [:model/Card {card-id :id}
                  {:dataset_query   (mt/mbql-query orders
                                      {:aggregation [[:count] [:sum $total]]
                                       :breakout    [$product_id]})
                   :result_metadata nil}]
     (let [run-with-parameters!
           (fn [product-id]
-            ;; Bind *allow-arbitrary-mbql-parameters* as the dashboard code path does.
+            ;; Refetch the card each time so `store-previous-result-metadata!` sees what the previous run wrote.
             (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
               (mt/as-admin
                 (qp/process-query-for-card
-                 card :api
+                 (t2/select-one :model/Card :id card-id) :api
                  :parameters [{:id     "product-id-param"
                                :type   :id
                                :target [:dimension (mt/$ids orders $product_id)]
                                :value  [product-id]}]
                  :make-run (constantly
                             (fn [query info]
-                              (qp/process-query (assoc query :info info)))))))
-            (t2/select-one-fn :result_metadata :model/Card :id card-id))
-          ;; First run establishes baseline metadata
+                              (qp/process-query (assoc query :info info))))))))
+          ;; First run can legitimately update metadata — the before-insert inference under-types some columns
+          ;; (e.g. count as Integer instead of BigInteger). Snapshot after that run is the baseline.
           _           (run-with-parameters! 1)
           meta-before (t2/select-one-fn :result_metadata :model/Card :id card-id)
-          ;; Second run with different parameter
           _           (run-with-parameters! 50)
           meta-after  (t2/select-one-fn :result_metadata :model/Card :id card-id)]
       (is (some? meta-before)
           "Baseline metadata should be established by first run")
       (is (= meta-before meta-after)
-          "result_metadata should not change for parameterized queries"))))
+          "a second parameterized run should not change result_metadata when only fingerprints differ"))))
+
+(deftest parameterized-queries-still-write-when-column-schema-differs-test
+  ;; The #72007 skip for parameterized runs is overridden when the run's columns differ from stored in anything
+  ;; other than fingerprint, so a card doesn't get stuck with stale columns (#83734).
+  (let [mp             (mt/metadata-provider)
+        pid-tag        {:id "_pid_" :name "pid" :display-name "PID" :type :number
+                        :required true :default "1"}
+        ;; `reduced-query` is the Card's actual query; `baseline-query` represents a wider earlier version
+        ;; whose metadata we install on the Card to simulate a stale save-time recompute (the #83734 shape).
+        reduced-query  (-> (lib/native-query
+                            mp
+                            "SELECT PRODUCT_ID, COUNT(*) AS cnt FROM ORDERS WHERE PRODUCT_ID = {{pid}} GROUP BY PRODUCT_ID")
+                           (lib/with-template-tags {"pid" pid-tag}))
+        baseline-query (-> (lib/native-query
+                            mp
+                            "SELECT PRODUCT_ID, COUNT(*) AS cnt, SUM(TOTAL) AS total_sum FROM ORDERS WHERE PRODUCT_ID = {{pid}} GROUP BY PRODUCT_ID")
+                           (lib/with-template-tags {"pid" pid-tag}))
+        baseline       (mt/as-admin
+                         (get-in (qp/process-query baseline-query)
+                                 [:data :results_metadata :columns]))]
+    (is (seq baseline))
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query reduced-query}]
+      ;; set-card-result-metadata! bypasses populate hooks, so the stale baseline sticks.
+      (query-processor.db/set-card-result-metadata! card-id baseline)
+      (mt/as-admin
+        (qp/process-query-for-card
+         (t2/select-one :model/Card card-id) :api
+         :parameters [{:id "_pid_" :type :number :target [:variable [:template-tag "pid"]] :value "50"}]
+         :make-run (constantly
+                    (fn [query info]
+                      (qp/process-query (assoc query :info info))))))
+      (let [after (t2/select-one-fn :result_metadata :model/Card card-id)]
+        (is (= #{"product_id" "cnt"} (into #{} (map (comp u/lower-case-en :name)) after))
+            "parameter-independent schema change should persist despite the parameter skip")))))

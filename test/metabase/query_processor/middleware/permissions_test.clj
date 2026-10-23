@@ -9,6 +9,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.serialize :as lib.serialize]
    [metabase.lib.test-metadata :as meta]
    [metabase.permissions.core :as perms]
    [metabase.query-processor.middleware.permissions :as qp.perms]
@@ -16,6 +17,7 @@
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.tu]
    [metabase.query-processor.setup :as qp.setup]
+   ;; binds mock metadata providers via the ambient store, which the code under test reads
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -494,8 +496,8 @@
                                         {:source-table (format "card__%d" (u/the-id card-2))}))))))))))))))))))))
 
 (deftest e2e-nested-source-card-no-permissions-mbql-mbql-test
-  (testing "Make sure permissions are calculated correctly for Card 2 -> Card 1 -> Source Query when a user has access to Card 2,
-           but not Card 1 - MBQL Card 1, MBQL Card 2"
+  (testing "Reading Card 2 does not stand in for reading Card 1, which it reads in turn: Card 2 -> Card 1 -> Source
+           Query, with access to Card 2 but not Card 1 - MBQL Card 1, MBQL Card 2"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
@@ -514,8 +516,7 @@
                   (mt/with-temp [:model/Card card-2 {:collection_id collection-2-id
                                                      :dataset_query card-2-query}]
                     (mt/with-test-user :rasta
-                      (let [expected [[1 "Red Medicine" 4 10.0646 -165.374 3]
-                                      [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                      (do
                         (testing "Should not be able to run Card 1 directly"
                           (binding [qp.perms/*card-id* (u/the-id card-1)]
                             (is (thrown-with-msg?
@@ -523,11 +524,13 @@
                                  #"You do not have permissions to view Card"
                                  (mt/rows
                                   (qp/process-query (:dataset_query card-1)))))))
-                        (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                        (testing "Should not be able to run Card 2 either [Card 2 -> Card 1 -> Source Query]"
                           (binding [qp.perms/*card-id* (u/the-id card-2)]
-                            (is (= expected
-                                   (mt/rows
-                                    (qp/process-query (:dataset_query card-2)))))))
+                            (is (thrown-with-msg?
+                                 ExceptionInfo
+                                 #"You do not have permissions to view Card"
+                                 (mt/rows
+                                  (qp/process-query (:dataset_query card-2)))))))
                         (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
                           (is (thrown-with-msg?
                                ExceptionInfo
@@ -535,17 +538,19 @@
                                (mt/rows
                                 (qp/process-query (mt/mbql-query nil
                                                     {:source-table (format "card__%d" card-1-id)}))))))
-                        (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
-                          (is (= expected
-                                 (mt/rows
-                                  (qp/process-query
-                                   (qp/userland-query
-                                    (mt/mbql-query nil
-                                      {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))
+                        (testing "Should not be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
+                          (is (thrown-with-msg?
+                               ExceptionInfo
+                               #"You do not have permissions to view Card"
+                               (mt/rows
+                                (qp/process-query
+                                 (qp/userland-query
+                                  (mt/mbql-query nil
+                                    {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))
 
 (deftest e2e-nested-source-card-no-permissions-mbql-native-test
-  (testing "Make sure permissions are calculated correctly for Card 2 -> Card 1 -> Source Query when a user has access to Card 2,
-           but not Card 1 - MBQL Card 1, native Card 2"
+  (testing "Reading Card 2 does not stand in for reading Card 1, which it reads in turn: Card 2 -> Card 1 -> Source
+           Query, with access to Card 2 but not Card 1 - MBQL Card 1, native Card 2"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
@@ -568,8 +573,7 @@
                   (mt/with-temp [:model/Card card-2 {:collection_id collection-2-id
                                                      :dataset_query card-2-query}]
                     (mt/with-test-user :rasta
-                      (let [expected [[1 "Red Medicine" 4 10.0646 -165.374 3]
-                                      [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                      (do
                         (testing "Should not be able to run Card 1 directly"
                           (binding [qp.perms/*card-id* (u/the-id card-1)]
                             (is (thrown-with-msg?
@@ -577,11 +581,13 @@
                                  #"You do not have permissions to view Card"
                                  (mt/rows
                                   (qp/process-query (:dataset_query card-1)))))))
-                        (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                        (testing "Should not be able to run Card 2 either [Card 2 -> Card 1 -> Source Query]"
                           (binding [qp.perms/*card-id* (u/the-id card-2)]
-                            (is (= expected
-                                   (mt/rows
-                                    (qp/process-query (:dataset_query card-2)))))))
+                            (is (thrown-with-msg?
+                                 ExceptionInfo
+                                 #"You do not have permissions to view Card"
+                                 (mt/rows
+                                  (qp/process-query (:dataset_query card-2)))))))
                         (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
                           (is (thrown-with-msg?
                                ExceptionInfo
@@ -589,17 +595,19 @@
                                (mt/rows
                                 (qp/process-query (mt/mbql-query nil
                                                     {:source-table (format "card__%d" card-1-id)}))))))
-                        (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
-                          (is (= expected
-                                 (mt/rows
-                                  (qp/process-query
-                                   (qp/userland-query
-                                    (mt/mbql-query nil
-                                      {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))
+                        (testing "Should not be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
+                          (is (thrown-with-msg?
+                               ExceptionInfo
+                               #"You do not have permissions to view Card"
+                               (mt/rows
+                                (qp/process-query
+                                 (qp/userland-query
+                                  (mt/mbql-query nil
+                                    {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))
 
 (deftest e2e-nested-source-card-no-permissions-native-mbql-test
-  (testing "Make sure permissions are calculated correctly for Card 2 -> Card 1 -> Source Query when a user has access to Card 2,
-           but not Card 1 - native Card 1, MBQL Card 2"
+  (testing "Reading Card 2 does not stand in for reading Card 1, which it reads in turn: Card 2 -> Card 1 -> Source
+           Query, with access to Card 2 but not Card 1 - native Card 1, MBQL Card 2"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
@@ -621,8 +629,7 @@
                   (mt/with-temp [:model/Card card-2 {:collection_id collection-2-id
                                                      :dataset_query card-2-query}]
                     (mt/with-test-user :rasta
-                      (let [expected [[1 "Red Medicine" 4 10.0646 -165.374 3]
-                                      [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                      (do
                         (testing "Should not be able to run Card 1 directly"
                           (binding [qp.perms/*card-id* (u/the-id card-1)]
                             (is (thrown-with-msg?
@@ -630,11 +637,13 @@
                                  #"You do not have permissions to view Card"
                                  (mt/rows
                                   (qp/process-query (:dataset_query card-1)))))))
-                        (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                        (testing "Should not be able to run Card 2 either [Card 2 -> Card 1 -> Source Query]"
                           (binding [qp.perms/*card-id* (u/the-id card-2)]
-                            (is (= expected
-                                   (mt/rows
-                                    (qp/process-query (:dataset_query card-2)))))))
+                            (is (thrown-with-msg?
+                                 ExceptionInfo
+                                 #"You do not have permissions to view Card"
+                                 (mt/rows
+                                  (qp/process-query (:dataset_query card-2)))))))
                         (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
                           (is (thrown-with-msg?
                                ExceptionInfo
@@ -642,17 +651,19 @@
                                (mt/rows
                                 (qp/process-query (mt/mbql-query nil
                                                     {:source-table (format "card__%d" card-1-id)}))))))
-                        (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
-                          (is (= expected
-                                 (mt/rows
-                                  (qp/process-query
-                                   (qp/userland-query
-                                    (mt/mbql-query nil
-                                      {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))
+                        (testing "Should not be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
+                          (is (thrown-with-msg?
+                               ExceptionInfo
+                               #"You do not have permissions to view Card"
+                               (mt/rows
+                                (qp/process-query
+                                 (qp/userland-query
+                                  (mt/mbql-query nil
+                                    {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))
 
 (deftest e2e-nested-source-card-no-permissions-native-native-test
-  (testing "Make sure permissions are calculated correctly for Card 2 -> Card 1 -> Source Query when a user has access to Card 2,
-           but not Card 1 - native Card 1, native Card 2"
+  (testing "Reading Card 2 does not stand in for reading Card 1, which it reads in turn: Card 2 -> Card 1 -> Source
+           Query, with access to Card 2 but not Card 1 - native Card 1, native Card 2"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
@@ -678,8 +689,7 @@
                   (mt/with-temp [:model/Card card-2 {:collection_id collection-2-id
                                                      :dataset_query card-2-query}]
                     (mt/with-test-user :rasta
-                      (let [expected [[1 "Red Medicine" 4 10.0646 -165.374 3]
-                                      [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2]]]
+                      (do
                         (testing "Should not be able to run Card 1 directly"
                           (binding [qp.perms/*card-id* (u/the-id card-1)]
                             (is (thrown-with-msg?
@@ -687,11 +697,13 @@
                                  #"You do not have permissions to view Card"
                                  (mt/rows
                                   (qp/process-query (:dataset_query card-1)))))))
-                        (testing "Should be able to run Card 2 directly [Card 2 -> Card 1 -> Source Query]"
+                        (testing "Should not be able to run Card 2 either [Card 2 -> Card 1 -> Source Query]"
                           (binding [qp.perms/*card-id* (u/the-id card-2)]
-                            (is (= expected
-                                   (mt/rows
-                                    (qp/process-query (:dataset_query card-2)))))))
+                            (is (thrown-with-msg?
+                                 ExceptionInfo
+                                 #"You do not have permissions to view Card"
+                                 (mt/rows
+                                  (qp/process-query (:dataset_query card-2)))))))
                         (testing "Should not be able to run ad-hoc query with Card 1 as source query [Ad-hoc -> Card 1 -> Source Query]"
                           (is (thrown-with-msg?
                                ExceptionInfo
@@ -699,13 +711,15 @@
                                (mt/rows
                                 (qp/process-query (mt/mbql-query nil
                                                     {:source-table (format "card__%d" card-1-id)}))))))
-                        (testing "Should be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
-                          (is (= expected
-                                 (mt/rows
-                                  (qp/process-query
-                                   (qp/userland-query
-                                    (mt/mbql-query nil
-                                      {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))
+                        (testing "Should not be able to run ad-hoc query with Card 2 as source query [Ad-hoc -> Card 2 -> Card 1 -> Source Query]"
+                          (is (thrown-with-msg?
+                               ExceptionInfo
+                               #"You do not have permissions to view Card"
+                               (mt/rows
+                                (qp/process-query
+                                 (qp/userland-query
+                                  (mt/mbql-query nil
+                                    {:source-table (format "card__%d" (u/the-id card-2))})))))))))))))))))))
 
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."
@@ -735,28 +749,35 @@
                #"You do not have permissions to run this query"
                (qp/process-query (mt/mbql-query venues {:limit 1})))))
         (testing "Query carrying a :query-permissions/perms value is still rejected"
+          ;; the value is dropped by the `:decode/api` decoder every incoming query goes through, so by the time the
+          ;; permissions middleware looks at the query there is nothing there to trust
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                #"You do not have permissions to run this query"
-               (qp/process-query (assoc (mt/mbql-query venues {:limit 1})
-                                        :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
-                                                                          :perms/create-queries {(mt/id :venues) :query-builder}}})))))))))
+               (-> (lib/query (mt/metadata-provider) (mt/mbql-query venues {:limit 1}))
+                   (assoc :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
+                                                            :perms/create-queries {(mt/id :venues) :query-builder}}})
+                   lib.serialize/prepare-after-deserialization
+                   qp/process-query))))))))
 
 (deftest e2e-ignore-user-supplied-sandboxed-tables-test
   (testing "You shouldn't be able to bypass security restrictions by passing in `:query-permissions/sandboxed-table` in the query"
     (mt/with-no-data-perms-for-all-users!
       (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :no)
       (perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
-      (let [bad-query {:database (mt/id), :type :query, :query {:source-query {:native "SELECT * FROM VENUES LIMIT 1"
-                                                                               :query-permissions/sandboxed-table (mt/id :venues)}}
-                       :query-permissions/perms {:gtaps {:perms/view-data :unrestricted
-                                                         :perms/create-queries :query-builder-and-native}}}]
-        (mt/with-test-user :rasta
+      (mt/with-test-user :rasta
+        (let [bad-query (-> (lib/query (mt/metadata-provider)
+                                       {:database (mt/id), :type :query
+                                        :query    {:source-query {:native "SELECT * FROM VENUES LIMIT 1"}}})
+                            (assoc-in [:stages 0 :query-permissions/sandboxed-table] (mt/id :venues))
+                            (assoc :query-permissions/perms {:gtaps {:perms/view-data      :unrestricted
+                                                                     :perms/create-queries :query-builder-and-native}}))]
           (testing "Query carrying :query-permissions/sandboxed-table and perms keys is still rejected"
+            ;; both keys are dropped by the `:decode/api` decoder every incoming query goes through
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"You do not have permissions to run this query"
-                 (qp/process-query bad-query)))))))))
+                 (qp/process-query (lib.serialize/prepare-after-deserialization bad-query))))))))))
 
 (deftest e2e-ignore-user-supplied-compiled-from-mbql-key
   (testing "Make sure the NATIVE query fails to run if current user doesn't have perms even if you try to include an MBQL :query"
@@ -1353,7 +1374,7 @@
                                               {:source-table (format "card__%d" card-4-id)})))))))))))))))))))))))
 
 (deftest e2e-four-level-nested-mixed-permissions-scenario-1-test
-  (testing "Four levels of nesting where user has no access to Card 2 but access to Cards 1, 3, and 4"
+  (testing "Four levels of nesting where the user has no access to Card 2: the Cards built on it are refused too"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
@@ -1391,7 +1412,7 @@
                           (mt/with-temp [:model/Card {card-4-id :id} {:collection_id accessible-coll-2
                                                                       :dataset_query card-4-query}]
                             (mt/with-test-user :rasta
-                              (let [expected [[1 "Red Medicine" 3]]]
+                              (let [_expected [[1 "Red Medicine" 3]]]
                                 (testing "Should be able to run Card 1 directly"
                                   (binding [qp.perms/*card-id* card-1-id]
                                     (is (= [[1 "Red Medicine" 3]
@@ -1403,14 +1424,18 @@
                                          ExceptionInfo
                                          #"You do not have permissions to view Card"
                                          (qp/process-query card-2-query)))))
-                                (testing "Should be able to run Card 3 directly (despite Card 2 in chain)"
+                                (testing "Should NOT be able to run Card 3 directly, since Card 2 is in the chain"
                                   (binding [qp.perms/*card-id* card-3-id]
-                                    (is (= expected
-                                           (mt/rows (qp/process-query card-3-query))))))
-                                (testing "Should be able to run Card 4 directly (despite Card 2 in chain)"
+                                    (is (thrown-with-msg?
+                                         ExceptionInfo
+                                         #"You do not have permissions to view Card"
+                                         (qp/process-query card-3-query)))))
+                                (testing "Should NOT be able to run Card 4 directly, since Card 2 is in the chain"
                                   (binding [qp.perms/*card-id* card-4-id]
-                                    (is (= expected
-                                           (mt/rows (qp/process-query card-4-query))))))
+                                    (is (thrown-with-msg?
+                                         ExceptionInfo
+                                         #"You do not have permissions to view Card"
+                                         (qp/process-query card-4-query)))))
                                 (testing "Should NOT be able to run ad-hoc query with Card 2 as source"
                                   (is (thrown-with-msg?
                                        ExceptionInfo
@@ -1462,11 +1487,16 @@
                                  #"You do not have permissions to view Card"
                                  (binding [qp.perms/*card-id* card-2-id]
                                    (mt/rows (qp/process-query card-2-query))))))
-                          (testing "Should be able to run Card 3 in grandchild collection"
+                          (testing "Should not be able to run Card 3, which reads Card 2 in turn"
                             (binding [qp.perms/*card-id* card-3-id]
-                              (is (seq (mt/rows (qp/process-query card-3-query))))))
-                          (testing "Should be able to run ad-hoc query chaining all cards"
-                            (is (seq
+                              (is (thrown-with-msg?
+                                   ExceptionInfo
+                                   #"You do not have permissions to view Card"
+                                   (qp/process-query card-3-query)))))
+                          (testing "Should not be able to run an ad-hoc query chaining all the cards either"
+                            (is (thrown-with-msg?
+                                 ExceptionInfo
+                                 #"You do not have permissions to view Card"
                                  (mt/rows
                                   (qp/process-query
                                    (qp/userland-query
@@ -1474,7 +1504,7 @@
                                       {:source-table (format "card__%d" card-3-id)}))))))))))))))))))))
 
 (deftest e2e-nested-mixed-query-types-permissions-test
-  (testing "Mixed MBQL and native queries in deep nesting with varying permissions"
+  (testing "Mixed MBQL and native queries in deep nesting: a restricted Card anywhere in the chain refuses the query"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-temp-copy-of-db
         (mt/with-no-data-perms-for-all-users!
@@ -1511,7 +1541,7 @@
                       (mt/with-temp [:model/Card {card-3-id :id} {:collection_id coll-3
                                                                   :dataset_query card-3-query}]
                         (mt/with-test-user :rasta
-                          (let [expected [[1 "Red Medicine" 4 3]]]
+                          (let [_expected [[1 "Red Medicine" 4 3]]]
                             (testing "Should be able to run Card 1 (native, accessible)"
                               (binding [qp.perms/*card-id* card-1-id]
                                 (is (= 2 (count (mt/rows (qp/process-query card-1-query)))))))
@@ -1521,17 +1551,21 @@
                                      ExceptionInfo
                                      #"You do not have permissions to view Card"
                                      (qp/process-query card-2-query)))))
-                            (testing "Should be able to run Card 3 (references restricted Card 2 via template tag)"
+                            (testing "Should NOT be able to run Card 3, which references restricted Card 2 via a template tag"
                               (binding [qp.perms/*card-id* card-3-id]
-                                (is (= expected
-                                       (mt/rows (qp/process-query card-3-query))))))
-                            (testing "Should be able to use Card 3 as source in ad-hoc query"
-                              (is (= expected
-                                     (mt/rows
-                                      (qp/process-query
-                                       (qp/userland-query
-                                        (mt/mbql-query nil
-                                          {:source-table (format "card__%d" card-3-id)})))))))))))))))))))))
+                                (is (thrown-with-msg?
+                                     ExceptionInfo
+                                     #"You do not have permissions to view Card"
+                                     (mt/rows (qp/process-query card-3-query))))))
+                            (testing "Should NOT be able to use Card 3 as source in an ad-hoc query either"
+                              (is (thrown-with-msg?
+                                   ExceptionInfo
+                                   #"You do not have permissions to view Card"
+                                   (mt/rows
+                                    (qp/process-query
+                                     (qp/userland-query
+                                      (mt/mbql-query nil
+                                        {:source-table (format "card__%d" card-3-id)})))))))))))))))))))))
 
 (deftest e2e-expression-referencing-restricted-fields-test
   (testing "Queries with custom expressions that reference fields from restricted tables"

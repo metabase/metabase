@@ -1,4 +1,3 @@
-import dayjs from "dayjs";
 import fetchMock from "fetch-mock";
 import type { ComponentProps } from "react";
 
@@ -13,22 +12,23 @@ import {
   setupSettingEndpoint,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
-import { createMockEntitiesState } from "__support__/store";
+import {
+  createMockDashboardState,
+  createMockQueryBuilderState,
+  createMockState,
+} from "__support__/state";
 import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
+import { dayjs } from "metabase/dayjs";
 import type { DashboardState, StoreDashboard } from "metabase/redux/store";
-import {
-  createMockDashboardState,
-  createMockQueryBuilderState,
-  createMockState,
-} from "metabase/redux/store/mocks";
 import { Route, useLocation, useParams } from "metabase/router";
 import * as iframeUtils from "metabase/utils/iframe";
 import type {
+  Bookmark,
   Card,
   Dashboard,
   DashboardId,
@@ -61,6 +61,7 @@ export type SetupOpts = {
   withAdditionalDatabase?: boolean;
   isUploadEnabled?: boolean;
   openQuestionCard?: Card;
+  bookmarks?: Bookmark[];
   openDashboard?: Dashboard;
   models?: ModelResult[];
   canCurateRootCollection?: boolean;
@@ -101,6 +102,7 @@ export async function setup({
   hasDataAccess = true,
   openDashboard,
   openQuestionCard,
+  bookmarks = [],
   models = [],
   isUploadEnabled = false,
   withAdditionalDatabase = true,
@@ -178,7 +180,7 @@ export async function setup({
     settingValue: {},
   });
 
-  fetchMock.get("path:/api/bookmark", []);
+  fetchMock.get("path:/api/bookmark", bookmarks);
 
   if (openQuestionCard) {
     setupCardsEndpoints([openQuestionCard]);
@@ -186,7 +188,6 @@ export async function setup({
 
   let dashboardId: DashboardId | null = null;
   const dashboardsForState: DashboardState["dashboards"] = {};
-  const dashboardsForEntities: Dashboard[] = [];
   let storeDashboard: StoreDashboard | undefined;
   if (openDashboard) {
     dashboardId = openDashboard.id;
@@ -195,7 +196,6 @@ export async function setup({
       dashcards: openDashboard.dashcards.map((c) => c.id),
     };
     dashboardsForState[openDashboard.id] = storeDashboard;
-    dashboardsForEntities.push(openDashboard);
   }
 
   const storeInitialState = createMockState({
@@ -205,7 +205,6 @@ export async function setup({
       dashboards: dashboardsForState,
     }),
     qb: createMockQueryBuilderState({ card: openQuestionCard }),
-    entities: createMockEntitiesState({ dashboards: dashboardsForEntities }),
     settings: mockSettings({
       "application-name": applicationName,
       "uploads-settings": {

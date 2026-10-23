@@ -17,6 +17,10 @@
 ;;; zai-request-body tests
 ;;; ──────────────────────────────────────────────────────────────────
 
+(def ^:private byok-credentials
+  "What a resolved Z.AI connection hands the adapter: adapters read credentials only, never settings."
+  {:api-key "zai-key.byok" :base-url "https://api.z.ai/api/paas/v4"})
+
 (deftest ^:parallel request-body-default-model-test
   (testing "the model defaults to glm-5.2"
     (is (= "glm-5.2"
@@ -67,6 +71,136 @@
                                    :temperature 0.2
                                    :max-tokens  128})))))
 
+(deftest ^:parallel request-body-thinking-directive-test
+  (testing "whitelisted models get thinking enabled by default (making the server default explicit)"
+    (is (= {:type "enabled"}
+           (:thinking (zai/zai-request-body {:input [{:role :user :content "hi"}]})))))
+  (testing ":reasoning? false disables thinking explicitly — omitting the key would leave it on"
+    (is (= {:type "disabled"}
+           (:thinking (zai/zai-request-body {:input      [{:role :user :content "hi"}]
+                                             :reasoning? false})))))
+  (testing "structured output disables thinking: it would spend the output budget invisibly"
+    (is (= {:type "disabled"}
+           (:thinking (zai/zai-request-body {:input  [{:role :user :content "hi"}]
+                                             :schema {:type "object"}})))))
+  (testing "tool_choice \"required\" keeps thinking on — Z.AI accepts the combination"
+    (is (= {:type "enabled"}
+           (:thinking (zai/zai-request-body {:input       [{:role :user :content "hi"}]
+                                             :tools       [(metabot.tu/get-time-tool)]
+                                             :tool_choice "required"})))))
+  (testing "non-whitelisted models get an explicit disable — glm-4.7 thinks compulsorily by default,
+           and the xf forwards reasoning unconditionally (disable accepted, probed 2026-09-03)"
+    (are [opts] (= {:type "disabled"}
+                   (:thinking (zai/zai-request-body
+                               (assoc opts :model "glm-4.7" :input [{:role :user :content "hi"}]))))
+      {}
+      {:schema {:type "object"}}))
+  (testing "pre-4.5 models tolerate the disable (probed 2026-09-03) and do not think anyway"
+    (is (= {:type "disabled"}
+           (:thinking (zai/zai-request-body {:model "glm-4-32b-0414-128k"
+                                             :input [{:role :user :content "hi"}]}))))))
+
+(deftest ^:parallel request-body-thinking-only-model-test
+  (let [input [{:role :user :content "hi"}]]
+    (testing "thinking-only models reject the disable (error 1210): no directive, reasoning_effort instead"
+      (let [body (zai/zai-request-body {:model "glm-5.3" :input input})]
+        (is (not (contains? body :thinking)))
+        (is (= "max" (:reasoning_effort body)))))
+    (testing "a schema drops the effort to low and raises a title-sized cap to the floor"
+      (is (=? {:reasoning_effort "low"
+               :max_tokens       2048}
+              (zai/zai-request-body {:model      "glm-5.3"
+                                     :input      input
+                                     :schema     {:type "object"}
+                                     :max-tokens 512}))))
+    (testing ":reasoning? false also drops the effort to low — a floor, not an off switch"
+      (is (= "low" (:reasoning_effort (zai/zai-request-body {:model      "glm-5.3"
+                                                             :input      input
+                                                             :reasoning? false})))))
+    (testing "tool_choice \"required\" keeps max effort but still gets the floor"
+      (is (=? {:reasoning_effort "max"
+               :max_tokens       2048}
+              (zai/zai-request-body {:model       "glm-5.3"
+                                     :input       input
+                                     :tools       [(metabot.tu/get-time-tool)]
+                                     :tool_choice "required"
+                                     :max-tokens  512}))))
+    (testing "the floor only raises: a larger cap and an unforced cap are left alone"
+      (are [opts expected] (= expected
+                              (:max_tokens (zai/zai-request-body (assoc opts :model "glm-5.3" :input input))))
+        {:schema {:type "object"} :max-tokens 4096} 4096
+        {:max-tokens 512}                           512))
+    (testing "models that can switch thinking off get neither effort nor floor"
+      (let [body (zai/zai-request-body {:model      "glm-5.2"
+                                        :input      input
+                                        :schema     {:type "object"}
+                                        :max-tokens 512})]
+        (is (= {:type "disabled"} (:thinking body)))
+        (is (not (contains? body :reasoning_effort)))
+        (is (= 512 (:max_tokens body)))))))
+
+(deftest ^:parallel request-body-default-max-tokens-test
+  (let [input [{:role :user :content "hi"}]]
+    (testing "an uncapped call gets the default cap, whatever the model"
+      (are [model] (= 32000 (:max_tokens (zai/zai-request-body {:model model :input input})))
+        "glm-5.3"
+        "glm-5.2"
+        "glm-4.7"))
+    (testing "the caller's own task cap wins over the default"
+      (is (= 512 (:max_tokens (zai/zai-request-body {:model      "glm-5.3"
+                                                     :input      input
+                                                     :max-tokens 512})))))
+    (testing "a forced call takes the default, which is already above the floor"
+      (is (= 32000 (:max_tokens (zai/zai-request-body {:model  "glm-5.3"
+                                                       :input  input
+                                                       :schema {:type "object"}})))))))
+
+(deftest ^:parallel request-body-glm-5-3-flash-test
+  (let [input [{:role :user :content "hi"}]
+        body  #(zai/zai-request-body (assoc % :model "glm-5.3-flash" :input input))]
+    (testing "glm-5.3-flash is thinking-only (error 1210 on the disable): no directive, max effort"
+      (let [chat-body (body {})]
+        (is (not (contains? chat-body :thinking)))
+        (is (= "max" (:reasoning_effort chat-body)))))
+    (testing "a schema drops the effort to low"
+      (is (= "low" (:reasoning_effort (body {:schema {:type "object"}})))))
+    (testing "the forced-call floor raises a cap below 2048 and keeps a cap at or above it"
+      (are [opts expected] (= expected (:max_tokens (body opts)))
+        {:schema {:type "object"} :max-tokens 512}  2048
+        {:schema {:type "object"} :max-tokens 2048} 2048
+        {:schema {:type "object"} :max-tokens 4096} 4096
+        {:max-tokens 512}                           512))))
+
+(deftest ^:parallel reasoning-model?-test
+  (are [model expected] (= expected (zai/reasoning-model? model))
+    "glm-5.2" true
+    "glm-4.7" false
+    nil       false))
+
+(deftest ^:parallel reasoning-gate-matches-request-config-test
+  (testing "every whitelisted model gates true and requests thinking under default opts"
+    (doseq [model (keys @#'zai/supported-models)]
+      (testing model
+        (is (true? (zai/reasoning-model? model)))
+        ;; thinking-only models reject the directive and get none — their thinking is on
+        ;; server-side regardless, so the gate still holds
+        (is (= (if (@#'zai/thinking-only-model? model) nil {:type "enabled"})
+               (:thinking (zai/zai-request-body {:model model
+                                                 :input [{:role :user :content "hi"}]})))))))
+  (testing "a non-whitelisted model gates false and its thinking is explicitly disabled"
+    (is (false? (zai/reasoning-model? "glm-4.7")))
+    (is (= {:type "disabled"}
+           (:thinking (zai/zai-request-body {:model "glm-4.7"
+                                             :input [{:role :user :content "hi"}]}))))))
+
+(deftest ^:parallel thinking-only-implies-supported-test
+  (testing "thinking-only is read off a supported-models row, so it cannot name a model the gate disavows"
+    (doseq [[model {:keys [thinking-only?]}] @#'zai/supported-models
+            :when                            thinking-only?]
+      (testing model
+        (is (true? (zai/reasoning-model? model)))))
+    (is (false? (@#'zai/thinking-only-model? "a-model-we-do-not-serve")))))
+
 ;;; ──────────────────────────────────────────────────────────────────
 ;;; Streaming chunk conversion tests
 ;;;
@@ -96,9 +230,10 @@
                              (self.core/aisdk-xf))
                     chunks))))))
 
-(deftest ^:parallel zai-reasoning-deltas-ignored-test
-  (testing "thinking-mode reasoning_content deltas produce no text blocks"
+(deftest ^:parallel zai-reasoning-deltas-become-reasoning-parts-test
+  (testing "thinking-mode reasoning_content deltas stream as a reasoning part ahead of the text"
     (is (=? [{:type :start}
+             {:type :reasoning :text "Let me think about 2+2."}
              {:type :text :text "4"}
              {:type :usage}]
             (into [] (comp (zai/zai->aisdk-chunks-xf)
@@ -110,6 +245,27 @@
                    {:choices [{:delta {:content "4"}}]}
                    {:choices [{:delta {} :finish_reason "stop"}]
                     :usage   {:prompt_tokens 8 :completion_tokens 1 :total_tokens 9}}])))))
+
+(deftest ^:parallel zai-context-window-exceeded-is-a-length-stop-test
+  (letfn [(usage-chunk [finish-reason]
+            (->> (into [] (zai/zai->aisdk-chunks-xf)
+                       [{:id      "20260723-3"
+                         :model   "glm-5.2"
+                         :choices [{:delta {:role "assistant" :content "Partial"}}]}
+                        {:choices [{:delta {} :finish_reason finish-reason}]
+                         :usage   {:prompt_tokens 199000 :completion_tokens 1000 :total_tokens 200000}}])
+                 (filter #(= :usage (:type %)))
+                 first))]
+    (testing "a stop at the context window reads as a length stop, so the \"full\" path can run"
+      (is (=? {:finish-reason "length" :raw-finish-reason "model_context_window_exceeded"}
+              (usage-chunk "model_context_window_exceeded"))))
+    (testing "the other Z.AI finish reasons keep their mapping"
+      (are [raw finish-reason] (=? {:finish-reason finish-reason :raw-finish-reason raw}
+                                   (usage-chunk raw))
+        "length"        "length"
+        "stop"          "stop"
+        "sensitive"     "content-filter"
+        "network_error" "error"))))
 
 (deftest ^:parallel zai-whole-tool-call-conv-test
   (testing "a tool call arriving whole in one delta (tool_stream false) is mapped correctly"
@@ -179,26 +335,32 @@
 (deftest zai-auth-preferences-test
   (mt/with-premium-features #{:metabase-ai-managed}
     (mt/with-dynamic-fn-redefs [premium-features/premium-embedding-token (constantly "proxy-token")]
-      (mt/with-temporary-setting-values [llm.settings/llm-zai-api-key    "zai-key.byok"
-                                         llm.settings/llm-proxy-base-url "https://proxy.example"]
-        (testing "Prefers BYOK over ai proxy"
+      (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url "https://proxy.example"]
+        (testing "Uses the connection's own credentials"
           (with-redefs [self.core/sse-reducible identity
+                        self.core/reducible-with-api-errors (fn [r _ _] r)
                         debug/capture-stream    (fn [r _] r)
                         http/request            (fn [req] {:body req})]
             (is (=? {:method  :post
                      :url     "https://api.z.ai/api/paas/v4/chat/completions"
                      :headers {"Authorization" "Bearer zai-key.byok"}
                      :body    string?}
-                    (zai/zai-raw {:input [{:role :user :content "hi"}]})))))
-        (testing "Does not fall back to ai proxy when BYOK is missing"
-          (mt/with-temporary-setting-values [llm.settings/llm-zai-api-key nil]
+                    (zai/zai-raw {:input       [{:role :user :content "hi"}]
+                                  :credentials byok-credentials})))))
+        (testing "Does not fall back to ai proxy when the connection carries no key"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"No Z\.AI API key is set"
+               (zai/zai-raw {:input [{:role :user :content "hi"}]}))))
+        (testing "Does not borrow the single-provider setting when the connection carries no key"
+          (mt/with-temporary-setting-values [llm.settings/llm-zai-api-key "zai-key.elsewhere"]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Z\.AI API key is set"
-                 (zai/zai-raw {:input [{:role :user :content "hi"}]})))))
+                 (zai/zai-raw {:input       [{:role :user :content "hi"}]
+                               :credentials {:api-key ""}})))))
         (testing "Throws an error if nothing is defined"
-          (mt/with-temporary-setting-values [llm.settings/llm-zai-api-key    nil
-                                             llm.settings/llm-proxy-base-url nil]
+          (mt/with-temporary-setting-values [llm.settings/llm-proxy-base-url nil]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"No Z\.AI API key is set"
@@ -215,6 +377,31 @@
                            :input [{:role :user :content "hi"}]
                            :ai-proxy? true})))))))
 
+(deftest zai-raw-explicit-credentials-test
+  (testing "a passed-in api-key and base-url are used over the configured ones"
+    (mt/with-temporary-setting-values [llm.settings/llm-zai-api-key      "zai-key-setting"
+                                       llm.settings/llm-zai-api-base-url "https://configured.example"]
+      (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                                 (is (=? {:url     "https://explicit.example/chat/completions"
+                                                          :headers {"Authorization" "Bearer zai-key-explicit"}}
+                                                         req))
+                                                 (throw (ex-info "stop" {::stop true})))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"stop"
+             (zai/zai-raw {:input       [{:role :user :content "hi"}]
+                           :credentials {:api-key  "zai-key-explicit"
+                                         :base-url "https://explicit.example"}})))))))
+
+(deftest zai-raw-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-zai-api-key "zai-key-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No Z.AI API key is set"
+           (zai/zai-raw {:input       [{:role :user :content "hi"}]
+                         :credentials {:api-key ""}}))))))
+
 (deftest list-models-ai-proxy-unsupported-test
   (testing "ai-proxy? throws before credentials are even consulted"
     (mt/with-temporary-setting-values [llm.settings/llm-zai-api-key nil]
@@ -230,25 +417,28 @@
 
 (deftest list-models-filters-catalog-to-whitelist-test
   (testing "list-models keeps only whitelisted models, falling back to the whitelist display name"
-    (mt/with-temporary-setting-values [llm.settings/llm-zai-api-key "zai-key.test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:method  :get
-                                                          :url     "https://api.z.ai/api/paas/v4/models"
-                                                          :headers {"Authorization" "Bearer zai-key.test"}}
-                                                         req))
-                                                 {:status 200 :body {:data [{:id "glm-4.7"}
-                                                                            {:id "glm-5.2"}
-                                                                            {:id "some-other-model"}]}})]
-        (is (= {:models [{:id "glm-5.2" :display_name "GLM-5.2"}]}
-               (zai/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [req]
+                                               (is (=? {:method  :get
+                                                        :url     "https://api.z.ai/api/paas/v4/models"
+                                                        :headers {"Authorization" "Bearer zai-key.byok"}}
+                                                       req))
+                                               {:status 200 :body {:data [{:id "glm-4.7"}
+                                                                          {:id "glm-5.2"}
+                                                                          {:id "glm-5.3"}
+                                                                          {:id "glm-5.3-flash"}
+                                                                          {:id "glm-5.3-flashx"}
+                                                                          {:id "some-other-model"}]}})]
+      (is (= {:models [{:id "glm-5.2" :display_name "GLM-5.2"}
+                       {:id "glm-5.3" :display_name "GLM-5.3"}
+                       {:id "glm-5.3-flash" :display_name "GLM-5.3-Flash"}]}
+             (zai/list-models {:credentials byok-credentials}))))))
 
 (deftest list-models-prefers-catalog-display-name-test
   (testing "a display name carried by the catalog entry wins over the whitelist fallback"
-    (mt/with-temporary-setting-values [llm.settings/llm-zai-api-key "zai-key.test"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [_]
-                                                 {:status 200 :body {:data [{:id "glm-5.2" :name "GLM-5.2 (catalog)"}]}})]
-        (is (= {:models [{:id "glm-5.2" :display_name "GLM-5.2 (catalog)"}]}
-               (zai/list-models)))))))
+    (mt/with-dynamic-fn-redefs [http/request (fn [_]
+                                               {:status 200 :body {:data [{:id "glm-5.2" :name "GLM-5.2 (catalog)"}]}})]
+      (is (= {:models [{:id "glm-5.2" :display_name "GLM-5.2 (catalog)"}]}
+             (zai/list-models {:credentials byok-credentials}))))))
 
 (deftest list-models-explicit-credentials-test
   (testing "a passed-in api-key is used over the configured key"
@@ -260,15 +450,13 @@
         (is (= {:models []}
                (zai/list-models {:credentials {:api-key "zai-key.explicit"}})))))))
 
-(deftest list-models-blank-credentials-fall-back-to-configured-key-test
-  (testing "a blank passed-in api-key falls back to the configured key"
-    (mt/with-temporary-setting-values [llm.settings/llm-zai-api-key "zai-key.setting"]
-      (mt/with-dynamic-fn-redefs [http/request (fn [req]
-                                                 (is (=? {:headers {"Authorization" "Bearer zai-key.setting"}}
-                                                         req))
-                                                 {:status 200 :body {:data []}})]
-        (is (= {:models []}
-               (zai/list-models {:credentials {:api-key ""}})))))))
+(deftest list-models-blank-credentials-do-not-borrow-the-setting-test
+  (testing "a blank api-key does not fall back to the single-provider setting"
+    (mt/with-temporary-setting-values [llm.settings/llm-zai-api-key "zai-key-elsewhere"]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"No Z.AI API key is set"
+           (zai/list-models {:credentials {:api-key ""}}))))))
 
 (deftest list-models-blank-credentials-without-configured-key-test
   (testing "throws when the passed-in api-key is blank and no key is configured"
@@ -288,4 +476,14 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Z\.AI API key expired or invalid"
-             (zai/list-models)))))))
+             (zai/list-models {:credentials byok-credentials})))))))
+
+(deftest list-models-malformed-catalog-throws-test
+  (testing "a 2xx whose body carries no model list throws instead of reporting an empty catalog"
+    ;; Failing open here would let admin Connect succeed against a base URL we never reached,
+    ;; leaving an empty model picker with no diagnostic.
+    (mt/with-dynamic-fn-redefs [http/request (fn [_] {:status 200 :body "<html>Not Found</html>"})]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Z\.AI returned an unexpected model list response"
+           (zai/list-models {:credentials byok-credentials}))))))

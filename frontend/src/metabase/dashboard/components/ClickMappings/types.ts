@@ -1,22 +1,13 @@
+import type { Target } from "metabase/dashboard/utils/click-behavior";
 import type Question from "metabase-lib/v1/Question";
 import type {
   ClickBehavior,
   ClickBehaviorTarget,
   Dashboard,
   DashboardCard,
-  DatasetColumn,
-  Parameter,
 } from "metabase-types/api";
 
-export type TargetItem = {
-  id: string;
-  name: string | null | undefined;
-  target: ClickBehaviorTarget;
-  sourceFilters: {
-    column: (source: DatasetColumn, question: Question) => boolean;
-    parameter: (source: Parameter, question: Question) => boolean;
-    userAttribute: (source: string, question: Question) => boolean;
-  };
+export type TargetItem = Target & {
   type?: ClickBehaviorTarget["type"];
 };
 

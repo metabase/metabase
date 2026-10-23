@@ -18,6 +18,7 @@
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
+   [metabase.metabot.util :as metabot.u]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -76,6 +77,81 @@
          (seq data))
     (str "```json\n" (json/encode data {:pretty true}) "\n```")))
 
+(defn- query-edn-fallback
+  "Pretty-printed EDN of `query`, minus the `:lib/metadata` provider `normalize-query` attaches."
+  [query]
+  (u/pprint-to-str (cond-> query (map? query) (dissoc :lib/metadata))))
+
+(defn- exported-or-edn
+  "Export `normalized` through `mp`, falling back to EDN of `fallback-query` when the export fails
+  for a reason other than a refusal.
+
+  The refusal marker, not the status code, is what tells \"you may not read this\" from \"the export
+  failed\". A by-id denial collapses into the same not-found a missing id produces, on purpose, so
+  the agent cannot ask for hidden content and learn it exists, which means the 403 this used to
+  catch never arrives on that path. Without the marker a refused card falls through and the raw
+  query is printed."
+  [mp normalized store fallback-query]
+  (binding [shared.content-store/*last-lookup-refused?* (atom false)]
+    (try
+      (or (repr-data->llm-block (repr.resolve/export-query mp normalized store))
+          (query-edn-fallback normalized))
+      (catch Exception e
+        (when-not (or (= 403 (:status-code (ex-data e)))
+                      @shared.content-store/*last-lookup-refused?*)
+          (log/debugf "Failed to export query for LLM, using EDN fallback: %s" (ex-message e))
+          (query-edn-fallback fallback-query))))))
+
+(defn export-gated-query-for-llm
+  "Render a query [[shared.content-store/query-for-export]] cleared, from the `:query` and `:mp`
+  it hands back. With `mp` the query is already normalized and exports through it, resolving its
+  ids to names. Without one there is nothing to resolve, so it renders only by the paths that
+  resolve nothing.
+
+  `store` decides the Card / Measure / Segment lookups and every caller names one:
+  [[shared.content-store/default-store]] for queries loaded from the app DB,
+  [[shared.content-store/audited-store]] for client-supplied queries so a denied lookup keeps its
+  audit trail. No defaulting arity, so the choice stays visible at the call site."
+  [query mp store]
+  (cond
+    (string? query) query
+    (string? (:query-content query)) (:query-content query)
+
+    mp (exported-or-edn mp query store query)
+
+    (string? (get-in query [:native :query])) (get-in query [:native :query])
+    (map? query) (query-edn-fallback query)
+    :else (some-> query str)))
+
+(defn export-query-for-llm
+  "Render a `query` (legacy or MBQL 5 map, or a pre-resolved string) for the LLM, normalizing it
+  and building its metadata provider here. For callers with no permission check in front of them;
+  one that has been through [[shared.content-store/query-for-export]] uses
+  [[export-gated-query-for-llm]] with what that returned instead of normalizing a second time."
+  [query store]
+  (if (and (map? query) (:database query))
+    (try
+      (let [normalized (lib-be/normalize-query query)
+            mp         (lib-be/application-database-metadata-provider (:database normalized))]
+        ;; `query` rather than the normalized form, so a failure here renders what the caller
+        ;; handed us
+        (exported-or-edn mp normalized store query))
+      (catch Exception e
+        (log/debugf "Failed to normalize query for LLM, rendering it unresolved: %s" (ex-message e))
+        (export-gated-query-for-llm query nil store)))
+    (export-gated-query-for-llm query nil store)))
+
+(defn transform-query->text
+  "Render a transform source query for model context: native SQL verbatim, anything else
+  through [[export-query-for-llm]]. Portable JSON gets boundary newlines so its Markdown
+  fence remains valid when the result is interpolated inside an XML `<query>` element."
+  [query]
+  (or (when (map? query) (metabot.u/extract-sql-content query))
+      (when-let [text (export-query-for-llm query shared.content-store/default-store)]
+        (if (str/starts-with? text "```json\n")
+          (format "\n%s\n" text)
+          text))))
+
 (defn escape-xml
   "Escape XML special characters in a string.
    Only needed for content that bypasses Selmer's auto-escaping (marked with |safe) or is interpolated
@@ -88,8 +164,8 @@
         (str/replace ">" "&gt;")
         (str/replace "\"" "&quot;"))))
 
-(defn- escape-xml-content
-  "Like `escape-xml` but leaves double-quotes intact. Safe for element/table-cell *content*
+(defn escape-xml-content
+  "Like [[escape-xml]] but leaves double-quotes intact. Safe for element/table-cell *content*
   (only `& < >` are structural there), so a value such as a JSON portable-FK array renders
   readably instead of with `&quot;` noise."
   [s]
@@ -113,15 +189,17 @@
   (when s
     (str/replace s "|" "\\u007c")))
 
-(defn- truncate
-  "Cap `s` at `max-len` characters, appending an ellipsis when truncated.
+(defn truncate
+  "Cap `s` at `max-len` characters without splitting a surrogate pair, appending an ellipsis when truncated.
   Useful to ensure long free text values (e.g. table descriptions) don't bloat the LLM context.
   Returns nil for nil input."
   [s max-len]
   (when s
     (let [s (str s)]
       (if (> (count s) max-len)
-        (str (subs s 0 max-len) "...")
+        (str (subs s 0 (cond-> max-len
+                         (Character/isHighSurrogate (.charAt s (int (dec max-len)))) dec))
+             "...")
         s))))
 
 (defn- database-type-or-unknown
@@ -347,19 +425,20 @@
         fqn))))
 
 (defn format-metric-dimensions-table
-  "Render a metric's queryable dimensions as a markdown table that names the **source table**
-  each dimension comes from and the exact **portable FK** to copy into a `field` clause.
+  "Render a metric's dimensions with their source tables and field references.
 
-  A metric's dimensions span its base table and every FK-reachable table, so a bare field list
-  is ambiguous: the LLM can't tell which table a name like `name` lives on, and duplicate names
-  across joined tables (e.g. several `campaign_id`/`id` columns) are indistinguishable. The
-  `Source table` and `Reference` columns remove that ambiguity."
+  A portable FK works on table and card stages and distinguishes columns with the same name on different tables.
+  Computed card columns have no portable FK and use their output machine name. Real database fields without a
+  portable FK get no reference; their bare names could resolve to the wrong column."
   [dims]
   (te/markdown-table
    (map (fn [d]
           (assoc d
                  :source    (dimension-source-table d)
-                 :reference (when (vector? (:portable_fk d)) (json/encode (:portable_fk d)))))
+                 :reference (cond
+                              (vector? (:portable_fk d)) (json/encode (:portable_fk d))
+                              ;; A string `:field_id` from `->result-column` is the computed column's output name.
+                              (string? (:field_id d)) (json/encode (:field_id d)))))
         dims)
    {:name "Field Name" :field_id "Field ID" :type "Type"
     :source "Source table" :reference "Reference (copy into a field clause)"}
@@ -372,16 +451,49 @@
                   (= k :reference) (json-cell-safe (escape-xml-content v))
                   :else            (escape-pipes (escape-xml (str v)))))}))
 
+(defn- format-join-required-dimensions-table
+  "Like [[format-metric-dimensions-table]] but the Reference is the FULL alias-qualified field clause
+  (`[\"field\" {\"join-alias\" …} [db schema table field]]`) carried on each dim's `:reference`. For
+  a join-required dim the bare portable FK does NOT resolve (no FK path); only the alias-qualified
+  clause does, so that is the form the LLM must paste."
+  [dims]
+  (te/markdown-table
+   (map (fn [d] (assoc d :reference (some-> (:reference d) json/encode))) dims)
+   {:name "Field Name" :field_id "Field ID" :type "Type"
+    :reference "Reference (copy verbatim into a field clause)"}
+   {:value-fn (fn [k v]
+                (cond
+                  (nil? v)         ""
+                  (keyword? v)     (escape-pipes (clojure.core/name v))
+                  (= k :reference) (json-cell-safe (escape-xml-content v))
+                  :else            (escape-pipes (escape-xml (str v)))))}))
+
+(defn- format-metric-join-required-dimensions
+  "Render the metric's FK-less join dimensions — the columns the metric reaches through an explicit
+  join that its `queryable-dimensions` cannot advertise (no foreign key). For each such join we tell
+  the LLM to paste the exact join clause into `joins:` and reference each field by its alias-qualified
+  Reference. Without this the LLM guesses at the column and dead-ends on a `no foreign key` error
+  (BOT-1612)."
+  [join-required-dimensions]
+  (str/join
+   "\n"
+   (for [{:keys [target_table join dimensions]} join-required-dimensions]
+     (str "To group or filter this metric by **" target_table
+          "** columns, add this join to your query's `joins:` (the metric reaches these columns "
+          "through a join with **no foreign key**, so the join must be present), then reference a "
+          "field using its alias-qualified Reference from the table below:\n\n"
+          "```json\n" (json/encode join {:pretty true}) "\n```\n\n"
+          (format-join-required-dimensions-table dimensions)))))
+
 (defn metric->xml
-  "Format metric for LLM consumption.
-   Matches Python Metric.get_llm_representation exactly, except we additionally surface
-   `database_name`, `base_table_fully_qualified_name`, and `portable_entity_id` as tag
-   attributes — the three pieces of information the LLM needs to correctly use the metric
-   in `construct_notebook_query` (as `aggregation: [[metric, {}, <eid>]]` on top of the
-   metric's base table)."
-  [{:keys [id name description verified queryable-dimensions collection
-           default_time_dimension_field database_name base_table_portable_fk
-           portable_entity_id]}]
+  "Format a metric as XML for the LLM.
+
+  Include its database name, portable entity ID, and the source required to use it in `construct_notebook_query`.
+  The source is identified by `base_table_fully_qualified_name` or `source_card_portable_entity_id`.
+  When no source is usable, include `source_unavailable` instead."
+  [{:keys [id name description verified queryable-dimensions join-required-dimensions collection
+           default_time_dimension_field_name database_name base_table_portable_fk
+           portable_entity_id source_card_name source_card_portable_entity_id source_unavailable]}]
   (render-llm-template
    :metric
    {:metric_id                     (str id)
@@ -393,11 +505,16 @@
                                               (= 3 (count base_table_portable_fk)))
                                      (let [[_db schema table] base_table_portable_fk]
                                        (fully-qualified-name schema table)))
+    :metric_source_unavailable     (boolean source_unavailable)
+    :metric_source_card_entity_id  source_card_portable_entity_id
+    :metric_source_card_name       source_card_name
     :metric_portable_entity_id     portable_entity_id
     :metric_collection_xml         (when collection (collection->xml collection))
-    :metric_default_time_dimension (:name default_time_dimension_field)
+    :metric_default_time_dimension default_time_dimension_field_name
     :metric_dimensions_table       (when (seq queryable-dimensions)
-                                     (format-metric-dimensions-table queryable-dimensions))}))
+                                     (format-metric-dimensions-table queryable-dimensions))
+    :metric_join_required_xml      (when (seq join-required-dimensions)
+                                     (format-metric-join-required-dimensions join-required-dimensions))}))
 
 (defn table->xml
   "Format table for LLM consumption.
@@ -608,10 +725,35 @@
     ;; Default to viz card
     (viz-card->xml card)))
 
+(def ^:private max-dashboard-filters
+  "Cap on the filters listed for a dashboard."
+  50)
+
+(def ^:private max-dashboard-filter-name-length
+  "Cap on a dashboard filter's name."
+  100)
+
+(defn- dashboard-filters->xml
+  "The `<filters>` block for a dashboard's `parameters`, or nil when it has none. Lists at most
+  [[max-dashboard-filters]] of them and says how many were left out."
+  [parameters]
+  (when (seq parameters)
+    (let [total (count parameters)]
+      (str "  <filters>\n"
+           (str/join (for [param (take max-dashboard-filters parameters)]
+                       (str "    <filter id=\"" (escape-xml (:id param))
+                            "\" name=\"" (escape-xml (truncate (:name param) max-dashboard-filter-name-length))
+                            "\" type=\"" (escape-xml (u/qualified-name (:type param))) "\"/>\n")))
+           (when (> total max-dashboard-filters)
+             (str "    <truncation-note>Showing " max-dashboard-filters " of " total " filters; the other "
+                  (- total max-dashboard-filters) " are not listed.</truncation-note>\n"))
+           "  </filters>\n"))))
+
 (defn dashboard->xml
   "Format dashboard for LLM consumption.
-   Matches Python Dashboard.llm_representation exactly."
-  [{:keys [id name description verified collection dashcards]}]
+   Matches Python Dashboard.llm_representation exactly, except we additionally surface the
+   dashboard's filters."
+  [{:keys [id name description verified collection parameters dashcards]}]
   ;; Group cards by tab and sort
   ;; TODO (Chris 2026-07-09) -- tabs sort by raw id here but by position in
   ;; resources/fetch-dashboard-items; align on position
@@ -638,6 +780,7 @@
       :dashboard_name name
       :dashboard_description description
       :dashboard_collection_xml (when collection (collection->xml collection))
+      :dashboard_filters_xml (dashboard-filters->xml parameters)
       :dashboard_tabs_xml tabs-xml})))
 
 (defn database-schema->xml
@@ -719,14 +862,12 @@
    human-readable name the LLM needs as the first slot of every portable FK in
    `construct_notebook_query`.
 
-   For metric results we additionally surface `base_table_fully_qualified_name` (the
-   `schema.table` of the table the metric aggregates). Combined with `database_name` this
-   gives the LLM the full portable FK `[database_name, schema, table]` it must put in
-   `source-table:` when using `[metric, {}, <portable_entity_id>]` as an aggregation —
-   without a separate `read_resource` round-trip."
+   Metric results also identify the source to use with `[metric, {}, <portable_entity_id>]` in an aggregation.
+   `base_table_fully_qualified_name` and `database_name` identify a table source; `source_card_portable_entity_id`
+   identifies a card source. `source_unavailable` means that no usable source can be offered."
   [{:keys [id type name description verified official curated can_write data_authority data_layer collection
            database_id database_name database_engine database_schema portable_entity_id
-           base_table_portable_fk]}]
+           base_table_portable_fk source_card_name source_card_portable_entity_id source_unavailable]}]
   (let [fqn (cond
               (#{"table" :table} type)
               (when name (fully-qualified-name database_schema name))
@@ -769,7 +910,10 @@
       :search_base_table_fqn (when (and (vector? base_table_portable_fk)
                                         (= 3 (count base_table_portable_fk)))
                                (let [[_db schema table] base_table_portable_fk]
-                                 (fully-qualified-name schema table)))})))
+                                 (fully-qualified-name schema table)))
+      :search_source_unavailable (boolean source_unavailable)
+      :search_source_card_entity_id source_card_portable_entity_id
+      :search_source_card_name source_card_name})))
 
 (defn search-results->xml
   "Format search results as XML wrapped in search-results element."
@@ -780,15 +924,19 @@
 
 (defn field-values-metadata->xml
   "Format field values metadata for LLM consumption.
-   Matches Python FieldValuesMetadata.llm_representation exactly.
-   Note: Tables are used with |safe in the template, so values must be escaped."
-  [{:keys [field_values statistics]}]
+   Matches Python FieldValuesMetadata.llm_representation, with notes when only some values are listed
+   or when the database couldn't be sampled for statistics.
+   Tables use |safe in the template, so values must be escaped."
+  [{:keys [field_values field_values_total has_more_values statistics statistics_unavailable]}]
   (let [escape-value        (fn [_k v] (escape-pipes (escape-xml (str v))))
         sample-values-table (when (seq field_values)
                               (te/markdown-table
                                (map vector field_values)
                                {:value "Value"}
                                {:value-fn escape-value}))
+        shown               (count field_values)
+        partial?            (and field_values_total
+                                 (or has_more_values (< shown field_values_total)))
 
         stats-map   (into {} (filter (fn [[_ v]] (some? v)) statistics))
         stats-table (when (seq stats-map)
@@ -799,7 +947,11 @@
     (render-llm-template
      :field_values_metadata
      {:sample_values_table sample-values-table
-      :stats_table         stats-table})))
+      :sample_values_shown shown
+      :sample_values_total (when partial? field_values_total)
+      :sample_values_more  has_more_values
+      :stats_table         stats-table
+      :stats_unavailable   statistics_unavailable})))
 
 (defn field-metadata->xml
   "Format field metadata for LLM consumption.
@@ -852,8 +1004,7 @@
     :transform_description     description
     :transform_source_type     (some-> (:type source) clojure.core/name)
     :transform_source_database (when-let [db (:source-database source)] (str db))
-    :transform_source_query    (let [q (:query source)]
-                                 (when (string? q) q))
+    :transform_source_query    (transform-query->text (:query source))
     :transform_target          (when target (pr-str target))}))
 
 (def formatters
@@ -909,11 +1060,12 @@
   "Render a list-shaped read-resource response.
 
    Input shape:
-     {:list-type :databases     ; keyword, becomes the type attribute
-      :items     [{:type \"database\" :id 1 :name \"Sample\" :uri \"...\" :description \"...\"} ...]
-      :total     5
-      :page      1
-      :pages     1}
+     {:list-type      :databases     ; keyword, becomes the type attribute
+      :items          [{:type \"database\" :id 1 :name \"Sample\" :uri \"...\" :description \"...\"} ...]
+      :total          5
+      :page           1
+      :pages          1
+      :next-page-uri  \"metabase://databases?page=2\"}   ; present when truncated
 
    An optional `:tabs` vector of `{:id .. :name ..}` (dashboard items) renders as a `<tabs>`
    block ahead of the items; items reference tabs via their `tab_id` attribute.
@@ -923,7 +1075,7 @@
        <item type=\"database\" id=\"1\" name=\"Sample\" uri=\"metabase://database/1\">Description</item>
        ...
      </list>"
-  [{:keys [list-type items total page pages tabs]}]
+  [{:keys [list-type items total page pages tabs next-page-uri]}]
   (let [type-attr (clojure.core/name (or list-type :items))
         tabs-xml  (when (seq tabs)
                     (str "<tabs>\n"
@@ -936,7 +1088,8 @@
         truncated (< page pages)
         note      (when truncated
                     (str "<truncation-note>Page " page " of " pages " (" showing " of " total " items). "
-                         "Append ?page=" (inc page) " to the URI to fetch the next page.</truncation-note>"))]
+                         "Fetch " (escape-xml next-page-uri) " for the next page. Copy it exactly; do not "
+                         "modify its query string.</truncation-note>"))]
     (str "<list type=\"" type-attr "\" total=\"" total
          "\" page=\"" (or page 1)
          "\" pages=\"" (or pages 1)
@@ -956,28 +1109,3 @@
       (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) ">"
            (escape-xml description) "</" tag ">")
       (str "<" tag (when-not (str/blank? attrs) (str " " attrs)) "/>"))))
-
-(defn export-query-for-llm
-  "Render a `query` (legacy or pMBQL map, or a pre-resolved string) for the LLM. A query
-  map with a `:database` is normalized and exported to the portable representations form
-  the `construct_notebook_query` tool consumes (a JSON code block); pre-resolved string
-  sources pass through; a `pprint`'d map is the last-resort fallback."
-  [query]
-  (cond
-    (string? query) query
-    (string? (:query-content query)) (:query-content query)
-    (and (map? query) (:database query))
-    (try
-      (let [normalized (lib-be/normalize-query query)
-            database-id (:database normalized)
-            mp (when database-id
-                 (lib-be/application-database-metadata-provider database-id))
-            exported (some->> mp (#(repr.resolve/try-export-query % normalized shared.content-store/default-store)))]
-        (if exported
-          (str "```json\n" (json/encode exported {:pretty true}) "\n```")
-          (u/pprint-to-str normalized)))
-      (catch Exception _
-        (u/pprint-to-str query)))
-    (string? (get-in query [:native :query])) (get-in query [:native :query])
-    (map? query) (u/pprint-to-str query)
-    :else (some-> query str)))

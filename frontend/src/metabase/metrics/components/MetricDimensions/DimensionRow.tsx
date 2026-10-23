@@ -62,7 +62,6 @@ export function DimensionRow({
           <Checkbox
             aria-label={dimension.display_name}
             checked={checked}
-            size="xs"
             onChange={(event) => onToggle(event.currentTarget.checked)}
           />
           <UnstyledButton className={S.rowButton} onClick={onEdit}>
@@ -75,7 +74,7 @@ export function DimensionRow({
               {isOrphaned(dimension) && (
                 <Icon
                   name="warning"
-                  c="warning"
+                  c="feedback-warning"
                   tooltip={t`This column is no longer available in the metric's data`}
                 />
               )}

@@ -13,15 +13,18 @@
 
 (set! *warn-on-reflection* true)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *publish-buffer-ms*
   "Time window in ms to buffer rapid-fire publishes. 0 = immediate publish.
    Resets on every new message (sliding window)."
   100)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *publish-buffer-max-ms*
   "Maximum time in ms since the first message before a flush is forced. 0 = no max."
   5000)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *publish-buffer*
   "Accumulation buffer for rapid-fire publishes.
    channel → {:messages [...] :deadline-ms long :created-ms long}"

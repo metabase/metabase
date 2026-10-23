@@ -10,22 +10,42 @@
    [metabase.agent-api.settings :as agent-api.settings]
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
+   [metabase.api.macros :as api.macros]
+   [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
+   [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.mcp.core :as mcp]
+   [metabase.metabot.agent.profiles :as metabot.profiles]
+   [metabase.metabot.scope :as metabot.scope]
+   [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.resources :as metabot-resources]
+   [metabase.metabot.tools.search :as metabot-search]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
    [metabase.search.ingestion :as search.ingestion]
    [metabase.search.test-util :as search.tu]
    [metabase.session.models.session :as session.models]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.test.http-client :as client]
+   [metabase.test.server.handler :as test.server.handler]
    [metabase.util :as u]
    [metabase.util.json :as json]
-   [toucan2.core :as t2]))
+   [metabase.util.malli.registry :as mr]
+   [oidc-provider.util :as oidc.util]
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLException)
+   (org.eclipse.jetty.io EofException)))
 
 (set! *warn-on-reflection* true)
 
@@ -81,6 +101,68 @@
                     :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
                    (client/client :get 401 "agent/v1/ping"
                                   {:request-options {:headers {"x-metabase-session" session-key}}})))))))))
+
+(deftest agent-api-401-for-an-unusable-bearer-token-carries-invalid-token-test
+  (testing "GHY-4542: RFC 6750 section 3 requires a 401 for a bearer token that does not authenticate to carry an
+            `invalid_token` challenge. The session middleware declines such a token silently, leaving the agent API
+            to answer the request, so the challenge has to come from there."
+    ;; site-url: resolving the bearer token builds the OAuth provider, whose config derives its issuer from it
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (let [response (client/client-full-response
+                      :get 401 "agent/v1/ping"
+                      {:request-options {:headers {"authorization" (str "Bearer " (random-uuid))}}})]
+        (is (= "Bearer error=\"invalid_token\"" (get-in response [:headers "WWW-Authenticate"])))
+        ;; which of the JWT failures the body names depends on whether a shared secret is configured; the challenge
+        ;; is the same either way
+        (is (string? (get-in response [:body :message])))))))
+
+(deftest agent-api-401-when-no-jwt-provider-is-registered-test
+  (testing "GHY-4542: the JWT provider ships only in EE, so on OSS nothing registers `:provider/jwt` and
+            `auth-identity/authenticate` has no method to dispatch to. A bearer token the OAuth bridge declined
+            reaches that dispatch, and the agent API has to answer it with the 401 `invalid_token` challenge rather
+            than let the dispatch throw and serve a 500 carrying a stack trace."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (with-redefs-fn {#'agent-api.api/jwt-provider-available? (constantly false)}
+        (fn []
+          (let [response (client/client-full-response
+                          :get 401 "agent/v1/ping"
+                          {:request-options {:headers {"authorization" (str "Bearer " (random-uuid))}}})]
+            (is (= "Bearer error=\"invalid_token\"" (get-in response [:headers "WWW-Authenticate"])))
+            (is (= "jwt_not_configured" (get-in response [:body :error])))))))))
+
+(deftest agent-api-401-without-bearer-token-carries-plain-challenge-test
+  (testing "GHY-4542: RFC 7235 requires every 401 to carry a `WWW-Authenticate` challenge, and RFC 6750 section 3.1
+            says one answering a request with no bearer token SHOULD NOT include an error code. So both 401s the
+            agent API gives before it has a token to judge carry a plain `Bearer` challenge, with unchanged bodies."
+    (testing "no credentials at all"
+      (let [response (client/client-full-response :get 401 "agent/v1/ping")]
+        (is (= "Bearer" (get-in response [:headers "WWW-Authenticate"])))
+        (is (= {:error   "missing_authorization"
+                :message "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."}
+               (:body response)))))
+    (testing "an Authorization header that does not use the Bearer scheme"
+      (let [response (client/client-full-response :get 401 "agent/v1/ping"
+                                                  {:request-options {:headers {"authorization" "Basic dXNlcjpwYXNz"}}})]
+        (is (= "Bearer" (get-in response [:headers "WWW-Authenticate"])))
+        (is (= {:error   "invalid_authorization_format"
+                :message "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"}
+               (:body response)))))))
+
+(deftest enforce-authentication-does-not-widen-oauth-request-without-scopes-test
+  (testing "GHY-4542: the agent API defaults nil `:token-scopes` on an authenticated request to unrestricted, which
+            is right for a session but would hand an OAuth-authenticated request with no scopes full access and
+            defeat the scope middleware's own fail-closed check. That request keeps nil and is refused by the
+            endpoint's scope check."
+    (let [enforce-authentication #'agent-api.api/enforce-authentication
+          handler                (enforce-authentication
+                                  ((api.scope/enforce-scope "agent:search") (fn [_ respond _] (respond {:status 200}))))
+          status                 (fn [request]
+                                   (let [p (promise)]
+                                     (handler request #(deliver p (:status %)) #(deliver p %))
+                                     (deref p 10000 ::timeout)))]
+      (is (= 403 (status {:metabase-user-id (mt/user->id :rasta) :authenticated-via-oauth? true})))
+      (testing "a session request with nil token-scopes is still unrestricted"
+        (is (= 200 (status {:metabase-user-id (mt/user->id :rasta)})))))))
 
 (deftest agent-api-enabled-setting-test
   (testing "External Agent API routes return 403 when disabled"
@@ -245,6 +327,40 @@
                                                   :aggregation [(orders-field-ref "ID")])})]
       (is (=? {:error "aggregation-entry-not-aggregation"} response)))))
 
+(deftest construct-query-metadata-lookup-failure-test
+  (mt/with-prometheus-system! [_ system]
+    (let [query (orders-query :fields [(orders-field-ref "ID")])]
+      (doseq [[failure delta] [[(SQLException. "Connection unavailable") 1]
+                               [(ex-info "SELECT private_metadata failed" {:toucan2/context-trace []}) 1]
+                               [(ex-info "Metadata lookup failed" {} (SQLException. "Connection unavailable")) 1]
+                               [(ex-info "SELECT private_metadata failed"
+                                         {:toucan2/context-trace [] :status-code 500}) 0]]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+          (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
+            (is (= {:message "Something went wrong"}
+                   (mt/user-http-request :rasta :post 500 "agent/v2/construct-query" {:query query})))
+            (is (= (+ initial delta) (mt/metric-value system :metabase-api/unhandled-errors)))))))))
+
+(deftest construct-query-declared-errors-in-toucan-scopes-test
+  (let [query (orders-query :fields [(orders-field-ref "ID")])]
+    (doseq [status-code [nil 400]
+            agent-error? [false true]
+            [error message expected] [[:invalid-representations-query
+                                       "Representations query has an invalid structure."
+                                       "Representations query has an invalid structure."]
+                                      [:unknown-field
+                                       "Unknown field"
+                                       (str "Unknown field\nCall `read_resource` with `metabase://table/<numeric id>/fields` "
+                                            "to list this table's columns.")]]]
+      (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
+                                  (fn [& _]
+                                    (t2/with-connection [_conn]
+                                      (throw (ex-info message (cond-> {:error error}
+                                                                status-code (assoc :status-code status-code)
+                                                                agent-error? (assoc :agent-error? true))))))]
+        (is (=? {:error (name error) :message expected}
+                (mt/user-http-request :rasta :post 400 "agent/v2/construct-query" {:query query})))))))
+
 (deftest construct-query-permission-checks-test
   (testing "Rejects a first-stage source-table the current user cannot query"
     (mt/with-no-data-perms-for-all-users!
@@ -305,25 +421,63 @@
         (is (=? {:error "unknown-stage-key"} response))
         (is (re-find #"aggregation" (:message response)))))))
 
-(deftest construct-query-rejects-legacy-envelope-test
+(deftest construct-query-rejects-malformed-clauses-test
+  (testing "a malformed stage or clause returns HTTP 400 with an error about the query structure"
+    (doseq [[label query] (let [post-agg (orders-query :aggregation [["count" {}]]
+                                                       :filters     [[">" {} ["aggregation" {} 0] 1]])]
+                            {"a number as `aggregation`"
+                             (assoc-in (orders-query) [:stages 0 :aggregation] 42)
+                             "an empty aggregation clause used in `order-by`"
+                             (orders-query :aggregation [[]] :order-by [["desc" {} []]])
+                             "a number as `joins`"
+                             (assoc-in (orders-query) [:stages 0 :joins] 42)
+                             "a post-aggregation filter with a number as `order-by`"
+                             (assoc-in post-agg [:stages 0 :order-by] 42)
+                             "a post-aggregation filter with a number as `fields`"
+                             (assoc-in post-agg [:stages 0 :fields] 42)
+                             "a number as a later stage"
+                             (update (orders-query) :stages conj 42)
+                             "an aggregation list as a later stage"
+                             (update (orders-query) :stages conj [["count" {}]])})
+            endpoint      ["agent/v2/construct-query" "agent/v2/query"]]
+      (testing (str endpoint ", " label)
+        (let [response (mt/user-http-request :rasta :post 400 endpoint {:query query})]
+          (is (=? {:error "invalid-representations-query"
+                   :error-code "invalid-representations-query"
+                   :message #"(?s)Representations query has an invalid structure\..*"}
+                  response))
+          (is (= #{:error :error-code :message :humanized :details} (set (keys response)))))))))
+
+(deftest construct-query-post-aggregation-errors-test
+  (doseq [[error query] [["post-agg-filter-with-trailing-clauses"
+                          (orders-query :aggregation [["count" {}]]
+                                        :filters [[">" {} ["aggregation" {} 0] 1]]
+                                        :limit 5)]
+                         ["post-agg-filter-needs-multi-stage"
+                          (orders-query :aggregation [["count" {}] ["count" {}]]
+                                        :filters [[">" {} ["aggregation" {} 0] 1]])]]
+          endpoint ["agent/v2/construct-query" "agent/v2/query"]]
+    (testing (str endpoint ", " error)
+      (let [response (mt/user-http-request :rasta :post 400 endpoint {:query query})]
+        (is (=? {:error error :error-code error :message #".*MBQL 5 requires.*"} response))
+        (is (= #{:error :error-code :message} (set (keys response))))))))
+
+(deftest construct-query-ignores-legacy-envelope-test
   (testing (str "Legacy `source_entity` / `referenced_entities` envelope from the pre-repr program API "
-                "is rejected by the now-closed request schema, instead of being silently ignored. "
-                "This guards against a regression where the LLM's stale memory keeps sending the old "
-                "shape and we silently drop the extra keys.")
-    (is (=? {:specific-errors {:source_entity #(some (fn [s] (re-find #"disallowed key" s)) %)}}
-            (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                "is dropped by the request schema, so a caller still sending the old shape is served.")
+    (is (=? {:query string?}
+            (mt/user-http-request :rasta :post 200 "agent/v2/construct-query"
                                   {:query          (orders-query)
                                    :source_entity  {:type "table" :id (mt/id :orders)}}))))
-  (testing "`/v2/query` fresh-query branch rejects the legacy envelope as well"
-    (is (=? {:specific-errors {:referenced_entities #(some (fn [s] (re-find #"disallowed key" s)) %)}}
-            (mt/user-http-request :rasta :post 400 "agent/v2/query"
-                                  {:query               (orders-query :limit 5)
-                                   :referenced_entities []}))))
-  (testing "`/v2/query` continuation_token branch rejects extra keys (closed schema)"
-    (is (=? {:specific-errors {:query #(some (fn [s] (re-find #"disallowed key" s)) %)}}
-            (mt/user-http-request :rasta :post 400 "agent/v2/query"
-                                  {:continuation_token "not-a-real-token"
-                                   :query               (orders-query :limit 5)})))))
+  (testing "`/v2/query` fresh-query branch drops the legacy envelope as well"
+    (is (some? (mt/user-http-request :rasta :post 202 "agent/v2/query"
+                                     {:query               (orders-query :limit 5)
+                                      :referenced_entities []}))))
+  (testing "`/v2/query` stays on the continuation branch when a stray `:query` rides along"
+    (is (re-find #"base64-encoded JSON object"
+                 (mt/user-http-request :rasta :post 400 "agent/v2/query"
+                                       {:continuation_token "not-a-real-token"
+                                        :query              (orders-query :limit 5)})))))
 
 (deftest execute-query-test
   (testing "Executes a query and returns results with column metadata"
@@ -496,14 +650,16 @@
     (doseq [[label q] [["legacy top-level :type"
                         {:database (mt/id) :type "native" :native {:query "select 1"}}]
                        ["MBQL 5 native stage"
-                        {:lib/type "mbql/query"
+                        {:database (mt/id)
+                         :lib/type "mbql/query"
                          :stages   [{:lib/type "mbql.stage/native" :native "select 1"}]}]
-                       ["MBQL 5 native stage nested in a join"
-                        {:lib/type "mbql/query"
-                         :stages   [{:lib/type "mbql.stage/mbql"
-                                     :joins    [{:lib/type "mbql/join"
-                                                 :stages   [{:lib/type "mbql.stage/native"
-                                                             :native   "select 1"}]}]}]}]
+                       ["native source-query nested in a join"
+                        {:database (mt/id) :type "query"
+                         :query    {:source-table (mt/id :checkins)
+                                    :joins        [{:source-query {:native "select 1"}
+                                                    :alias        "j"
+                                                    :condition    [:= [:field (mt/id :checkins :id) nil]
+                                                                   [:field (mt/id :checkins :id) {:join-alias "j"}]]}]}}]
                        ["legacy nested native source-query"
                         {:database (mt/id) :type "query"
                          :query    {:source-query {:native "select 1"}}}]]]
@@ -663,6 +819,18 @@
                                 {:name          "Should Not Save"
                                  :query         (:query construct-resp)
                                  :collection_id locked-id}))))))
+
+(deftest create-question-nested-unreadable-card-403-does-not-leak-definition-test
+  (testing "The 403 for a query nesting a Card the caller cannot read does not echo that Card's definition"
+    (mt/with-temp [:model/Card {secret-id :id} {:collection_id (:id (collection/user->personal-collection
+                                                                     (mt/user->id :crowberto)))
+                                                :dataset_query (mt/native-query {:query "SELECT 1 AS sec_1173_marker"})}]
+      (let [q    {:database (mt/id) :type :query :query {:source-table (str "card__" secret-id)}}
+            body (mt/user-http-request :rasta :post 403 "agent/v1/question"
+                                       {:name  "Should Not Save"
+                                        :query (u/encode-base64 (json/encode q))})]
+        (is (= "You cannot save this Question because you do not have permissions to run its query."
+               body))))))
 
 ;;; ----------------------------------------- Construct / Save Native Query ------------------------------------------
 
@@ -1392,6 +1560,27 @@
           (is (nat-int? (:row (first dashcards))))
           (is (nat-int? (:col (first dashcards)))))))))
 
+(deftest update-dashboard-dashcards-add-restricted-timeline-card-test
+  (testing "Adding a card to a shared dashboard needs read access to the timelines it shows"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (mt/with-temp [:model/Collection restricted {}
+                     :model/Timeline timeline {:collection_id (:id restricted)}
+                     :model/Dashboard {dash-id :id} {:public_uuid (str (random-uuid))}
+                     :model/Card {card-id :id} {:name          "Orders over time"
+                                                :dataset_query (orders-count-query)
+                                                :display       :line
+                                                :visualization_settings
+                                                {:timeline.selected_timeline_ids [(:id timeline)]}}]
+        (perms/revoke-collection-permissions! (perms-group/all-users) restricted)
+        (is (re-find #"You don't have permissions to do that\."
+                     (mt/user-http-request :rasta :put 403 (str "agent/v1/dashboard/" dash-id)
+                                           {:dashcards [{:action "add" :card_id card-id}]})))
+        (is (empty? (t2/select :model/DashboardCard :dashboard_id dash-id)))
+        (testing "a user who can read the timeline can add it"
+          (mt/user-http-request :crowberto :put 200 (str "agent/v1/dashboard/" dash-id)
+                                {:dashcards [{:action "add" :card_id card-id}]})
+          (is (= [card-id] (map :card_id (t2/select :model/DashboardCard :dashboard_id dash-id)))))))))
+
 (deftest update-dashboard-dashcards-multi-add-test
   (testing "Add multiple cards in one call - each one autoplaced w/o overlap"
     (mt/with-temp [:model/Dashboard {dash-id :id} {:name "Phase B Multi-add"}
@@ -1810,9 +1999,11 @@
     (let [resp (mt/user-http-request :crowberto :post 400 "agent/v1/execute-sql"
                                      {:database_id (mt/id)
                                       :sql         "SELECT * FROM table_that_does_not_exist"})]
-      ;; The streaming pipeline wraps the failure in :via[0]/:status.
-      (is (= "failed" (some-> resp :via first :status)))
-      (is (string? (some-> resp :via first :error)))))
+      (is (=? {:status     "failed"
+               :error      #(str/includes? % "TABLE_THAT_DOES_NOT_EXIST")
+               :error_type "invalid-query"}
+              resp))
+      (is (= #{:status :error :error_type} (set (keys resp))))))
   (testing "A successful query records a QueryExecution audit row tagged :agent"
     ;; Bypass-of-userland regression (#1): without `prepare-agent-query` no audit row was
     ;; written. Verify a row lands and carries the agent context. QueryExecutions are saved in async batches by
@@ -1832,6 +2023,28 @@
 
 ;;; ------------------------------------------------- Read Resource Tests -----------------------------------------
 
+(deftest read-resource-uri-preview-test
+  (doseq [[uri success?] [[(str "metabase://databases?ignored=" (apply str (repeat 4000 "x"))) true]
+                          [(apply str (repeat 4096 "\"")) false]
+                          [(apply str (repeat 4096 "\u08FF")) false]]]
+    (let [response (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource" {:uris [uri]})
+          resource (first (:resources response))
+          attribute (second (re-find #"<resource uri=\"([^\"]*)\">" (:output response)))]
+      (is (= success? (contains? resource :content)))
+      (is (= uri (:uri resource)))
+      (is (<= (count attribute) 200))
+      (is (str/ends-with? attribute "...[truncated]")))))
+
+(deftest ^:parallel read-resource-tool-description-test
+  (let [endpoint    (some (fn [[_ endpoint]]
+                            (when (= "read_resource" (get-in endpoint [:form :metadata :tool :name]))
+                              endpoint))
+                          (api.macros/ns-routes 'metabase.agent-api.api))
+        description (:description (tools-manifest/endpoint->tool-definition "/api/agent" endpoint))]
+    (is (str/includes? description "metabase://collection/root/items"))
+    (doseq [text ["metabase://chart/" "metabase://query/" "conversation" "save_entity"]]
+      (is (not (str/includes? description text)) text))))
+
 (deftest read-resource-test
   (testing "Dispatches a top-level URI through the shared resolver"
     (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
@@ -1848,13 +2061,294 @@
                                      {:uris [(str "metabase://table/" (mt/id :orders))]})]
       (is (= 1 (count (:resources resp))))
       (is (some? (-> resp :resources first :content)))))
-  (testing "Returns 400 when too many URIs"
-    (let [uris (vec (repeat 10 "metabase://databases"))]
-      (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource"
-                            {:uris uris})))
+  (testing "Rejects batches above the five-URI limit"
+    (let [uris (conj (vec (repeat 5 "metabase://databases")) "metabase://collections")
+          resp (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource" {:uris uris})]
+      (is (str/includes? (pr-str (:errors resp)) "at most 5 URIs"))
+      (is (str/includes? (pr-str (:errors resp)) "Request fewer URIs"))))
+  (testing "This endpoint publishes the tool's argument schema"
+    ;; Compared on the `:uris` entry: `mr/def` stamps its own docstring onto the map's properties,
+    ;; so the outer form differs by a `:description` the endpoint never publishes.
+    (is (= (nth (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)) 2)
+           (nth (mr/schema :metabase.agent-api.api/read-resource-request) 2))))
+  (testing (str "a URI that faults is that item's error, and the ones that read are kept. The agent "
+                "loop fails the whole call for an undeclared failure — a bug is not a partial "
+                "result — but this endpoint publishes one status for the call and an `:error` per "
+                "item, so it opts out with `:on-item-fault`.")
+    (mt/with-dynamic-fn-redefs [metabot-resources/dispatch
+                                (fn [uri]
+                                  (if (str/includes? uri "boom")
+                                    (throw (ex-info "a bug nobody wrote text for" {}))
+                                    {:structured-output {:result-type :metabot-list
+                                                         :list-type   :databases
+                                                         :items [] :total 0 :page 1 :pages 1}}))]
+      (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
+                                       {:uris ["metabase://databases" "metabase://boom"]})]
+        (is (= ["metabase://databases" "metabase://boom"] (mapv :uri (:resources resp))))
+        (is (some? (-> resp :resources first :content))
+            "the URI that read is not discarded by the one that faulted")
+        (testing "and the faulting one carries an authored sentence, not the exception's message"
+          (is (= "This resource could not be read." (-> resp :resources second :error)))
+          (is (not (str/includes? (:output resp) "a bug nobody wrote text for")))))))
   (testing "Reports a per-URI error rather than failing the whole call"
     (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
                                      {:uris ["metabase://nonsense/path"]})]
       (is (= 1 (count (:resources resp))))
       (is (nil? (-> resp :resources first :content)))
       (is (some? (-> resp :resources first :error))))))
+
+(deftest virtual-column-statistics-respect-blocked-source-tables-test
+  (mt/with-premium-features #{:advanced-permissions}
+    (mt/with-temp-copy-of-db
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :venues) :perms/create-queries :query-builder)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/view-data :blocked)
+        (perms/set-table-permission! (perms/all-users-group) (mt/id :categories) :perms/create-queries :no)
+        (let [mp (mt/metadata-provider)
+              categories (lib.metadata/table mp (mt/id :categories))
+              venues-query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+              joined-query (lib/join venues-query
+                                     (lib/join-clause categories
+                                                      [(lib/= (lib.metadata/field mp (mt/id :venues :category_id))
+                                                              (lib.metadata/field mp (mt/id :categories :id)))]))]
+          (doseq [[query blocked?] [[(lib/query mp categories) true] [joined-query true] [venues-query false]]]
+            (let [query (lib/aggregate query (lib/count))
+                  columns (mt/as-admin (-> query qp/process-query :data :results_metadata :columns))]
+              (mt/with-temp [:model/Card {card-id :id} {:type :question :database_id (mt/id)
+                                                        :dataset_query query :result_metadata columns}]
+                (mt/user-http-request :rasta :post (if blocked? 403 202) (str "card/" card-id "/query"))
+                (mt/with-test-user :rasta
+                  (binding [metabot.scope/*current-user-scope* #{"*"}]
+                    (doseq [profile [:document-generate-content :slackbot]]
+                      (let [entries (metabot.tools/->entries (:tools (metabot.profiles/get-profile profile)) nil nil profile)
+                            args {:data_source "question" :source_id card-id :field_id "count"}
+                            unrestricted (mt/as-admin ((get-in entries ["get_field_values" :fn]) args))
+                            result ((get-in entries ["get_field_values" :fn]) args)]
+                        (is (some? (get-in unrestricted [:structured-output :value_metadata :statistics])))
+                        (if blocked?
+                          (is (= {:result-type :field-metadata :field_id "count" :value_metadata nil}
+                                 (:structured-output result)))
+                          (is (= unrestricted result)))))))
+                (let [response (mt/user-http-request :rasta :post 200 "agent/v1/read-resource"
+                                                     {:uris [(str "metabase://question/" card-id "/fields/count")]})
+                      resource (first (:resources response))
+                      metadata (get-in resource [:content :structured-output])]
+                  (is (nil? (:error resource)))
+                  (is (= "field-metadata" (:result-type metadata)))
+                  (is (= (not blocked?) (some? (get-in metadata [:value_metadata :statistics])))))))))))))
+
+(deftest read-resource-refuses-mcp-scopes-test
+  (testing "GHY-4939: MCP scopes gate the MCP surface only. An OAuth token issued to an MCP client must not reach a
+            REST endpoint, so a token holding every MCP scope is refused by POST /v1/read-resource."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [token (str (random-uuid))]
+            (t2/insert! :model/OAuthAccessToken
+                        {:token     (oidc.util/hash-token token)
+                         :user_id   (mt/user->id :crowberto)
+                         :client_id client-id
+                         :scope     (vec (mcp/v2-scopes))
+                         :expiry    (+ (System/currentTimeMillis) 3600000)})
+            (is (= 403 (:status (client/client-full-response
+                                 :post "agent/v1/read-resource"
+                                 {:request-options {:headers {"authorization" (str "Bearer " token)}}}
+                                 {:uris ["metabase://databases"]}))))))))))
+
+(deftest endpoint-without-scope-refuses-mcp-scopes-test
+  (testing "GHY-4939: MCP scopes gate the MCP surface only. An endpoint that declares no `:scope` must refuse every
+            scoped token, so a token holding every MCP scope is refused by GET /api/user/:id."
+    (testing "the endpoint itself works for a normal session"
+      (is (= (mt/user->id :crowberto)
+             (:id (mt/user-http-request :crowberto :get 200 (str "user/" (mt/user->id :crowberto)))))))
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (oauth-server.tu/with-oauth-client [client-id]
+        (mt/with-model-cleanup [:model/OAuthAccessToken]
+          (let [token    (str (random-uuid))
+                _        (t2/insert! :model/OAuthAccessToken
+                                     {:token     (oidc.util/hash-token token)
+                                      :user_id   (mt/user->id :crowberto)
+                                      :client_id client-id
+                                      :scope     (vec (mcp/v2-scopes))
+                                      :expiry    (+ (System/currentTimeMillis) 3600000)})
+                response (client/client-full-response
+                          :get (str "user/" (mt/user->id :crowberto))
+                          {:request-options {:headers {"authorization" (str "Bearer " token)}}})]
+            (is (= 403 (:status response)))
+            (is (= "scope_not_permitted" (get-in response [:body :error])))))))))
+
+(deftest decode-and-validate-query-strips-extra-keys-test
+  (testing "base64 query payloads are decoded, validated, and stripped of the query processor's internal keys"
+    ;; `:qp/source-card-id` and `:qp/stage-had-source-card` are keys the QP adds to a query while it runs and that
+    ;; permissions later read, so a client must never be able to send them in.
+    (let [encoded (u/encode-base64 (json/encode {:database          (mt/id)
+                                                 :type              "query"
+                                                 :qp/source-card-id 1
+                                                 :query             {:source-table              (mt/id :orders)
+                                                                     :qp/stage-had-source-card 1}}))
+          q       (#'agent-api.api/decode-and-validate-query encoded)]
+      (is (= :mbql/query (:lib/type q)))
+      (is (not (contains? q :qp/source-card-id)))
+      (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages q))
+          "internal keys are stripped from every stage"))))
+
+;;; ------------------------------------------------- Error Responses ---------------------------------------------
+
+(defn- reject-app-db-lookup
+  "Throw an app DB lookup error without leaving the surrounding transaction aborted."
+  [& _]
+  (t2/with-transaction [_conn]
+    (t2/query ["SELECT no_such_column FROM metabase_field"])))
+
+(defn- logs-app-db-error?
+  "Whether captured log `messages` include the app DB error that [[reject-app-db-lookup]] causes."
+  [messages]
+  (some #(re-find #"(?i)no_such_column" (str (:message %) (some-> (:e %) ex-message))) messages))
+
+(deftest unexpected-error-is-generic-test
+  (testing "An unexpected failure is a generic 500 whatever `hide-stacktraces` says, and the log gets the detail"
+    (mt/with-prometheus-system! [_ system]
+      (doseq [[search log-message detail] [[reject-app-db-lookup "Database failure in Agent API" #"(?i)no_such_column"]
+                                           [(fn [_] (throw (ex-info "Search index is unavailable" {})))
+                                            "Unhandled error in Agent API request"
+                                            #"Search index is unavailable"]]
+              hide-stacktraces?             [false true]]
+        (mt/with-dynamic-fn-redefs [metabot-search/search search]
+          (mt/with-temporary-setting-values [hide-stacktraces hide-stacktraces?]
+            (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+              (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
+                (is (= {:message "Something went wrong"}
+                       (mt/user-http-request :rasta :post 500 "agent/v1/search" {:term_queries ["orders"]})))
+                (is (= (inc initial) (mt/metric-value system :metabase-api/unhandled-errors)))
+                (is (=? [{:message log-message, :e #(re-find detail (ex-message %))}] (messages)))))))))))
+
+(deftest error-response-callback-failure-test
+  (mt/with-prometheus-system! [_ system]
+    (doseq [endpoint-kind [:bare :sync :async]
+            callback-kind [:ordinary :database :disconnect]
+            delivery [:respond :throw :raise]]
+      (let [failure          (if (= callback-kind :database) (SQLException. "Database failure") (Exception. "Handler failure"))
+            callback-failure (case callback-kind
+                               :ordinary (Exception. "Callback failure")
+                               :database (SQLException. "Callback failure")
+                               :disconnect (EofException. "Client went away"))
+            calls            (atom 0)
+            callback         (fn [_] (swap! calls inc) (throw callback-failure))
+            handler          (fn [_request respond raise]
+                               (case delivery
+                                 :respond (respond {:status 200 :body "ok"})
+                                 :throw (throw failure)
+                                 :raise (raise failure)))
+            endpoint         (case endpoint-kind
+                               :bare handler
+                               :sync (api.macros/endpoint-handler* nil
+                                                                   (fn [& _] (handler {} identity #(throw %)))
+                                                                   {:async? false})
+                               :async (api.macros/endpoint-handler* nil
+                                                                    (api.macros/-core-fn-async
+                                                                     (fn [respond raise & _] (handler {} respond raise)))
+                                                                    {:async? true}))
+            handler          (#'agent-api.api/wrap-error-responses endpoint)
+            initial          (mt/metric-value system :metabase-api/unhandled-errors)
+            caught           (try (handler {} callback callback) (catch Throwable e e))]
+        (is (identical? callback-failure caught))
+        (is (= 1 @calls))
+        (is (= (if (= delivery :respond) initial (inc initial))
+               (mt/metric-value system :metabase-api/unhandled-errors)))))))
+
+(deftest client-error-wrapping-database-error-is-generic-test
+  (testing "A client status does not expose an app DB failure in the cause chain"
+    (mt/with-prometheus-system! [_ system]
+      (doseq [status-code [400 403]]
+        (mt/with-dynamic-fn-redefs [metabot-search/search
+                                    (fn [& args]
+                                      (try
+                                        (apply reject-app-db-lookup args)
+                                        (catch Throwable e
+                                          (throw (ex-info "App DB lookup detail"
+                                                          {:status-code status-code :error "internal-app-db"} e)))))]
+          (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+            (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
+              (is (= {:message "Something went wrong"}
+                     (mt/user-http-request :rasta :post 500 "agent/v1/search" {:term_queries ["orders"]})))
+              (is (= initial (mt/metric-value system :metabase-api/unhandled-errors)))
+              (is (=? [{:message "Database failure in Agent API"}] (messages)))
+              (is (some #(re-find #"(?i)no_such_column" (ex-message %))
+                        (take-while some? (iterate ex-cause (:e (first (messages))))))))))))))
+
+(deftest client-error-wrapping-toucan-failure-is-generic-test
+  (doseq [status-code [400 403]]
+    (let [cause (ex-info "Metadata connection failure" {:toucan2/context-trace []}
+                         (IllegalStateException. "Metadata connection unavailable"))]
+      (mt/with-dynamic-fn-redefs [metabot-search/search
+                                  (fn [& _] (throw (ex-info "Internal metadata detail" {:status-code status-code} cause)))]
+        (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+          (is (= {:message "Something went wrong"}
+                 (mt/user-http-request :rasta :post 500 "agent/v1/search" {:term_queries ["orders"]})))
+          (is (=? [{:message "Database failure in Agent API"}] (messages))))))))
+
+(deftest client-disconnect-is-not-an-error-test
+  (testing "A client that disconnects before its response is written gets no error response, count or error log"
+    (mt/with-prometheus-system! [_ system]
+      (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+        (let [statuses (atom [])
+              request  (#'client/build-mock-request {:method      :get
+                                                     :url         "agent/v1/ping"
+                                                     :credentials (mt/user->credentials :rasta)})
+              initial  (mt/metric-value system :metabase-api/unhandled-errors)]
+          (try
+            ((test.server.handler/test-handler) request
+                                                (fn [response]
+                                                  (swap! statuses conj (:status response))
+                                                  (throw (EofException. "Client went away")))
+                                                (fn [_e]))
+            (catch EofException _))
+          (is (= 200 (first @statuses)))
+          (is (not-any? #{500} @statuses))
+          (is (= initial (mt/metric-value system :metabase-api/unhandled-errors)))
+          (is (empty? (messages))))))))
+
+(deftest client-error-has-no-stacktrace-test
+  (testing "A 400 keeps its message and error code but no stack trace, whatever `hide-stacktraces` says"
+    (doseq [hide-stacktraces? [false true]]
+      (mt/with-temporary-setting-values [hide-stacktraces hide-stacktraces?]
+        (let [body (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                         {:query (orders-query :aggregation [(orders-field-ref "ID")])})]
+          (is (=? {:message string? :error "aggregation-entry-not-aggregation"} body))
+          (is (= #{:message :error} (set (keys body)))))))))
+
+(deftest database-error-while-reading-rows-keeps-its-text-test
+  (testing "A database error raised while rows are read keeps its text, like one raised when the query starts"
+    (let [details (update (:details (mt/db)) :db str ";LAZY_QUERY_EXECUTION=TRUE")
+          sql     "SELECT X, 10 / (X - 4) AS Y FROM SYSTEM_RANGE(1, 10)"]
+      (mt/with-temp [:model/Database {db-id :id} {:engine :h2 :details details}]
+        (is (=? {:status     "failed"
+                 :error      #(str/includes? % "Division by zero")
+                 :error_type "invalid-query"}
+                (mt/user-http-request :crowberto :post 400 "agent/v1/execute-sql" {:database_id db-id :sql sql})))))))
+
+(deftest query-run-app-db-failure-is-generic-test
+  (testing "A query run that fails in an app DB lookup is a generic failure, and the log gets the detail"
+    (mt/with-temp [:model/Card {card-id :id} {:dataset_query (orders-limit-query 5)}]
+      (let [handle (u/encode-base64 (json/encode (lib/prepare-for-serialization (orders-limit-query 5))))]
+        (mt/with-dynamic-fn-redefs [lib-be.db/columns reject-app-db-lookup]
+          (doseq [[endpoint body] [["agent/v1/execute" {:query handle}]
+                                   ["agent/v2/query" {:query handle}]
+                                   [(format "agent/v1/question/%d/query" card-id) {}]]]
+            (testing endpoint
+              (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+                (is (= {:status "failed" :error "Something went wrong"}
+                       (mt/user-http-request :crowberto :post 500 endpoint body)))
+                (is (logs-app-db-error? (messages)))))))))))
+
+(deftest construct-query-structural-locations-test
+  (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                       {:query (orders-query :filters [{:op ">"} {:op "<"}])})]
+    (is (= "invalid-representations-query" (:error response)))
+    (is (= (str "Representations query has an invalid structure.\n"
+                "Invalid at stages[0].filters[0]: should be a vector, "
+                "clause must be [operator-string, options-map, \u2026args]; "
+                "stages[0].filters[1]: should be a vector, "
+                "clause must be [operator-string, options-map, \u2026args]. Fix the named paths.")
+           (:message response)))))

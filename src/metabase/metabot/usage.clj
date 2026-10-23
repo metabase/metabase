@@ -8,7 +8,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.metabot.provider-util :as provider-util]
+   [metabase.llm.provider :as llm.provider]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.util :as u]
@@ -19,6 +19,8 @@
   [:map
    [:source                :string]
    [:model                 :string]
+   [:provider              {:optional true} [:maybe :string]]
+   [:model-name            {:optional true} [:maybe :string]]
    [:prompt-tokens         [:int {:min 0}]]
    [:completion-tokens     [:int {:min 0}]]
    [:cache-creation-tokens {:optional true} [:maybe [:int {:min 0}]]]
@@ -60,7 +62,7 @@
 (defn- default-metabase-meter-key
   []
   (some-> metabot.settings/default-metabase-llm-metabot-provider
-          provider-util/strip-metabase-prefix
+          llm.provider/strip-managed-prefix
           u/qualified-name
           (str/replace-first "/" ":")
           (str ":tokens")))
@@ -73,7 +75,7 @@
 
 (defn managed-free-limit-reached?
   "True when the configured managed Metabase provider is locked for free-tier usage."
-  ([] (and (provider-util/metabase-provider? (metabot.settings/llm-metabot-provider))
+  ([] (and (llm.provider/managed-model-ref? (metabot.settings/llm-metabot-provider))
            (some-> (premium-features/token-status) managed-free-limit-reached?)))
   ([token-status]
    (some-> (meter-entry token-status)

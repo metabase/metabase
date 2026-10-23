@@ -61,7 +61,7 @@ function assertChartRendered(title: string): void {
     .should("be.visible")
     .parent()
     .within(() => {
-      cy.findByTestId(/^(chart|row-chart)-container$/, {
+      cy.findByTestId("chart-container", {
         timeout: CHART_RENDER_TIMEOUT,
       })
         .should("be.visible")
@@ -77,11 +77,11 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
     H.activateToken("pro-self-hosted");
     // MetabotAnalyticsAvailabilityLayout (usage stats + conversations) shows an empty
     // state with a "Go to AI Settings" CTA unless llm-metabot-configured? is true.
-    H.updateSetting("llm-anthropic-api-key", "sk-ant-test-key");
+    H.setupAnthropicLlmProvider();
     seedUsageAuditingData();
   });
 
-  it("renders the usage stats charts from the audit views", () => {
+  it("renders the usage stats charts and opens the seeded conversations", () => {
     visitUsageStatsPage();
 
     H.main().within(() => {
@@ -94,9 +94,8 @@ describe("scenarios > monitor > ai auditing > usage auditing", () => {
     });
 
     CONVERSATION_CHART_TITLES.forEach(assertChartRendered);
-  });
 
-  it("lists the seeded conversations and opens their details", () => {
+    cy.log("conversations list and details");
     visitConversationsPage();
 
     H.main()

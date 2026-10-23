@@ -118,12 +118,12 @@
       0))
 
 (mu/defn update-parameter-target-field-ref :- ::lib.schema.parameter/target
-  "If parameter `:target` wraps a legacy `:field` ref, convert it to MBQL 5, apply `(apply f field-ref args)`, convert
-  the result back to legacy, and place it back in the target. If there is no `:field` ref, returns target unchanged."
+  "If parameter `:target` wraps a legacy `:field` ref, convert it to MBQL 5, apply `(f field-ref)`, convert the result
+  back to legacy, and place it back in the target. If there is no `:field` ref, returns target unchanged."
   [target :- ::lib.schema.parameter/target
-   f & args]
+   f      :- ifn?]
   (if-let [field-ref (parameter-target-field-ref target)]
-    (let [new-legacy-ref (-> (apply f field-ref args)
+    (let [new-legacy-ref (-> (f field-ref)
                              lib.convert/->legacy-MBQL)]
       (case (first target)
         :dimension (let [[tag _ref opts] target]
@@ -139,8 +139,8 @@
   "If parameter `:target` is a `:dimension` pseudo-clause, update the options map associated with it, if any. If it is
   not a `:dimension` psuedo-clause, this function no-ops."
   [target :- ::lib.schema.parameter/target
-   f & args]
+   f      :- ifn?]
   (case (first target)
     :dimension (let [[_tag dimension opts] target]
-                 [:dimension dimension (apply f opts args)])
+                 [:dimension dimension (f opts)])
     target))

@@ -1,21 +1,23 @@
 import type { EChartsType } from "echarts/core";
 import { useCallback, useEffect, useMemo } from "react";
 
-import {
-  extractSeriesDataKeyFromName,
-  getBoxPlotClickData,
-  isBoxPlotSeriesEvent,
-} from "metabase/visualizations/echarts/boxplot";
-import type { BoxPlotChartModel } from "metabase/visualizations/echarts/boxplot/model/types";
-import type { EChartsSeriesMouseEvent } from "metabase/visualizations/echarts/types";
 import { useChartYAxisVisibility } from "metabase/visualizations/hooks/use-chart-y-axis-visibility";
 import type {
-  ComputedVisualizationSettings,
-  HoveredObject,
   OnChangeCardAndRun,
   VisualizationProps,
 } from "metabase/visualizations/types";
-import type { EChartsEventHandler } from "metabase/visualizations/types/echarts";
+import { getGoalLineHoverData } from "metabase/visualizations/visualizations/CartesianChart/events";
+import {
+  type BoxPlotChartModel,
+  type ComputedVisualizationSettings,
+  type EChartsEventHandler,
+  type EChartsSeriesMouseEvent,
+  type HoveredObject,
+  extractSeriesDataKeyFromName,
+  getBoxPlotClickData,
+  isBoxPlotSeriesEvent,
+  isGoalLineSeriesId,
+} from "metabase/viz-core";
 import type { CardId, RawSeries } from "metabase-types/api";
 
 type UseBoxPlotEventsProps = {
@@ -156,6 +158,19 @@ export function useBoxPlotEvents({
         eventName: "mousemove",
         query: "series",
         handler: (event: EChartsSeriesMouseEvent) => {
+          if (isGoalLineSeriesId(event.seriesId)) {
+            chartRef.current?.getZr().setCursorStyle("default");
+
+            const eventData = getGoalLineHoverData(
+              settings,
+              event.event.event.target,
+              chartModel.leftAxisModel?.formatGoal,
+            );
+
+            onHoverChange?.(eventData);
+            return;
+          }
+
           if (!isBoxPlotSeriesEvent(event)) {
             return;
           }
@@ -173,7 +188,7 @@ export function useBoxPlotEvents({
         handler: handleClick,
       },
     ],
-    [handleClick, chartModel, hovered, onHoverChange],
+    [chartRef, handleClick, chartModel, hovered, onHoverChange, settings],
   );
 
   return { eventHandlers };

@@ -15,38 +15,19 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { isRouteInSync } from "metabase/common/hooks/is-route-in-sync";
 import { useCallbackEffect } from "metabase/common/hooks/use-callback-effect";
 import { useFavicon } from "metabase/common/hooks/use-favicon";
-import { useForceUpdate } from "metabase/common/hooks/use-force-update";
 import { useLoadingTimer } from "metabase/common/hooks/use-loading-timer";
 import { useWebNotification } from "metabase/common/hooks/use-web-notification";
+import {
+  canManageSubscriptions,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/current-user";
 import { usePageTitleWithLoadingTime } from "metabase/hooks/use-page-title";
 import { VISUALIZATION_SLOW_TIMEOUT } from "metabase/querying/constants";
+import { connect, useSelector, useStore } from "metabase/redux";
 import {
-  getDatabasesList,
-  getSampleDatabaseId,
-} from "metabase/querying/selectors";
-import { connect, useSelector } from "metabase/redux";
-import { closeNavbar } from "metabase/redux/app";
-import {
-  closeQB,
-  closeQbNewbModal,
   editSummary,
-  navigateBackToDashboard,
-  onCloseAIQuestionAnalysisSidebar,
-  onCloseChartSettings,
-  onCloseChartType,
-  onCloseQuestionInfo,
-  onCloseQuestionSettings,
-  onCloseSidebars,
-  onCloseSummary,
-  onCloseTimelines,
-  onOpenAIQuestionAnalysisSidebar,
-  onOpenChartSettings,
-  onOpenChartType,
-  onOpenQuestionInfo,
-  onOpenQuestionSettings,
-  onOpenTimelines,
   setIsNativeEditorOpen,
-  setParameterValue,
   setUIControls,
 } from "metabase/redux/query-builder";
 import type { QueryBuilderUIControls, State } from "metabase/redux/store";
@@ -58,23 +39,18 @@ import {
   useParams,
 } from "metabase/router";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getMetadata } from "metabase/selectors/metadata";
-import {
-  canManageSubscriptions,
-  getUser,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
 import { getSetting } from "metabase/settings";
+import { useForceUpdate } from "metabase/utils/use-force-update";
 import type { Series } from "metabase-types/api";
 
 import {
   cancelQuery,
   cancelQuestionChanges,
   closeObjectDetail,
+  closeQbNewbModal,
   closeSnippetModal,
   deselectTimelineEvents,
   followForeignKey,
-  hideTimelineEvents,
   initializeQB,
   insertSnippet,
   loadObjectDetailFKReferences,
@@ -86,6 +62,7 @@ import {
   onUpdateVisualizationSettings,
   openDataReferenceAtQuestion,
   openSnippetModalWithSelectedText,
+  openTimelinesFromChart,
   popDataReferenceStack,
   pushDataReferenceStack,
   queryCompleted,
@@ -110,8 +87,6 @@ import {
   setSnippetCollectionId,
   setTemplateTag,
   setTemplateTagConfig,
-  showTimelineEvents,
-  showTimelinesForCollection,
   softReloadCard,
   toggleDataReference,
   toggleSnippetSidebar,
@@ -126,20 +101,33 @@ import {
 import { trackCardBookmarkAdded } from "../analytics";
 import { View } from "../components/view/View";
 import {
+  closeQB,
+  navigateBackToDashboard,
+  onCloseChartSettings,
+  onCloseChartType,
+  onCloseQuestionInfo,
+  onCloseQuestionSettings,
+  onCloseSidebars,
+  onCloseSummary,
+  onOpenChartSettings,
+  onOpenChartType,
+  onOpenQuestionInfo,
+  onOpenQuestionSettings,
+  setParameterValue,
+} from "../store/actions";
+import { getIsObjectDetail } from "../store/mode-selectors";
+import {
   getCard,
   getDataReferenceStack,
   getDocumentTitle,
   getEmbeddedParameterVisibility,
-  getFilteredTimelines,
   getFirstQueryResult,
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
-  getIsAnySidebarOpen,
   getIsDirty,
   getIsHeaderVisible,
   getIsLiveResizable,
   getIsLoadingComplete,
-  getIsNativeEditorOpen,
   getIsResultDirty,
   getIsRunnable,
   getIsTimeseries,
@@ -160,16 +148,12 @@ import {
   getShouldShowUnsavedChangesWarning,
   getSnippetCollectionId,
   getTableForeignKeyReferences,
-  getTableForeignKeys,
-  getTimeseriesXDomain,
+  getTimelineEventsVisibility,
   getUiControls,
-  getVisibleTimelineEventIds,
-  getVisibleTimelineEvents,
   getVisualizationSettings,
   getZoomedObjectRowIndex,
   isResultsMetadataDirty,
-} from "../selectors";
-import { getIsObjectDetail, getMode } from "../selectors/mode";
+} from "../store/selectors";
 import { isNavigationAllowed } from "../utils";
 
 import { useCreateQuestion } from "./use-create-question";
@@ -182,28 +166,19 @@ const mapStateToProps = (state: State) => {
     canManageSubscriptions: canManageSubscriptions(state),
     isAdmin: getUserIsAdmin(state),
 
-    mode: getMode(state),
-
     question: getQuestion(state),
     originalQuestion: getOriginalQuestion(state),
     lastRunCard: getLastRunCard(state),
 
     parameterValues: getParameterValues(state),
 
-    tableForeignKeys: getTableForeignKeys(state),
     tableForeignKeyReferences: getTableForeignKeyReferences(state),
 
     card: getCard(state),
     originalCard: getOriginalCard(state),
-    databases: getDatabasesList(state),
 
-    metadata: getMetadata(state),
-
-    timelines: getFilteredTimelines(state),
-    timelineEvents: getVisibleTimelineEvents(state),
+    timelineEventsVisibility: getTimelineEventsVisibility(state),
     selectedTimelineEventIds: getSelectedTimelineEventIds(state),
-    visibleTimelineEventIds: getVisibleTimelineEventIds(state),
-    xDomain: getTimeseriesXDomain(state),
 
     result: getFirstQueryResult(state),
     results: getQueryResults(state),
@@ -212,11 +187,9 @@ const mapStateToProps = (state: State) => {
     uiControls: getUiControls(state),
     ...state.qb.uiControls,
     dataReferenceStack: getDataReferenceStack(state),
-    isAnySidebarOpen: getIsAnySidebarOpen(state),
 
     isDirty: getIsDirty(state),
     isObjectDetail: getIsObjectDetail(state),
-    isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
     isLiveResizable: getIsLiveResizable(state),
     isTimeseries: getIsTimeseries(state),
@@ -225,7 +198,6 @@ const mapStateToProps = (state: State) => {
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
 
     parameters: getParameters(state),
-    sampleDatabaseId: getSampleDatabaseId(state),
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
@@ -256,37 +228,31 @@ const mapStateToProps = (state: State) => {
 };
 
 const mapDispatchToProps = {
-  // from metabase/redux/query-builder (shared tier)
   closeQB,
   closeQbNewbModal,
   navigateBackToDashboard,
-  onCloseAIQuestionAnalysisSidebar,
   onCloseChartSettings,
   onCloseChartType,
   onCloseQuestionInfo,
   onCloseQuestionSettings,
   onCloseSidebars,
   onCloseSummary,
-  onCloseTimelines,
   editSummary,
-  onOpenAIQuestionAnalysisSidebar,
   onOpenChartSettings,
   onOpenChartType,
   onOpenQuestionInfo,
   onOpenQuestionSettings,
-  onOpenTimelines,
+  onOpenTimelines: openTimelinesFromChart,
   setIsNativeEditorOpen,
   setParameterValue,
   setUIControls,
 
-  // from query_builder/actions
   cancelQuery,
   cancelQuestionChanges,
   closeObjectDetail,
   closeSnippetModal,
   deselectTimelineEvents,
   followForeignKey,
-  hideTimelineEvents,
   initializeQB,
   insertSnippet,
   loadObjectDetailFKReferences,
@@ -322,8 +288,6 @@ const mapDispatchToProps = {
   setSnippetCollectionId,
   setTemplateTag,
   setTemplateTagConfig,
-  showTimelineEvents,
-  showTimelinesForCollection,
   softReloadCard,
   toggleDataReference,
   toggleSnippetSidebar,
@@ -334,9 +298,6 @@ const mapDispatchToProps = {
   viewNextObjectDetail,
   viewPreviousObjectDetail,
   zoomInRow,
-
-  // other
-  closeNavbar,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -348,30 +309,21 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const params = useParams();
-  useFavicon({ favicon: props.pageFavicon ?? null });
   const navigationType = useNavigationType();
-  const { data: fetchedTimelines, isSuccess: areTimelinesLoaded } =
-    useListTimelinesQuery({
-      include: "events",
-    });
-  const { data: bookmarks = [], isSuccess: areBookmarksLoaded } =
-    useListBookmarksQuery();
+  const { data: bookmarks = [] } = useListBookmarksQuery();
   const [createBookmarkMutation] = useCreateBookmarkMutation();
   const [deleteBookmarkMutation] = useDeleteBookmarkMutation();
 
+  useFavicon({ favicon: props.pageFavicon ?? null });
+  useListTimelinesQuery({ include: "events" });
+
   const {
-    question,
-    originalQuestion,
     uiControls,
-    isNativeEditorOpen,
-    isAnySidebarOpen,
-    closeNavbar,
     initializeQB,
     locationChanged,
     setUIControls,
     runOrCancelQuestionOrSelectedQuery,
     cancelQuery,
-    showTimelinesForCollection,
     card,
     isAdmin,
     isLoadingComplete,
@@ -405,15 +357,15 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
         !didTrackFirstNonTableChartGeneratedRef.current &&
         isNonTable
       ) {
-        if (card) {
-          setDidFirstNonTableChartRender(card);
+        if (card?.display) {
+          setDidFirstNonTableChartRender(card.display);
         }
         didTrackFirstNonTableChartGeneratedRef.current = true;
       }
     },
     [
       isAdmin,
-      card,
+      card?.display,
       didFirstNonTableChartGenerated,
       setDidFirstNonTableChartRender,
     ],
@@ -424,25 +376,18 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     () => _.debounce(forceUpdate, 400),
     [forceUpdate],
   );
-  const timeout = useRef<number>();
+  const timeout = useRef<number>(undefined);
 
   const previousUIControls = usePrevious(uiControls);
   const previousLocation = usePrevious(location);
-  const wasShowingAnySidebar = usePrevious(isAnySidebarOpen);
-  const wasNativeEditorOpen = usePrevious(isNativeEditorOpen);
-  const hasQuestion = question != null;
-  const collectionId = question?.collectionId();
 
   const openModal = useCallback(
-    (
-      modal: QueryBuilderUIControls["modal"],
-      modalContext: QueryBuilderUIControls["modalContext"],
-    ) => setUIControls({ modal, modalContext }),
+    (modal: QueryBuilderUIControls["modal"]) => setUIControls({ modal }),
     [setUIControls],
   );
 
   const closeModal = useCallback(
-    () => setUIControls({ modal: null, modalContext: null }),
+    () => setUIControls({ modal: null }),
     [setUIControls],
   );
 
@@ -497,40 +442,6 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     closeQB();
     clearTimeout(timeout.current);
   });
-
-  useEffect(() => {
-    if (
-      (isAnySidebarOpen && !wasShowingAnySidebar) ||
-      (isNativeEditorOpen && !wasNativeEditorOpen)
-    ) {
-      closeNavbar();
-    }
-  }, [
-    isAnySidebarOpen,
-    wasShowingAnySidebar,
-    isNativeEditorOpen,
-    wasNativeEditorOpen,
-    closeNavbar,
-  ]);
-
-  useEffect(() => {
-    // Gate on the timelines actually being loaded (not just bookmarks), and
-    // re-run when they arrive: showTimelinesForCollection reads the fetched
-    // timelines from the store at dispatch time, so running it before the
-    // `/api/timeline` request resolves dispatches an empty set and the chart
-    // never receives its events. This restores the pre-#73674 `allLoaded`
-    // guarantee that was lost when the Timelines.loadList HOC was removed.
-    if (areBookmarksLoaded && areTimelinesLoaded && hasQuestion) {
-      showTimelinesForCollection(collectionId);
-    }
-  }, [
-    areBookmarksLoaded,
-    areTimelinesLoaded,
-    hasQuestion,
-    collectionId,
-    showTimelinesForCollection,
-    fetchedTimelines,
-  ]);
 
   useEffect(() => {
     const { isShowingDataReference, isShowingTemplateTagsEditor } = uiControls;
@@ -598,15 +509,31 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
     setIsShowingToaster(false);
   }, []);
 
-  const isNewQuestion = !originalQuestion;
-  const isLocationAllowed = useCallback(
-    (location?: Location) =>
-      isNavigationAllowed({
+  const store = useStore();
+  const isCallbackScheduledRef = useRef(isCallbackScheduled);
+  isCallbackScheduledRef.current = isCallbackScheduled;
+
+  // Decide blocking from the store at call time, not from values captured in
+  // render. React 19 can run a Back navigation against a render that has not
+  // committed the freshly-dirtied question yet, so a render-captured decision
+  // reads the question as clean and lets the navigation through without the
+  // discard prompt (metabase#76382).
+  const isBlocking = useCallback(
+    (location?: Location) => {
+      const state = store.getState();
+      if (
+        !getShouldShowUnsavedChangesWarning(state) ||
+        isCallbackScheduledRef.current
+      ) {
+        return false;
+      }
+      return !isNavigationAllowed({
         destination: location,
-        question,
-        isNewQuestion,
-      }),
-    [question, isNewQuestion],
+        question: getQuestion(state),
+        isNewQuestion: !getOriginalQuestion(state),
+      });
+    },
+    [store],
   );
 
   const handleCmdEnter = () => {
@@ -639,7 +566,7 @@ function QueryBuilderInner(props: QueryBuilderInnerProps) {
 
       <LeaveRouteConfirmModal
         isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
-        isLocationAllowed={isLocationAllowed}
+        isBlocking={isBlocking}
       />
     </>
   );

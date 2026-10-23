@@ -1,4 +1,7 @@
+import type { RowValue } from "./dataset";
 import type { DocumentContent } from "./document";
+import type { ExplorationQueryId } from "./exploration";
+import type { TimelineId } from "./timeline";
 import type { BaseUser, User, UserId } from "./user";
 
 export type CommentId = number;
@@ -7,7 +10,17 @@ export type CommentEntityType = "document" | "exploration";
 
 export type EntityId = string | number;
 
-export type CommentContext = Record<string, unknown>;
+export type CommentHighlight = {
+  columnName?: string;
+  dimensions?: { value: RowValue; columnName: string }[];
+};
+
+export type CommentContext = {
+  timeline_id?: TimelineId | null;
+  exploration_query_ids?: ExplorationQueryId[];
+  highlighted?: CommentHighlight;
+  highlight_label?: string;
+};
 
 export interface Comment {
   id: CommentId;
