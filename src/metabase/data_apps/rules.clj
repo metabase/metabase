@@ -77,3 +77,9 @@
   metabase-enterprise.data-apps.rules
   [_card-id _param-key]
   (throw (unavailable)))
+
+(defenterprise check-dashboard!
+  "Throws a 403 unless a data app may use the dashboard with `dashboard-id`."
+  metabase-enterprise.data-apps.rules
+  [_dashboard-id]
+  (throw (unavailable)))

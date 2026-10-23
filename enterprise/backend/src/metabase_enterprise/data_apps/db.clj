@@ -123,6 +123,20 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :parameters :model/Card :id card-id))
 
+(mu/defn dashboard-by-id :- [:maybe [:map [:archived :boolean] [:collection_type [:maybe :string]]]]
+  "Whether the Dashboard with `dashboard-id` is archived and the type of its Collection, or nil when there is none."
+  [dashboard-id :- ::lib.schema.id/dashboard]
+  (t2/select-one [:model/Dashboard [:report_dashboard.archived :archived] [:collection.type :collection_type]]
+                 {:left-join [:collection [:= :collection.id :report_dashboard.collection_id]]
+                  :where     [:= :report_dashboard.id dashboard-id]}))
+
+(mu/defn dashboard-by-entity-id :- [:maybe [:map [:archived :boolean] [:collection_type [:maybe :string]]]]
+  "Whether the Dashboard with `entity-id` is archived and the type of its Collection, or nil when there is none."
+  [entity-id :- :string]
+  (t2/select-one [:model/Dashboard [:report_dashboard.archived :archived] [:collection.type :collection_type]]
+                 {:left-join [:collection [:= :collection.id :report_dashboard.collection_id]]
+                  :where     [:= :report_dashboard.entity_id entity-id]}))
+
 (mu/defn data-app-readable-card-ids :- [:set ::lib.schema.id/card]
   "Among `card-ids`, the IDs of the cards a data app may read: the cards in data apps' collections and the metrics in
   the Library, unless archived."

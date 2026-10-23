@@ -1,6 +1,7 @@
 (ns metabase.data-apps.core
   (:require
    [metabase.data-apps.guards.card]
+   [metabase.data-apps.guards.dashboard]
    [metabase.data-apps.guards.dataset]
    [metabase.data-apps.guards.field]
    [metabase.data-apps.guards.sandbox-table]
@@ -11,6 +12,8 @@
 (p/import-vars
  [metabase.data-apps.guards.card
   card-guard]
+ [metabase.data-apps.guards.dashboard
+  dashboard-guard]
  [metabase.data-apps.guards.dataset
   dataset-guard]
  [metabase.data-apps.guards.field

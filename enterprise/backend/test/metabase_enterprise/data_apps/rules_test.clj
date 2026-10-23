@@ -1,8 +1,10 @@
 (ns metabase-enterprise.data-apps.rules-test
   "The Library-only rules the data-app route guards hold a data app's requests to, through the endpoints they guard."
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu :refer [do-with-app-collection]]
+   [metabase.data-apps.guards.dashboard :as guards.dashboard]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -413,6 +415,53 @@
                                                                                       (mt/id :venues :category_id))}]})
              (is (re-find #"not CATEGORIES" (get-as-data-app 403 (format "card/%d/params/category/values" app-card-id))))
              (is (get-as-data-app 200 (format "card/%d/params/price/values" app-card-id))))))))))
+
+(defn- dashboard-paths
+  "A request to each data-app endpoint of the dashboard API, as `[method path]`, for the dashboard with `dashboard-id`, its
+  dashcard with `dashcard-id` and that dashcard's card with `card-id`."
+  [dashboard-id dashcard-id card-id]
+  (for [[method route] (keys guards.dashboard/checks)]
+    [method (str "dashboard"
+                 (-> route
+                     (str/replace #":dashboard-id|:id" (str dashboard-id))
+                     (str/replace ":dashcard-id" (str dashcard-id))
+                     (str/replace ":card-id" (str card-id))
+                     (str/replace ":export-format" "csv")
+                     (str/replace #":[a-z\-]+" "x")))]))
+
+(deftest dashboard-endpoints-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (data-apps.tu/do-with-library!
+      (fn [{:keys [dashboards-id]}]
+        (let [mp       (mt/metadata-provider)
+              checkins (lib/query mp (lib.metadata/table mp (mt/id :checkins)))]
+          (mt/with-temp [:model/Dashboard {library-id :id library-eid :entity_id} {:name "Checkins" :collection_id dashboards-id}
+                         :model/Card {question-id :id} {:name          "Checkins"
+                                                        :collection_id dashboards-id
+                                                        :dashboard_id  library-id
+                                                        :dataset_query checkins}
+                         :model/DashboardCard {dashcard-id :id} {:dashboard_id library-id :card_id question-id}
+                         :model/Dashboard {other-id :id} {:name "Elsewhere"}
+                         :model/Dashboard {archived-id :id} {:name "Archived" :collection_id dashboards-id :archived true}]
+            (testing "a data app uses a dashboard in the Library with everything on it, whatever it reads"
+              (is (= library-id (:id (get-as-data-app 200 (str "dashboard/" library-id)))))
+              (is (= library-id (:id (get-as-data-app 200 (str "dashboard/" library-eid)))))
+              (is (get-as-data-app 200 (format "dashboard/%d/query_metadata" library-id)))
+              (is (= "completed" (:status (mt/user-http-request :crowberto :post 202
+                                                                (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                                        library-id dashcard-id question-id)
+                                                                as-data-app)))))
+            (testing "every dashboard endpoint refuses a dashboard outside the Library, an archived one, and no dashboard"
+              (doseq [dashboard-id [other-id archived-id]
+                      [method path] (dashboard-paths dashboard-id dashcard-id question-id)]
+                (testing (str method " " path)
+                  (is (re-find #"only the dashboards in the Library"
+                               (mt/user-http-request :crowberto method 403 path as-data-app))))))
+            (testing "a dashboard that doesn't exist is left to the endpoint's 404"
+              (get-as-data-app 404 "dashboard/999999999"))
+            (testing "a request that is not a data app's still reads any dashboard"
+              (is (= other-id (:id (mt/user-http-request :crowberto :get 200 (str "dashboard/" other-id)))))))))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app runs nothing"

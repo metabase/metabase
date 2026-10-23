@@ -3855,6 +3855,7 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
+                    :model/Dashboard
                     :model/DataPermissions
                     :model/Database
                     :model/Dimension

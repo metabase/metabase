@@ -207,7 +207,7 @@
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
    "/collection"           (+auth 'metabase.collections-rest.api)
    "/comment"              (+auth metabase.comments.api/routes)
-   "/dashboard"            (+auth 'metabase.dashboards-rest.api)
+   "/dashboard"            (+auth (data-apps/dashboard-guard (api.macros/ns-handler 'metabase.dashboards-rest.api)))
    "/data-studio"          (+auth metabase.data-studio.api/routes)
    "/database"             (+auth 'metabase.warehouses-rest.api)
    ;; The MCP Apps iframe credential is accepted for `/dataset`, whose endpoints declare no scope, so the

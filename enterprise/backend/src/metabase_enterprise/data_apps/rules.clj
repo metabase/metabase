@@ -5,6 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase.collections.core :as collections]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -292,3 +293,14 @@
   (when-let [parameter (some #(when (= param-key (:id %)) %)
                              (some-> (card-row card-id) :id data-apps.db/card-parameters))]
     (check-parameter! parameter nil)))
+
+(defenterprise check-dashboard!
+  "Throws a 403 unless the dashboard with `dashboard-id`, an ID or an entity ID, is a dashboard in the Library that isn't
+  archived, when such a dashboard exists."
+  :feature :data-apps
+  [dashboard-id]
+  (when-let [{:keys [archived collection_type]} (if (= 21 (count dashboard-id))
+                                                  (data-apps.db/dashboard-by-entity-id dashboard-id)
+                                                  (data-apps.db/dashboard-by-id (parse-long dashboard-id)))]
+    (when (or archived (not= collections/library-dashboards-collection-type collection_type))
+      (throw (refusal (tru "A data app can use only the dashboards in the Library."))))))

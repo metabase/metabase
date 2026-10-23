@@ -159,16 +159,17 @@
       (f collection-id))))
 
 (defn do-with-library!
-  "Call `f` with the IDs of the root data library (`:data-id`) and metrics library (`:metrics-id`) collections, creating the
-  library for the call when the instance has none."
+  "Call `f` with the IDs of the root data library (`:data-id`), metrics library (`:metrics-id`) and dashboards library
+  (`:dashboards-id`) collections, creating the library for the call when the instance has none."
   [f]
   (let [existing (collections/library-collection)
         library  (or existing (collections/create-library-collection!))
         children (t2/select :model/Collection :location (str "/" (:id library) "/"))
         id-of    (fn [collection-type] (:id (first (filter #(= collection-type (:type %)) children))))]
     (try
-      (f {:data-id    (id-of collections/library-data-collection-type)
-          :metrics-id (id-of collections/library-metrics-collection-type)})
+      (f {:data-id       (id-of collections/library-data-collection-type)
+          :metrics-id    (id-of collections/library-metrics-collection-type)
+          :dashboards-id (id-of collections/library-dashboards-collection-type)})
       (finally
         (when-not existing
           (t2/delete! :model/Collection :id [:in (cons (:id library) (map :id children))]))))))
