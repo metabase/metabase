@@ -9,6 +9,7 @@
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.skills :as tools.skills]
    [metabase.test :as mt]
+   [metabase.util.log.capture :as log.capture]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -70,6 +71,14 @@
       (is (str/starts-with? output "<skill id=\"read-resource\">"))
       (is (str/ends-with? output (str "</skill>\n\nNo skill with ID \"does-not-exist\" can be loaded here. "
                                       "Skill IDs you can load: read-resource."))))))
+
+(deftest ^:parallel load-skill-logs-refused-ids-test
+  (testing "a missing or hidden skill leaves an info line, so operators can see a model guessing skill IDs"
+    (log.capture/with-log-messages-for-level [logs [metabase.metabot.tools.skills :info]]
+      (load-skills [:read-resource] ["does-not-exist" "edit-chart" "read-resource"])
+      (is (= ["Unknown skill requested by load_skill"
+              "Skill not available to current request {:id edit-chart}"]
+             (map :message (logs)))))))
 
 (deftest ^:parallel load-skill-needs-an-id-test
   (testing "an empty `ids` is an argument error that the model can correct"

@@ -8,7 +8,8 @@
    [clojure.string :as str]
    [metabase.metabot.skills :as skills]
    [metabase.metabot.tools.core :as tools]
-   [metabase.metabot.tools.shared.llm-shape :as llm-shape]))
+   [metabase.metabot.tools.shared.llm-shape :as llm-shape]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -52,6 +53,9 @@
   (handle [_ {:keys [id]} _ctx]
     (let [skill (skills/get-skill-by-id-string id)]
       (when-not (some-> skill skills/skill-loadable?)
+        (if skill
+          (log/info "Skill not available to current request" {:id id})
+          (log/info "Unknown skill requested by load_skill"))
         (unknown-skill! {:id id :loadable (loadable-skill-ids)}))
       {:output (format "<skill id=\"%s\">\n%s\n</skill>" (name (:id skill)) (:body skill))}))
 
