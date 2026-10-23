@@ -41,8 +41,8 @@
      (try
        (start! start-promise)
        (catch Throwable t
-         ;; post-start failures: the run row was already failed, and the error logged, by the runner; this is a
-         ;; fallback log
+         ;; post-start failures: the run row was already failed, and the error logged at ERROR, by the transform's
+         ;; executor or the job/DAG coordinator; this is a fallback log
          (log/warnf "Async run failed: %s" (ex-message t)))))
     (when (instance? Throwable @start-promise)
       (throw @start-promise))

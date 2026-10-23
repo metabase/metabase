@@ -477,6 +477,8 @@
                        (log/errorf "Error when failing %s %s: %s" label (pr-str run-id) (ex-message e)))))
       result)
     (catch Throwable t
+      ;; a transform's own failure is returned in `result`, not thrown, so this is the coordinator failing
+      (log/errorf "%s %s failed: %s" label (pr-str run-id) (ex-message t))
       (try
         (coordinated-run/fail-started-run! model run-id {:message (ex-message t)})
         (catch Exception e
