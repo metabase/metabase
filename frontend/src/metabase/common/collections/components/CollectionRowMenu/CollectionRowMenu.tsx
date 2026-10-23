@@ -41,7 +41,8 @@ export function CollectionRowMenu({
   const showPermissionsOption =
     isAdmin &&
     (PLUGIN_LIBRARY.isEnabled || PLUGIN_SNIPPET_FOLDERS.isEnabled) &&
-    collection.namespace !== "transforms";
+    collection.namespace !== "transforms" &&
+    collection.namespace !== "data-actions";
 
   const isRoot = isRootCollection(collection);
 
