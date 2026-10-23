@@ -9,7 +9,7 @@ import {
 } from "@dnd-kit/core";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useMount, useUpdateEffect } from "react-use";
+import { useUpdateEffect } from "react-use";
 import { t } from "ttag";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
@@ -67,6 +67,30 @@ function withStartingCount(session: SummarySession): SummarySession {
     return session;
   }
   return { ...session, definition: addCountValue(session.definition) };
+}
+
+function isSessionShown(session: SummarySession, question: Question): boolean {
+  const sessionQuestion = getSummaryQuestion(session);
+  return (
+    sessionQuestion != null &&
+    Lib.areLegacyQueriesEqual(
+      sessionQuestion.datasetQuery(),
+      question.datasetQuery(),
+    )
+  );
+}
+
+/** Whether the summary goes beyond the starting count: a breakout, or a value other than the count. */
+function hasSummaryToRun({
+  rows,
+  columns,
+  values,
+}: SummaryDefinition): boolean {
+  return (
+    rows.length > 0 ||
+    columns.length > 0 ||
+    values.some((value) => value.type !== "count")
+  );
 }
 
 function isOnlyItem<T>(items: T[], isItem: (item: T) => boolean): boolean {
@@ -165,8 +189,9 @@ function addSeededValues(
  * Summarizes the question starting from Count of rows. Clicking a column swaps it in as the one
  * breakout and option-clicking adds it; dragging places it in any well, and dragging one below
  * Breakouts turns the summary into a pivot. Formulas are created and edited in a formula bar across
- * the top of the workspace (a `FormulaBarSlotProvider`'s target). Every change updates and reruns
- * the question.
+ * the top of the workspace (a `FormulaBarSlotProvider`'s target). The starting count stays in the
+ * wells without running until a breakout or another value joins it; from then on, every change
+ * updates and reruns the question.
  */
 export function SummarySidebar({
   question,
@@ -176,26 +201,20 @@ export function SummarySidebar({
   const [session, setSession] = useState(() =>
     withStartingCount(getSummarySession(question)),
   );
+  const [isHoldingStartingCount, setIsHoldingStartingCount] = useState(
+    () => !isSessionShown(session, question),
+  );
   const { base, definition } = session;
 
-  // the count it starts from is only in the wells so far: show it in the results too
-  useMount(() => {
-    const startingQuestion = getSummaryQuestion(session);
-    if (
-      startingQuestion != null &&
-      !Lib.areLegacyQueriesEqual(
-        startingQuestion.datasetQuery(),
-        question.datasetQuery(),
-      )
-    ) {
-      onQuestionChange(startingQuestion);
-    }
-  });
-
-  // the question changed outside the sidebar (e.g. a new filter): summarize it from scratch.
-  // skipped on mount, where the question is still the one from before the starting count
+  // the question changed outside the sidebar (e.g. a new filter): summarize it from scratch,
+  // from a fresh held-back count while nothing has run yet
   useUpdateEffect(() => {
-    setSession((currentSession) => getSummarySession(question, currentSession));
+    setSession((currentSession) => {
+      const nextSession = getSummarySession(question, currentSession);
+      return isHoldingStartingCount
+        ? withStartingCount(nextSession)
+        : nextSession;
+    });
   }, [question]);
 
   useEffect(() => {
@@ -214,6 +233,10 @@ export function SummarySidebar({
   const handleChange = (nextDefinition: SummaryDefinition) => {
     const nextSession = { ...session, definition: nextDefinition };
     setSession(nextSession);
+    if (isHoldingStartingCount && !hasSummaryToRun(nextDefinition)) {
+      return;
+    }
+    setIsHoldingStartingCount(false);
     const nextQuestion = getSummaryQuestion(nextSession);
     if (nextQuestion != null) {
       onQuestionChange(nextQuestion);

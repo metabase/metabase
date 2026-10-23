@@ -6,7 +6,7 @@ import { c, t } from "ttag";
 import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { Warnings } from "metabase/common/components/Warnings";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
-import { Box, Flex, Stack, Text } from "metabase/ui";
+import { Box, Flex, Loader, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
@@ -27,6 +27,7 @@ export function QueryVisualization(props: QueryVisualizationProps) {
     isRunnable,
     isRunning,
     isObjectDetail,
+    isShowingSummarySidebar,
     isResultDirty,
     isNativeEditorOpen,
     isDirtyStateShownForError,
@@ -57,7 +58,13 @@ export function QueryVisualization(props: QueryVisualizationProps) {
 
   return (
     <Box pos="relative" h="100%" className={cx(className, S.root)}>
-      {isRunning ? <VisualizationRunningState className={S.overlay} /> : null}
+      {isRunning ? (
+        isShowingSummarySidebar ? (
+          <VisualizationUpdatingIndicator />
+        ) : (
+          <VisualizationRunningState className={S.overlay} />
+        )
+      ) : null}
       <VisualizationDirtyState
         {...props}
         hidden={!isDirtyStateShown}
@@ -97,6 +104,16 @@ export function QueryVisualization(props: QueryVisualizationProps) {
     </Box>
   );
 }
+
+/**
+ * The summary sidebar reruns the question on every edit: the results stay as they are until the
+ * new ones land, with a small spinner only once a run takes a moment.
+ */
+const VisualizationUpdatingIndicator = () => (
+  <Flex className={S.updatingIndicator} data-testid="visualization-updating">
+    <Loader size="xs" />
+  </Flex>
+);
 
 const VisualizationEmptyState = ({ children }: { children: ReactNode }) => {
   const keyboardShortcut = getRunQueryShortcut();

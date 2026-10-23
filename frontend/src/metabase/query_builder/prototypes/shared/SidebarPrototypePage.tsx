@@ -22,13 +22,13 @@ import {
   FormulaBarSlotProvider,
   FormulaBarSlotTarget,
 } from "../../components/view/FormulaBar";
+import { ResizableSummaryPanel } from "../../components/view/ResizableSummaryPanel/ResizableSummaryPanel";
 import type { SummaryExpression } from "../../components/view/SummarySidebar/types";
 import { getSummaryBase } from "../../components/view/SummarySidebar/utils";
 import { QuestionDataSource } from "../../components/view/ViewHeader/components/QuestionDataSource";
 import { ViewHeading } from "../../components/view/ViewSection";
 
 import { PrototypePicker } from "./PrototypePicker/PrototypePicker";
-import { ResizableSummaryPanel } from "./ResizableSummaryPanel/ResizableSummaryPanel";
 import { SeedControls } from "./SeedControls/SeedControls";
 import S from "./SidebarPrototypePage.module.css";
 import type { SeedFormula, SidebarPrototypeVariant } from "./types";
@@ -261,7 +261,7 @@ function PrototypeWorkspace({
             {t`Change data`}
           </Button>
         </Flex>
-        {/* where formula bars land, as above the query builder's filters */}
+        {/* where formula bars land, where the query builder's filters sit */}
         <FormulaBarSlotTarget className={S.workspaceTopSlot} />
         <Box ref={contentRef} className={S.content}>
           <Box component="main" className={S.main}>

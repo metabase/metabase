@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { type ComponentProps, forwardRef } from "react";
 import { match } from "ts-pattern";
@@ -38,6 +39,7 @@ import { DatasetEditor } from "../../../DatasetEditor";
 import { QueryModals } from "../../../QueryModals";
 import { SavedQuestionIntroModal } from "../../../SavedQuestionIntroModal";
 import { FormulaBarSlotProvider } from "../../FormulaBar";
+import { ResizableSummaryPanel } from "../../ResizableSummaryPanel/ResizableSummaryPanel";
 import { ViewSidebar } from "../../ViewSidebar";
 import { NotebookContainer } from "../NotebookContainer";
 import { ViewHeaderContainer } from "../ViewHeaderContainer";
@@ -95,6 +97,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
   function ViewInnerImpl(propsIn, ref) {
     const dispatch = useDispatch();
     const setCollection = useSetCollection();
+    const { ref: contentRef, width: contentWidth } = useElementSize();
     const props: ViewProps = {
       ...propsIn,
       onMove: async (question, newCollection) => {
@@ -257,15 +260,10 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
           isShowingSnippetSidebar));
 
     const rightSidebarWidth = match({
-      isShowingStructuredSummarySidebar,
       isShowingTimelineSidebar,
       isShowingQuestionInfoSidebar,
       isShowingQuestionSettingsSidebar,
     })
-      .with(
-        { isShowingStructuredSummarySidebar: true },
-        () => SIDEBAR_SIZES.SUMMARIZE,
-      )
       .with({ isShowingTimelineSidebar: true }, () => SIDEBAR_SIZES.TIMELINE)
       .with({ isShowingQuestionInfoSidebar: true }, () => 0)
       .with({ isShowingQuestionSettingsSidebar: true }, () => 0)
@@ -279,7 +277,7 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
           >
             {isHeaderVisible && <ViewHeaderContainer {...props} />}
 
-            <Flex className={S.QueryBuilderContentContainer}>
+            <Flex ref={contentRef} className={S.QueryBuilderContentContainer}>
               {!isNative && (
                 <NotebookContainer
                   isOpen={isNotebookContainerOpen}
@@ -308,13 +306,22 @@ const ViewInner = forwardRef<HTMLDivElement, ViewInnerProps>(
                 showLeftSidebar={showLeftSidebar}
                 showRightSidebar={showRightSidebar}
               />
-              <ViewSidebar
-                side="right"
-                isOpen={showRightSidebar}
-                width={rightSidebarWidth}
-              >
-                <ViewRightSidebarContainer {...props} />
-              </ViewSidebar>
+              {isShowingStructuredSummarySidebar ? (
+                <ResizableSummaryPanel
+                  containerWidth={contentWidth}
+                  data-testid="sidebar-right"
+                >
+                  <ViewRightSidebarContainer {...props} />
+                </ResizableSummaryPanel>
+              ) : (
+                <ViewSidebar
+                  side="right"
+                  isOpen={showRightSidebar}
+                  width={rightSidebarWidth}
+                >
+                  <ViewRightSidebarContainer {...props} />
+                </ViewSidebar>
+              )}
             </Flex>
           </Flex>
 

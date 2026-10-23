@@ -49,8 +49,9 @@ type SummaryFormulaEditorProps = {
 
 /**
  * The formula bar while a formula is open: fx, the single-line editor, any error, then cancel and
- * commit at the far right. Enter commits. Nobody types a name: an untouched formula keeps the one
- * it came with (from AI, or the edited item's), and a typed one is named after the formula itself.
+ * commit at the far right. Enter and ⌘/Ctrl+Enter commit. Nobody types a name: an untouched formula
+ * keeps the one it came with (from AI, or the edited item's), and a typed one is named after the
+ * formula itself.
  */
 export function SummaryFormulaEditor({
   base,
@@ -174,6 +175,14 @@ export function SummaryFormulaEditor({
             if (isCompleting(view)) {
               return false;
             }
+            handlers.current.submit();
+            return true;
+          },
+        },
+        {
+          // ⌘/Ctrl+Enter, the query builder's run shortcut, commits even over the suggestions
+          key: "Mod-Enter",
+          run: () => {
             handlers.current.submit();
             return true;
           },
