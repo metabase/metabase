@@ -170,6 +170,7 @@ const libraryPickerSetup = {
 describe("EntityPickerModal", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    reinitialize();
   });
 
   describe("Default Behavior", () => {
@@ -1097,10 +1098,6 @@ describe("EntityPickerModal", () => {
     const options = { hasDataApps: true, hasConfirmButtons: false };
     const models: OmniPickerItem["model"][] = ["card", "data-app"];
 
-    afterEach(() => {
-      reinitialize();
-    });
-
     it("lists the user's data apps in a Data apps folder", async () => {
       await setup({ options, models, dataApps: [OWLS, HERONS] });
 
@@ -1118,6 +1115,7 @@ describe("EntityPickerModal", () => {
       await userEvent.click(await screen.findByText("Data apps"));
       await userEvent.click(await screen.findByText("Owls"));
 
+      expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange).toHaveBeenCalledWith({
         model: "data-app",
         id: OWLS.id,
@@ -1136,6 +1134,32 @@ describe("EntityPickerModal", () => {
       await expectActiveItem("Data apps");
       await expectActiveItem("Herons");
       await expectInactiveItem("Owls");
+    });
+
+    it("opens on the data app when the app list arrives after the rest of the picker", async () => {
+      await setup({
+        options,
+        models,
+        dataApps: [OWLS, HERONS],
+        dataAppsDelayMs: 300,
+        value: { model: "data-app", id: HERONS.id },
+      });
+
+      await expectActiveItem("Data apps");
+      await expectActiveItem("Herons");
+    });
+
+    it("opens on no data app without the hasDataApps option", async () => {
+      await setup({
+        options: { hasConfirmButtons: false },
+        models,
+        dataApps: [OWLS],
+        value: { model: "data-app", id: OWLS.id },
+      });
+
+      await expectVisibleItem("Our analytics");
+      expect(screen.queryByText("Owls")).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.called("path:/api/ee/apps")).toBe(false);
     });
 
     it("finds a data app in search, located in the Data apps folder", async () => {
@@ -1167,9 +1191,42 @@ describe("EntityPickerModal", () => {
       expect(searches.at(-1)?.url).toContain("models=data-app");
 
       await userEvent.click(within(result).getByText("Owls"));
+      expect(onChange).toHaveBeenCalledTimes(1);
       expect(onChange).toHaveBeenCalledWith(
         expect.objectContaining({ model: "data-app", id: OWLS.id }),
       );
+    });
+
+    it("doesn't search data apps without the hasDataApps option", async () => {
+      await setup({
+        options: { hasConfirmButtons: false },
+        models,
+        dataApps: [OWLS],
+        searchResults: [
+          createMockSearchResult({
+            model: "data-app",
+            id: OWLS.id,
+            name: "Owls",
+          }),
+          createMockSearchResult({
+            model: "card",
+            id: 1,
+            name: "Owl sightings",
+          }),
+        ],
+      });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "Owl",
+        { delay: 50 },
+      );
+      await expectVisibleItem("Owl sightings");
+      expect(screen.queryByText("Owls")).not.toBeInTheDocument();
+      const searches = (await findRequests("GET")).filter((request) =>
+        request.url.includes("/api/search"),
+      );
+      expect(searches.at(-1)?.url).not.toContain("models=data-app");
     });
 
     it("has no Data apps folder without the hasDataApps option", async () => {
@@ -1186,6 +1243,17 @@ describe("EntityPickerModal", () => {
 
     it("has no Data apps folder when the picker doesn't pick data apps", async () => {
       await setup({ options, models: ["card"], dataApps: [OWLS] });
+
+      await expectVisibleItem("Our analytics");
+      expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
+    });
+
+    it("has no Data apps folder when the picker picks collections but not data apps", async () => {
+      await setup({
+        options,
+        models: ["card", "collection"],
+        dataApps: [OWLS],
+      });
 
       await expectVisibleItem("Our analytics");
       expect(screen.queryByText("Data apps")).not.toBeInTheDocument();

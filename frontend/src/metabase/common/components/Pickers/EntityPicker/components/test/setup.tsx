@@ -9,6 +9,7 @@ import {
   setupListDataAppsEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
   setupRootCollectionItemsEndpoint,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -360,6 +361,7 @@ export type SetupOpts = Partial<EntityPickerModalProps> & {
   libraryCollectionItems?: CollectionItem[];
   /** The data apps the user can read; turns on the data apps feature. */
   dataApps?: DataApp[];
+  dataAppsDelayMs?: number;
 };
 
 export const setup = async ({
@@ -369,6 +371,7 @@ export const setup = async ({
   libraryCollection,
   libraryCollectionItems,
   dataApps,
+  dataAppsDelayMs,
   searchResults,
   ...rest
 }: SetupOpts = {}) => {
@@ -386,14 +389,14 @@ export const setup = async ({
     : undefined;
 
   const hasLibrary = libraryCollectionItem !== undefined;
-  const hasDataApps = dataApps !== undefined;
+  const hasDataAppsFeature = dataApps !== undefined;
   const state =
-    hasLibrary || hasDataApps
+    hasLibrary || hasDataAppsFeature
       ? createMockState({
           settings: mockSettings({
             "token-features": createMockTokenFeatures({
               library: hasLibrary,
-              "data-apps": hasDataApps,
+              "data-apps": hasDataAppsFeature,
             }),
           }),
         })
@@ -404,7 +407,7 @@ export const setup = async ({
   }
   if (dataApps) {
     setupEnterpriseOnlyPlugin("data-apps");
-    setupListDataAppsEndpoint(dataApps);
+    setupListDataAppsEndpoint(dataApps, dataAppsDelayMs);
   }
   fetchMock.get(
     "path:/api/ee/library",
@@ -465,12 +468,11 @@ export const setup = async ({
     setupCollectionItemsEndpoint(endpoint);
   }
 
-  fetchMock.get(
-    "path:/api/search",
-    searchResults
-      ? createMockSearchResults({ items: searchResults })
-      : mockSearchResults,
-  );
+  if (searchResults) {
+    setupSearchEndpoints(searchResults);
+  } else {
+    fetchMock.get("path:/api/search", mockSearchResults);
+  }
   fetchMock.get("path:/api/user/recipients", { data: [] });
   const onChange = jest.fn();
   const onClose = jest.fn();

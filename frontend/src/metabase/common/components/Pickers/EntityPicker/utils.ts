@@ -77,8 +77,14 @@ export const isSelectedItem = (
   );
 };
 
-export const isDataAppsRootItem = (item: OmniPickerItem): boolean =>
+const isDataAppsRootItem = (item: OmniPickerItem): boolean =>
   item.model === "collection" && item.id === DATA_APPS_ROOT_ID;
+
+export const shouldShowDataApps = ({
+  options,
+  models,
+}: Pick<EntityPickerProps, "options" | "models">): boolean =>
+  options.hasDataApps === true && models.includes("data-app");
 
 const isValidItem = (item: unknown): item is OmniPickerItem => {
   return (

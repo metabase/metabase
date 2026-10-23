@@ -101,11 +101,13 @@ export function useGetPathFromValue({
   options,
   namespaces,
   models,
+  showsDataApps = false,
 }: {
   value?: OmniPickerValue;
   options: EntityPickerOptions;
   namespaces: CollectionNamespace[];
   models: OmniPickerCollectionItem["model"][];
+  showsDataApps?: boolean;
 }) {
   const [path, setPath] = useState<OmniPickerItem[]>([]);
   const [isLoadingPath, setIsLoadingPath] = useState(false);
@@ -119,7 +121,9 @@ export function useGetPathFromValue({
     useGetPersonalCollection();
 
   const { data: dataApps, isLoading: isLoadingDataApps } =
-    PLUGIN_DATA_APPS.useDataApps({ skip: value?.model !== "data-app" });
+    PLUGIN_DATA_APPS.useDataApps({
+      skip: !showsDataApps || value?.model !== "data-app",
+    });
 
   // `dataApps` isn't a dependency: a refetch of the list must not move the user out of the folder
   // they opened.

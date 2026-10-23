@@ -186,7 +186,7 @@ export type DbTreeItem =
   | OmniPickerTableItem
   | OmniPickerMeasureItem;
 
-export const isInDbTree = (item: OmniPickerItem): item is DbTreeItem => {
+const isInDbTree = (item: OmniPickerItem): item is DbTreeItem => {
   return (
     item.model === "database" ||
     item.model === "schema" ||
@@ -238,8 +238,7 @@ export type SearchableOmniPickerItem =
   | OmniPickerCollectionItem
   | OmniPickerTableItem
   | OmniPickerDatabaseItem
-  | OmniPickerMeasureItem
-  | OmniPickerDataAppItem;
+  | OmniPickerMeasureItem;
 
 // used to find only or exclude items in personal collections, usually when adding items to a dashboard
 // so that you don't end up with personal items in a public dashboard

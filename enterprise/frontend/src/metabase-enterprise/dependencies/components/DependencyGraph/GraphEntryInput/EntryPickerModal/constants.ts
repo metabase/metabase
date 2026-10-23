@@ -11,7 +11,7 @@ export const ENTITY_PICKER_OPTIONS = {
   hasDataApps: true,
   hasConfirmButtons: false,
   hasRecents: true,
-};
+} satisfies EntityPickerOptions;
 
 export const QUESTION_PICKER_OPTIONS: EntityPickerOptions = {
   hasRootCollection: true,

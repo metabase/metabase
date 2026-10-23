@@ -49,13 +49,13 @@ const PERSONAL_COLLECTION = createMockCollection({
 
 type SetupOpts = {
   dataApps?: DataApp[];
-  hasDataApps?: boolean;
+  hasDataAppsFeature?: boolean;
   value?: DependencyNode | null;
 };
 
 function setup({
   dataApps = [OWLS],
-  hasDataApps = true,
+  hasDataAppsFeature = true,
   value = null,
 }: SetupOpts = {}) {
   mockGetBoundingClientRect();
@@ -75,7 +75,9 @@ function setup({
 
   const state = createMockState({
     settings: mockSettings({
-      "token-features": createMockTokenFeatures({ "data-apps": hasDataApps }),
+      "token-features": createMockTokenFeatures({
+        "data-apps": hasDataAppsFeature,
+      }),
     }),
   });
   setupEnterpriseOnlyPlugin("data-apps");
@@ -102,33 +104,7 @@ describe("EntryPickerModal", () => {
     expect(onChange).toHaveBeenCalledWith({ id: 8, type: "data-app" });
   });
 
-  it("opens on the data app whose graph is shown, selected", async () => {
-    const HERONS = createMockDataApp({
-      id: 9,
-      name: "herons",
-      display_name: "Herons",
-    });
-    setup({
-      dataApps: [OWLS, HERONS],
-      value: createMockDataAppDependencyNode({ id: OWLS.id }),
-    });
-
-    await waitFor(() => {
-      expect(screen.getByRole("link", { name: /Owls/ })).toHaveAttribute(
-        "data-active",
-        "true",
-      );
-    });
-    expect(screen.getByRole("link", { name: /Data apps/ })).toHaveAttribute(
-      "data-active",
-      "true",
-    );
-    expect(screen.getByRole("link", { name: /Herons/ })).not.toHaveAttribute(
-      "data-active",
-    );
-  });
-
-  it("shows no folder until the app list loads, then opens on the data app", async () => {
+  it("shows the root list only after the app list loads, then opens on the data app", async () => {
     const appsResponse = defer<DataApp[]>();
     fetchMock.get("path:/api/ee/apps", () => appsResponse.promise);
     setup({ value: createMockDataAppDependencyNode({ id: OWLS.id }) });
@@ -181,20 +157,8 @@ describe("EntryPickerModal", () => {
     );
   });
 
-  it("has no Data apps folder when the user has no data apps", async () => {
-    setup({ dataApps: [] });
-
-    await screen.findByText("Our analytics");
-    await waitFor(() => {
-      expect(
-        fetchMock.callHistory.called("path:/api/ee/apps", { method: "GET" }),
-      ).toBe(true);
-    });
-    expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
-  });
-
   it("has no Data apps folder without the data apps feature", async () => {
-    setup({ hasDataApps: false });
+    setup({ hasDataAppsFeature: false });
 
     await screen.findByText("Our analytics");
     expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
