@@ -12,6 +12,11 @@ if [ ! -d "$destination" ]; then
   trap 'rm -rf "$workspace"' EXIT
   i18n_clone "$commit" "$workspace/repo"
   chmod a-w "$workspace/repo/locales/"*.po
+  for snapshot in "$I18N_CACHE"/*; do
+    if [[ "$(basename "$snapshot")" =~ ^[0-9a-f]{40}$ ]]; then
+      rm -rf "$snapshot"
+    fi
+  done
   mv "$workspace/repo/locales" "$destination"
 fi
 printf '%s\n' "$destination"

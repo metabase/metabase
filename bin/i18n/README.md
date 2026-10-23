@@ -19,7 +19,8 @@ workflow runs weekly to pull translations down and open a PR.
 
 `locales/metabase-i18n.commit` pins a commit in
 [ChrisVandoo/metabase-i18n](https://github.com/ChrisVandoo/metabase-i18n). The catalogs of that
-commit are downloaded into `locales/metabase-i18n/<commit>/`, which Git ignores.
+commit are downloaded into `locales/metabase-i18n/<commit>/`, which Git ignores. Only the
+current pin is kept: a new pin replaces the old download.
 
 ## Build
 

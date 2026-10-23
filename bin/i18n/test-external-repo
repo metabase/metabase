@@ -47,12 +47,12 @@ test_exact_pin_and_offline_reuse() {
   METABASE_I18N_REPOSITORY="$root/unavailable" bin/i18n/fetch-translations > /dev/null || fail "cache not reused"
 }
 
-test_pin_changes_preserve_both_snapshots() {
+test_pin_change_replaces_snapshot() {
   setup snapshots
   first_catalog=$(bin/i18n/fetch-translations)
   echo "$second" > "$pin"
   second_catalog=$(bin/i18n/fetch-translations)
-  [ "$(cat "$first_catalog/fr.po")" = original ] || fail "first snapshot changed"
+  [ ! -e "$first_catalog" ] || fail "old snapshot kept"
   [ "$(cat "$second_catalog/fr.po")" = newer ] || fail "second snapshot wrong"
 }
 
