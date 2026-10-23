@@ -1,24 +1,24 @@
-name: Auto-update documentation (release)
+name: Auto-update documentation
 
 on:
   schedule:
-    - cron: "0 22 * * 1-5" # Every Monday through Friday at 10 PM UTC
+    - cron: "0 1 * * 1-5" # Every Monday through Friday at  1 AM UTC (5 PM PST)
   workflow_dispatch:
     inputs:
       target_branch:
-        description: "Target branch for documentation update. Leave empty for every release branch below."
+        description: "Target branch for documentation update. Leave empty for every branch below."
         required: false
         default: ""
         type: string
 
 jobs:
-  update-release-docs:
+  update-docs:
     if: ${{ github.event_name != 'schedule' || github.repository == 'metabase/metabase' }}
     name: Call documentation update for ${{ matrix.target_branch }}
     strategy:
       fail-fast: false
       matrix:
-        target_branch: ${{ fromJSON(inputs.target_branch && format('["{0}"]', inputs.target_branch) || '["release-x.64.x", "release-x.65.x"]') }}
+        target_branch: ${{ fromJSON(inputs.target_branch && format('["{0}"]', inputs.target_branch) || '["master", "release-x.64.x", "release-x.65.x"]') }}
     uses: ./.github/workflows/docs-generate-base.yml
     with:
       target_branch: ${{ matrix.target_branch }}
