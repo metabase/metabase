@@ -3,10 +3,6 @@ name: E2E Matrix Builder
 on:
   workflow_call:
     inputs:
-      chunks:
-        required: false
-        type: number
-        default: 30
       test-plan-artifact-id:
         description: "ID of this run's test-plan.json artifact, '' to run the full suite."
         required: false
@@ -55,21 +51,21 @@ jobs:
         uses: actions/github-script@v9
         id: matrix
         env:
-          chunks: ${{ inputs.chunks }}
+          E2E_CHUNKS: ${{ vars.E2E_CHUNKS }}
           E2E_SPEC_PATHS_FILE: ${{ steps.selection.outputs.paths-file }}
         with:
           script: | # js
-            const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
+            const { buildMatrix, resolveMaxJobs } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
             const { readSpecPaths } = require('${{ github.workspace }}/e2e/runner/read-spec-paths.js');
             const specFiles = readSpecPaths(process.env.E2E_SPEC_PATHS_FILE);
-            const inputChunks = Number(process.env.chunks);
+            const maxJobs = resolveMaxJobs(process.env.E2E_CHUNKS);
             const java = 25;
             const defaultRunner = "${{ vars.DEFAULT_RUNNER_KEY }}";
             const options = {
               java,
               defaultRunner,
             };
-            const { config, regularChunks } = buildMatrix(options, specFiles, inputChunks);
+            const { config, regularChunks } = buildMatrix(options, specFiles, maxJobs);
 
             core.setOutput("regularChunks", JSON.stringify(regularChunks));
             core.setOutput("config", JSON.stringify({ include: config }));
