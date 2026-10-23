@@ -188,8 +188,8 @@
       false)))
 
 (defenterprise delete-pending-semantic-type-proposal!
-  "Delete the pending `semantic_type` proposal of the field with `field-id`. Sync calls this when the base type of
-  the field changes, in the step that clears its AI semantic type. Uses `:feature :none` so a lapsed token does not
+  "Delete the pending `semantic_type` proposal of the field with `field-id`. Sync calls this when it clears the AI
+  semantic type of the field. Uses `:feature :none` so a lapsed token does not
   keep a proposal that no longer fits the field."
   :feature :none
   [field-id]

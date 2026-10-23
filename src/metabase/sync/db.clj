@@ -585,7 +585,7 @@
 (mu/defn mark-fk!
   "Set the `fk_target_field_id` of the Field at `[fk-table-schema fk-table-name fk-column-name]` in the Database with
   `db-id` to the id of the Field at `[pk-table-schema pk-table-name pk-column-name]`, unless it already points there.
-  Returns 1 if a Field was updated, 0 otherwise."
+  Returns the id of the updated Field, or nil."
   [db-id            :- ::lib.schema.id/database
    fk-table-schema  :- [:maybe :string]
    fk-table-name    :- :string
@@ -598,10 +598,11 @@
         field (when (and fk-id pk-id)
                 (t2/select-one [:model/Field :id :fk_target_field_id :has_field_values] :id fk-id
                                {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))]
-    (if (and field (not= pk-id (:fk_target_field_id field)))
-      (t2/update! :model/Field fk-id (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
-                                       (= :auto-list (:has_field_values field)) (assoc :has_field_values nil)))
-      0)))
+    (when (and field
+               (not= pk-id (:fk_target_field_id field))
+               (pos? (t2/update! :model/Field fk-id (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
+                                                      (= :auto-list (:has_field_values field)) (assoc :has_field_values nil)))))
+      fk-id)))
 
 (defn- data-sensitivity-to-scan-clause
   "Honey SQL clause matching Fields the data-sensitivity classifier still has to scan: unlabeled ones, plus those it
