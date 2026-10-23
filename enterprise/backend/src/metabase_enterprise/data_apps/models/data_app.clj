@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.search.core :as search]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -144,7 +145,17 @@
 ;; it, and the collection's own hooks delete what it holds and the grants on it.
 (t2/define-before-delete :model/DataApp
   [app]
-  (data-app.resources/delete-resources! app))
+  (data-app.resources/delete-resources! app)
+  (search/delete! :model/DataApp [(str (:id app))]))
+
+(search/define-spec "data-app"
+  {:model        :model/DataApp
+   :attrs        {:archived      false
+                  :collection-id false
+                  :created-at    true
+                  :updated-at    true}
+   :search-terms [:name :display_name :description]
+   :render-terms {}})
 
 (methodical/defmethod mi/to-json :model/DataApp
   "Never include the raw bundle bytes in JSON."
