@@ -1123,6 +1123,33 @@ describe("EntityPickerModal", () => {
       });
     });
 
+    it("doesn't pick the Data apps folder when the picker also picks collections", async () => {
+      const { onChange } = await setup({
+        options,
+        models: ["collection", "data-app"],
+        dataApps: [OWLS],
+      });
+
+      await userEvent.click(await screen.findByText("Data apps"));
+
+      await expectVisibleItem("Owls");
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("lists the Data apps folder after the other root items", async () => {
+      await setup({ options, models, dataApps: [OWLS] });
+
+      await expectVisibleItem("Data apps");
+      const rootItems = within(
+        screen.getByTestId("item-picker-level-0"),
+      ).getAllByRole("link");
+      expect(rootItems.map((item) => item.textContent?.trim())).toEqual([
+        "Recent items",
+        "Our analytics",
+        "Data apps",
+      ]);
+    });
+
     it("opens on the data app given as the value", async () => {
       await setup({
         options,

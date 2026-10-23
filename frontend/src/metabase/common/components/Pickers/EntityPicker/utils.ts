@@ -177,7 +177,7 @@ export function getItemFunctions({
   // selectable should be narrower than hidden or disabled because
   // intermediate items should not be disabled, but can't ultimately be selected
   const isSelectableBase = (item: OmniPickerItem) => {
-    if (!isValidItem(item)) {
+    if (!isValidItem(item) || isDataAppsRootItem(item)) {
       return false;
     }
 

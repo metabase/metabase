@@ -227,10 +227,6 @@ async function getRootItems({
     });
   }
 
-  if (hasDataAppsFolder) {
-    collectionItems.push(getDataAppsRootItem());
-  }
-
   if (namespaces.includes("transforms") && transformsEnabled) {
     collectionItems.push({
       ...(await getRootCollectionItem({
@@ -344,5 +340,10 @@ async function getRootItems({
       });
     }
   }
+
+  if (hasDataAppsFolder) {
+    collectionItems.push(getDataAppsRootItem());
+  }
+
   return collectionItems;
 }
