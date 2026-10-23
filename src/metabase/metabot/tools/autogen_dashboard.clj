@@ -78,6 +78,22 @@
   (or (pos-int? v)
       (and (string? v) (not (str/blank? v)))))
 
+(defn- normalized-query
+  "`query`, one of the conversation's queries, normalized, or nil when it names no database or query type yet."
+  [query]
+  (when (and (:database query) (lib/normalized-query-type query))
+    (lib-be/normalize-query query)))
+
+(defn- analyzable-query-ids
+  "The IDs of the conversation's `queries` that X-ray can analyze, sorted: the complete queries that don't start
+  with SQL."
+  [queries]
+  (sort (for [[id query] queries
+              :let  [mbql-query (normalized-query query)]
+              :when (and (mr/validate :metabase.lib.schema/query mbql-query)
+                         (not (lib/native? mbql-query)))]
+          id)))
+
 (defn- resolve-source
   "The X-ray path for `source` under `:path`, and the table, card or query that it reads under `:entity`.
   A `query_id` names one of `queries`, the conversation's queries."
@@ -93,11 +109,10 @@
 
       query_id
       (let [query (get queries query_id)
-            mbql-query (when (and (:database query) (lib/normalized-query-type query))
-                         (lib-be/normalize-query query))]
+            mbql-query (normalized-query query)]
         (when-not query
           (recoverable.common/unknown-query-id! {:query-id  query_id
-                                                 :available (sort (keys queries))
+                                                 :available (analyzable-query-ids queries)
                                                  :hint      :notebook-only}))
         (when-not (mr/validate :metabase.lib.schema/query mbql-query)
           (incomplete-query! {:query-id query_id}))

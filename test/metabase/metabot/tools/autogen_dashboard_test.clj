@@ -122,7 +122,18 @@
                     "Query \"q-9\" was not found. Available query IDs: none."
                     "Use `construct_notebook_query` to build a query, then use the returned query ID.")
            (invoke {:query_id "q-9"} {} [#'metabot.tools/construct-notebook-query-tool
-                                         #'metabot.tools/create-sql-query-tool])))))
+                                         #'metabot.tools/create-sql-query-tool]))))
+  (testing "only the queries that X-ray can analyze are listed, not the SQL or incomplete ones that it refuses"
+    (let [sql (lib/native-query (mt/metadata-provider) "SELECT * FROM VENUES")]
+      (is (= (failure ::recoverable.common/unknown-query-id
+                      "Query \"q-9\" was not found. Available query IDs: \"q-1\", \"q-legacy\"."
+                      "Use an available query ID from this conversation.")
+             (invoke {:query_id "q-9"} {"q-1"          (venues-query)
+                                        "q-legacy"     (lib/->legacy-MBQL (venues-query))
+                                        "q-sql"        sql
+                                        "q-sql-legacy" (lib/->legacy-MBQL sql)
+                                        "q-sql-staged" (lib/append-stage sql)
+                                        "q-draft"      {:database (mt/id)}}))))))
 
 (deftest one-source-test
   (testing "a call that sets no source, or two, is rejected before any source is read"
