@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.timelines :as tools.timelines]
@@ -65,6 +66,17 @@
                    :code    :metabase.metabot.tools.recoverable.common/not-found
                    :message #(str/starts-with? % "Timeline ")}
                   (tools.error/classify e))))))))
+
+(deftest ^:parallel missing-timeline-recovery-test
+  (mt/with-dynamic-fn-redefs [tools.timelines/get-timeline-details (constantly nil)]
+    (doseq [tool-names [#{"search"} #{"list_timelines" "search"}]]
+      (testing (str "tools " tool-names)
+        (is (= {:class :recoverable
+                :code  :metabase.metabot.tools.recoverable.common/not-found
+                :text  (str "Timeline 7 was not found. It may not exist, or you may not have access to it."
+                            (when (contains? tool-names "list_timelines")
+                              "\nCall `list_timelines` to find the entity you want and use an id from the results."))}
+               (test-util/tool-failure tools.timelines/get-timeline-details-tool {:timeline_id 7} tool-names)))))))
 
 (deftest timeline-output-xml-escaping-test
   (mt/with-current-user (mt/user->id :crowberto)

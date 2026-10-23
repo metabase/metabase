@@ -29,7 +29,7 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (com.clickhouse.jdbc ConnectionImpl)
-   (java.sql Connection)))
+   (java.sql Connection SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -903,3 +903,10 @@
     ;; a lone double-quote is a one-character role name, not an already-quoted empty one -- it must still come
     ;; out as a terminated identifier
     "\""                            "SET ROLE \"\"\"\""))
+
+(deftest ^:parallel clickhouse-server-errors-need-more-than-class-22-test
+  (mt/test-driver :clickhouse
+    (doseq [[message code] [["Memory limit exceeded" 241] ["Too many rows or bytes" 396]]]
+      (let [e (SQLException. message "22000" code)]
+        (is (false? (#'sql-jdbc.execute/error-in-query? :clickhouse e)))
+        (is (true? (#'sql-jdbc.execute/error-in-query? :h2 e)))))))
