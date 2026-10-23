@@ -175,10 +175,18 @@
                            ". Tool errors may only carry authored text; log the exception instead.")
                       {:where where})))))
 
-(def ^:private max-output-length
-  "A cap on agent-bound failure text. A declared error should be nowhere near this; the cap is here
-  so that a pathological payload cannot spend the turn's context on one failure."
+(def max-output-length
+  "Maximum number of characters in a rendered failure, including recovery steps.
+
+  Leave room for recovery steps when including excerpts."
   4000)
+
+(defn output-budget
+  "Return the character budget for an excerpt after `prefix` and every recovery step."
+  [prefix recovery]
+  (let [tool-names (into #{} (mapcat :uses) recovery)]
+    (- max-output-length
+       (count (tools.error/recoverable-text {:message prefix :recovery recovery} tool-names)))))
 
 (defn render
   "The failure [[::outcome]] for a ToolError, given the tool names available this turn.
