@@ -66,6 +66,9 @@ interface LegendLayoutProps {
   isReversed?: boolean;
 }
 
+// a zero margin stays unset so the four sides are not folded into a shorthand
+const nonZero = (value?: number) => value || undefined;
+
 export const LegendLayout = ({
   className,
   items,
@@ -155,8 +158,6 @@ export const LegendLayout = ({
           getLayoutPlacement(layout),
           plots?.column.internalInset ?? { left: 0, right: 0 },
         );
-  // a zero margin stays unset so the four sides are not folded into a shorthand
-  const nonZero = (value?: number) => value || undefined;
 
   const legendProps = {
     items,
