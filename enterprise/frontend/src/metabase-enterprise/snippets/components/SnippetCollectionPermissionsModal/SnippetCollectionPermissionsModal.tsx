@@ -1,7 +1,6 @@
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { useListCollectionsQuery } from "metabase/api";
 import type { SnippetCollectionPermissionsModalProps } from "metabase/plugins";
-import { Modal } from "metabase/ui";
 
 export function SnippetCollectionPermissionsModal({
   opened,
@@ -11,18 +10,11 @@ export function SnippetCollectionPermissionsModal({
   useListCollectionsQuery({ namespace: "snippets" });
 
   return (
-    <Modal
+    <CollectionPermissionsModal
       opened={opened}
+      params={{ slug: String(collectionId) }}
       onClose={onClose}
-      size="lg"
-      withCloseButton={false}
-      padding={0}
-    >
-      <CollectionPermissionsModal
-        params={{ slug: String(collectionId) }}
-        onClose={onClose}
-        namespace="snippets"
-      />
-    </Modal>
+      namespace="snippets"
+    />
   );
 }

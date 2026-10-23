@@ -3,12 +3,12 @@ import { t } from "ttag";
 
 import { getActionErrorMessage } from "metabase/actions/utils";
 import { useExecuteActionMutation } from "metabase/api";
-import { ModalContent } from "metabase/common/components/ModalContent";
 import { useToast } from "metabase/common/hooks/use-toast";
-import { Button } from "metabase/ui";
+import { Button, Modal, Text } from "metabase/ui";
 import type { WritebackActionId } from "metabase-types/api";
 
 interface Props {
+  opened: boolean;
   actionId: WritebackActionId | undefined;
   objectId: number | string | null | undefined;
   onClose: () => void;
@@ -16,6 +16,7 @@ interface Props {
 }
 
 export const DeleteObjectModal: FunctionComponent<Props> = ({
+  opened,
   actionId,
   objectId,
   onClose,
@@ -51,13 +52,17 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
   };
 
   return (
-    <ModalContent
+    <Modal
+      opened={opened}
       data-testid="delete-object-modal"
+      size="lg"
       title={t`Are you sure you want to delete this row?`}
-      footer={[
-        <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
+      onClose={onClose}
+    >
+      <Text>{t`This will permanently delete the row. There’s no undoing this, so please be sure.`}</Text>
+      <Modal.Footer>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
         <Button
-          key="delete"
           variant="filled"
           color="negative"
           disabled={
@@ -66,11 +71,8 @@ export const DeleteObjectModal: FunctionComponent<Props> = ({
             objectId === null
           }
           onClick={handleSubmit}
-        >{t`Delete forever`}</Button>,
-      ]}
-      onClose={onClose}
-    >
-      {t`This will permanently delete the row. There’s no undoing this, so please be sure.`}
-    </ModalContent>
+        >{t`Delete forever`}</Button>
+      </Modal.Footer>
+    </Modal>
   );
 };

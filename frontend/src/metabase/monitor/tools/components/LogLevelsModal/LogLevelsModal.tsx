@@ -7,8 +7,8 @@ import {
   useResetLogLevelsMutation,
 } from "metabase/api/logger";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { ModalContent } from "metabase/common/components/ModalContent";
 import { FormProvider } from "metabase/forms";
+import { Modal } from "metabase/ui";
 import type { LoggerDurationUnit } from "metabase-types/api";
 
 import { LogLevelsForm } from "./LogLevelsForm";
@@ -74,31 +74,34 @@ export const LogLevelsModal = ({ onClose }: Props) => {
     }
   };
 
-  if (presetsError || isLoadingPresets) {
-    return (
-      <ModalContent title={t`Customize log levels`} onClose={onClose}>
-        <LoadingAndErrorWrapper
-          error={presetsError}
-          loading={isLoadingPresets}
-        />
-      </ModalContent>
-    );
-  }
-
   return (
-    <ModalContent title={t`Customize log levels`} onClose={onClose}>
-      <FormProvider
-        initialValues={{
-          duration: 60,
-          durationUnit: "minutes",
-          json: "",
-        }}
-        validationSchema={VALIDATION_SCHEMA}
-        onReset={handleReset}
-        onSubmit={handleSubmit}
+    <Modal
+      opened
+      size="lg"
+      density="relaxed"
+      title={t`Customize log levels`}
+      onClose={onClose}
+    >
+      <LoadingAndErrorWrapper
+        error={presetsError}
+        loading={isLoadingPresets}
+        noWrapper
       >
-        <LogLevelsForm presets={presets} />
-      </FormProvider>
-    </ModalContent>
+        {() => (
+          <FormProvider
+            initialValues={{
+              duration: 60,
+              durationUnit: "minutes",
+              json: "",
+            }}
+            validationSchema={VALIDATION_SCHEMA}
+            onReset={handleReset}
+            onSubmit={handleSubmit}
+          >
+            <LogLevelsForm presets={presets} />
+          </FormProvider>
+        )}
+      </LoadingAndErrorWrapper>
+    </Modal>
   );
 };

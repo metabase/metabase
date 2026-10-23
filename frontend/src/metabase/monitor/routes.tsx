@@ -172,7 +172,9 @@ export function getMonitorRoutes() {
             <Route path=":jobKey" />
           </Route>
           <Route path="logs" lazy={logs}>
-            {lazyModalRouteElement("levels", logLevelsModal)}
+            {lazyModalRouteElement("levels", logLevelsModal, {
+              noWrap: true,
+            })}
           </Route>
           <Route
             path="errors"
@@ -181,7 +183,9 @@ export function getMonitorRoutes() {
             )}
           />
           <Route path="model-persistence-log" lazy={modelPersistenceLogPage}>
-            {modalRoute(":jobId", ModelPersistenceLogJobModal)}
+            {modalRoute(":jobId", ModelPersistenceLogJobModal, {
+              noWrap: true,
+            })}
           </Route>
         </Route>
 

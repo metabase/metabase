@@ -5,6 +5,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
+import { Modal } from "metabase/ui";
 
 import { getArchiveUrl } from "../../actions";
 import { UnsubscribeModal } from "../../components/UnsubscribeModal";
@@ -43,8 +44,18 @@ export function UnsubscribePulseModal({
     navigate(getArchiveUrl(item, "pulse", hasUnsubscribed));
   };
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
+  // Opening the modal once the subscription loads, rather than around a
+  // spinner, saves it from animating in twice
+  if (isLoading) {
+    return null;
+  }
+
+  if (error) {
+    return (
+      <Modal opened size="lg" onClose={onClose}>
+        <LoadingAndErrorWrapper loading={false} error={error} />
+      </Modal>
+    );
   }
 
   return pulse && user ? (
