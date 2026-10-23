@@ -11,12 +11,12 @@ import { Flex, Loader, Stack } from "metabase/ui";
 
 type AiAnalyticsSectionLayoutProps = {
   children: ReactNode;
-  emptyState: ReactNode;
+  emptyState?: ReactNode;
   error: unknown;
   filters: ReactNode;
   isInitialLoading: boolean;
   isTableRoute: boolean;
-  showEmpty: boolean;
+  showEmpty?: boolean;
   tabs?: PillTab[];
   filtersAction?: ReactNode;
   title: string;
@@ -85,10 +85,10 @@ export function AiAnalyticsSectionLayout({
 
 type RouteContentProps = {
   children: ReactNode;
-  emptyState: ReactNode;
+  emptyState?: ReactNode;
   error: unknown;
   isInitialLoading: boolean;
-  showEmpty: boolean;
+  showEmpty?: boolean;
 };
 
 export function RouteContent({

@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-apps.config
   "Constants of a data app's manifest, which a serialized app keeps in the `data_app.yaml` in its own directory
-   under `data_apps/` (see `README.md` in this directory for the layout); the columns' schemas are in
+   under `data_apps/`; the columns' schemas are in
    [[metabase-enterprise.data-apps.schema]]:
 
      slug: sales                # the slug the app is served at (column `name`)

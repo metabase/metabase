@@ -8,8 +8,6 @@ import {
   loadEnv,
 } from "vite";
 
-import { checkResources } from "../data-app-resources/check";
-
 import { dataAppBuildPlugins, dataAppLibBuild } from "./config/build-config";
 import { getDataAppDefine } from "./config/define";
 import { buildDevCsp } from "./config/dev-connect-src";
@@ -22,29 +20,13 @@ function dataAppVitePlugin(): PluginOption[] {
   const appRoot = process.cwd();
   const envDir = findEnvRoot(appRoot);
 
-  const manifestResult = readManifest(appRoot);
-
-  if (!manifestResult) {
-    throw new Error(
-      `No data_app.yaml found in ${appRoot}. Run vite from the data app's own ` +
-        `directory (data_apps/<slug>/).`,
-    );
-  }
-
   const appSlug = path.basename(appRoot);
-  const allowedHosts = manifestResult.manifest.allowed_hosts ?? [];
+  const allowedHosts = readManifest(appRoot)?.manifest.allowed_hosts ?? [];
 
   return [
     react(),
     ...dataAppBuildPlugins(),
     dataAppSandboxDevPlugin(appSlug, allowedHosts),
-    {
-      name: "metabase-resource-check",
-      apply: "build",
-      buildStart: async () => {
-        await checkResources(appRoot);
-      },
-    },
     {
       name: "metabase-data-app",
       // Merged over the user's config, so these win — the bundle Metabase loads

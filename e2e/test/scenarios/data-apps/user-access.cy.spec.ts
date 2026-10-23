@@ -43,7 +43,7 @@ describe("scenarios > data apps > authentication", () => {
           ALLOWED_HOST,
         );
       });
-      cy.request(`/api/apps/${SYNCED_APP_SLUG}/bundle`).then((res) => {
+      cy.request(`/api/ee/apps/${SYNCED_APP_SLUG}/bundle`).then((res) => {
         expect(
           String(res.headers["x-metabase-data-app-allowed-hosts"]),
         ).to.contain(ALLOWED_HOST);
@@ -64,11 +64,11 @@ describe("scenarios > data apps > authentication", () => {
         followRedirect: false,
       }).as("appPage");
       cy.request({
-        url: `/api/apps/${SYNCED_APP_SLUG}/bundle`,
+        url: `/api/ee/apps/${SYNCED_APP_SLUG}/bundle`,
         failOnStatusCode: false,
       }).as("bundle");
       cy.request({
-        url: `/api/apps/${SYNCED_APP_SLUG}`,
+        url: `/api/ee/apps/${SYNCED_APP_SLUG}`,
         failOnStatusCode: false,
       }).as("metadata");
 
