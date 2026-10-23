@@ -139,8 +139,8 @@
 
 (defmethod serdes/extract-query "CustomVizPlugin"
   [model-name {:keys [filter-column filter-ids] :as opts}]
-  ;; a dev-only plugin has no bundle to export; a plugin whose identifier can't name a directory, alone or beside
-  ;; another's, is left out and named in the log, it is still served on this instance
+  ;; during export skip dev plugins, case-colliding and plugins who's name can't be directory name
+  ;; skipped plugins are named in the log, and is still served on this instance
   (let [colliding (case-colliding-identifiers
                    (custom-viz-plugin.db/plugin-identifiers-with-bundles filter-column filter-ids))]
     (eduction (remove (fn [{:keys [identifier]}]
