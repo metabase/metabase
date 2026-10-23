@@ -565,8 +565,7 @@
                (assoc field :table-schema (:schema table), :table-name (:name table)))))
    (sync-tables database schema-names table-names)))
 
-(defn- column-rows->fields-xf
-  []
+(def ^:private column-rows->fields-xf
   (comp
    (partition-by (juxt :table-schema :table-name))
    (mapcat (partial m/distinct-by :name))
@@ -604,7 +603,7 @@
                               :database-position (dec ordinal_position)
                               :field-comment     remarks}))
                       (sort-by (juxt :table-name :database-position))
-                      (into [] (column-rows->fields-xf))))
+                      (into [] column-rows->fields-xf)))
         found-tables (into #{} (map :table-name) fields)
         ;; `.getColumns` can return no columns for a table (#43980).
         ;; Compare `found-tables` with the tables that table sync saved,
@@ -636,8 +635,8 @@
          ;; is the schema value to set for the field. So it is nil when `dbname` is set.
          (into []
                (mapcat #(schema-fields-using-get-columns database metadata catalog
-                                                         %                         ;; the actual schema name
-                                                         (when-not (seq dbname) %) ;; the schema value to set for the field
+                                                         %                        ;; the actual schema name
+                                                         (when (empty? dbname) %) ;; the schema value to set for the field
                                                          (set table-names)))
                (if (seq dbname) [dbname] (remove nil? schema-names))))))))
 
