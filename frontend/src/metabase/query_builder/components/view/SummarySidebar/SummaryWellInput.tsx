@@ -12,11 +12,13 @@ import _ from "underscore";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { hasFeature } from "metabase/databases";
+import { useSuggestSummaryFormulaMutation } from "metabase/metabot/api";
 import {
   Box,
   Combobox,
   Icon,
   Kbd,
+  Loader,
   PillsInput,
   Text,
   useCombobox,
@@ -25,14 +27,9 @@ import * as Lib from "metabase-lib";
 import type { Database, IconName } from "metabase-types/api";
 
 import { MatchedLabel } from "./MatchedLabel";
-import { SummaryFormulaEditor } from "./SummaryFormulaEditor";
 import S from "./SummarySidebar.module.css";
-import type {
-  SummaryBase,
-  SummaryDefinition,
-  SummaryExpression,
-  SummaryWellId,
-} from "./types";
+import { compileFormula, getFormulaRequest } from "./ai-formula";
+import type { SummaryBase, SummaryDefinition, SummaryWellId } from "./types";
 import {
   addCountValue,
   addExpressionDimension,
@@ -42,15 +39,15 @@ import {
   getAvailableMetrics,
   getColumnLabel,
   getColumnSections,
-  getFormulaClause,
+  getDefaultFormulaName,
   getItemKey,
   getMetricLabel,
   removeItem,
-  replaceWithExpression,
 } from "./utils";
 
 const FORMULA_PREFIX = "=";
 const FORMULA_OPTION_VALUE = "formula";
+const GENERATE_OPTION_VALUE = "generate";
 const DROPDOWN_GAP_PX = 4;
 const DROPDOWN_MAX_HEIGHT_PX = 320;
 
@@ -89,115 +86,60 @@ function getCardFrame(field: HTMLElement): DropdownFrame | null {
   };
 }
 
-/** The item whose formula the well's input is editing, and the name it starts with. */
-export type SummaryFormulaEdit = {
-  itemId: string;
-  name: string;
-};
-
 type SummaryWellInputProps = {
   base: SummaryBase;
   database: Database | undefined;
   wellId: SummaryWellId;
   definition: SummaryDefinition;
-  formulaEdit: SummaryFormulaEdit | null;
   /** The well's chips, laid out inline before the field. */
   children: ReactNode;
   onChange: (definition: SummaryDefinition) => void;
-  onFormulaEditEnd: () => void;
+  /** Opens a new formula for this well in the formula bar, from `=`, Custom, or an AI draft that doesn't compile. */
+  onStartFormula: (source: string, name: string) => void;
+  formulaInput: PendingFormulaInput;
+};
+
+/**
+ * Keys typed right after `=` land in the well's field until the formula bar's editor mounts and
+ * takes focus. While `isPending()`, the field hands them to `insert` instead of searching with them.
+ */
+export type PendingFormulaInput = {
+  isPending: () => boolean;
+  insert: (text: string) => void;
 };
 
 /**
  * A well's field: its chips followed by a typeahead that finds metrics (Values) or columns
- * (Rows, Columns) by name, and turns into a formula editor when the text starts with `=`,
- * for custom aggregations and custom columns. While `formulaEdit` is set, it edits that
- * item's formula instead.
+ * (Rows, Columns) by name. Typing `=` hands off to the formula bar for custom aggregations and
+ * custom columns.
  */
 export function SummaryWellInput({
   base,
   database,
   wellId,
   definition,
-  formulaEdit,
   children,
   onChange,
-  onFormulaEditEnd,
+  onStartFormula,
+  formulaInput,
 }: SummaryWellInputProps) {
-  const [newFormulaSource, setNewFormulaSource] = useState<string | null>(null);
-  const isValues = wellId === "values";
-  const expressionMode = isValues ? "aggregation" : "expression";
   const canWriteFormula =
     database != null &&
-    hasFeature(database, isValues ? "expression-aggregations" : "expressions");
-  const formulaPlaceholder = isValues
-    ? t`Aggregate with a formula, or type / to search`
-    : t`Group by a formula, or type / to search`;
-
-  if (formulaEdit != null) {
-    const formulaEditClause = getFormulaClause(
-      base,
-      definition,
-      formulaEdit.itemId,
+    hasFeature(
+      database,
+      wellId === "values" ? "expression-aggregations" : "expressions",
     );
-    return (
-      <Box className={S.wellField}>
-        {children}
-        <SummaryFormulaEditor
-          key={formulaEdit.itemId}
-          base={base}
-          database={database}
-          expressionMode={expressionMode}
-          initialClause={formulaEditClause}
-          initialName={formulaEdit.name}
-          placeholder={formulaPlaceholder}
-          submitLabel={t`Update`}
-          onSubmit={(expression) => {
-            onChange(
-              replaceWithExpression(definition, formulaEdit.itemId, expression),
-            );
-            onFormulaEditEnd();
-          }}
-          onCancel={onFormulaEditEnd}
-        />
-      </Box>
-    );
-  }
-
-  if (newFormulaSource != null) {
-    const handleAdd = (expression: SummaryExpression) => {
-      onChange(
-        wellId === "values"
-          ? addExpressionValue(definition, expression)
-          : addExpressionDimension(definition, wellId, expression),
-      );
-      setNewFormulaSource(null);
-    };
-
-    return (
-      <Box className={S.wellField}>
-        {children}
-        <SummaryFormulaEditor
-          base={base}
-          database={database}
-          expressionMode={expressionMode}
-          initialSource={newFormulaSource}
-          placeholder={formulaPlaceholder}
-          submitLabel={t`Add`}
-          onSubmit={handleAdd}
-          onCancel={() => setNewFormulaSource(null)}
-        />
-      </Box>
-    );
-  }
 
   return (
     <SummaryWellSearch
       base={base}
+      database={database}
       wellId={wellId}
       definition={definition}
       canWriteFormula={canWriteFormula}
       onChange={onChange}
-      onStartFormula={setNewFormulaSource}
+      onStartFormula={(source, name = "") => onStartFormula(source, name)}
+      formulaInput={formulaInput}
     >
       {children}
     </SummaryWellSearch>
@@ -285,23 +227,37 @@ function getSearchPlaceholder({
 
 type SummaryWellSearchProps = {
   base: SummaryBase;
+  database: Database | undefined;
   wellId: SummaryWellId;
   definition: SummaryDefinition;
   canWriteFormula: boolean;
   children: ReactNode;
   onChange: (definition: SummaryDefinition) => void;
-  onStartFormula: (source: string) => void;
+  onStartFormula: (source: string, name?: string) => void;
+  formulaInput: PendingFormulaInput;
 };
+
+/** Where the AI draft for the typed text is: not asked for, on its way, or failed with a message. */
+type GenerateState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "error"; message: string };
 
 function SummaryWellSearch({
   base,
+  database,
   wellId,
   definition,
   canWriteFormula,
   children,
   onChange,
   onStartFormula,
+  formulaInput,
 }: SummaryWellSearchProps) {
+  const [suggestFormula] = useSuggestSummaryFormulaMutation();
+  const [generateState, setGenerateState] = useState<GenerateState>({
+    status: "idle",
+  });
   const fieldRef = useRef<HTMLDivElement>(null);
   const [dropdownFrame, setDropdownFrame] = useState<DropdownFrame | null>(
     null,
@@ -319,18 +275,26 @@ function SummaryWellSearch({
     [base, wellId, searchText],
   );
   // highlight the best match once the filtered options render, so Enter picks it
-  // rather than whatever sat first in the previous list
+  // rather than whatever sat first in the previous list; a failed AI draft re-enables Generate, so Enter retries
   const comboboxRef = useLatest(combobox);
   useEffect(() => {
     if (searchText.length > 0) {
       comboboxRef.current.selectFirstOption();
     }
-  }, [comboboxRef, options, searchText]);
+  }, [comboboxRef, options, searchText, generateState]);
 
   const optionGroups = useMemo(
     () => Object.entries(_.groupBy(options, (option) => option.group)),
     [options],
   );
+
+  // text nothing matches by name is a description, so Enter asks AI to write the formula
+  const canGenerate =
+    canWriteFormula && options.length === 0 && searchText.trim().length > 0;
+  const isGenerating = generateState.status === "loading";
+  const generateHint = isValues
+    ? t`Write it as an aggregation with AI`
+    : t`Write it as a custom column with AI`;
 
   const wellItems =
     wellId === "values" ? definition.values : definition[wellId];
@@ -339,7 +303,47 @@ function SummaryWellSearch({
     hasItems: wellItems.length > 0,
   });
 
+  const handleGenerate = async () => {
+    const prompt = searchText.trim();
+    const expressionMode = isValues ? "aggregation" : "expression";
+    setGenerateState({ status: "loading" });
+    const { data } = await suggestFormula(
+      getFormulaRequest(base, prompt, expressionMode),
+    );
+    const source = data?.expression;
+    if (source == null) {
+      setGenerateState({
+        status: "error",
+        message: data?.error ?? t`Couldn't generate a formula. Try again.`,
+      });
+      return;
+    }
+
+    const name = data?.name ?? "";
+    const expression = compileFormula(base, database, expressionMode, {
+      source,
+      name: name || getDefaultFormulaName(source),
+    });
+    setGenerateState({ status: "idle" });
+    setSearchText("");
+    combobox.closeDropdown();
+    if (expression == null) {
+      // a draft that doesn't compile opens in the formula editor, where its error shows
+      onStartFormula(source, name);
+      return;
+    }
+    onChange(
+      isValues
+        ? addExpressionValue(definition, expression)
+        : addExpressionDimension(definition, wellId, expression),
+    );
+  };
+
   const handleOptionSubmit = (optionValue: string) => {
+    if (optionValue === GENERATE_OPTION_VALUE) {
+      handleGenerate();
+      return;
+    }
     setSearchText("");
     combobox.closeDropdown();
     if (optionValue === FORMULA_OPTION_VALUE) {
@@ -354,6 +358,11 @@ function SummaryWellSearch({
 
   // the typeahead waits for the first character, so focusing a well doesn't cover the wells below
   const handleSearchChange = (text: string) => {
+    if (formulaInput.isPending()) {
+      setSearchText("");
+      formulaInput.insert(text);
+      return;
+    }
     if (canWriteFormula && text.startsWith(FORMULA_PREFIX)) {
       setSearchText("");
       combobox.closeDropdown();
@@ -361,6 +370,7 @@ function SummaryWellSearch({
       return;
     }
     setSearchText(text);
+    setGenerateState({ status: "idle" });
     if (text.trim().length > 0) {
       combobox.openDropdown();
     } else {
@@ -371,7 +381,12 @@ function SummaryWellSearch({
   // like any pills input, Backspace in an empty field takes off the last chip
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     const lastItem = wellItems[wellItems.length - 1];
-    if (event.key === "Backspace" && searchText.length === 0 && lastItem) {
+    if (
+      event.key === "Backspace" &&
+      searchText.length === 0 &&
+      lastItem &&
+      !formulaInput.isPending()
+    ) {
       event.preventDefault();
       onChange(removeItem(definition, lastItem.id));
     }
@@ -403,6 +418,7 @@ function SummaryWellSearch({
               className={S.wellFieldInput}
               placeholder={searchPlaceholder}
               value={searchText}
+              readOnly={isGenerating}
               aria-label={
                 isValues ? t`Add a value by name` : t`Add a grouping by name`
               }
@@ -411,7 +427,11 @@ function SummaryWellSearch({
                 handleSearchChange(event.currentTarget.value)
               }
               onKeyDown={handleKeyDown}
-              onBlur={() => combobox.closeDropdown()}
+              onBlur={() => {
+                if (!isGenerating) {
+                  combobox.closeDropdown();
+                }
+              }}
             />
           </Combobox.EventsTarget>
         </Box>
@@ -421,10 +441,42 @@ function SummaryWellSearch({
           mah={DROPDOWN_MAX_HEIGHT_PX}
           style={{ overflowY: "auto" }}
         >
-          {options.length === 0 && (
+          {options.length === 0 && !canGenerate && (
             <Combobox.Empty>
               {isValues ? t`No matching metrics` : t`No matching columns`}
             </Combobox.Empty>
+          )}
+          {canGenerate && (
+            <Combobox.Group label={t`AI`}>
+              <Combobox.Option
+                value={GENERATE_OPTION_VALUE}
+                disabled={isGenerating}
+                className={S.generateOption}
+              >
+                {isGenerating ? (
+                  <Loader size="xs" className={S.searchOptionIcon} />
+                ) : (
+                  <Icon
+                    name="sparkles"
+                    className={S.searchOptionIcon}
+                    aria-hidden
+                  />
+                )}
+                <Box className={S.searchOptionText}>
+                  <Text className={S.generateOptionLabel}>
+                    {isGenerating
+                      ? t`Generating “${searchText.trim()}”…`
+                      : t`Generate “${searchText.trim()}”`}
+                  </Text>
+                  <Text className={S.searchOptionDescription}>
+                    {generateState.status === "error"
+                      ? generateState.message
+                      : generateHint}
+                  </Text>
+                </Box>
+                {!isGenerating && <Kbd>{"↵"}</Kbd>}
+              </Combobox.Option>
+            </Combobox.Group>
           )}
           {optionGroups.map(([group, groupOptions]) => (
             <Combobox.Group key={group} label={group}>

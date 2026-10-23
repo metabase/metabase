@@ -1,8 +1,8 @@
+import { SummarySidebar } from "../../../components/view/SummarySidebar";
 import type { SidebarPrototypeVariant } from "../../shared/types";
 
 import { SummarySidebar as AiFormulaSummarySidebar } from "./ai-formula";
 import { SummarySidebar as AnchoredEditorSummarySidebar } from "./anchored-editor";
-import { SummarySidebar as FormulaBarSummarySidebar } from "./formula-bar";
 import { SummarySidebar as LivePreviewSummarySidebar } from "./live-preview";
 import { SummarySidebar as PointModeSummarySidebar } from "./point-mode";
 
@@ -21,8 +21,8 @@ export const VARIANTS: readonly SidebarPrototypeVariant[] = [
   {
     slug: "formula-bar",
     name: "Formula bar",
-    axis: "A spreadsheet formula bar across the top of the workspace edits formulas; the well holds a placeholder chip",
-    Sidebar: FormulaBarSummarySidebar,
+    axis: "Shipped in the query builder: a spreadsheet formula bar across the top of the workspace edits formulas; the well holds a placeholder chip",
+    Sidebar: SummarySidebar,
   },
   {
     slug: "anchored-editor",

@@ -12,7 +12,15 @@ import { Tooltip as ExpressionTooltip } from "metabase/querying/components/expre
 import { useCustomTooltip } from "metabase/querying/components/expressions/Editor/custom-tooltip";
 import { useExtensions } from "metabase/querying/components/expressions/Editor/extensions";
 import { diagnoseAndCompile, format } from "metabase/querying/expressions";
-import { ActionIcon, Box, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import {
+  ActionIcon,
+  Box,
+  Flex,
+  Icon,
+  Text,
+  TextInput,
+  Tooltip,
+} from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
@@ -37,24 +45,19 @@ type SummaryFormulaEditorProps = {
   expressionMode: "aggregation" | "expression";
   /** The formula being edited, if any; it's printed back into the editor once loaded. */
   initialClause?: Lib.Expressionable | null;
-  /** What was typed after `=` in a well, or what AI drafted, for a new formula. */
+  /** What was typed after `=` in the well's search input, for a new formula. */
   initialSource?: string;
-  /** The name AI gave the formula, or the edited item's name; kept until the formula is changed. */
   initialName?: string;
+  placeholder: string;
   submitLabel: string;
-  /** Called once the editor exists and has focus. */
-  onEditorCreate?: (view: EditorView) => void;
-  /** The name the formula would get if committed now; empty while there's no formula. */
-  onNameChange?: (name: string) => void;
   onSubmit: (expression: SummaryExpression) => void;
-  /** Esc, the cancel button, or `/` in an empty formula. */
+  /** Esc, the close button, or `/` in an empty formula: go back to the well's search input. */
   onCancel: () => void;
 };
 
 /**
- * The formula bar while a formula is open: fx, the single-line editor, any error, then cancel and
- * commit at the far right. Enter commits. Nobody types a name: an untouched formula keeps the one
- * it came with (from AI, or the edited item's), and a typed one is named after the formula itself.
+ * A well's inline, single-line formula editor, styled like the data sheet's formula bar. Enter adds
+ * (or updates) the formula, named by the user or after the formula itself.
  */
 export function SummaryFormulaEditor({
   base,
@@ -63,14 +66,14 @@ export function SummaryFormulaEditor({
   initialClause,
   initialSource = "",
   initialName = "",
+  placeholder,
   submitLabel,
-  onEditorCreate,
-  onNameChange,
   onSubmit,
   onCancel,
 }: SummaryFormulaEditorProps) {
   const { query, stageIndex } = base;
   const [source, setSource] = useState(initialSource);
+  const [name, setName] = useState(initialName);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const availableColumns = useMemo(
@@ -91,19 +94,6 @@ export function SummaryFormulaEditor({
   // the edited formula is printed once, when the editor opens, so later renders don't reset what was typed
   const [editedClause] = useState(initialClause);
   const hasTypedRef = useRef(false);
-  const [hasTyped, setHasTyped] = useState(false);
-  const viewRef = useRef<EditorView | null>(null);
-  // set when the formatter prints the edited formula, so the caret lands at its end like a spreadsheet's
-  const isCaretToEndPendingRef = useRef(false);
-  const formulaName =
-    (!hasTyped && initialName.trim()) || getDefaultFormulaName(source.trim());
-  const hasFormula = source.trim().length > 0;
-  const liveName = hasFormula ? formulaName : "";
-
-  const onNameChangeRef = useLatest(onNameChange);
-  useEffect(() => {
-    onNameChangeRef.current?.(liveName);
-  }, [liveName, onNameChangeRef]);
 
   // the formatter loads lazily, so an edited formula shows up a moment after the editor,
   // unless the user has started typing in the meantime
@@ -120,7 +110,6 @@ export function SummaryFormulaEditor({
     })
       .then((formula) => {
         if (!isCancelled && !hasTypedRef.current) {
-          isCaretToEndPendingRef.current = true;
           setSource(formula);
         }
       })
@@ -129,20 +118,6 @@ export function SummaryFormulaEditor({
       isCancelled = true;
     };
   }, [editedClause, query, stageIndex, availableColumns]);
-
-  // the printed formula and the editor's view each arrive asynchronously, in either order
-  const moveCaretToEndIfPending = (view: EditorView | null) => {
-    if (!isCaretToEndPendingRef.current || view == null) {
-      return;
-    }
-    isCaretToEndPendingRef.current = false;
-    view.dispatch({ selection: { anchor: view.state.doc.length } });
-  };
-  const moveCaretToEndIfPendingRef = useLatest(moveCaretToEndIfPending);
-
-  useEffect(() => {
-    moveCaretToEndIfPendingRef.current(viewRef.current);
-  }, [source, moveCaretToEndIfPendingRef]);
 
   const handleSubmit = () => {
     const formula = source.trim();
@@ -162,7 +137,10 @@ export function SummaryFormulaEditor({
       setErrorMessage(error?.message ?? t`This formula isn't valid.`);
       return;
     }
-    onSubmit({ name: formulaName, clause: expressionClause });
+    onSubmit({
+      name: name.trim() || getDefaultFormulaName(formula),
+      clause: expressionClause,
+    });
   };
 
   const handlers = useLatest({ submit: handleSubmit, cancel: onCancel });
@@ -193,7 +171,7 @@ export function SummaryFormulaEditor({
           },
         },
         {
-          // "/" in an empty formula cancels it; anywhere else it's division
+          // "/" in an empty formula goes back to search; anywhere else it's division
           key: "/",
           run: (view) => {
             if (view.state.doc.length > 0) {
@@ -231,82 +209,86 @@ export function SummaryFormulaEditor({
     extensions: [completionTooltip, formulaKeymap, singleLine, tokens],
   });
 
+  const hasFormula = source.trim().length > 0;
+
   return (
-    <Box
-      className={cx(S.formulaBar, S.formulaBarActive, {
-        [S.formulaBarInvalid]: errorMessage,
-      })}
-      data-testid="summary-formula-bar"
-    >
-      <Icon name="function" className={S.formulaBarFx} aria-hidden />
-      <CodeMirror
-        className={S.formulaEditor}
-        basicSetup={{
-          lineNumbers: false,
-          foldGutter: false,
-          highlightActiveLine: false,
-          highlightActiveLineGutter: false,
-        }}
-        extensions={extensions}
-        value={source}
-        placeholder={
-          expressionMode === "aggregation"
-            ? t`Sum([Total]) / Count()`
-            : t`concat([Category], " – ", [Vendor])`
-        }
-        autoCorrect="off"
-        autoFocus
-        // focus as soon as the view exists, so keys typed right after `=` in a well aren't lost
-        onCreateEditor={(view) => {
-          viewRef.current = view;
-          view.focus();
-          onEditorCreate?.(view);
-          moveCaretToEndIfPending(view);
-        }}
-        onChange={(value) => {
-          hasTypedRef.current = true;
-          setHasTyped(true);
-          setSource(value);
-          setErrorMessage(null);
-        }}
-      />
-      {completionTooltipPortal}
-      {errorMessage && (
-        <Tooltip label={errorMessage} multiline maw={360}>
-          <Flex
-            className={S.formulaBarError}
-            data-testid="summary-formula-error"
-          >
-            <Icon name="warning" size={14} aria-hidden />
-            <Text className={S.formulaBarErrorText} truncate>
-              {errorMessage}
-            </Text>
-          </Flex>
-        </Tooltip>
-      )}
-      <Flex className={S.formulaBarActions}>
+    <Box className={S.formula} data-testid="summary-formula-editor">
+      <Box
+        className={cx(S.formulaBox, { [S.formulaBoxInvalid]: errorMessage })}
+      >
+        <span className={S.formulaEquals}>{"="}</span>
+        <CodeMirror
+          className={S.formulaEditor}
+          basicSetup={{
+            lineNumbers: false,
+            foldGutter: false,
+            highlightActiveLine: false,
+            highlightActiveLineGutter: false,
+          }}
+          extensions={extensions}
+          value={source}
+          placeholder={placeholder}
+          autoCorrect="off"
+          autoFocus
+          onChange={(value) => {
+            hasTypedRef.current = true;
+            setSource(value);
+            setErrorMessage(null);
+          }}
+        />
+        {completionTooltipPortal}
         <Tooltip label={t`Cancel (Esc)`}>
           <ActionIcon
-            className={S.formulaBarAction}
             variant="subtle"
+            size="sm"
             aria-label={t`Cancel formula`}
             onClick={onCancel}
           >
             <Icon name="close" />
           </ActionIcon>
         </Tooltip>
-        <Tooltip label={t`${submitLabel} (Enter)`}>
-          <ActionIcon
-            className={cx(S.formulaBarAction, S.formulaBarCommit)}
-            variant="subtle"
-            aria-label={submitLabel}
-            disabled={!hasFormula}
-            onClick={handleSubmit}
-          >
-            <Icon name="check" />
-          </ActionIcon>
-        </Tooltip>
-      </Flex>
+      </Box>
+      {hasFormula && (
+        <Flex align="center" gap="xs" mt="xs">
+          <TextInput
+            size="xs"
+            flex={1}
+            value={name}
+            placeholder={getDefaultFormulaName(source)}
+            aria-label={t`Formula name`}
+            leftSection={<Icon name="label" size={12} />}
+            onChange={(event) => setName(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                handleSubmit();
+              } else if (event.key === "Escape") {
+                onCancel();
+              }
+            }}
+          />
+          <Tooltip label={t`${submitLabel} (Enter)`}>
+            <ActionIcon
+              variant="filled"
+              color="summarize"
+              aria-label={submitLabel}
+              onClick={handleSubmit}
+            >
+              <Icon name="check" />
+            </ActionIcon>
+          </Tooltip>
+        </Flex>
+      )}
+      {errorMessage && (
+        <Text
+          className={S.formulaError}
+          size="sm"
+          c="error"
+          mt="xs"
+          data-testid="summary-formula-error"
+        >
+          {errorMessage}
+        </Text>
+      )}
     </Box>
   );
 }

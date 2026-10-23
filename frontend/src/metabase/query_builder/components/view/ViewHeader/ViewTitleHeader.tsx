@@ -14,6 +14,7 @@ import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
+import { FormulaBarSlotTarget } from "../FormulaBar";
 import { ViewSection } from "../ViewSection";
 
 import ViewTitleHeaderS from "./ViewTitleHeader.module.css";
@@ -209,6 +210,9 @@ export function ViewTitleHeader({
           onCollapseFilters={collapseFilters}
         />
       </ViewSection>
+
+      {/* formula bars (the summary sidebar's, the add-column button's) sit above the filters */}
+      <FormulaBarSlotTarget />
 
       {QuestionFiltersHeader.shouldRender({
         question,

@@ -9,12 +9,10 @@ import {
 } from "@dnd-kit/core";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useMount, useUpdateEffect } from "react-use";
-import { t } from "ttag";
+import { useUpdateEffect } from "react-use";
 
 import { SidebarContent } from "metabase/common/components/SidebarContent";
-import { ActionIcon, Box, Button, Flex, Icon, Tooltip } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
 import {
@@ -29,13 +27,11 @@ import {
   type SummaryDefinition,
   type SummaryDimension,
   type SummaryDragItem,
-  type SummaryExpression,
   type SummaryValue,
   type SummaryWellId,
 } from "../../../../components/view/SummarySidebar/types";
 import {
   addCountValue,
-  addExpressionValue,
   buildSummaryQuery,
   dropOnWell,
   getItemKey,
@@ -50,8 +46,6 @@ import { SummaryWells } from "./SummaryWells";
 type SummarySidebarProps = {
   question: Question;
   onQuestionChange: (question: Question) => void;
-  seededValues?: readonly SummaryExpression[] | null;
-  workspaceTopSlot?: HTMLElement | null;
 };
 
 function getDropWellId(data: unknown): SummaryWellId | null {
@@ -61,7 +55,10 @@ function getDropWellId(data: unknown): SummaryWellId | null {
   return SUMMARY_WELL_IDS.find((wellId) => wellId === data.wellId) ?? null;
 }
 
-/** A summary that's empty to start from Count of rows, so the first breakout already shows something. */
+/**
+ * A new, empty summary starts with Count of rows in Summarize by, so picking a Group by column
+ * already shows something. The count alone isn't run: the question stays as it is until then.
+ */
 function withStartingCount(session: SummarySession): SummarySession {
   const { rows, columns, values } = session.definition;
   if (rows.length > 0 || columns.length > 0 || values.length > 0) {
@@ -107,7 +104,7 @@ function isSelectedItem(
 }
 
 /**
- * Swaps a clicked field in for what its well holds: a column replaces the breakouts, a metric or
+ * Swaps a clicked field in for what its well holds: a column replaces the Group by columns, a metric or
  * the count replaces the values. Returns `definition` itself when the field is already all its well holds.
  */
 function swapItem(
@@ -124,7 +121,7 @@ function swapItem(
 }
 
 /**
- * Adds an option-clicked field next to what its well holds: a column to the breakouts, a metric or
+ * Adds an option-clicked field next to what its well holds: a column to Group by, a metric or
  * the count to the values. Returns `definition` itself when the well already has the field.
  */
 function addItem(
@@ -147,55 +144,31 @@ function addItem(
     : dropOnWell(base, definition, item, "columns");
 }
 
-/** Adds each seeded formula to the values, skipping any whose name the values already have. */
-function addSeededValues(
-  definition: SummaryDefinition,
-  seededValues: readonly SummaryExpression[],
-): SummaryDefinition {
-  const valueNames = new Set(
-    definition.values.flatMap((value) =>
-      value.type === "expression" ? [value.expression.name] : [],
-    ),
-  );
-  return seededValues
-    .filter((expression) => !valueNames.has(expression.name))
-    .reduce(addExpressionValue, definition);
-}
-
 /**
- * Summarizes the question starting from Count of rows. Clicking a column swaps it in as the one
- * breakout and option-clicking adds it; dragging places it in any well, and dragging one below
- * Breakouts turns the summary into a pivot. Every change updates and reruns the question.
+ * Summarizes the question starting from Count of rows, which waits in Summarize by while the
+ * question keeps showing its table. Clicking a column swaps it in as the one grouping and
+ * option-clicking adds it; dragging places it in any well, and dragging one below Group by turns
+ * the summary into a pivot. Every change after that updates and reruns the question.
  */
 export function SummarySidebar({
   question,
   onQuestionChange,
-  seededValues,
-  workspaceTopSlot,
 }: SummarySidebarProps) {
   const [session, setSession] = useState(() =>
     withStartingCount(getSummarySession(question)),
   );
   const { base, definition } = session;
 
-  // the count it starts from is only in the wells so far: show it in the results too
-  useMount(() => {
-    const startingQuestion = getSummaryQuestion(session);
-    if (
-      startingQuestion != null &&
-      !Lib.areLegacyQueriesEqual(
-        startingQuestion.datasetQuery(),
-        question.datasetQuery(),
-      )
-    ) {
-      onQuestionChange(startingQuestion);
-    }
-  });
-
-  // the question changed outside the sidebar (e.g. a new filter): summarize it from scratch.
-  // skipped on mount, where the question is still the one from before the starting count
+  // the question changed outside the sidebar (e.g. a new filter): summarize it from scratch, from
+  // the starting count again. Skipped on mount, which already started from it. A session the
+  // question still shows is kept as is, so removing the count doesn't bring it back
   useUpdateEffect(() => {
-    setSession((currentSession) => getSummarySession(question, currentSession));
+    setSession((currentSession) => {
+      const nextSession = getSummarySession(question, currentSession);
+      return nextSession === currentSession
+        ? currentSession
+        : withStartingCount(nextSession);
+    });
   }, [question]);
 
   useEffect(() => {
@@ -219,21 +192,6 @@ export function SummarySidebar({
       onQuestionChange(nextQuestion);
     }
   };
-
-  const [isFieldListOpen, setIsFieldListOpen] = useState(true);
-  const { rows, columns, values } = definition;
-  const hasItems = rows.length > 0 || columns.length > 0 || values.length > 0;
-
-  // the seed controls hand over a new array per click, applied once; skipped on mount, where it's left over
-  useUpdateEffect(() => {
-    if (seededValues == null) {
-      return;
-    }
-    const nextDefinition = addSeededValues(definition, seededValues);
-    if (nextDefinition !== definition) {
-      handleChange(nextDefinition);
-    }
-  }, [seededValues]);
 
   const handleFieldClick = (nextDefinition: SummaryDefinition) => {
     // a click that changes nothing shouldn't rerun the question
@@ -270,62 +228,20 @@ export function SummarySidebar({
     >
       <SidebarContent className={S.sidebar} data-testid="summary-sidebar">
         <Box className={S.columns}>
-          <Box className={S.wellsColumn}>
-            <SummaryWells
-              base={base}
-              definition={definition}
-              summaryQuery={summaryQuery}
-              itemLabels={itemLabels}
-              draggedItem={draggedItem}
-              workspaceTopSlot={workspaceTopSlot}
-              onChange={handleChange}
-            />
-            <Flex
-              className={S.wellsFooter}
-              align="center"
-              justify="space-between"
-            >
-              <Button
-                variant="subtle"
-                size="compact-sm"
-                disabled={!hasItems}
-                onClick={() =>
-                  handleChange({ rows: [], columns: [], values: [] })
-                }
-              >
-                {t`Clear all`}
-              </Button>
-              <Tooltip
-                label={isFieldListOpen ? t`Hide fields` : t`Show fields`}
-              >
-                <ActionIcon
-                  variant="subtle"
-                  aria-label={isFieldListOpen ? t`Hide fields` : t`Show fields`}
-                  aria-expanded={isFieldListOpen}
-                  onClick={() => setIsFieldListOpen(!isFieldListOpen)}
-                >
-                  <Icon
-                    name={isFieldListOpen ? "sidebar_open" : "sidebar_closed"}
-                  />
-                </ActionIcon>
-              </Tooltip>
-            </Flex>
-          </Box>
-          {/* slides out to the right; the wells widen into the space it leaves */}
-          <Box
-            className={S.fieldListDrawer}
-            data-open={isFieldListOpen || undefined}
-          >
-            <SummaryFieldList
-              base={base}
-              onSwap={(item) =>
-                handleFieldClick(swapItem(base, definition, item))
-              }
-              onAdd={(item) =>
-                handleFieldClick(addItem(base, definition, item))
-              }
-            />
-          </Box>
+          <SummaryWells
+            base={base}
+            definition={definition}
+            itemLabels={itemLabels}
+            draggedItem={draggedItem}
+            onChange={handleChange}
+          />
+          <SummaryFieldList
+            base={base}
+            onSwap={(item) =>
+              handleFieldClick(swapItem(base, definition, item))
+            }
+            onAdd={(item) => handleFieldClick(addItem(base, definition, item))}
+          />
         </Box>
       </SidebarContent>
       {createPortal(

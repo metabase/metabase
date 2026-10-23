@@ -1,6 +1,8 @@
+import type { EditorView } from "@codemirror/view";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import cx from "classnames";
-import { type MouseEvent, type ReactNode, useState } from "react";
+import { type MouseEvent, type ReactNode, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
@@ -16,56 +18,92 @@ import {
   Tooltip,
   UnstyledButton,
 } from "metabase/ui";
+import { getCspNonce } from "metabase/utils/csp";
 import * as Lib from "metabase-lib";
 
+import { FormulaBarFrame, useFormulaBarSlot } from "../FormulaBar";
+
+import { SummaryFormulaEditor } from "./SummaryFormulaEditor";
 import S from "./SummarySidebar.module.css";
-import { type SummaryFormulaEdit, SummaryWellInput } from "./SummaryWellInput";
+import { type PendingFormulaInput, SummaryWellInput } from "./SummaryWellInput";
 import type {
   SummaryBase,
   SummaryDefinition,
   SummaryDimension,
   SummaryDragItem,
+  SummaryExpression,
   SummaryValue,
   SummaryWellId,
 } from "./types";
 import {
+  addExpressionDimension,
+  addExpressionValue,
   canDropOnWell,
   changeValueOperator,
   findDimension,
   getColumnOperatorOptions,
+  getFormulaClause,
   removeItem,
+  replaceWithExpression,
 } from "./utils";
+
+/**
+ * The one formula open in the formula bar: a new one for a well, shown there as a placeholder chip
+ * until it's committed, or an existing item's. `key` remounts the bar's editor per open formula.
+ */
+type ActiveFormula =
+  | {
+      kind: "new";
+      key: number;
+      wellId: SummaryWellId;
+      source: string;
+      name: string;
+    }
+  | { kind: "edit"; key: number; itemId: string };
+
+/** The item whose formula the bar is editing, and the name it starts with. */
+type SummaryFormulaEdit = {
+  itemId: string;
+  name: string;
+};
 
 type SummaryWellsProps = {
   base: SummaryBase;
   definition: SummaryDefinition;
+  /** The query `definition` builds, whose result columns the results table shows. */
+  summaryQuery: Lib.Query | null;
   itemLabels: Map<string, string>;
   draggedItem: SummaryDragItem | null;
   onChange: (definition: SummaryDefinition) => void;
 };
 
 /**
- * The Summarize by and Group by drop targets to start. The pivot button on Group by, or dragging a
- * column below it, makes it a pivot: a Rows well appears and Group by becomes Columns. A pivot
+ * The Values and Breakouts drop targets to start. The pivot button on Breakouts, or dragging a
+ * column below it, makes it a pivot: a Rows well appears and Breakouts becomes Columns. A pivot
  * made by dragging ends once Rows is empty; one made with the button stays until it's pressed again.
  */
 export function SummaryWells({
   base,
   definition,
+  summaryQuery,
   itemLabels,
   draggedItem,
   onChange,
 }: SummaryWellsProps) {
+  const formulaBarSlot = useFormulaBarSlot();
   const databaseId = Lib.databaseID(base.query);
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
   );
   const canWriteValueFormula =
     database != null && hasFeature(database, "expression-aggregations");
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [activeFormula, setActiveFormula] = useState<ActiveFormula | null>(
+    null,
+  );
+  const [draftName, setDraftName] = useState("");
+  const editingItemId =
+    activeFormula?.kind === "edit" ? activeFormula.itemId : null;
   const formulaEdit = getFormulaEdit(definition, editingItemId);
-  const editingWellId =
-    formulaEdit != null ? getItemWellId(definition, formulaEdit.itemId) : null;
   const [isPivotMode, setIsPivotMode] = useState(
     () => definition.rows.length > 0,
   );
@@ -73,7 +111,7 @@ export function SummaryWells({
 
   const handleTogglePivot = () => {
     if (isPivot && definition.rows.length > 0) {
-      // back to one Group by list, rows first since they're the pivot's first grouping
+      // back to one list of breakouts, rows first since they're the pivot's first grouping
       onChange({
         ...definition,
         rows: [],
@@ -83,10 +121,76 @@ export function SummaryWells({
     setIsPivotMode(!isPivot);
   };
 
+  // a new formula's well and the keys typed there before the bar's editor mounted; set
+  // synchronously on `=`, before React rerenders, so no keystroke slips through
+  const pendingInputRef = useRef<{
+    wellId: SummaryWellId;
+    text: string;
+  } | null>(null);
+
+  // each open formula gets a fresh editor, so switching formulas discards the unsaved draft
+  const openFormula = (formula: ActiveFormula) => {
+    pendingInputRef.current =
+      formula.kind === "new" ? { wellId: formula.wellId, text: "" } : null;
+    setDraftName("");
+    setActiveFormula(formula);
+  };
+
+  const getFormulaInput = (wellId: SummaryWellId): PendingFormulaInput => ({
+    isPending: () => pendingInputRef.current?.wellId === wellId,
+    insert: (text) => {
+      if (pendingInputRef.current != null) {
+        pendingInputRef.current.text += text;
+      }
+    },
+  });
+
+  const handleEditorCreate = (view: EditorView) => {
+    const text = pendingInputRef.current?.text ?? "";
+    pendingInputRef.current = null;
+    if (text.length > 0) {
+      const end = view.state.doc.length;
+      view.dispatch({
+        changes: { from: end, insert: text },
+        selection: { anchor: end + text.length },
+      });
+    }
+  };
+  const handleStartFormula = (
+    wellId: SummaryWellId,
+    source: string,
+    name: string,
+  ) => openFormula({ kind: "new", key: Date.now(), wellId, source, name });
+  const handleEditFormula = (itemId: string) =>
+    openFormula({ kind: "edit", key: Date.now(), itemId });
+  const handleCloseFormula = () => {
+    pendingInputRef.current = null;
+    setActiveFormula(null);
+  };
+
+  const handleCommitFormula = (expression: SummaryExpression) => {
+    if (activeFormula?.kind === "new") {
+      const { wellId } = activeFormula;
+      onChange(
+        wellId === "values"
+          ? addExpressionValue(definition, expression)
+          : addExpressionDimension(definition, wellId, expression),
+      );
+    } else if (formulaEdit != null) {
+      onChange(
+        replaceWithExpression(definition, formulaEdit.itemId, expression),
+      );
+    }
+    setActiveFormula(null);
+  };
+
+  const focusFormulaBar = () =>
+    formulaBarSlot?.querySelector<HTMLElement>(".cm-content")?.focus();
+
   const handleRemove = (itemId: string) => {
     onChange(removeItem(definition, itemId));
     if (itemId === editingItemId) {
-      setEditingItemId(null);
+      setActiveFormula(null);
     }
   };
 
@@ -96,13 +200,61 @@ export function SummaryWells({
       database={database}
       wellId={wellId}
       definition={definition}
-      formulaEdit={editingWellId === wellId ? formulaEdit : null}
       onChange={onChange}
-      onFormulaEditEnd={() => setEditingItemId(null)}
+      onStartFormula={(source, name) =>
+        handleStartFormula(wellId, source, name)
+      }
+      formulaInput={getFormulaInput(wellId)}
     >
       {items}
+      {activeFormula?.kind === "new" && activeFormula.wellId === wellId && (
+        <PlaceholderChip
+          label={draftName || t`New formula`}
+          onFocus={focusFormulaBar}
+          onRemove={handleCloseFormula}
+        />
+      )}
     </SummaryWellInput>
   );
+
+  // the bar only exists while a formula chip, or a new formula's placeholder, is selected
+  const renderFormulaBar = () => {
+    if (activeFormula?.kind === "new") {
+      const { wellId } = activeFormula;
+      return (
+        <SummaryFormulaEditor
+          key={activeFormula.key}
+          base={base}
+          database={database}
+          expressionMode={wellId === "values" ? "aggregation" : "expression"}
+          initialSource={activeFormula.source}
+          initialName={activeFormula.name}
+          submitLabel={t`Add`}
+          onEditorCreate={handleEditorCreate}
+          onNameChange={setDraftName}
+          onSubmit={handleCommitFormula}
+          onCancel={handleCloseFormula}
+        />
+      );
+    }
+    if (activeFormula?.kind === "edit" && formulaEdit != null) {
+      const wellId = getItemWellId(definition, formulaEdit.itemId);
+      return (
+        <SummaryFormulaEditor
+          key={activeFormula.key}
+          base={base}
+          database={database}
+          expressionMode={wellId === "values" ? "aggregation" : "expression"}
+          initialClause={getFormulaClause(base, definition, formulaEdit.itemId)}
+          initialName={formulaEdit.name}
+          submitLabel={t`Update`}
+          onSubmit={handleCommitFormula}
+          onCancel={handleCloseFormula}
+        />
+      );
+    }
+    return null;
+  };
 
   const renderDimensions = (
     wellId: SummaryWellId,
@@ -122,7 +274,7 @@ export function SummaryWells({
           {"expression" in dimension && (
             <FormulaChipLabel
               label={label}
-              onEdit={() => setEditingItemId(dimension.id)}
+              onEdit={() => handleEditFormula(dimension.id)}
             />
           )}
         </WellChip>
@@ -133,7 +285,7 @@ export function SummaryWells({
     <Box className={S.wells} data-testid="summary-wells">
       <SummaryWell
         wellId="values"
-        title={t`Summarize by`}
+        title={isPivot ? t`Values` : t`Summarize by`}
         definition={definition}
         draggedItem={draggedItem}
       >
@@ -153,7 +305,7 @@ export function SummaryWells({
               }
               onEditFormula={
                 canWriteValueFormula
-                  ? () => setEditingItemId(value.id)
+                  ? () => handleEditFormula(value.id)
                   : undefined
               }
               onRemove={handleRemove}
@@ -185,7 +337,78 @@ export function SummaryWells({
       ) : (
         <PivotDropZone definition={definition} draggedItem={draggedItem} />
       )}
+      {formulaBarSlot &&
+        createPortal(
+          <>
+            <FormulaBarFrame>{renderFormulaBar()}</FormulaBarFrame>
+            {formulaEdit != null && (
+              <ResultColumnHighlight
+                columnName={getItemColumnName(
+                  summaryQuery,
+                  base.stageIndex,
+                  definition,
+                  formulaEdit.itemId,
+                )}
+              />
+            )}
+          </>,
+          formulaBarSlot,
+        )}
     </Box>
+  );
+}
+
+/**
+ * The name of the result column an item produces, as the results table keys its cells, or `null`
+ * when the summary doesn't build. Breakouts come first in the results, rows before columns.
+ */
+function getItemColumnName(
+  summaryQuery: Lib.Query | null,
+  stageIndex: number,
+  definition: SummaryDefinition,
+  itemId: string,
+): string | null {
+  if (summaryQuery == null) {
+    return null;
+  }
+  const columnInfos = Lib.returnedColumns(summaryQuery, stageIndex).map(
+    (column) => Lib.displayInfo(summaryQuery, stageIndex, column),
+  );
+  const dimensionIndex = [...definition.rows, ...definition.columns].findIndex(
+    ({ id }) => id === itemId,
+  );
+  if (dimensionIndex >= 0) {
+    const breakoutInfos = columnInfos.filter((info) => info.isBreakout);
+    return breakoutInfos[dimensionIndex]?.name ?? null;
+  }
+  const valueIndex = definition.values.findIndex(({ id }) => id === itemId);
+  const aggregationInfos = columnInfos.filter((info) => info.isAggregation);
+  return valueIndex >= 0 ? (aggregationInfos[valueIndex]?.name ?? null) : null;
+}
+
+/**
+ * Highlights the edited formula's column in the results table, like a spreadsheet outlining the
+ * cells a formula writes to. The table belongs to the page, so this styles its cells by column
+ * name, the key the table renders on each header and cell.
+ */
+function ResultColumnHighlight({ columnName }: { columnName: string | null }) {
+  if (columnName == null) {
+    return null;
+  }
+  const name = CSS.escape(columnName);
+  return (
+    // the CSP drops inline styles without the page's nonce
+    <style nonce={getCspNonce()}>
+      {`
+        main [data-header-id="${name}"] {
+          background-color: color-mix(in srgb, var(--mb-color-core-brand) 12%, transparent);
+          box-shadow: inset 0 -2px 0 var(--mb-color-core-brand);
+        }
+        main [data-column-id="${name}"] {
+          background-color: color-mix(in srgb, var(--mb-color-core-brand) 6%, transparent);
+        }
+      `}
+    </style>
   );
 }
 
@@ -230,8 +453,7 @@ function getItemWellId(
 // clicks on these keep their own behavior instead of focusing the well's field
 const INTERACTIVE_SELECTOR =
   "button, input, a, [role='button'], [contenteditable='true']";
-// the formula editor's content comes before its name input, so it wins while a formula is open
-const FIELD_SELECTOR = "[contenteditable='true'], input";
+const FIELD_SELECTOR = "input";
 
 type SummaryWellProps = {
   wellId: SummaryWellId;
@@ -304,7 +526,7 @@ type PivotToggleProps = {
 };
 
 function PivotToggle({ isPivot, onToggle }: PivotToggleProps) {
-  const label = isPivot ? t`Back to Group by` : t`Pivot into rows and columns`;
+  const label = isPivot ? t`Back to breakouts` : t`Pivot into rows and columns`;
   return (
     <Tooltip label={label}>
       <ActionIcon
@@ -402,6 +624,41 @@ function WellChip({
         c="inherit"
         aria-label={t`Remove ${label}`}
         onClick={() => onRemove(itemId)}
+      >
+        <Icon name="close" size={12} />
+      </ActionIcon>
+    </Box>
+  );
+}
+
+type PlaceholderChipProps = {
+  label: string;
+  onFocus: () => void;
+  onRemove: () => void;
+};
+
+/** Where a new formula will land: a dashed chip, named live from the formula bar, until it's committed. */
+function PlaceholderChip({ label, onFocus, onRemove }: PlaceholderChipProps) {
+  return (
+    <Box
+      className={cx(S.chip, S.chipPlaceholder, S.chipIsEditing)}
+      data-testid="summary-well-placeholder"
+    >
+      <UnstyledButton
+        className={S.chipButton}
+        aria-label={t`Edit the new formula in the formula bar`}
+        onClick={onFocus}
+      >
+        <Icon name="function" size={12} />
+        <span className={S.chipLabel}>{label}</span>
+      </UnstyledButton>
+      <ActionIcon
+        className={S.chipRemove}
+        size="sm"
+        variant="transparent"
+        c="inherit"
+        aria-label={t`Cancel the new formula`}
+        onClick={onRemove}
       >
         <Icon name="close" size={12} />
       </ActionIcon>

@@ -21,11 +21,6 @@ export type SidebarPrototypeVariantProps = {
    * formulas twice passes a new array. Variants that don't support seeding ignore it.
    */
   seededValues?: readonly SummaryExpression[] | null;
-  /**
-   * An empty element spanning the top of the workspace, above the results and the sidebar, for a
-   * variant to portal into, e.g. a spreadsheet-style formula bar. `null` until it mounts.
-   */
-  workspaceTopSlot?: HTMLElement | null;
 };
 
 export type SidebarPrototypeVariant = {

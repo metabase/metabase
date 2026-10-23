@@ -5,10 +5,7 @@ import type {
   SuggestSummaryFormulaRequest,
 } from "metabase-types/api";
 
-import type {
-  SummaryBase,
-  SummaryExpression,
-} from "../../../../components/view/SummarySidebar/types";
+import type { SummaryBase, SummaryExpression } from "./types";
 
 type ExpressionMode = "aggregation" | "expression";
 

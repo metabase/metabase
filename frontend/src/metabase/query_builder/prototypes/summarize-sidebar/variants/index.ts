@@ -7,6 +7,7 @@ import { SummarySidebar as OriginalSummarySidebar } from "./original";
 import { SummarySidebar as RoomySummarySidebar } from "./roomy";
 import { SummarySidebar as RowsOnDemandSummarySidebar } from "./rows-on-demand";
 import { SummarySidebar as SectionsSummarySidebar } from "./sections";
+import { SummarySidebar as SectionsSwapSummarySidebar } from "./sections-swap";
 import { SummarySidebar as SectionsTopSummarySidebar } from "./sections-top";
 import { SummarySidebar as SideBySideSummarySidebar } from "./side-by-side";
 import { SummarySidebar as WellsLeftSummarySidebar } from "./wells-left";
@@ -22,7 +23,7 @@ export const VARIANTS: readonly SidebarPrototypeVariant[] = [
   {
     slug: "default",
     name: "Default",
-    axis: "As shipped in the query builder: Sections swap",
+    axis: "As shipped in the query builder: the AI formula bar (ai-expressions' Formula bar)",
     Sidebar: SummarySidebar,
   },
   {
@@ -88,8 +89,8 @@ export const VARIANTS: readonly SidebarPrototypeVariant[] = [
   {
     slug: "sections-swap",
     name: "Sections swap",
-    axis: "Click to swap with Sections' field list; now shipped in the query builder, the same sidebar as Default",
-    Sidebar: SummarySidebar,
+    axis: "Click to swap with Sections' field list; shipped in the query builder before the formula bar",
+    Sidebar: SectionsSwapSummarySidebar,
   },
   {
     slug: "wells-top-swap",

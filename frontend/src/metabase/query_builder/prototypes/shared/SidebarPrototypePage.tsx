@@ -18,6 +18,10 @@ import { Box, Button, Flex, Icon, Loader } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Card, TableId } from "metabase-types/api";
 
+import {
+  FormulaBarSlotProvider,
+  FormulaBarSlotTarget,
+} from "../../components/view/FormulaBar";
 import type { SummaryExpression } from "../../components/view/SummarySidebar/types";
 import { getSummaryBase } from "../../components/view/SummarySidebar/utils";
 import { QuestionDataSource } from "../../components/view/ViewHeader/components/QuestionDataSource";
@@ -220,9 +224,6 @@ function PrototypeWorkspace({
   const [seededValues, setSeededValues] = useState<
     readonly SummaryExpression[] | null
   >(null);
-  const [workspaceTopSlot, setWorkspaceTopSlot] = useState<HTMLElement | null>(
-    null,
-  );
   const variant = variants[variantIndex];
   const { Sidebar } = variant;
   const pickerItems = variants.map(({ slug, name }) => ({
@@ -244,89 +245,90 @@ function PrototypeWorkspace({
   };
 
   return (
-    <Box className={S.root}>
-      <Flex className={S.toolbar} align="center" gap="md">
-        {/* the heading the query builder gives an unsummarized question over this source */}
-        <ViewHeading c="text-secondary">
-          <QuestionDataSource question={sourceQuestion} />
-        </ViewHeading>
-        <Button
-          ml="auto"
-          flex="0 0 auto"
-          leftSection={<Icon name="table" />}
-          onClick={() => setIsPickingSource(true)}
-        >
-          {t`Change data`}
-        </Button>
-      </Flex>
-      {/* empty unless a variant portals into it, e.g. a spreadsheet-style formula bar */}
-      <Box ref={setWorkspaceTopSlot} className={S.workspaceTopSlot} />
-      <Box ref={contentRef} className={S.content}>
-        <Box component="main" className={S.main}>
-          <DebouncedFrame className={S.frame} resetKey={isRunning}>
-            {error != null ? (
-              <CenteredState>{getErrorMessage(error)}</CenteredState>
-            ) : (
-              <QueryVisualization
-                question={question}
-                result={result}
-                rawSeries={rawSeries}
-                queryBuilderMode="view"
-                isRunnable={isRunnable}
-                isRunning={isRunning}
-                isResultDirty={isResultDirty}
-                isDirty
-                isShowingSummarySidebar
-                hasColumnReordering
-                noHeader
-                runQuestionQuery={rerun}
-                cancelQuery={cancelQuery}
-                onUpdateQuestion={updateQuestion}
-                onUpdateVisualizationSettings={updateVisualizationSettings}
+    <FormulaBarSlotProvider>
+      <Box className={S.root}>
+        <Flex className={S.toolbar} align="center" gap="md">
+          {/* the heading the query builder gives an unsummarized question over this source */}
+          <ViewHeading c="text-secondary">
+            <QuestionDataSource question={sourceQuestion} />
+          </ViewHeading>
+          <Button
+            ml="auto"
+            flex="0 0 auto"
+            leftSection={<Icon name="table" />}
+            onClick={() => setIsPickingSource(true)}
+          >
+            {t`Change data`}
+          </Button>
+        </Flex>
+        {/* where formula bars land, as above the query builder's filters */}
+        <FormulaBarSlotTarget className={S.workspaceTopSlot} />
+        <Box ref={contentRef} className={S.content}>
+          <Box component="main" className={S.main}>
+            <DebouncedFrame className={S.frame} resetKey={isRunning}>
+              {error != null ? (
+                <CenteredState>{getErrorMessage(error)}</CenteredState>
+              ) : (
+                <QueryVisualization
+                  question={question}
+                  result={result}
+                  rawSeries={rawSeries}
+                  queryBuilderMode="view"
+                  isRunnable={isRunnable}
+                  isRunning={isRunning}
+                  isResultDirty={isResultDirty}
+                  isDirty
+                  isShowingSummarySidebar
+                  hasColumnReordering
+                  noHeader
+                  runQuestionQuery={rerun}
+                  cancelQuery={cancelQuery}
+                  onUpdateQuestion={updateQuestion}
+                  onUpdateVisualizationSettings={updateVisualizationSettings}
+                />
+              )}
+            </DebouncedFrame>
+          </Box>
+          <ResizableSummaryPanel containerWidth={contentWidth}>
+            <Sidebar
+              key={variant.slug}
+              question={question}
+              seededValues={seededValues}
+              onQuestionChange={(nextQuestion) =>
+                updateQuestion(nextQuestion, { run: true })
+              }
+            />
+          </ResizableSummaryPanel>
+        </Box>
+        {/* the harness chrome shows and hides as one: ⌥⇧H (Alt+Shift+H off macOS) */}
+        {isHarnessVisible && (
+          <>
+            <PrototypePicker
+              items={pickerItems}
+              activeIndex={variantIndex}
+              onSelect={handleSelectVariant}
+            />
+            {seedFormulasByTable != null && (
+              <SeedControls
+                key={variant.slug}
+                base={sourceBase}
+                formulas={seedFormulas}
+                onSeed={setSeededValues}
               />
             )}
-          </DebouncedFrame>
-        </Box>
-        <ResizableSummaryPanel containerWidth={contentWidth}>
-          <Sidebar
-            key={variant.slug}
-            question={question}
-            seededValues={seededValues}
-            workspaceTopSlot={workspaceTopSlot}
-            onQuestionChange={(nextQuestion) =>
-              updateQuestion(nextQuestion, { run: true })
+          </>
+        )}
+        {isPickingSource && (
+          <DataPickerModal
+            title={t`Pick the data to summarize`}
+            onChange={(nextSourceId) =>
+              navigate(getPrototypeUrl(basePath, variant.slug, nextSourceId))
             }
+            onClose={() => setIsPickingSource(false)}
           />
-        </ResizableSummaryPanel>
+        )}
       </Box>
-      {/* the harness chrome shows and hides as one: ⌥⇧H (Alt+Shift+H off macOS) */}
-      {isHarnessVisible && (
-        <>
-          <PrototypePicker
-            items={pickerItems}
-            activeIndex={variantIndex}
-            onSelect={handleSelectVariant}
-          />
-          {seedFormulasByTable != null && (
-            <SeedControls
-              key={variant.slug}
-              base={sourceBase}
-              formulas={seedFormulas}
-              onSeed={setSeededValues}
-            />
-          )}
-        </>
-      )}
-      {isPickingSource && (
-        <DataPickerModal
-          title={t`Pick the data to summarize`}
-          onChange={(nextSourceId) =>
-            navigate(getPrototypeUrl(basePath, variant.slug, nextSourceId))
-          }
-          onClose={() => setIsPickingSource(false)}
-        />
-      )}
-    </Box>
+    </FormulaBarSlotProvider>
   );
 }
 
