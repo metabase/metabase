@@ -580,7 +580,7 @@
             (str/blank? field-comment) (dissoc :field-comment))))))
 
 (defn- schema-fields-using-get-columns
-  "Returns the fields of the tables in `glue-schema` with one JDBC `getColumns` call.
+  "Returns the fields of the tables in `glue-schema` with one JDBC `.getColumns` call.
   This reads from the Glue catalog and is much faster than an Athena query (i.e. DESCRIBE or querying information_schema).
   `glue-schema` is the actual schema name that the tables are in, it is always set.
   `mb-schema` is the schema value that we will set for the field. It is nil if the user has set `dbname` in the
@@ -606,7 +606,7 @@
                       (sort-by (juxt :table-name :database-position))
                       (into [] (column-rows->fields-xf))))
         found-tables (into #{} (map :table-name) fields)
-        ;; `getColumns` can return no columns for a table (#43980).
+        ;; `.getColumns` can return no columns for a table (#43980).
         ;; Compare `found-tables` with the tables that table sync saved,
         ;; and use DESCRIBE to get the fields for any missing tables.
         missing-tables (remove found-tables (if (seq table-names)

@@ -462,8 +462,6 @@
                    (:fields (driver/describe-table :athena db table))))
             (is (true? @get-columns-called))))))))
 
-;;; ------------------------------------------------ describe-fields -------------------------------------------------
-
 (deftest ^:parallel column-rows->fields-xf-test
   (testing "types are the same as from `DESCRIBE`, and a column name occurs only once in each table"
     (is (= [{:table-schema "s", :table-name "t1", :name "id", :database-type "int", :base-type :type/Integer, :database-position 0, :field-comment "ID"}
@@ -500,20 +498,24 @@
 
 (deftest describe-fields-matches-describe-table-test
   (mt/test-driver :athena
-    (testing "`describe-fields` returns the same fields as `describe-table`"
-      (let [db (mt/db)]
-        (doseq [table (t2/select :model/Table :db_id (:id db), :active true)]
-          (testing (:name table)
-            (is (= (into #{}
-                         (map #(select-keys % [:name :base-type :database-position]))
-                         (:fields (driver/describe-table :athena db table)))
-                   (into #{}
-                         (comp (filter #(and (= (:schema table) (:table-schema %))
-                                             (= (:name table) (:table-name %))))
-                               (map #(select-keys % [:name :base-type :database-position])))
-                         (driver/describe-fields :athena db
-                                                 :schema-names [(:schema table)]
-                                                 :table-names  [(:name table)]))))))))))
+    (doseq [table (t2/select :model/Table :db_id (mt/id), :active true)]
+      (testing (:name table)
+        (is (= (into #{}
+                     (:fields (driver/describe-table :athena (mt/db) table)))
+               (into #{}
+                     (comp (filter #(and (= (:schema table) (:table-schema %))
+                                         (= (:name table) (:table-name %))))
+                           (map #(dissoc % :table-schema :table-name)))
+                     (driver/describe-fields :athena (mt/db)
+                                             :schema-names [(:schema table)]
+                                             :table-names  [(:name table)]))))))))
+
+(deftest describe-fields-paths-match-test
+  (mt/test-driver :athena
+    (is (= (into #{}
+                 (#'athena/describe-fields-using-describe-table :athena (mt/db) nil nil))
+           (into #{}
+                 (#'athena/describe-fields-using-get-columns :athena (mt/db) nil nil))))))
 
 (deftest column-name-with-question-mark-test
   (testing "Column name with a question mark in it should be compiled correctly (#44915)"
