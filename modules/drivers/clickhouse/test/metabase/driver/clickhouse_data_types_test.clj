@@ -1,4 +1,6 @@
 (ns ^:mb/driver-tests metabase.driver.clickhouse-data-types-test
+  {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.driver.clickhouse-data-types-test]}
+                                                            metabase.test.data/run-mbql-query {:namespaces [metabase.driver.clickhouse-data-types-test]}}}}}}
   (:require
    [clojure.test :refer :all]
    [metabase.lib.core :as lib]
@@ -441,19 +443,19 @@
          [{:field-name "mystring" :base-type :type/Text}]
          [["foo"] ["bar"] ["   "] [""] [nil]]]])
       (testing "null strings count"
-        (is (= 2M
+        (is (= 2
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:is-null $mystring]
                       :aggregation [:count]})
                    mt/first-row last))))
       (testing "nullable strings not null filter"
-        (is (= 3M
+        (is (= 3
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:not-null $mystring]
                       :aggregation [:count]})
                    mt/first-row last))))
       (testing "filter nullable string by value"
-        (is (= 1M
+        (is (= 1
                (-> (mt/run-mbql-query test-data-nullable-strings
                      {:filter [:= $mystring "foo"]
                       :aggregation [:count]})
