@@ -36,7 +36,7 @@ export interface TimelineModalProps extends Partial<TimelineModalHeaderProps> {
 export const TimelineModal = ({
   title,
   collectionName,
-  actions,
+  menu,
   onGoBack,
   onClose,
   animated = true,
@@ -57,7 +57,7 @@ export const TimelineModal = ({
       <TimelineModalHeader
         title={title}
         collectionName={collectionName}
-        actions={actions}
+        menu={menu}
         onGoBack={onGoBack}
       />
       <Modal.Body>{children}</Modal.Body>

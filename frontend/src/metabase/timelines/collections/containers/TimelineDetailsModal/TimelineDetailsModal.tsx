@@ -5,25 +5,20 @@ import {
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import { useNavigate } from "metabase/router";
-import {
-  TimelineModal,
-  TimelineModalLoadingState,
-} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Timeline, TimelineEvent } from "metabase-types/api";
 
-import TimelineDetailsModal from "../../components/TimelineDetailsModal";
+import TimelineDetailsContent from "../../components/TimelineDetailsContent";
+import { TimelineQueryModal } from "../../components/TimelineQueryModal";
 import type { ModalParams } from "../../types";
+import { getTimelineDetailsHeaderProps } from "../../utils/timeline-details-header";
 
-interface TimelineDetailsModalContainerProps {
+interface TimelineDetailsModalProps {
   params: ModalParams;
   onClose: () => void;
 }
 
-function TimelineDetailsModalContainer({
-  params,
-  onClose,
-}: TimelineDetailsModalContainerProps) {
+function TimelineDetailsModal({ params, onClose }: TimelineDetailsModalProps) {
   const navigate = useNavigate();
   const archive = useSetArchive();
   const id = Urls.extractEntityId(params.timelineId);
@@ -44,14 +39,6 @@ function TimelineDetailsModalContainer({
   const isLoading = isTimelineLoading || isTimelinesLoading;
   const error = timelineError ?? timelinesError;
 
-  if (isLoading || error || !timeline) {
-    return (
-      <TimelineModal tall onClose={onClose} animated={false}>
-        <TimelineModalLoadingState loading={isLoading} error={error} />
-      </TimelineModal>
-    );
-  }
-
   const handleArchive = (event: TimelineEvent) =>
     archive({ id: event.id, model: "timeline-event" }, true);
 
@@ -60,15 +47,24 @@ function TimelineDetailsModalContainer({
   };
 
   return (
-    <TimelineDetailsModal
+    <TimelineQueryModal
+      data={timeline}
+      isLoading={isLoading}
+      error={error}
+      getHeaderProps={(timeline) =>
+        getTimelineDetailsHeaderProps(timeline, {
+          isOnlyTimeline: timelines.length <= 1,
+          onGoBack: handleGoBack,
+        })
+      }
       onClose={onClose}
-      timeline={timeline}
-      isOnlyTimeline={timelines.length <= 1}
-      onArchive={handleArchive}
-      onGoBack={handleGoBack}
-    />
+    >
+      {(timeline) => (
+        <TimelineDetailsContent timeline={timeline} onArchive={handleArchive} />
+      )}
+    </TimelineQueryModal>
   );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TimelineDetailsModalContainer;
+export default TimelineDetailsModal;

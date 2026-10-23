@@ -4,14 +4,14 @@ import {
   createMockTimeline,
 } from "metabase-types/api/mocks";
 
-import type { TimelineListModalProps } from "./TimelineListModal";
-import TimelineListModal from "./TimelineListModal";
+import type { TimelineListContentProps } from "./TimelineListContent";
+import TimelineListContent from "./TimelineListContent";
 
-function setup(props: TimelineListModalProps) {
-  renderWithProviders(<TimelineListModal {...props} />);
+function setup(props: TimelineListContentProps) {
+  renderWithProviders(<TimelineListContent {...props} />);
 }
 
-describe("TimelineListModal", () => {
+describe("TimelineListContent", () => {
   it("should render a list of timelines", () => {
     const props = getProps({
       timelines: [createMockTimeline({ name: "Releases" })],
@@ -36,10 +36,9 @@ describe("TimelineListModal", () => {
 });
 
 const getProps = (
-  opts?: Partial<TimelineListModalProps>,
-): TimelineListModalProps => ({
+  opts?: Partial<TimelineListContentProps>,
+): TimelineListContentProps => ({
   timelines: [],
   collection: createMockCollection(),
-  onClose: jest.fn(),
   ...opts,
 });

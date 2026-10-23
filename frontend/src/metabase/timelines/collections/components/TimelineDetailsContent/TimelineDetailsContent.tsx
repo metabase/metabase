@@ -1,22 +1,12 @@
-import {
-  type ChangeEventHandler,
-  type JSX,
-  useCallback,
-  useMemo,
-  useState,
-} from "react";
+import { type ChangeEventHandler, type JSX, useMemo, useState } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
-import { getTimelineName } from "metabase/common/utils/timelines";
-import {
-  TimelineModal,
-  TimelineModalScrollArea,
-} from "metabase/timelines/common/components/TimelineModal";
-import { ActionIcon, Button, Flex, Icon, Menu, TextInput } from "metabase/ui";
+import { TimelineModalScrollArea } from "metabase/timelines/common/components/TimelineModal";
+import { Button, Flex, Icon, TextInput } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
@@ -26,26 +16,19 @@ import EventList from "../EventList";
 import SearchEmptyState from "../SearchEmptyState";
 import TimelineEmptyState from "../TimelineEmptyState";
 
-export interface TimelineDetailsModalProps {
+export interface TimelineDetailsContentProps {
   timeline: Timeline;
   isArchive?: boolean;
-  isOnlyTimeline?: boolean;
   onArchive?: (event: TimelineEvent) => void;
   onUnarchive?: (event: TimelineEvent) => void;
-  onClose: () => void;
-  onGoBack?: (timeline: Timeline) => void;
 }
 
-const TimelineDetailsModal = ({
+const TimelineDetailsContent = ({
   timeline,
   isArchive = false,
-  isOnlyTimeline = false,
   onArchive,
   onUnarchive,
-  onClose,
-  onGoBack,
-}: TimelineDetailsModalProps): JSX.Element => {
-  const title = isArchive ? t`Archived events` : getTimelineName(timeline);
+}: TimelineDetailsContentProps): JSX.Element => {
   const [inputText, setInputText] = useState("");
 
   const searchText = useDebouncedValue(
@@ -57,46 +40,15 @@ const TimelineDetailsModal = ({
     return getEvents(timeline.events, searchText, isArchive);
   }, [timeline, searchText, isArchive]);
 
-  const menuItems = useMemo(() => {
-    return getMenuItems(timeline, isArchive, isOnlyTimeline);
-  }, [timeline, isArchive, isOnlyTimeline]);
-
-  const handleGoBack = useCallback(() => {
-    onGoBack?.(timeline);
-  }, [timeline, onGoBack]);
-
   const isNotEmpty = events.length > 0;
   const isSearching = searchText.length > 0;
   const canWrite = timeline.collection?.can_write;
-  const canGoBack = isArchive || !isOnlyTimeline;
 
   const handleSearchChange: ChangeEventHandler<HTMLInputElement> = (e) =>
     setInputText(e.target.value);
 
   return (
-    <TimelineModal
-      tall
-      animated={false}
-      onClose={onClose}
-      title={title}
-      actions={
-        menuItems.length > 0 && (
-          <Menu position="bottom-end" shadow="sm">
-            <Menu.Target>
-              <ActionIcon
-                size="sm"
-                variant="subtle"
-                aria-label={t`Timeline menu`}
-              >
-                <Icon name="ellipsis" />
-              </ActionIcon>
-            </Menu.Target>
-            <Menu.Dropdown>{menuItems}</Menu.Dropdown>
-          </Menu>
-        )
-      }
-      onGoBack={canGoBack ? handleGoBack : undefined}
-    >
+    <>
       {(isNotEmpty || isSearching) && (
         <Flex gap="lg" mb="lg">
           <TextInput
@@ -132,7 +84,7 @@ const TimelineDetailsModal = ({
             <TimelineEmptyState timeline={timeline} />
           ))}
       </TimelineModalScrollArea>
-    </TimelineModal>
+    </>
   );
 };
 
@@ -159,65 +111,5 @@ const isEventMatch = (event: TimelineEvent, searchText: string) => {
   );
 };
 
-const getMenuItems = (
-  timeline: Timeline,
-  isArchive: boolean,
-  isOnlyTimeline: boolean,
-) => {
-  const items: JSX.Element[] = [];
-
-  if (timeline.collection?.can_write && !isArchive) {
-    items.push(
-      <Menu.Item
-        key="new-timeline"
-        component={ForwardRefLink}
-        to={Urls.newTimelineInCollection(timeline.collection)}
-      >
-        {t`New timeline`}
-      </Menu.Item>,
-      <Menu.Item
-        key="edit-timeline-details"
-        component={ForwardRefLink}
-        to={Urls.editTimelineInCollection(timeline)}
-      >
-        {t`Edit timeline details`}
-      </Menu.Item>,
-      <Menu.Item
-        key="move-timeline"
-        component={ForwardRefLink}
-        to={Urls.moveTimelineInCollection(timeline)}
-      >
-        {t`Move timeline`}
-      </Menu.Item>,
-    );
-  }
-
-  if (!isArchive) {
-    items.push(
-      <Menu.Item
-        key="view-archived-events"
-        component={ForwardRefLink}
-        to={Urls.timelineArchiveInCollection(timeline)}
-      >
-        {t`View archived events`}
-      </Menu.Item>,
-    );
-  }
-
-  if (isOnlyTimeline) {
-    items.push(
-      <Menu.Item
-        key="view-archived-timelines"
-        component={ForwardRefLink}
-        to={Urls.timelinesArchiveInCollection(timeline.collection)}
-      >
-        {t`View archived timelines`}
-      </Menu.Item>,
-    );
-  }
-
-  return items;
-};
-
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TimelineDetailsModal;
+export default TimelineDetailsContent;

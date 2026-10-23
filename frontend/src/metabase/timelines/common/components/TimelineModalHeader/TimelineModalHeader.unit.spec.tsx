@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen } from "__support__/ui";
+import { renderWithProviders, screen } from "__support__/ui";
 import { Modal } from "metabase/ui";
 
 import {
@@ -13,7 +13,7 @@ interface SetupOpts extends Partial<TimelineModalHeaderProps> {
 }
 
 const setup = ({ onClose = jest.fn(), ...props }: SetupOpts = {}) => {
-  render(
+  renderWithProviders(
     <Modal.Root opened onClose={onClose}>
       <Modal.Content>
         <TimelineModalHeader title="Events" {...props} />
@@ -35,11 +35,30 @@ describe("TimelineModalHeader", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("should render the collection path and actions", () => {
-    setup({ collectionName: "Foo", actions: "Actions" });
+  it("should render the collection path and the menu's links", async () => {
+    setup({
+      collectionName: "Foo",
+      menu: {
+        label: "Timeline menu",
+        items: [{ label: "New timeline", to: "/collection/1/timelines/new" }],
+      },
+    });
 
     expect(screen.getByText(/^in.*Foo$/)).toBeInTheDocument();
-    expect(screen.getByText("Actions")).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Timeline menu" }),
+    );
+    expect(
+      screen.getByRole("menuitem", { name: "New timeline" }),
+    ).toHaveAttribute("href", "/collection/1/timelines/new");
+  });
+
+  it("should leave out a menu with no items", () => {
+    setup({ menu: { label: "Timeline menu", items: [] } });
+
+    expect(
+      screen.queryByRole("button", { name: "Timeline menu" }),
+    ).not.toBeInTheDocument();
   });
 
   it("should go back", async () => {
