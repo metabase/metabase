@@ -1,6 +1,7 @@
 (ns metabase-enterprise.workspaces.load-metadata-test
   (:require
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase-enterprise.workspaces.db :as ws.db]
    [metabase-enterprise.workspaces.load-metadata :as ws.load-metadata]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -93,6 +94,18 @@
           (is (=? {:base_type :type/Text :effective_type :type/DateTime
                    :coercion_strategy :Coercion/ISO8601->DateTime}
                   (field-as-users-see-it (:id orders) "created_at"))))
+        (testing "the field rows themselves have effective_type = base_type, as sync leaves them"
+          (is (= {"id"            [:type/BigInteger :type/BigInteger]
+                  "email"         [:type/Text :type/Text]
+                  "person_id"     [:type/BigInteger :type/BigInteger]
+                  "created_at"    [:type/Text :type/Text]
+                  "internal_note" [:type/Text :type/Text]
+                  "ghost_id"      [:type/Integer :type/Integer]}
+                 (into {}
+                       (map (juxt :name (juxt :base_type :effective_type)))
+                       (t2/select [:model/Field :name :base_type :effective_type]
+                                  {:from  [(warehouse-schema-overlay/field-query {:user-settings? false})]
+                                   :where [:in :table_id [(:id people) (:id orders)]]})))))
         (testing "an FK resolves to the child's own field, matched by schema.table.field"
           (is (=? {:display_name       "Buyer"
                    :description        "Who placed the order"
@@ -119,12 +132,18 @@
                                                   :initial_sync_status "complete"}]
         (is (= #{} (ws.load-metadata/load-metadata-file! path {"Load DW" db-id})))
         (is (zero? (t2/count :model/Table :db_id db-id)))))
-    (testing "a database that already has tables is left alone"
+    (testing "a database that already has tables, even ones the document doesn't name, is left alone"
       (mt/with-temp [:model/Database {db-id :id} {:name "Load DW" :engine :h2 :details {}}
-                     :model/Table    _           {:db_id db-id :schema "shop" :name "people"}]
+                     :model/Table    _           {:db_id db-id :schema "other" :name "unrelated"}]
         (is (= #{} (ws.load-metadata/load-metadata-file! path {"Load DW" db-id})))
         (is (= 1 (t2/count :model/Table :db_id db-id)))
         (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database db-id)))))
+    (testing "a database the document lists no tables for is left to sync, not marked synced"
+      (mt/with-temp [:model/Database {db-id :id} {:name "Load DW" :engine :h2 :details {}}]
+        (write-document! path {:databases [{:name "Load DW" :tables []}]})
+        (is (= #{} (ws.load-metadata/load-metadata-file! path {"Load DW" db-id})))
+        (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database db-id))))
+      (write-document! path sample-document))
     (testing "a database the document doesn't name is left alone"
       (mt/with-temp [:model/Database {db-id :id} {:name "Other DW" :engine :h2 :details {}}]
         (is (= #{} (ws.load-metadata/load-metadata-file! path {"Other DW" db-id})))
@@ -154,3 +173,13 @@
           (is (= #{} (ws.load-metadata/load-metadata-file! path {"Load DW" db-id})))
           (is (zero? (t2/count :model/Table :db_id db-id)))
           (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database db-id))))))))
+
+(deftest load-metadata-file-rolls-back-a-failed-load-test
+  (testing "a load that fails after creating rows leaves the database empty and unsynced, for sync to fill"
+    (mt/with-temp [:model/Database {db-id :id} {:name "Load DW" :engine :h2 :details {}}]
+      (mt/with-temp-file [path "load-metadata.json"]
+        (write-document! path sample-document)
+        (mt/with-dynamic-fn-redefs [ws.db/insert-field-user-settings! (fn [_] (throw (ex-info "boom" {})))]
+          (is (= #{} (ws.load-metadata/load-metadata-file! path {"Load DW" db-id}))))
+        (is (zero? (t2/count :model/Table :db_id db-id)))
+        (is (= "incomplete" (t2/select-one-fn :initial_sync_status :model/Database db-id)))))))

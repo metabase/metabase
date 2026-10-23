@@ -269,6 +269,18 @@
                                                                  config-sections)]
     (concat settings-sections other-sections)))
 
+(defn- assert-section-allowed!
+  "Throw unless the token allows initializing `section-name` from the config file. You can only use the
+  config-from-file stuff with an EE/Pro token with the `:config-text-file` feature; the `:settings` section is the lone
+  carve-out, since you may need it to *install* the token. The `:workspace` section also needs `:workspaces`."
+  [section-name]
+  (when-not (= section-name :settings)
+    (when-not (premium-features/enable-config-text-file?)
+      (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
+                      {}))))
+  (when (= section-name :workspace)
+    (premium-features/assert-has-feature :workspaces (tru "Workspaces"))))
+
 (defn ^{:added "0.45.0"} initialize!
   "Initialize Metabase according to the directives in `parsed-config` — a parsed
    YAML map matching the [[::config]] spec. Opts:
@@ -284,20 +296,16 @@
    ;; TODO -- this should only do anything if we have an appropriate token (we should get a token for testing this before
    ;; enabling that check tho)
    (when-let [m (config parsed-config opts)]
-     ;; The `:workspace` section loads these databases' metadata from a file, after the `:databases` section has
-     ;; created them; a sync started on creation would race that load and redo its work. An explicit value in the
-     ;; `:settings` section, applied first, still wins.
-     (when (get-in m [:config :workspace :metadata_file])
-       (advanced-config.settings/config-from-file-sync-databases! false))
      (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
-       ;; You can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature.
-       ;; The `:settings` section is the lone carve-out — you may need it to *install* the token.
-       (when-not (= section-name :settings)
-         (when-not (premium-features/enable-config-text-file?)
-           (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
-                           {}))))
-       (when (= section-name :workspace)
-         (premium-features/assert-has-feature :workspaces (tru "Workspaces")))
+       (assert-section-allowed! section-name)
+       (when (and (= section-name :databases)
+                  (get-in m [:config :workspace :metadata_file]))
+         ;; The `:workspace` section loads these databases' metadata from a file after this section creates them; a
+         ;; sync started on creation would race that load and redo its work. The setting persists, so it is written
+         ;; only once the `:workspace` section is known to be allowed, after the `:settings` section may have
+         ;; installed the token.
+         (assert-section-allowed! :workspace)
+         (advanced-config.settings/config-from-file-sync-databases! false))
        (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
        (advanced-config.file.i/initialize-section! section-name section-config))
      (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))

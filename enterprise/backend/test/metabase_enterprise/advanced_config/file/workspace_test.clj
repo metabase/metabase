@@ -416,3 +416,16 @@
             (is (zero? (t2/count :model/Table :db_id (:id db)))))
           (finally
             (t2/delete! :model/Database :name "ws-load-db")))))))
+
+(deftest metadata-file-without-the-workspaces-feature-keeps-syncs-on-test
+  (testing "a config the token doesn't allow throws before it turns config-file syncs off"
+    (mt/with-premium-features #{:config-text-file}
+      (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+        (try
+          (binding [driver.settings/*allow-testing-h2-connections* true]
+            (is (thrown-with-msg? ExceptionInfo #"Workspaces"
+                                  (advanced-config.file/initialize!
+                                   (metadata-file-config "ws-load-db" "/nonexistent/load-metadata.json")))))
+          (is (true? (advanced-config.settings/config-from-file-sync-databases)))
+          (finally
+            (t2/delete! :model/Database :name "ws-load-db")))))))

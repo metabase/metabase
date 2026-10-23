@@ -149,10 +149,14 @@
    :active              true
    :initial_sync_status "complete"})
 
-(defn- field-row [table-id field]
+(defn- field-row
+  "The sync-owned columns of `field`. `effective_type` is the base type, as sync leaves it: a coerced effective type
+  goes into the user settings with its coercion, and sync never fills in a NULL one."
+  [table-id field]
   {:table_id          table-id
    :name              (:name field)
    :base_type         (keyword (:base_type field))
+   :effective_type    (keyword (:base_type field))
    :database_type     (:database_type field)
    :position          (:position field)
    :database_position (:database_position field)
@@ -171,20 +175,18 @@
       fk-target-id                           (assoc :fk_target_field_id fk-target-id))))
 
 (defn- load-database!
-  "Create the Tables and Fields of `tables` in the Database with `db-id` and mark it synced, in one transaction."
+  "Create the Tables and Fields of `tables`, which isn't empty, in the Database with `db-id` and mark it synced, in
+  one transaction."
   [db-id tables]
   (t2/with-transaction [_conn]
-    (when (seq tables)
-      (ws.db/insert-tables! (mapv #(table-row db-id %) tables)))
+    (ws.db/insert-tables! (mapv #(table-row db-id %) tables))
     (let [table-ids  (ws.db/table-ids-by-schema-and-name db-id)
           table-id   (fn [table] (table-ids [(:schema table) (:name table)]))
           field-rows (for [table tables, field (:fields table)]
                        (field-row (table-id table) field))
           _          (when (seq field-rows)
                        (ws.db/insert-fields! (vec field-rows)))
-          field-ids  (if (seq table-ids)
-                       (ws.db/field-ids-by-table-and-name (vec (vals table-ids)))
-                       {})
+          field-ids  (ws.db/field-ids-by-table-and-name (vec (vals table-ids)))
           field-id   (fn [table-id field-name] (field-ids [table-id field-name]))
           fk-id      (fn [{:keys [schema table field]}]
                        (some-> (table-ids [schema table]) (field-id field)))]
@@ -206,8 +208,9 @@
 
 (mu/defn load-metadata-file! :- [:set ms/PositiveInt]
   "Create the Tables and Fields of the databases in the load document at `path`, matching each database by name in
-  `db-name->id`, and mark them synced. Returns the ids of the databases it loaded; any other database is left to the
-  normal sync, as is every database when the document is missing or malformed."
+  `db-name->id`, and mark them synced. Returns the ids of the databases it loaded; any other database, including one the
+  document lists no tables for, is left to the normal sync, as is every database when the document is missing or
+  malformed."
   [path       :- ms/NonBlankString
    db-name->id :- [:map-of :string ms/PositiveInt]]
   (if-let [document (read-load-document path)]
@@ -217,6 +220,9 @@
                     (cond
                       (nil? db-id)
                       (log/warnf "The load metadata file names database %s, which the workspace doesn't" (pr-str db-name))
+
+                      (empty? tables)
+                      (log/warnf "The load metadata file has no tables for database %s; leaving it to sync" (pr-str db-name))
 
                       (not (loadable? db-id))
                       (log/infof "Database %s already has metadata; not loading it from the file" (pr-str db-name))

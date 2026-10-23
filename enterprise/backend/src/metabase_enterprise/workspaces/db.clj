@@ -47,6 +47,7 @@
    [:table_id          ::lib.schema.id/table]
    [:name              :string]
    [:base_type         :keyword]
+   [:effective_type    :keyword]
    [:database_type     :string]
    [:position          :int]
    [:database_position :int]
