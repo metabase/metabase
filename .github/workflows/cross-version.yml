@@ -56,6 +56,15 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
       fail-fast: false
+    env:
+      QUARANTINE_FAILURES_FILE: ${{ github.workspace }}/target/quarantine-failures.jsonl
+      CROSS_VERSION_JUNIT_FILE: ${{ github.workspace }}/target/cross-version-junit/cross-version.xml
+      CI_CONDUCTOR_BASE_URL: ${{ vars.CI_CONDUCTOR_BASE_URL }}
+      CI_CONDUCTOR_WEBHOOK_SECRET: ${{ secrets.CI_CONDUCTOR_WEBHOOK_SECRET }}
+      CI_CONDUCTOR_TEST_SUITE: cross-version-${{ matrix.source }}-${{ matrix.target }}
+      REPO_ID: ${{ github.event.repository.id }}
+      COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
 
     steps:
       - uses: actions/checkout@v7
@@ -69,17 +78,42 @@ jobs:
       - name: Prepare Cypress environment
         uses: ./.github/actions/prepare-cypress
 
+      - uses: ./.github/actions/resolve-job-id
+
       - name: Run cross-version test
+        id: run-test
         env:
           CURRENT_VERSION: ${{ vars.CURRENT_VERSION }}
           RESULT_FILE: ${{ runner.temp }}/cross-version-result-${{ matrix.source }}-${{ matrix.target }}.json
         run: |
           cd cross-version
           ./test.sh --source "${{ matrix.source }}" --target "${{ matrix.target }}"
+        continue-on-error: true
+
+      - name: Report results to ci-conductor
+        if: ${{ !cancelled() }}
+        continue-on-error: true
+        timeout-minutes: 3
+        uses: ./.github/actions/report-failures-to-ci-conductor
+        env:
+          JEST_JUNIT_OUTPUT_DIR: ${{ github.workspace }}/target/cross-version-junit
+          JEST_JUNIT_OUTPUT_NAME: cross-version.xml
+        with:
+          adapter: frontend
+          test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
+
+      - name: Quarantine gate
+        if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
+        timeout-minutes: 3
+        uses: ./.github/actions/quarantine-gate
+        with:
+          adapter: e2e
+          test-suite: ${{ env.CI_CONDUCTOR_TEST_SUITE }}
+          enforce-quarantine: "true"
 
       - name: Upload failure result
         uses: actions/upload-artifact@v7
-        if: failure()
+        if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
         with:
           name: failure-result-${{ matrix.source }}-${{ matrix.target }}
           path: ${{ runner.temp }}/cross-version-result-${{ matrix.source }}-${{ matrix.target }}.json
@@ -87,7 +121,7 @@ jobs:
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v7
-        if: failure()
+        if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
         with:
           name: cypress-recording-${{ matrix.source }}-${{ matrix.target }}
           path: |
@@ -96,7 +130,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Show logs on failure
-        if: failure()
+        if: ${{ !cancelled() && steps.run-test.outcome == 'failure' }}
         run: |
           for f in cross-version/logs/*.log; do
             [ -e "$f" ] || continue
