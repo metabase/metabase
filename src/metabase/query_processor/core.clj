@@ -81,6 +81,7 @@
   default-query->remark
   internal-query?
   query->remark
+  query->remark-data
   query-hash
   userland-query?]
  ;; Writeback — metabase.query-processor.writeback
