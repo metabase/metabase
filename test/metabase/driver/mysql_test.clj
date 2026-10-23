@@ -49,7 +49,7 @@
    [toucan2.core :as t2])
   (:import
    (java.io File)
-   (java.sql Connection SQLException)
+   (java.sql Connection SQLException SQLTransientConnectionException)
    (java.util Properties)
    (org.mariadb.jdbc UrlParser)))
 
@@ -1460,3 +1460,9 @@
            (is (= "HY000" (some-> ^SQLException @failure .getSQLState)))
            (is (= 1205 (some-> ^SQLException @failure .getErrorCode)))
            (finally (.rollback conn))))))))
+
+(deftest ^:parallel query-error-evidence-test
+  (mt/test-driver :mysql
+    (doseq [[state code expected] [["HY000" 4176 true] ["HY000" 1205 false] [nil 4176 false]]]
+      (is (= expected (sql-jdbc.execute/impl-error-in-query?
+                       :mysql (SQLTransientConnectionException. "Row read failed" state code)))))))

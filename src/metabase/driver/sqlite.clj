@@ -746,6 +746,12 @@
   [driver value]
   (sql.qp/->integer-with-round driver value))
 
+(defmethod sql-jdbc.execute/impl-error-in-query? :sqlite
+  [driver ^SQLException e]
+  (or ((get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc) driver e)
+      (and (nil? (.getSQLState e))
+           (contains? #{1 19 20} (.getErrorCode e)))))
+
 (defmethod sql-jdbc/impl-query-canceled? :sqlite
   [_driver ^SQLException e]
   (= (.code SQLiteErrorCode/SQLITE_INTERRUPT) (.getErrorCode e)))

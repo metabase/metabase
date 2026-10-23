@@ -887,24 +887,23 @@
              (assoc :query/query-canceled? true))
            e))
 
-(def ^:private query-error-codes
-  "Query errors whose SQLState alone does not identify them, indexed by driver and SQLState."
-  {:mysql  {"HY000" #{4176}}
-   :sqlite {nil #{1 19 20}}})
+(defmulti impl-error-in-query?
+  "Whether a row-read `SQLException` identifies an error in the query or its data.
+  The default recognizes SQLState classes `21` (cardinality), `22` (data), `23` (integrity) and `42` (syntax or access
+  rule). Drivers can extend or narrow that evidence. Unknown failures return false. Cancellation is checked separately."
+  {:added "0.65.0" :arglists '([driver ^SQLException e])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod impl-error-in-query? :sql-jdbc
+  [_ ^SQLException e]
+  (boolean (re-find #"^(?:21|22|23|42)" (str (.getSQLState e)))))
 
 (defn- error-in-query?
-  "Whether `e`, raised while reading rows, is the database rejecting the query.
-  Only SQLState classes `21` (cardinality), `22` (data), `23` (integrity) and `42` (syntax or access rule), or a known
-  driver query error code, identify errors in the query. ClickHouse's class `22` also covers operational server failures
-  and is not evidence of a query error. Unknown failures keep their QP classification. Cancellation
-  by the query processor or [[driver/query-canceled?]] takes precedence over that evidence."
   [driver ^SQLException e]
-  (let [sql-state (.getSQLState e)]
-    (and (not (or (some-> (driver-api/canceled-chan) a/poll!)
-                  (driver/query-canceled? driver e)))
-         (or (and (boolean (re-find #"^(?:21|22|23|42)" (str sql-state)))
-                  (not (and (= driver :clickhouse) (str/starts-with? sql-state "22"))))
-             (contains? (get-in query-error-codes [driver sql-state]) (.getErrorCode e))))))
+  (and (not (or (some-> (driver-api/canceled-chan) a/poll!)
+                (driver/query-canceled? driver e)))
+       (impl-error-in-query? driver e)))
 
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."

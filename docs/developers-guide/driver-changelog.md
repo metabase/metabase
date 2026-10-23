@@ -6,6 +6,11 @@ title: Driver interface changelog
 
 ## Metabase 0.65.0
 
+- `metabase.driver.sql-jdbc.execute/impl-error-in-query?` `[driver exception]` identifies query errors raised while
+  reading rows. The default recognizes SQLState classes `21`, `22`, `23` and `42`. Override it to add vendor query
+  error codes or exclude SQLStates that also cover operational failures. Unknown failures remain QP errors;
+  cancellation takes precedence over query-error evidence.
+
 - `metabase.driver/disallowed-connection-parameters` `[driver]` -- new multimethod returning the names of client
   connection parameters a user may never set, whether in `:additional-options` or as a detail key. Metabase refuses
   details that set one when a connection is tested, when a connection pool is created, and when a Database is saved.
