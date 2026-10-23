@@ -379,7 +379,7 @@ describe("getLegendLayout auto", () => {
   });
 
   it("should leave the column's top margin out of its rows", () => {
-    // (169 - 10 - 8 - 2 + 8) / (13.8 + 8) = 7 rows, 6 items + "+ 14 more"
+    // (169 - 10 - 0 - 2 + 8) / (13.8 + 8) = 7 rows, 6 items + "+ 14 more"
     expect(
       layout(createSeriesNames(20), {
         width: 420,

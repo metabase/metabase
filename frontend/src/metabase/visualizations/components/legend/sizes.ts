@@ -32,8 +32,8 @@ export const LEGEND_SIZES = {
     contentMargin: {
       topLegend: { top: 4, bottom: 4 },
       bottomLegend: { top: 4, bottom: 4 },
-      leftLegend: { right: 24, top: 10, bottom: 8 },
-      rightLegend: { left: 24, top: 10, bottom: 8 },
+      leftLegend: { right: 24, top: 10, bottom: 0 },
+      rightLegend: { left: 24, top: 10, bottom: 0 },
     },
     horizontalClearance: 16,
   },
@@ -49,8 +49,8 @@ export const LEGEND_SIZES = {
     contentMargin: {
       topLegend: { top: 4, bottom: 8 },
       bottomLegend: { top: 12, bottom: 4 },
-      leftLegend: { right: 40, top: 10, bottom: 16 },
-      rightLegend: { left: 40, top: 10, bottom: 16, right: 6 },
+      leftLegend: { right: 40, top: 10, bottom: 0 },
+      rightLegend: { left: 40, top: 10, bottom: 0, right: 6 },
     },
     horizontalClearance: 40,
   },
