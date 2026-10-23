@@ -20,7 +20,12 @@ import { useCommandPalette } from "metabase/palette/hooks/useCommandPalette";
 import { useCommandPaletteBasicActions } from "metabase/palette/hooks/useCommandPaletteBasicActions";
 import { Route, useLocation, useParams } from "metabase/router";
 import { parseSearchQuery } from "metabase/utils/browser";
-import type { CollectionItem, RecentItem, Settings } from "metabase-types/api";
+import type {
+  CollectionItem,
+  Database,
+  RecentItem,
+  Settings,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
@@ -134,6 +139,7 @@ export interface CommonSetupProps {
   searchItems?: CollectionItem[];
   isEE?: boolean;
   isAdmin?: boolean;
+  databases?: Database[];
 }
 
 export const commonSetup = ({
@@ -143,8 +149,9 @@ export const commonSetup = ({
   searchItems = [model_1, model_2, dashboard],
   isEE,
   isAdmin = false,
+  databases = [DATABASE],
 }: CommonSetupProps = {}) => {
-  setupDatabasesEndpoints([DATABASE]);
+  setupDatabasesEndpoints(databases);
   setupSearchEndpoints(searchItems);
   setupRecentViewsEndpoints(recents);
   setupCollectionByIdEndpoint({

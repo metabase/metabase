@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import { screen, waitFor, within } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import {
+  createMockDatabase,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
 } from "metabase-types/api/mocks";
@@ -30,6 +31,10 @@ const withRealSearchDebounce = () => {
     searchDebounceDuration = 0;
   });
 };
+
+const ACTIONS_DATABASE = createMockDatabase({
+  settings: { "database-enable-actions": true },
+});
 
 const setup = (props: CommonSetupProps = {}) =>
   commonSetup({ ...props, isEE: false });
@@ -259,6 +264,27 @@ describe("PaletteResults", () => {
       await screen.findByText(`Search Metabase's docs for "new embed"`),
     ).toBeInTheDocument();
     expect(screen.queryByText("New embed")).not.toBeInTheDocument();
+  });
+
+  it("should offer the New action action to admins", async () => {
+    setup({
+      query: "new action",
+      isAdmin: true,
+      databases: [ACTIONS_DATABASE],
+    });
+    expect(await screen.findByText("New action")).toBeInTheDocument();
+  });
+
+  it("should not offer the New action action to non-admins", async () => {
+    setup({
+      query: "new action",
+      isAdmin: false,
+      databases: [ACTIONS_DATABASE],
+    });
+    expect(
+      await screen.findByText(`Search Metabase's docs for "new action"`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("New action")).not.toBeInTheDocument();
   });
 
   it("should start a new metric", async () => {
