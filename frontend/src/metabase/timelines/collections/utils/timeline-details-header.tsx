@@ -1,10 +1,10 @@
-import type { JSX } from "react";
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { getTimelineName } from "metabase/common/utils/timelines";
-import type { TimelineModalHeaderProps } from "metabase/timelines/common/components/TimelineModalHeader";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import type {
+  TimelineModalHeaderProps,
+  TimelineModalMenuItem,
+} from "metabase/timelines/common/components/TimelineModalHeader";
 import * as Urls from "metabase/urls";
 import type { Timeline } from "metabase-types/api";
 
@@ -33,16 +33,7 @@ export function getTimelineDetailsHeaderProps(
 
   return {
     title,
-    actions: menuItems.length > 0 && (
-      <Menu position="bottom-end" shadow="sm">
-        <Menu.Target>
-          <ActionIcon size="sm" variant="subtle" aria-label={t`Timeline menu`}>
-            <Icon name="ellipsis" />
-          </ActionIcon>
-        </Menu.Target>
-        <Menu.Dropdown>{menuItems}</Menu.Dropdown>
-      </Menu>
-    ),
+    menu: { label: t`Timeline menu`, items: menuItems },
     onGoBack: canGoBack && onGoBack ? () => onGoBack(timeline) : undefined,
   };
 }
@@ -52,56 +43,37 @@ const getMenuItems = (
   isArchive: boolean,
   isOnlyTimeline: boolean,
 ) => {
-  const items: JSX.Element[] = [];
+  const items: TimelineModalMenuItem[] = [];
 
   if (timeline.collection?.can_write && !isArchive) {
     items.push(
-      <Menu.Item
-        key="new-timeline"
-        component={ForwardRefLink}
-        to={Urls.newTimelineInCollection(timeline.collection)}
-      >
-        {t`New timeline`}
-      </Menu.Item>,
-      <Menu.Item
-        key="edit-timeline-details"
-        component={ForwardRefLink}
-        to={Urls.editTimelineInCollection(timeline)}
-      >
-        {t`Edit timeline details`}
-      </Menu.Item>,
-      <Menu.Item
-        key="move-timeline"
-        component={ForwardRefLink}
-        to={Urls.moveTimelineInCollection(timeline)}
-      >
-        {t`Move timeline`}
-      </Menu.Item>,
+      {
+        label: t`New timeline`,
+        to: Urls.newTimelineInCollection(timeline.collection),
+      },
+      {
+        label: t`Edit timeline details`,
+        to: Urls.editTimelineInCollection(timeline),
+      },
+      {
+        label: t`Move timeline`,
+        to: Urls.moveTimelineInCollection(timeline),
+      },
     );
   }
 
   if (!isArchive) {
-    items.push(
-      <Menu.Item
-        key="view-archived-events"
-        component={ForwardRefLink}
-        to={Urls.timelineArchiveInCollection(timeline)}
-      >
-        {t`View archived events`}
-      </Menu.Item>,
-    );
+    items.push({
+      label: t`View archived events`,
+      to: Urls.timelineArchiveInCollection(timeline),
+    });
   }
 
   if (isOnlyTimeline) {
-    items.push(
-      <Menu.Item
-        key="view-archived-timelines"
-        component={ForwardRefLink}
-        to={Urls.timelinesArchiveInCollection(timeline.collection)}
-      >
-        {t`View archived timelines`}
-      </Menu.Item>,
-    );
+    items.push({
+      label: t`View archived timelines`,
+      to: Urls.timelinesArchiveInCollection(timeline.collection),
+    });
   }
 
   return items;

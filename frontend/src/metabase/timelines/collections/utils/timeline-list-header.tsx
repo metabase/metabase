@@ -1,9 +1,10 @@
 import { t } from "ttag";
 
-import { ForwardRefLink } from "metabase/common/components/Link";
 import { getDefaultTimelineName } from "metabase/common/utils/timelines";
-import type { TimelineModalHeaderProps } from "metabase/timelines/common/components/TimelineModalHeader";
-import { ActionIcon, Icon, Menu } from "metabase/ui";
+import type {
+  TimelineModalHeaderProps,
+  TimelineModalMenuItem,
+} from "metabase/timelines/common/components/TimelineModalHeader";
 import * as Urls from "metabase/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 
@@ -25,21 +26,11 @@ export function getTimelineListHeaderProps(
   const title = getTitle(timelines, collection, isArchive);
   const menuItems = getMenuItems(collection, isArchive);
   const hasTimelines = timelines.length > 0;
-  const hasMenuItems = menuItems.length > 0;
 
   return {
     title,
     collectionName: hasTimelines ? collection.name : undefined,
-    actions: hasMenuItems && (
-      <Menu position="bottom-end" shadow="sm">
-        <Menu.Target>
-          <ActionIcon size="sm" variant="subtle" aria-label={t`Timelines menu`}>
-            <Icon name="ellipsis" />
-          </ActionIcon>
-        </Menu.Target>
-        <Menu.Dropdown>{menuItems}</Menu.Dropdown>
-      </Menu>
-    ),
+    menu: { label: t`Timelines menu`, items: menuItems },
     onGoBack: isArchive && onGoBack ? () => onGoBack(collection) : undefined,
   };
 }
@@ -58,25 +49,22 @@ const getTitle = (
   }
 };
 
-const getMenuItems = (collection: Collection, isArchive: boolean) => {
+const getMenuItems = (
+  collection: Collection,
+  isArchive: boolean,
+): TimelineModalMenuItem[] => {
   if (!collection.can_write || isArchive) {
     return [];
   }
 
   return [
-    <Menu.Item
-      key="new-timeline"
-      component={ForwardRefLink}
-      to={Urls.newTimelineInCollection(collection)}
-    >
-      {t`New timeline`}
-    </Menu.Item>,
-    <Menu.Item
-      key="view-archived-timelines"
-      component={ForwardRefLink}
-      to={Urls.timelinesArchiveInCollection(collection)}
-    >
-      {t`View archived timelines`}
-    </Menu.Item>,
+    {
+      label: t`New timeline`,
+      to: Urls.newTimelineInCollection(collection),
+    },
+    {
+      label: t`View archived timelines`,
+      to: Urls.timelinesArchiveInCollection(collection),
+    },
   ];
 };
