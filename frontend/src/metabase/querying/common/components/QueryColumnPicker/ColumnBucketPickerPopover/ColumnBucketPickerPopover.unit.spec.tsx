@@ -152,6 +152,19 @@ describe("ColumnBucketPickerPopover", () => {
     );
   });
 
+  it("should unbin a binned coordinate column", async () => {
+    const column = Lib.withDefaultBinning(query, 0, coordinateColumn);
+    expect(Lib.binning(column)).not.toBeNull();
+    const { onSelect } = await setupBinningPicker({ column });
+
+    await userEvent.click(screen.getByRole("button", { name: "More…" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Don't bin" }));
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    const [nextColumn] = onSelect.mock.calls[0];
+    expect(Lib.binning(nextColumn)).toBeNull();
+  });
+
   it("should collapse advanced temporal bucket options", async () => {
     const buckets = Lib.availableTemporalBuckets(query, 0, dateColumn);
     await setupTemporalBucketPicker({ column: dateColumn });
