@@ -95,6 +95,12 @@
    :text (str "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an "
               "entity_id string.")})
 
+(def ^:private cross-database-step
+  {:uses #{}
+   :text (str "A query can only reference saved questions, models, metrics, measures and segments "
+              "from its own database. Use one from that database, or change the source to a table "
+              "in the referenced item's database.")})
+
 (defn- card-fields-step
   "Return a recovery step listing `what` from the source card, or nil when `payload` names no card."
   [{:keys [source-card source-card-type]} what]
@@ -151,7 +157,8 @@
 
 (defpipeline-error ambiguous-database-name!
   "The database name in a portable FK matched more than one database."
-  [database-name-step])
+  [{:uses #{}
+    :text "Ask the user to rename one of the databases."}])
 
 ;;; Field resolution
 
@@ -165,7 +172,9 @@
 
 (defpipeline-error ambiguous-field!
   "A field reference matched more than one column."
-  [list-fields-step])
+  [{:uses #{}
+    :text (str "The field name matches more than one column in this table, so it cannot be referenced by name. "
+               "Tell the user about the ambiguous column name.")}])
 
 (defpipeline-error invalid-field-fk!
   "A field's portable FK was not a well-formed `[db, schema, table, field]` path."
@@ -231,14 +240,13 @@
   [card-entity-id-step])
 
 (defpipeline-error missing-card-entity-id!
-  "A card reference carried no entity_id."
-  [card-entity-id-step])
+  "The referenced card has no stored `entity_id`, so the query cannot be exported."
+  ;; The stored card has no portable ID for `read_resource` to return.
+  [])
 
 (defpipeline-error cross-database-card!
   "The referenced card belongs to a different database than the query."
-  ;; No step: the fix is to pick a different source entirely, and which one depends on the question
-  ;; the agent is answering, not on anything it can look up.
-  [])
+  [cross-database-step])
 
 (defpipeline-error unknown-measure!
   "A measure entity_id matched no measure."
@@ -249,12 +257,13 @@
   [measure-entity-id-step])
 
 (defpipeline-error missing-measure-entity-id!
-  "A measure reference carried no entity_id."
-  [measure-entity-id-step])
+  "The referenced measure has no stored `entity_id`, so the query cannot be exported."
+  ;; The stored measure has no portable ID for `read_resource` to return.
+  [])
 
 (defpipeline-error cross-database-measure!
   "The referenced measure belongs to a different database than the query."
-  [])
+  [cross-database-step])
 
 (defpipeline-error unknown-segment!
   "A segment entity_id matched no segment."
@@ -265,12 +274,13 @@
   [segment-entity-id-step])
 
 (defpipeline-error missing-segment-entity-id!
-  "A segment reference carried no entity_id."
-  [segment-entity-id-step])
+  "The referenced segment has no stored `entity_id`, so the query cannot be exported."
+  ;; The stored segment has no portable ID for `read_resource` to return.
+  [])
 
 (defpipeline-error cross-database-segment!
   "The referenced segment belongs to a different database than the query."
-  [])
+  [cross-database-step])
 
 (defpipeline-error incompatible-metric!
   "A metric was used with an incompatible stage source."
