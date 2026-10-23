@@ -1,0 +1,14 @@
+/* the container's type and color, no box of its own; it widens with the name it holds */
+.input {
+  field-sizing: content;
+  min-width: 2ch;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  cursor: text;
+}

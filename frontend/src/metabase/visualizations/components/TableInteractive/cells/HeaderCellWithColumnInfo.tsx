@@ -1,6 +1,8 @@
 import type React from "react";
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
+import { t } from "ttag";
 
+import { InlineRenameInput } from "metabase/common/components/InlineRenameInput";
 import { QueryColumnInfoPopover } from "metabase/common/components/MetadataInfo/ColumnInfoPopover";
 import {
   HeaderCellPill,
@@ -28,6 +30,10 @@ export interface HeaderCellWithColumnInfoProps extends HeaderCellProps {
     index: number,
     theme: MantineTheme,
   ) => React.ReactNode;
+  /** Double-clicking the name edits it in place; omitted, the name isn't editable. */
+  onRename?: (name: string) => void;
+  /** Called as editing starts, e.g. to close the popover the double-click's clicks opened. */
+  onRenameStart?: () => void;
 }
 
 export const HeaderCellWithColumnInfo = memo(
@@ -43,8 +49,11 @@ export const HeaderCellWithColumnInfo = memo(
     theme,
     className,
     renderTableHeader,
+    onRename,
+    onRenameStart,
   }: HeaderCellWithColumnInfoProps) {
     const { infoPopoversDisabled } = useTableInteractiveContext();
+    const [isRenaming, setIsRenaming] = useState(false);
 
     const headerCellOverride = useMemo(() => {
       return renderTableHeader != null
@@ -52,8 +61,47 @@ export const HeaderCellWithColumnInfo = memo(
         : null;
     }, [renderTableHeader, column, columnIndex, theme]);
 
+    const canRename = onRename != null && headerCellOverride == null;
+    const displayName = typeof name === "string" ? name : "";
+
+    if (isRenaming && onRename != null) {
+      return (
+        <HeaderCellWrapper
+          className={className}
+          variant={variant}
+          align={align}
+        >
+          <div className={S.headerPillWrapper}>
+            <div className={S.renamePill}>
+              <InlineRenameInput
+                initialValue={displayName}
+                aria-label={t`Column name`}
+                onCommit={(nextName) => {
+                  setIsRenaming(false);
+                  if (nextName !== displayName) {
+                    onRename(nextName);
+                  }
+                }}
+                onCancel={() => setIsRenaming(false)}
+              />
+            </div>
+          </div>
+        </HeaderCellWrapper>
+      );
+    }
+
     const cellContent = (
-      <div className={S.headerPillWrapper}>
+      <div
+        className={S.headerPillWrapper}
+        onDoubleClick={
+          canRename
+            ? () => {
+                onRenameStart?.();
+                setIsRenaming(true);
+              }
+            : undefined
+        }
+      >
         {headerCellOverride != null ? (
           headerCellOverride
         ) : (

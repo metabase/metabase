@@ -222,6 +222,12 @@ export interface ClickActionsMode {
    * Leaving this undefined hides the add-column shortcut.
    */
   hasColumnShortcutActions?(props: ClickActionProps): boolean;
+
+  /**
+   * When set, the table's add-column button calls this instead of opening the column shortcuts
+   * menu, and shows even when no shortcut applies.
+   */
+  onAddColumn?: () => void;
 }
 
 export const isCustomClickAction = (

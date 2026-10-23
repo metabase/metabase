@@ -445,6 +445,12 @@
   text-overflow: ellipsis;
 }
 
+/* an underline under the name being typed, in the chip's own text color */
+.chipRenameInput {
+  min-width: 3ch;
+  box-shadow: inset 0 -1px 0 currentColor;
+}
+
 .chipButton {
   display: inline-flex;
   align-items: center;

@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { t } from "ttag";
 
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import { InlineRenameInput } from "metabase/common/components/InlineRenameInput";
 import { hasFeature } from "metabase/databases";
 import {
   ActionIcon,
@@ -161,8 +162,30 @@ export function SummaryWells({
     source: string,
     name: string,
   ) => openFormula({ kind: "new", key: Date.now(), wellId, source, name });
-  const handleEditFormula = (itemId: string) =>
+  // a double-click's first click already opened this formula; don't reopen it on the second
+  const handleEditFormula = (itemId: string) => {
+    if (activeFormula?.kind === "edit" && activeFormula.itemId === itemId) {
+      return;
+    }
     openFormula({ kind: "edit", key: Date.now(), itemId });
+  };
+
+  const [renamingItemId, setRenamingItemId] = useState<string | null>(null);
+  const handleRename = (itemId: string, name: string) => {
+    setRenamingItemId(null);
+    const expression = getItemExpression(definition, itemId);
+    if (name.length > 0 && expression != null && name !== expression.name) {
+      onChange(
+        replaceWithExpression(definition, itemId, { ...expression, name }),
+      );
+    }
+  };
+  const getRenameProps = (itemId: string): FormulaChipRenameProps => ({
+    isRenaming: renamingItemId === itemId,
+    onStartRename: () => setRenamingItemId(itemId),
+    onRename: (name) => handleRename(itemId, name),
+    onCancelRename: () => setRenamingItemId(null),
+  });
   const handleCloseFormula = () => {
     pendingInputRef.current = null;
     setActiveFormula(null);
@@ -275,6 +298,7 @@ export function SummaryWells({
             <FormulaChipLabel
               label={label}
               onEdit={() => handleEditFormula(dimension.id)}
+              {...getRenameProps(dimension.id)}
             />
           )}
         </WellChip>
@@ -309,6 +333,7 @@ export function SummaryWells({
                   : undefined
               }
               onRemove={handleRemove}
+              {...getRenameProps(value.id)}
             />
           )),
         )}
@@ -435,6 +460,19 @@ function getFormulaEdit(
     itemId,
     name: value.type === "expression" ? value.expression.name : "",
   };
+}
+
+/** The custom expression behind a formula chip, or `null` for any other item. */
+function getItemExpression(
+  definition: SummaryDefinition,
+  itemId: string,
+): SummaryExpression | null {
+  const dimension = findDimension(definition, itemId);
+  if (dimension != null) {
+    return "expression" in dimension ? dimension.expression : null;
+  }
+  const value = definition.values.find(({ id }) => id === itemId);
+  return value?.type === "expression" ? value.expression : null;
 }
 
 function getItemWellId(
@@ -666,18 +704,48 @@ function PlaceholderChip({ label, onFocus, onRemove }: PlaceholderChipProps) {
   );
 }
 
-type FormulaChipLabelProps = {
+/** Double-clicking a formula chip's name edits it in place, without touching the formula. */
+type FormulaChipRenameProps = {
+  isRenaming: boolean;
+  onStartRename: () => void;
+  onRename: (name: string) => void;
+  onCancelRename: () => void;
+};
+
+type FormulaChipLabelProps = Partial<FormulaChipRenameProps> & {
   label: string;
   onEdit?: () => void;
 };
 
-function FormulaChipLabel({ label, onEdit }: FormulaChipLabelProps) {
+function FormulaChipLabel({
+  label,
+  onEdit,
+  isRenaming = false,
+  onStartRename,
+  onRename,
+  onCancelRename,
+}: FormulaChipLabelProps) {
+  if (isRenaming && onRename != null && onCancelRename != null) {
+    return (
+      <span className={S.chipButton}>
+        <Icon name="function" size={12} />
+        <InlineRenameInput
+          className={S.chipRenameInput}
+          initialValue={label}
+          aria-label={t`Name of ${label}`}
+          onCommit={onRename}
+          onCancel={onCancelRename}
+        />
+      </span>
+    );
+  }
   return (
     <UnstyledButton
       className={S.chipButton}
       aria-label={t`Edit the formula of ${label}`}
       disabled={onEdit == null}
       onClick={onEdit}
+      onDoubleClick={onStartRename}
     >
       <Icon name="function" size={12} />
       <span className={S.chipLabel}>{label}</span>
@@ -685,7 +753,7 @@ function FormulaChipLabel({ label, onEdit }: FormulaChipLabelProps) {
   );
 }
 
-type ValueChipProps = {
+type ValueChipProps = FormulaChipRenameProps & {
   base: SummaryBase;
   value: SummaryValue;
   label: string;
@@ -704,6 +772,7 @@ function ValueChip({
   onChangeOperator,
   onEditFormula,
   onRemove,
+  ...renameProps
 }: ValueChipProps) {
   if (value.type === "expression") {
     return (
@@ -714,7 +783,11 @@ function ValueChip({
         isEditing={isEditing}
         onRemove={onRemove}
       >
-        <FormulaChipLabel label={label} onEdit={onEditFormula} />
+        <FormulaChipLabel
+          label={label}
+          onEdit={onEditFormula}
+          {...renameProps}
+        />
       </WellChip>
     );
   }
