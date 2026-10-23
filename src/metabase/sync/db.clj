@@ -386,6 +386,18 @@
               {:from [(warehouse-schema-overlay/field-query
                        {:deterministic-ai-columns? (boolean deterministic-ai-columns?)})]})))
 
+(mu/defn layered-semantic-types-for-table :- [:map-of ::lib.schema.id/field [:maybe :keyword]]
+  "The semantic type that readers see for each Field of the Table with `table-id` that has a human or accepted AI
+  semantic type. Fields that show sync's own semantic type are not in the map."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-pk->fn :semantic_type :model/Field
+                    {:from       [(warehouse-schema-overlay/field-query)]
+                     :inner-join [[(t2/table-name :model/FieldUserSettings) :layer]
+                                  [:= :layer.field_id :metabase_field.id]]
+                     :where      [:and
+                                  [:= :metabase_field.table_id table-id]
+                                  (warehouse-schema-overlay/field-layered-condition :semantic_type :layer)]}))
+
 (mu/defn name-field-count-for-table
   "The number of active, visible Fields of the Table with `table-id` whose semantic type is `:type/Name`."
   [table-id :- ::lib.schema.id/table]

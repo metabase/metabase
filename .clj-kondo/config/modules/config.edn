@@ -2871,6 +2871,7 @@
            warehouses.schema}
    :model-imports #{:model/Database
                     :model/Field
+                    :model/FieldUserSettings
                     :model/FieldValues
                     :model/Table}}
 

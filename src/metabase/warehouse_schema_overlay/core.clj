@@ -78,6 +78,15 @@
         [:case [:= [:coalesce settings-column field-column] true] true :else false]
         [:coalesce settings-column field-column]))))
 
+(mu/defn field-layered-condition
+  "Honey SQL test for whether readers see a human or accepted AI value of `column`, a key of [[field-ai-columns]],
+  over the Field's own value. `settings-alias` names the joined `metabase_field_user_settings`."
+  [column         :- (into [:enum] (keys field-ai-columns))
+   settings-alias :- :keyword]
+  [:or
+   (field-user-set-condition column settings-alias)
+   [:not= (u/qualified-key settings-alias (field-ai-columns column)) nil]])
+
 (defenterprise field-ai-proposal
   "Honey SQL for the pending AI proposal of `attribute`, a key of [[field-ai-columns]], for the Field aliased
   `field-alias`, with the proposal table aliased `proposal-alias`: a map of `:join`, a `:left-join` pair that adds at

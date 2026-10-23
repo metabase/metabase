@@ -321,6 +321,31 @@
           (is (= :type/Name (raw human-field)))
           (is (= :type/Category (read human-field))))))))
 
+(deftest preview-display-follows-the-semantic-type-readers-see-test
+  (testing "a long text field whose human or AI semantic type is type/URL keeps preview_display"
+    (let [fingerprint {:global {:distinct-count 5000 :nil% 0.0}
+                       :type   {:type/Text {:percent-json 0.0 :percent-url 0.0 :percent-email 0.0 :percent-state 0.0
+                                            :average-length 120.0}}}]
+      (mt/with-temp [:model/Database db {}
+                     :model/Table table {:name "pages" :db_id (u/the-id db)}
+                     :model/Field human-field {:name "page_link" :base_type :type/Text :table_id (u/the-id table)
+                                               :semantic_type       nil
+                                               :preview_display     true
+                                               :fingerprint         fingerprint
+                                               :fingerprint_version i/*latest-fingerprint-version*
+                                               :last_analyzed       nil}
+                     :model/Field ai-field {:name "other_link" :base_type :type/Text :table_id (u/the-id table)
+                                            :semantic_type       nil
+                                            :preview_display     true
+                                            :fingerprint         fingerprint
+                                            :fingerprint_version i/*latest-fingerprint-version*
+                                            :last_analyzed       nil}]
+        (field-user-settings/upsert-user-settings human-field {:semantic_type :type/URL})
+        (field-user-settings/set-ai-values! ai-field {:semantic_type :type/URL})
+        (classify/classify-fields! table)
+        (doseq [field [human-field ai-field]]
+          (is (true? (t2/select-one-fn :preview_display :model/Field :id (u/the-id field)))))))))
+
 (deftest classifier-view-of-user-settings-test
   (mt/with-temp [:model/Database db {}
                  :model/Table table {:name "users" :db_id (u/the-id db)}
