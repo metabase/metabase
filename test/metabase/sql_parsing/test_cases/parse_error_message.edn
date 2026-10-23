@@ -45,4 +45,10 @@
    :dialect    "postgres"
    :sql        "SELECT 1\nFROM WHERE venues\nLIMIT 1"
    :internals  "<Token token_type: TokenType.WHERE, text: WHERE, line: 2,"
-   :diagnostic "ParseError: Expected table name but got 'WHERE'. Line 2, Col: 10.\n  SELECT 1\nFROM WHERE venues\n     ^^^^^\nLIMIT 1"}]}
+   :diagnostic "ParseError: Expected table name but got 'WHERE'. Line 2, Col: 10.\n  SELECT 1\nFROM WHERE venues\n     ^^^^^\nLIMIT 1"}
+
+  {:name       "a token after tabs on its line"
+   :dialect    "postgres"
+   :sql        "SELECT *\n\tFROM\tWHERE venues"
+   :internals  "<Token token_type: TokenType.WHERE, text: WHERE, line: 2,"
+   :diagnostic "ParseError: Expected table name but got 'WHERE'. Line 2, Col: 11.\n  SELECT *\n\tFROM\tWHERE venues\n\t    \t^^^^^"}]}

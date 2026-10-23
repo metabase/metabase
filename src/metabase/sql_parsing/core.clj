@@ -50,7 +50,8 @@
 (defn- caret-line
   "A line of carets under the token `line` underlines, or nil when it underlines none.
 
-  The offsets are into the text with the escapes taken out, which is the `line` its reader will see."
+  The offsets are into the text with the escapes taken out, which is the `line` its reader will see. The pad keeps
+  that text's whitespace, so a tab before the token moves the carets as far as it moves the token."
   [line]
   (when-let [start (str/index-of line underline-start)]
     (let [plain (fn [s] (str/replace s ansi-escape ""))
@@ -59,7 +60,7 @@
                          (subs after 0 end)
                          after))]
       (when (seq token)
-        (str (apply str (repeat (count (plain (subs line 0 start))) \space))
+        (str (str/replace (plain (subs line 0 start)) #"\S" " ")
              (apply str (repeat (count token) \^)))))))
 
 (defn- without-parser-internals
