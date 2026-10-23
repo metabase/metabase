@@ -104,6 +104,12 @@
   :parent invalid-query
   :show-in-embeds? true)
 
+(deferror dangling-rhs-ref-in-join-condition
+  "The query contains a join condition which refers to a column that no longer exists in the join's own source, e.g.
+  because it was renamed or removed from an upstream Card."
+  :parent invalid-query
+  :show-in-embeds? true)
+
 (deferror circular-reference
   "The query has circular referencing sub-queries."
   :parent invalid-query
