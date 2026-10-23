@@ -1,5 +1,5 @@
 (ns i18n.validation
-  "Scan external catalogs for translation violations — invalid `java.text.MessageFormat`
+  "Scan `locales/*.po` files for translation violations — invalid `java.text.MessageFormat`
   patterns, skipped argument indices, and argument-count mismatches between English source and
   translated strings. Produces structured violation records suitable for:
 

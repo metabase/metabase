@@ -15,30 +15,23 @@ Between the two, [Crowdin](https://crowdin.com/project/metabase-i18n) is where t
 the `msgstr` values. The [`.github/workflows/translation-update.yml`](../../.github/workflows/translation-update.yml)
 workflow runs weekly to pull translations down and open a PR.
 
-## Fetch pinned translations
+## Pinned catalogs
 
 `locales/metabase-i18n.commit` pins a commit in
-[ChrisVandoo/metabase-i18n](https://github.com/ChrisVandoo/metabase-i18n).
-Builds clone that commit and extract its catalogs into the ignored directory
-`locales/metabase-i18n/<commit>/`. The `.po` files sit directly in that directory.
-Completed snapshots are reused without network access and are never edited by the scripts.
+[ChrisVandoo/metabase-i18n](https://github.com/ChrisVandoo/metabase-i18n). The catalogs of that
+commit are downloaded into `locales/metabase-i18n/<commit>/`, which Git ignores.
 
-Run `./bin/i18n/build-translation-resources` to fetch the catalogs and generate frontend JSON
-and backend EDN resources. It reuses downloaded catalogs and regenerates the resources on
-every run. Full builds (`./bin/build.sh`) run it automatically. Frontend builds and
-`bun run dev` do not: without the resources, the app shows English, which is the source text.
-Run it by hand when you need another language. Runtime translation does not access GitHub.
+## Build
 
-The `en-ZZ` pseudo-locale is generated from the pinned `metabase.po` into `target/i18n/en-ZZ.po`
-on every build. It is not stored in the external repository.
+Run `./bin/i18n/build-translation-resources` to download the pinned catalogs and build the
+frontend JSON and backend EDN resources. `./bin/build.sh` runs it. Frontend builds do not:
+without the resources, the app shows English. The build also generates the `en-ZZ`
+pseudo-locale into `target/i18n/en-ZZ.po`.
 
-## Publish translation changes
+## Publish
 
-Publishing requires Git credentials with write access to `ChrisVandoo/metabase-i18n` and a
-configured Git author name and email. The Crowdin workflow does these steps. Its automation
-token must have write access to both repositories.
-
-To publish an update by hand, run these commands from the project root:
+The Crowdin workflow publishes updates. To publish by hand, you need write access to
+`ChrisVandoo/metabase-i18n`. Run from the project root:
 
 ```sh
 checkout=$(./bin/i18n/prepare-translation-update)
@@ -48,22 +41,11 @@ checkout=$(./bin/i18n/prepare-translation-update)
 rm -rf "$(dirname "$checkout")"
 ```
 
-`update-translation-template` writes `metabase.po` to the directory you give it. Without an
-argument, it writes to `target/i18n/`. Lint uses this to check that the template can be built.
+`publish-translations` pushes the new commit to a `metabase-<commit>` branch and updates the pin.
+Commit the pin and `resources/locales.clj`.
 
-`publish-translations` commits the changed `.po` files, pushes a `metabase-<commit>` branch to
-keep the new commit available, then updates `locales/metabase-i18n.commit`. Commit the pin and
-any changes to `resources/locales.clj` in Metabase. A failed push leaves the pin unchanged.
-Intermediate `.pot` files are not published.
-
-`./bin/i18n/merge-translations <branch> [-o]` merges the catalogs referenced by another
-Metabase branch, validates and publishes the result, and updates the current pin. It also
-supports older branches that still track `locales/*.po`. On failure, it keeps its working
-checkout and prints its location so you can recover or retry.
-
-For a local Git fixture or an SSH remote, set `METABASE_I18N_REPOSITORY` to the repository URL.
-The default uses public HTTPS for reads. Test the checkout and publishing helpers with
-`./bin/i18n/test-external-repo`.
+To merge the catalogs of another branch, run `./bin/i18n/merge-translations <branch> [-o]`.
+To test the scripts, run `./bin/i18n/test-external-repo`.
 
 ```mermaid
 flowchart LR
