@@ -5,25 +5,23 @@ import {
 } from "metabase/api";
 import { useSetArchive } from "metabase/archive/hooks";
 import { useNavigate } from "metabase/router";
-import {
-  TimelineModal,
-  TimelineModalLoadingState,
-} from "metabase/timelines/common/components/TimelineModal";
 import * as Urls from "metabase/urls";
 import type { Collection, Timeline } from "metabase-types/api";
 
-import TimelineListModal from "../../components/TimelineListModal";
+import TimelineListContent from "../../components/TimelineListContent";
+import { TimelineQueryModal } from "../../components/TimelineQueryModal";
 import type { ModalParams } from "../../types";
+import { getTimelineListHeaderProps } from "../../utils/timeline-list-header";
 
-interface TimelineListArchiveModalContainerProps {
+interface TimelineListArchiveModalProps {
   params: ModalParams;
   onClose: () => void;
 }
 
-function TimelineListArchiveModalContainer({
+function TimelineListArchiveModal({
   params,
   onClose,
-}: TimelineListArchiveModalContainerProps) {
+}: TimelineListArchiveModalProps) {
   const navigate = useNavigate();
   const archive = useSetArchive();
   const collectionId = Urls.extractCollectionId(params.slug);
@@ -47,14 +45,6 @@ function TimelineListArchiveModalContainer({
   const isLoading = isTimelinesLoading || isCollectionLoading;
   const error = timelinesError ?? collectionError;
 
-  if (isLoading || error || !collection) {
-    return (
-      <TimelineModal tall onClose={onClose} animated={false}>
-        <TimelineModalLoadingState loading={isLoading} error={error} />
-      </TimelineModal>
-    );
-  }
-
   const onUnarchive = (timeline: Timeline) =>
     archive({ id: timeline.id, model: "timeline" }, false);
 
@@ -63,16 +53,29 @@ function TimelineListArchiveModalContainer({
   };
 
   return (
-    <TimelineListModal
+    <TimelineQueryModal
+      data={collection}
+      isLoading={isLoading}
+      error={error}
+      getHeaderProps={(collection) =>
+        getTimelineListHeaderProps(timelines, collection, {
+          isArchive: true,
+          onGoBack,
+        })
+      }
       onClose={onClose}
-      collection={collection}
-      timelines={timelines}
-      isArchive
-      onUnarchive={onUnarchive}
-      onGoBack={onGoBack}
-    />
+    >
+      {(collection) => (
+        <TimelineListContent
+          timelines={timelines}
+          collection={collection}
+          isArchive
+          onUnarchive={onUnarchive}
+        />
+      )}
+    </TimelineQueryModal>
   );
 }
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TimelineListArchiveModalContainer;
+export default TimelineListArchiveModal;

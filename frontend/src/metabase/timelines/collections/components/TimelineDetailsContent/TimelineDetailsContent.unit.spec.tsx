@@ -2,13 +2,12 @@ import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import {
-  createMockCollection,
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
 
-import type { TimelineDetailsModalProps } from "./TimelineDetailsModal";
-import TimelineDetailsModal from "./TimelineDetailsModal";
+import type { TimelineDetailsContentProps } from "./TimelineDetailsContent";
+import TimelineDetailsContent from "./TimelineDetailsContent";
 
 // The search debounce is idle time in these tests: they assert what a search
 // returns, not that the input waits before it asks.
@@ -17,43 +16,11 @@ jest.mock("metabase/utils/constants", () => ({
   SEARCH_DEBOUNCE_DURATION: 0,
 }));
 
-function setup(props: TimelineDetailsModalProps) {
-  renderWithProviders(<TimelineDetailsModal {...props} />);
+function setup(props: TimelineDetailsContentProps) {
+  renderWithProviders(<TimelineDetailsContent {...props} />);
 }
 
-describe("TimelineDetailsModal", () => {
-  it("should use the collection's name for default timelines", () => {
-    const props = getProps({
-      timeline: createMockTimeline({
-        name: "Metrics events",
-        default: true,
-        collection: createMockCollection({
-          name: "Analytics",
-        }),
-      }),
-    });
-
-    setup(props);
-
-    expect(screen.getByText("Analytics events")).toBeInTheDocument();
-  });
-
-  it("should use the timeline's name for non-default timelines", () => {
-    const props = getProps({
-      timeline: createMockTimeline({
-        name: "Metrics events",
-        default: false,
-        collection: createMockCollection({
-          name: "Analytics",
-        }),
-      }),
-    });
-
-    setup(props);
-
-    expect(screen.getByText("Metrics events")).toBeInTheDocument();
-  });
-
+describe("TimelineDetailsContent", () => {
   it("should search a list of events", async () => {
     const props = getProps({
       timeline: createMockTimeline({
@@ -89,9 +56,8 @@ describe("TimelineDetailsModal", () => {
 });
 
 const getProps = (
-  opts?: Partial<TimelineDetailsModalProps>,
-): TimelineDetailsModalProps => ({
+  opts?: Partial<TimelineDetailsContentProps>,
+): TimelineDetailsContentProps => ({
   timeline: createMockTimeline(),
-  onClose: jest.fn(),
   ...opts,
 });
