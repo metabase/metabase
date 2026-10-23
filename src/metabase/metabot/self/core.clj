@@ -5,6 +5,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [flatland.ordered.map :as ordered-map]
    [malli.core :as mc]
    [metabase.ai-tracing.core :as ait]
    [metabase.llm.settings :as llm]
@@ -629,6 +630,27 @@
                           group))))
         parts))
 
+(def failed-tool-result-text
+  "The text of a failed tool call whose result has none."
+  "Tool execution failed")
+
+(defn tool-result-text
+  "The text that a provider adapter sends to the model for the `:result` of a `:tool-output` part. History replays
+  the same text (see `metabase.metabot.persistence/history`), so the next turn's request starts with the bytes that
+  this turn sent.
+
+  The text is the `:output` of a map result, and the printed value of any other result. The other keys of a map,
+  such as `:structured-output` and `:data-parts`, do not go to the model. `ToolResult` requires a map with
+  `:output`, but in production an invalid input is only logged, so a result can be a string or have no `:output`.
+
+  A failed call whose text is blank gets [[failed-tool-result-text]]. The model must read that the call failed, and
+  Anthropic rejects a failed result with empty content."
+  [result]
+  (let [text (str (if (map? result) (:output result) result))]
+    (if (and (str/blank? text) (:error result))
+      failed-tool-result-text
+      text)))
+
 (defn stamp-tool-titles-xf
   "Stamp a client-facing `:title` onto `:tool-input` parts via each tool's
   optional `:title-fn`. Stringified JSON is coerced first, so the title describes the arguments the
@@ -1109,12 +1131,17 @@
   - Tracks tool calls from :tool-input-start through :tool-input-available
   - Spawns virtual thread for each tool when input is complete
   - Once an :error chunk comes through, starts no more tools and drops the tool-input chunks after it
-  - At completion, waits for all tools and appends results
+  - At completion, waits for all tools and appends results, in the order of the calls
+
+  The results come in the order of the calls because that is how history replays a step (see
+  `metabase.metabot.persistence/history`): when the next turn's request puts them in a different order, it does not
+  start with the bytes that this turn sent. The map of calls is ordered for that. A plain map of more than 8 entries
+  is a hash map, which has no order.
 
   Tools can return: plain values, IReduceInit (reducible), or channels (legacy)."
   [tools]
   (fn [rf]
-    (let [active   (volatile! {}) ;; tool-call-id -> {:chunks [...]} or {:task derefable}
+    (let [active   (volatile! (ordered-map/ordered-map)) ;; tool-call-id -> {:chunks [...]} or {:task derefable}
           errored? (volatile! false)]
       (fn
         ([result]

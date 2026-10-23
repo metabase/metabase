@@ -217,16 +217,20 @@
         (log/error "System prompt template not found:" template-name)
         (str "You are " (metabot.settings/metabot-name) ", a data analysis assistant for Metabase.")))))
 
+(defn context-injection
+  "The formatted context block that goes before the user's message, or nil when `context` has nothing to show."
+  [context]
+  ;; Injection is performed only when the hardcoded keys are present in in context to avoid
+  ;; insertion e.g. insertion of blank xml tags.
+  (when (some #(string? (not-empty (get context %)))
+              [:viewing_context :current_time :current_user_info :recent_views])
+    (selmer/render (get-cached-message-injection-template)
+                   context)))
+
 (defn inject-context
   "Prepends a formatted context to a string, message."
   [context str*]
-  (let [;; Injection is performed only when the hardcoded keys are present in in context to avoid
-        ;; insertion e.g. insertion of blank xml tags.
-        injection (when (some #(string? (not-empty (get context %)))
-                              [:viewing_context :current_time :current_user_info :recent_views])
-                    (selmer/render (get-cached-message-injection-template)
-                                   context))]
-    (str injection str*)))
+  (str (context-injection context) str*))
 
 (comment
   ;; Development examples

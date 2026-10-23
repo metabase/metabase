@@ -556,7 +556,22 @@
                         :tool_use_id "call-1"
                         :content     "<card/>"}]}]
            (claude/parts->claude-messages
-            [{:type :tool-output :id "call-1" :result {:output "<card/>"}}])))))
+            [{:type :tool-output :id "call-1" :result {:output "<card/>"}}]))))
+  (testing "a result without :output sends empty text, as history replays it, and none of its other keys"
+    (is (= [{:role    "user"
+             :content [{:type "tool_result" :tool_use_id "call-1" :content ""}]}]
+           (claude/parts->claude-messages
+            [{:type :tool-output :id "call-1" :result {:rows [1 2]}}]))))
+  (testing "a failed call with no text says that it failed, because Anthropic rejects a failed result with empty content"
+    (doseq [result [{:error {:class :recoverable :code :x}}
+                    {:output "" :error {:class :recoverable :code :x}}]]
+      (is (= [{:role    "user"
+               :content [{:type        "tool_result"
+                          :tool_use_id "call-1"
+                          :content     "Tool execution failed"
+                          :is_error    true}]}]
+             (claude/parts->claude-messages
+              [{:type :tool-output :id "call-1" :result result}]))))))
 
 (deftest ^:parallel parts->claude-messages-blank-content-test
   (testing "blank string content is filtered out during merge"

@@ -246,3 +246,42 @@
       (is (= :tool-output (:type (nth result 0))))
       (is (= "dp" (:data-type (nth result 1))))
       (is (= "text" (:text (nth result 2)))))))
+
+(deftest ^:parallel combine-text-parts-xf-merges-consecutive-text-test
+  (testing "consecutive :text parts coalesce; non-text parts split runs"
+    (let [parts [{:type :text :text "Hello, "}
+                 {:type :text :text "world"}
+                 {:type :text :text "!"}
+                 {:type :tool-input :id "c1" :function "search"}
+                 {:type :text :text "After "}
+                 {:type :text :text "tool."}]
+          out   (into [] (streaming/combine-text-parts-xf) parts)]
+      (is (= [{:type :text :text "Hello, world!"}
+              {:type :tool-input :id "c1" :function "search"}
+              {:type :text :text "After tool."}]
+             out))))
+  (testing "single text part flushes on completion"
+    (is (= [{:type :text :text "lone"}]
+           (into [] (streaming/combine-text-parts-xf) [{:type :text :text "lone"}]))))
+  (testing "empty input"
+    (is (= [] (into [] (streaming/combine-text-parts-xf) []))))
+  (testing "the deltas of one text block coalesce, and two text blocks stay two parts"
+    (is (= [{:type :text :id "t1" :text "First point."}
+            {:type :text :id "t2" :text "Second point."}]
+           (into [] (streaming/combine-text-parts-xf)
+                 [{:type :text :id "t1" :text "First "}
+                  {:type :text :id "t1" :text "point."}
+                  {:type :text :id "t2" :text "Second "}
+                  {:type :text :id "t2" :text "point."}])))))
+
+(deftest ^:parallel combine-text-parts-xf-stops-early-test
+  (testing "when the downstream stops, the result is its value, not a reduced wrapper"
+    (testing "at the text that waits for the completion"
+      (is (= [{:type :text :text "lone"}]
+             (transduce (comp (streaming/combine-text-parts-xf) (take 1)) conj []
+                        [{:type :text :text "lone"}]))))
+    (testing "at a part before it, so that the text does not go downstream"
+      (is (= [{:type :tool-input :id "c1" :function "search"}]
+             (transduce (comp (streaming/combine-text-parts-xf) (take 1)) conj []
+                        [{:type :tool-input :id "c1" :function "search"}
+                         {:type :text :text "After tool."}]))))))

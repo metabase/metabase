@@ -206,6 +206,37 @@
                              (map? (:data dp)) (assoc-in [:data :tool_call_id] (:id part)))))
               [part]))))
 
+(defn combine-text-parts-xf
+  "Transducer that merges the consecutive `:text` parts of one text block, which share an `:id`, into a single
+  `:text` part. Non-text parts pass through unchanged. Text streams as one part per delta: the agent loop merges a
+  step's parts before it keeps them in memory, and persistence merges a turn's parts before it stores them, so both
+  hold the same text blocks.
+
+  Two text blocks stay two parts, as the stream to the client keeps them (see
+  `metabase.metabot.self.core/parts->aisdk-sse-xf`). Joined, their texts would run together with nothing between
+  them."
+  []
+  (fn [rf]
+    (let [pending (volatile! nil)]
+      (fn
+        ([] (rf))
+        ([result]
+         (let [p @pending]
+           (vreset! pending nil)
+           (rf (cond-> result
+                 p (-> (rf p) unreduced)))))
+        ([result part]
+         (let [prev @pending]
+           (if (and prev
+                    (= :text (:type prev) (:type part))
+                    (= (:id prev) (:id part)))
+             (do (vswap! pending update :text str (:text part))
+                 result)
+             (let [ret (if prev (rf result prev) result)]
+               ;; after a reduced result no part goes downstream, so none waits for the completion
+               (vreset! pending (when-not (reduced? ret) part))
+               ret))))))))
+
 (defn post-process-xf
   "Composed transducer for post-processing agent output.
 

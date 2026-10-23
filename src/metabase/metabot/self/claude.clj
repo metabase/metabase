@@ -257,8 +257,7 @@
                        :tool-output {:role    "user"
                                      :content [(cond-> {:type        "tool_result"
                                                         :tool_use_id (:id part)
-                                                        :content     (or (get-in part [:result :output])
-                                                                         (pr-str (:result part)))}
+                                                        :content     (core/tool-result-text (:result part))}
                                                  ;; A failed call is marked as one. Without this the
                                                  ;; model reads the failure text as an ordinary
                                                  ;; result, and the thinking panel shows the step as

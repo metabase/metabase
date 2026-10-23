@@ -6,6 +6,7 @@
   is responsible for converting these parts into its own wire format (Claude
   messages, Chat Completions messages, OpenAI Responses input items, etc.)."
   (:require
+   [clojure.string :as str]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.prompts :as prompts]
    [metabase.metabot.agent.user-context :as user-context]
@@ -140,23 +141,52 @@
 ;;; History construction
 ;;; ──────────────────────────────────────────────────────────────────
 
+(defn- sent-part?
+  "Whether a request sends `part`. No request sends text that is only whitespace: it adds nothing for the model, and
+  some providers reject it. The steps of this turn and the history of earlier turns both leave it out here, before
+  they go into a request, so the next turn's request starts with the bytes that this turn sent."
+  [part]
+  (not (and (= :text (:type part)) (str/blank? (:text part)))))
+
 (defn- step->parts
   "Extract AISDK parts from a step, filtering out non-message types."
   [step]
   (->> (:parts step)
        (filter #(#{:text :tool-input :tool-output :reasoning} (:type %)))))
 
+(defn steps->parts
+  "The AISDK parts of agent `steps` that a request sends, in order. [[build-message-history]] puts them last, after
+  the input messages and the dialect preload."
+  [steps]
+  (into [] (comp (mapcat step->parts) (filter sent-part?)) steps))
+
+(defn render-context-block
+  "The `<context>` block for the most recent input message, rendered from `context`, or nil when that message is not
+  the user's or the context has nothing to show. This reads the app DB: the agent renders it once per turn and keeps
+  it in memory (see [[memory/set-context-block]]).
+
+  A `full?` block holds all of the context: the current time, the user and the glossary, what the user is viewing,
+  and the recent views. The first turn of a conversation sends it. A later turn sends only what the user is viewing,
+  because the history replays the first block and the rest of the context does not change materially from turn to
+  turn."
+  ([context memory]
+   (render-context-block context memory true))
+  ([context memory full?]
+   (when (= :user (:role (last (memory/get-input-messages memory))))
+     (prompts/context-injection (if full?
+                                  (user-context/enrich-context-for-template context)
+                                  {:viewing_context (user-context/format-viewing-context context)})))))
+
 (defn- messages-with-injected-context
-  "Returns messages from memory and injects context into the most recent one."
+  "Returns messages from memory with the turn's `<context>` block put before the most recent one. The block is the
+  one memory keeps, or one rendered from `context` when memory keeps none."
   [context memory]
-  (let [all-messages (memory/get-input-messages memory)
-        [input-messages [most-recent-message]] (split-at (dec (count all-messages))  all-messages)]
-    (if-not (and (= :user (-> most-recent-message :role))
-                 (< 0 (count all-messages)))
-      all-messages
-      (let [enriched-context (user-context/enrich-context-for-template context)]
-        (conj (vec input-messages)
-              (update most-recent-message :content (partial prompts/inject-context enriched-context)))))))
+  (let [all-messages (vec (memory/get-input-messages memory))
+        block        (if (memory/context-block-rendered? memory)
+                       (memory/context-block memory)
+                       (render-context-block context memory))]
+    (cond-> all-messages
+      block (update (dec (count all-messages)) update :content #(str block %)))))
 
 (defn build-message-history
   "Build the conversation history as a flat sequence of AISDK parts.
@@ -181,8 +211,8 @@
   ([context memory tools]
    (let [input-messages (messages-with-injected-context context memory)
          steps          (memory/get-steps memory)
-         input-parts    (mapcat input-message->parts input-messages)
-         step-parts     (mapcat step->parts steps)
+         input-parts    (into [] (comp (mapcat input-message->parts) (filter sent-part?)) input-messages)
+         step-parts     (steps->parts steps)
          ;; Preload the active SQL dialect (if any) as a synthetic load_skill
          ;; tool-call/result pair. It is placed after the input messages (so the
          ;; first message is still the user's) and before this turn's steps, which

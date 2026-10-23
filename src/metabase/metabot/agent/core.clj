@@ -276,14 +276,20 @@
           parts)))
 
 (defn- turn-input-parts
-  "The AISDK parts for this call of the turn: what the previous call sent, exactly as sent, then the parts added since.
-  Rebuilding the history fetches the viewing context again and inverts links against a registry that grows within
-  the turn, and Claude Opus, Sonnet and Haiku 5.5 and Fable 5.1 reject a replayed thinking block once anything
-  before it has changed."
-  [sent-parts context memory tools link-registry]
-  (into sent-parts
-        (invert-links (subvec (messages/build-message-history context memory tools) (count sent-parts))
-                      link-registry)))
+  "The AISDK parts for this call of the turn.
+
+  Only the first call builds the history, with the `<context>` block [[init-agent]] rendered for the turn. A later
+  call sends what the previous call sent, exactly as sent, then the parts of the steps added since. It does not build
+  the history again: that inverts links against a registry that grows within the turn, and Claude Opus, Sonnet and
+  Haiku 5.5 and Fable 5.1 reject a replayed thinking block once anything before it has changed.
+
+  `sent-steps` is the number of memory steps that `sent-parts` holds, or nil before the first call."
+  [sent-parts sent-steps context memory tools link-registry]
+  (if sent-steps
+    (into sent-parts
+          (invert-links (messages/steps->parts (drop sent-steps (memory/get-steps memory)))
+                        link-registry))
+    (invert-links (messages/build-message-history context memory tools) link-registry)))
 
 (defn- call-llm
   "Call the LLM and stream processed parts.
@@ -351,11 +357,20 @@
    memory
    parts))
 
+(defn- step-parts
+  "The `parts` of an iteration as memory keeps them: each text block as one part. Text streams as one part per delta,
+  and the turn is stored with each block as one part, by the same function (see `metabase.metabot.api`). So memory
+  and the stored turn hold the same blocks, and a later request sends them the same way (see
+  [[messages/build-message-history]]). When memory keeps the deltas, the next turn's history does not start with the
+  bytes that this turn sent, and the provider's prompt cache misses."
+  [parts]
+  (into [] (streaming/combine-text-parts-xf) parts))
+
 (defn- update-memory
   "Update memory with parts from an iteration."
   [memory parts]
   (-> memory
-      (memory/add-step parts)
+      (memory/add-step (step-parts parts))
       (extract-queries parts)
       (extract-charts parts)))
 
@@ -503,8 +518,10 @@
 
   The system message and the tool declarations are rendered once for the whole turn. Both read settings or status
   that can change mid-turn, and a change would invalidate replayed thinking the same way an edited earlier message
-  does (see [[turn-input-parts]])."
-  [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan]
+  does (see [[turn-input-parts]]). So is the `<context>` block of the user's message, which memory keeps so that
+  the turn can be stored with it."
+  [{:keys [messages state metabot profile-id context tracking-opts conversation-id request-canceled-chan
+           full-context-replayed?]
     external-memory-atom :memory-atom}]
   (let [context      (assign-context-ids context)
         ;; Resolve the profile once (its nlq availability redirect probes the index): reuse it for both the
@@ -529,7 +546,9 @@
                          (assoc :conversation-id conversation-id
                                 :tool-names (set (keys base-tools))
                                 :request-canceled-chan request-canceled-chan)
-                         (memory/add-client-ids (client-content-ids context)))
+                         (memory/add-client-ids (client-content-ids context))
+                         (as-> m (memory/set-context-block
+                                  m (messages/render-context-block context m (not full-context-replayed?)))))
         memory-atom  (doto (or external-memory-atom (atom nil)) (reset! memory))
         ;; `profile->tools` keys by name; `->entries` takes the tools themselves and keys them from
         ;; their declarations, so converted and unconverted ones arrive the same way.
@@ -568,7 +587,8 @@
    :iteration  1
    :status     :continue
    :usage-atom usage-atom
-   :sent-parts []})
+   :sent-parts []
+   :sent-steps nil})
 
 (defn- final-state-part [memory]
   {:type :data, :data-type "state", :version 1, :data (memory/get-state memory)})
@@ -610,7 +630,7 @@
 
   Streams parts to the consumer as they arrive while simultaneously accumulating
   them for memory updates and control flow decisions."
-  [{:keys [agent rf result iteration usage-atom sent-parts] :as loop-state}]
+  [{:keys [agent rf result iteration usage-atom sent-parts sent-steps] :as loop-state}]
   (with-span :debug {:name      :metabot.agent/loop-step
                      :iteration iteration}
     (let [{:keys [profile tools system-msg context memory-atom tracking-opts]} agent
@@ -620,7 +640,7 @@
           memory             @memory-atom
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
-          input-parts        (turn-input-parts sent-parts context memory tools @link-registry-atom)
+          input-parts        (turn-input-parts sent-parts sent-steps context memory tools @link-registry-atom)
           xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
@@ -678,7 +698,11 @@
                              :result (rf result'' (final-state-part @memory-atom))))))
 
               (should-continue? iteration max-iter terminal-tools parts)
-              (assoc loop-state :result result' :iteration (inc iteration) :sent-parts input-parts)
+              (assoc loop-state
+                     :result     result'
+                     :iteration  (inc iteration)
+                     :sent-parts input-parts
+                     :sent-steps (count (memory/get-steps memory)))
 
               :else
               (let [reason (finish-reason iteration max-iter terminal-tools parts)]
@@ -757,6 +781,9 @@
              [:maybe [:and [:string {:max ait/max-session-id-length}] [:re ait/safe-session-id-re]]]]
             [:debug? {:optional true} [:maybe :boolean]]
             [:memory-atom {:optional true} [:maybe [:fn #(instance? clojure.lang.Atom %)]]]
+            ;; True when `:messages` replay the full `<context>` block of an earlier turn, so this turn's block holds
+            ;; only what the user is viewing (see `metabase.metabot.agent.messages/render-context-block`).
+            [:full-context-replayed? {:optional true} [:maybe :boolean]]
             ;; Receives a value when the request this turn serves is canceled, so a tool can cancel the query it runs.
             [:request-canceled-chan {:optional true} [:maybe [:fn async.u/promise-chan?]]]]]
   (let [opts               (m/update-existing-in opts [:context :capabilities] capabilities/enforce-permissions)

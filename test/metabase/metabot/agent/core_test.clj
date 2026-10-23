@@ -14,8 +14,9 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.agent.streaming :as streaming]
+   [metabase.metabot.agent.user-context :as user-context]
    [metabase.metabot.config :as metabot.config]
-   [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
    [metabase.metabot.self.claude :as claude]
@@ -817,7 +818,7 @@
                                       :charts  map?}}
                          {:type :finish :finish-reason :stop}]
                         (mt/with-log-level [metabase.metabot.agent.core :warn]
-                          (into [] (metabot.persistence/combine-text-parts-xf)
+                          (into [] (streaming/combine-text-parts-xf)
                                 (run-agent-loop
                                  {:messages   [{:role    :user
                                                 :content "Show me the first 10 orders"}]
@@ -989,6 +990,40 @@
                            {:role "user" :content [{:type "tool_result"}]}]
                           (drop (count messages-1) messages-2))))))))))))
 
+(deftest later-calls-do-not-render-the-context-again-test
+  (testing "only the first call of a turn renders the context, and each later call adds only the new step"
+    (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
+                                       llm-metabot-provider test-provider]
+      (let [inputs  (atom [])
+            renders (atom 0)
+            orig    (mt/original-fn #'user-context/enrich-context-for-template)]
+        (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template (fn [ctx] (swap! renders inc) (orig ctx))
+                                    openrouter/openrouter (fn [{:keys [input]}]
+                                                            (mut/mock-llm-response
+                                                             (case (count (swap! inputs conj input))
+                                                               1 [{:type      :tool-input
+                                                                   :id        "call-1"
+                                                                   :function  "search"
+                                                                   :arguments {:keyword_queries ["orders"]}}]
+                                                               2 [{:type      :tool-input
+                                                                   :id        "call-2"
+                                                                   :function  "search"
+                                                                   :arguments {:keyword_queries ["people"]}}]
+                                                               [{:type :text :text "Found them."}])))
+                                    metabot-search/search (constantly [])]
+          (run-agent-loop! {:messages   [{:role :user :content "Show me orders and people"}]
+                            :state      {}
+                            :profile-id :internal
+                            :context    {:current_user_time "2026-10-05T12:00:00Z"}})
+          (let [[input-1 input-2 input-3] @inputs]
+            (is (= 3 (count @inputs)))
+            (is (= 1 @renders))
+            (is (= input-1 (take (count input-1) input-2)))
+            (is (= input-2 (take (count input-2) input-3)))
+            (is (=? [{:type :tool-input :id "call-2"}
+                     {:type :tool-output :id "call-2"}]
+                    (drop (count input-2) input-3)))))))))
+
 (deftest eval-tracing-nesting-test
   (testing "capture-reducible over the real agent loop builds a turn -> llm -> tool span tree"
     ;; This exercises the cross-module wiring the ai-tracing docstrings promise: the turn/llm spans
@@ -1154,7 +1189,7 @@
                      {:type :data :data-type "state"}
                      {:type :finish :finish-reason :stop}]
                     (mt/with-log-level [metabase.metabot.self :fatal]
-                      (into [] (metabot.persistence/combine-text-parts-xf)
+                      (into [] (streaming/combine-text-parts-xf)
                             (run-agent-loop
                              {:messages   [{:role :user :content "Hi"}]
                               :state      {}

@@ -151,7 +151,11 @@
                             :data_version 2}
                            {:total_tokens  pos-int?
                             :role          :assistant
-                            :data          [{:type "step-start"}
+                            ;; the <context> block sent before the user's message comes first, so the
+                            ;; next turn can send that message again with the same bytes
+                            :data          [{:type "data-context"
+                                             :data {:block #"(?s)<context>.*</context>\n" :full true}}
+                                            {:type "step-start"}
                                             {:type "text" :text "Hello from native agent!" :state "done"}]
                             :data_version  2
                             ;; the provider truncated this turn, so the row records why it stopped
@@ -1212,12 +1216,14 @@
             (mt/user-http-request :rasta :post 202 "metabot/agent-streaming"
                                   (agent-request conversation-id "follow-up-prompt"
                                                  :parent_message_id parent-id))
-            (let [msgs (input-messages (last @requests))]
+            (let [[sent-prompt] (input-messages (first @requests))
+                  msgs          (input-messages (last @requests))]
               (is (= 2 (count @requests)))
-              (is (= [[:user "prior-user-prompt"]
+              (is (=? [:user #"(?s)<context>.*</context>\nprior-user-prompt"] sent-prompt))
+              (is (= [sent-prompt
                       [:assistant "prior-assistant-reply"]]
                      (take 2 msgs))
-                  "prior turn replayed with the right roles, order, and content")
+                  "prior turn replayed with the right roles, order, and content, the prompt as it was sent")
               (is (= 3 (count msgs))
                   "exactly prior user + prior assistant + new prompt — no duplicated turns")
               (is (= :user (first (nth msgs 2))))
@@ -1343,33 +1349,6 @@
     (is (= {"unknown" {:prompt 50 :completion 10}}
            (metabot.persistence/extract-usage
             [{:type :usage :usage {:promptTokens 50 :completionTokens 10}}])))))
-
-(deftest combine-text-parts-xf-test
-  (testing "passes through non-text parts"
-    (is (= [{:type :tool, :id 1} {:type :tool, :id 2}]
-           (into [] (metabot.persistence/combine-text-parts-xf)
-                 [{:type :tool, :id 1} {:type :tool, :id 2}]))))
-  (testing "combines consecutive text parts"
-    (is (= [{:type :text, :text "hello world"}]
-           (into [] (metabot.persistence/combine-text-parts-xf)
-                 [{:type :text, :text "hello "}
-                  {:type :text, :text "world"}]))))
-  (testing "combines multiple runs"
-    (is (= [{:type :text, :text "ab"}
-            {:type :tool, :id 1}
-            {:type :text, :text "cd"}]
-           (into [] (metabot.persistence/combine-text-parts-xf)
-                 [{:type :text, :text "a"}
-                  {:type :text, :text "b"}
-                  {:type :tool, :id 1}
-                  {:type :text, :text "c"}
-                  {:type :text, :text "d"}]))))
-  (testing "handles empty input"
-    (is (= [] (into [] (metabot.persistence/combine-text-parts-xf) []))))
-  (testing "handles single text part"
-    (is (= [{:type :text, :text "solo"}]
-           (into [] (metabot.persistence/combine-text-parts-xf)
-                 [{:type :text, :text "solo"}])))))
 
 (defn- start-and-finalize-with-provider!
   "Helper: run start-turn! + finalize-assistant-turn! under `provider`, return the

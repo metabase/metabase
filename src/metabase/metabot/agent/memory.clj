@@ -141,3 +141,19 @@
   (if (= (get-in memory [:state :link-registry] {}) link-registry)
     memory
     (record memory [:link-registry] link-registry)))
+
+(defn set-context-block
+  "Keep `block`, the `<context>` block rendered for this turn's user message, or nil when the message gets none.
+  The turn sends it with the message, and it is stored so later turns send the same bytes."
+  [memory block]
+  (assoc memory :context-block block))
+
+(defn context-block
+  "The `<context>` block kept with [[set-context-block]], or nil."
+  [memory]
+  (:context-block memory))
+
+(defn context-block-rendered?
+  "Whether [[set-context-block]] has kept this turn's block, even a nil one."
+  [memory]
+  (contains? memory :context-block))

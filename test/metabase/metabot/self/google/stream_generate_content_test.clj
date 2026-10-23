@@ -106,27 +106,21 @@
             [{:type :tool-output :id "call-1" :function "search" :result {:output "Found 42 results"}}])))))
 
 (deftest ^:parallel parts->contents-tool-error-test
-  (testing "a failed tool output surfaces the error message in the functionResponse"
+  (testing "a failed call sends its text, which is the :output of its result"
     (is (= [{:role  "user"
              :parts [{:functionResponse {:name     "search"
-                                         :response {:output "Error: boom"}}}]}]
+                                         :response {:output "Table 7 was not found."}}}]}]
            (sgc/parts->contents
-            [{:type :tool-output :id "call-1" :function "search" :error {:message "boom"}}])))))
+            [{:type   :tool-output :id "call-1" :function "search"
+              :result {:output "Table 7 was not found." :error {:class :recoverable :code :x}}}])))))
 
 (deftest ^:parallel parts->contents-tool-result-without-output-key-test
-  (testing "a result map that carries no :output is printed rather than sent as an empty response"
-    (is (= [{:role  "user"
-             :parts [{:functionResponse {:name     "search"
-                                         :response {:output "{:rows [1 2]}"}}}]}]
-           (sgc/parts->contents
-            [{:type :tool-output :id "call-1" :function "search" :result {:rows [1 2]}}])))))
-
-(deftest ^:parallel parts->contents-tool-output-with-neither-result-nor-error-test
-  (testing "a tool output with nothing in it sends a 'nil' response"
-    (is (= [{:role  "user"
-             :parts [{:functionResponse {:name "search" :response {:output "nil"}}}]}]
-           (sgc/parts->contents
-            [{:type :tool-output :id "call-1" :function "search"}])))))
+  (testing "a result without :output sends empty text, as history replays it, and none of its other keys"
+    (doseq [part [{:type :tool-output :id "call-1" :function "search" :result {:rows [1 2]}}
+                  {:type :tool-output :id "call-1" :function "search"}]]
+      (is (= [{:role  "user"
+               :parts [{:functionResponse {:name "search" :response {:output ""}}}]}]
+             (sgc/parts->contents [part]))))))
 
 (deftest ^:parallel parts->contents-parallel-tool-calls-test
   (testing "two tool calls and their two results each merge into one content keeping the model/user alternation"

@@ -325,12 +325,17 @@
               {:type :text :text "It's 2 PM."}])))))
 
 (deftest ^:parallel parts->openai-input-error-result-test
-  (testing "tool error is formatted in output"
-    (is (=? [{:type   "function_call_output"
-              :call_id "call-1"
-              :output  #"Error:.*failed"}]
-            (openai/parts->openai-input
-             [{:type :tool-output :id "call-1" :error {:message "Tool failed"}}])))))
+  (testing "a failed call sends its text, which is the :output of its result"
+    (is (= [{:type    "function_call_output"
+             :call_id "call-1"
+             :output  "Table 7 was not found."}]
+           (openai/parts->openai-input
+            [{:type   :tool-output :id "call-1"
+              :result {:output "Table 7 was not found." :error {:class :recoverable :code :x}}}]))))
+  (testing "a result without :output sends empty text, as history replays it, and none of its other keys"
+    (is (= [{:type "function_call_output" :call_id "call-1" :output ""}]
+           (openai/parts->openai-input
+            [{:type :tool-output :id "call-1" :result {:rows [1 2]}}])))))
 
 (deftest ^:parallel openai-reasoning-summary-part-separator-test
   (testing "a 2nd+ summary part opens a new paragraph within the same reasoning item"

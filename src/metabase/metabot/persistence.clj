@@ -103,12 +103,23 @@
                              ;; every replay. One field, two audiences; the model wins, because the
                              ;; live SSE channel has its own and the whole point of the text is that
                              ;; the agent can act on it.
-                             (assoc :errorText (str (get-in output [:result :output])))))
+                             (assoc :errorText (self.core/tool-result-text (:result output)))))
                          :data {:type (str "data-" (or (:data-type part) "data"))
                                 :data (:data part)}
                          (do (log/warn "Dropping internal part with no v2 storage representation"
                                        {:type (:type part)})
                              nil))))))))
+
+(def ^:private context-part-type
+  "The type of the data part, first in an assistant row, that holds the `<context>` block the agent sent before the
+  turn's user message. Its data is `{:block <the block> :full <whether it holds all of the context>}`. History puts
+  the block back before the message, and the chat UI does not show it."
+  "data-context")
+
+(defn- stored-context
+  "The data of the `<context>` part stored in the assistant `row`, or nil."
+  [row]
+  (some #(when (= context-part-type (:type %)) (:data %)) (:data row)))
 
 (defn parts->storable-content
   "Drop transient/lifecycle parts and convert what remains to the v2 at-rest format.
@@ -179,26 +190,6 @@
                 (catch Throwable _
                   (json/encode {:message      (pr-str error)
                                 :encode-error true})))))))
-
-(defn combine-text-parts-xf
-  "Transducer that merges consecutive `:text` parts into a single `:text` part.
-  Non-text parts pass through unchanged. Used before persistence so streaming
-  text deltas consolidate into one stored block."
-  []
-  (fn [rf]
-    (let [pending (volatile! nil)]
-      (fn
-        ([] (rf))
-        ([result]
-         (let [p @pending]
-           (rf (if p (rf result p) result))))
-        ([result part]
-         (let [prev @pending]
-           (if (and prev (= :text (:type prev) (:type part)))
-             (do (vswap! pending update :text str (:text part))
-                 result)
-             (do (vreset! pending part)
-                 (if prev (rf result prev) result)))))))))
 
 (defn live-messages
   "A conversation's non-deleted messages in reader order (created_at, id)."
@@ -398,7 +389,7 @@
   "UPDATE the placeholder assistant row created by [[start-turn!]] with the final
   streamed parts.
 
-  `parts` should be the post-[[combine-text-parts-xf]] parts vector. Stream metadata
+  `parts` should be the post-[[streaming/combine-text-parts-xf]] parts vector. Stream metadata
   (`:start`/`:usage`/`:finish`/`:error`) is filtered out and the rest is converted to
   the v2 at-rest format (see [[parts->storable-content]]) before storage; usage is
   accumulated separately into the `usage` column; the error part body, if any,
@@ -421,9 +412,15 @@
      at completion (Slack response posts mid-stream).
   - `:context-window-tokens` — window of the model the turn ran on. When the turn
      stopped at `length` with its context at or past it, `context_window_full` is
-     set, so the turn reads as full later whatever model is configured then."
+     set, so the turn reads as full later whatever model is configured then.
+  - `:context-block` — the `<context>` block the agent sent before the user's message.
+     It is stored as the row's first part, so that [[history]] replays the message
+     with the same bytes and the provider can read it from its prompt cache.
+  - `:full-context?` — whether `:context-block` holds all of the context, not only what
+     the user is viewing (see [[replays-full-context?]])."
   [assistant-msg-id parts
-   & {:keys [profile-id finished? error slack-msg-id channel-id turn-state context-window-tokens]
+   & {:keys [profile-id finished? error slack-msg-id channel-id turn-state context-window-tokens context-block
+             full-context?]
       :or   {finished? true}}]
   (let [turn-state     (not-empty turn-state)
         usage          (extract-usage parts)
@@ -434,7 +431,9 @@
         kept-parts     (->> parts
                             (remove #(#{:start :usage :finish :error} (:type %)))
                             (filter streaming/persistable-data-part?))
-        content        (parts->storable-content parts)]
+        content        (cond->> (parts->storable-content parts)
+                         context-block (into [{:type context-part-type
+                                               :data {:block context-block :full (boolean full-context?)}}]))]
     (analytics/observe! :metabase-metabot/message-persist-bytes
                         {:profile-id (or profile-id "unknown")}
                         (u/string-byte-count (json/encode content)))
@@ -502,8 +501,8 @@
            content (case state
                      "output-available" (if (hidden-query-results? part)
                                           hidden-query-results
-                                          (str (if (map? output) (:output output) output)))
-                     "output-error"     (or errorText "Tool execution failed")
+                                          (self.core/tool-result-text output))
+                     "output-error"     (or errorText self.core/failed-tool-result-text)
                      "input-available"  (when-not (= on-unresolved :skip)
                                           "Tool execution interrupted by user")
                      nil)]
@@ -526,22 +525,61 @@
        str/join))
 
 (defn- user-row->llm-message
-  [message]
+  "The user's message as the agent sent it: the `<context>` block stored with the `reply`, if any, then the text."
+  [message reply]
   {:role    :user
-   :content (message-text message)})
+   :content (str (:block (stored-context reply)) (message-text message))})
+
+(defn- row-steps
+  "The parts of the assistant row `data`, one vector per LLM call of the turn. Each call starts at a `step-start`
+  part. A row migrated from v1 has no `step-start` parts, so it does not record which parts each call made: there,
+  each part is a step of its own."
+  [data]
+  (if (some #(= "step-start" (:type %)) data)
+    (reduce (fn [steps part]
+              (if (= "step-start" (:type part))
+                (conj steps [])
+                (conj (pop steps) (conj (peek steps) part))))
+            [[]]
+            data)
+    (map vector data)))
+
+(defn- part->llm-messages
+  "The LLM history messages for one stored `part`: a text message, a tool call and its result, or nil. Text that is
+  only whitespace replays too: the request leaves it out, as it leaves it out of the steps of the turn that made it
+  (see `metabase.metabot.agent.messages/build-message-history`)."
+  [part]
+  (cond
+    (schema.v2/text-part? part)
+    [{:role :assistant :content (:text part)}]
+
+    (schema.v2/tool-part? part)
+    (tool-part->llm-messages part)))
+
+(defn- step->llm-messages
+  "The LLM history messages for the `parts` of one step: its text and tool calls in order, then the results of those
+  calls in the same order. This is how the agent loop sends a step, because the tools of a step run in parallel and
+  their results come after the LLM call ends (see [[metabase.metabot.self.core/tool-executor-xf]]). When history
+  puts each result after its call, a step with parallel calls replays in a different order, and the next turn's
+  request does not start with the bytes that this turn sent."
+  [parts]
+  (let [replayed (keep part->llm-messages parts)]
+    (concat (map first replayed) (keep second replayed))))
 
 (defn- assistant-row->llm-messages
-  [{:keys [data]}]
-  (into []
-        (mapcat (fn [part]
-                  (cond
-                    (schema.v2/text-part? part)
-                    (when-not (str/blank? (:text part))
-                      [{:role :assistant :content (:text part)}])
+  "The LLM history messages for the assistant row: each step before the last as [[step->llm-messages]] replays it,
+  then the last step with each result right after its call.
 
-                    (schema.v2/tool-part? part)
-                    (tool-part->llm-messages part))))
-        data))
+  The last step is where the turn stopped. The agent loop did not send it to the model, so its order does not change
+  the prefix of the next turn's request. The agent can add text after the results of that step, with no
+  `step-start` before it: the message of a terminal error (see `metabase.metabot.agent.core`). In the step order,
+  that text would replay before the results that it comes after."
+  [{:keys [data]}]
+  (let [steps (row-steps data)]
+    (into []
+          cat
+          [(mapcat step->llm-messages (butlast steps))
+           (mapcat part->llm-messages (last steps))])))
 
 (defn- rows->turns
   [rows]
@@ -581,8 +619,19 @@
   [turn-rows]
   (when-let [{:keys [rows reply]} (replayable-turn turn-rows)]
     (let [user-row (first (filter user-row? rows))]
-      (concat (when user-row [(user-row->llm-message user-row)])
+      (concat (when user-row [(user-row->llm-message user-row reply)])
               (assistant-row->llm-messages reply)))))
+
+(defn replays-full-context?
+  "Whether the [[history]] of `messages` replays a full `<context>` block, one that holds all of the context. The
+  agent sends that block in the first turn of a conversation. Later turns send only what the user is viewing (see
+  `metabase.metabot.agent.messages/render-context-block`). A history has no full block when the conversation is new,
+  when its first turn failed, or when its earlier turns were stored before the agent stored their blocks: then the
+  next turn sends one."
+  [messages]
+  (boolean (some (fn [turn-rows]
+                   (some-> (replayable-turn turn-rows) :reply stored-context :full))
+                 (rows->turns messages))))
 
 (mu/defn history :- ::metabot.schema/messages
   "Reconstruct a conversation's LLM message history from its live
@@ -643,6 +692,10 @@
       ;; pre-v2 chat shape the FE renders
       (= "output-error" (:state part))
       (assoc :result nil :is_error true))
+
+    ;; the `<context>` block is what the model read, not part of the chat
+    (= context-part-type (:type part))
+    nil
 
     (schema.v2/data-part? part)
     {:id   (str (random-uuid))

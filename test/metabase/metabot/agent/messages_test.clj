@@ -416,3 +416,61 @@
                   claims?    (str/includes? system "have already been loaded into this conversation")
                   preloaded? (boolean (some #(= "load_skill" (:function %)) parts))]
               (is (= claims? preloaded?) (pr-str {:claims? claims? :preloaded? preloaded?})))))))))
+
+(deftest build-message-history-uses-the-kept-context-block-test
+  (let [calls   (atom 0)
+        context {:user_is_viewing [{:type "dashboard" :id 1 :name "Sales"}]}
+        orig    (mt/original-fn #'user-context/enrich-context-for-template)
+        history (fn [block]
+                  (messages/build-message-history
+                   context
+                   (-> (memory/initialize [{:role :user :content "Hello"}] {})
+                       (memory/set-context-block block))))]
+    (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                (fn [ctx] (swap! calls inc) (orig ctx))]
+      (testing "the block memory keeps goes before the message, and no other block is rendered"
+        (is (= [{:role :user :content "<context>kept</context>\nHello"}]
+               (history "<context>kept</context>\n")))
+        (is (zero? @calls)))
+      (testing "a kept nil block means the message gets none"
+        (is (= [{:role :user :content "Hello"}]
+               (history nil)))
+        (is (zero? @calls))))))
+
+(deftest render-context-block-of-a-later-turn-test
+  (let [calls   (atom 0)
+        context {:current_user_time "2026-10-20T10:05:00Z"
+                 :user_is_viewing   [{:type "code_editor" :buffers []}]}
+        memory  (memory/initialize [{:role :user :content "Hello"}] {})
+        orig    (mt/original-fn #'user-context/enrich-context-for-template)]
+    (mt/with-dynamic-fn-redefs [user-context/enrich-context-for-template
+                                (fn [ctx] (swap! calls inc) (orig ctx))]
+      (testing "a later turn's block holds only what the user is viewing, and reads nothing else"
+        (is (= "<context>\n\nThe user is in the code editor but no active buffers are available.\n\n</context>\n"
+               (messages/render-context-block context memory false)))
+        (is (zero? @calls)))
+      (testing "a later turn where the user views nothing sends no block"
+        (is (nil? (messages/render-context-block (dissoc context :user_is_viewing) memory false))))
+      (testing "the first turn's block holds all of the context"
+        (is (re-find #"(?s)^<context>\n\nCurrent date: 2026-10-20T10:05:00Z\n.*code editor"
+                     (messages/render-context-block context memory true)))
+        (is (= 1 @calls))))))
+
+(deftest ^:parallel requests-send-no-text-that-is-only-whitespace-test
+  (testing "the history of earlier turns and the steps of this turn both leave out text that is only whitespace"
+    (is (=? [{:role :user :content "Hi"}
+             {:type :text :text "Hello"}
+             {:role :user :content "Again"}
+             {:type :tool-input :id "c1"}
+             {:type :text :text "Done"}]
+            (messages/build-message-history
+             {}
+             (-> (memory/initialize [{:role :user :content "Hi"}
+                                     {:role :assistant :content "\n\n"}
+                                     {:role :assistant :content "Hello"}
+                                     {:role :user :content "Again"}]
+                                    {})
+                 (memory/set-context-block nil)
+                 (memory/add-step [{:type :text :text " "}
+                                   {:type :tool-input :id "c1" :function "search" :arguments {}}])
+                 (memory/add-step [{:type :text :text "Done"}])))))))
