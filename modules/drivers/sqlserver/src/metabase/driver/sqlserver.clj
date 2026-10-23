@@ -59,6 +59,22 @@
   ["hostNameInCertificate" "iPAddressPreference" "instanceName" "integratedSecurity" "serverCertificate"
    "serverNameAsACE" "serverPreparedStatementDiscardThreshold" "serverSpn" "trustServerCertificate"])
 
+(defmethod driver/file-path-parameters :sqlserver
+  [_driver]
+  {"trustStore"        :read
+   "clientCertificate" :read
+   "clientKey"         :read
+   "serverCertificate" :read
+   "keyStoreLocation"  :read})
+
+(defmethod driver/non-file-path-parameters :sqlserver
+  [_driver]
+  ["cacheBulkCopyMetadata" "hostNameInCertificate" "jaasConfigurationName" "keyStoreAuthentication"
+   "keyStorePrincipalId" "keyStoreSecret" "loginTimeout" "statementPoolingCacheSize" "trustServerCertificate"
+   "trustStorePassword" "trustStoreType" "useDefaultJaasConfig"])
+
+(defmethod driver/additional-options-separators :sqlserver [_driver] #{:semicolon})
+
 (doseq [[feature supported?] {:case-sensitivity-string-filter-options false
                               :connection-impersonation               true
                               :connection-impersonation-requires-role true

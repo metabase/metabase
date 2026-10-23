@@ -963,3 +963,119 @@
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
       (is (= :allow-private
              (startup/def-startup-validation! ::driver.settings/warehouse-allowed-networks))))))
+
+(driver/register! ::url-paths-driver, :abstract? true)
+
+(defmethod driver/file-path-parameters ::url-paths-driver
+  [_driver]
+  {"sslrootcert" :read, "logPath" :write, "allowedLocalPaths" :read-write})
+
+(driver/register! ::semicolon-paths-driver, :abstract? true)
+
+(defmethod driver/file-path-parameters ::semicolon-paths-driver
+  [_driver]
+  {"trustStore" :read})
+
+(defmethod driver/additional-options-separators ::semicolon-paths-driver
+  [_driver]
+  #{:semicolon})
+
+(driver/register! ::either-separator-paths-driver, :abstract? true)
+
+(defmethod driver/file-path-parameters ::either-separator-paths-driver
+  [_driver]
+  {"logpath" :write})
+
+(defmethod driver/additional-options-separators ::either-separator-paths-driver
+  [_driver]
+  #{:ampersand :semicolon})
+
+(defn- path-refusal
+  "The `:access` of the path refusal `thunk` throws, or nil when it throws none."
+  [thunk]
+  (try
+    (thunk)
+    nil
+    (catch clojure.lang.ExceptionInfo e
+      (:access (ex-data e)))))
+
+(deftest validate-connection-file-paths!-test
+  ;; the working directory is readable too, so a value misread as a relative path is not refused by accident
+  (mt/with-temp-env-var-value! [mb-readable-paths (str "/allowed-dir," (System/getProperty "user.dir"))
+                                mb-writable-paths "/writable-dir"]
+    (let [refusal #(path-refusal (fn [] (driver.u/validate-connection-file-paths! %1 %2)))]
+      (testing "a declared parameter is checked as a detail key or in `:additional-options`, in any case"
+        (are [details access] (= access (refusal ::url-paths-driver details))
+          {:sslrootcert "/etc/ca.pem"}                                   :read
+          {:SSLROOTCERT "/etc/ca.pem"}                                   :read
+          {:additional-options "sslrootcert=/etc/ca.pem"}                :read
+          {:additional-options "a=1&SslRootCert=/etc/ca.pem"}            :read
+          {:additional-options "logPath=/allowed-dir/x.log"}             :write
+          {:additional-options "logpath=/writable-dir/x.log"}            nil
+          {:sslrootcert "/allowed-dir/ca.pem"}                           nil
+          {:additional-options "sslrootcert=/allowed-dir/ca.pem&a=/etc"} nil
+          {:additional-options "other=/etc/ca.pem"}                      nil
+          {}                                                             nil))
+      (testing "a percent-encoded value is checked as the client decodes it"
+        (is (= :read (refusal ::url-paths-driver
+                              {:additional-options "sslrootcert=/allowed-dir/..%2F..%2Fetc%2Fpasswd"}))))
+      (testing "a percent-encoded name is matched as the client decodes it"
+        ;; pgjdbc and Snowflake decode each name: `sslr%6Fotcert` is `sslrootcert` to them
+        (is (= :read (refusal ::url-paths-driver {:additional-options "sslr%6Fotcert=/etc/ca.pem"}))))
+      (testing "a parameter smuggled inside another's percent-encoded value is seen"
+        ;; presto-jdbc decodes the whole query string before splitting it, so `%26` is a `&` to it: this is one entry
+        ;; to us and two to the client
+        (is (= :read (refusal ::url-paths-driver {:additional-options "other=a%26sslrootcert%3D%2Fetc%2Fca.pem"}))))
+      (testing "a `file:` URL names the file it points to"
+        ;; mariadb-java-client opens a keystore `trustStore=file:///...` through the URL
+        (is (= :read (refusal ::url-paths-driver {:sslrootcert "file:///etc/ca.pem"})))
+        (is (nil? (refusal ::url-paths-driver {:sslrootcert "file:///allowed-dir/ca.pem"}))))
+      (testing "each entry of a comma-separated list of paths is checked"
+        (is (= :read (refusal ::url-paths-driver {:additional-options "sslrootcert=/allowed-dir/x,/etc"}))))
+      (testing "a parameter the client both reads and writes through has to be in both lists"
+        (is (= :read (refusal ::url-paths-driver {:additional-options "allowedLocalPaths=/writable-dir"})))
+        (is (= :write (refusal ::url-paths-driver {:additional-options "allowedLocalPaths=/allowed-dir"}))))
+      (testing "surrounding whitespace, which a client may trim, does not hide a path"
+        (is (= :read (refusal ::url-paths-driver {:additional-options "sslrootcert= /etc/ca.pem "}))))
+      (testing "every occurrence of a repeated parameter is checked, not just the last"
+        (is (= :read (refusal ::url-paths-driver
+                              {:additional-options "sslrootcert=/etc/ca.pem&sslrootcert=/allowed-dir/ca.pem"}))))
+      (testing "options are split the way the driver's client splits them"
+        (is (= :read (refusal ::semicolon-paths-driver {:additional-options "a=1;trustStore=/etc/ts.jks"})))
+        (is (nil? (refusal ::semicolon-paths-driver {:additional-options "a=1;trustStore=/allowed-dir/ts.jks"})))
+        (testing "on every separator a client accepts, when it accepts more than one"
+          ;; the Redshift client splits on `&` and on `;` alike
+          (is (= :write (refusal ::either-separator-paths-driver {:additional-options "a=1;logpath=/etc"})))
+          (is (= :write (refusal ::either-separator-paths-driver {:additional-options "a=1&logpath=/etc"})))
+          (is (nil? (refusal ::either-separator-paths-driver {:additional-options "a=1&logpath=/writable-dir"})))))
+      (testing "a brace-quoted value is read whole, separators and all"
+        ;; mssql-jdbc reads `{/allowed-dir/x;/../../etc/passwd}` as one value, `/etc/passwd` once normalized
+        (is (= :read (refusal ::semicolon-paths-driver
+                              {:additional-options "trustStore={/allowed-dir/x;/../../../etc/passwd};a=1"}))))
+      (testing "a driver that declares no parameters is not checked"
+        (is (nil? (refusal ::no-tunnel-driver {:sslrootcert "/etc/ca.pem"})))))))
+
+(driver/register! ::must-not-be-consulted-driver, :abstract? true)
+
+(defmethod driver/file-path-parameters ::must-not-be-consulted-driver
+  [_driver]
+  (throw (ex-info "consulted the driver" {})))
+
+(deftest validate-connection-file-paths!-skips-the-driver-when-every-path-is-allowed-test
+  (testing "when every path is readable and writable nothing can be refused, so the driver is not consulted"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/"
+                                  mb-writable-paths "/"]
+      (is (nil? (driver.u/validate-connection-file-paths! ::must-not-be-consulted-driver {:sslrootcert "/etc/ca.pem"})))))
+  (testing "one restricted allowlist is enough for the check to run"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"
+                                  mb-writable-paths "/"]
+      (is (= :read (path-refusal #(driver.u/validate-connection-file-paths! ::url-paths-driver
+                                                                            {:sslrootcert "/etc/ca.pem"})))))))
+
+(deftest file-paths-are-checked-before-a-connection-test-test
+  (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                          (driver.u/can-connect-with-details?
+                           :postgres
+                           {:host "localhost" :port 5432 :dbname "db" :additional-options "sslrootcert=/etc/ca.pem"}
+                           true)))))

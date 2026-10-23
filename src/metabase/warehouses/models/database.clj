@@ -465,10 +465,11 @@
   [:details :write_data_details :admin_details])
 
 (defn- validate-connection-details!
-  "Refuse to store details pointing at a private/internal network address, or setting a connection parameter the driver
-  disallows (see [[driver/disallowed-connection-parameters]]). Enforcing this on the model, and not just on the
-  endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
-  import, config-file provisioning, and destination databases.
+  "Refuse to store details pointing at a private/internal network address, handing the client a local file path
+  outside the readable or writable paths, or setting a connection parameter the driver disallows (see
+  [[driver/disallowed-connection-parameters]]). Enforcing this on the model, and not just on the endpoints that test a
+  connection, covers the routes that write a Database without ever testing it: serialization import, config-file
+  provisioning, and destination databases.
 
   `keys-to-check` names which of [[details-keys]] to look at. An overlay is checked the way
   [[metabase.driver.connection/effective-details]] resolves it -- merged onto `:details` -- since that, and not the
@@ -484,6 +485,7 @@
         (let [details (cond->> details
                         (not= k :details) (merge (:details database)))]
           (driver.u/validate-connection-hosts! engine details)
+          (driver.u/validate-connection-file-paths! engine details)
           (when (driver.impl/registered? engine)
             (driver.u/validate-connection-parameters! engine details)))))))
 

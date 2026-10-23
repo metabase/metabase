@@ -7,7 +7,8 @@
   (:import
    (com.google.common.net InetAddresses)
    (java.io ByteArrayOutputStream InputStream)
-   (java.net Inet6Address InetAddress ProxySelector URI URL)
+   (java.net Inet6Address InetAddress ProxySelector URI URL URLDecoder)
+   (java.nio.charset StandardCharsets)
    (java.util Arrays Locale)
    (org.apache.http HttpHost)
    (org.apache.http.conn DnsResolver)
@@ -240,6 +241,17 @@
                 (= 1 (count (filter #{\:} s))) (subs s 0 (str/index-of s ":"))
                 :else s)]
         (not-empty (str/trim s))))))
+
+(defn percent-decoded
+  "`s` percent-decoded, or nil when that changes nothing or `s` is not valid percent-encoding. Some clients decode a
+  URL parameter before using it and some read it as written; a caller reads `s` both ways by taking this alongside
+  `s` itself, and the nil keeps it from reading the same string twice."
+  [^String s]
+  (try
+    (let [decoded (URLDecoder/decode s StandardCharsets/UTF_8)]
+      (when (not= decoded s)
+        decoded))
+    (catch IllegalArgumentException _ nil)))
 
 (defn ip-literal?
   "Whether `host` is an IP address written out rather than a name that would have to be resolved. Deciding this takes

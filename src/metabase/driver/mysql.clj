@@ -65,6 +65,23 @@
   ["disableSslHostnameVerification" "localSocketAddress" "serverRsaPublicKeyFile" "serverTimezone"
    "tcpNoDelay" "trustServerCertificate" "useServerPrepStmts"])
 
+(defmethod driver/file-path-parameters :mysql
+  [_driver]
+  {"keyStore"                     :read
+   "trustStore"                   :read
+   ;; the legacy MySQL Connector/J names, which mariadb-java-client still accepts as aliases of the two above
+   "clientCertificateKeyStoreUrl" :read
+   "trustCertificateKeyStoreUrl"  :read
+   "serverSslCert"                :read
+   "serverRsaPublicKeyFile"       :read
+   "localSocket"                  :read})
+
+(defmethod driver/non-file-path-parameters :mysql
+  [_driver]
+  ["allowLocalInfile" "cacheCallableStmts" "cachePrepStmts" "callableStmtCacheSize" "keyStorePassword" "keyStoreType"
+   "log" "maxQuerySizeToLog" "nullCatalogMeansCurrent" "prepStmtCacheSize" "prepStmtCacheSqlLimit" "profileSql"
+   "trustServerCertificate" "trustStorePassword" "trustStoreType"])
+
 (def ^:private ^:const min-supported-mysql-version 5.7)
 (def ^:private ^:const min-supported-mariadb-version 10.2)
 

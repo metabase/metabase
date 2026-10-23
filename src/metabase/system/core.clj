@@ -11,6 +11,8 @@
  [metabase.system.paths
   ensure-readable-path!
   ensure-writable-path!
+  every-path-readable?
+  every-path-writable?
   readable-path?
   writable-path?]
  [metabase.system.settings

@@ -52,6 +52,24 @@
   ["ProxyPort" "CFProxyPort" "UseProxy" "UseCFProxy" "UseSystemProxy" "ProxyIgnoreList" "OAuth2RedirectUrlPort"
    "EnableOIDCDiscovery" "OAuthDiscoveryMode"])
 
+(defmethod driver/file-path-parameters :databricks
+  [_driver]
+  {"SSLTrustStore"                    :read
+   "SSLKeyStore"                      :read
+   "Auth_JWT_Key_File"                :read
+   "GoogleCredentialsFile"            :read
+   "LogPath"                          :write
+   ;; local files a `PUT`/`GET` against a volume or staging location may read and write
+   "VolumeOperationAllowedLocalPaths" :read-write
+   "StagingAllowedLocalPaths"         :read-write})
+
+(defmethod driver/non-file-path-parameters :databricks
+  [_driver]
+  ["AllowSelfSignedCerts" "CheckCertRevocation" "EnableDirectResults" "EnableSQLExecDirectResults" "EnableTokenCache"
+   "UseSystemTrustStore" "enableMultipleCatalogSupport" "httppath" "loglevel"])
+
+(defmethod driver/additional-options-separators :databricks [_driver] #{:semicolon})
+
 (doseq [[feature supported?] {:basic-aggregations              true
                               :binning                         true
                               :database-routing                true

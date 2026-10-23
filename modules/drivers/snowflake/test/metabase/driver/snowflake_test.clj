@@ -67,6 +67,17 @@
 
 (set! *warn-on-reflection* true)
 
+(deftest file-path-parameters-must-be-readable-test
+  (testing "a user-supplied file-path connection parameter has to be in the readable paths"
+    (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+      (let [spec #(driver.u/validate-connection-file-paths! :snowflake (merge {:account "a" :db "db" :user "u" :password "p"} %))]
+        (testing "a path outside the allowed directories is refused"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed"
+                                (spec {:private_key_file "/etc/secret.pem"}))))
+        (testing "a path inside one, or none at all, is allowed"
+          (is (nil? (spec {:private_key_file "/allowed-dir/ok.pem"})))
+          (is (nil? (spec {}))))))))
+
 (deftest default-schema-test
   (mt/test-driver :snowflake
     (testing "details naming no schema fall back to PUBLIC, which is how Metabase has always read them"
