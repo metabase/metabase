@@ -52,6 +52,7 @@
    [metabase.osi.ai-context.api]
    [metabase.permissions-rest.api]
    [metabase.premium-features.rest.api]
+   [metabase.prototype.api]
    [metabase.public-sharing-rest.api]
    [metabase.pulse.api]
    [metabase.queries-rest.api]
@@ -258,6 +259,8 @@
    "/permissions"          (+auth 'metabase.permissions-rest.api)
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.rest.api/routes)
+   ;; Prototype: endpoints of the filter prototypes.
+   "/prototype"            (+auth 'metabase.prototype.api)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes

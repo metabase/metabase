@@ -34,6 +34,7 @@ const REGULAR_ITEMS = [
   // Unjustified type cast. FIXME
   USER.first_name as string,
   USER.email,
+  "Prototype settings",
   "Help",
   "Sign out",
 ];

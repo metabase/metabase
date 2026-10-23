@@ -174,6 +174,7 @@ export function FilterPicker({
       isNew={isNewFilter}
       onChange={handleChange}
       onBack={handleBack}
+      onClose={onClose}
       readOnly={readOnly}
     />
   );

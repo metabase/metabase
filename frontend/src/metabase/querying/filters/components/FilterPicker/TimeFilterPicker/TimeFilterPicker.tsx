@@ -10,6 +10,7 @@ import { FilterPickerFooter } from "../FilterPickerFooter";
 import { FilterPickerHeader } from "../FilterPickerHeader";
 import { WIDTH } from "../constants";
 import type { FilterChangeOpts, FilterPickerWidgetProps } from "../types";
+import { useReportDraftFilter } from "../use-report-draft-filter";
 
 import { useTimeFilter } from "./hooks";
 import type { TimeValue } from "./types";
@@ -24,6 +25,7 @@ export function TimeFilterPicker({
   withAddButton,
   withSubmitButton,
   onChange,
+  onDraftChange,
   onBack,
   readOnly,
 }: FilterPickerWidgetProps) {
@@ -47,6 +49,10 @@ export function TimeFilterPicker({
     column,
     filter,
   });
+
+  useReportDraftFilter(onDraftChange, { operator, values }, () =>
+    getFilterClause(operator, values),
+  );
 
   const handleOperatorChange = (newOperator: Lib.TimeFilterOperator) => {
     setOperator(newOperator);
@@ -89,7 +95,7 @@ export function TimeFilterPicker({
       </FilterPickerHeader>
       <Box>
         {valueCount > 0 && (
-          <Flex p="lg">
+          <Flex px="xl" py="lg">
             <TimeValueInput
               autoFocus={autoFocus}
               values={values}
