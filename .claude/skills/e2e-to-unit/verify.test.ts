@@ -187,6 +187,78 @@ describe("mutants", () => {
   });
 });
 
+describe("the shapes a dropped e2e assertion hides behind", () => {
+  const HOOK = `
+export function useThing(isPolling) {
+  const { data, isLoading } = useQuery();
+  const [ack] = useAckMutation();
+  const [ackAll] = useAckAllMutation();
+  return {
+    data: data?.rows ?? [],
+    isLoading,
+    ack,
+    ackAll,
+  };
+}
+`;
+
+  it("mutates each property of a returned object, pass-throughs first", () => {
+    const sourceFile = parseSource("use-thing.ts", HOOK);
+    const fn = functionAtLine(sourceFile, 2);
+    if (!fn) {
+      throw new Error("function not found");
+    }
+    const plans = mutantsForFunction(
+      sourceFile,
+      "use-thing.ts",
+      fn,
+      "useThing",
+      4,
+    );
+    expect(plans.map((plan) => [plan.kind, plan.description])).toEqual([
+      ["object-property-undefined", "property `isLoading` becomes undefined"],
+      ["object-property-undefined", "property `ack` becomes undefined"],
+      ["object-property-undefined", "property `ackAll` becomes undefined"],
+      ["object-property-undefined", "property `data` becomes undefined"],
+    ]);
+  });
+
+  const NAVBAR = `
+export function Navbar({ currentPath }) {
+  return (
+    <nav>
+      {PLUGIN.isEnabled && (
+        <PLUGIN.NavItem currentPath={currentPath} />
+      )}
+    </nav>
+  );
+}
+`;
+
+  it("mutates a JSX element that renders behind a logical and", () => {
+    const sourceFile = parseSource("Navbar.tsx", NAVBAR);
+    const fn = functionAtLine(sourceFile, 2);
+    if (!fn) {
+      throw new Error("function not found");
+    }
+    const plans = mutantsForFunction(sourceFile, "Navbar.tsx", fn, "Navbar", 6);
+    const andPlan = plans.find((plan) => plan.kind === "jsx-and-false");
+    expect(andPlan?.description).toBe(
+      "`PLUGIN.isEnabled && …` renders nothing",
+    );
+    const output = applySchemata(NAVBAR, withIds(plans));
+    expect(output).toContain("? false : (PLUGIN.isEnabled && (");
+    const compiled = ts.transpileModule(output, {
+      compilerOptions: {
+        jsx: ts.JsxEmit.React,
+        target: ts.ScriptTarget.ES2020,
+      },
+      reportDiagnostics: true,
+    });
+    expect(compiled.diagnostics ?? []).toHaveLength(0);
+  });
+});
+
 describe("the mutation ceiling", () => {
   it("keeps what is specific to the deleted test and sets aside shared code", () => {
     const { mutate, shared } = splitByShare(

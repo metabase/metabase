@@ -13,6 +13,8 @@ import ts from "typescript";
 export const MUTANT_GLOBAL = "globalThis.__E2E_MUTANT__";
 
 export type MutantKind =
+  | "object-property-undefined"
+  | "jsx-and-false"
   | "return-undefined"
   | "if-false"
   | "ternary-false"
@@ -21,6 +23,8 @@ export type MutantKind =
   | "string-empty";
 
 const KIND_PRIORITY: MutantKind[] = [
+  "object-property-undefined",
+  "jsx-and-false",
   "return-undefined",
   "if-false",
   "ternary-false",
@@ -167,12 +171,34 @@ interface Candidate {
   statement: boolean;
   mutated: string;
   description: string;
+  /** Orders candidates of one kind; lower goes first. */
+  rank?: number;
 }
 
 const snippet = (text: string, max = 60) => {
   const flat = text.replace(/\s+/g, " ").trim();
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat;
 };
+
+/**
+ * `{flag && <Thing />}` in JSX. None of the other kinds reaches it: the
+ * element is not an if, a ternary or a prop, so a component that stops
+ * rendering a child has no mutant and reads as if nothing could break.
+ */
+function isJsxConditional(node: ts.BinaryExpression): boolean {
+  let parent: ts.Node | undefined = node.parent;
+  while (parent && ts.isParenthesizedExpression(parent)) {
+    parent = parent.parent;
+  }
+  return parent !== undefined && ts.isJsxExpression(parent);
+}
+
+/** Unwraps `({ ... })` so the object inside a parenthesized return is found. */
+function unwrapParens(node: ts.Expression): ts.Expression {
+  return ts.isParenthesizedExpression(node)
+    ? unwrapParens(node.expression)
+    : node;
+}
 
 function candidatesIn(
   sourceFile: ts.SourceFile,
@@ -187,6 +213,7 @@ function candidatesIn(
     mutated: string,
     description: string,
     statement = false,
+    rank = 0,
   ) =>
     out.push({
       kind,
@@ -196,7 +223,44 @@ function candidatesIn(
       statement,
       mutated,
       description,
+      rank,
     });
+
+  /**
+   * One mutant per property of a returned object. A hook that hands back six
+   * things is one expression, so a single `return undefined` mutant dies to an
+   * assertion on any one of them and the other five read as protected.
+   * Properties that forward a value through, written shorthand or as a bare
+   * identifier, go first: those are the ones a unit spec forgets to assert.
+   */
+  const pushObjectProperties = (expression: ts.Expression) => {
+    const object = unwrapParens(expression);
+    if (!ts.isObjectLiteralExpression(object)) {
+      return;
+    }
+    for (const property of object.properties) {
+      if (ts.isShorthandPropertyAssignment(property)) {
+        push(
+          "object-property-undefined",
+          property,
+          `${property.name.getText(sourceFile)}: undefined`,
+          `property \`${property.name.getText(sourceFile)}\` becomes undefined`,
+          false,
+          0,
+        );
+      } else if (ts.isPropertyAssignment(property)) {
+        const forwarded = ts.isIdentifier(property.initializer);
+        push(
+          "object-property-undefined",
+          property.initializer,
+          "undefined",
+          `property \`${property.name.getText(sourceFile)}\` becomes undefined`,
+          false,
+          forwarded ? 0 : 1,
+        );
+      }
+    }
+  };
 
   const visit = (node: ts.Node) => {
     if (ts.isTypeNode(node)) {
@@ -207,6 +271,7 @@ function candidatesIn(
       return;
     }
     if (ts.isReturnStatement(node) && node.expression && own(node)) {
+      pushObjectProperties(node.expression);
       push(
         "return-undefined",
         node.expression,
@@ -218,6 +283,7 @@ function candidatesIn(
       node === fn.node &&
       !ts.isBlock(node.body)
     ) {
+      pushObjectProperties(node.body);
       push(
         "return-undefined",
         node.body,
@@ -266,6 +332,18 @@ function candidatesIn(
         `prop \`${node.name.getText(sourceFile)}\` becomes undefined`,
       );
     } else if (
+      ts.isBinaryExpression(node) &&
+      node.operatorToken.kind === ts.SyntaxKind.AmpersandAmpersandToken &&
+      isJsxConditional(node) &&
+      own(node)
+    ) {
+      push(
+        "jsx-and-false",
+        node,
+        "false",
+        `\`${snippet(text(node.left), 40)} && …\` renders nothing`,
+      );
+    } else if (
       ts.isStringLiteral(node) &&
       own(node) &&
       isStringLiteralCandidate(node)
@@ -298,6 +376,7 @@ export function mutantsForFunction(
   const candidates = candidatesIn(sourceFile, fn).sort(
     (a, b) =>
       KIND_PRIORITY.indexOf(a.kind) - KIND_PRIORITY.indexOf(b.kind) ||
+      (a.rank ?? 0) - (b.rank ?? 0) ||
       a.start - b.start,
   );
   const chosen: MutantPlan[] = [];
