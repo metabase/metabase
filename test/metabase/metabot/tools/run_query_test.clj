@@ -11,6 +11,7 @@
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.recoverable.common :as recoverable.common]
    [metabase.metabot.tools.run-query :as run-query]
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.permissions.core :as perms]
@@ -170,9 +171,9 @@
       (is (= (refusal ::run-query/query-execution-off "Query execution is turned off for Metabot.")
              (call-tool! {:state {:queries {"q1" (venues-by-id)}}} {:query_id "q1"})))))
   (testing "an unknown id lists the ids the model can use"
-    (is (= (refusal ::run-query/unknown-query-id
-                    (str "No query with ID nope. Known query IDs: [q1]. Use the ID of a query that you built, or a "
-                         "saved question or model that the user can read."))
+    (is (= (refusal ::recoverable.common/unknown-query-id
+                    (str "Query \"nope\" was not found. Available query IDs: \"q1\". Use the ID of a query that you "
+                         "built, or a saved question or model that the user can read."))
            (run-tool! {"q1" (venues-by-id)} {:query_id "nope"}))))
   (testing "a SQL query is refused with a pointer to construct_notebook_query while SQL execution is off"
     (mt/with-temporary-setting-values [metabot-sql-execution-enabled? false]
@@ -522,8 +523,8 @@
                (data-lines (:output (run-viewing! [] (str notebook-card)))))))
       (testing "an id with anything but digits names no saved question"
         (doseq [id [(str "+" notebook-card) (str notebook-card " ") (str "0" notebook-card)]]
-          (is (=? {:output #"No query with ID .*\. Known query IDs: \[\]\. .*"
-                   :error  {:code ::run-query/unknown-query-id}}
+          (is (=? {:output #"Query \".*\" was not found\. Available query IDs: none\. .*"
+                   :error  {:code ::recoverable.common/unknown-query-id}}
                   (run-viewing! [] id)))))
       (testing "a viewed question the user can't read is refused like an id that names nothing"
         (mt/with-non-admin-groups-no-root-collection-perms
@@ -865,8 +866,8 @@
                              (call-tool-in-conversation! {:state   {:queries {}}
                                                           :context {:user_is_viewing viewing}}
                                                          {:query_id query-id})))
-          unknown-id     {:output #"No query with ID -?\d+\. Known query IDs: \[\]\. .*"
-                          :error  {:code ::run-query/unknown-query-id}}
+          unknown-id     {:output #"Query \"-?\d+\" was not found\. Available query IDs: none\. .*"
+                          :error  {:code ::recoverable.common/unknown-query-id}}
           metric-refusal (fn [card-id step]
                            (refusal ::run-query/metric-not-runnable
                                     (str "Query ID " card-id " is a metric, and a metric does not run by its ID.")
@@ -969,8 +970,9 @@
 (deftest run-sql-query-tool-refusals-test
   (testing "the SQL-only tool's refusals point at SQL or at telling the user, never at the notebook builder"
     (testing "an unknown id"
-      (is (= (refusal ::run-query/unknown-query-id
-                      "No query with ID nope. Known query IDs: [q1]. A saved question or model has no query ID."
+      (is (= (refusal ::recoverable.common/unknown-query-id
+                      (str "Query \"nope\" was not found. Available query IDs: \"q1\". A saved question or model has "
+                           "no query ID.")
                       (str "To run one, write SQL that reads it with `create_sql_query`, then run that query with "
                            "`run_query`."))
              (run-sql-only-tool! {"q1" (venues-by-id)} {:query_id "nope"}))))
@@ -999,9 +1001,9 @@
       (is (= (refusal ::run-query/sql-not-allowed "This query is SQL, and SQL can't run here." no-values-step)
              (run-sql-only-tool! false {"q1" (mt/native-query {:query "SELECT 1"})} {:query_id "q1"}))))
     (testing "an unknown id"
-      (is (= (refusal ::run-query/unknown-query-id
-                      (str "No query with ID nope. Known query IDs: [q1]. A saved question or model has no query ID, "
-                           "and no SQL can run here.")
+      (is (= (refusal ::recoverable.common/unknown-query-id
+                      (str "Query \"nope\" was not found. Available query IDs: \"q1\". A saved question or model has "
+                           "no query ID, and no SQL can run here.")
                       no-values-step)
              (run-sql-only-tool! false {"q1" (venues-by-id)} {:query_id "nope"}))))
     (testing "a query that is not SQL"
@@ -1014,26 +1016,34 @@
     (is (=? {:structured-output {:query-id "q1" :returned 1}}
             (run-sql-only-tool! {"q1" (mt/native-query {:query "SELECT COUNT(*) FROM VENUES"})} {:query_id "q1"})))))
 
-(deftest run-sql-query-tool-many-query-ids-test
-  (testing "a long list of known IDs is cut to leave room for the recovery step"
-    (let [ids                    (repeatedly 200 u/generate-nano-id)
-          {:keys [output error]} (run-sql-only-tool! (zipmap ids (repeat (venues-by-id))) {:query_id "nope"})
-          [message step]         (str/split-lines output)
-          listed                 (some-> (re-find #"Known query IDs: \[([^\]]*)\] and 100 more\." message)
-                                         second
-                                         (str/split #", "))]
-      (is (= ::run-query/unknown-query-id (:code error)))
-      (is (= 100 (count listed)))
-      (is (every? (set ids) listed))
-      (is (= "To run one, write SQL that reads it with `create_sql_query`, then run that query with `run_query`."
-             step)))))
+(deftest run-query-many-query-ids-test
+  (let [built-or-saved (str "Use the ID of a query that you built, or a saved question or model that the user can "
+                            "read.")
+        write-sql      (str "To run one, write SQL that reads it with `create_sql_query`, then run that query with "
+                            "`run_query`.")]
+    (testing "a long list of known IDs is cut to complete IDs, so the advice after it survives the runtime's cut"
+      (doseq [[id-kind ids]        {"NanoIDs" (repeatedly 200 u/generate-nano-id)
+                                    "UUIDs"   (repeatedly 100 #(str (random-uuid)))}
+              [profile run advice] [["ordinary" run-tool! built-or-saved]
+                                    ["SQL-only" run-sql-only-tool! write-sql]]]
+        (testing (str profile " run_query, " id-kind)
+          (let [{:keys [output error]} (run (zipmap ids (repeat (venues-by-id))) {:query_id "nope"})
+                [_ shown more]         (re-find #"Available query IDs: ([^.]*?)(?: and (\d+) more)?\." output)
+                listed                 (some->> shown (re-seq #"\"([^\"]*)\"") (map second))]
+            (is (= ::recoverable.common/unknown-query-id (:code error)))
+            (is (str/includes? output advice))
+            (is (every? (set ids) listed))
+            (is (= (- (count ids) (count listed)) (some-> more parse-long)))))))
+    (testing "an ID too long to fit is counted rather than cut"
+      (is (str/includes? (:output (run-tool! {(apply str (repeat 5000 "y")) (venues-by-id)} {:query_id "nope"}))
+                         (str "Available query IDs: 1, too long to list. " built-or-saved))))))
 
 (deftest run-sql-query-tool-huge-query-id-test
   (testing "an invented ID is cut to leave room for the recovery step"
     (let [query-id (apply str (repeat 5000 "x"))]
-      (is (= (refusal ::run-query/unknown-query-id
-                      (str "No query with ID " (subs query-id 0 100) ".... Known query IDs: [q1]. A saved question or "
-                           "model has no query ID.")
+      (is (= (refusal ::recoverable.common/unknown-query-id
+                      (str "Query \"" (subs query-id 0 100) "\" was not found. Available query IDs: \"q1\". A saved "
+                           "question or model has no query ID.")
                       (str "To run one, write SQL that reads it with `create_sql_query`, then run that query with "
                            "`run_query`."))
              (run-sql-only-tool! {"q1" (venues-by-id)} {:query_id query-id}))))))
@@ -1078,8 +1088,8 @@
                                            metabot-sql-execution-enabled?   true]
           (binding [scope/*current-user-metabot-permissions* perms
                     scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
-            (is (=? {:output #"(?s)No query with ID \d+\. .*write SQL that reads it with `create_sql_query`.*"
-                     :error  {:code ::run-query/unknown-query-id}}
+            (is (=? {:output #"(?s)Query \"\d+\" was not found\. .*write SQL that reads it with `create_sql_query`.*"
+                     :error  {:code ::recoverable.common/unknown-query-id}}
                     (call-sql-tool-in-conversation! {:state   {:queries {}}
                                                      :context {:user_is_viewing [{:type "question", :id card-id}]}}
                                                     {:query_id (str card-id)})))))))))

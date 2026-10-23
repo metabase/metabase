@@ -16,11 +16,6 @@ interface Threshold {
   pixelHeight?: number;
 }
 
-const HIDE_Y_AXIS_THRESHOLD: Threshold = {
-  gridHeight: 4,
-  pixelHeight: 150,
-};
-
 const HIDE_AXIS_LABELS_THRESHOLD: Threshold = {
   gridWidth: 12,
   gridHeight: 6,
@@ -85,10 +80,6 @@ export const getSizeAdjustedSettings = ({
 
   if (adjusted["graph.x_axis.labels_enabled"] === "auto") {
     adjusted["graph.x_axis.labels_enabled"] = !shouldHideAxisLabels;
-  }
-
-  if (isBelowThreshold(HIDE_Y_AXIS_THRESHOLD, width, height, gridSize)) {
-    adjusted["graph.y_axis.axis_enabled"] = false;
   }
 
   if (

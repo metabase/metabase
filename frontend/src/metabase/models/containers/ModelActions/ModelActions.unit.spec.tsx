@@ -47,6 +47,7 @@ import {
   createMockStructuredDatasetQuery,
   createMockStructuredQuery,
   createMockTable,
+  createMockUser,
 } from "metabase-types/api/mocks";
 import {
   createNativeModelCard as _createNativeModelCard,
@@ -162,6 +163,7 @@ function createMockQueryAction(
   opts?: Partial<WritebackQueryAction>,
 ): WritebackQueryAction {
   return _createMockQueryAction({
+    can_write: true,
     ...opts,
     dataset_query: createMockNativeDatasetQuery({
       native: createMockNativeQuery({ query: TEST_QUERY }),
@@ -178,6 +180,7 @@ type SetupOpts = {
   usedBy?: Card[];
   settings?: Partial<Settings>;
   deferDatabaseList?: boolean;
+  isAdmin?: boolean;
 };
 
 async function setup({
@@ -188,8 +191,10 @@ async function setup({
   usedBy = [],
   settings = {},
   deferDatabaseList = false,
+  isAdmin = true,
 }: SetupOpts) {
   const storeInitialState = createMockState({
+    currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: createMockSettingsState(settings),
   });
   const metadata = createMockMetadata({
@@ -445,19 +450,19 @@ describe("ModelActions", () => {
         expect(await screen.findByTestId("mock-action-editor")).toBeVisible();
       });
 
-      it("allows to archive a query action", async () => {
+      it("allows to delete a query action", async () => {
         const model = getModel();
         const action = createMockQueryAction({ model_id: model.id });
         await setupActions({ model, actions: [action] });
 
         const listItem = screen.getByRole("listitem", { name: action.name });
         await userEvent.click(within(listItem).getByLabelText("ellipsis icon"));
-        await userEvent.click(await screen.findByText("Archive"));
+        await userEvent.click(await screen.findByText("Delete"));
 
         expect(
-          screen.getByRole("heading", { name: /Archive/ }),
+          screen.getByRole("heading", { name: /Delete/ }),
         ).toBeInTheDocument();
-        await userEvent.click(screen.getByRole("button", { name: "Archive" }));
+        await userEvent.click(screen.getByRole("button", { name: "Delete" }));
 
         await waitFor(() =>
           expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
@@ -465,22 +470,17 @@ describe("ModelActions", () => {
 
         expect(
           fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
-            method: "PUT",
+            method: "DELETE",
           }),
         ).toHaveLength(1);
-        const call = fetchMock.callHistory.lastCall(
-          `path:/api/action/${action.id}`,
-          {
+        expect(
+          fetchMock.callHistory.calls(`path:/api/action/${action.id}`, {
             method: "PUT",
-          },
-        );
-        expect(await call?.request?.json()).toEqual({
-          id: action.id,
-          archived: true,
-        });
+          }),
+        ).toHaveLength(0);
       });
 
-      it("doesn't allow to archive an implicit action", async () => {
+      it("doesn't allow to delete an implicit action", async () => {
         const model = getModel();
         const action = createMockImplicitQueryAction({
           model_id: model.id,
@@ -489,7 +489,7 @@ describe("ModelActions", () => {
 
         await openActionMenu(action);
 
-        expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+        expect(screen.queryByText("Delete")).not.toBeInTheDocument();
       });
 
       it("allows to disable implicit actions", async () => {
@@ -524,7 +524,10 @@ describe("ModelActions", () => {
       });
 
       it("doesn't allow to edit actions", async () => {
-        const action = createMockQueryAction({ model_id: modelCard.id });
+        const action = createMockQueryAction({
+          model_id: modelCard.id,
+          can_write: false,
+        });
         await setupActions({ model: modelCard, actions: [action] });
 
         await openActionMenu(action);
@@ -532,13 +535,46 @@ describe("ModelActions", () => {
         expect(await screen.findByText("View")).toBeInTheDocument();
       });
 
-      it("doesn't allow to archive actions", async () => {
-        const action = createMockQueryAction({ model_id: modelCard.id });
+      it("doesn't allow to delete actions", async () => {
+        const action = createMockQueryAction({
+          model_id: modelCard.id,
+          can_write: false,
+        });
         await setupActions({ model: modelCard, actions: [action] });
 
         await openActionMenu(action);
 
-        expect(screen.queryByText("Archive")).not.toBeInTheDocument();
+        expect(screen.queryByText("Delete")).not.toBeInTheDocument();
+      });
+    });
+
+    describe("non-admin with write permissions on the model", () => {
+      const modelCard = getModel();
+
+      it("doesn't allow to create actions", async () => {
+        await setupActions({ model: modelCard, actions: [], isAdmin: false });
+        expect(screen.queryByText("New action")).not.toBeInTheDocument();
+        expect(
+          screen.queryByText("Create basic actions"),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByTestId("actions-menu")).not.toBeInTheDocument();
+      });
+
+      it("doesn't allow to edit or delete actions", async () => {
+        const action = createMockQueryAction({
+          model_id: modelCard.id,
+          can_write: false,
+        });
+        await setupActions({
+          model: modelCard,
+          actions: [action],
+          isAdmin: false,
+        });
+
+        await openActionMenu(action);
+
+        expect(await screen.findByText("View")).toBeInTheDocument();
+        expect(screen.queryByText("Delete")).not.toBeInTheDocument();
       });
     });
 

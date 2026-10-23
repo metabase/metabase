@@ -820,11 +820,12 @@
         (lib/filter (lib/> (lib.metadata/field mp (mt/id :venues :price)) 1)))))
 
 (deftest model-becoming-question-publishes-action-events-test
-  (testing "update-card! announces the actions it archives and deletes when a model becomes a question"
+  (testing "update-card! announces the actions it deletes when a model becomes a question"
     (do-with-model-actions!
-     (fn [{:keys [model-id implicit query]}]
-       (is (= #{[:event/action-update query true]
-                [:event/action-delete implicit false]}
+     (fn [{:keys [model-id implicit query archived]}]
+       (is (= #{[:event/action-delete implicit false]
+                [:event/action-delete query false]
+                [:event/action-delete archived true]}
               (action-events-during! #(update-model! model-id {:type :question}))))))))
 
 (deftest model-query-without-implicit-support-publishes-action-events-test
@@ -851,19 +852,17 @@
       (is (= #{[:event/action-update action-id false]}
              (action-events-during! #(update-model! question-id {:collection_id coll-id})))))))
 
-(deftest model-archive-cascades-to-actions-test
-  (testing "archiving a model archives its actions, and unarchiving it restores only those"
+(deftest model-archive-deletes-actions-test
+  (testing "archiving a model deletes its actions, and unarchiving it brings none back"
     (do-with-model-actions!
      (fn [{:keys [model-id implicit query archived]}]
-       (let [archived-state #(t2/select-pk->fn (juxt :archived :archived_directly) :model/Action :model_id model-id)]
-         (is (= #{[:event/action-update implicit true]
-                  [:event/action-update query true]}
-                (action-events-during! #(update-model! model-id {:archived true}))))
-         (is (= {implicit [true false], query [true false], archived [true true]} (archived-state)))
-         (is (= #{[:event/action-update implicit false]
-                  [:event/action-update query false]}
-                (action-events-during! #(update-model! model-id {:archived false}))))
-         (is (= {implicit [false false], query [false false], archived [true true]} (archived-state))))))))
+       (is (= #{[:event/action-delete implicit false]
+                [:event/action-delete query false]
+                [:event/action-delete archived true]}
+              (action-events-during! #(update-model! model-id {:archived true}))))
+       (is (not (t2/exists? :model/Action :model_id model-id)))
+       (update-model! model-id {:archived false})
+       (is (not (t2/exists? :model/Action :model_id model-id)))))))
 
 (deftest model-actions-follow-model-collection-test
   (testing "the actions of a model are kept in the model's collection"
