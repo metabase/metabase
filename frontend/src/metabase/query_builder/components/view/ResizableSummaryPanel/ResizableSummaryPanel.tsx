@@ -1,7 +1,6 @@
 import { type ReactNode, type SyntheticEvent, useState } from "react";
 import { ResizableBox, type ResizeCallbackData } from "react-resizable";
 
-import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { Box } from "metabase/ui";
 
 import S from "./ResizableSummaryPanel.module.css";
@@ -33,6 +32,8 @@ export function ResizableSummaryPanel({
       ? Math.max(containerWidth - MIN_RESULTS_WIDTH, MIN_PANEL_WIDTH)
       : Infinity;
 
+  const [isResizing, setIsResizing] = useState(false);
+
   const handleResize = (_event: SyntheticEvent, data: ResizeCallbackData) => {
     setWidth(data.size.width);
   };
@@ -46,10 +47,18 @@ export function ResizableSummaryPanel({
       maxConstraints={[maxWidth, 0]}
       axis="x"
       resizeHandles={["w"]}
-      handle={<ResizeHandle handleAxis="w" />}
-      onResizeStart={() => document.body.classList.add(S.isResizing)}
+      handle={
+        <div className={S.handle} data-resizing={isResizing || undefined} />
+      }
+      onResizeStart={() => {
+        setIsResizing(true);
+        document.body.classList.add(S.isResizing);
+      }}
       onResize={handleResize}
-      onResizeStop={() => document.body.classList.remove(S.isResizing)}
+      onResizeStop={() => {
+        setIsResizing(false);
+        document.body.classList.remove(S.isResizing);
+      }}
     >
       <Box className={S.content} data-testid="summary-panel">
         {children}

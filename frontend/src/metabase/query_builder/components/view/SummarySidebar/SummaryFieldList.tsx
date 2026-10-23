@@ -5,7 +5,6 @@ import { t } from "ttag";
 
 import { getColumnIcon } from "metabase/common/utils/columns";
 import { Box, Card, Icon, Text, TextInput, UnstyledButton } from "metabase/ui";
-import { isMac } from "metabase/utils/browser";
 import type { IconName } from "metabase-types/api";
 
 import { MatchedLabel } from "./MatchedLabel";
@@ -179,9 +178,6 @@ export function SummaryFieldList({
             </Text>
           )}
         </Box>
-        <Text className={S.fieldListHint}>
-          {t`Click to swap, ${isMac() ? "⌥" : "Alt"}-click to add`}
-        </Text>
       </Box>
     </Card>
   );

@@ -206,8 +206,8 @@ export function SummarySidebar({
   );
   const { base, definition } = session;
 
-  // the question changed outside the sidebar (e.g. a new filter): summarize it from scratch,
-  // from a fresh held-back count while nothing has run yet
+  // the question changed outside the sidebar: a new filter keeps the summary, built on the filtered
+  // stage; anything else summarizes it from scratch, from a fresh held-back count while nothing has run
   useUpdateEffect(() => {
     setSession((currentSession) => {
       const nextSession = getSummarySession(question, currentSession);

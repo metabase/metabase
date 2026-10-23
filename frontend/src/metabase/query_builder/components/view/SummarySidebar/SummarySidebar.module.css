@@ -1,4 +1,8 @@
+/* the wells column's footer is as tall as the query builder's view footer beside the panel, inside
+   its top border, so the controls along the bottom share one centerline */
 .sidebar {
+  --summary-footer-height: 3rem;
+
   background-color: var(--mb-color-background_page-tertiary);
 }
 
@@ -19,11 +23,11 @@
   min-width: 0;
 }
 
-/* lines up with the wells' insets, and with the field list card's bottom edge */
+/* lines up with the wells' insets */
 .wellsFooter {
   flex-shrink: 0;
-  padding: 0 var(--mantine-spacing-md) var(--mantine-spacing-lg)
-    var(--mantine-spacing-lg);
+  height: var(--summary-footer-height);
+  padding: 0 var(--mantine-spacing-md) 0 var(--mantine-spacing-lg);
 }
 
 /* the field list's half of the panel, collapsing to nothing; the card inside keeps its width and
@@ -157,17 +161,6 @@
 
 .fieldListEmpty {
   padding: var(--mantine-spacing-sm) var(--field-list-gutter);
-  text-wrap: pretty;
-}
-
-/* pinned under the list, with a divider so it doesn't read as one more field. Scoped under
-   .fieldList to win over the Text component's own border reset */
-.fieldList .fieldListHint {
-  flex-shrink: 0;
-  padding-top: var(--mantine-spacing-sm);
-  border-top: 1px solid var(--mb-color-border-neutral);
-  font-size: var(--mantine-font-size-sm);
-  color: var(--mb-color-text-secondary);
   text-wrap: pretty;
 }
 
