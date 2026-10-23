@@ -6,6 +6,7 @@
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.source.protocol :as source.p]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -14,7 +15,8 @@
 (set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :db))
-(use-fixtures :each test-helpers/clean-remote-sync-state test-helpers/commit-with-temp)
+(use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections test-helpers/clean-remote-sync-state test-helpers/commit-with-temp)
 
 (deftest export-keeps-the-plugins-in-the-repository-test
   (search.tu/with-index-disabled
