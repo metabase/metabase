@@ -136,3 +136,27 @@
                  nil
                  (catch clojure.lang.ExceptionInfo e
                    (:status-code (ex-data e))))))))))
+
+(defn- feedback-log-messages!
+  "The INFO and DEBUG messages that [[help-assistant/log-feedback!]] writes for `feedback`."
+  [feedback]
+  (mt/with-log-messages-for-level [messages [metabase.help-assistant.core :debug]]
+    (help-assistant/log-feedback! feedback)
+    (update-vals (group-by :level (messages)) #(mapv :message %))))
+
+(deftest log-feedback-test
+  (testing "the rating and the sources are logged at INFO, and what people typed only at DEBUG"
+    (is (= {:info  ["Help assistant feedback: not helpful. Sources: https://example.com/timezones"]
+            :debug ["Help assistant feedback content:\nQuestion: Why are my dates off?\nComment: The steps are wrong\nAnswer: Check the report timezone."]}
+           (feedback-log-messages! {:positive false
+                                    :comment  "The steps are wrong"
+                                    :question "Why are my dates off?"
+                                    :answer   "Check the report timezone."
+                                    :sources  [{:title "Timezones", :url "https://example.com/timezones"}]}))))
+  (testing "no sources and a blank comment"
+    (is (= {:info  ["Help assistant feedback: helpful. Sources: (none)"]
+            :debug ["Help assistant feedback content:\nQuestion: Why are my dates off?\nComment: (none)\nAnswer: Check the report timezone."]}
+           (feedback-log-messages! {:positive true
+                                    :comment  " "
+                                    :question "Why are my dates off?"
+                                    :answer   "Check the report timezone."})))))
