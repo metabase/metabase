@@ -633,7 +633,7 @@ describe("RemoteSyncSettingsForm", () => {
       });
 
       expect(await screen.findByTestId(NOTE_TEST_ID)).toHaveTextContent(
-        "Scheduled transform runs are paused",
+        "scheduled job runs are paused",
       );
     });
 

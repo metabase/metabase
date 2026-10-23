@@ -15,8 +15,8 @@ type TransformsSchedulingNoteProps = {
 
 /**
  * The API does not tell a stored `transforms-scheduling-enabled` from its
- * derived default. So the note shows unless an env var sets the value, or the
- * saved config is read-write with transforms sync and scheduling is still on.
+ * derived default. Scheduling that is on for a saved read-write config with
+ * transforms sync is therefore an admin override.
  */
 export const TransformsSchedulingNote = ({
   isReadWrite,
@@ -52,7 +52,7 @@ export const TransformsSchedulingNote = ({
       data-testid="remote-sync-transforms-scheduling-note"
     >
       <Text lh="inherit">
-        {t`Scheduled transform runs are paused on an instance that syncs transforms in read-write mode. Manual runs still work. You can turn scheduling back on from the Jobs page.`}
+        {t`When this instance syncs transforms in read-write mode, scheduled job runs are paused, because another instance that reads the same repository is expected to run them. Manual runs still work. To run jobs on schedule here, turn scheduling back on from the Jobs page after you save.`}
       </Text>
     </Alert>
   );
