@@ -86,7 +86,8 @@
   "Payloads that reach every branch of the v1 recovery text.
 
   [[metabase.metabot.tools.recoverable.pipeline/uri-in-source-table!]] and the Agent API's hint for the same code
-  pick their sentence by `:entity-type`."
+  pick their sentence by `:entity-type`. The card hints need `:source-card` and `:source-card-type`, and the
+  structural hint reads `:paths` in Metabot and `:humanized` in the Agent API."
   (concat
    (for [entity-type [nil "metric" "question" "model" "card" "table"]]
      (cond-> {:message "Query failed."}
@@ -94,7 +95,7 @@
    (for [card-type ["model" "question"]]
      {:message "Query failed." :source-card 12 :source-card-type card-type})
    [{:message "Invalid query."
-     :paths "stages[0].filters: invalid type"
+     :paths "stages[0].filters[0]: invalid type"
      :humanized {"stages" [{"filters" ["invalid type"]}]}}]))
 
 (defn- v1-recovery-steps
@@ -141,18 +142,24 @@
                          (map (comp :name tools.legacy/declaration-of))
                          (mapcat :tools (vals @@#'profiles/*profiles)))]
     (is (seq tool-names))
-    (doseq [[code {:keys [uses]}] (v1-recovery-steps)]
+    (doseq [[code {:keys [uses]}] (distinct (v1-recovery-steps))]
       (is (set/subset? uses tool-names)
           (str code " uses tools unavailable to Metabot: " (pr-str (set/difference uses tool-names)))))))
 
 (deftest ^:parallel payload-dependent-recovery-text-is-checked-test
-  (let [texts (set (v1-recovery-texts))]
-    (doseq [card-type ["model" "question"]
-            columns   ["columns" "foreign-key columns"]]
-      (let [text (str "Call `read_resource` with `metabase://" card-type "/12/fields` to list the "
-                      columns " this " card-type " returns.")]
-        (is (contains? texts text) text)))
-    (is (contains? texts "Invalid at stages[0].filters: invalid type. Fix the named paths."))))
+  (testing "the payloads reach the card and structural branches on both surfaces, so the vocabulary check
+           above reads their text"
+    (doseq [[code fragments] {:column-not-returned           ["metabase://model/12" "metabase://question/12"]
+                              :unexportable-fk               ["metabase://model/12" "metabase://question/12"]
+                              :ambiguous-fk                  ["metabase://model/12" "metabase://question/12"]
+                              :invalid-representations-query ["stages[0].filters"]}
+            :let [{:keys [build-fn]} (get (tools.error/recoverables) (keyword declaration-ns (name code)))
+                  metabot   (for [payload pipeline-payloads, step (:recovery (build-fn payload))] (:text step))
+                  agent-api (keep #(v1-hints/recovery-hint (assoc % :error code)) pipeline-payloads)]
+            [surface texts] {"Metabot" metabot, "the Agent API" agent-api}
+            fragment fragments]
+      (is (some #(str/includes? % fragment) texts)
+          (str surface "'s text for " code " never mentions " fragment)))))
 
 (deftest ^:parallel the-vocabulary-check-finds-only-mcp-advice-test
   (testing "MCP v2's own hints trip it, so the test above can't pass vacuously"
