@@ -28,8 +28,7 @@ export function load(app) {
       .map(([key, value]) => `${key}: ${value}`)
       .join("\n");
 
-    // Generate a redirect_from for the old `embedding/api/<Name>` path, which
-    // snippets from older releases (relative `./api/X.md`) and inbound links still use.
+    // Generate a redirect_from for the old `embedding/api/<Name>` path, which inbound links still use.
     const pageName = page.url.replace(/\.html$/, "");
     const redirectBlock =
       pageName && pageName !== "index"

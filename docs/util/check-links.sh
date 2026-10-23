@@ -93,27 +93,49 @@ check_docs() {
 
 # The TypeDoc snippets in docs/embedding/sdk/api/snippets only reach readers through {% include_file %},
 # which lychee doesn't expand, and the config skips docs/embedding/sdk/api. So check their links on their
-# own, the same from every page that includes them: a /docs/latest/... link has to point at a generated
-# docs/.../X.html (and its #anchor), and a relative one fails, since it resolves against the includer.
+# own, the same from every page that includes them. Each non-external link has to be
+# /docs/latest/embedding/sdk/api/<Type>.md, whose generated <Type>.html (and #anchor) has to exist. Anything
+# else fails up front: a relative link resolves against the includer, and lychee would skip other forms.
 check_snippets() {
   echo "Checking links in the SDK snippets"
-  local tmpdir locations rendered report total count
+  local tmpdir links locations rendered report total count location url invalid=0
   tmpdir=$(mktemp -d)
   trap 'rm -rf "$tmpdir"' RETURN
+  links=$tmpdir/links
   locations=$tmpdir/locations
   # The .md extension matters: lychee only looks for markdown links in markdown files.
   rendered=$tmpdir/snippet-links.md
 
   git grep -nIoE '\]\([^)]+\)' -- docs/embedding/sdk/api/snippets |
-    sed -E 's/\]\((.*)\)$/\1/' | grep -vE '^[^:]+:[0-9]+:https?://' > "$locations" || true
-  sed -E "s#^[^:]+:[0-9]+:(.*)\$#- [snippet](\1)#; s#\]\(/docs/latest/#]($site/docs/latest/#" "$locations" > "$rendered"
+    sed -E 's/\]\((.*)\)$/\1/' | grep -vE '^[^:]+:[0-9]+:https?://' > "$links" || true
+  if [ ! -s "$links" ]; then
+    echo "No links found in docs/embedding/sdk/api/snippets" >&2
+    return 1
+  fi
+
+  local api_link='^[^:]+:[0-9]+:/docs/latest/embedding/sdk/api/[A-Za-z0-9_]+\.md(#[a-z0-9-]+)?$'
+  while IFS= read -r line; do
+    invalid=$((invalid + 1))
+    location=$(cut -d: -f1,2 <<<"$line")
+    url=$(cut -d: -f3- <<<"$line")
+    echo "$location: $url: not a /docs/latest/embedding/sdk/api/<Type>.md link"
+    if [ -n "${LINKS_REPORT:-}" ]; then
+      echo "$location: $url: not a /docs/latest/embedding/sdk/api/<Type>.md link" >> "$LINKS_REPORT"
+    fi
+    if [ -n "${GITHUB_ACTIONS:-}" ]; then
+      echo "::error file=${location%:*},line=${location##*:}::$url: not a /docs/latest/embedding/sdk/api/<Type>.md link"
+    fi
+  done < <(grep -vE "$api_link" "$links" || true)
+  grep -E "$api_link" "$links" > "$locations" || true
+  sed -E "s#^[^:]+:[0-9]+:(.*)\$#- [snippet]($site\1)#" "$locations" > "$rendered"
 
   report=$(lychee --config ./.lychee/config.toml --offline --include-fragments=full --no-progress \
                   --format json --include '^https?://(www\.)?metabase\.com/docs/latest/' \
-                  --remap "^https?://(www\.)?metabase\.com/docs/latest/([^#?]+)\.md(#.*)?\$ file://$PWD/docs/\$2.html\$3" \
+                  --remap "^https?://(www\.)?metabase\.com/docs/latest/([^#]+)\.md(#.*)?\$ file://$PWD/docs/\$2.html\$3" \
                   "$rendered" || true)
   print_failures "$report" "$locations" || return 1
-  echo "Checked $total links in the SDK snippets, $count broken"
+  count=$((count + invalid))
+  echo "Checked $((total + invalid)) links in the SDK snippets, $count broken"
   [ "$count" -eq 0 ]
 }
 

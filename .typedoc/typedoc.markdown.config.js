@@ -11,7 +11,7 @@ const markdownConfig = {
   out: "../docs/embedding/sdk/api/snippets",
   cleanOutputDir: true,
   entryFileName: "index",
-  publicPath: "/docs/latest/embedding/sdk/api/",
+  publicPath: "./api/",
   flattenOutputFiles: false,
   hideBreadcrumbs: true,
   useCodeBlocks: true,
