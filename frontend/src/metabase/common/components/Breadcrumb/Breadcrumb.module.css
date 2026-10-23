@@ -3,6 +3,12 @@
   font-size: 0.875em;
 }
 
+/* Crumbs get equal shares of the trail, capped at their own width, so the longest crumbs truncate first */
+.trail > .breadcrumb {
+  flex: 1 1 0;
+  max-width: max-content;
+}
+
 .content {
   --color: var(--mb-color-text-disabled);
   --active-color: var(--mb-color-core-brand);
