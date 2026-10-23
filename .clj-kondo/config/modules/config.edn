@@ -115,7 +115,7 @@
            remote-sync
            search
            settings
-           users
+           users.schema
            util
            warehouse-schema-overlay
            warehouses}
@@ -309,6 +309,7 @@
            permissions
            premium-features
            users
+           users.schema
            util}
    :model-exports #{:model/ApiKey :model/ApiKeyUsageLog}
    :model-imports #{:model/User}}
@@ -714,7 +715,7 @@
    :uses #{app-db
            lib.schema
            models
-           users
+           users.schema
            util}
    :model-exports #{:model/ModerationReview}
    :model-imports #{:model/Card :model/Dashboard :model/User}}
@@ -1488,7 +1489,7 @@
            premium-features
            remote-sync
            search
-           users
+           users.schema
            util
            warehouse-schema-overlay
            warehouses.schema}
@@ -1843,7 +1844,7 @@
            permissions
            premium-features
            remote-sync
-           users
+           users.schema
            util}
    :model-exports #{:model/NativeQuerySnippet}
    :model-imports #{:model/Collection :model/User}}
@@ -1884,6 +1885,7 @@
            task.history
            tracing
            users
+           users.schema
            util
            util.config}
    :model-exports #{:model/Notification
@@ -1976,7 +1978,7 @@
            remote-sync
            settings
            tracing
-           users
+           users.schema
            util
            util.config
            warehouse-schema-overlay
@@ -2590,7 +2592,7 @@
            premium-features
            remote-sync
            search
-           users
+           users.schema
            util
            warehouse-schema-overlay
            warehouses.schema}
@@ -2805,7 +2807,7 @@
            request
            request.schema
            session.login-history
-           users
+           users.schema
            util}
    :model-exports #{:model/AuthIdentity}
    :model-imports #{:model/Session :model/User}}
@@ -3209,12 +3211,12 @@
 
   users
   {:team "UX West"
-   :module-exports #{users.tenants}
+   :module-exports #{users.schema
+                     users.tenants}
    :api  #{metabase.users.core
            metabase.users.init
            metabase.users.models.user
            metabase.users.models.user-parameter-value
-           metabase.users.schema
            metabase.users.settings}
    :uses #{analytics
            api
@@ -3230,6 +3232,7 @@
            setup
            sso.auth-identity
            system
+           users.schema
            users.tenants
            util
            util.config
@@ -3260,6 +3263,7 @@
            sso.auth-identity
            system
            users
+           users.schema
            users.tenants
            util
            util.config
@@ -3270,6 +3274,11 @@
                     :model/LoginHistory
                     :model/Session
                     :model/User}}
+
+  users.schema
+  {:team "UX West"
+   :api  #{metabase.users.schema}
+   :uses #{lib.schema util}}
 
   users.tenants
   {:team "Admin Webapp"
@@ -3562,6 +3571,7 @@
            sso.auth-identity
            sync
            users
+           users.schema
            util
            warehouses}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
@@ -4250,6 +4260,7 @@
            query-processor
            request
            users
+           users.schema
            users.tenants
            util
            warehouse-schema-overlay
@@ -4501,7 +4512,7 @@
            server
            settings
            system
-           users
+           users.schema
            util}
    :model-imports #{:model/ApiKey
                     :model/PermissionsGroup
@@ -4539,7 +4550,7 @@
            sso.auth-identity
            system
            task
-           users
+           users.schema
            util}
    :model-imports #{:model/AuthIdentity :model/Session :model/User}}
 
