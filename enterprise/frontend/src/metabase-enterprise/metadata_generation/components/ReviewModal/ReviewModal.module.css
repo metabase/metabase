@@ -26,7 +26,7 @@
   color: var(--mb-color-text-secondary);
 }
 
-/* The suggestions card with a grip over each vertical border. */
+/* The proposals card with a grip over each vertical border. */
 .resizable {
   position: relative;
   display: flex;
@@ -60,42 +60,42 @@
   border-right-color: var(--mb-color-border-neutral-strong);
 }
 
-.suggestions {
+.proposals {
   flex: 1;
   min-height: 0;
 }
 
 /* Rows grow with their inputs: TreeTable sets a fixed height inline. */
-.suggestionRow {
+.proposalRow {
   height: auto !important;
   min-height: 44px;
 }
 
 /* Cells hold inputs and badges, so they wrap instead of truncating. */
-.suggestionCell {
+.proposalCell {
   white-space: normal;
 }
 
 /* Rows are neither selectable nor navigable, so they don't highlight. */
-.card .suggestions .suggestionRow:hover,
-.card .suggestions .suggestionRow:focus:not([data-disabled]),
-.card .suggestions .suggestionRowActive,
-.card .suggestions .suggestionRowActive:hover {
+.card .proposals .proposalRow:hover,
+.card .proposals .proposalRow:focus:not([data-disabled]),
+.card .proposals .proposalRowActive,
+.card .proposals .proposalRowActive:hover {
   background-color: transparent;
 }
 
-.card .suggestions .suggestionRow[data-human-set="true"] {
+.card .proposals .proposalRow[data-human-set="true"] {
   background-color: var(--mb-color-background_surface-warning);
 }
 
 /* A header row naming the field of the rows below it. */
-.card .suggestions .suggestionRow[data-group="true"] {
+.card .proposals .proposalRow[data-group="true"] {
   height: 40px !important;
   min-height: 40px;
   background-color: var(--mb-color-background_page-secondary);
 }
 
-.card .suggestions .suggestionRow[data-group="true"] .suggestionCell {
+.card .proposals .proposalRow[data-group="true"] .proposalCell {
   overflow: visible;
 }
 

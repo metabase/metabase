@@ -58,6 +58,7 @@ import type {
   ConcreteTableId,
   DatabaseId,
   FieldId,
+  MetadataGenerationApplyFailure,
   MetadataGenerationApplyResult,
   MetadataGenerationProposal,
   MetadataGenerationProposalTable,
@@ -71,38 +72,38 @@ import { FieldDetailsPane } from "./FieldDetailsPane";
 import S from "./ReviewModal.module.css";
 import {
   DESCRIPTION_MAX_LENGTH,
-  type SuggestionEdits,
-  type SuggestionSelection,
+  type ProposalEdits,
+  type ProposalSelection,
   type TableCheckboxState,
-  formatSuggestionValue,
+  formatProposalValue,
   getApplyFailureReasonLabel,
   getApplyRequestBody,
   getApplySummary,
   getBulkDecidable,
   getFieldLabel,
   getHumanSetPendingCount,
-  getSuggestionValue,
+  getProposalValue,
   getTableCheckboxState,
   getTableLabel,
   isFieldDataSensitivity,
   isHumanSet,
-  isSuggestionEdited,
+  isProposalEdited,
   setEdit,
   setSelected,
 } from "./utils";
 
 type ReviewModalProps = {
-  /** The review lists the pending suggestions of every table of this database, whatever run made them. */
+  /** The review lists the pending proposals of every table of this database, whatever run made them. */
   databaseId: DatabaseId;
   /** The run that "Regenerate suggestions" repeats when there is nothing to review. */
   latestRunId?: MetadataGenerationRunId | null;
   opened: boolean;
   onClose: () => void;
-  /** Called with the new run after the person regenerates the suggestions. */
+  /** Called with the new run after the person regenerates the proposals. */
   onRegenerate?: (run: MetadataGenerationRun) => void;
-  /** Called when the person is done and there are no suggestions. */
+  /** Called when the person is done and there are no proposals. */
   onDone?: () => void;
-  /** Called after every suggestion of the database is discarded. */
+  /** Called after every proposal of the database is discarded. */
   onDiscard?: () => void;
 };
 
@@ -248,8 +249,8 @@ function useRegenerate(
 }
 
 type ReviewDraft = {
-  selection: SuggestionSelection;
-  edits: SuggestionEdits;
+  selection: ProposalSelection;
+  edits: ProposalEdits;
 };
 
 const EMPTY_DRAFT: ReviewDraft = {
@@ -260,16 +261,16 @@ const EMPTY_DRAFT: ReviewDraft = {
 type ReviewDraftState = ReviewDraft & {
   /** Ticks or unticks `suggestions`. */
   select: (
-    suggestions: MetadataGenerationProposal[],
+    proposals: MetadataGenerationProposal[],
     isSelected: boolean,
   ) => void;
-  /** Sets the edited value of a suggestion, or clears it with `null`, and ticks the suggestion. */
-  edit: (suggestion: MetadataGenerationProposal, value: string | null) => void;
+  /** Sets the edited value of a proposal, or clears it with `null`, and ticks the proposal. */
+  edit: (proposal: MetadataGenerationProposal, value: string | null) => void;
   reset: () => void;
 };
 
 /**
- * The review of a database before apply: the ticked suggestions and the edited values. It lives only in this
+ * The review of a database before apply: the ticked proposals and the edited values. It lives only in this
  * component, so no request is sent until apply, and a reload or another database starts from nothing.
  */
 function useReviewDraft(databaseId: DatabaseId): ReviewDraftState {
@@ -286,19 +287,19 @@ function useReviewDraft(databaseId: DatabaseId): ReviewDraftState {
   );
 
   const select = useCallback(
-    (suggestions: MetadataGenerationProposal[], isSelected: boolean) =>
+    (proposals: MetadataGenerationProposal[], isSelected: boolean) =>
       update((current) => ({
         ...current,
-        selection: setSelected(current.selection, suggestions, isSelected),
+        selection: setSelected(current.selection, proposals, isSelected),
       })),
     [update],
   );
 
   const edit = useCallback(
-    (suggestion: MetadataGenerationProposal, value: string | null) =>
+    (proposal: MetadataGenerationProposal, value: string | null) =>
       update((current) => ({
-        selection: setSelected(current.selection, [suggestion], true),
-        edits: setEdit(current.edits, suggestion.id, value),
+        selection: setSelected(current.selection, [proposal], true),
+        edits: setEdit(current.edits, proposal.id, value),
       })),
     [update],
   );
@@ -347,14 +348,18 @@ function ReviewContent({
       {humanSetPending > 0 && (
         <Text size="sm" c="text-secondary">
           {ngettext(
-            msgid`${humanSetPending} suggestion would replace a value a person set. Accept it one by one.`,
-            `${humanSetPending} suggestions would replace values a person set. Accept them one by one.`,
+            msgid`${humanSetPending} suggestion would replace a value a person set. Select it on its own row to accept it.`,
+            `${humanSetPending} suggestions would replace values a person set. Select them one by one to accept them.`,
             humanSetPending,
           )}
         </Text>
       )}
       {applyResult && (
-        <ApplyResult result={applyResult} onDismiss={onDismissApplyResult} />
+        <ApplyResult
+          databaseId={databaseId}
+          result={applyResult}
+          onDismiss={onDismissApplyResult}
+        />
       )}
       <Flex gap="lg" h="65vh" mih={0}>
         <ScrollArea style={{ flex: `0 0 ${listWidth}px` }}>
@@ -463,7 +468,7 @@ type ResizeHandleProps = {
   onDrag: (deltaX: number) => void;
 };
 
-/** An invisible grip over one vertical border of the suggestions card. */
+/** An invisible grip over one vertical border of the proposals card. */
 function ResizeHandle({
   side,
   onHoverChange,
@@ -586,18 +591,25 @@ function ReviewActions({
         disabled={selectedCount === 0}
         onClick={handleApply}
       >
-        {t`Apply ${selectedCount} selected`}
+        {ngettext(
+          msgid`Apply ${selectedCount} suggestion`,
+          `Apply ${selectedCount} suggestions`,
+          selectedCount,
+        )}
       </Button>
     </>
   );
 }
 
 type ApplyResultProps = {
+  databaseId: DatabaseId;
   result: MetadataGenerationApplyResult;
   onDismiss: () => void;
 };
 
-function ApplyResult({ result, onDismiss }: ApplyResultProps) {
+function ApplyResult({ databaseId, result, onDismiss }: ApplyResultProps) {
+  const fieldLabels = useFieldLabels(databaseId, result.failures.length > 0);
+
   return (
     <Stack
       gap="xs"
@@ -626,15 +638,49 @@ function ApplyResult({ result, onDismiss }: ApplyResultProps) {
           </Text>
           {result.failures.map((failure) => (
             <Text key={failure.proposal_id} size="sm">
-              {failure.field_id != null && failure.attribute != null
-                ? t`Field ${failure.field_id}, ${getAttributeLabel(failure.attribute)}: ${getApplyFailureReasonLabel(failure.reason)}`
-                : getApplyFailureReasonLabel(failure.reason)}
+              {getApplyFailureLabel(failure, fieldLabels)}
             </Text>
           ))}
         </Stack>
       )}
     </Stack>
   );
+}
+
+/** The labels of the fields that have pending proposals in the database, by field id. */
+function useFieldLabels(
+  databaseId: DatabaseId,
+  isEnabled: boolean,
+): Map<FieldId, string> {
+  const { data: proposals } = useListMetadataGenerationProposalsQuery(
+    isEnabled ? { database_id: databaseId } : skipToken,
+  );
+  return useMemo(
+    () =>
+      new Map(
+        (proposals ?? []).map((proposal) => [
+          proposal.field_id,
+          getFieldLabel(proposal),
+        ]),
+      ),
+    [proposals],
+  );
+}
+
+function getApplyFailureLabel(
+  failure: MetadataGenerationApplyFailure,
+  fieldLabels: Map<FieldId, string>,
+): string {
+  const reason = getApplyFailureReasonLabel(failure.reason);
+  if (failure.attribute == null) {
+    return reason;
+  }
+  const attribute = getAttributeLabel(failure.attribute);
+  const field =
+    failure.field_id != null ? fieldLabels.get(failure.field_id) : undefined;
+  return field != null
+    ? t`${field}, ${attribute}: ${reason}`
+    : t`${attribute}: ${reason}`;
 }
 
 type TableListProps = {
@@ -664,8 +710,8 @@ function TableList({
             table.human_set_pending > 0 ? (
               <Tooltip
                 label={ngettext(
-                  msgid`${table.human_set_pending} value set by a person needs a decision`,
-                  `${table.human_set_pending} values set by a person need a decision`,
+                  msgid`${table.human_set_pending} suggestion would replace a value a person set`,
+                  `${table.human_set_pending} suggestions would replace values a person set`,
                   table.human_set_pending,
                 )}
               >
@@ -698,13 +744,13 @@ type TableReviewProps = {
   onToggleFieldDetails: (fieldId: FieldId) => void;
 };
 
-type SuggestionRowNode = {
+type ProposalRowNode = {
   id: string;
-  kind: "suggestion";
-  suggestion: MetadataGenerationProposal;
+  kind: "proposal";
+  proposal: MetadataGenerationProposal;
 };
 
-/** A header row naming the field of the suggestion rows below it. */
+/** A header row naming the field of the proposal rows below it. */
 type GroupRowNode = {
   id: string;
   kind: "group";
@@ -712,7 +758,7 @@ type GroupRowNode = {
   label: string;
 };
 
-type SuggestionNode = SuggestionRowNode | GroupRowNode;
+type ProposalNode = ProposalRowNode | GroupRowNode;
 
 function TableReview({
   table,
@@ -724,40 +770,40 @@ function TableReview({
   const { selection, edits, select, edit } = draft;
   const [query, setQuery] = useState("");
   const {
-    data: suggestions,
+    data: proposals,
     error,
     isLoading,
   } = useListMetadataGenerationProposalsQuery({ table_id: table.table_id });
 
-  // Group by field when any field has more than one suggestion.
+  // Group by field when any field has more than one proposal.
   const isGrouped = useMemo(
-    () => hasFieldWithSeveralSuggestions(suggestions ?? []),
-    [suggestions],
+    () => hasFieldWithSeveralProposals(proposals ?? []),
+    [proposals],
   );
   const rows = useMemo(
     () =>
       getNodes(
-        (suggestions ?? []).filter((suggestion) =>
-          matchesQuery(suggestion, edits, query),
+        (proposals ?? []).filter((proposal) =>
+          matchesQuery(proposal, edits, query),
         ),
         isGrouped,
       ),
-    [suggestions, edits, query, isGrouped],
+    [proposals, edits, query, isGrouped],
   );
   const [sticky, setSticky] = useState<StickyHeader | null>(null);
   const tableCheckbox = useMemo(
-    () => getTableCheckboxState(suggestions ?? [], selection),
-    [suggestions, selection],
+    () => getTableCheckboxState(proposals ?? [], selection),
+    [proposals, selection],
   );
-  const bulkSuggestions = useMemo(
-    () => getBulkDecidable(suggestions ?? []),
-    [suggestions],
+  const bulkProposals = useMemo(
+    () => getBulkDecidable(proposals ?? []),
+    [proposals],
   );
   const columns = useMemo(
     () =>
       getColumns({
         tableCheckbox,
-        bulkSuggestions,
+        bulkProposals,
         isGrouped,
         selection,
         edits,
@@ -768,7 +814,7 @@ function TableReview({
       }),
     [
       tableCheckbox,
-      bulkSuggestions,
+      bulkProposals,
       isGrouped,
       selection,
       edits,
@@ -778,7 +824,7 @@ function TableReview({
       onToggleFieldDetails,
     ],
   );
-  const instance = useTreeTableInstance<SuggestionNode>({
+  const instance = useTreeTableInstance<ProposalNode>({
     data: rows,
     columns,
     getNodeId: (node) => node.id,
@@ -823,15 +869,15 @@ function TableReview({
             </Text>
           </Box>
         )}
-        {suggestions != null && (
+        {proposals != null && (
           <TreeTable
             instance={instance}
             hierarchical={false}
             classNames={{
-              root: S.suggestions,
-              row: S.suggestionRow,
-              rowActive: S.suggestionRowActive,
-              cell: S.suggestionCell,
+              root: S.proposals,
+              row: S.proposalRow,
+              rowActive: S.proposalRowActive,
+              cell: S.proposalCell,
             }}
             ariaLabel={t`Suggestions of ${getTableLabel(table)}`}
             getRowProps={getRowProps}
@@ -861,8 +907,8 @@ type StickyHeader = {
  * showing it changes no layout and moves no scroll position.
  */
 function useStickyGroupHeader(
-  instance: TreeTableInstance<SuggestionNode>,
-  rows: SuggestionNode[],
+  instance: TreeTableInstance<ProposalNode>,
+  rows: ProposalNode[],
   onChange: (sticky: StickyHeader | null) => void,
 ) {
   const instanceRef = useRef(instance);
@@ -898,7 +944,7 @@ function useStickyGroupHeader(
 
 /** The last header row at or above `topItem` whose own row has started to leave the viewport. */
 function getScrolledPastGroup(
-  centerRows: Row<SuggestionNode>[],
+  centerRows: Row<ProposalNode>[],
   topItem: VirtualItem | undefined,
   scrollTop: number,
 ): GroupRowNode | null {
@@ -920,45 +966,45 @@ function getScrolledPastGroup(
   return null;
 }
 
-function hasFieldWithSeveralSuggestions(
-  suggestions: MetadataGenerationProposal[],
+function hasFieldWithSeveralProposals(
+  proposals: MetadataGenerationProposal[],
 ): boolean {
   const counts = new Map<FieldId, number>();
-  for (const { field_id } of suggestions) {
+  for (const { field_id } of proposals) {
     counts.set(field_id, (counts.get(field_id) ?? 0) + 1);
   }
   return [...counts.values()].some((count) => count > 1);
 }
 
-/** The rows of the table: suggestions, each field's run of them led by a header row when `isGrouped`. */
+/** The rows of the table: proposals, each field's run of them led by a header row when `isGrouped`. */
 function getNodes(
-  suggestions: MetadataGenerationProposal[],
+  proposals: MetadataGenerationProposal[],
   isGrouped: boolean,
-): SuggestionNode[] {
-  return suggestions.flatMap((suggestion, index, all) => {
-    const row: SuggestionRowNode = {
-      id: `suggestion-${suggestion.id}`,
-      kind: "suggestion",
-      suggestion,
+): ProposalNode[] {
+  return proposals.flatMap((proposal, index, all) => {
+    const row: ProposalRowNode = {
+      id: `proposal-${proposal.id}`,
+      kind: "proposal",
+      proposal,
     };
     const isFirstOfField =
-      index === 0 || all[index - 1].field_id !== suggestion.field_id;
+      index === 0 || all[index - 1].field_id !== proposal.field_id;
     if (!isGrouped || !isFirstOfField) {
       return [row];
     }
     const group: GroupRowNode = {
-      id: `field-${suggestion.field_id}`,
+      id: `field-${proposal.field_id}`,
       kind: "group",
-      fieldId: suggestion.field_id,
-      label: getFieldLabel(suggestion),
+      fieldId: proposal.field_id,
+      label: getFieldLabel(proposal),
     };
     return [group, row];
   });
 }
 
 function matchesQuery(
-  suggestion: MetadataGenerationProposal,
-  edits: SuggestionEdits,
+  proposal: MetadataGenerationProposal,
+  edits: ProposalEdits,
   query: string,
 ): boolean {
   const needle = query.trim().toLowerCase();
@@ -966,19 +1012,16 @@ function matchesQuery(
     return true;
   }
   const haystack = [
-    suggestion.field_name,
-    suggestion.field_display_name,
-    getAttributeLabel(suggestion.attribute),
-    formatSuggestionValue(suggestion.attribute, suggestion.current_value),
-    formatSuggestionValue(
-      suggestion.attribute,
-      getSuggestionValue(suggestion, edits),
-    ),
+    proposal.field_name,
+    proposal.field_display_name,
+    getAttributeLabel(proposal.attribute),
+    formatProposalValue(proposal.attribute, proposal.current_value),
+    formatProposalValue(proposal.attribute, getProposalValue(proposal, edits)),
   ];
   return haystack.some((text) => text?.toLowerCase().includes(needle));
 }
 
-function getRowProps(row: Row<SuggestionNode>): Record<string, unknown> {
+function getRowProps(row: Row<ProposalNode>): Record<string, unknown> {
   const node = row.original;
   if (node.kind === "group") {
     return {
@@ -988,34 +1031,34 @@ function getRowProps(row: Row<SuggestionNode>): Record<string, unknown> {
   }
   return {
     "data-testid": "metadata-generation-suggestion",
-    "data-human-set": isHumanSet(node.suggestion),
+    "data-human-set": isHumanSet(node.proposal),
   };
 }
 
 type ColumnOptions = {
   tableCheckbox: TableCheckboxState;
-  /** The suggestions that the table checkbox ticks and unticks. */
-  bulkSuggestions: MetadataGenerationProposal[];
+  /** The proposals that the table checkbox ticks and unticks. */
+  bulkProposals: MetadataGenerationProposal[];
   isGrouped: boolean;
-  selection: SuggestionSelection;
-  edits: SuggestionEdits;
+  selection: ProposalSelection;
+  edits: ProposalEdits;
   select: ReviewDraftState["select"];
   edit: ReviewDraftState["edit"];
   detailFieldId: FieldId | null;
   onToggleFieldDetails: (fieldId: FieldId) => void;
 };
 
-type SuggestionCell = (suggestion: MetadataGenerationProposal) => ReactNode;
+type ProposalCell = (proposal: MetadataGenerationProposal) => ReactNode;
 
-/** A cell that renders for suggestion rows only; group rows leave it empty. */
-function suggestionCell(render: SuggestionCell) {
-  return ({ row }: { row: Row<SuggestionNode> }) =>
-    row.original.kind === "suggestion" ? render(row.original.suggestion) : null;
+/** A cell that renders for proposal rows only; group rows leave it empty. */
+function proposalCell(render: ProposalCell) {
+  return ({ row }: { row: Row<ProposalNode> }) =>
+    row.original.kind === "proposal" ? render(row.original.proposal) : null;
 }
 
 function getColumns({
   tableCheckbox,
-  bulkSuggestions,
+  bulkProposals,
   isGrouped,
   selection,
   edits,
@@ -1023,13 +1066,13 @@ function getColumns({
   edit,
   detailFieldId,
   onToggleFieldDetails,
-}: ColumnOptions): TreeTableColumnDef<SuggestionNode>[] {
-  const fieldColumn: TreeTableColumnDef<SuggestionNode> = {
+}: ColumnOptions): TreeTableColumnDef<ProposalNode>[] {
+  const fieldColumn: TreeTableColumnDef<ProposalNode> = {
     id: "field",
     header: t`Field`,
     width: 180,
-    cell: suggestionCell((suggestion) => {
-      const fieldLabel = getFieldLabel(suggestion);
+    cell: proposalCell((proposal) => {
+      const fieldLabel = getFieldLabel(proposal);
       return (
         <Text fw="bold" title={fieldLabel} truncate>
           {fieldLabel}
@@ -1051,7 +1094,7 @@ function getColumns({
               checked={tableCheckbox.checked}
               indeterminate={tableCheckbox.indeterminate}
               disabled={tableCheckbox.disabled}
-              onChange={() => select(bulkSuggestions, !tableCheckbox.checked)}
+              onChange={() => select(bulkProposals, !tableCheckbox.checked)}
             />
           </Box>
         </Tooltip>
@@ -1069,8 +1112,8 @@ function getColumns({
         }
         return (
           <AcceptCell
-            suggestion={node.suggestion}
-            isChecked={selection.has(node.suggestion.id)}
+            proposal={node.proposal}
+            isChecked={selection.has(node.proposal.id)}
             select={select}
           />
         );
@@ -1081,8 +1124,8 @@ function getColumns({
       id: "attribute",
       header: t`Attribute`,
       width: 150,
-      cell: suggestionCell((suggestion) => {
-        const attributeLabel = getAttributeLabel(suggestion.attribute);
+      cell: proposalCell((proposal) => {
+        const attributeLabel = getAttributeLabel(proposal.attribute);
         return (
           <Text title={attributeLabel} truncate>
             {attributeLabel}
@@ -1094,17 +1137,15 @@ function getColumns({
       id: "current",
       header: t`Current value`,
       width: 180,
-      cell: suggestionCell((suggestion) => (
-        <CurrentValue suggestion={suggestion} />
-      )),
+      cell: proposalCell((proposal) => <CurrentValue proposal={proposal} />),
     },
     {
       id: "proposed",
-      header: t`Proposed`,
+      header: t`Suggested`,
       minWidth: 440,
-      cell: suggestionCell((suggestion) => (
+      cell: proposalCell((proposal) => (
         <Stack gap={4} align="flex-start" py="xs">
-          <ProposedValue suggestion={suggestion} edits={edits} edit={edit} />
+          <ProposedValue proposal={proposal} edits={edits} edit={edit} />
         </Stack>
       )),
     },
@@ -1117,7 +1158,7 @@ function getColumns({
         </Center>
       ),
       width: 120,
-      cell: suggestionCell(({ reasoning }) =>
+      cell: proposalCell(({ reasoning }) =>
         reasoning ? (
           <Center w="100%">
             <Tooltip label={reasoning} maw="25rem" multiline>
@@ -1136,17 +1177,17 @@ function getColumns({
       id: "details",
       header: "",
       width: 64,
-      cell: suggestionCell((suggestion) => {
-        const isDetailOpen = suggestion.field_id === detailFieldId;
+      cell: proposalCell((proposal) => {
+        const isDetailOpen = proposal.field_id === detailFieldId;
         return (
           <Tooltip
             label={isDetailOpen ? t`Hide field details` : t`Field details`}
           >
             <ActionIcon
-              aria-label={t`Field details of ${getFieldLabel(suggestion)}`}
+              aria-label={t`Field details of ${getFieldLabel(proposal)}`}
               aria-pressed={isDetailOpen}
               selected={isDetailOpen}
-              onClick={() => onToggleFieldDetails(suggestion.field_id)}
+              onClick={() => onToggleFieldDetails(proposal.field_id)}
             >
               <Icon name="info" />
             </ActionIcon>
@@ -1158,32 +1199,28 @@ function getColumns({
 }
 
 type AcceptCellProps = {
-  suggestion: MetadataGenerationProposal;
+  proposal: MetadataGenerationProposal;
   isChecked: boolean;
   select: ReviewDraftState["select"];
 };
 
-function AcceptCell({ suggestion, isChecked, select }: AcceptCellProps) {
-  const attributeLabel = getAttributeLabel(suggestion.attribute);
-  const fieldLabel = getFieldLabel(suggestion);
+function AcceptCell({ proposal, isChecked, select }: AcceptCellProps) {
+  const attributeLabel = getAttributeLabel(proposal.attribute);
+  const fieldLabel = getFieldLabel(proposal);
 
   return (
     <Checkbox
       aria-label={t`Accept ${attributeLabel} of ${fieldLabel}`}
       checked={isChecked}
-      onChange={() => select([suggestion], !isChecked)}
+      onChange={() => select([proposal], !isChecked)}
     />
   );
 }
 
-function CurrentValue({
-  suggestion,
-}: {
-  suggestion: MetadataGenerationProposal;
-}) {
-  const current = formatSuggestionValue(
-    suggestion.attribute,
-    suggestion.current_value,
+function CurrentValue({ proposal }: { proposal: MetadataGenerationProposal }) {
+  const current = formatProposalValue(
+    proposal.attribute,
+    proposal.current_value,
   );
   return (
     <Stack gap={4} align="flex-start" py="xs">
@@ -1192,10 +1229,10 @@ function CurrentValue({
       ) : (
         <Text c="text-secondary">{t`Empty`}</Text>
       )}
-      {isHumanSet(suggestion) && (
+      {isHumanSet(proposal) && (
         <Badge variant="light" color="warning">{t`Set by a person`}</Badge>
       )}
-      {suggestion.source === "ai" && (
+      {proposal.source === "ai" && (
         <Badge variant="light" color="neutral">{t`Set by AI`}</Badge>
       )}
     </Stack>
@@ -1203,22 +1240,22 @@ function CurrentValue({
 }
 
 type ProposedValueProps = {
-  suggestion: MetadataGenerationProposal;
-  edits: SuggestionEdits;
+  proposal: MetadataGenerationProposal;
+  edits: ProposalEdits;
   edit: ReviewDraftState["edit"];
 };
 
-function ProposedValue({ suggestion, edits, edit }: ProposedValueProps) {
-  const { attribute, proposed_value } = suggestion;
-  const value = getSuggestionValue(suggestion, edits);
-  const isEdited = isSuggestionEdited(suggestion, edits);
+function ProposedValue({ proposal, edits, edit }: ProposedValueProps) {
+  const { attribute, proposed_value } = proposal;
+  const value = getProposalValue(proposal, edits);
+  const isEdited = isProposalEdited(proposal, edits);
   const attributeLabel = getAttributeLabel(attribute);
-  const fieldLabel = getFieldLabel(suggestion);
+  const fieldLabel = getFieldLabel(proposal);
 
   const save = (newValue: string | null) =>
-    edit(suggestion, newValue === proposed_value ? null : newValue);
+    edit(proposal, newValue === proposed_value ? null : newValue);
 
-  const proposal = formatSuggestionValue(attribute, proposed_value);
+  const proposedLabel = formatProposalValue(attribute, proposed_value);
 
   return (
     <Group
@@ -1229,15 +1266,19 @@ function ProposedValue({ suggestion, edits, edit }: ProposedValueProps) {
       onKeyDown={keepKeysInEditor}
     >
       <ValueInput
-        suggestion={suggestion}
+        proposal={proposal}
         value={value}
-        label={t`Proposed ${attributeLabel} of ${fieldLabel}`}
+        label={t`Suggested ${attributeLabel} of ${fieldLabel}`}
         onChange={save}
       />
       {isEdited && (
-        <Tooltip label={t`Use AI proposal: ${proposal}`} maw="25rem" multiline>
+        <Tooltip
+          label={t`Use the AI suggestion: ${proposedLabel}`}
+          maw="25rem"
+          multiline
+        >
           <ActionIcon
-            aria-label={t`Use the AI proposal for ${attributeLabel} of ${fieldLabel}`}
+            aria-label={t`Use the AI suggestion for ${attributeLabel} of ${fieldLabel}`}
             onClick={() => save(null)}
           >
             <Icon name="revert" />
@@ -1262,18 +1303,18 @@ function keepKeysInEditor(event: KeyboardEvent<HTMLDivElement>) {
 const INPUT_WIDTH = "24rem";
 
 type ValueInputProps = {
-  suggestion: MetadataGenerationProposal;
+  proposal: MetadataGenerationProposal;
   value: string;
   label: string;
   onChange: (value: string) => void;
 };
 
-function ValueInput({ suggestion, value, label, onChange }: ValueInputProps) {
-  switch (suggestion.attribute) {
+function ValueInput({ proposal, value, label, onChange }: ValueInputProps) {
+  switch (proposal.attribute) {
     case "description":
       return (
         <DescriptionInput
-          // Reset the draft when the saved value changes, e.g. after "Use AI proposal".
+          // Reset the draft when the saved value changes, e.g. after "Use the AI suggestion".
           key={value}
           value={value}
           label={label}
@@ -1285,8 +1326,8 @@ function ValueInput({ suggestion, value, label, onChange }: ValueInputProps) {
         <SemanticTypePicker
           aria-label={label}
           field={{
-            base_type: suggestion.field_base_type,
-            effective_type: suggestion.field_effective_type ?? undefined,
+            base_type: proposal.field_base_type,
+            effective_type: proposal.field_effective_type ?? undefined,
           }}
           value={value}
           canSetKeyOrEmpty={false}

@@ -75,7 +75,7 @@ function DatabaseSectionContent({ database }: DatabaseSectionContentProps) {
 
   const tables = useMemo(() => database.tables ?? [], [database.tables]);
   const stats = useMemo(() => getDatabaseStats(tables), [tables]);
-  const lastSyncedAt = useMemo(() => getLastSyncedAt(tables), [tables]);
+  const lastUpdatedAt = useMemo(() => getLastUpdatedAt(tables), [tables]);
 
   const handleNameChange = async (name: string) => {
     const { error } = await updateDatabase({ id: database.id, name });
@@ -153,8 +153,8 @@ function DatabaseSectionContent({ database }: DatabaseSectionContentProps) {
       >
         <Stack gap="lg" data-testid="database-syncing-section">
           <MetadataRow
-            label={t`Last synced`}
-            value={getLastSyncedValue(database, lastSyncedAt)}
+            label={t`Last metadata update`}
+            value={getLastUpdatedValue(database, lastUpdatedAt)}
           />
           <MetadataRow
             label={t`Schedule`}
@@ -230,11 +230,8 @@ function getDatabaseStats(tables: Table[]): DatabaseStats {
   return { schemas: schemas.size, tables: tables.length, fields, rows };
 }
 
-/**
- * The API exposes no sync timestamp, so the most recent table update stands
- * in for the last sync.
- */
-function getLastSyncedAt(tables: Table[]): string | null {
+/** The most recent update of a table of the database: a sync, a rename or a metadata edit. */
+function getLastUpdatedAt(tables: Table[]): string | null {
   return tables.reduce<string | null>((latest, table) => {
     if (table.updated_at == null) {
       return latest;
@@ -245,17 +242,17 @@ function getLastSyncedAt(tables: Table[]): string | null {
   }, null);
 }
 
-function getLastSyncedValue(
+function getLastUpdatedValue(
   database: Database,
-  lastSyncedAt: string | null,
+  lastUpdatedAt: string | null,
 ): ReactNode {
   if (isSyncInProgress(database)) {
     return t`Syncing…`;
   }
-  if (lastSyncedAt == null) {
+  if (lastUpdatedAt == null) {
     return t`Never`;
   }
-  return <DateTime value={lastSyncedAt} />;
+  return <DateTime value={lastUpdatedAt} />;
 }
 
 function getScheduleLabel(schedule: ScheduleSettings | null | undefined) {

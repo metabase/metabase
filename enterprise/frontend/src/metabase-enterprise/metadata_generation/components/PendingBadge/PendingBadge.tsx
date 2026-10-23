@@ -12,7 +12,7 @@ import {
 } from "metabase-types/api";
 
 import { getAttributeLabel } from "../../utils";
-import { formatSuggestionValue, isHumanSet } from "../ReviewModal/utils";
+import { formatProposalValue, isHumanSet } from "../ReviewModal/utils";
 
 export function PendingBadge({
   tableId,
@@ -78,8 +78,8 @@ function FieldProposals({
       {proposals.map((proposal) => (
         <Text key={proposal.id} c="inherit" size="sm">
           {isHumanSet(proposal)
-            ? t`${getAttributeLabel(proposal.attribute)}: ${formatSuggestionValue(proposal.attribute, proposal.proposed_value)} (replaces a value a person set)`
-            : t`${getAttributeLabel(proposal.attribute)}: ${formatSuggestionValue(proposal.attribute, proposal.proposed_value)}`}
+            ? t`${getAttributeLabel(proposal.attribute)}: ${formatProposalValue(proposal.attribute, proposal.proposed_value)} (replaces a value a person set)`
+            : t`${getAttributeLabel(proposal.attribute)}: ${formatProposalValue(proposal.attribute, proposal.proposed_value)}`}
         </Text>
       ))}
     </Stack>

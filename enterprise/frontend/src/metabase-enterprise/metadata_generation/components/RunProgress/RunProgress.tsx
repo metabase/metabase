@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataToasts } from "metabase/common/hooks";
@@ -85,6 +85,7 @@ function RunProgressView({ run, onRetry, onReview }: RunProgressViewProps) {
   const percent =
     run.total_tables > 0 ? (processed / run.total_tables) * 100 : 0;
   const tableErrors = run.table_errors ?? [];
+  const hiddenErrorCount = tableErrors.length - MAX_TABLE_ERRORS;
 
   const handleCancel = async () => {
     const { error } = await cancelRun(run.id);
@@ -112,13 +113,19 @@ function RunProgressView({ run, onRetry, onReview }: RunProgressViewProps) {
         />
         <Group justify="space-between">
           <Text size="sm">
-            {t`${processed} of ${run.total_tables} tables processed`}
+            {ngettext(
+              msgid`${processed} of ${run.total_tables} table processed`,
+              `${processed} of ${run.total_tables} tables processed`,
+              run.total_tables,
+            )}
           </Text>
           {run.failed_tables > 0 && (
             <Text size="sm" c="feedback-negative">
-              {run.failed_tables === 1
-                ? t`1 table failed`
-                : t`${run.failed_tables} tables failed`}
+              {ngettext(
+                msgid`${run.failed_tables} table failed`,
+                `${run.failed_tables} tables failed`,
+                run.failed_tables,
+              )}
             </Text>
           )}
         </Group>
@@ -150,9 +157,13 @@ function RunProgressView({ run, onRetry, onReview }: RunProgressViewProps) {
               </Text>
             </Group>
           ))}
-          {tableErrors.length > MAX_TABLE_ERRORS && (
+          {hiddenErrorCount > 0 && (
             <Text size="sm" c="text-secondary">
-              {t`and ${tableErrors.length - MAX_TABLE_ERRORS} more`}
+              {ngettext(
+                msgid`and ${hiddenErrorCount} more table`,
+                `and ${hiddenErrorCount} more tables`,
+                hiddenErrorCount,
+              )}
             </Text>
           )}
         </Stack>

@@ -7,6 +7,7 @@ import {
   type SelectProps,
   Stack,
   Text,
+  Tooltip,
 } from "metabase/ui";
 import {
   FIELD_DATA_SENSITIVITY_TYPES,
@@ -22,7 +23,7 @@ interface Props extends Omit<
 > {
   value: FieldDataSensitivity | null;
   source: FieldDataSensitivitySource | null;
-  /** When false, "No label" is not offered. */
+  /** When false, "Unspecified" is not offered. */
   canClear?: boolean;
   onChange: (value: FieldDataSensitivity | null) => void;
   onReset: () => void;
@@ -75,9 +76,11 @@ export const DataSensitivityPicker = ({
             {getSourceLabel(source)}
           </Text>
           {isUserSet && (
-            <Button size="compact-sm" variant="subtle" onClick={onReset}>
-              {t`Reset to automatic`}
-            </Button>
+            <Tooltip label={t`Use the AI or classifier value`}>
+              <Button size="compact-sm" variant="subtle" onClick={onReset}>
+                {t`Reset to automatic`}
+              </Button>
+            </Tooltip>
           )}
         </Group>
       )}

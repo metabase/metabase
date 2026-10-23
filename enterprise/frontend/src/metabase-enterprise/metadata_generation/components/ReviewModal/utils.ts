@@ -24,40 +24,40 @@ export function getHumanSetPendingCount(
 export const DESCRIPTION_MAX_LENGTH = 200;
 
 /**
- * The suggestions a person ticked in the review, with the proposed value they saw, which apply sends so that the
+ * The proposals a person ticked in the review, with the proposed value they saw, which apply sends so that the
  * backend skips a proposal that a run changed since. Nothing is sent until apply.
  */
-export type SuggestionSelection = ReadonlyMap<
+export type ProposalSelection = ReadonlyMap<
   MetadataGenerationProposalId,
   string
 >;
 
-/** The values a person chose in place of the proposed values, by suggestion. Nothing is sent until apply. */
-export type SuggestionEdits = ReadonlyMap<MetadataGenerationProposalId, string>;
+/** The values a person chose in place of the proposed values, by proposal. Nothing is sent until apply. */
+export type ProposalEdits = ReadonlyMap<MetadataGenerationProposalId, string>;
 
-export function isSuggestionEdited(
-  suggestion: MetadataGenerationProposal,
-  edits: SuggestionEdits,
+export function isProposalEdited(
+  proposal: MetadataGenerationProposal,
+  edits: ProposalEdits,
 ): boolean {
-  return edits.has(suggestion.id);
+  return edits.has(proposal.id);
 }
 
 /** The value apply writes: the edited value when a person edited it, else the proposed value. */
-export function getSuggestionValue(
-  suggestion: MetadataGenerationProposal,
-  edits: SuggestionEdits,
+export function getProposalValue(
+  proposal: MetadataGenerationProposal,
+  edits: ProposalEdits,
 ): string {
-  return edits.get(suggestion.id) ?? suggestion.proposed_value;
+  return edits.get(proposal.id) ?? proposal.proposed_value;
 }
 
 /** `selection` with `suggestions` added when `isSelected`, else removed. */
 export function setSelected(
-  selection: SuggestionSelection,
-  suggestions: MetadataGenerationProposal[],
+  selection: ProposalSelection,
+  proposals: MetadataGenerationProposal[],
   isSelected: boolean,
-): SuggestionSelection {
+): ProposalSelection {
   const next = new Map(selection);
-  suggestions.forEach(({ id, proposed_value }) =>
+  proposals.forEach(({ id, proposed_value }) =>
     isSelected ? next.set(id, proposed_value) : next.delete(id),
   );
   return next;
@@ -65,10 +65,10 @@ export function setSelected(
 
 /** `edits` with the edit of `id` set to `value`, or removed when `value` is `null`. */
 export function setEdit(
-  edits: SuggestionEdits,
+  edits: ProposalEdits,
   id: MetadataGenerationProposalId,
   value: string | null,
-): SuggestionEdits {
+): ProposalEdits {
   const next = new Map(edits);
   if (value == null) {
     next.delete(id);
@@ -79,12 +79,12 @@ export function setEdit(
 }
 
 /**
- * The apply request body for the review: the selected suggestions with the proposed values the person saw, and the
- * edits of selected suggestions only.
+ * The apply request body for the review: the selected proposals with the proposed values the person saw, and the
+ * edits of selected proposals only.
  */
 export function getApplyRequestBody(
-  selection: SuggestionSelection,
-  edits: SuggestionEdits,
+  selection: ProposalSelection,
+  edits: ProposalEdits,
 ): Pick<
   ApplyMetadataGenerationProposalsRequest,
   "accept" | "edits" | "proposed_values"
@@ -97,15 +97,15 @@ export function getApplyRequestBody(
     : { accept, proposed_values };
 }
 
-export function isHumanSet(suggestion: MetadataGenerationProposal): boolean {
-  return suggestion.source === "human";
+export function isHumanSet(proposal: MetadataGenerationProposal): boolean {
+  return proposal.source === "human";
 }
 
-/** The suggestions that the table checkbox ticks and unticks: human-set ones are left out. */
+/** The proposals that the table checkbox ticks and unticks: human-set ones are left out. */
 export function getBulkDecidable(
-  suggestions: MetadataGenerationProposal[],
+  proposals: MetadataGenerationProposal[],
 ): MetadataGenerationProposal[] {
-  return suggestions.filter((s) => !isHumanSet(s));
+  return proposals.filter((s) => !isHumanSet(s));
 }
 
 export type TableCheckboxState = {
@@ -115,10 +115,10 @@ export type TableCheckboxState = {
 };
 
 export function getTableCheckboxState(
-  suggestions: MetadataGenerationProposal[],
-  selection: SuggestionSelection,
+  proposals: MetadataGenerationProposal[],
+  selection: ProposalSelection,
 ): TableCheckboxState {
-  const decidable = getBulkDecidable(suggestions);
+  const decidable = getBulkDecidable(proposals);
   const checkedCount = decidable.filter(({ id }) => selection.has(id)).length;
   return {
     checked: decidable.length > 0 && checkedCount === decidable.length,
@@ -132,8 +132,8 @@ export function getTableLabel(table: MetadataGenerationProposalTable): string {
   return table.schema ? `${table.schema}.${name}` : name;
 }
 
-export function getFieldLabel(suggestion: MetadataGenerationProposal): string {
-  return suggestion.field_display_name || suggestion.field_name;
+export function getFieldLabel(proposal: MetadataGenerationProposal): string {
+  return proposal.field_display_name || proposal.field_name;
 }
 
 export function isFieldDataSensitivity(
@@ -142,7 +142,7 @@ export function isFieldDataSensitivity(
   return FIELD_DATA_SENSITIVITY_TYPES.some((type) => type === value);
 }
 
-export function formatSuggestionValue(
+export function formatProposalValue(
   attribute: MetadataGenerationAttribute,
   value: string | null,
 ): string | null {
@@ -166,7 +166,7 @@ export function getApplyFailureReasonLabel(
 ): string {
   switch (reason) {
     case "changed":
-      return t`A newer run changed or removed this suggestion`;
+      return t`This suggestion changed or was handled since you opened the review`;
     case "field_not_found":
       return t`The field no longer exists`;
     case "not_writable":
@@ -181,30 +181,30 @@ export function getApplyFailureReasonLabel(
 }
 
 export function getApplySummary(result: MetadataGenerationApplyResult): string {
-  const parts = [
+  const sentences = [
     ngettext(
-      msgid`${result.written} value written`,
-      `${result.written} values written`,
+      msgid`${result.written} value written.`,
+      `${result.written} values written.`,
       result.written,
     ),
   ];
   if (result.rejected > 0) {
-    parts.push(
+    sentences.push(
       ngettext(
-        msgid`${result.rejected} rejected`,
-        `${result.rejected} rejected`,
+        msgid`${result.rejected} suggestion rejected.`,
+        `${result.rejected} suggestions rejected.`,
         result.rejected,
       ),
     );
   }
   if (result.failed > 0) {
-    parts.push(
+    sentences.push(
       ngettext(
-        msgid`${result.failed} failed`,
-        `${result.failed} failed`,
+        msgid`${result.failed} suggestion failed.`,
+        `${result.failed} suggestions failed.`,
         result.failed,
       ),
     );
   }
-  return parts.join(", ");
+  return sentences.join(" ");
 }

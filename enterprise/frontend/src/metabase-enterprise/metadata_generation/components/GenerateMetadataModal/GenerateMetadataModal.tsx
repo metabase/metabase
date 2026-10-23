@@ -122,7 +122,7 @@ function getTitle(
   if (!isRunView) {
     return t`Generate field metadata`;
   }
-  return run != null ? getRunTitle(run.scope) : t`Generating field metadata`;
+  return run != null ? getRunTitle(run.scope) : t`Field metadata generation`;
 }
 
 type GenerateMetadataFormProps = {
@@ -234,7 +234,7 @@ export function GenerateMetadataForm({
   return (
     <Stack gap="lg" data-testid="generate-metadata-form">
       <Text size="sm" c="text-secondary">
-        {t`An AI model reads the metadata, sample values and a few rows of each table and proposes values. Nothing changes until you review and accept the proposals.`}
+        {t`An AI model reads the metadata, sample values and a few rows of each table and suggests values. Nothing changes until you review and accept the suggestions.`}
       </Text>
 
       {!isScopeFixed && (
@@ -376,11 +376,19 @@ function EstimateSummary({
       ta="left"
       data-testid="generate-metadata-estimate"
     >
-      {ngettext(msgid`${tableCount} table`, `${tableCount} tables`, tableCount)}
-      {", "}
-      {ngettext(msgid`${fieldCount} field`, `${fieldCount} fields`, fieldCount)}
-      {". "}
-      {t`About ${formatTokens(totalTokens)} tokens.`}
+      {[
+        ngettext(
+          msgid`${tableCount} table.`,
+          `${tableCount} tables.`,
+          tableCount,
+        ),
+        ngettext(
+          msgid`${fieldCount} field.`,
+          `${fieldCount} fields.`,
+          fieldCount,
+        ),
+        t`About ${formatTokens(totalTokens)} tokens.`,
+      ].join(" ")}
     </Text>
   );
 }

@@ -97,11 +97,11 @@ export function getRunStatusLabel(status: MetadataGenerationRunStatus): string {
 export function getRunTitle(scope: MetadataGenerationScope): string {
   switch (scope.type) {
     case "database":
-      return t`Generating field metadata for this database`;
+      return t`Field metadata generation for this database`;
     case "schemas":
-      return t`Generating field metadata for some schemas`;
+      return t`Field metadata generation for some schemas`;
     case "tables":
-      return t`Generating field metadata for some tables`;
+      return t`Field metadata generation for some tables`;
   }
 }
 
@@ -132,7 +132,7 @@ export function getUnavailableMessage(reason: string): string {
     case "usage-limit":
       return t`The AI usage limit has been reached.`;
     default:
-      return t`AI metadata generation is not available: ${reason}.`;
+      return t`AI metadata generation is not available.`;
   }
 }
 

@@ -32,7 +32,7 @@
    [metabase.request.core :as request]
    [metabase.run-tracking.core :as rt]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
+   [metabase.util.i18n :refer [trs tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -137,9 +137,9 @@
     (case scope-type
       :database nil
       :schemas  (when-let [missing (seq (remove (set (map :schema tables)) schemas))]
-                  (throw (core/bad-request (tru "No active tables in schemas: {0}." (pr-str (vec missing))))))
+                  (throw (core/bad-request (tru "No active tables in schemas: {0}." (str/join ", " missing)))))
       :tables   (when-let [missing (seq (remove (set (map :id tables)) table_ids))]
-                  (throw (core/bad-request (tru "Not active tables of this database: {0}." (pr-str (vec missing)))))))
+                  (throw (core/bad-request (tru "Not active tables of this database: {0}." (str/join ", " missing))))))
     (when (empty? tables)
       (throw (core/bad-request (tru "The database has no active tables to classify."))))
     tables))
@@ -529,7 +529,7 @@
     (when (db/active-run database-id)
       (throw (conflict database-id)))
     (when-let [reason (core/unavailable-reason)]
-      (throw (ex-info (tru "AI metadata generation is not available: {0}." (name reason))
+      (throw (ex-info (tru "AI metadata generation is not available.")
                       {:status-code 400 :reason reason :error-code reason})))
     (let [run (try
                 (db/insert-run! {:database_id    database-id
@@ -606,8 +606,8 @@
                                    :terminal {:status    "failed"
                                               :ended_at  :%now
                                               :is_active nil
-                                              :message   (str "The run stopped sending heartbeats for " stale-minutes
-                                                              " minutes; its node probably stopped.")}})]
+                                              :message   (trs "The run stopped sending heartbeats for {0} minutes; its node probably stopped."
+                                                              stale-minutes)}})]
     (doseq [{run-id :id} reaped]
       (try
         (when-let [run (db/run run-id)]

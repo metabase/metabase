@@ -5,12 +5,12 @@ import {
 } from "metabase-types/api/mocks";
 
 import {
-  formatSuggestionValue,
+  formatProposalValue,
   getApplyRequestBody,
   getApplySummary,
   getBulkDecidable,
   getHumanSetPendingCount,
-  getSuggestionValue,
+  getProposalValue,
   getTableCheckboxState,
   getTableLabel,
   setEdit,
@@ -123,8 +123,8 @@ describe("review draft", () => {
       proposed_value: "PII",
     });
     const edits = setEdit(new Map(), 1, "BIZ_CONF");
-    expect(getSuggestionValue(suggestion, edits)).toBe("BIZ_CONF");
-    expect(getSuggestionValue(suggestion, setEdit(edits, 1, null))).toBe("PII");
+    expect(getProposalValue(suggestion, edits)).toBe("BIZ_CONF");
+    expect(getProposalValue(suggestion, setEdit(edits, 1, null))).toBe("PII");
   });
 
   it("sends the selected ids with the proposed values seen, and only the edits of selected suggestions", () => {
@@ -152,26 +152,26 @@ describe("review draft", () => {
   });
 });
 
-describe("formatSuggestionValue", () => {
+describe("formatProposalValue", () => {
   it("shows the label of a data sensitivity", () => {
-    expect(formatSuggestionValue("data_sensitivity", "PII")).toBe(
+    expect(formatProposalValue("data_sensitivity", "PII")).toBe(
       "Personally identifiable information",
     );
   });
 
   it("shows the name of a semantic type", () => {
-    expect(formatSuggestionValue("semantic_type", "type/Email")).toBe("Email");
+    expect(formatProposalValue("semantic_type", "type/Email")).toBe("Email");
   });
 
   it("shows an unknown value as is", () => {
-    expect(formatSuggestionValue("semantic_type", "type/Unknown")).toBe(
+    expect(formatProposalValue("semantic_type", "type/Unknown")).toBe(
       "type/Unknown",
     );
   });
 
   it("returns null for an empty value", () => {
-    expect(formatSuggestionValue("description", null)).toBeNull();
-    expect(formatSuggestionValue("description", "")).toBeNull();
+    expect(formatProposalValue("description", null)).toBeNull();
+    expect(formatProposalValue("description", "")).toBeNull();
   });
 });
 
@@ -200,7 +200,7 @@ describe("getApplySummary", () => {
   it("lists only the written count when nothing was skipped or failed", () => {
     expect(
       getApplySummary(createMockMetadataGenerationApplyResult({ written: 1 })),
-    ).toBe("1 value written");
+    ).toBe("1 value written.");
   });
 
   it("lists the rejected count when there is one", () => {
@@ -208,7 +208,7 @@ describe("getApplySummary", () => {
       getApplySummary(
         createMockMetadataGenerationApplyResult({ written: 2, rejected: 1 }),
       ),
-    ).toBe("2 values written, 1 rejected");
+    ).toBe("2 values written. 1 suggestion rejected.");
   });
 
   it("lists the written and failed counts", () => {
@@ -216,6 +216,6 @@ describe("getApplySummary", () => {
       getApplySummary(
         createMockMetadataGenerationApplyResult({ written: 21, failed: 2 }),
       ),
-    ).toBe("21 values written, 2 failed");
+    ).toBe("21 values written. 2 suggestions failed.");
   });
 });
