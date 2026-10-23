@@ -900,9 +900,9 @@
             (is (some? (:schema entry)))
             (is (fn? (:fn entry))))))))
   (testing "an unconverted tool's schema comes from its var metadata"
-    (let [entries (agent-tools/->entries [#'agent-tools/list-snippets-tool] (atom {}) nil :nlq)
-          [_:=> [_:cat declared] _out] (:schema (get entries "list_snippets"))
-          [_:=> [_:cat original] _out] (:schema (meta #'agent-tools/list-snippets-tool))]
+    (let [entries (agent-tools/->entries [#'agent-tools/list-timelines-tool] (atom {}) nil :nlq)
+          [_:=> [_:cat declared] _out] (:schema (get entries "list_timelines"))
+          [_:=> [_:cat original] _out] (:schema (meta #'agent-tools/list-timelines-tool))]
       (is (= original declared))))
   (testing "a converted tool and an unconverted one sit side by side"
     (let [entries (agent-tools/->entries [#'agent-tools/list-timelines-tool       ; mu/defn var
