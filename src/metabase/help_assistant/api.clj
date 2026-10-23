@@ -20,3 +20,19 @@
   (api/check-superuser)
   (help-assistant/chat {:messages        (:messages body)
                         :diagnostic-info (:diagnostic_info body)}))
+
+(api.macros/defendpoint :post "/feedback" :- :nil
+  "Rate one of the Help page assistant's answers. Admins only."
+  [_route-params
+   _query-params
+   body :- [:map {:closed true}
+            [:positive :boolean]
+            [:comment {:optional true} [:maybe :string]]
+            [:question :string]
+            [:answer :string]
+            [:sources {:optional true} [:sequential [:map {:closed true}
+                                                     [:title :string]
+                                                     [:url :string]]]]]]
+  (api/check-superuser)
+  (help-assistant/log-feedback! body)
+  nil)

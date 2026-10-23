@@ -33,6 +33,7 @@ export * from "./fonts";
 export * from "./formatting";
 export * from "./geojson";
 export * from "./group";
+export * from "./help-assistant";
 export * from "./icon";
 export * from "./index-manager";
 export * from "./insight";

@@ -1,0 +1,14 @@
+;; A saved Admin > Help assistant conversation. The key is the conversation's id.
+[:map {:closed true}
+ [:value [:map {:closed true}
+          [:title :string]
+          [:updated_at :string]
+          [:messages [:sequential [:map {:closed true}
+                                   [:role [:enum "user" "assistant"]]
+                                   [:content :string]
+                                   [:sources {:optional true} [:sequential [:map {:closed true}
+                                                                            [:title :string]
+                                                                            [:url :string]]]]
+                                   [:feedback {:optional true} [:map {:closed true}
+                                                                [:positive :boolean]
+                                                                [:comment {:optional true} [:maybe :string]]]]]]]]]]

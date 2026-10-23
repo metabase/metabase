@@ -1,0 +1,61 @@
+.page {
+  height: 100%;
+  background-color: var(--mb-color-background_page-primary);
+}
+
+.column {
+  width: 100%;
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.header {
+  /* the same height with and without the conversation buttons */
+  min-height: 4.25rem;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.scrollArea {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/*
+ * AIMarkdown sizes a table to its content, so one long cell pushes the other
+ * columns out of view. This column is wide enough to wrap the cells instead.
+ * The `div` makes this rule more specific than AIMarkdown's `.aiMarkdown table`.
+ */
+.answer div > table {
+  width: auto;
+}
+
+.inputContainer {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 1rem 1rem;
+  border-radius: 0.75rem;
+}
+
+.userMessage {
+  align-self: flex-end;
+  max-width: min(100%, 36rem);
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  background: var(--mb-color-background_page-secondary);
+  white-space: pre-wrap;
+}
+
+.promptSuggestion {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--mb-color-text-secondary);
+  border-radius: 0.5rem;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+
+  &:hover {
+    background: var(--mb-color-background_page-secondary);
+    color: var(--mb-color-text-primary);
+  }
+}

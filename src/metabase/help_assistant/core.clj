@@ -229,7 +229,8 @@
    "- Base answers on the docs and the diagnostic info. If you can't find the answer, say so plainly and suggest "
    "emailing Metabase support at [help@metabase.com](mailto:help@metabase.com). Never guess setting names, menu "
    "paths or environment variables.\n"
-   "- Link to the pages you used, with the exact URL read_doc gave you. Never make up URLs.\n"
+   "- Link to the pages you used where you mention them, with the exact URL read_doc gave you. Never make up URLs. "
+   "Don't end with a list of links: the Help page already lists the pages you read under your answer.\n"
    "- For how-to questions, keep it short and practical: the answer first, then numbered steps.\n"
    "- For troubleshooting, work through it with the user one cause at a time instead of giving every fix at once:\n"
    "  1. If the symptom is too vague to tell which causes apply, ask one short question to narrow it down first.\n"
@@ -289,6 +290,19 @@
    "\n</diagnostic_info>\n\n"
    "# Skills\n\n"
    (str/join "\n\n" (map skill->prompt (load-skills)))))
+
+;;; --------------------------------------------------- Feedback --------------------------------------------------
+
+(defn log-feedback!
+  "Write a rating of one answer to the server log. The prototype has nowhere to store ratings, and the log is enough
+  to find the questions the docs don't answer well."
+  [{:keys [positive comment question answer sources]}]
+  (log/infof "Help assistant feedback: %s\nQuestion: %s\nComment: %s\nSources: %s\nAnswer: %s"
+             (if positive "helpful" "not helpful")
+             question
+             (if (str/blank? comment) "(none)" comment)
+             (if (seq sources) (str/join ", " (map :url sources)) "(none)")
+             (u/truncate answer 2000)))
 
 ;;; ------------------------------------------------- Agent loop --------------------------------------------------
 
