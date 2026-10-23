@@ -1,8 +1,8 @@
-(ns mage.generate-docs-test
+(ns mage.docs-generate-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [mage.generate-docs :as generate-docs]
+   [mage.docs-generate :as docs-generate]
    [mage.shell :as shell]))
 
 (set! *warn-on-reflection* true)
@@ -22,28 +22,28 @@
       {:exit exit, :out [], :err []})))
 
 (defn- run-suites!
-  "Run `suite-names` through [[generate-docs/run-suites!]] with the given exit codes.
+  "Run `suite-names` through [[docs-generate/run-suites!]] with the given exit codes.
   Returns the failed suites, the recorded commands, and everything printed."
   [exits suite-names]
   (let [calls  (atom [])
         out    (java.io.StringWriter.)
         failed (binding [*out* out]
-                 (generate-docs/run-suites! (fake-sh calls exits) suite-names))]
+                 (docs-generate/run-suites! (fake-sh calls exits) suite-names))]
     {:failed failed, :calls @calls, :out (str out)}))
 
 (deftest every-suite-runs-test
-  (let [{:keys [failed calls out]} (run-suites! {} generate-docs/suite-names)]
+  (let [{:keys [failed calls out]} (run-suites! {} docs-generate/suite-names)]
     (testing "every suite runs once, in order"
-      (is (= (map @#'generate-docs/suite->command generate-docs/suite-names) calls)))
+      (is (= (map @#'docs-generate/suite->command docs-generate/suite-names) calls)))
     (testing "each suite reports that it finished"
-      (doseq [suite generate-docs/suite-names]
+      (doseq [suite docs-generate/suite-names]
         (is (str/includes? out (str "Generated " suite " docs")))))
     (is (= [] failed))))
 
 (deftest failed-suite-still-runs-later-suites-test
   (let [{:keys [failed calls out]} (run-suites! {backend-command                   1
                                                  ["bun" "run" "embedding-sdk:docs:generate"] 1}
-                                                generate-docs/suite-names)]
+                                                docs-generate/suite-names)]
     (testing "every suite runs"
       (is (= 4 (count calls))))
     (testing "the failed suites are reported, in suite order"
@@ -65,7 +65,7 @@
     (let [calls (atom [])]
       (with-redefs [shell/sh* (fake-sh calls {backend-command 1})]
         (is (= 1 (try
-                   (with-out-str (generate-docs/run! "backend" {}))
+                   (with-out-str (docs-generate/run! "backend" {}))
                    nil
                    (catch clojure.lang.ExceptionInfo e
                      (:babashka/exit (ex-data e)))))))
@@ -73,6 +73,6 @@
   (testing "with `:dir`, runs every suite in that checkout"
     (let [calls (atom [])]
       (with-redefs [shell/sh* (fake-sh calls {})]
-        (with-out-str (generate-docs/run! nil {:dir "/tmp/release-checkout"})))
-      (is (= (repeat (count generate-docs/suite-names) {:dir "/tmp/release-checkout"})
+        (with-out-str (docs-generate/run! nil {:dir "/tmp/release-checkout"})))
+      (is (= (repeat (count docs-generate/suite-names) {:dir "/tmp/release-checkout"})
              (map first @calls))))))

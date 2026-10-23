@@ -412,13 +412,13 @@
    :requires [[mage.cursive-resolve-as :as cursive-resolve-as]]
    :task (task! (cursive-resolve-as/do-it))}
 
-  generate-docs
+  docs-generate
   {:doc "Regenerate the docs that are built from source. The backend suite runs every Clojure generator in one JVM."
-   :examples [["./bin/mage generate-docs" "Regenerate every generated doc"]
-              ["./bin/mage generate-docs backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
-              ["./bin/mage generate-docs usage-analytics" "Usage analytics reference"]
-              ["./bin/mage generate-docs embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
-              ["./bin/mage generate-docs embedding-eajs" "Modular embedding (EAJS) reference"]]
+   :examples [["./bin/mage docs-generate" "Regenerate every generated doc"]
+              ["./bin/mage docs-generate backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
+              ["./bin/mage docs-generate usage-analytics" "Usage analytics reference"]
+              ["./bin/mage docs-generate embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
+              ["./bin/mage docs-generate embedding-eajs" "Modular embedding (EAJS) reference"]]
    :options [["-d" "--dir DIR" "Absolute path of the Metabase checkout to generate the docs in. Defaults to this checkout."]]
    :arg-schema [:or
                 [:tuple]
@@ -427,8 +427,8 @@
                          "usage-analytics"
                          "embedding-sdk"
                          "embedding-eajs"]]]
-   :requires [[mage.generate-docs :as generate-docs]]
-   :task (task! (generate-docs/run! (first (:arguments parsed)) (:options parsed)))}
+   :requires [[mage.docs-generate :as docs-generate]]
+   :task (task! (docs-generate/run! (first (:arguments parsed)) (:options parsed)))}
 
   analytics:setup
   {:doc "Set up usage analytics development mode"
