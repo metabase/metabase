@@ -458,7 +458,7 @@
         (let [response (mt/user-http-request :rasta :post 400 endpoint {:query query})]
           (is (=? {:error "invalid-representations-query"
                    :error-code "invalid-representations-query"
-                   :message "Representations query has an invalid structure."}
+                   :message #"(?s)Representations query has an invalid structure\..*"}
                   response))
           (is (= #{:error :error-code :message :humanized :details} (set (keys response)))))))))
 

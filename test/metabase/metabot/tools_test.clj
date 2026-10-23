@@ -330,21 +330,30 @@
                                              :description "Orders by count."})))))))))
 
 (deftest construct-notebook-query-tool-post-aggregation-errors-test
-  (mt/with-current-user (mt/user->id :rasta)
-    (doseq [[error clauses] [[:post-agg-filter-with-trailing-clauses
-                              {:aggregation [["count" {}]] :limit 5}]
-                             [:post-agg-filter-needs-multi-stage
-                              {:aggregation [["count" {}] ["count" {}]]}]]]
-      (let [stage (merge {:lib/type "mbql.stage/mbql"
-                          :source-table [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]
-                          :filters [[">" {} ["aggregation" {} 0] 1]]}
-                         clauses)]
-        (is (=? {:class :recoverable
-                 :code (keyword "metabase.metabot.tools.recoverable.pipeline" (name error))
-                 :text #".*MBQL 5 requires.*"}
-                (test-util/tool-failure agent-tools/construct-notebook-query-tool
-                                        {:query {:lib/type "mbql/query" :stages [stage]}
-                                         :title "Orders" :description "Orders by count."})))))))
+  (let [source [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]]
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [[error cases] {:post-agg-filter-with-trailing-clauses
+                             [{:limit 5}
+                              {:fields 42 :order-by [["desc" {} ["aggregation" {} 0]]]}
+                              {:fields 42 :limit 5}
+                              {:order-by 42 :fields [["field" {} (conj source "PRODUCT_ID")]]}
+                              {:order-by 42 :limit 5}
+                              {:order-by 42 :fields 42 :limit 5}]
+                             :post-agg-filter-needs-multi-stage
+                             [{:aggregation [["count" {}] ["count" {}]]}]}
+              clauses cases]
+        (testing (pr-str clauses)
+          (let [stage (merge {:lib/type "mbql.stage/mbql"
+                              :source-table source
+                              :aggregation [["count" {}]]
+                              :filters [[">" {} ["aggregation" {} 0] 1]]}
+                             clauses)]
+            (is (=? {:class :recoverable
+                     :code (keyword "metabase.metabot.tools.recoverable.pipeline" (name error))
+                     :text #".*MBQL 5 requires.*"}
+                    (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                                            {:query {:lib/type "mbql/query" :stages [stage]}
+                                             :title "Orders" :description "Orders by count."})))))))))
 
 (deftest ->entries-test
   (testing "an entry carries what the adapters and the system message read"

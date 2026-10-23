@@ -668,15 +668,27 @@
                              (or agent-error? (tools/pipeline-error-code error))))
                    (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))
 
+(defn- has-valid-trailing-clause?
+  "Return whether a stage has a nonempty trailing clause with a valid portable structure."
+  [stage]
+  (boolean
+   (some (fn [k]
+           (let [clause (get stage k)]
+             (and (mr/validate repr/stage-schema (select-keys stage ["lib/type" k]))
+                  (or (integer? clause) (seq clause)))))
+         ["order-by" "limit" "fields"])))
+
 (defn- as-agent-input-error
   "Return database failures unchanged; wrap other exceptions as agent-input errors.
 
-  A structural error in a partially repaired query takes precedence over advice to split it.
+  A valid trailing clause preserves split advice, even if another clause is malformed.
+  Otherwise, a structural error in the unsplit query takes precedence.
   The wrapper sets `:agent-error?` for tool callers and defaults `:status-code` to 400 for HTTP
   callers. Existing status codes are preserved."
   [^clojure.lang.ExceptionInfo e]
-  (let [e (if-let [query (when (#{:post-agg-filter-with-trailing-clauses
-                                  :post-agg-filter-needs-multi-stage} (:error (ex-data e)))
+  (let [e (if-let [query (when (and (#{:post-agg-filter-with-trailing-clauses
+                                       :post-agg-filter-needs-multi-stage} (:error (ex-data e)))
+                                    (not (has-valid-trailing-clause? (:stage (ex-data e)))))
                            (:query (ex-data e)))]
             (try
               (repr/validate-query query)
