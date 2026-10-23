@@ -39,11 +39,67 @@
   [alert]
   (m/find-first #(= :email (keyword (:channel_type %))) (:channels alert)))
 
+(defn- tenant-scoped-caller?
+  "True when the current user's recipient visibility is narrowed to their own tenant: every non-superuser
+  sees only recipients with the same `:tenant_id` as themselves (nil for internal users)."
+  []
+  (not api/*is-superuser?*))
+
+(defn- recipient-ids->tenant-ids
+  "Map of user id -> `:tenant_id` for the Metabase-user recipients in `recipient-ids`. Recipient maps
+  come from the `:recipients` batched-hydrate, which does not select `:tenant_id`, so tenant
+  membership is looked up here rather than read off the map — reading it off the map compares nil to
+  nil and filters nothing (or, once the caller has a tenant, drops every recipient)."
+  [recipient-ids]
+  (if (seq recipient-ids)
+    (t2/select-pk->fn :tenant_id :model/User :id [:in recipient-ids])
+    {}))
+
+(defn- recipient-visible-to-tenant-caller?
+  "Whether a tenant-scoped caller may see `recipient`. Plain-email recipients (no `:id`) are always
+  visible; Metabase-user recipients are visible only when they belong to the caller's tenant.
+
+  This predicate is the single definition of the tenant recipient filter: the read path uses it to
+  hide recipients ([[filter-cross-tenant-recipients]]) and the write path uses it to merge the same
+  hidden recipients back in, so a filtered read that is submitted back as a write cannot silently
+  delete them."
+  [id->tenant-id tenant-id recipient]
+  (or (not (:id recipient))
+      (= (id->tenant-id (:id recipient)) tenant-id)))
+
+(defn- hidden-cross-tenant-recipients
+  "The Metabase-user recipients in `recipients` that [[filter-cross-tenant-recipients]] would hide from
+  the current user. Returns `nil` when the caller is not tenant-scoped, i.e. when nothing is hidden.
+
+  The write path uses this to restore recipients the caller was never shown; see [[maybe-add-recipients]]."
+  [recipients]
+  (when (tenant-scoped-caller?)
+    (let [tenant-id     (:tenant_id @api/*current-user*)
+          id->tenant-id (recipient-ids->tenant-ids (into #{} (keep :id) recipients))]
+      (remove #(recipient-visible-to-tenant-caller? id->tenant-id tenant-id %) recipients))))
+
+(defn- filter-cross-tenant-recipients
+  "Drop Metabase-user recipients that belong to a different tenant than the current (tenant-scoped)
+  user."
+  [pulses]
+  (let [tenant-id     (:tenant_id @api/*current-user*)
+        recipient-ids (into #{}
+                            (comp (mapcat :channels) (mapcat :recipients) (keep :id))
+                            pulses)
+        id->tenant-id (recipient-ids->tenant-ids recipient-ids)]
+    (for [pulse pulses]
+      (assoc pulse :channels
+             (for [channel (:channels pulse)]
+               (assoc channel :recipients
+                      (filter #(recipient-visible-to-tenant-caller? id->tenant-id tenant-id %)
+                              (:recipients channel))))))))
+
 (defn- maybe-filter-pulses-recipients
   "If the current user is sandboxed, remove all Metabase users from the `pulses` recipient lists that are not the user
   themselves. Recipients that are plain email addresses are preserved.
 
-  If the current user is not a superuser, also filters the list of recipients to remove users from a different tenant."
+  If the current user is not a superuser, also filters the recipient lists down to users in the same
+  tenant: tenant users see only their own tenant, internal users see only other internal users."
   [pulses]
   (cond->> pulses
     (perms/sandboxed-or-impersonated-user?)
@@ -56,15 +112,8 @@
                                          (= (:id recipient) api/*current-user-id*)))
                                    (:recipients channel)))))))
 
-    (not api/*is-superuser?*)
-    (map (fn [pulse]
-           (assoc pulse :channels
-                  (for [channel (:channels pulse)]
-                    (assoc channel :recipients
-                           (filter (fn [recipient]
-                                     (or (not (:id recipient))
-                                         (= (:tenant_id recipient) (:tenant_id api/*current-user*))))
-                                   (:recipients channel)))))))))
+    (tenant-scoped-caller?)
+    filter-cross-tenant-recipients))
 
 (defn- maybe-filter-pulse-recipients
   [pulse]
@@ -249,21 +298,25 @@
         (t2/hydrate :can_write))))
 
 (defn- maybe-add-recipients
-  "Sandboxed users and users using connection impersonation can't read the full recipient list for a pulse, so we need
-  to merge in existing recipients before writing the pulse updates to avoid them being deleted unintentionally. We only
-  merge in recipients that are Metabase users, not raw email addresses, which these users can still view and modify."
+  "Sandboxed users, users using connection impersonation and tenant-scoped users can't read the full recipient list
+  for a pulse, so we need to merge in existing recipients before writing the pulse updates to avoid them being deleted
+  unintentionally. We only merge in recipients that are Metabase users, not raw email addresses, which these users can
+  still view and modify."
   [pulse-updates pulse-before-update]
-  (if (perms/sandboxed-or-impersonated-user?)
-    (let [recipients-to-add (filter
-                             (fn [{id :id}] (and id (not= id api/*current-user-id*)))
-                             (:recipients (email-channel pulse-before-update)))]
+  (let [existing-recipients (:recipients (email-channel pulse-before-update))
+        recipients-to-add   (concat
+                             (when (perms/sandboxed-or-impersonated-user?)
+                               (filter (fn [{id :id}] (and id (not= id api/*current-user-id*)))
+                                       existing-recipients))
+                             (hidden-cross-tenant-recipients existing-recipients))]
+    (if (and (seq recipients-to-add) (seq (:channels pulse-updates)))
       (assoc pulse-updates :channels
              (for [channel (:channels pulse-updates)]
                (if (= "email" (:channel_type channel))
                  (assoc channel :recipients
                         (concat (:recipients channel) recipients-to-add))
-                 channel))))
-    pulse-updates))
+                 channel)))
+      pulse-updates)))
 
 (defn check-card-read-permissions
   "Users can only create a pulse for `cards` they have access to."
@@ -349,7 +402,8 @@
                        (assoc-in [:email :configured] (channel.settings/email-configured?))
                        (assoc-in [:http :configured] (t2/exists? :model/Channel :type :channel/http :active true)))]
     {:channels (cond
-                 (perms/sandboxed-or-impersonated-user?)
+                 (or (perms/sandboxed-or-impersonated-user?)
+                     (some? (:tenant_id @api/*current-user*)))
                  (dissoc chan-types :slack)
 
                  ;; no Slack integration, so we are g2g
