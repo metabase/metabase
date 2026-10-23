@@ -50,8 +50,8 @@
  :discouraged-namespace-counts {:cheshire.core         4
                                 :clojure.tools.logging 3
                                 :grouper.core          1
-                                :legacy-mbql.normalize 14
-                                :legacy-mbql.schema    14
+                                :legacy-mbql.normalize 10
+                                :legacy-mbql.schema    11
                                 :legacy-mbql.util      2
                                 :query-processor.store 8
                                 :toucan2.core          3
