@@ -22,7 +22,6 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -37,6 +36,7 @@
    [metabase.public-sharing.core :as public-sharing]
    [metabase.pulse.core :as pulse]
    [metabase.queries.card-schema :as card-schema]
+   [metabase.queries.data-app :as queries.data-app]
    [metabase.queries.db :as queries.db]
    [metabase.queries.models.card.metadata :as card.metadata]
    [metabase.queries.models.parameter-card :as parameter-card]
@@ -997,39 +997,6 @@
   [message]
   (ex-info message {:status-code 400}))
 
-(defn- card-labels
-  "The cards with `card-ids` as they appear in an error, by name and ID."
-  [metadata-providerable card-ids]
-  (str/join ", " (for [{card-name :name, card-id :id} (sort-by :id (lib.metadata/bulk-metadata metadata-providerable :metadata/card card-ids))]
-                   (format "\"%s\" (%d)" card-name card-id))))
-
-(defn- tables-read
-  "The IDs of the tables `query` reads: its source tables, explicit joins included, and the tables it reaches through a
-  foreign key."
-  [query]
-  (set/union (set (lib/all-source-table-ids query))
-             (set (lib/all-implicitly-joined-table-ids query))))
-
-(defn- macro-tables-read
-  "The IDs of the tables that the definitions of the segments and measures `query` uses read."
-  [query]
-  (into #{}
-        (comp (keep :definition)
-              (filter (comp seq :stages))
-              (mapcat #(tables-read (lib/query query %))))
-        (concat (some->> (lib/all-segment-ids query) (lib.metadata/bulk-metadata query :metadata/segment))
-                (some->> (lib/all-measure-ids query) (lib.metadata/bulk-metadata query :metadata/measure)))))
-
-(defn- remapped-tables-read
-  "The IDs of the tables whose columns replace a column `query` returns, through a foreign key remapping."
-  [query]
-  (into #{}
-        (keep :table-id)
-        (some->> (lib/returned-columns query)
-                 (keep (comp :field-id :lib/external-remap))
-                 not-empty
-                 (lib.metadata/bulk-metadata query :metadata/column))))
-
 (defn- check-data-app-card-query
   "Returns the IDs of the Library metrics `dataset_query` aggregates, and throws unless it is an MBQL query on a
   database, based on no card, that reads only tables published to the Library, through its segments, measures and
@@ -1044,16 +1011,13 @@
       (throw (data-app-card-error (tru "A card in a data app''s collection must be built with the query builder, not SQL."))))
     (when (seq card-ids)
       (throw (data-app-card-error (tru "A card in a data app''s collection can read only tables published to the Library, not the card {0}."
-                                       (card-labels query card-ids)))))
+                                       (queries.data-app/card-labels query card-ids)))))
     (when-let [outside (seq (when (seq metric-ids)
                               (set/difference metric-ids (queries.db/library-metric-ids metric-ids))))]
       (throw (data-app-card-error (tru "A card in a data app''s collection can use only metrics from the Library, not the metric {0}."
-                                       (card-labels query outside)))))
+                                       (queries.data-app/card-labels query outside)))))
     (when-not mi/*deserializing?*
-      (when-let [unpublished (seq (some-> (not-empty (set/union (tables-read query)
-                                                                (macro-tables-read query)
-                                                                (remapped-tables-read query)))
-                                          queries.db/unpublished-table-names))]
+      (when-let [unpublished (queries.data-app/unpublished-read-table-names query)]
         (throw (data-app-card-error (tru "A card in a data app''s collection can read only tables published to the Library, not {0}. Publish them, or read other tables."
                                          (str/join ", " (sort unpublished)))))))
     metric-ids))
