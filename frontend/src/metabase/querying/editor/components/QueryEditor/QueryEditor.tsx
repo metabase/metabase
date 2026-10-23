@@ -93,7 +93,9 @@ export function QueryEditor({
   const { ref, height: availableHeight } = useElementSize();
 
   const handleCmdEnter = () => {
-    if (isRunnable && !isRunning) {
+    if (isRunning) {
+      cancelQuery();
+    } else if (isRunnable) {
       runQuery();
     }
   };
