@@ -138,7 +138,7 @@
             :cause        e})
 
           (and (int? status-code) (<= 400 status-code 499))
-          (tools.error/throw-recoverable! ::invalid-query {:message (ex-message e)} {:cause e})
+          (invalid-query! {:message (ex-message e)})
 
           :else
           (throw e))))))
@@ -362,7 +362,7 @@
                     status-code (:status-code data)]
                 (if (and (not (contains? data tools.error/error-key))
                          (int? status-code) (<= 400 status-code 499))
-                  (tools.error/throw-recoverable! ::save-rejected {:message (ex-message e)} {:cause e})
+                  (save-rejected! {:message (ex-message e)})
                   (throw e)))))
           _ (publish-card-create! card)
           instruction-text (te/lines
