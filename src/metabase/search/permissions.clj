@@ -51,11 +51,9 @@
     :active-only? true}))
 
 (mu/defn permitted-data-apps-clause
-  "Build the WHERE clause that keeps the available data apps the given user can read, for admins too: none without the
-  data apps feature."
+  "Build the WHERE clause that keeps the data apps the given user can read: none without the data apps feature."
   [{:keys [current-user-id is-superuser?]} :- SearchContext data-app-id-col :- [:or :keyword [:vector :keyword]]]
   (if-let [readable-ids (data-apps/visible-data-app-filter-select {:user-id       current-user-id
-                                                                   :is-superuser? is-superuser?}
-                                                                  {:available-only? true})]
+                                                                   :is-superuser? is-superuser?})]
     [:in data-app-id-col readable-ids]
     [:= [:inline 0] [:inline 1]]))

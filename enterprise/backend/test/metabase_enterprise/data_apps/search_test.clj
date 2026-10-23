@@ -81,7 +81,7 @@
             (is (= #{slug-match-id assigned-id}
                    (set (keys (found-data-apps :crowberto)))))))))))
 
-(deftest search-finds-only-enabled-up-to-date-data-apps-test
+(deftest search-finds-disabled-and-outdated-data-apps-the-user-can-read-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-temp [:model/DataApp {current-id :id} {:name "sandpiper-dunlin" :display_name "Dunlin"
                                                     :bundle_path "dunlin.js" :version 2}
@@ -97,11 +97,13 @@
       (with-redefs [data-apps.config/supported-app-version 2]
         (with-each-engine
           (fn []
-            (doseq [user   [:crowberto :rasta]
-                    params [[] [:models "data-app"]]]
-              (testing (str user " searching with " (pr-str params) " finds neither disabled nor outdated apps")
-                (is (= #{current-id}
-                       (set (keys (apply found-data-apps user params)))))))))))))
+            (doseq [params [[] [:models "data-app"]]]
+              (testing (str "an admin searching with " (pr-str params) " finds disabled and outdated apps too")
+                (is (= #{current-id outdated-id disabled-id}
+                       (set (keys (apply found-data-apps :crowberto params))))))
+              (testing (str "another user searching with " (pr-str params) " finds outdated apps, but no disabled one")
+                (is (= #{current-id outdated-id}
+                       (set (keys (apply found-data-apps :rasta params)))))))))))))
 
 (deftest search-without-models-finds-only-the-data-apps-the-user-can-read-test
   (mt/with-premium-features #{:data-apps :tenants}
@@ -125,8 +127,8 @@
         (perms/add-user-to-group! (:id tenant-user) tenant-group-id)
         (with-each-engine
           (fn []
-            (testing "an admin finds every enabled app"
-              (is (= #{enabled-id unassigned-id} (set (keys (found-data-apps :crowberto))))))
+            (testing "an admin finds every app"
+              (is (= #{enabled-id disabled-id unassigned-id} (set (keys (found-data-apps :crowberto))))))
             (testing "another user finds only the enabled apps assigned to one of their groups"
               (is (= #{enabled-id} (set (keys (found-data-apps :rasta))))))
             (testing "a user in no assigned group finds none"

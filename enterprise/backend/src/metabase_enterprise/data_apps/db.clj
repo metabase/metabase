@@ -2,7 +2,6 @@
   "Application database queries for the data-apps module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
-   [metabase-enterprise.data-apps.config :as data-apps.config]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
@@ -158,18 +157,6 @@
                                [:= :app.enabled true]
                                [:= :membership.user_id user-id]
                                [:= :member.tenant_id nil]]}))
-
-(defn available-data-app-ids-select
-  "A HoneySQL query of the ids in the HoneySQL query `data-app-ids-select` of the available DataApps: the enabled ones
-  built for [[data-apps.config/supported-app-version]]."
-  [data-app-ids-select]
-  ;; No `[:auto/param]` marker, for the reason in [[readable-data-app-ids-select]].
-  ^:allow-subquery {:select [:id]
-                    :from   [(t2/table-name :model/DataApp)]
-                    :where  [:and
-                             [:= :enabled true]
-                             [:>= :version data-apps.config/supported-app-version]
-                             [:in :id data-app-ids-select]]})
 
 (mu/defn readable-data-app?
   "Whether the non-superuser User with `user-id` can read the DataApp with `app-id`."
