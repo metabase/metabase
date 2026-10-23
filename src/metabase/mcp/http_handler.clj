@@ -15,6 +15,7 @@
    :oauth-bearer       {:extract-token     #'oauth-server/extract-bearer-token
                         :resolve-token     #'oauth-server/resolve-access-token
                         :full-access-scope oauth-server/full-access-scope
+                        :mcp-scopes        (set (mcp/v2-scopes))
                         :bearer-only-paths mcp.paths/endpoint-paths}
    :mcp-ui-credentials {:on-surface?        #'mcp/ui-credential-on-surface?
                         :resolve-credential #'mcp/resolve-ui-credential
