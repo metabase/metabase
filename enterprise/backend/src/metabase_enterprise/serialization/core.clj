@@ -27,6 +27,7 @@
  [metabase-enterprise.serialization.v2.ingest
   entity-file-path?
   legal-top-level-paths
+  remote-synced-top-level-paths
   replaced-top-level-paths
   shared-top-level-paths
   strip-labels

@@ -31,7 +31,9 @@
 
 ;;; ------------------------------------------------ Hash ------------------------------------------------
 
-(defn- bytes-hash [^bytes b]
+(defn bytes-hash
+  "The SHA-256 hex of `b`, as `custom_viz_plugin.bundle_hash` stores it."
+  ^String [^bytes b]
   (-> b buddy-hash/sha256 codecs/bytes->hex))
 
 (defn- string-hash [^String s]
@@ -99,6 +101,9 @@
   [^bytes bundle-bytes]
   (when (or (nil? bundle-bytes) (zero? (alength bundle-bytes)))
     (throw (ex-info "Bundle is empty" {:status-code 400})))
+  ;; an upload is refused by size before it is read; a bundle packed from imported files is measured here
+  (when (> (alength bundle-bytes) max-bundle-bytes)
+    (throw (ex-info (format "Bundle must be less than %dMB." max-bundle-mib) {:status-code 413})))
   (let [scratch (Files/createTempDirectory "custom-viz-validate-"
                                            (into-array FileAttribute []))]
     (try
@@ -129,6 +134,8 @@
         (when (str/blank? (:name parsed))
           (throw (ex-info (str (manifest/manifest-path) " is missing a \"name\" field")
                           {:status-code 400})))
+        ;; only the serving rule: a bundle may replace one of a plugin registered before the directory rule existed.
+        ;; Registration applies `manifest/directory-name-error` itself.
         (when-let [error (manifest/identifier-error (:name parsed))]
           (throw (ex-info (str (manifest/manifest-path) " is invalid: " error)
                           {:status-code 400})))
@@ -138,6 +145,19 @@
          :version-str version-str})
       (finally
         (delete-recursive! scratch)))))
+
+;;; ------------------------------------------------ Files ------------------------------------------------
+
+(defn bundle->files
+  "The files in `bundle-bytes`, a tar+gzip archive as uploaded, as a map of archive path to bytes."
+  [^bytes bundle-bytes]
+  (u.compress/untgz-files bundle-bytes untgz-opts))
+
+(defn files->bundle
+  "A tar+gzip archive of `files`, a map of archive path to bytes, as [[validate-bundle!]] reads it. The archive is
+   deterministic, so the same files always make the same `bundle_hash`."
+  ^bytes [files]
+  (u.compress/tgz-bytes files))
 
 ;;; ------------------------------------------------ FS Cache ------------------------------------------------
 

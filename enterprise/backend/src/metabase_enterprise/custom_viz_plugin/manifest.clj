@@ -46,11 +46,27 @@
   (some-> (mr/explain ManifestFieldTypes manifest) me/humanize))
 
 (defn identifier-error
-  "Why `identifier` can't name a plugin, or nil. `:` separates the parts of `custom:<identifier>:<setting id>`
-   viz-settings keys, so an identifier containing it could read another plugin's settings."
+  "Why `identifier` can't name a plugin on this instance, or nil. `:` separates the parts of
+   `custom:<identifier>:<setting id>` viz-settings keys, so an identifier containing it could read another plugin's
+   settings. This is the only rule serving enforces: a plugin installed before a stricter rule existed keeps working."
   [identifier]
   (when (and (string? identifier) (str/includes? identifier ":"))
     (format "Plugin identifier \"%s\" must not contain \":\"" identifier)))
+
+(def ^:private directory-name-pattern
+  "The identifiers the representation format accepts: an identifier names the plugin's directory in a repository, so
+   letters, digits, `.`, `_` and `-`, starting with a letter or digit."
+  #"[A-Za-z0-9][A-Za-z0-9._-]*")
+
+(defn directory-name-error
+  "Why `identifier` can't name a plugin's directory in a repository, or nil. Stricter than `identifier-error`, which
+   it includes: it guards registration and export, never serving, so a stored identifier it refuses is skipped on
+   export rather than hidden from viewers."
+  [identifier]
+  (or (identifier-error identifier)
+      (when (and (string? identifier) (not (re-matches directory-name-pattern identifier)))
+        (format "Plugin identifier \"%s\" must be letters, digits, \".\", \"_\" or \"-\", starting with a letter or digit"
+                identifier))))
 
 ;;; ------------------------------------------------ Version ------------------------------------------------
 
@@ -138,7 +154,7 @@
   [manifest]
   (when-let [icon (:icon manifest)]
     (when (and (image-file? icon) (safe-relative-path? icon))
-      [icon])))
+      [(str (.normalize (java.nio.file.Path/of icon (into-array String []))))])))
 
 (defn asset-content-type
   "Return the MIME content type for an image asset file, or nil if not recognized.

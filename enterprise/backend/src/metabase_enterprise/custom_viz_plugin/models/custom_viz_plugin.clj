@@ -1,12 +1,15 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin
   (:require
-   [buddy.core.codecs :as codecs]
+   [clojure.string :as str]
    [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.db :as custom-viz-plugin.db]
+   [metabase-enterprise.custom-viz-plugin.manifest :as manifest]
    [metabase-enterprise.custom-viz-plugin.schema]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2])
   (:import
@@ -61,35 +64,143 @@
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
-(defn- bundle->b64 ^String [^bytes b]
-  (some-> b codecs/bytes->b64-str))
+;; A plugin serializes as `custom_viz_plugins/<identifier>/custom_viz_plugin.yaml` with its bundle unpacked beside it,
+;; laid out as `npx @metabase/custom-viz pack` archives it: `metabase-plugin.json` at the root, `dist/index.js`, and
+;; the icon the manifest names under `dist/assets/`. The YAML holds only what the bundle can't derive. An import
+;; packs those files back into an archive, so a plugin's files are what a repository reviews and what an instance
+;; stores.
 
-(defn- b64->bundle ^bytes [^String s]
-  (some-> s codecs/b64->bytes))
+(def ^:private index-file
+  "The resource file holding the plugin's built JavaScript, relative to its YAML file."
+  "dist/index.js")
+
+(defn- asset-file
+  "The resource file holding the asset `asset-name`, relative to the plugin's YAML file."
+  [asset-name]
+  (str "dist/assets/" asset-name))
+
+(defn- served-paths
+  "The archive paths an instance serves from a bundle, which are the files a repository holds: the manifest, the
+  JavaScript, and the icon the manifest names. `read-text` reads an archive path as a string, or nil."
+  [read-text]
+  (into [(manifest/manifest-path) index-file]
+        (map asset-file)
+        (manifest/asset-paths (some-> (read-text (manifest/manifest-path)) manifest/parse-manifest))))
+
+(defn- served-files
+  "The entries of `files`, a map of archive path to bytes, at the [[served-paths]]. An uploaded archive may hold
+  more, such as a source map; an import reads back only these, so an export writes only these."
+  [files]
+  (select-keys files (served-paths (fn [path] (some-> ^bytes (get files path) (String. "UTF-8"))))))
+
+(defn- export-bundle
+  "The files a plugin's stored `bundle` exports beside its YAML, or `::serdes/skip` for a dev-only plugin, which
+  has none, and for a stored archive that can't be read: that plugin exports as the YAML alone, so one broken plugin
+  doesn't fail the export, and it imports as an error plugin."
+  [{:keys [identifier]} _k bundle]
+  (if bundle
+    (try
+      (served-files (cache/bundle->files bundle))
+      (catch Exception e
+        (log/warnf "Not exporting the bundle of custom viz plugin \"%s\": %s" identifier (ex-message e))
+        ::serdes/skip))
+    ::serdes/skip))
+
+(defn- import-bundle
+  "The archive of the `files` read from beside a plugin's YAML. A file that isn't there is left out, and
+  validation names it."
+  [files]
+  (cache/files->bundle (into {} (filter val) files)))
 
 (defmethod serdes/make-spec "CustomVizPlugin"
   [_model-name _opts]
-  {:copy      [:display_name :identifier :enabled :icon :manifest :metabase_version :bundle_hash]
+  {:copy      [:identifier :enabled]
    :skip      [;; derived from the bundle at import time (see [[bundle-columns]]), exactly as on upload
-               :status :error_message
+               :display_name :icon :manifest :metabase_version :bundle_hash :status :error_message
                ;; dev-only plugins are never served from another instance
                :dev_bundle_url]
+   ;; a plugin is enabled unless the file says otherwise, as an upload enables it; the column defaults the same way
    :defaults  {:enabled true}
-   :transform {:bundle     {:export bundle->b64
-                            :import b64->bundle}}})
+   :transform {:bundle {:as                  :serdes/resources
+                        :export-with-context export-bundle
+                        :import              import-bundle}}})
+
+(defn- case-colliding-identifiers
+  "The lower-cased identifiers that more than one of `identifiers` share: their plugins would be one directory on a
+  case-insensitive filesystem, and an import refuses the second of them anywhere, so none of them is exported."
+  [identifiers]
+  (into #{}
+        (keep (fn [[lowered group]]
+                (when (next group)
+                  (log/warnf "Not exporting custom viz plugins %s: their identifiers differ only in case"
+                             (str/join ", " (map #(str \" % \") (sort group))))
+                  lowered)))
+        (group-by u/lower-case-en identifiers)))
+
+(defmethod serdes/extract-query "CustomVizPlugin"
+  [model-name {:keys [filter-column filter-ids] :as opts}]
+  ;; during export skip dev plugins, case-colliding and plugins who's name can't be directory name
+  ;; skipped plugins are named in the log, and is still served on this instance
+  (let [colliding (case-colliding-identifiers
+                   (custom-viz-plugin.db/plugin-identifiers-with-bundles filter-column filter-ids))]
+    (eduction (remove (fn [{:keys [identifier]}]
+                        (or (contains? colliding (u/lower-case-en identifier))
+                            (when-let [error (manifest/directory-name-error identifier)]
+                              (log/warnf "Not exporting custom viz plugin: %s" error)
+                              true))))
+              (custom-viz-plugin.db/reducible-plugins-with-bundles filter-column filter-ids
+                                                                   (serdes/extract-order-columns model-name opts)))))
 
 (defn- bundle-columns
-  "Columns derived from validating the imported `bundle` bytes against the imported `identifier`: the `:active` state
-  plus manifest-derived metadata when the bundle is valid and named for this plugin, or the `:error` state with the
-  reason when it is not. The same checks guard a bundle upload."
-  [{:keys [identifier bundle]}]
+  "Validates the imported bundle against its identifier using upload checks. Returns `:active` with manifest metadata,
+  or `:error` with the reason and identifier as display name. Stores bytes and hash in either case, unless oversized."
+  [{:keys [identifier ^bytes bundle]}]
   (try
     (->> (cache/validate-bundle! bundle)
          (cache/check-bundle-identifier! identifier)
          cache/derived-columns)
     (catch Exception e
-      {:status        :error
-       :error_message (ex-message e)})))
+      (let [storable (when (and bundle (<= (alength bundle) cache/max-bundle-bytes)) bundle)]
+        ;; the manifest-derived columns are cleared, not kept from a bundle the row no longer holds
+        {:status           :error
+         :error_message    (ex-message e)
+         :display_name     identifier
+         :bundle           storable
+         :bundle_hash      (some-> storable cache/bytes-hash)
+         :manifest         nil
+         :icon             nil
+         :metabase_version nil}))))
+
+(defn- check-directory!
+  "Throws unless the directory an ingested plugin was read from, when known, is named by its identifier."
+  [{:keys [identifier] :as ingested}]
+  (when-let [directory (:serdes/directory ingested)]
+    (when-not (= directory identifier)
+      (throw (ex-info (format "custom_viz_plugins/%s: the directory must be named by the plugin's identifier, \"%s\""
+                              directory identifier)
+                      {:status-code 400})))))
+
+(defn- check-identifier-case!
+  "Throws when a stored plugin's identifier equals `identifier` except for case: it would be a second
+  plugin wherever identifiers are case-sensitive, and a renamed one wherever they are not."
+  [identifier maybe-local]
+  ;; On case-insensitive app DBs (MySQL), `maybe-local` may already have a different case.
+  (when-let [existing (or (:identifier maybe-local)
+                          (custom-viz-plugin.db/plugin-identifier-ignoring-case identifier))]
+    (when (not= existing identifier)
+      (throw (ex-info (format "Custom viz plugin \"%s\" differs only in case from the existing plugin \"%s\""
+                              identifier existing)
+                      {:status-code 400})))))
+
+(defmethod serdes/load-one! "CustomVizPlugin"
+  [{:keys [identifier] :as ingested} maybe-local]
+  (check-directory! ingested)
+  ;; a new plugin is a registration, so it is held to the directory rule; an existing one may predate it
+  (when (nil? maybe-local)
+    (when-let [error (manifest/directory-name-error identifier)]
+      (throw (ex-info error {:status-code 400}))))
+  (check-identifier-case! identifier maybe-local)
+  (serdes/default-load-one! ingested maybe-local))
 
 (defmethod serdes/load-insert! "CustomVizPlugin"
   [_model-name ingested]
@@ -113,5 +224,14 @@
   (let [{:keys [id]} (last path)]
     (custom-viz-plugin.db/plugin-by-identifier id)))
 
-(defmethod serdes/storage-path "CustomVizPlugin" [entity _ctx]
-  [{:label "custom_viz_plugins"} {:label (:identifier entity)}])
+(defmethod serdes/storage-path "CustomVizPlugin" [{:keys [identifier]} _ctx]
+  ;; the directory is the identifier verbatim: it is checked against the identifier on import
+  [{:label "custom_viz_plugins"}
+   {:label identifier :key identifier :style :slug}
+   {:label "custom_viz_plugin"}])
+
+(defmethod serdes/resource-paths "CustomVizPlugin" [_ingested read-text]
+  (served-paths read-text))
+
+(defmethod serdes/binary-resources? "CustomVizPlugin" [_ingested]
+  true)

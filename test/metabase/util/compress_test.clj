@@ -7,12 +7,12 @@
   (:import
    (java.io File)
    (java.nio.file Files)
-   (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveOutputStream)
+   (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveOutputStream TarConstants)
    (org.apache.commons.compress.compressors.gzip GzipCompressorOutputStream)))
 
 (set! *warn-on-reflection* true)
 
-(deftest compress-test
+(deftest ^:parallel compress-test
   (testing "tgz/untgz"
     (let [dir     (doto (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))
                     .mkdirs)
@@ -45,8 +45,30 @@
     (with-open [tar (-> (io/output-stream archive)
                         (GzipCompressorOutputStream.)
                         (TarArchiveOutputStream. 512 "UTF-8"))]
-      (let [entry (doto (TarArchiveEntry. ^String entry-name)
+      (let [entry (doto (TarArchiveEntry. ^String entry-name true)
                     (.setSize (alength content)))]
+        (.putArchiveEntry tar entry)
+        (.write tar content)
+        (.closeArchiveEntry tar)))
+    archive))
+
+(defn- create-special-entries-tgz
+  "Create a tar.gz archive holding a symbolic link, a hard link, a FIFO, and one regular file `real.txt`."
+  ^File []
+  (let [archive (File/createTempFile "archive" ".tar.gz")]
+    (with-open [tar (-> (io/output-stream archive)
+                        (GzipCompressorOutputStream.)
+                        (TarArchiveOutputStream. 512 "UTF-8"))]
+      (doseq [^TarArchiveEntry entry [(doto (TarArchiveEntry. "dist/index.js" TarConstants/LF_SYMLINK)
+                                        (.setLinkName "/etc/passwd"))
+                                      (doto (TarArchiveEntry. "hard.js" TarConstants/LF_LINK)
+                                        (.setLinkName "real.txt"))
+                                      (TarArchiveEntry. "pipe" TarConstants/LF_FIFO)]]
+        (.putArchiveEntry tar entry)
+        (.closeArchiveEntry tar))
+      (let [content (.getBytes "hi" "UTF-8")
+            entry   (doto (TarArchiveEntry. "real.txt" true)
+                      (.setSize (alength content)))]
         (.putArchiveEntry tar entry)
         (.write tar content)
         (.closeArchiveEntry tar)))
@@ -67,7 +89,7 @@
           (.closeArchiveEntry tar))))
     archive))
 
-(deftest untgz-max-uncompressed-bytes-test
+(deftest ^:parallel untgz-max-uncompressed-bytes-test
   (testing "untgz aborts when total uncompressed bytes exceed :max-uncompressed-bytes"
     (let [content (.getBytes ^String (apply str (repeat 1024 \a)) "UTF-8")
           archive (create-multi-entry-tgz 10 content) ;; 10 KiB total uncompressed
@@ -83,7 +105,7 @@
           (io/delete-file archive true)
           (run! #(io/delete-file % true) (reverse (file-seq out))))))))
 
-(deftest untgz-max-entries-test
+(deftest ^:parallel untgz-max-entries-test
   (testing "untgz aborts when entry count exceeds :max-entries"
     (let [content (.getBytes "x" "UTF-8")
           archive (create-multi-entry-tgz 10 content)
@@ -97,7 +119,7 @@
           (io/delete-file archive true)
           (run! #(io/delete-file % true) (reverse (file-seq out))))))))
 
-(deftest untgz-path-traversal-test
+(deftest ^:parallel untgz-path-traversal-test
   (testing "untgz rejects tar entries with path traversal"
     (let [content (.getBytes "content" "UTF-8")
           out     (doto (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))
@@ -110,3 +132,78 @@
             (finally
               (io/delete-file archive true)
               (run! #(io/delete-file % true) (reverse (file-seq out))))))))))
+
+(deftest ^:parallel tgz-bytes-test
+  (let [files {"dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
+               "metabase-plugin.json" (.getBytes "{}" "UTF-8")
+               "dist/assets/icon.png" (byte-array [0 (int 0x80) (int 0xff) 1])}]
+    (testing "an archive of a map of files reads back as the same map"
+      (is (= (update-vals files seq)
+             (update-vals (u.compress/untgz-files (u.compress/tgz-bytes files)) seq))))
+    (testing "the same files always make the same bytes, whatever their order or the time"
+      (is (= (seq (u.compress/tgz-bytes files))
+             (seq (u.compress/tgz-bytes (into (sorted-map-by (fn [a b] (compare b a))) files))))))
+    (testing "an entry path that could leave a directory is refused"
+      (doseq [path ["../escape" "/etc/passwd" "foo/../bar" "" "a//b"]]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid path"
+                              (u.compress/tgz-bytes {path (.getBytes "x" "UTF-8")})))))))
+
+(deftest ^:parallel tgz-bytes-compresses-at-the-maximum-level-test
+  (testing "the gzip header's XFL byte says maximum compression, so a repack is no larger than the upload it came from"
+    (let [words  ["heatmap" "render" "column" "settings" "value" "format" "row" "series"]
+          random (java.util.Random. 7)
+          script (.getBytes ^String (apply str (repeatedly 20000 #(str (nth words (.nextInt random (count words))) " "))) "UTF-8")
+          bytes  (u.compress/tgz-bytes {"dist/index.js" script})]
+      ;; https://www.ietf.org/rfc/rfc1952.txt, section 2.3.1: XFL = 2 for maximum compression, 4 for fastest
+      (is (= 2 (aget bytes 8))))))
+
+(deftest ^:parallel untgz-files-test
+  (testing "dot segments in file names are normalized"
+    (doseq [path ["./dist/index.js" "././dist/./index.js"]]
+      (let [content (.getBytes "script" "UTF-8")
+            archive (create-tgz path content)]
+        (try
+          (is (= {"dist/index.js" (seq content)}
+                 (update-vals (u.compress/untgz-files archive) seq)))
+          (finally
+            (io/delete-file archive true))))))
+  (testing "only regular files are read, hidden entries are skipped, and the limits of untgz apply"
+    (let [content (.getBytes ^String (apply str (repeat 1024 \a)) "UTF-8")
+          archive (create-multi-entry-tgz 10 content)]
+      (try
+        (is (= (into {} (for [i (range 10)] [(format "file-%d" i) (seq content)]))
+               (update-vals (u.compress/untgz-files archive) seq)))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"max uncompressed bytes"
+                              (u.compress/untgz-files archive {:max-uncompressed-bytes 4096})))
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"max entries"
+                              (u.compress/untgz-files archive {:max-entries 5})))
+        (finally
+          (io/delete-file archive true))))
+    (let [archive (create-tgz ".hidden" (.getBytes "x" "UTF-8"))]
+      (try
+        (is (= {} (u.compress/untgz-files archive)))
+        (finally
+          (io/delete-file archive true)))))
+  (testing "an entry whose path could leave a directory is refused"
+    (doseq [file-name ["../../etc/foo" "foo/../../escape" "foo/../bar" "./../escape" "/etc/foo" "a//b" "a\\b"]]
+      (let [archive (create-tgz file-name (.getBytes "content" "UTF-8"))]
+        (try
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"invalid path"
+                                (u.compress/untgz-files archive)))
+          (finally
+            (io/delete-file archive true))))))
+  (testing "links and FIFOs are not regular files: they are skipped, not read as empty files"
+    (let [archive (create-special-entries-tgz)
+          out     (doto (io/file (System/getProperty "java.io.tmpdir") (mt/random-name)) .mkdirs)]
+      (try
+        (is (= {"real.txt" (seq (.getBytes "hi" "UTF-8"))}
+               (update-vals (u.compress/untgz-files archive) seq)))
+        (testing "untgz neither writes them to disk nor follows them"
+          (u.compress/untgz archive out)
+          (is (= ["real.txt"]
+                 (->> (file-seq out)
+                      (filter #(.isFile ^File %))
+                      (mapv #(str (.relativize (.toPath out) (.toPath ^File %))))))))
+        (finally
+          (io/delete-file archive true)
+          (run! io/delete-file (reverse (file-seq out))))))))

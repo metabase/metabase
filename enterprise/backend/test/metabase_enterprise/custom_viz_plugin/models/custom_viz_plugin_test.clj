@@ -1,9 +1,11 @@
 (ns metabase-enterprise.custom-viz-plugin.models.custom-viz-plugin-test
   (:require
-   [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.custom-viz-plugin.cache :as cache]
    [metabase-enterprise.custom-viz-plugin.test-util :as cv.tu]
+   [metabase-enterprise.serialization.v2.ingest :as ingest]
+   [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.api.common :as api]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
@@ -12,6 +14,33 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(deftest dot-path-bundle-round-trip-test
+  (let [identifier "dot-path-viz"
+        files      {"metabase-plugin.json" (.getBytes ^String (json/encode {:name identifier :icon "./icon.png"}) "UTF-8")
+                    "dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
+                    "dist/assets/icon.png" (byte-array [0 (int 0x80) (int 0xff)])}
+        bundle     (cv.tu/make-tgz-bytes (map (fn [[path content]] [(str "./" path) content]) files))
+        export     (get-in (serdes/make-spec "CustomVizPlugin" {}) [:transform :bundle :export-with-context])]
+    (is (some? (cache/validate-bundle! bundle)))
+    (let [exported (export {:identifier identifier} :bundle bundle)]
+      (is (= (update-vals files seq) (when (map? exported) (update-vals exported seq))))
+      (when (map? exported)
+        (let [ingested (ingest/read-resources
+                        {:serdes/meta [{:model "CustomVizPlugin" :id identifier}]
+                         :identifier identifier :enabled true}
+                        identifier
+                        (fn [path] (when-let [^bytes content (get exported path)] (String. content "UTF-8")))
+                        exported)]
+          (is (= (set (keys files)) (set (keys (:serdes/resources ingested)))))
+          (mt/with-temp [:model/CustomVizPlugin {id :id :as plugin} {:identifier   identifier
+                                                                     :display_name identifier
+                                                                     :status       :active
+                                                                     :bundle       bundle}]
+            (serdes/load-one! ingested plugin)
+            (is (= :active (t2/select-one-fn :status :model/CustomVizPlugin :id id)))
+            (is (= (update-vals files seq)
+                   (update-vals (cache/bundle->files (t2/select-one-fn :bundle :model/CustomVizPlugin :id id)) seq)))))))))
 
 (deftest table-name-test
   (is (= :custom_viz_plugin (t2/table-name :model/CustomVizPlugin))))
@@ -83,11 +112,16 @@
            (serdes/generate-path "CustomVizPlugin" {:identifier "my-viz"})))))
 
 (deftest storage-path-test
-  (testing "storage-path places under custom_viz_plugins directory"
-    (let [entity {:identifier  "my-viz"
-                  :serdes/meta [{:model "CustomVizPlugin" :id "my-viz" :label "my-viz"}]}]
-      (is (= [{:label "custom_viz_plugins"} {:label "my-viz"}]
-             (serdes/storage-path entity nil))))))
+  (testing "storage-path is the identifier's own directory under custom_viz_plugins, holding custom_viz_plugin.yaml"
+    (let [entity {:identifier  "My-Viz"
+                  :serdes/meta [{:model "CustomVizPlugin" :id "My-Viz" :label "My-Viz"}]}]
+      (is (= [{:label "custom_viz_plugins"}
+              {:label "My-Viz" :key "My-Viz" :style :slug}
+              {:label "custom_viz_plugin"}]
+             (serdes/storage-path entity nil)))
+      (testing "the directory keeps the identifier verbatim, since import checks it against the identifier"
+        (is (= "custom_viz_plugins/My-Viz/custom_viz_plugin.yaml"
+               (storage.util/entity-file-path (serdes/storage-base-context) entity)))))))
 
 (deftest load-find-local-test
   (testing "load-find-local finds plugin by identifier"
@@ -99,43 +133,71 @@
         (is (= id (:id found)))))))
 
 (deftest make-spec-test
-  (testing "make-spec copies identity fields and bundle_hash, skips dev/error state"
+  (testing "the file holds only what the bundle can't derive; the bundle itself is unpacked into resource files"
     (let [spec (serdes/make-spec "CustomVizPlugin" {})]
-      (is (contains? (set (:copy spec)) :identifier))
-      (is (contains? (set (:copy spec)) :display_name))
-      (is (contains? (set (:copy spec)) :manifest))
-      (is (contains? (set (:copy spec)) :bundle_hash))
-      (is (contains? (set (:skip spec)) :dev_bundle_url))
-      (is (contains? (set (:skip spec)) :error_message)))))
-
-(deftest bundle-b64-round-trip-test
-  (testing "bundle bytes base64-encode on export and decode back to bytes on import"
-    (let [spec   (serdes/make-spec "CustomVizPlugin" {})
-          export (get-in spec [:transform :bundle :export])
-          import (get-in spec [:transform :bundle :import])
-          bytes  (.getBytes "pretend tgz bytes" "UTF-8")
-          out    (export bytes)]
-      (is (string? out))
-      (is (not= (String. bytes "UTF-8") out)
-          "exported value should be b64-encoded, not the raw string")
-      (is (= (seq bytes) (seq (import out))))))
-  (testing "nil bundle round-trips as nil"
-    (let [spec   (serdes/make-spec "CustomVizPlugin" {})
-          export (get-in spec [:transform :bundle :export])
-          import (get-in spec [:transform :bundle :import])]
-      (is (nil? (export nil)))
-      (is (nil? (import nil))))))
+      (is (= #{:identifier :enabled} (set (:copy spec))))
+      (is (= #{:display_name :icon :manifest :metabase_version :bundle_hash :status :error_message :dev_bundle_url}
+             (set (:skip spec))))
+      (is (= {:enabled true} (:defaults spec)) "enabled is written only when false; absent means enabled, as on upload")
+      (is (= :serdes/resources (get-in spec [:transform :bundle :as])))))
+  (testing "the bundle exports as its files and imports back as an archive of them"
+    (let [spec     (serdes/make-spec "CustomVizPlugin" {})
+          export   (let [f (get-in spec [:transform :bundle :export-with-context])]
+                     (fn [bundle] (f {:identifier "my-viz"} :bundle bundle)))
+          import   (get-in spec [:transform :bundle :import])
+          manifest (json/encode {:name "my-viz" :icon "icon.svg"})
+          files    {"metabase-plugin.json" (.getBytes ^String manifest "UTF-8")
+                    "dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
+                    "dist/assets/icon.svg" (byte-array [0 (int 0x80) (int 0xff)])}
+          bundle   (cv.tu/make-tgz-bytes files)]
+      (is (= (update-vals files seq) (update-vals (export bundle) seq)))
+      (is (= (update-vals files seq) (update-vals (cache/bundle->files (import files)) seq)))
+      (is (= ::serdes/skip (export nil)))
+      (is (= ::serdes/skip (export (.getBytes "not a tgz" "UTF-8"))) "a stored archive that can't be read is left out")
+      (testing "a file that isn't there is left out of the archive"
+        (is (= {"dist/index.js" (seq (get files "dist/index.js"))}
+               (update-vals (cache/bundle->files (import (assoc files "metabase-plugin.json" nil "dist/assets/icon.svg" nil)))
+                            seq))))
+      (testing "the same files always pack to the same bytes, so the hash is stable across imports"
+        (is (= (seq (import files)) (seq (import files)))))))
+  (testing "the resource files are the manifest, the JavaScript, and the icon the manifest names, read as bytes"
+    (let [ingested  {:serdes/meta [{:model "CustomVizPlugin" :id "my-viz"}]}
+          read-text (fn [path]
+                      (when (= path "metabase-plugin.json")
+                        (json/encode {:name "my-viz" :icon "icon.svg"})))]
+      (is (= ["metabase-plugin.json" "dist/index.js" "dist/assets/icon.svg"]
+             (serdes/resource-paths ingested read-text)))
+      (is (true? (serdes/binary-resources? ingested))))
+    (testing "an icon the instance would not serve is not a resource"
+      (doseq [icon ["../x" "icon.exe"]]
+        (is (= ["metabase-plugin.json" "dist/index.js"]
+               (serdes/resource-paths {:serdes/meta [{:model "CustomVizPlugin" :id "my-viz"}]}
+                                      (constantly (json/encode {:name "my-viz" :icon icon}))))
+            icon)))
+    (testing "without a readable manifest, the fixed files"
+      (is (= ["metabase-plugin.json" "dist/index.js"]
+             (serdes/resource-paths {:serdes/meta [{:model "CustomVizPlugin" :id "my-viz"}]} (constantly nil))))
+      (is (= ["metabase-plugin.json" "dist/index.js"]
+             (serdes/resource-paths {:serdes/meta [{:model "CustomVizPlugin" :id "my-viz"}]} (constantly "{not json")))))))
 
 (defn- ingested-plugin
-  "What serdes ingests for an export of plugin `identifier` whose bundle bytes are `bundle`."
-  [identifier ^bytes bundle]
-  {:serdes/meta  [{:model "CustomVizPlugin" :id identifier :label identifier}]
-   :identifier   identifier
-   :display_name identifier
-   :manifest     {:name identifier}
-   :bundle_hash  (cv.tu/bundle-hash bundle)
-   :bundle       (codecs/bytes->b64-str bundle)
-   :created_at   "2026-01-01T00:00:00Z"})
+  "What serdes ingests for an export of plugin `identifier` whose bundle bytes are `bundle`, read from the directory
+  `identifier` unless `extra` says otherwise: the YAML's fields and the bundle's files as resources."
+  [identifier ^bytes bundle & {:as extra}]
+  (merge {:serdes/meta      [{:model "CustomVizPlugin" :id identifier :label identifier}]
+          :serdes/directory identifier
+          :serdes/resources (when bundle
+                              (try (cache/bundle->files bundle)
+                                   ;; not an archive: pass the bytes off as the JavaScript, so the import packs them
+                                   (catch Exception _ {"dist/index.js" bundle})))
+          :identifier       identifier
+          :enabled          true}
+         extra))
+
+(defn- repacked-hash
+  "The `bundle_hash` an import of `bundle`'s files stores: the hash of the archive it packs them back into."
+  [^bytes bundle]
+  (cv.tu/bundle-hash (cache/files->bundle (cache/bundle->files bundle))))
 
 (defn- active-plugin-row
   "Columns of an active, enabled plugin `identifier` backed by `bundle`, for `mt/with-temp`."
@@ -156,14 +218,81 @@
         (is (=? {:status        :active
                  :error_message nil
                  :enabled       true
-                 :bundle_hash   (cv.tu/bundle-hash bundle)}
+                 :bundle_hash   (repacked-hash bundle)}
                 (t2/select-one :model/CustomVizPlugin :identifier "imported-viz"))))))
-  (testing "loading a plugin whose bundle is not a valid archive makes it :error"
+  (testing "loading a plugin whose files have no manifest makes it :error, keeping the files and their hash"
     (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (serdes/load-one! (ingested-plugin "broken-viz" (.getBytes "not a tgz" "UTF-8")) nil)
+      (let [script (.getBytes "console.log('hi')" "UTF-8")
+            packed (cache/files->bundle {"dist/index.js" script})]
+        (serdes/load-one! (ingested-plugin "broken-viz" nil :serdes/resources {"metabase-plugin.json" nil
+                                                                               "dist/index.js"        script})
+                          nil)
+        (is (=? {:status        :error
+                 :error_message #(str/includes? % "metabase-plugin.json not found")
+                 :display_name  "broken-viz"
+                 :bundle_hash   (cv.tu/bundle-hash packed)}
+                (t2/select-one :model/CustomVizPlugin :identifier "broken-viz")))
+        (is (= (seq packed) (seq (t2/select-one-fn :bundle :model/CustomVizPlugin :identifier "broken-viz")))))))
+  (testing "loading a plugin whose directory has none of the files makes it :error"
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (serdes/load-one! (ingested-plugin "bundleless-viz" nil) nil)
       (is (=? {:status        :error
-               :error_message string?}
-              (t2/select-one :model/CustomVizPlugin :identifier "broken-viz"))))))
+               :error_message #(str/includes? % "metabase-plugin.json not found")}
+              (t2/select-one :model/CustomVizPlugin :identifier "bundleless-viz"))))))
+
+(deftest load-enabled-is-owned-by-the-file-test
+  (let [bundle (cv.tu/valid-bundle-bytes "toggled-viz")]
+    (testing "a file without `enabled` loads an enabled plugin, as an upload does"
+      (mt/with-model-cleanup [:model/CustomVizPlugin]
+        (serdes/load-one! (dissoc (ingested-plugin "toggled-viz" bundle) :enabled) nil)
+        (is (true? (t2/select-one-fn :enabled :model/CustomVizPlugin :identifier "toggled-viz")))))
+    (testing "a file that disables the plugin disables it"
+      (mt/with-model-cleanup [:model/CustomVizPlugin]
+        (serdes/load-one! (ingested-plugin "toggled-viz" bundle :enabled false) nil)
+        (is (false? (t2/select-one-fn :enabled :model/CustomVizPlugin :identifier "toggled-viz")))))
+    (testing "the file's `enabled` replaces what an admin set on this instance"
+      (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "toggled-viz" bundle)]
+        (serdes/load-one! (ingested-plugin "toggled-viz" bundle :enabled false) (t2/select-one :model/CustomVizPlugin :id id))
+        (is (false? (t2/select-one-fn :enabled :model/CustomVizPlugin :id id)))))))
+
+(deftest load-checks-the-directory-name-test
+  (testing "a plugin read from a directory not named by its identifier fails the import, naming the directory"
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"custom_viz_plugins/thumb: .*\"thumbs\""
+                            (serdes/load-one! (ingested-plugin "thumbs" (cv.tu/valid-bundle-bytes "thumbs")
+                                                               :serdes/directory "thumb")
+                                              nil)))
+      (is (nil? (t2/select-one :model/CustomVizPlugin :identifier "thumbs")))))
+  (testing "an ingested plugin that carries no directory, such as one not read from files, loads"
+    (mt/with-model-cleanup [:model/CustomVizPlugin]
+      (serdes/load-one! (dissoc (ingested-plugin "thumbs" (cv.tu/valid-bundle-bytes "thumbs")) :serdes/directory) nil)
+      (is (= :active (t2/select-one-fn :status :model/CustomVizPlugin :identifier "thumbs"))))))
+
+(deftest load-refuses-a-new-identifier-that-cannot-name-a-directory-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (testing "a new plugin is a registration, held to the directory rule"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"bad identifier\" must be letters, digits"
+                            (serdes/load-one! (ingested-plugin "bad identifier" (cv.tu/valid-bundle-bytes "bad identifier")) nil))))
+    (testing "an existing plugin from before the rule still updates in place"
+      (let [bundle (cv.tu/valid-bundle-bytes "bad identifier")]
+        (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "bad identifier" bundle)]
+          (serdes/load-one! (ingested-plugin "bad identifier" bundle) (t2/select-one :model/CustomVizPlugin :id id))
+          (is (= :active (t2/select-one-fn :status :model/CustomVizPlugin :id id))))))))
+
+(deftest load-refuses-an-identifier-differing-only-in-case-test
+  (let [bundle (cv.tu/valid-bundle-bytes "Thumbs")]
+    (mt/with-temp [:model/CustomVizPlugin {id :id} (active-plugin-row "Thumbs" bundle)]
+      (testing "a new plugin whose identifier is an existing one in another case is refused, naming both"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"thumbs\" differs only in case from .*\"Thumbs\""
+                              (serdes/load-one! (ingested-plugin "thumbs" (cv.tu/valid-bundle-bytes "thumbs")) nil))))
+      (testing "when the app DB found the existing plugin case-insensitively, it is refused rather than renamed"
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"\"thumbs\" differs only in case from .*\"Thumbs\""
+                              (serdes/load-one! (ingested-plugin "thumbs" (cv.tu/valid-bundle-bytes "thumbs"))
+                                                (t2/select-one :model/CustomVizPlugin :id id))))
+        (is (= "Thumbs" (t2/select-one-fn :identifier :model/CustomVizPlugin :id id))))
+      (testing "the same plugin updates in place"
+        (serdes/load-one! (ingested-plugin "Thumbs" bundle) (t2/select-one :model/CustomVizPlugin :id id))
+        (is (= 1 (t2/count :model/CustomVizPlugin :identifier "Thumbs")))))))
 
 (deftest load-update-validates-bundle-test
   (testing "re-importing over an existing plugin re-validates the new bundle"
@@ -177,7 +306,7 @@
                  :status        :active
                  :error_message nil
                  :icon          "star"
-                 :bundle_hash   (cv.tu/bundle-hash new-bundle)}
+                 :bundle_hash   (repacked-hash new-bundle)}
                 (t2/select-one :model/CustomVizPlugin :id id)))))))
 
 (deftest load-rejects-bundle-identifier-mismatch-test

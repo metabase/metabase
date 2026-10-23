@@ -1,0 +1,3 @@
+identifier: test-plugin
+serdes/meta:
+- model: CustomVizPlugin

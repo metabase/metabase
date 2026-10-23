@@ -145,9 +145,12 @@
                 cat)
           stream)))
 
-(defn- managed-path? [^String path]
+(defn- managed-path?
+  "Whether `path` is under a directory remote sync manages; the files of an unsynced directory such as
+  `custom_viz_plugins/` are never owned, so a full export keeps them and a merge ignores them."
+  [^String path]
   (when-let [idx (str/index-of path "/")]
-    (contains? serialization/legal-top-level-paths (subs path 0 idx))))
+    (contains? serialization/remote-synced-top-level-paths (subs path 0 idx))))
 
 (defn- shared-path? [^String path]
   (when-let [idx (str/index-of path "/")]
@@ -166,7 +169,8 @@
                         (try
                           (let [entity (yaml/parse-string (source.p/read-file snapshot path)
                                                           {:key-fn serialization/parse-key})]
-                            (map #(str dir "/" %) (serdes/resource-paths entity)))
+                            (map #(str dir "/" %)
+                                 (serdes/resource-paths entity #(source.p/read-file snapshot (str dir "/" %)))))
                           (catch Exception _
                             nil)))))
         (source.p/list-dir snapshot dir)))

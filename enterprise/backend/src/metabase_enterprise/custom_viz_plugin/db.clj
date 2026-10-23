@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase-enterprise.custom-viz-plugin.schema :as custom-viz-plugin.schema]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -33,10 +34,33 @@
   [identifier :- :string]
   (t2/select-one :model/CustomVizPlugin :identifier identifier))
 
-(mu/defn plugin-identifier-exists?
-  "Whether a CustomVizPlugin with `identifier` exists."
+(mu/defn plugin-identifier-ignoring-case :- [:maybe :string]
+  "The identifier of the CustomVizPlugin whose identifier equals `identifier` ignoring case, or nil."
   [identifier :- :string]
-  (t2/exists? :model/CustomVizPlugin :identifier identifier))
+  (t2/select-one-fn :identifier :model/CustomVizPlugin {:where [:= [:lower :identifier] (u/lower-case-en identifier)]}))
+
+(defn- with-bundles-where
+  "The `:where` selecting the CustomVizPlugin rows that have a bundle, whose `filter-column` is one of `filter-ids`
+  (every such row when `filter-column` is nil)."
+  [filter-column filter-ids]
+  (cond-> [:not= :bundle_hash nil]
+    filter-column (vector :and [:in filter-column filter-ids])))
+
+(mu/defn plugin-identifiers-with-bundles :- [:sequential :string]
+  "The identifiers of the CustomVizPlugin rows [[reducible-plugins-with-bundles]] would reduce over."
+  [filter-column :- [:maybe :keyword]
+   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]]
+  (vec (t2/select-fn-vec :identifier :model/CustomVizPlugin {:where (with-bundles-where filter-column filter-ids)})))
+
+(mu/defn reducible-plugins-with-bundles
+  "A reducible of the CustomVizPlugin rows that have a bundle, bundle included, whose `filter-column` is one of
+  `filter-ids` (every such row when `filter-column` is nil), ordered ascending by `order-columns`."
+  [filter-column :- [:maybe :keyword]
+   filter-ids    :- [:maybe [:sequential [:maybe [:or :int :string]]]]
+   order-columns :- [:maybe [:sequential :keyword]]]
+  (t2/reducible-select :model/CustomVizPlugin
+                       (cond-> {:where (with-bundles-where filter-column filter-ids)}
+                         (seq order-columns) (assoc :order-by (mapv (fn [column] [column :asc]) order-columns)))))
 
 (mu/defn plugin-bundle
   "The bundle bytes of the CustomVizPlugin with `plugin-id`."
