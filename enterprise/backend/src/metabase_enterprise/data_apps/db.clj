@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
+   [metabase.collections.core :as collections]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -70,6 +71,27 @@
   "Whether the Collection with `collection-id` is in the data-apps namespace."
   [collection-id :- pos-int?]
   (t2/exists? :model/Collection :id collection-id :namespace "data-apps"))
+
+(mu/defn database-exists? :- :boolean
+  "Whether there is a Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Database :id database-id))
+
+(mu/defn data-app-readable-card-ids :- [:set ::lib.schema.id/card]
+  "Among `card-ids`, the IDs of the cards a data app may read: the cards in data apps' collections and the metrics in
+  the Library, unless archived."
+  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
+  (or (t2/select-fn-set :id [:model/Card :report_card.id]
+                        {:join  [:collection [:= :collection.id :report_card.collection_id]]
+                         :where [:and
+                                 [:in :report_card.id card-ids]
+                                 [:= :report_card.archived false]
+                                 [:or
+                                  [:= :collection.namespace "data-apps"]
+                                  [:and
+                                   [:= :report_card.type "metric"]
+                                   [:= :collection.type collections/library-metrics-collection-type]]]]})
+      #{}))
 
 (mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
   "Insert the DataApp `row`, returning its ID."

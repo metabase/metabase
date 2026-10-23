@@ -10,6 +10,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn refuse
+  "Refuses a data-app request to an endpoint whose rule is still to come."
+  [_request _route-params]
+  (throw (ex-info (tru "A data app can''t use this endpoint.") {:status-code 403})))
+
 (defn- data-app-request?
   "Whether `request` is confined to the data-app scope: marked by the data-app scope middleware, or authorized by a token
   whose scopes, short of full access, grant it."

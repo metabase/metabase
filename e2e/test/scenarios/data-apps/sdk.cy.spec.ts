@@ -1,3 +1,4 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
@@ -90,6 +91,24 @@ describe("scenarios > data apps > SDK runtime", () => {
               });
           },
         );
+      });
+    });
+
+    it("refuses a native query from the app", () => {
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: (questions) => ({
+          ...dataAppTestEnv(questions),
+          nativeQuery: { database: SAMPLE_DB_ID, query: "SELECT 1" },
+        }),
+      });
+
+      visitAppRoute("native-query");
+      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
+        cy.findByText(/built with the query builder, not SQL|not found/i, {
+          timeout: 30000,
+        }).should("be.visible");
+        cy.findByTestId("table-body").should("not.exist");
       });
     });
   });

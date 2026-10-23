@@ -3,6 +3,7 @@
    [metabase.queries.cached-result]
    [metabase.queries.card]
    [metabase.queries.card-write-checks]
+   [metabase.queries.data-app]
    [metabase.queries.db]
    [metabase.queries.metadata]
    [metabase.queries.models.card]
@@ -31,9 +32,13 @@
   card-param-constraints
   card-param-values
   card-param-remapped-value]
+ [metabase.queries.data-app
+  card-labels
+  unpublished-read-table-names]
  [metabase.queries.db
   card-query-info
-  cards-queries-info]
+  cards-queries-info
+  unpublished-table-names]
  [metabase.queries.models.card
   check-shared-dashboard-timeline-permissions!
   check-newly-exposed-dashcards-timeline-permissions!

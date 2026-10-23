@@ -24,6 +24,7 @@
    [metabase.comments.api]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api]
+   [metabase.data-apps.core :as data-apps]
    [metabase.data-studio.api]
    [metabase.documents.api]
    [metabase.eid-translation.api]
@@ -216,10 +217,11 @@
    ;; policy to stop a user denied `execute_sql`. The spec-generation
    ;; wrapper keeps the guard transparent to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here
    ;; fails openapi.json generation for the whole /api tree.
-   "/dataset"              (+auth ((routes.common/wrap-middleware-for-open-api-spec-generation
-                                    (partial agent-api.query-guards/+refuse-unscoped-native-sql
-                                             #'mcp/check-execute-sql-allowed!))
-                                   (api.macros/ns-handler 'metabase.query-processor.api)))
+   "/dataset"              (+auth (data-apps/dataset-guard
+                                   ((routes.common/wrap-middleware-for-open-api-spec-generation
+                                     (partial agent-api.query-guards/+refuse-unscoped-native-sql
+                                              #'mcp/check-execute-sql-allowed!))
+                                    (api.macros/ns-handler 'metabase.query-processor.api))))
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)

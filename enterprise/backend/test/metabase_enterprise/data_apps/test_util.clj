@@ -149,6 +149,15 @@
                         (extract "Action" (action-copy action (copy-id action)))))))]
     (into (sorted-map) (map (juxt (partial file-path collection-name) serialization.dump/yaml-content)) entities)))
 
+(defn do-with-app-collection
+  "Call `f` with the id of a data app's resource collection, with the data-apps feature on; deleting the app afterwards
+  deletes what it holds."
+  [f]
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id}
+                   {:name "birds" :display_name "Birds" :bundle_path "birds.js"}]
+      (f collection-id))))
+
 (defn do-with-library!
   "Call `f` with the IDs of the root data library (`:data-id`) and metrics library (`:metrics-id`) collections, creating the
   library for the call when the instance has none."
