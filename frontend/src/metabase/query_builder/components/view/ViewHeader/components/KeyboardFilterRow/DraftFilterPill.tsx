@@ -226,12 +226,14 @@ export function DraftFilterPill({
       return;
     }
     const maxCount = getMaxValueCount(operator.valueKind);
+    // A single value is replaced, not added to.
+    const keptValues = operator.valueKind === "single" ? [] : values;
     const newValues = rawText
       .split(",")
       .map((value) => value.trim())
       .filter((value) => isValidValue(operator, value))
-      .filter((value) => !values.includes(value));
-    const allValues = [...values, ...newValues].slice(0, maxCount);
+      .filter((value) => !keptValues.includes(value));
+    const allValues = [...keptValues, ...newValues].slice(0, maxCount);
     const newDraft = { ...draft, values: allValues };
     if (operator.valueKind !== "multi" && allValues.length === maxCount) {
       const filter = getDraftFilterClause(newDraft);
