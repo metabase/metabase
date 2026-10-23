@@ -15,7 +15,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
   (:import
-   (java.sql Connection DatabaseMetaData)
+   (java.sql Connection DatabaseMetaData ParameterMetaData PreparedStatement SQLException)
    (javax.sql DataSource)))
 
 (deftest ^:parallel ConnectionOptions-test
@@ -29,6 +29,54 @@
     {:session-timezone "X"}          {:session-timezone ["invalid timezone ID: \"X\"" "timezone offset string literal"]}))
 
 (set! *warn-on-reflection* true)
+
+(deftest set-parameters-without-metadata-test
+  (doseq [params [[] ["-"] [nil "sparrow"]]]
+    (let [bound          (atom [])
+          metadata-calls (atom 0)
+          stmt           (reify PreparedStatement
+                           (setObject [_ index value]
+                             (swap! bound conj [index value]))
+                           (getParameterMetaData [_]
+                             (swap! metadata-calls inc)
+                             (throw (SQLException. "could not determine data type of parameter $1" "42P18"))))]
+      (sql-jdbc.execute/set-parameters! :sql-jdbc stmt params)
+      (is (= (mapv vector (range 1 (inc (count params))) params) @bound))
+      (is (zero? @metadata-calls)))))
+
+(deftest set-parameters-mismatch-test
+  (doseq [error [(SQLException. "Parameter index out of range" "22023")
+                 (ArrayIndexOutOfBoundsException. "Parameter index out of range")]]
+    (let [stmt (reify PreparedStatement
+                 (clearParameters [_])
+                 (setObject [_ _ _]
+                   (throw error))
+                 (getParameterMetaData [_]
+                   (reify ParameterMetaData
+                     (getParameterCount [_] 0))))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"It looks like we got more parameters than we can handle"
+           (sql-jdbc.execute/set-parameters! :sql-jdbc stmt ["sparrow"]))))))
+
+(deftest set-parameters-preserves-binding-error-test
+  (doseq [failure-point [nil :metadata :clear-parameters]]
+    (let [error (SQLException. "Cannot bind value" "22000")
+          stmt  (reify PreparedStatement
+                  (clearParameters [_]
+                    (when (= failure-point :clear-parameters)
+                      (throw (UnsupportedOperationException. "Cannot clear parameters"))))
+                  (setObject [_ _ _]
+                    (throw error))
+                  (getParameterMetaData [_]
+                    (if (= failure-point :metadata)
+                      (throw (SQLException. "Metadata unavailable"))
+                      (reify ParameterMetaData
+                        (getParameterCount [_] 1)))))]
+      (is (identical? error
+                      (try
+                        (sql-jdbc.execute/set-parameters! :sql-jdbc stmt ["sparrow"])
+                        (catch SQLException e e)))))))
 
 (deftest connection-reuse-test
   (testing "resilient context reuses reconnected connections"
