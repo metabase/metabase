@@ -373,9 +373,10 @@
       #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (testing "A database error raised while rows are read is an invalid query, whatever its exception class"
         (doseq [e (cond-> [(SQLException. "More than one row" "21000")
-                           (SQLException. "Division by zero" "22012")
                            (SQLException. "Unique constraint violation" "23505")
                            (SQLNonTransientConnectionException. "Unknown column 'a' in 'field list'" "42S22")]
+                    (not= driver/*driver* :clickhouse)
+                    (conj (SQLException. "Division by zero" "22012"))
                     (= driver/*driver* :mysql)
                     (conj (SQLTransientConnectionException. "Field 'a' can't be set for JSON_TABLE 'jt'." "HY000" 4176))
                     (= driver/*driver* :sqlite)
@@ -406,6 +407,7 @@
                    (SQLException. "I/O error" "58030")
                    (SQLException. "Idle transaction timeout" "25P03")
                    (SQLException. "Internal error" "XX000")
+                   (SQLException. "Cached plan must not change result type" "0A000")
                    (SQLException. "Object closed" "90007")
                    (SQLiteException. "Database busy" SQLiteErrorCode/SQLITE_BUSY)
                    (SQLiteException. "I/O error" SQLiteErrorCode/SQLITE_IOERR)
@@ -427,6 +429,13 @@
             (is (= :qp (:error_type (qp/process-query query))))))
         (with-redefs [driver/query-canceled? (constantly true)]
           (is (= :qp (error-type (SQLException. "Query execution was interrupted" "22012")))))))))
+
+#_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
+(deftest ^:parallel clickhouse-server-errors-need-more-than-class-22-test
+  (doseq [[message code] [["Memory limit exceeded" 241] ["Too many rows or bytes" 396]]]
+    (let [e (SQLException. message "22000" code)]
+      (is (false? (#'sql-jdbc.execute/error-in-query? :clickhouse e)))
+      (is (true? (#'sql-jdbc.execute/error-in-query? :h2 e))))))
 
 (defn- do-with-presto-cancellation!
   "Run `f` with a Presto HTTP endpoint that cancels after its first page of rows."
