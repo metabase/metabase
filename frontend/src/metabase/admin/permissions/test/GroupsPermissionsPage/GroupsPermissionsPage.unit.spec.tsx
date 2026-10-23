@@ -22,6 +22,8 @@ import { Route } from "metabase/router";
 import type { Database } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { ROUTED_DATABASE } from "../routed-database";
 const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 const TEST_DATABASE = createSampleDatabase();
@@ -48,10 +50,11 @@ const setup = async ({
   setupPermissionsGraphEndpoints(TEST_GROUPS, [database]);
   setupGroupsEndpoint(TEST_GROUPS);
 
-  fetchMock.get(
-    `path:/api/database/${TEST_DATABASE.id}/metadata`,
-    TEST_DATABASE,
-  );
+  // GET /api/database/:id/metadata does not return router_user_attribute
+  fetchMock.get(`path:/api/database/${database.id}/metadata`, {
+    ...database,
+    router_user_attribute: undefined,
+  });
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
@@ -121,12 +124,8 @@ describe("GroupsPermissionsPage", () => {
   });
 
   describe("database routing", () => {
-    const routedDatabase = createSampleDatabase({
-      router_user_attribute: "role",
-    });
-
     it("marks a database with routing enabled in the group's database list", async () => {
-      await setup({ database: routedDatabase });
+      await setup({ database: ROUTED_DATABASE });
 
       expect(
         within(screen.getByTestId("permission-table")).getByText(
@@ -137,8 +136,8 @@ describe("GroupsPermissionsPage", () => {
 
     it("marks a database with routing enabled in the breadcrumbs of the group's table list", async () => {
       await setup({
-        database: routedDatabase,
-        initialRoute: `/admin/permissions/data/group/${TEST_GROUPS[1].id}/database/${routedDatabase.id}`,
+        database: ROUTED_DATABASE,
+        initialRoute: `/admin/permissions/data/group/${TEST_GROUPS[1].id}/database/${ROUTED_DATABASE.id}`,
       });
 
       expect(

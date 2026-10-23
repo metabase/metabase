@@ -25,10 +25,15 @@ import { DatabaseEditApp } from "./DatabaseEditApp";
 
 interface SetupOpts {
   database: Database;
+  hasEnterprisePlugins?: boolean;
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
-const setup = ({ database, tokenFeatures }: SetupOpts) => {
+const setup = ({
+  database,
+  hasEnterprisePlugins = false,
+  tokenFeatures = {},
+}: SetupOpts) => {
   setupEnginesEndpoint({});
   setupDatabaseEndpoints(database);
   setupEnginesEndpoint(createMockEngines());
@@ -45,10 +50,10 @@ const setup = ({ database, tokenFeatures }: SetupOpts) => {
     settings: {},
   });
 
-  const settings = tokenFeatures
-    ? mockSettings({ "token-features": createMockTokenFeatures(tokenFeatures) })
-    : undefined;
-  if (tokenFeatures) {
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures(tokenFeatures),
+  });
+  if (hasEnterprisePlugins) {
     setupEnterpriseOnlyPlugin("database_routing");
   }
 
@@ -66,6 +71,10 @@ const setup = ({ database, tokenFeatures }: SetupOpts) => {
 };
 
 describe("DatabaseEditApp", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("shows every section for a regular database", async () => {
     setup({ database: createMockDatabase({ features: ["actions"] }) });
 
@@ -102,23 +111,8 @@ describe("DatabaseEditApp", () => {
       features: ["database-routing"],
     });
 
-    afterEach(() => {
-      reinitialize();
-    });
-
-    it("hides the database routing section without the enterprise plugin", async () => {
-      setup({ database: routableDatabase });
-
-      expect(
-        await screen.findByTestId("database-connection-info-section"),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByTestId("database-routing-section"),
-      ).not.toBeInTheDocument();
-    });
-
     it("hides the database routing section when the token lacks the database_routing feature", async () => {
-      setup({ database: routableDatabase, tokenFeatures: {} });
+      setup({ database: routableDatabase, hasEnterprisePlugins: true });
 
       expect(
         await screen.findByTestId("database-connection-info-section"),
@@ -131,12 +125,27 @@ describe("DatabaseEditApp", () => {
     it("shows the database routing section when the token has the database_routing feature", async () => {
       setup({
         database: routableDatabase,
+        hasEnterprisePlugins: true,
         tokenFeatures: { database_routing: true },
       });
 
       expect(
         await screen.findByTestId("database-routing-section"),
       ).toBeInTheDocument();
+    });
+
+    it("hides the database routing section without the enterprise plugin", async () => {
+      setup({
+        database: routableDatabase,
+        tokenFeatures: { database_routing: true },
+      });
+
+      expect(
+        await screen.findByTestId("database-connection-info-section"),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId("database-routing-section"),
+      ).not.toBeInTheDocument();
     });
   });
 });
