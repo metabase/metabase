@@ -7,15 +7,19 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.activity-feed.core :as activity-feed]
+   [metabase.api-scope.core :as api-scope]
+   [metabase.documents.core :as documents]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.metabot.scope :as scope]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.entity-details :as entity-details]
    [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.resources :as read-resource]
+   [metabase.metabot.tools.runtime :as runtime]
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -28,6 +32,8 @@
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private uri-arg
   "The tool's item schema, read off the tool so the assertions below compare against what it
@@ -62,8 +68,8 @@
 
 (deftest ^:parallel scalar-uris-arg-test
   (testing "a scalar `uris` is rejected with guidance on how to repair the call"
-    (is (= (str "Invalid tool arguments: `uris` must be an array of 1 to 5 URI strings; "
-                "received a string.")
+    (is (= (str "Invalid tool arguments: `uris` must be a non-empty array of at most 5 URIs. "
+                "Request fewer URIs per call; received a string.")
            (test-util/tool-boundary-error "read_resource" #'metabot.tools/read-resource-tool
                                           {:uris "metabase://table/1"})))))
 
@@ -118,12 +124,117 @@
         (is (= "metabase://database/1/schemas/weird%2Fname/tables" uri))
         (is (= ["database" "1" "schemas" "weird/name" "tables"] (:segments parsed)))))))
 
-(deftest ^:parallel the-item-limit-is-a-schema-fact-test
-  (testing "the 5-URI cap is in the batched `:args`, so the runtime rejects a sixth before the tool runs"
-    (is (= (str "Invalid tool arguments: `uris` must be an array of 1 to 5 URI strings; "
-                "received an array.")
-           (test-util/tool-boundary-error "read_resource" #'metabot.tools/read-resource-tool
-                                          {:uris (vec (repeat 10 "metabase://table/123"))})))))
+(deftest mixed-outcome-batch-test
+  (let [uris   ["metabase://databases" "metabase://nonsense/1" "metabase://collections"
+                "metabase://databases" "metabase://nonsense/2"]
+        called (atom [])]
+    (mt/with-dynamic-fn-redefs [read-resource/dispatch
+                                (fn [uri]
+                                  (swap! called conj uri)
+                                  (if (str/includes? uri "nonsense")
+                                    (read-resource/unsupported-uri! {:uri uri})
+                                    {:structured-output {:result-type :metabot-list :list-type :databases
+                                                         :items [] :total 0 :page 1 :pages 1}}))]
+      (binding [scope/*current-user-scope* #{"*"}]
+        (is (nil? (test-util/tool-boundary-error "read_resource" #'metabot.tools/read-resource-tool
+                                                 {:uris uris}))))
+      (reset! called [])
+      (let [{:keys [output resources]} (read-uris {:uris uris})]
+        (is (= uris @called))
+        (is (= uris (mapv :uri resources)))
+        (is (= [false true false false true] (mapv #(contains? % :error) resources)))
+        (is (= 5 (count (re-seq #"<resource uri=" output))))))))
+
+(deftest very-long-failing-batches-test
+  (doseq [n [6 30 1000 10000]]
+    (testing (str n " URIs are rejected before dispatch")
+      (let [uris (mapv #(str "metabase://nonsense/" %) (range n))
+            dispatched (atom [])
+            dispatch (mt/original-fn #'read-resource/dispatch)]
+        (mt/with-dynamic-fn-redefs [read-resource/dispatch
+                                    (fn [uri]
+                                      (swap! dispatched conj uri)
+                                      (dispatch uri))]
+          (let [result (runtime/invoke (tools/entries [read-resource/read-resource-tool])
+                                       {:profile-id :sql :metabot nil :user-scope api-scope/unrestricted
+                                        :tool-names #{"read_resource"}}
+                                       "read_resource" {:uris uris})]
+            (is (= :validation (get-in result [:error :class])))
+            (is (<= (count (:output result)) 4000))
+            (is (true? (str/includes? (:output result) "at most 5 URIs")))
+            (is (true? (str/includes? (:output result) "Request fewer URIs")))
+            (is (= [] @dispatched))))))))
+
+(deftest very-long-failing-uri-test
+  (let [uris [(str "metabase://nonsense/" (apply str (repeat 100000 "x")))
+              "metabase://nonsense/last"]
+        result (runtime/invoke (tools/entries [read-resource/read-resource-tool])
+                               {:profile-id :sql :metabot nil :user-scope api-scope/unrestricted
+                                :tool-names #{"read_resource"}}
+                               "read_resource" {:uris uris})]
+    (is (= :validation (get-in result [:error :class])))
+    (is (<= (count (:output result)) 4000))
+    (is (true? (str/includes? (:output result) "4096")))))
+
+(deftest failed-batch-echo-budget-test
+  (doseq [tool-names [#{"read_resource"} #{"read_resource" "search"}]
+          prefix ["" "metabase://nonsense/" "metabase://collection/1/"
+                  "metabase://collection/" "metabase://chart/"]
+          character ["x" "\"" "&" "\\" "\u08FF" "🦜"]]
+    (testing (str "prefix " (pr-str prefix) ", character " (pr-str character) ", tools " tool-names)
+      (let [uri (str prefix (apply str (repeat (quot (- 4096 (count prefix)) (count character)) character)))
+            result (runtime/invoke (tools/entries [read-resource/read-resource-tool])
+                                   {:profile-id :sql :metabot nil :user-scope api-scope/unrestricted
+                                    :tool-names tool-names}
+                                   "read_resource" {:uris (vec (repeat 5 uri))})
+            ^String output (:output result)
+            attributes (map second (re-seq #"<resource uri=\"([^\"]*)\">" output))
+            quoted-uris (for [line (str/split-lines output)
+                              [start stop] [["**Error:** " " is not a Metabase resource URI."]
+                                            ["**Error:** No resource is served at " "."]
+                                            ["**Error:** Invalid id " " in URI."]
+                                            ["**Error:** No chart or query with id " " exists in this conversation"]]
+                              :when (str/starts-with? line start)
+                              :let [end (str/last-index-of line stop)]
+                              :when end]
+                          (subs line (count start) end))]
+        (is (= :metabase.metabot.tools.core/all-items-failed (get-in result [:error :code])))
+        (is (< (count output) 3500))
+        (is (= 5 (count attributes)))
+        (is (true? (every? #(<= (count %) 200) attributes)))
+        (is (true? (every? #(not (re-find #"&[^;]*$" %)) attributes)))
+        (is (seq quoted-uris))
+        (is (true? (every? #(<= (count %) 200) quoted-uris)))
+        (is (true? (str/includes? output "[truncated]")))
+        (is (str/ends-with? output "</resources>"))
+        (is (true? (= output (String. (.getBytes output "UTF-8") "UTF-8"))))))))
+
+(deftest all-failed-batch-retains-each-uri-test
+  (doseq [tool-names [#{"read_resource"} #{"read_resource" "search"}]
+          uris [(mapv #(str "metabase://nonsense/" %) (range 5))
+                (mapv (fn [n]
+                        (let [prefix (str "metabase://nonsense/" n "/")]
+                          (str prefix (apply str (repeat (- 4096 (count prefix)) "x")))))
+                      (range 5))]]
+    (let [result (runtime/invoke (tools/entries [read-resource/read-resource-tool])
+                                 {:profile-id :sql :metabot nil :user-scope api-scope/unrestricted
+                                  :tool-names tool-names}
+                                 "read_resource" {:uris uris})
+          output (:output result)]
+      (is (= :recoverable (get-in result [:error :class])))
+      (is (= (count uris) (count (re-seq #"<resource uri=" output))))
+      (is (every? #(str/includes? output (str "uri=\"" (subs % 0 (min 80 (count %))))) uris))
+      (is (str/ends-with? output "</resources>")))))
+
+(deftest few-failures-keep-full-error-text-test
+  (doseq [uris [["metabase://collection/5/children"]
+                ["metabase://collection/5/children" "metabase://collection/VZbHZIeqQ2HhZv5r0pO6a"]]]
+    (let [{:keys [output]} (runtime/invoke (tools/entries [read-resource/read-resource-tool])
+                                           {:profile-id :sql :metabot nil :user-scope api-scope/unrestricted
+                                            :tool-names (:tool-names read-ctx)}
+                                           "read_resource" {:uris uris})]
+      (doseq [{:keys [error]} (:resources (read-uris {:uris uris}))]
+        (is (str/includes? output error))))))
 
 (deftest ^:parallel single-and-batched-declarations-test
   (let [single  (tools/declaration read-resource/read-resource-tool)
@@ -135,8 +246,12 @@
     (testing "the batched form publishes a sequence of plain strings, not of maps —
              the wire shape the model has always been offered"
       (is (= [:map {:closed true}
-              [:uris [:sequential {:min 1 :max 5
-                                   :error/message "must be an array of 1 to 5 URI strings"}
+              [:uris [:sequential {:min 1
+                                   :max 5
+                                   :description (str "A non-empty array of at most 5 URIs, each at most 4096 characters. "
+                                                     "Request fewer URIs or shorten them to fit these limits.")
+                                   :error/message (str "must be a non-empty array of at most 5 URIs. "
+                                                       "Request fewer URIs per call")}
                       uri-arg]]]
              (:args batched))))
     (testing "both forms share the item schema, so they cannot drift"
@@ -275,13 +390,13 @@
    ["metabase://model/4/fields"                            :card-fields                ["model" "4"]]
    ["metabase://model/4/fields/99"                         :card-field                 ["model" "4" "99"]]
    ["metabase://model/4/fields/c75/17"                     :card-field                 ["model" "4" "c75/17"]]
-   ["metabase://model/4/sources"                           :card-sources               ["4" nil]]
-   ["metabase://model/4/sources?page=2"                    :card-sources               ["4" {:page "2"}]]
+   ["metabase://model/4/sources"                           :card-sources               ["model" "4" nil]]
+   ["metabase://model/4/sources?page=2"                    :card-sources               ["model" "4" {:page "2"}]]
    ;; ----- Question (a card type) -----
    ["metabase://question/5"                                :card                       ["question" "5"]]
    ["metabase://question/5/fields"                         :card-fields                ["question" "5"]]
    ["metabase://question/5/fields/99"                      :card-field                 ["question" "5" "99"]]
-   ["metabase://question/5/sources"                        :card-sources               ["5" nil]]
+   ["metabase://question/5/sources"                        :card-sources               ["question" "5" nil]]
    ;; ----- Metric -----
    ["metabase://metric/6"                                  :metric                     ["6"]]
    ["metabase://metric/6/dimensions"                       :metric-dimensions          ["6"]]
@@ -374,7 +489,7 @@
     (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
                           (#'read-resource/dispatch "metabase://table/orders")))
     (is (thrown-with-msg? Exception #"URIs use the numeric entity id"
-                          (#'read-resource/dispatch "metabase://collection/root"))))
+                          (#'read-resource/dispatch "metabase://collection/our-analytics"))))
   (testing "the error carries agent-error metadata"
     (let [e (try
               (#'read-resource/dispatch "metabase://model/VZbHZIeqQ2HhZv5r0pO6a")
@@ -428,8 +543,8 @@
           (is (=? {:resources [{:content {:structured-output map?}}]}
                   result))
           (is (str/includes? (:output result) dashboard-name))))
-      (testing "rejects sub-resources"
-        (is (=? {:resources [{:error string?}]}
+      (testing "fetches dashboard items through the cards alias"
+        (is (=? {:resources [{:content {:structured-output {:list-type :dashboard-items}}}]}
                 (read-uris {:uris [(str "metabase://dashboard/" dashboard-id "/cards")]}))))
       (testing "returns error for unknown dashboard"
         (is (=? {:resources [{:error string?}]}
@@ -1489,14 +1604,6 @@
         (is (= :recoverable class))
         (is (str/includes? text (str "**Error:** Table " (mt/id :products) " was not found.")))))))
 
-(deftest read-inactive-field-parent-test
-  (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :active false}]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (let [uri (str "metabase://table/" table-id "/fields/123")
-            {:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
-        (is (= :recoverable class))
-        (is (str/includes? text (str "**Error:** Table " table-id " was not found.")))))))
-
 (deftest read-field-refusal-test
   (mt/with-current-user (mt/user->id :crowberto)
     (doseq [status [403 404]]
@@ -1944,3 +2051,117 @@
       (let [output (:output (read-uris {:uris [(str "metabase://table/" (mt/id :orders))]}))]
         (is (str/includes? output "### Related Tables") "premise: ORDERS renders related tables")
         (is (not (re-find #"(?i)for SQL queries" output)))))))
+
+(deftest card-kind-canonical-uri-test
+  (let [mp (mt/metadata-provider)
+        query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+    (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query}
+                   :model/Card {model-id :id} {:type :model :dataset_query query}
+                   :model/Card {metric-id :id} {:type :metric :dataset_query (lib/aggregate query (lib/count))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (doseq [[actual id] [["question" question-id] ["model" model-id] ["metric" metric-id]]
+                requested ["question" "model"]
+                :when (not= actual requested)
+                suffix ["" "/fields" "/fields/123" "/sources"]
+                :let [canonical-suffix (if (= actual "metric")
+                                         (case suffix "/fields" "/dimensions"
+                                               "/fields/123" "/dimensions/123" "")
+                                         suffix)
+                      uri (str "metabase://" requested "/" id suffix)
+                      canonical (str "metabase://" actual "/" id canonical-suffix)]]
+          (testing uri
+            (is (= (str "Card " id " is a " actual ", not a " requested ".\n"
+                        "Read `" canonical "` instead.")
+                   (-> (read-uris {:uris [uri]}) :resources first :error)))))))))
+
+(deftest inactive-table-resources-test
+  (mt/with-temp [:model/Table {id :id} {:db_id (mt/id) :active false}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [suffix ["" "/fields" "/fields/123" "/derived"]]
+        (let [uri (str "metabase://table/" id suffix)]
+          (testing uri
+            (is (str/starts-with? (or (-> (read-uris {:uris [uri]}) :resources first :error) "")
+                                  (str "Table " id " is inactive.")))))))))
+
+(deftest missing-schema-test
+  (mt/with-temp [:model/Database {db-id :id} {}
+                 :model/Table _ {:db_id db-id :schema "PUBLIC" :active true}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [schema ["public" "missing"]]
+        (let [uri (str "metabase://database/" db-id "/schemas/" schema "/tables")
+              error (-> (read-uris {:uris [uri]}) :resources first :error)]
+          (is (str/includes? (or error "") "Schema names are case-sensitive."))
+          (is (str/includes? (or error "") (str "metabase://database/" db-id "/schemas")))))
+      (is (not (error? (read-uris {:uris [(str "metabase://database/" db-id "/schemas/PUBLIC/tables")]})))))))
+
+(deftest root-collection-resources-test
+  (mt/with-temp [:model/Collection {coll-id :id} {:location "/"}
+                 :model/Card {card-id :id} {:collection_id nil}
+                 :model/Dashboard {dash-id :id} {:collection_id nil}
+                 :model/Document {doc-id :id} {:collection_id nil}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (doseq [[suffix ids] [["" #{["collection" "root"]}]
+                            ["/items" #{["collection" coll-id] ["question" card-id]
+                                        ["dashboard" dash-id] ["document" doc-id]}]
+                            ["/subcollections" #{["collection" coll-id]}]]]
+        (let [result (read-uris {:uris [(str "metabase://collection/root" suffix)]})
+              structured (get-in result [:resources 0 :content :structured-output])]
+          (is (not (error? result)))
+          (is (set/subset? ids (set (map (juxt :type :id) (if (= suffix "") [structured] (:items structured)))))))))
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-current-user (mt/user->id :rasta)
+        (is (error? (read-uris {:uris ["metabase://collection/root"]})))
+        (doseq [suffix ["/items" "/subcollections"]]
+          (let [ids (->> (read-uris {:uris [(str "metabase://collection/root" suffix)]})
+                         :resources first :content :structured-output :items
+                         (map (juxt :type :id))
+                         set)]
+            (is (contains? ids ["collection" coll-id]))
+            (is (empty? (set/intersection ids #{["question" card-id] ["dashboard" dash-id] ["document" doc-id]})))))))))
+
+(deftest root-navigation-excludes-other-namespaces-and-trash-test
+  (mt/with-temp [:model/Collection {root-id :id} {:name "Default root" :location "/"}
+                 :model/Collection {child-id :id} {:name "Nested child" :location (str "/" root-id "/")}
+                 :model/Collection _ {:name "Snippet root" :namespace "snippets" :location "/"}
+                 :model/Collection _ {:name "Archived root" :archived true :location "/"}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [collection-ids (fn [uri]
+                             (->> (read-uris {:uris [uri]})
+                                  :resources first :content :structured-output :items
+                                  (filter #(= "collection" (:type %)))
+                                  (map :id)
+                                  set))
+            expected (collection-ids "metabase://collections")]
+        (is (contains? expected root-id))
+        (doseq [suffix ["/items" "/subcollections"]]
+          (is (= expected (collection-ids (str "metabase://collection/root" suffix))))
+          (doseq [suffix ["/items" "/subcollections"]]
+            (is (= #{child-id} (collection-ids (str "metabase://collection/" root-id suffix))))))))))
+
+(deftest ^:parallel document-numeric-id-test
+  (let [uri "metabase://document/not-a-number"
+        error (-> (read-uris {:uris [uri]}) :resources first :error)]
+    (is (str/includes? (or error "") "Resource URIs use the numeric entity id"))))
+
+(deftest document-read-view-test
+  (mt/with-temporary-setting-values [synchronous-batch-updates true]
+    (mt/with-temp [:model/Document {id :id} {:name "Plan" :view_count 0}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (is (not (error? (read-uris {:uris [(str "metabase://document/" id)]}))))
+        (is (= 0 (t2/select-one-fn :view_count :model/Document id)))
+        (documents/get-document id)
+        (is (= 1 (t2/select-one-fn :view_count :model/Document id)))))))
+
+(deftest ^:parallel uri-aspect-aliases-test
+  (doseq [[alias canonical] [["metabase://table/1/columns/2" "metabase://table/1/fields/2"]
+                             ["metabase://model/1/columns" "metabase://model/1/fields"]
+                             ["metabase://question/1/columns/2" "metabase://question/1/fields/2"]
+                             ["metabase://dashboard/1/cards?page=2" "metabase://dashboard/1/items?page=2"]]]
+    (is (= (#'read-resource/parse-uri canonical) (#'read-resource/parse-uri alias)))))
+
+(deftest ^:parallel description-lists-uri-forms-test
+  (let [description (:description (tools/validate-tool! read-resource/read-resource-tool))]
+    (doseq [uri (mapcat val @#'read-resource/uri-templates)]
+      (is (str/includes? description uri) uri))
+    (doseq [wording ["collection/root" "columns" "cards" "case-sensitive" "Up to 5 URIs"]]
+      (is (str/includes? description wording) wording))))

@@ -16,7 +16,11 @@ import { useOmniPickerContext } from "../../context";
 import { useCurrentSearchScope } from "../../hooks/use-current-search-scope";
 import type { OmniPickerItem } from "../../types";
 
-import { SearchResults, SearchScopeSelector } from "./SearchResults";
+import {
+  type CustomSearchResult,
+  SearchResults,
+  SearchScopeSelector,
+} from "./SearchResults";
 
 const makeIntoPickerItem = (
   item: SearchResult,
@@ -104,11 +108,27 @@ export const SearchResultsItemList = () => {
   const {
     models,
     searchQuery,
+    customFolders,
     isHiddenItem,
     isDisabledItem,
     isSelectableItem,
     searchParams,
   } = useOmniPickerContext();
+  const searchScope = useCurrentSearchScope();
+
+  const customResults = useMemo((): CustomSearchResult[] => {
+    const query = searchQuery?.toLowerCase() ?? "";
+    // Custom items are in no collection or database, so a search scoped to one leaves them out.
+    const isUnscoped = searchScope === null || searchScope === "all";
+    if (query.length === 0 || !isUnscoped) {
+      return [];
+    }
+    return (customFolders ?? []).flatMap((folder) =>
+      folder.items
+        .filter((item) => item.name.toLowerCase().includes(query))
+        .map((item) => ({ folder, item })),
+    );
+  }, [customFolders, searchQuery, searchScope]);
 
   const {
     data: results,
@@ -154,6 +174,7 @@ export const SearchResultsItemList = () => {
       <SearchScopeSelector />
       <SearchResults
         searchResults={filteredResults}
+        customResults={customResults}
         isLoading={isFetching}
         error={error}
         onClick={onClick}

@@ -198,6 +198,18 @@
                                                          :base-provider provider
                                                          :graph graph))))))
 
+(deftest ^:parallel card-edit-with-data-app-dependent-test
+  (testing "editing a card that a data app depends on reports no errors"
+    (let [{:keys [provider mbql-base]} (testbed)
+          graph (graph/in-memory {[:card 101] #{[:data-app 900]}})
+          card' (-> mbql-base
+                    (update :dataset-query lib/filter (lib/> (lib.metadata/field (mt/metadata-provider) (mt/id :orders :quantity))
+                                                             100))
+                    (dissoc :result-metadata))]
+      (is (= {} (dependencies/errors-from-proposed-edits {:card [card']}
+                                                         :base-provider provider
+                                                         :graph graph))))))
+
 (deftest ^:parallel sql-snippet->card->transform->cards-test
   (testing "changing a snippet correctly finds downstream errors when asked"
     (let [{:keys [provider graph snippet-inner]

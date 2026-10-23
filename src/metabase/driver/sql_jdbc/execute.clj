@@ -33,7 +33,8 @@
   (:import
    (com.mchange.v2.c3p0 PooledDataSource)
    (com.mchange.v2.resourcepool TimeoutException)
-   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException Statement Types)
+   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLException SQLFeatureNotSupportedException
+             Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
    (javax.sql DataSource)))
@@ -874,6 +875,36 @@
       (log/infof "Statement cancelation failed: %s" (ex-message e))
       false)))
 
+(defn- query-error
+  "An `:invalid-query` error for `e`, which the database raised while running `sql`."
+  [driver sql params e]
+  (ex-info (tru "Error executing query: {0}" (ex-message e))
+           (cond-> {:driver driver
+                    :sql    (str/split-lines (driver/prettify-native-form driver sql))
+                    :params params
+                    :type   driver-api/qp.error-type.invalid-query}
+             (driver/query-canceled? driver e)
+             (assoc :query/query-canceled? true))
+           e))
+
+(defmulti impl-error-in-query?
+  "Whether a row-read `SQLException` identifies an error in the query or its data.
+  The default recognizes SQLState classes `21` (cardinality), `22` (data), `23` (integrity) and `42` (syntax or access
+  rule). Drivers can extend or narrow that evidence. Unknown failures return false. Cancellation is checked separately."
+  {:added "0.66.0" :arglists '([driver ^SQLException e])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod impl-error-in-query? :sql-jdbc
+  [_ ^SQLException e]
+  (boolean (re-find #"^(?:21|22|23|42)" (str (.getSQLState e)))))
+
+(defn- error-in-query?
+  [driver ^SQLException e]
+  (and (not (or (some-> (driver-api/canceled-chan) a/poll!)
+                (driver/query-canceled? driver e)))
+       (impl-error-in-query? driver e)))
+
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond])}
@@ -902,14 +933,7 @@
                          ^ResultSet rs (try
                                          (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
                                          (catch Throwable e
-                                           (throw (ex-info (tru "Error executing query: {0}" (ex-message e))
-                                                           (cond-> {:driver driver
-                                                                    :sql    (str/split-lines (driver/prettify-native-form driver sql))
-                                                                    :params params
-                                                                    :type   driver-api/qp.error-type.invalid-query}
-                                                             (driver/query-canceled? driver e)
-                                                             (assoc :query/query-canceled? true))
-                                                           e))))]
+                                           (throw (query-error driver sql params e))))]
                (let [rsmeta           (.getMetaData rs)
                      results-metadata {:cols (column-metadata driver rsmeta)}
                      ;; whether the ResultSet ran out of rows is only observable while reducing, but it is needed after
@@ -918,7 +942,14 @@
                      next-row         (row-thunk driver rs rsmeta)
                      rows             (driver-api/reducible-rows
                                        (fn []
-                                         (let [row (next-row)]
+                                         ;; some databases report an error in the query only when they read the row
+                                         ;; that causes it
+                                         (let [row (try
+                                                     (next-row)
+                                                     (catch SQLException e
+                                                       (throw (if (error-in-query? driver e)
+                                                                (query-error driver sql params e)
+                                                                e))))]
                                            (when-not row
                                              (vreset! exhausted? true))
                                            row))
@@ -933,6 +964,8 @@
                       (finally
                         (when-not (or @exhausted? (drivers-exempt-from-cancelation driver))
                           (vreset! canceled? (cancel-statement! driver stmt)))))))
+             (catch SQLException e
+               (throw (ex-info (ex-message e) {:type driver-api/qp.error-type.qp} e)))
              ;; `with-open` has closed the ResultSet and Statement by the time this runs, which is required: on
              ;; ClickHouse and Presto their `.close` round-trips to the server and throws once the Connection is gone.
              ;; Discarding is safe here because this Connection was acquired for this query alone -- see

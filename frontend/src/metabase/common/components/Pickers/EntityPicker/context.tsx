@@ -29,6 +29,8 @@ export const EntityPickerProvider = ({
 
   const [path, setPath, { isLoadingPath }] = useGetPathFromValue({
     value: value.value,
+    customFolders: value.customFolders,
+    isLoadingCustomFolders: value.isLoadingCustomFolders,
     options: value.options,
     namespaces,
     models: getValidCollectionItemModels(value.models),
@@ -42,6 +44,7 @@ export const EntityPickerProvider = ({
       () =>
         getItemFunctions({
           models: value.models,
+          customFolders: value.customFolders,
           isFolderItem: value.isFolderItem,
           isHiddenItem: value.isHiddenItem,
           isDisabledItem: value.isDisabledItem,
