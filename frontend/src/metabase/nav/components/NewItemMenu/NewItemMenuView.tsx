@@ -91,7 +91,7 @@ export const NewItemMenuView = ({
     if (hasDataAccess) {
       items.push(
         <Menu.Item
-          key="event-analysis"
+          key="product-analysis"
           closeMenuOnClick={false}
           onClick={() => setIsPickingAnalysisKind(true)}
           leftSection={<Icon name="funnel" />}
