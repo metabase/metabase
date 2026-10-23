@@ -77,7 +77,7 @@ describe("branding settings", () => {
     expect(await screen.findByText("Changes saved")).toBeInTheDocument();
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(1);
-    expect(puts[0].url).toContain("/api/setting/loading-message");
+    expect(puts[0].url).toMatch(/\/api\/setting\/loading-message$/);
     expect(puts[0].body).toEqual({ value });
   });
 });

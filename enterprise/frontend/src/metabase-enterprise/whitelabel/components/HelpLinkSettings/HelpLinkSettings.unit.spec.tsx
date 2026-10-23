@@ -89,7 +89,7 @@ describe("HelpLinkSettings", () => {
 
     await userEvent.click(screen.getByText("Hide it"));
     const [{ url, body }] = await findRequests("PUT");
-    expect(url).toMatch(/help-link/);
+    expect(url).toMatch(/\/api\/setting\/help-link$/);
     expect(body).toEqual({
       value: "hidden",
     });
