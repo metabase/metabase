@@ -677,7 +677,7 @@
            (or (nil? collection_id)
                (= collection/data-actions-ns
                   (some-> (actions.db/collection-namespace-with-entity-id collection_id) keyword))))
-    (serdes/storage-default-collection-path action ctx (name collection/data-actions-ns))
+    (serdes/storage-default-collection-path action ctx (serdes/collection-namespace-folder collection/data-actions-ns))
     (serdes/storage-default-collection-path action ctx)))
 
 (defmethod serdes/load-one! "Action" [ingested maybe-local]

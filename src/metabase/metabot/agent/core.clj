@@ -186,18 +186,6 @@
   (and (= (:type part) :tool-output)
        (nil? (get-in part [:result :error]))))
 
-(def ^:private legacy-terminal-tool-names
-  #{"document_construct_sql_chart" "document_construct_model_chart"})
-
-(defn- answer-producing?
-  "Return whether a tool output contains a successful answer.
-
-  Legacy terminal tools must return structured output to distinguish answers from failures."
-  [tool-name part]
-  (and (successful-tool-output? part)
-       (or (not (contains? legacy-terminal-tool-names tool-name))
-           (some? (get-in part [:result :structured-output])))))
-
 (defn- terminal-tool-call?
   "Whether `parts` contain a **successful** call to one of the profile's `terminal-tools` (a set of
   tool-name strings). This lets a profile end the turn as soon as it produces its answer (e.g. the
@@ -205,8 +193,7 @@
   forcing the model to keep emitting tool calls under `:required-tool-call?`.
 
   Terminality is a per-profile decision — the same tool is non-terminal in profiles that don't list
-  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct; see
-  [[answer-producing?]] for how a failure is recognised while these tools are unconverted."
+  it. A *failed* terminal-tool call does not end the turn, so the model can still self-correct."
   [terminal-tools parts]
   (boolean
    (when (seq terminal-tools)
@@ -214,7 +201,7 @@
        (some (fn [p]
                (and (= (:type p) :tool-input)
                     (contains? terminal-tools (:function p))
-                    (answer-producing? (:function p) (get outputs (:id p)))))
+                    (successful-tool-output? (get outputs (:id p)))))
              parts)))))
 
 (defn- truncated?
