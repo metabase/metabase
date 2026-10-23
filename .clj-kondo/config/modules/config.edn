@@ -1587,6 +1587,7 @@
                     :model/Glossary
                     :model/Measure
                     :model/ModerationReview
+                    :model/OsiAiContext
                     :model/QueryTable
                     :model/Segment
                     :model/Table
@@ -2066,6 +2067,40 @@
                     :model/Database
                     :model/User}}
 
+  prototype
+  {:team "Gadget"
+   :api  #{metabase.prototype.api
+           metabase.prototype.core
+           metabase.prototype.init}
+   :uses #{api
+           app-db
+           collections
+           events
+           lib
+           lib.be
+           lib.metadata
+           lib.schema
+           metabot
+           queries
+           request
+           settings
+           startup
+           sync
+           util
+           util.config
+           warehouse-schema-overlay
+           warehouses}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldUserSettings
+                    :model/Glossary
+                    :model/Measure
+                    :model/OsiAiContext
+                    :model/Segment
+                    :model/Table
+                    :model/TableUserSettings
+                    :model/User}}
+
   public-sharing
   {:team "UX West"
    :api  #{metabase.public-sharing.core
@@ -2340,6 +2375,7 @@
            parameters.schema
            permissions
            premium-features
+           prototype
            queries
            query-permissions
            query-processor.cache-backend

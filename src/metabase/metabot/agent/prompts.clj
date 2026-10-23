@@ -204,8 +204,10 @@
                                                              (case template-name
                                                                ;; both nlq templates (curated + general-search
                                                                ;; fallback) take the nlq custom instructions
+                                                               ;; Prototype: the filter box takes them too.
                                                                ("natural-language-querying-only.selmer"
-                                                                "natural-language-querying-fallback.selmer")
+                                                                "natural-language-querying-fallback.selmer"
+                                                                "prototype-filter-builder.selmer")
                                                                (metabot.settings/metabot-nlq-system-prompt)
                                                                "sql-querying-only.selmer"
                                                                (metabot.settings/metabot-sql-system-prompt)
