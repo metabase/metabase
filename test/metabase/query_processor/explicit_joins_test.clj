@@ -1222,8 +1222,7 @@
   [_driver _feature _database]
   true)
 
-;;; ClickHouse needs at least one equality of a left column and a right column in a join condition, and the two sides
-;;; of that equality must have types with a common supertype.
+;;; ClickHouse needs at least one equality of a left column and a right column in a join condition.
 (defmethod driver/database-supports? [:clickhouse ::arbitrary-join-conditions]
   [_driver _feature _database]
   false)
@@ -1255,11 +1254,11 @@
      venues+categories-expected-rows-for-fk=pk-join-condition)))
 
 (deftest ^:parallel join-expressions-lhs-and-rhs-both-expressions-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions ::arbitrary-join-conditions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
     (check-venues+categories-on-condition
      [:=
       [:* 1 (mt/$ids venues $category_id)]
-      [:+ 0 (mt/$ids categories &c.categories.id)]]
+      [:- (mt/$ids categories &c.categories.id) 0]]
      venues+categories-expected-rows-for-fk=pk-join-condition)))
 
 (deftest ^:parallel join-expressions-lhs-col-rhs-expr-test
@@ -1467,7 +1466,7 @@
      venues+categories-expected-rows-for-always-false-condition)))
 
 (deftest ^:parallel join-expressions-aggregations-and-breakouts-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations ::arbitrary-join-conditions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
     (doseq [{:keys [description condition]}
             [{:description "products + orders with lhs and rhs columns"
               :condition   [:=
@@ -1476,7 +1475,7 @@
              {:description "products + orders with lhs and rhs expressions"
               :condition   [:=
                             [:+ 0 (mt/$ids products $id)]
-                            [:* 1 (mt/$ids orders &o.orders.product_id)]]}]]
+                            [:/ (mt/$ids orders &o.orders.product_id) 1]]}]]
       (testing (str "\n" description "\n" condition)
         (is (= [["Doohickey" 297271.47 14388.0]
                 ["Gadget" 406619.75 18865.0]
