@@ -978,6 +978,7 @@
 ;;; literal (resolve's `:invalid-temporal-literal` check still needs to see it). The `between`
 ;;; example drops the wrapper anyway: `day` on a date adds nothing, and the bound ends up as the
 ;;; query builder writes it.
+;;; Pass 2.6 expands date-only `day` / `default` bounds into ranges in conditional aggregations.
 ;;;
 ;;; `::query` / `::stage` are `:closed false`, so a stray `filters:` on the query root or a join map
 ;;; sits in no stage: E7 names the clause, never the stray key, and the model's fix is dropped again.
@@ -1293,6 +1294,98 @@
                bucket-hoist-stage-keys)
        node))
    form))
+
+;;; ============================================================
+;;; Pass 2.6 -- expand whole-day comparisons outside of filters, expressions and join conditions.
+;;;
+;;; Date-only bounds with the `day` or `default` unit become ranges on the unbucketed column,
+;;; with an exclusive upper bound on the next day. The expression editor can save these ranges;
+;;; it cannot save a bucketed column, and dropping the unit would leave out times after midnight
+;;; on the last day. Timestamps with the `default` unit only lose their wrapper, and so does the
+;;; whole-day start of a `between` that ends at `now` or at a timestamp. E7 rejects date
+;;; negations because `!=` filters keep rows with no date for Date columns and drop them for
+;;; DateTime columns, and this pass does not know the column's type.
+;;; ============================================================
+
+(defn- next-day [literal]
+  (str (u.date/add (u.date/parse literal) :day 1)))
+
+(defn- expand-day-comparison [[head opts ref & dates :as node]]
+  (let [range-ref (update ref 1 dissoc "lib/uuid")]
+    (cond
+      (= head "between")
+      ["and" opts [">=" {} range-ref (first dates)] ["<" {} range-ref (next-day (second dates))]]
+
+      (contains? #{"=" "in"} head)
+      (let [ranges (mapv (fn [date] ["and" {} [">=" {} range-ref date] ["<" {} range-ref (next-day date)]]) dates)]
+        (if (= 1 (count ranges))
+          (assoc (first ranges) 1 opts)
+          (into ["or" opts] ranges)))
+
+      (= 1 (count dates))
+      (case head
+        "<=" ["<" opts ref (next-day (first dates))]
+        ">"  [">=" opts ref (next-day (first dates))]
+        node)
+
+      :else node)))
+
+(defn- whole-day-bound?
+  "Whether `v` is a `day` or `default` bound written as a full date, which a filter reads as the whole day.
+  `yyyy-MM` and `yyyy` name a month or a year, though [[hoistable-bucket]] widens them to their first day."
+  [v]
+  (and (redundant-bucket-literal v)
+       (re-matches date-only-pattern (str/trim (nth v 2)))))
+
+(defn- now-or-timestamp? [v]
+  (or (and (vector? v) (= "now" (nth v 0 nil)))
+      (and (iso-date-string? v) (not (re-matches date-only-pattern (str/trim v))))))
+
+(defn- t-separated
+  "`timestamp` with a `T` between its date and time.
+  A space there breaks the column name of an aggregation, though a filter accepts it."
+  [timestamp]
+  (str/replace-first (str/trim timestamp) " " "T"))
+
+(defn- unwrap-whole-day-start
+  "Unwrap the whole-day start of a `between` that ends at `now` or at a timestamp.
+
+  SQL `BETWEEN` then counts from midnight, as the same clause does in a filter. Any other end leaves the
+  clause to E7, since `BETWEEN` stops at the start of a plain date or of a `relative-datetime` period."
+  [[_ _ _ start end :as node]]
+  (if (and (between-clause? node) (whole-day-bound? start) (now-or-timestamp? end))
+    (cond-> (assoc node 3 (redundant-bucket-literal start))
+      (string? end) (assoc 4 (t-separated end)))
+    node))
+
+(defn- repair-day-and-default-comparison [node]
+  (if (hoistable-comparison-node? node)
+    (let [literals (mapv redundant-bucket-literal (subvec node 3))]
+      (if (every? whole-day-bound? (subvec node 3))
+        (if (contains? #{"!=" "not-in"} (first node))
+          node
+          (expand-day-comparison (into (subvec node 0 3) literals)))
+        (unwrap-whole-day-start
+         (into (subvec node 0 3)
+               (map (fn [operand literal]
+                      (if (and literal (not (re-matches date-only-pattern literal))) (t-separated literal) operand))
+                    (subvec node 3) literals)))))
+    node))
+
+(defn- repair-day-and-default-comparisons*
+  "Repair temporal comparisons outside of filters, expressions and join conditions."
+  [form]
+  (if (and (map? form) (vector? (get form "stages")))
+    (letfn [(rewrite [node]
+              (if (map? node)
+                (reduce-kv (fn [result k v]
+                             (assoc result k (if (or (= k "conditions") (some #{k} bucket-hoist-stage-keys))
+                                               v
+                                               (rewrite v))))
+                           (empty node) node)
+                (walk/walk rewrite repair-day-and-default-comparison node)))]
+      (rewrite form))
+    form))
 
 ;;; ============================================================
 ;;; Pass 1.867 -- rewrite `temporal-extract` to the `get-*` clause that means the same thing.
@@ -2027,8 +2120,7 @@
 
   Moving `order-by`, `limit` or `fields` could change the results because those clauses
   may refer to columns absent from the aggregation output. Ask the LLM to write two stages
-  explicitly in that case. Leave the stage unchanged for validation if `order-by` or `fields`
-  can't be read as a sequence."
+  explicitly in that case. Only nil and empty collections count as absent trailing clauses."
   [stage]
   (let [aggs              (get stage "aggregation")
         same-stage-uuids  (when (vector? aggs) (collect-stage-agg-uuids stage))]
@@ -2041,15 +2133,16 @@
           (empty? offending-filters)
           [stage]
 
-          (some #(not (seqable? (get stage %))) ["order-by" "fields"])
-          [stage]
-
-          (or (seq (get stage "order-by"))
-              (some? (get stage "limit"))
-              (seq (get stage "fields")))
+          (some (fn [clause]
+                  (if (coll? clause)
+                    (seq clause)
+                    (some? clause)))
+                (map stage ["order-by" "limit" "fields"]))
           (throw (ex-info
                   (tru "Detected a post-aggregation filter alongside `order-by:`, `limit:`, or `fields:` in the same stage. MBQL 5 requires the filter in a separate stage, but those trailing clauses cannot be safely relocated — they may reference pre-aggregation columns that don''t survive the split. Please author this as two stages explicitly: stage 0 with `source-table`, `aggregation`, `breakout`, and any pre-aggregation `filters`; stage 1 with the post-aggregation `filters`, plus `order-by` / `limit` / `fields` that reference the aggregation''s output via cross-stage `[\"field\", (empty opts), \"<column-name>\"]` refs.")
                   {:agent-error? true
+                   :status-code  400
+                   :error-code   :post-agg-filter-with-trailing-clauses
                    :error        :post-agg-filter-with-trailing-clauses
                    :stage        stage}))
 
@@ -2067,17 +2160,22 @@
             (throw (ex-info
                     (tru "Detected a post-aggregation filter (a filter referencing an aggregation from the same stage). MBQL 5 requires this in a separate stage. Auto-fix is unsafe here — either an aggregation''s output column name cannot be derived (e.g. a `metric` reference or unknown head), or two aggregations in this stage would produce the same column name (e.g. two `sum` aggregations on different fields, which lib disambiguates as `sum` / `sum_2` based on field order). Please refactor to multi-stage manually: put the aggregations in stage 0, and the filter in stage 1 referencing the column via a cross-stage `[\"field\", (empty opts), \"<column-name>\"]` clause. Use an explicit aggregation with a `name` opts override (e.g. `[\"sum\", (opts with key \"name\" → \"sum_total\"), …]`) if you need stable cross-stage names.")
                     {:agent-error? true
+                     :status-code  400
+                     :error-code   :post-agg-filter-needs-multi-stage
                      :error        :post-agg-filter-needs-multi-stage
                      :stage        stage}))))))))
 
 (defn- split-post-agg-filters*
   "Top-level pass: walk every stage in the query, expanding any post-agg-filter stage
   in-place to `[stage0 stage1]`. Re-runs are no-ops (idempotent: split stages no longer
-  match the trigger)."
+  match the trigger). Split failures carry the unsplit query as `:query` in their ex-data."
   [query]
   (if-not (and (map? query) (vector? (get query "stages")))
     query
-    (update query "stages" #(into [] (mapcat split-post-agg-filter-stage) %))))
+    (try
+      (update query "stages" #(into [] (mapcat split-post-agg-filter-stage) %))
+      (catch clojure.lang.ExceptionInfo e
+        (throw (ex-info (ex-message e) (assoc (ex-data e) :query query) e))))))
 
 ;;; ============================================================
 ;;; Pass 3 -- auto-wire `source-field` for implicit joins
@@ -3229,22 +3327,23 @@
          (not (parseable-temporal-literal? literal)))))
 
 (defn- unencodable-temporal-clause-error!
-  "Detect an `absolute-datetime`, `during` or unit-carrying `value` clause that Pass 2.95 could not
-  rewrite.
+  "Reject temporal clauses that the repair passes could not rewrite.
 
     [\"count-where\", {}, [\">\", {}, <col>, [\"absolute-datetime\", {}, \"2025-01-01\", \"month\"]]]
 
-  All three hold a temporal unit in a slot the legacy schema types with `::DateUnit` /
-  `::DateTimeUnit` (`metabase.legacy-mbql.schema`, via `::ValueTypeInfo` for `value`), and neither
-  enum carries a `:decode/normalize`: after a JSON hop as legacy MBQL the unit is a string and the
+  The `absolute-datetime`, `during` and unit-carrying `value` clauses store their units in
+  `::DateUnit` / `::DateTimeUnit` slots in the legacy schema (`metabase.legacy-mbql.schema`, via
+  `::ValueTypeInfo` for `value`), and neither enum carries a `:decode/normalize`: after a JSON hop as
+  legacy MBQL the unit is a string and the
   clause never normalizes back. The `/question#` link carries a structured query as MBQL 5, where the
   clause survives the hop, but the query engine runs some of these clauses wrong by comparing the
   column with the start of the literal's period. On the Sample Database, `count-where` with
   `[\">\" CREATED_AT [\"absolute-datetime\" \"2026-01-01\" \"month\"]]` counts 18016 orders, though
   17811 are after January 2026, and
   `[\"=\" [\"absolute-datetime\" \"2026-03-01\" \"month\"] CREATED_AT]` counts none of the 256 orders
-  from March 2026. Pass 2.95 rewrites every shape it can rewrite without changing the answer, and
-  this detector has the model rewrite the rest.
+  from March 2026. Pass 2.95 repairs comparisons in filters and expressions.
+  Pass 2.6 expands date-only `day` / `default` bounds into ranges and unwraps `default` timestamps
+  outside of filters, expressions and join conditions. This detector has the model rewrite the rest.
 
   `relative-datetime` and `datetime-diff` units do carry `:decode/normalize`, so they survive the hop
   and are not listed. `temporal-extract`'s `::TemporalExtractUnit` has no decoder either, but Pass
@@ -3272,7 +3371,7 @@
                                            (some? (get (nth node 1) "unit")))
                   false))
        (throw (ex-info
-               (tru "Move the temporal unit in `{0}` off the literal. Put it on the column - a `temporal-unit` option on the `field` / `expression` reference, compared to the first day of the period as a plain date string like \"2025-01-01\" - or write the range out as `>=` its first day and `<` the first day after it, both plain date strings (not `between`, which drops everything after midnight on its last day). Use the range for `year` on an `expression` reference, which the query engine reads as a number, and inside `aggregation:` (`count-where`, `sum-where`, `share`) and join `conditions:`, where moving the unit onto the column would change the answer."
+               (tru "Move the temporal unit in `{0}` off the literal. Write a range with `>=` the first day of the period and `<` the first day after the period, both as plain date strings (not `between`, which drops everything after midnight on its last day). To exclude `2025-01-31`, use an `or` of `< \"2025-01-31\"` and `>= \"2025-02-01\"` on the column. These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count. Join `conditions:` cannot hold an `or`, so a date exclusion cannot be written there; tell the user that it cannot be added to the join. You can instead put the unit on the column with `temporal-unit` in `filters:` and `expressions:`, then compare the column to the first day of the period as a plain date string. Do not put the unit on the column in `aggregation:` or join `conditions:`, where the query engine does not turn it into a range. Use the range for `year` on an `expression` reference, which the query engine reads as a number."
                     (pr-str node))
                {:agent-error? true
                 :error        :unencodable-temporal-clause
@@ -3355,16 +3454,19 @@
     1.88. merge a trailing extra options-map back into position-1 options on fixed-arity
        tuple clauses (e.g. `[\"time-interval\" {} <expr> -1 \"month\" {\"include-current\" true}]`);
     2. fill in missing `\"lib/type\"` markers on the query, joins, and stages;
-    2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
-       `absolute-datetime` literal and onto the ref it is compared to: the hoisted form survives a
-       fallback to legacy MBQL, and the query engine runs it right where it runs the literal-side
-       form wrong (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
+    2.6. expand date-only `day` / `default` comparisons into whole-day ranges on the unbucketed column outside of
+       `filters`, `expressions` and join `conditions`; leave date negations for E7; unwrap `default` timestamps
+       and the whole-day start of a `between` that ends at `now` or at a timestamp;
     3. rewrite inline aggregation expressions in `order-by` to aggregation references when
        they match an aggregation in the same stage's `aggregation:` list (synthesising the
        referenced aggregation's `lib/uuid` if needed);
     3.5. resolve 0-based integer aggregation references (`[aggregation, {}, <int>]`) in a
        stage to the canonical UUID-keyed MBQL 5 form, stamping `lib/uuid` on the target
        aggregation clause and `base-type`/`effective-type` on the ref's options;
+    2.95. inside a stage's `filters` and `expressions` only, hoist a temporal bucket off an
+       `absolute-datetime` literal and onto the ref it is compared to: the hoisted form survives a
+       fallback to legacy MBQL, and the query engine runs it right where it runs the literal-side
+       form wrong (examples in the pass header; runs after Pass 2.9, which creates new `filters`);
     3.7. auto-wire `source-field-join-alias` (and the accompanying portable `source-field`)
        on field clauses whose target table is reachable through **exactly one** explicit
        join on the stage via a single unambiguous FK on the joined table. Skips clauses
@@ -3428,6 +3530,8 @@
    (-> parsed
        normalize-shape*
        (stamp-top-level-database* mp)
+       ;; Before Pass 3: order-by must equal its aggregation, so date bounds are normalized first.
+       repair-day-and-default-comparisons*
        rewrite-order-by-inline-aggs*
        resolve-aggregation-ref-indexes*
        split-post-agg-filters*

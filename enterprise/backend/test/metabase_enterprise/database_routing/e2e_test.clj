@@ -343,7 +343,7 @@
 
 (defmethod router-dataset-name :default [_driver] "db-router-data")
 
-(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk]]
+(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk :oracle]]
   (defmethod router-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti routed-dataset-name
@@ -354,7 +354,7 @@
 
 (defmethod routed-dataset-name :default [_driver] "db-routed-data")
 
-(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk]]
+(doseq [driver [:redshift :databricks :presto-jdbc :bigquery-cloud-sdk :oracle]]
   (defmethod routed-dataset-name driver [_driver] "db-routing-data"))
 
 (defmulti router-dataset-details

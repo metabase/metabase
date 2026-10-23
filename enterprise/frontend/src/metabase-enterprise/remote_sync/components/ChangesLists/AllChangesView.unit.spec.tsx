@@ -1135,7 +1135,7 @@ describe("AllChangesView", () => {
 
       expect(
         await screen.findByRole("link", { name: "Data apps" }),
-      ).toHaveAttribute("href", "/admin/settings/apps");
+      ).toHaveAttribute("href", "/data-studio/apps");
       expect(screen.getByText("Root")).toBeInTheDocument();
       expect(
         screen.getByRole("link", { name: /boba-staff-review/ }),

@@ -7,6 +7,7 @@ import {
 import {
   PLUGIN_DEPENDENCIES,
   PLUGIN_TRANSFORMS_PYTHON,
+  PLUGIN_TRANSFORMS_TESTING,
 } from "metabase/plugins";
 import * as Urls from "metabase/urls";
 import type { Transform, TransformId } from "metabase-types/api";
@@ -40,6 +41,15 @@ function getTabs(id: TransformId): PillTab[] {
       to: Urls.transformIndexes(id),
     },
   ];
+
+  if (PLUGIN_TRANSFORMS_TESTING.isEnabled) {
+    const testListUrl = Urls.transformTestList(id);
+    tabs.push({
+      label: t`Tests`,
+      to: testListUrl,
+      isSelected: (pathname: string) => pathname.startsWith(testListUrl),
+    });
+  }
 
   if (PLUGIN_TRANSFORMS_PYTHON.shouldShowInspectTab) {
     tabs.push({

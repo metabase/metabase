@@ -455,8 +455,26 @@
                              (update (orders-query) :stages conj [["count" {}]])})
             endpoint      ["agent/v2/construct-query" "agent/v2/query"]]
       (testing (str endpoint ", " label)
-        (is (=? {:error "invalid-representations-query"}
-                (mt/user-http-request :rasta :post 400 endpoint {:query query})))))))
+        (let [response (mt/user-http-request :rasta :post 400 endpoint {:query query})]
+          (is (=? {:error "invalid-representations-query"
+                   :error-code "invalid-representations-query"
+                   :message #"(?s)Representations query has an invalid structure\..*"}
+                  response))
+          (is (= #{:error :error-code :message :humanized :details} (set (keys response)))))))))
+
+(deftest construct-query-post-aggregation-errors-test
+  (doseq [[error query] [["post-agg-filter-with-trailing-clauses"
+                          (orders-query :aggregation [["count" {}]]
+                                        :filters [[">" {} ["aggregation" {} 0] 1]]
+                                        :limit 5)]
+                         ["post-agg-filter-needs-multi-stage"
+                          (orders-query :aggregation [["count" {}] ["count" {}]]
+                                        :filters [[">" {} ["aggregation" {} 0] 1]])]]
+          endpoint ["agent/v2/construct-query" "agent/v2/query"]]
+    (testing (str endpoint ", " error)
+      (let [response (mt/user-http-request :rasta :post 400 endpoint {:query query})]
+        (is (=? {:error error :error-code error :message #".*MBQL 5 requires.*"} response))
+        (is (= #{:error :error-code :message} (set (keys response))))))))
 
 (deftest construct-query-ignores-legacy-envelope-test
   (testing (str "Legacy `source_entity` / `referenced_entities` envelope from the pre-repr program API "
@@ -2165,3 +2183,14 @@
       (is (not (contains? q :qp/source-card-id)))
       (is (every? (fn [stage] (not (contains? stage :qp/stage-had-source-card))) (:stages q))
           "internal keys are stripped from every stage"))))
+
+(deftest construct-query-structural-locations-test
+  (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                       {:query (orders-query :filters [{:op ">"} {:op "<"}])})]
+    (is (= "invalid-representations-query" (:error response)))
+    (is (= (str "Representations query has an invalid structure.\n"
+                "Invalid at stages[0].filters[0]: should be a vector, "
+                "clause must be [operator-string, options-map, \u2026args]; "
+                "stages[0].filters[1]: should be a vector, "
+                "clause must be [operator-string, options-map, \u2026args]. Fix the named paths.")
+           (:message response)))))
