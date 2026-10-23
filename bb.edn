@@ -182,12 +182,11 @@
              (lint-migrations-file/-main))}
 
   new-migration
-  {:doc "Create a new directory-based migration file (v60+)"
+  {:doc "Create a new version-less migration file in the current year's directory"
    :requires [[mage.new-migration :as new-migration]]
-   :examples [["./bin/mage new-migration 60 mq_indexes" "Create resources/migrations/060/20260905_mq_indexes.yaml"]]
+   :examples [["./bin/mage new-migration mq_indexes" "Create resources/migrations/2026/20261012_mq_indexes.yaml with a random changeset id"]]
    :arg-schema [:tuple
-                [:int {:name "version" :description "Major version number (e.g., 60)"}]
-                [:string {:name "description" :description "Lowercase alphanumeric/underscore name (e.g., mq_indexes)"}]]
+                [:string {:name "description" :description "Lowercase alphanumeric/underscore name for the file (e.g., mq_indexes)"}]]
    :task (task! (new-migration/new-migration parsed))}
 
   jar-download

@@ -2107,9 +2107,12 @@
      (not (is-trash? collection-before-updates))
      [400 "You cannot modify the Trash Collection."])
     (api/check
-     (not (and (or (:archived collection-updates) (some? (:authority_level collection-updates)))
+     (not (and (or (:archived collection-updates)
+                   (some? (:authority_level collection-updates))
+                   (contains? collection-updates :location)
+                   (some collection-updates [:type :personal_owner_id :is_sample :archive_operation_id]))
                (perms/data-app-collection? (:id collection-before-updates))))
-     [400 "You cannot move a data app's collection to the trash or make it official."])
+     [400 "A data app's collection stays a top-level collection of data apps: it can't be moved, trashed, made official or given a type."])
     ;; VARIOUS CHECKS BEFORE DOING ANYTHING:
     ;; (1) if this is a personal Collection, check that the 'propsed' changes are allowed
     (when (or (:personal_owner_id collection-before-updates)

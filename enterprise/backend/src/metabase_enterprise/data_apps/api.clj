@@ -84,10 +84,9 @@
 
 (def ^:private create-defaults
   "What a new app starts with: an empty bundle, and unless its request says otherwise, the bundle path the app
-  template builds to and disabled until it is ready to be served."
+  template builds to; it is enabled, like an app an import creates."
   {:bundle_path "dist/index.js"
-   :bundle      ""
-   :enabled     false})
+   :bundle      ""})
 
 (def ^:private UpdateDataAppRequest
   [:map {:closed true}
@@ -100,6 +99,7 @@
 
 (def ^:private PublicDataAppResponse
   [:map {:closed true}
+   [:id           ms/PositiveInt]
    [:name         ms/NonBlankString]
    [:display_name ms/NonBlankString]])
 
@@ -165,7 +165,7 @@
   [app]
   (if api/*is-superuser?*
     (assoc app :outdated (data-app.config/outdated? app))
-    (select-keys app [:name :display_name])))
+    (select-keys app [:id :name :display_name])))
 
 (defn- read-check-data-app
   "Check whether the current user can access a data app. Viewing requires read access to the app's
@@ -216,7 +216,7 @@
   (api/check-403 (remote-sync/model-editable? :model/DataApp app)))
 
 (api.macros/defendpoint :post "/" :- DataAppResponse
-  "Create a data app with its resource collection and an empty bundle. It is disabled unless the request says
+  "Create a data app with its resource collection and an empty bundle. It is enabled unless the request says
   otherwise."
   [_route-params
    _query-params
