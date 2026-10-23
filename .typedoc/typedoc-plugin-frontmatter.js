@@ -28,11 +28,8 @@ export function load(app) {
       .map(([key, value]) => `${key}: ${value}`)
       .join("\n");
 
-    // Generate a redirect_from for the parallel `embedding/api/<Name>` path.
-    // Snippets in `sdk/api/snippets/*.md` link with relative `./api/X.md`; when
-    // included into a doc outside `sdk/` (e.g. `embedding/parameters.md`),
-    // that resolves to `embedding/api/X` instead of `embedding/sdk/api/X`.
-    // The redirect makes those URLs resolve via 301 instead of 404'ing.
+    // Generate a redirect_from for the old `embedding/api/<Name>` path, which
+    // snippets from older releases (relative `./api/X.md`) and inbound links still use.
     const pageName = page.url.replace(/\.html$/, "");
     const redirectBlock =
       pageName && pageName !== "index"
