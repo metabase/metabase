@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.api :as deps.api]
    [metabase-enterprise.dependencies.hooks :as deps.hooks]
@@ -3128,53 +3129,57 @@
 (deftest ^:synchronized graph-data-app-test
   (testing "GET /api/ee/dependencies/graph shows what a data app depends on, and counts the app as a card's dependent"
     (mt/with-premium-features #{:dependencies :data-apps}
-      (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                     {:name "birds" :display_name "Birds" :description "Sightings" :bundle_path "birds.js"}
-                     :model/Card {card-id :id} (data-app-card collection-id)]
-        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
-          (deps.test/synchronously-run-dependency-job!)
-          (let [{:keys [nodes edges]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
-                                                            :id app-id
-                                                            :type "data-app")
-                node (fn [node-type node-id]
-                       (m/find-first #(= [node-type node-id] ((juxt :type :id) %)) nodes))]
-            (is (=? {:data {:name "birds" :display_name "Birds" :description "Sightings"}}
-                    (node "data-app" app-id)))
-            (is (=? {:dependents_count {:data-app 1}}
-                    (node "card" card-id)))
-            (is (some? (node "table" (mt/id :venues))))
-            (is (contains? (into #{} (map (juxt :from_entity_type :from_entity_id :to_entity_type :to_entity_id)) edges)
-                           ["data-app" app-id "card" card-id]))))))))
+      (data-apps.tu/with-published-tables! [(mt/id :venues)]
+        (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
+                       {:name "birds" :display_name "Birds" :description "Sightings" :bundle_path "birds.js"}
+                       :model/Card {card-id :id} (data-app-card collection-id)]
+          (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+            (deps.test/synchronously-run-dependency-job!)
+            (let [{:keys [nodes edges]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                                              :id app-id
+                                                              :type "data-app")
+                  node (fn [node-type node-id]
+                         (m/find-first #(= [node-type node-id] ((juxt :type :id) %)) nodes))]
+              (is (=? {:data {:name "birds" :display_name "Birds" :description "Sightings"}}
+                      (node "data-app" app-id)))
+              (is (=? {:dependents_count {:data-app 1}}
+                      (node "card" card-id)))
+              (is (some? (node "table" (mt/id :venues))))
+              (is (contains? (into #{}
+                                   (map (juxt :from_entity_type :from_entity_id :to_entity_type :to_entity_id))
+                                   edges)
+                             ["data-app" app-id "card" card-id])))))))))
 
 (deftest ^:synchronized graph-data-app-dependents-test
   (testing "GET /api/ee/dependencies/graph/dependents lists the data apps a user can read"
-    (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                   {:name "birds" :display_name "Birds" :bundle_path "birds.js" :enabled false}
-                   :model/Card {card-id :id} (data-app-card collection-id)
-                   :model/PermissionsGroup {group-id :id} {}]
-      (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
-        (deps.test/synchronously-run-dependency-job!)
-        (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
-        (let [dependent-ids (fn [user]
-                              (->> (mt/user-http-request user :get 200 "ee/dependencies/graph/dependents"
-                                                         :id card-id
-                                                         :type "card"
-                                                         :dependent-types "data-app")
-                                   (into #{} (map :id))))]
-          (mt/with-premium-features #{:dependencies :data-apps}
-            (testing "an admin sees every app, disabled ones too"
-              (is (= #{app-id} (dependent-ids :crowberto))))
-            (testing "a user sees the enabled apps assigned to one of their groups, not the apps whose collection they
-                     can read"
-              (is (= #{} (dependent-ids :rasta)))
-              (perms/add-user-to-group! (mt/user->id :rasta) group-id)
-              (t2/insert! :model/DataAppGroupAssignment {:data_app_id app-id :permission_group_id group-id})
-              (is (= #{} (dependent-ids :rasta)))
-              (t2/update! :model/DataApp app-id {:enabled true})
-              (is (= #{app-id} (dependent-ids :rasta)))))
-          (mt/with-premium-features #{:dependencies}
-            (testing "without the data apps feature, the dependents list has no data apps, even for an admin"
-              (is (= #{} (dependent-ids :crowberto))))))))))
+    (data-apps.tu/with-published-tables! [(mt/id :venues)]
+      (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
+                     {:name "birds" :display_name "Birds" :bundle_path "birds.js" :enabled false}
+                     :model/Card {card-id :id} (data-app-card collection-id)
+                     :model/PermissionsGroup {group-id :id} {}]
+        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+          (deps.test/synchronously-run-dependency-job!)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
+          (let [dependent-ids (fn [user]
+                                (->> (mt/user-http-request user :get 200 "ee/dependencies/graph/dependents"
+                                                           :id card-id
+                                                           :type "card"
+                                                           :dependent-types "data-app")
+                                     (into #{} (map :id))))]
+            (mt/with-premium-features #{:dependencies :data-apps}
+              (testing "an admin sees every app, disabled ones too"
+                (is (= #{app-id} (dependent-ids :crowberto))))
+              (testing "a user sees the enabled apps assigned to one of their groups, not the apps whose collection they
+                       can read"
+                (is (= #{} (dependent-ids :rasta)))
+                (perms/add-user-to-group! (mt/user->id :rasta) group-id)
+                (t2/insert! :model/DataAppGroupAssignment {:data_app_id app-id :permission_group_id group-id})
+                (is (= #{} (dependent-ids :rasta)))
+                (t2/update! :model/DataApp app-id {:enabled true})
+                (is (= #{app-id} (dependent-ids :rasta)))))
+            (mt/with-premium-features #{:dependencies}
+              (testing "without the data apps feature, the dependents list has no data apps, even for an admin"
+                (is (= #{} (dependent-ids :crowberto)))))))))))
 
 (deftest graph-data-app-names-only-for-non-admins-test
   (testing "GET /api/ee/dependencies/graph gives a non-admin only a data app's names, as the data-app API does"
