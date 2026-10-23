@@ -1,6 +1,5 @@
 .map {
   display: block;
-  width: 256px;
   margin-inline: auto;
 }
 
@@ -27,6 +26,19 @@
     }
   }
 
+  /* The shade grows with the share of the rows with the state. */
+  &[data-available="true"][data-shaded="true"] {
+    fill: color-mix(
+      in srgb,
+      var(--mb-color-core-summarize) calc(12% + var(--state-shade) * 0.68),
+      var(--mb-color-background_page-primary)
+    );
+
+    &:hover {
+      stroke: var(--mb-color-core-summarize);
+    }
+  }
+
   &[data-selected="true"],
   &[data-selected="true"]:hover {
     fill: color-mix(
@@ -34,5 +46,10 @@
       var(--mb-color-core-summarize) 80%,
       var(--mb-color-background_page-primary)
     );
+  }
+
+  /* With shades, a selected state is brand blue, like a selected tile. */
+  &[data-available="true"][data-shaded="true"][data-selected="true"] {
+    fill: var(--mb-color-background_surface-brand-strong);
   }
 }

@@ -44,6 +44,8 @@ interface SuggestionInputProps {
   header?: ReactNode;
   /** Content below the options, like the count of matching rows. */
   footer?: ReactNode;
+  /** A panel on the right of the options, like a map. */
+  aside?: ReactNode;
   /** Shown when no option matches the text. */
   emptyMessage?: string;
   onTextChange: (text: string) => void;
@@ -78,6 +80,7 @@ export function SuggestionInput({
   optionsMaxHeight,
   header,
   footer,
+  aside,
   emptyMessage = t`No results`,
   onTextChange,
   onOptionSubmit,
@@ -272,67 +275,80 @@ export function SuggestionInput({
         />
       </Combobox.Target>
       {hasSuggestions && (
-        <Combobox.Dropdown>
-          {header != null && (
-            // Clicks in the header keep the focus in the input, except
-            // clicks in a text input of the header.
-            <div
-              className={S.dropdownHeader}
-              onMouseDown={(event) => {
-                if (!isTextInput(event.target)) {
-                  event.preventDefault();
-                }
-              }}
-            >
-              {withSearchBox && (
-                <TextInput
-                  ref={searchInputRef}
-                  mb="sm"
-                  value={text}
-                  placeholder={t`Search`}
-                  leftSection={<Icon name="search" />}
-                  onChange={(event) => {
-                    onTextChange(event.currentTarget.value);
-                    combobox.openDropdown();
-                  }}
-                  onKeyDown={handleSearchBoxKeyDown}
-                />
+        <Combobox.Dropdown className={cx({ [S.dropdownWithAside]: aside })}>
+          <div className={S.dropdownMain}>
+            {header != null && (
+              // Clicks in the header keep the focus in the input, except
+              // clicks in a text input of the header.
+              <div
+                className={S.dropdownHeader}
+                onMouseDown={(event) => {
+                  if (!isTextInput(event.target)) {
+                    event.preventDefault();
+                  }
+                }}
+              >
+                {withSearchBox && (
+                  <TextInput
+                    ref={searchInputRef}
+                    mb="sm"
+                    value={text}
+                    placeholder={t`Search`}
+                    leftSection={<Icon name="search" />}
+                    onChange={(event) => {
+                      onTextChange(event.currentTarget.value);
+                      combobox.openDropdown();
+                    }}
+                    onKeyDown={handleSearchBoxKeyDown}
+                  />
+                )}
+                {header}
+              </div>
+            )}
+            <Combobox.Options className={S.options} mah={optionsMaxHeight}>
+              {hasOptions ? (
+                filteredGroups.map((group, groupIndex) => (
+                  <Fragment key={groupIndex}>
+                    {group.section != null &&
+                      group.section !==
+                        filteredGroups[groupIndex - 1]?.section && (
+                        <div
+                          className={cx(S.sectionHeader, {
+                            [S.sectionDivider]: groupIndex > 0,
+                          })}
+                        >
+                          {group.section}
+                        </div>
+                      )}
+                    <Combobox.Group label={group.label}>
+                      <div
+                        className={cx({
+                          [S.optionGrid]: isTiles || columns > 1,
+                        })}
+                        style={{
+                          gridTemplateColumns: `repeat(${isTiles ? 2 : columns}, minmax(0, 1fr))`,
+                        }}
+                      >
+                        {group.options.map(renderOption)}
+                      </div>
+                    </Combobox.Group>
+                  </Fragment>
+                ))
+              ) : (
+                <Combobox.Empty>{emptyMessage}</Combobox.Empty>
               )}
-              {header}
+            </Combobox.Options>
+            {footer != null && <div className={S.dropdownFooter}>{footer}</div>}
+          </div>
+          {aside != null && (
+            // Clicks in the panel keep the focus in the input.
+            <div
+              className={S.dropdownAside}
+              onMouseDown={(event) => event.preventDefault()}
+            >
+              {aside}
             </div>
           )}
-          <Combobox.Options className={S.options} mah={optionsMaxHeight}>
-            {hasOptions ? (
-              filteredGroups.map((group, groupIndex) => (
-                <Fragment key={groupIndex}>
-                  {group.section != null &&
-                    group.section !==
-                      filteredGroups[groupIndex - 1]?.section && (
-                      <div
-                        className={cx(S.sectionHeader, {
-                          [S.sectionDivider]: groupIndex > 0,
-                        })}
-                      >
-                        {group.section}
-                      </div>
-                    )}
-                  <Combobox.Group label={group.label}>
-                    <div
-                      className={cx({ [S.optionGrid]: isTiles || columns > 1 })}
-                      style={{
-                        gridTemplateColumns: `repeat(${isTiles ? 2 : columns}, minmax(0, 1fr))`,
-                      }}
-                    >
-                      {group.options.map(renderOption)}
-                    </div>
-                  </Combobox.Group>
-                </Fragment>
-              ))
-            ) : (
-              <Combobox.Empty>{emptyMessage}</Combobox.Empty>
-            )}
-          </Combobox.Options>
-          {footer != null && <div className={S.dropdownFooter}>{footer}</div>}
         </Combobox.Dropdown>
       )}
     </Combobox>

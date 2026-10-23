@@ -301,7 +301,8 @@
 .dropdownFooter {
   --footer-inset: calc(0.75rem + var(--mantine-spacing-xs));
 
-  padding: 0 var(--footer-inset) var(--footer-inset);
+  padding: var(--mantine-spacing-sm) var(--footer-inset);
+  border-top: 1px solid var(--mb-color-border-neutral);
 }
 
 /* Prototype: the dropdowns of a pill start at its left edge, not at its input.
@@ -309,4 +310,39 @@
    in place. The pill is the containing block of the dropdown. */
 .pillDropdown {
   left: -1px !important;
+}
+
+/* A dropdown with a panel on the right, like the US states map. */
+.dropdownWithAside {
+  display: flex;
+  overflow: hidden;
+}
+
+.dropdownMain {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The list fills the height of the panel, and the footer stays at the
+   bottom. */
+.dropdownWithAside .dropdownMain {
+  display: flex;
+  flex-direction: column;
+  height: 26rem;
+}
+
+.dropdownWithAside .options {
+  flex: 1;
+  min-height: 0;
+  max-height: none;
+}
+
+.dropdownAside {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: var(--mantine-spacing-lg);
+  border-left: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background_page-secondary);
 }

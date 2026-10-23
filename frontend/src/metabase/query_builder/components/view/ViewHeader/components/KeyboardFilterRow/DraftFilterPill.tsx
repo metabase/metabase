@@ -60,7 +60,13 @@ import {
   getPillOperatorLabel,
   isValidValue,
 } from "./utils";
-import { type ValueAndLabel, useValueWidget } from "./value-widgets";
+import {
+  SELECT_ALL_VALUE,
+  type ValueAndLabel,
+  formatShare,
+  hasValueShares,
+  useValueWidget,
+} from "./value-widgets";
 
 const SEARCH_LIMIT = 20;
 const COLUMN_DROPDOWN_WIDTH = 340;
@@ -819,22 +825,37 @@ function ValueInput({
     column,
     isAiPromptText ? "" : text,
   );
+  const valueCounts = useValueCounts({
+    query,
+    stageIndex,
+    column,
+    filter,
+    isEnabled: hasValueShares(column, operator, fieldValues, isListed),
+  });
   const widget = useValueWidget({
     column,
     operator,
     fieldValues,
     isListed,
     values,
+    getShare: valueCounts.type === "counts" ? valueCounts.getShare : undefined,
+    isShareEstimate: valueCounts.type === "counts" && valueCounts.isEstimate,
     onValuesChange,
     onToggleValue,
   });
-  const valueCounts = useValueCounts({
-    query,
-    stageIndex,
-    column,
-    filter,
-    isEnabled: widget.isTiles,
-  });
+  const handleOptionSubmit = (value: string) => {
+    if (value !== SELECT_ALL_VALUE) {
+      onToggleValue(value);
+      return;
+    }
+    const allValues = widget.groups.flatMap((group) =>
+      group.options
+        .map((option) => option.value)
+        .filter((value) => value !== SELECT_ALL_VALUE),
+    );
+    const isAllChecked = allValues.every((value) => values.includes(value));
+    onValuesChange(isAllChecked ? [] : allValues);
+  };
   const groups = useMemo(
     () =>
       valueCounts.type === "counts"
@@ -881,14 +902,11 @@ function ValueInput({
         inputRef={inputRef}
         groups={isAiPromptText ? NO_GROUPS : groups}
         header={isAiPromptText ? undefined : widget.header}
+        aside={isAiPromptText ? undefined : widget.aside}
         footer={
-          isAiPromptText ? undefined : (
-            <ValueCountsFooter
-              valueCounts={valueCounts}
-              operator={operator}
-              values={values}
-            />
-          )
+          isAiPromptText
+            ? undefined
+            : getValueCountsFooter(valueCounts, operator, values)
         }
         isTiles={widget.isTiles}
         columns={widget.columns}
@@ -898,7 +916,7 @@ function ValueInput({
         isMultiSelect={isMultiSelect}
         emptyMessage={t`Press Enter to use “${text}”`}
         onTextChange={onTextChange}
-        onOptionSubmit={onToggleValue}
+        onOptionSubmit={handleOptionSubmit}
         onKeyDown={onKeyDown}
       />
     </>
@@ -907,15 +925,12 @@ function ValueInput({
 
 const MATCH_COUNT_OPERATORS = new Set(["=", "!="]);
 
-function ValueCountsFooter({
-  valueCounts,
-  operator,
-  values,
-}: {
-  valueCounts: ValueCounts;
-  operator: DraftOperator;
-  values: string[];
-}) {
+/** The match count and the notes under the options, or null for none. */
+function getValueCountsFooter(
+  valueCounts: ValueCounts,
+  operator: DraftOperator,
+  values: string[],
+) {
   if (valueCounts.type === "unavailable") {
     return <UnavailableNote />;
   }
@@ -937,14 +952,6 @@ function ValueCountsFooter({
       {valueCounts.isEstimate && <SampleNote />}
     </>
   );
-}
-
-/** A share as a percent, like "34%", or "~34%" for an estimate. */
-function formatShare(share: number, isEstimate: boolean) {
-  const percent = share * 100;
-  const label =
-    percent > 0 && percent < 0.5 ? "<1%" : `${Math.round(percent)}%`;
-  return isEstimate ? `~${label}` : label;
 }
 
 interface ValueTokensProps {
