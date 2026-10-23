@@ -46,21 +46,28 @@
    [:table-id         {:optional true} pos-int?]
    [:database-id      {:optional true} pos-int?]])
 
+(defn readable-database-id
+  "The `:database-id` of the pipeline error `data`, when the current user can read that database."
+  [data]
+  (let [id (:database-id data)]
+    (when (and (pos-int? id) (mi/can-read? :model/Database id))
+      id)))
+
 (def ^:private id-keys
   "For each code whose recovery steps name a table or a database, a map from the payload key to the
-  `ex-data` key the pipeline puts that id under."
-  {:unknown-table   {:database-id :database-id}
-   :ambiguous-table {:database-id :database-id}
+  function that reads that id from the `ex-data`."
+  {:unknown-table   {:database-id readable-database-id}
+   :ambiguous-table {:database-id readable-database-id}
    :unknown-field   {:table-id :table-id}
    :ambiguous-fk    {:table-id :source-table}})
 
 (defn payload
   "The [[::payload]] for the pipeline exception `e`, whose `:error` code is `error`.
 
-  A database id is kept only when the current user can read the database."
+  A database id is kept only when [[readable-database-id]] returns it."
   [error e]
   (let [{:keys [entity-type entity-id source-card source-card-type] :as data} (ex-data e)
-        {:keys [table-id database-id]} (update-vals (id-keys error) #(get data %))]
+        {:keys [table-id database-id]} (update-vals (id-keys error) #(% data))]
     (cond-> {:message (or (ex-message e) "")}
       entity-type         (assoc :entity-type entity-type)
       (some? entity-id)   (assoc :entity-id entity-id)
@@ -68,9 +75,7 @@
                                  :source-card-type source-card-type)
       ;; The pipeline checks permissions on the query's tables, but finds its database by name first.
       (pos-int? table-id) (assoc :table-id table-id)
-      (and (pos-int? database-id)
-           (mi/can-read? :model/Database database-id))
-      (assoc :database-id database-id))))
+      database-id         (assoc :database-id database-id))))
 
 ;;; ------------------------------------------- Shared recovery steps ----------------------------------------------
 

@@ -157,6 +157,9 @@
   re-hallucinating the same bad path. All error branches are marked
   `:agent-error? true` so the outer tool wrapper relays the message verbatim.
 
+  Every error here carries the provider's `:database-id`, which is not permission-checked: read it
+  with `metabase.metabot.tools.recoverable.pipeline/readable-database-id`.
+
   Inactive (`:active false`) tables are dropped by [[table-candidates]], so a stale FK to one
   surfaces here as a 0-candidate miss."
   [metadata-provider [path-db-name path-schema path-table-name :as path]]
