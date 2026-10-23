@@ -10,4 +10,4 @@
   {}
 
   :ee
-  {:extra-deps {com.oracle.database.jdbc/ojdbc17 {:mvn/version "23.9.0.25.07"}}}}}
+  {:extra-deps {com.oracle.database.jdbc/ojdbc17 {:mvn/version "23.26.3.0.0"}}}}}
