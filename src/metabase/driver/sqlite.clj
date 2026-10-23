@@ -750,7 +750,10 @@
   [driver ^SQLException e]
   (or ((get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc) driver e)
       (and (nil? (.getSQLState e))
-           (contains? #{1 19 20} (.getErrorCode e)))))
+           (contains? #{(.code SQLiteErrorCode/SQLITE_ERROR)
+                        (.code SQLiteErrorCode/SQLITE_CONSTRAINT)
+                        (.code SQLiteErrorCode/SQLITE_MISMATCH)}
+                      (.getErrorCode e)))))
 
 (defmethod sql-jdbc/impl-query-canceled? :sqlite
   [_driver ^SQLException e]
