@@ -19,11 +19,10 @@
    The following are derived from this set and must not drift from it:
    1. the route table mounts exactly these paths
    2. `metabase.oauth-server.api.metadata` publishes one RFC 9728 document per path
-   3. `metabase.oauth-server.core/narrow-scope-to-resources` recognises an RFC 8707 `resource` indicator
+   3. `metabase.oauth-server.api.oauth/narrow-scope-to-resource` recognises an RFC 8707 `resource` indicator
    only if it names one.
    4. the session middleware uses these to determine bearer-only paths
 
-  A path that still serves traffic but has dropped out of this set fails OPEN — the indicator matches nothing, so the
-  grant is never narrowed to the MCP surface."
+  A path that still serves traffic but is missing from this set fails CLOSED, so the grant loses every MCP scope."
   #{canonical-path
     "/api/mcp"})

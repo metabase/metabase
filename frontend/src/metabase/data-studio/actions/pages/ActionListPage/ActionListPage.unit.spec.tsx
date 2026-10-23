@@ -1,10 +1,12 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupActionsEndpoints,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
@@ -18,6 +20,7 @@ import {
   createMockCollection,
   createMockDatabase,
   createMockQueryAction,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -26,6 +29,8 @@ import { ActionListPage } from "./ActionListPage";
 type SetupOpts = {
   databases?: Database[];
   actions?: WritebackAction[];
+  isAdmin?: boolean;
+  hasLibrary?: boolean;
 };
 
 const ACTIONS_DATABASE = createMockDatabase({
@@ -33,7 +38,12 @@ const ACTIONS_DATABASE = createMockDatabase({
   settings: { "database-enable-actions": true },
 });
 
-function setup({ databases = [ACTIONS_DATABASE], actions = [] }: SetupOpts) {
+function setup({
+  databases = [ACTIONS_DATABASE],
+  actions = [],
+  isAdmin = true,
+  hasLibrary = false,
+}: SetupOpts) {
   setupDatabasesEndpoints(databases);
   setupActionsEndpoints(actions);
   setupCollectionsEndpoints({
@@ -46,10 +56,17 @@ function setup({ databases = [ACTIONS_DATABASE], actions = [] }: SetupOpts) {
     ],
   });
 
+  if (hasLibrary) {
+    setupEnterpriseOnlyPlugin("library");
+  }
+
   renderWithProviders(<Route path="/" element={<ActionListPage />} />, {
     withRouter: true,
     storeInitialState: createMockState({
-      currentUser: createMockUser({ is_superuser: true }),
+      currentUser: createMockUser({ is_superuser: isAdmin }),
+      settings: mockSettings({
+        "token-features": createMockTokenFeatures({ library: hasLibrary }),
+      }),
     }),
   });
 }
@@ -86,6 +103,17 @@ describe("ActionListPage", () => {
     ).toEqual(["Action", "Collection"]);
   });
 
+  it("does not offer non-admins to create anything", async () => {
+    setup({ isAdmin: false });
+
+    expect(
+      await screen.findByText("Queries that change data"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /New/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("does not offer to create anything without an actions-enabled database, but still links to the archive", async () => {
     setup({
       databases: [
@@ -112,5 +140,20 @@ describe("ActionListPage", () => {
     expect(
       screen.getByRole("menuitem", { name: /View archived actions/ }),
     ).toBeInTheDocument();
+  });
+
+  it("does not offer changing the permissions of data actions", async () => {
+    setup({ hasLibrary: true });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Data action options" }),
+    );
+
+    expect(
+      screen.getByRole("menuitem", { name: /View archived actions/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: /Change permissions/ }),
+    ).not.toBeInTheDocument();
   });
 });

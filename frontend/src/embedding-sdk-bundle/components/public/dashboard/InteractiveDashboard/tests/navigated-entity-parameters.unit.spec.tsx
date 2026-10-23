@@ -717,11 +717,15 @@ describe("InteractiveDashboard navigated entity parameters", () => {
       await renderWithSdk(<App />);
       await clickCell("Gizmo");
 
-      await waitForTargetQueries(2);
-      expect(getLastTargetQueryValues()).toEqual({
-        [CATEGORY_PARAMETER.id]: ["Gizmo"],
-        [VENDOR_PARAMETER.id]: ["Globex"],
-      });
+      // The host applies its parameters through a state update that React may
+      // batch into the first target query, so assert on the final query
+      // values once they settle.
+      await waitFor(() =>
+        expect(getLastTargetQueryValues()).toEqual({
+          [CATEGORY_PARAMETER.id]: ["Gizmo"],
+          [VENDOR_PARAMETER.id]: ["Globex"],
+        }),
+      );
     });
 
     it("replaces the click values with its own values", async () => {
@@ -857,11 +861,15 @@ describe("InteractiveDashboard navigated entity parameters", () => {
       await renderWithSdk(<App />);
       await clickCell("Gizmo");
 
-      await waitForTargetQueries(2);
-      expect(getLastTargetQueryValues()).toEqual({
-        [CATEGORY_PARAMETER.id]: null,
-        [VENDOR_PARAMETER.id]: ["Globex"],
-      });
+      // The host applies its parameters through a state update that React may
+      // batch into the first target query, so assert on the final query
+      // values once they settle.
+      await waitFor(() =>
+        expect(getLastTargetQueryValues()).toEqual({
+          [CATEGORY_PARAMETER.id]: null,
+          [VENDOR_PARAMETER.id]: ["Globex"],
+        }),
+      );
     });
 
     it("follows later changes", async () => {
