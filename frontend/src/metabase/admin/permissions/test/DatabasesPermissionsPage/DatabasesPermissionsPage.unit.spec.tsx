@@ -25,6 +25,8 @@ import { defer } from "metabase/utils/promise";
 import type { Database } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { ROUTED_DATABASE } from "../routed-database";
 const TEST_DATABASE = createSampleDatabase();
 
 const TEST_GROUPS = [
@@ -36,20 +38,35 @@ const TEST_GROUPS = [
   createMockGroup({ id: 2, name: "Administrators", magic_group_type: "admin" }),
 ];
 
+interface SetupOpts {
+  shouldWaitForLoader?: boolean;
+  showUpdatedPermissionModal?: boolean;
+  deferDatabaseMetadata?: boolean;
+  database?: Database;
+}
+
 const setup = async ({
   shouldWaitForLoader = true,
   showUpdatedPermissionModal = false,
   deferDatabaseMetadata = false,
-} = {}) => {
-  setupDatabasesEndpoints([TEST_DATABASE]);
-  setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
+  database = TEST_DATABASE,
+}: SetupOpts = {}) => {
+  setupDatabasesEndpoints([database]);
+  setupPermissionsGraphEndpoints(TEST_GROUPS, [database]);
   setupGroupsEndpoint(TEST_GROUPS);
 
   const databaseMetadata = defer<Database>();
 
+  // GET /api/database/:id/metadata does not return router_user_attribute
+  const databaseMetadataResponse = {
+    ...database,
+    router_user_attribute: undefined,
+  };
   fetchMock.get(
-    `path:/api/database/${TEST_DATABASE.id}/metadata`,
-    deferDatabaseMetadata ? () => databaseMetadata.promise : TEST_DATABASE,
+    `path:/api/database/${database.id}/metadata`,
+    deferDatabaseMetadata
+      ? () => databaseMetadata.promise
+      : databaseMetadataResponse,
   );
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
@@ -74,7 +91,7 @@ const setup = async ({
     </Route>,
     {
       withRouter: true,
-      initialRoute: `/admin/permissions/data/database/${TEST_DATABASE.id}`,
+      initialRoute: `/admin/permissions/data/database/${database.id}`,
       storeInitialState: {
         settings: mockSettings({
           "show-updated-permission-modal": showUpdatedPermissionModal,
@@ -149,6 +166,16 @@ describe("DatabasesPermissionsPage", () => {
       await editDatabasePermission();
       expect(screen.getByText("Cancel")).toBeInTheDocument();
       expect(screen.getByText("Save changes")).toBeInTheDocument();
+    });
+
+    it("marks a database with routing enabled in the breadcrumbs", async () => {
+      await setup({ database: ROUTED_DATABASE });
+
+      expect(
+        within(screen.getByTestId("permissions-editor-breadcrumbs")).getByText(
+          "(Database routing enabled)",
+        ),
+      ).toBeInTheDocument();
     });
   });
 

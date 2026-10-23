@@ -11,6 +11,7 @@ import {
   renderWithProviders,
   screen,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { DataPermissionsPage } from "metabase/admin/permissions/pages/DataPermissionsPage/DataPermissionsPage";
@@ -18,8 +19,11 @@ import { GroupsPermissionsPage } from "metabase/admin/permissions/pages/GroupDat
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
 import { Route } from "metabase/router";
+import type { Database } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { ROUTED_DATABASE } from "../routed-database";
 const NATIVE_QUERIES_PERMISSION_INDEX = 0;
 
 const TEST_DATABASE = createSampleDatabase();
@@ -33,17 +37,24 @@ const TEST_GROUPS = [
   }),
 ];
 
+interface SetupOpts {
+  initialRoute?: string;
+  database?: Database;
+}
+
 const setup = async ({
   initialRoute = `/admin/permissions/data/group/${TEST_GROUPS[1].id}`,
-} = {}) => {
-  setupDatabasesEndpoints([TEST_DATABASE]);
-  setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
+  database = TEST_DATABASE,
+}: SetupOpts = {}) => {
+  setupDatabasesEndpoints([database]);
+  setupPermissionsGraphEndpoints(TEST_GROUPS, [database]);
   setupGroupsEndpoint(TEST_GROUPS);
 
-  fetchMock.get(
-    `path:/api/database/${TEST_DATABASE.id}/metadata`,
-    TEST_DATABASE,
-  );
+  // GET /api/database/:id/metadata does not return router_user_attribute
+  fetchMock.get(`path:/api/database/${database.id}/metadata`, {
+    ...database,
+    router_user_attribute: undefined,
+  });
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
@@ -109,6 +120,31 @@ describe("GroupsPermissionsPage", () => {
 
       expect(screen.getByText("Cancel")).toBeInTheDocument();
       expect(screen.getByText("Save changes")).toBeInTheDocument();
+    });
+  });
+
+  describe("database routing", () => {
+    it("marks a database with routing enabled in the group's database list", async () => {
+      await setup({ database: ROUTED_DATABASE });
+
+      expect(
+        within(screen.getByTestId("permission-table")).getByText(
+          "(Database routing enabled)",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("marks a database with routing enabled in the breadcrumbs of the group's table list", async () => {
+      await setup({
+        database: ROUTED_DATABASE,
+        initialRoute: `/admin/permissions/data/group/${TEST_GROUPS[1].id}/database/${ROUTED_DATABASE.id}`,
+      });
+
+      expect(
+        within(
+          await screen.findByTestId("permissions-editor-breadcrumbs"),
+        ).getByText("(Database routing enabled)"),
+      ).toBeInTheDocument();
     });
   });
 
