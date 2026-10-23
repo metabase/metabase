@@ -259,8 +259,8 @@
       (is (= (failure "Chart type \"scalar\" can't show this query's columns. It needs a first column that isn't a "
                       "breakout, since it shows that column's first value. The query returns 2 columns: 1 to group by "
                       "and 1 number to measure. Chart types that fit these columns: "
-                      "table, bar, line, pie, sunburst, treemap, boxplot, area, combo, row, pivot, scatter, waterfall, "
-                      "progress, funnel, object.")
+                      "table, bar, line, pie, treemap, boxplot, area, combo, row, pivot, scatter, waterfall, progress, "
+                      "funnel, object.")
              (invoke "edit_chart"
                      (assoc chart-args :chart_id "c-1" :new_viz_settings {:chart_type "scalar"})
                      {:charts {"c-1" {:chart_id "c-1" :query_id "q-1" :queries [count-by-category]}}}))))
@@ -273,7 +273,7 @@
         (is (= (failure "Chart type \"scalar\" can't show this query's columns. It needs a first column that isn't "
                         "a breakout, since it shows that column's first value. The query returns 2 columns: 1 to group "
                         "by and 1 number to measure. Chart types that fit these columns: table, bar, line, pie, "
-                        "sunburst, treemap, boxplot, area, combo, row, scatter, waterfall, progress, funnel, object.")
+                        "treemap, boxplot, area, combo, row, scatter, waterfall, progress, funnel, object.")
                (invoke "create_chart"
                        (assoc chart-args :data_source {:query_id "q-1"} :viz_settings {:chart_type "scalar"})
                        {:queries {"q-1" query}})))))

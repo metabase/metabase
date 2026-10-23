@@ -114,6 +114,11 @@
                                  (and (some (some-fn lib.types.isa/state? lib.types.isa/country?) cols)
                                       (some metric? cols))))}}))
 
+(def ^:private suggested-chart-types
+  "The chart types that the error can suggest. Not `sunburst`: the frontend has no visualization of that name and draws a
+  `sunburst` card as a table, while a `pie` chart draws the same rings."
+  (remove #{"sunburst"} shared/chart-types))
+
 (defn- fits?
   [chart-type query cols]
   (if-let [requirement (requirements chart-type)]
@@ -172,4 +177,4 @@
                                    :columns    (count cols)
                                    :groupings  (n-of grouping? cols)
                                    :metrics    (n-of metric? cols)
-                                   :fitting    (filterv #(fits? % query cols) shared/chart-types)})))))
+                                   :fitting    (filterv #(fits? % query cols) suggested-chart-types)})))))
