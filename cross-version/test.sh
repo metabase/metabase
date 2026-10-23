@@ -21,6 +21,7 @@ METABASE_PORT="${METABASE_PORT:-3000}"
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-120}"
 RESULT_FILE="${RESULT_FILE:-/tmp/cross-version-result.json}"
 LOG_DIR="${LOG_DIR:-$SCRIPT_DIR/logs}"
+CYPRESS_FAILURES_RECORDED=0
 
 # Colors for output
 RED='\033[0;31m'
@@ -112,8 +113,23 @@ run_e2e() {
   fi
 
   log "Running @${phase} e2e tests for ${version} from: e2e/cross-version/${specs_dir##*/}/"
-  CYPRESS_SPEC_PATTERN="${specs_dir}/**/*.cy.spec.ts" \
-    "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"
+  local recorded_before
+  recorded_before=$(count_recorded_failures)
+  if ! CYPRESS_SPEC_PATTERN="${specs_dir}/**/*.cy.spec.ts" \
+    "$REPO_ROOT/e2e/cross-version/run.sh" --phase "$phase"; then
+    if (( $(count_recorded_failures) > recorded_before )); then
+      CYPRESS_FAILURES_RECORDED=1
+    fi
+    return 1
+  fi
+}
+
+count_recorded_failures() {
+  if [[ -n "${QUARANTINE_FAILURES_FILE:-}" && -f "$QUARANTINE_FAILURES_FILE" ]]; then
+    wc -l < "$QUARANTINE_FAILURES_FILE" | tr -d ' '
+  else
+    echo 0
+  fi
 }
 
 
@@ -359,6 +375,44 @@ cleanup() {
   teardown
 }
 
+xml_escape() {
+  local value="$1"
+  value="${value//&/&amp;}"
+  value="${value//</&lt;}"
+  value="${value//>/&gt;}"
+  value="${value//\"/&quot;}"
+  printf '%s' "$value"
+}
+
+write_junit_result() {
+  local code="$1"
+  local name="$2"
+  local result="/>"
+  if (( code != 0 )); then
+    result="><failure message=\"test.sh exited with code ${code}\">test.sh exited with code ${code}</failure></testcase>"
+  fi
+  mkdir -p "$(dirname "$CROSS_VERSION_JUNIT_FILE")"
+  printf '<?xml version="1.0" encoding="UTF-8"?>\n<testsuite name="cross-version">\n  <testcase name="%s" classname="cross-version" file="cross-version/test.sh"%s\n</testsuite>\n' \
+    "$(xml_escape "$name")" "$result" > "$CROSS_VERSION_JUNIT_FILE"
+}
+
+# Writes a small xml file recording pass/fail that is uploaded to CI Conductor so we can quarantine these tests if required.
+record_result() {
+  local code="$1"
+  local name="$SOURCE_VERSION -> $TARGET_VERSION"
+  if (( CYPRESS_FAILURES_RECORDED == 1 )); then
+    code=0
+  fi
+  if [[ -n "${CROSS_VERSION_JUNIT_FILE:-}" ]]; then
+    write_junit_result "$code" "$name"
+  fi
+  (( code == 0 )) && return 0
+  [[ -n "${QUARANTINE_FAILURES_FILE:-}" ]] || return 0
+  mkdir -p "$(dirname "$QUARANTINE_FAILURES_FILE")"
+  printf '{"test_name":"%s","test_path":"cross-version","file_path":"cross-version/test.sh"}\n' \
+    "$name" >> "$QUARANTINE_FAILURES_FILE"
+}
+
 check_image_exists() {
   local image="$1"
   if ! docker manifest inspect "$image" > /dev/null 2>&1; then
@@ -369,6 +423,8 @@ check_image_exists() {
 
 main() {
   local direction source_image target_image
+
+  trap 'code=$?; record_result "$code"; exit "$code"' EXIT
 
   direction=$(cli compare "$SOURCE_VERSION" "$TARGET_VERSION") || exit 1
   source_image=$(cli image "$SOURCE_VERSION") || exit 1
@@ -395,7 +451,7 @@ main() {
   teardown
   init_logs
 
-  trap cleanup EXIT
+  trap 'code=$?; cleanup; record_result "$code"; exit "$code"' EXIT
 
   log ""
   log "Step 1: Starting SOURCE version ($SOURCE_VERSION)..."
