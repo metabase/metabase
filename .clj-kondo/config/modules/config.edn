@@ -1070,6 +1070,13 @@
                     :model/Table
                     :model/User}}
 
+  exec-log
+  {:team "Graphy"
+   :api  #{metabase.exec-log.core metabase.exec-log.init}
+   :uses #{analytics
+           settings
+           util}}
+
   explorations
   {:team "UX West"
    :api #{metabase.explorations.api metabase.explorations.core metabase.explorations.init metabase.explorations.schema}
@@ -2327,6 +2334,7 @@
            database-routing
            driver
            events
+           exec-log
            formatter
            lib
            lib.be
