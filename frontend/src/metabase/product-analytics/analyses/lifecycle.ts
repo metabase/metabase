@@ -62,7 +62,7 @@ const getStateColor = (
   colors: DisplayColors,
 ): string => colors[getStateColorKey(state)] ?? color(STATE_COLOR_NAMES[state]);
 
-const getStateName = (state: LifecycleStateName): string => {
+export const getStateName = (state: LifecycleStateName): string => {
   switch (state) {
     case "new":
       return t`New`;

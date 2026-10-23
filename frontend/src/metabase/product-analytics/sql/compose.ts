@@ -85,8 +85,11 @@ const indent = (sql: string) =>
     .map((line) => (line.trim() ? `  ${line}` : line))
     .join("\n");
 
+/** The CTEs in the order `compose` renders them, one per name. */
+export const orderCtes = (ctes: Cte[]): Cte[] => order(dedupe(ctes));
+
 export const compose = (plan: QueryPlan): string => {
-  const ctes = order(dedupe(plan.ctes));
+  const ctes = orderCtes(plan.ctes);
 
   if (ctes.length === 0) {
     return `${plan.select.trim()}\n`;

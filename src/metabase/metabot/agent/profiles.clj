@@ -232,6 +232,18 @@
                     #'tools/get-timeline-details-tool
                     #'tools/select-exploration-timelines-tool]})
 
+;; Product analytics prototype: Metabot in the event analysis page's sidebar. Only tools that build on the
+;; analysis's CTEs — the general query/chart tools would draw charts that bypass them.
+(register-profile!
+ {:name             :product_analytics
+  :prompt-template  "product_analytics.selmer"
+  :max-iterations   15
+  :always-on-skills [:product-analytics]
+  :tools            [#'tools/search-tool
+                     #'tools/read-resource-tool
+                     #'tools/run-event-sql-tool
+                     #'tools/suggest-analysis-tool]})
+
 (defn- filter-by-capabilities
   "Filter tool vars by user capabilities.
   Removes tools that require capabilities the user doesn't have.

@@ -390,17 +390,31 @@ function personaOf(rng: () => number): Persona {
 
 // Existing users who connect an integration are more active from then on. Each
 // active day from their third week, until they do, they connect one by chance.
+// Which one matters: Slack keeps people coming back the most.
 const INTEGRATION_FROM_WEEK = 2;
 const INTEGRATION_DAILY_CHANCE = 0.01;
-const INTEGRATION_BONUS = 0.15;
+const INTEGRATIONS: [string, number][] = [
+  ["slack", 0.35],
+  ["github", 0.25],
+  ["salesforce", 0.2],
+  ["zapier", 0.2],
+];
+const INTEGRATION_BONUS: Record<string, number> = {
+  slack: 0.3,
+  github: 0.1,
+  salesforce: 0.1,
+  zapier: 0.05,
+};
 
 function dailyActiveChance(
   persona: Persona,
   weekFromSignup: number,
   invited: boolean,
-  connected: boolean,
+  integration: string | null,
 ): number {
-  const bonus = (invited ? 0.12 : 0) + (connected ? INTEGRATION_BONUS : 0);
+  const bonus =
+    (invited ? 0.12 : 0) +
+    (integration !== null ? (INTEGRATION_BONUS[integration] ?? 0) : 0);
   const curves: Record<Persona, number[]> = {
     power: [0.9, 0.88, 0.85, 0.83, 0.8, 0.78, 0.75],
     regular: [0.62, 0.5, 0.42, 0.38, 0.34, 0.32, 0.3],
@@ -842,7 +856,7 @@ function simulatePerson(
   // Ongoing activity. Whether they connect an integration is drawn from its
   // own stream, so everyone who doesn't keeps the same events.
   const integrationRng = rngFrom(`${SEED}:integration:${person.i}`);
-  let connected = false;
+  let integration: string | null = null;
   const signupDay = Math.floor((person.signupAt - START_MS) / 86_400_000);
   for (let day = signupDay; day < DAYS; day++) {
     const dayStart = START_MS + day * 86_400_000;
@@ -854,7 +868,7 @@ function simulatePerson(
       person.persona,
       weekFromSignup,
       person.willInvite,
-      connected,
+      integration,
     );
     if (rng() > chance) {
       if (person.persona === "churned" && weekFromSignup >= 2) {
@@ -883,15 +897,22 @@ function simulatePerson(
       at += (1 + Math.floor(rng() * 8)) * 60_000;
     }
     if (
-      !connected &&
+      integration === null &&
       weekFromSignup >= INTEGRATION_FROM_WEEK &&
       integrationRng() < INTEGRATION_DAILY_CHANCE
     ) {
-      connected = push(
+      const picked = pickWeighted(integrationRng, INTEGRATIONS);
+      const pushed = push(
         at,
-        { type: 2, name: "integration_connected", path: "/app/settings" },
+        {
+          type: 2,
+          name: "integration_connected",
+          path: "/app/settings",
+          data: { integration: picked },
+        },
         true,
       );
+      integration = pushed ? picked : null;
     }
   }
 

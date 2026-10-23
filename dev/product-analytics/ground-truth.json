@@ -2,24 +2,24 @@
   "seed": "pa-prototype-v1",
   "people": 25000,
   "days": 120,
-  "start": "2026-06-22T00:00:00.000Z",
-  "end": "2026-10-20T00:00:00.000Z",
+  "start": "2026-06-25T00:00:00.000Z",
+  "end": "2026-10-23T00:00:00.000Z",
   "incident": {
-    "start": "2026-09-14T00:00:00.000Z",
-    "end": "2026-09-21T00:00:00.000Z"
+    "start": "2026-09-17T00:00:00.000Z",
+    "end": "2026-09-24T00:00:00.000Z"
   },
   "counts": {
-    "events": 1679483,
-    "pageviews": 1537240,
+    "events": 1678713,
+    "pageviews": 1536867,
     "signup": 22123,
     "trial_started": 5077,
     "checkout_completed": 1598,
     "invite_sent": 3726,
     "integration_connected": 1685,
-    "report_created": 99342,
+    "report_created": 98982,
     "subscription_cancelled": 85,
-    "error": 8607,
-    "error_incident": 3381,
+    "error": 8570,
+    "error_incident": 3377,
     "identities": 28883
   },
   "funnel": {

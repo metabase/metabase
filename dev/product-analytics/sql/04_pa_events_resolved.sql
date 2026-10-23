@@ -4,7 +4,7 @@
 --
 -- person_id is warehouse-side identity stitching:
 --   coalesce(distinct_id, earliest distinct_id for this visitor_id, visitor_id)
--- plan, trial_source and amount are promoted out of event_data so the prototype does not
+-- plan, trial_source, integration and amount are promoted out of event_data so the prototype does not
 -- need map access in MBQL.
 --
 -- person_* columns are the person's traits as of the event, from the latest
@@ -44,6 +44,7 @@ stitched AS (
         ifNull(coalesce(e.distinct_id, identity_map.mapped_distinct_id, e.visitor_id), '') AS person_id,
         e.event_data['plan'] AS plan,
         e.event_data['trial_source'] AS trial_source,
+        e.event_data['integration'] AS integration,
         toFloat64OrNull(e.event_data['amount']) AS amount
     FROM product_analytics.pa_events AS e
     LEFT JOIN identity_map ON identity_map.visitor_id = e.visitor_id

@@ -5,6 +5,7 @@ import type {
   CardDisplayType,
   DatasetQuery,
   MetabotCodeEdit,
+  MetabotEventAnalysisSuggestion,
   MetabotTodoItem,
   SuggestedTransform,
 } from "metabase-types/api";
@@ -49,6 +50,7 @@ export const knownDataPartTypes = [
   "data-tool_title",
   "data-conversation-title",
   "data-research_plan_update",
+  "data-event_analysis",
 ] as const satisfies readonly KnownDataPart["type"][];
 
 export type SearchResultItem = {
@@ -142,7 +144,8 @@ export type KnownDataPart =
   | { type: "data-search_results"; data: SearchResultsData }
   | { type: "data-tool_title"; data: ToolTitleData }
   | { type: "data-conversation-title"; data: string }
-  | { type: "data-research_plan_update"; data: ResearchPlanUpdateData };
+  | { type: "data-research_plan_update"; data: ResearchPlanUpdateData }
+  | { type: "data-event_analysis"; data: MetabotEventAnalysisSuggestion };
 
 export const isKnownDataPart = (part: {
   type: string;

@@ -60,6 +60,7 @@ const isUserVisibleDataPart = (part: MetabotDataPart): boolean =>
     .with({ type: "data-adhoc_viz" }, () => false)
     .with({ type: "data-static_viz" }, () => false)
     .with({ type: "data-research_plan_update" }, () => false)
+    .with({ type: "data-event_analysis" }, () => true)
     .exhaustive();
 
 const isUserVisibleAgentDataPart = (

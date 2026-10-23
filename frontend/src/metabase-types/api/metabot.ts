@@ -11,6 +11,7 @@ import type {
   DraftTransform,
   PaginationRequest,
   PaginationResponse,
+  ProductAnalyticsKind,
   ResearchPlanContext,
   RowValue,
   SuggestedTransform,
@@ -137,12 +138,91 @@ export type MetabotTransformInfo =
   | ({ type: "transform"; error?: string } & SuggestedTransform) // edit saved suggested
   | ({ type: "transform"; error?: string } & DraftTransform); // edit unsaved suggested
 
+/** A CTE the agent's `run_event_sql` tool prepends to its SQL. */
+export type MetabotEventAnalysisCte = {
+  name: string;
+  sql: string;
+  /** One line naming what a row is and its key columns. */
+  description?: string;
+};
+
+/** PROTOTYPE: the product analytics page, its result and its insights. */
+export type MetabotEventAnalysisInfo = {
+  type: "event_analysis";
+  id: string;
+  title: string;
+  /** Markdown: the settings, the result rows and the insights. */
+  findings: string;
+  database_id: DatabaseId;
+  sql_engine: string;
+  ctes: MetabotEventAnalysisCte[];
+};
+
 export type MetabotEntityInfo =
   | MetabotCardInfo
   | MetabotDashboardInfo
   | MetabotAdhocQueryInfo
   | MetabotDocumentInfo
-  | MetabotTransformInfo;
+  | MetabotTransformInfo
+  | MetabotEventAnalysisInfo;
+
+export type MetabotEventAnalysisOperator =
+  | "="
+  | "!="
+  | "is-empty"
+  | "not-empty";
+
+/** One change to an analysis, in the vocabulary the agent's `suggest_analysis` tool uses. */
+export type MetabotEventAnalysisChange =
+  | {
+      type: "filter";
+      column: string;
+      operator: MetabotEventAnalysisOperator;
+      values?: string[];
+    }
+  | {
+      type: "step-filter";
+      /** From 1. */
+      step: number;
+      column: string;
+      operator: MetabotEventAnalysisOperator;
+      values?: string[];
+    }
+  | { type: "breakout"; column: string | null }
+  /** Saved segment names, in order. */
+  | { type: "steps"; segments: string[] }
+  /** A serialized date filter, like "past30days". */
+  | { type: "date_range"; value: string }
+  | { type: "counting"; value: "person" | "session" | "event" }
+  | {
+      type: "funnel.window";
+      value: {
+        value: number;
+        unit: "minute" | "hour" | "day" | "week" | "month";
+      };
+    };
+
+/** PROTOTYPE: an analysis the agent suggests, shown as a card in the chat. */
+export type MetabotEventAnalysisSuggestion = {
+  id: string;
+  title: string;
+  why: string;
+  kind?: ProductAnalyticsKind;
+  changes: MetabotEventAnalysisChange[];
+};
+
+/**
+ * PROTOTYPE: the chat sidebar and the analysis page are in different React
+ * trees and modules, so a suggestion card's buttons reach the page through a
+ * DOM event of this name.
+ */
+export const METABOT_EVENT_ANALYSIS_SUGGESTION_EVENT =
+  "metabot-event-analysis-suggestion";
+
+export type MetabotEventAnalysisSuggestionEventDetail = {
+  suggestion: MetabotEventAnalysisSuggestion;
+  action: "apply" | "open";
+};
 
 export type MetabotCodeEdit = {
   buffer_id: string;
