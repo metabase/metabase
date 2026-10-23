@@ -19,11 +19,11 @@ import { NameDescriptionInput } from "metabase/metadata/components";
 import { PLUGIN_METADATA_GENERATION } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
 import { Button, Ellipsified, Group, Icon, Stack, Text } from "metabase/ui";
+import { DAY_OF_WEEK_OPTIONS } from "metabase/utils/date-time";
 import { isSyncInProgress } from "metabase/utils/syncing";
 import type {
   Database,
   DatabaseId,
-  ScheduleDayType,
   ScheduleSettings,
   Table,
 } from "metabase-types/api";
@@ -31,15 +31,6 @@ import type {
 import { TableSectionGroup } from "../TableSection/TableSectionGroup";
 
 const NAME_MAX_LENGTH = 254;
-const WEEK_DAYS: ScheduleDayType[] = [
-  "sun",
-  "mon",
-  "tue",
-  "wed",
-  "thu",
-  "fri",
-  "sat",
-];
 
 type DatabaseSectionProps = {
   databaseId: DatabaseId;
@@ -271,10 +262,11 @@ function getScheduleLabel(schedule: ScheduleSettings | null | undefined) {
     case "daily":
       return t`Daily at ${time}`;
     case "weekly": {
-      const dayIndex = WEEK_DAYS.indexOf(schedule.schedule_day ?? "sun");
-      const day = dayjs()
-        .day(dayIndex >= 0 ? dayIndex : 0)
-        .format("dddd");
+      const day = (
+        DAY_OF_WEEK_OPTIONS.find(
+          (option) => option.value === schedule.schedule_day,
+        ) ?? DAY_OF_WEEK_OPTIONS[0]
+      ).name;
       return t`Weekly on ${day} at ${time}`;
     }
     case "monthly":

@@ -7,7 +7,6 @@ import { TableButton } from "./components/TableButton";
 
 export function initializePlugin() {
   if (hasPremiumFeature("data_sensitivity")) {
-    PLUGIN_METADATA_GENERATION.isEnabled = true;
     PLUGIN_METADATA_GENERATION.DatabaseButton = GenerateMetadataButton;
     PLUGIN_METADATA_GENERATION.TableButton = TableButton;
     PLUGIN_METADATA_GENERATION.PendingBadge = PendingBadge;

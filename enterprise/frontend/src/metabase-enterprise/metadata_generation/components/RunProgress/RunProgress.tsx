@@ -1,9 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { useDispatch } from "metabase/redux";
 import {
   Button,
   Group,
@@ -14,7 +13,6 @@ import {
   Text,
 } from "metabase/ui";
 import {
-  EnterpriseApi,
   useCancelMetadataGenerationRunMutation,
   useGetMetadataGenerationRunQuery,
   useRetryFailedMetadataGenerationRunMutation,
@@ -24,12 +22,12 @@ import type {
   MetadataGenerationRunId,
 } from "metabase-types/api";
 
+import { useRunPolling } from "../../hooks";
 import {
   RUN_POLLING_INTERVAL,
   canCancelRun,
   canRetryRun,
   canReviewRun,
-  getRunEndTags,
   getRunStatusLabel,
   isRunActive,
 } from "../../utils";
@@ -43,21 +41,11 @@ type RunProgressProps = {
 };
 
 export function RunProgress({ runId, onRetry, onReview }: RunProgressProps) {
-  const dispatch = useDispatch();
   const [isPolling, setIsPolling] = useState(true);
   const { data: run, error } = useGetMetadataGenerationRunQuery(runId, {
     pollingInterval: isPolling ? RUN_POLLING_INTERVAL : 0,
   });
-  const isActive = run == null || isRunActive(run);
-  const wasActive = useRef(isActive);
-
-  useEffect(() => {
-    setIsPolling(isActive);
-    if (wasActive.current && !isActive) {
-      dispatch(EnterpriseApi.util.invalidateTags(getRunEndTags()));
-    }
-    wasActive.current = isActive;
-  }, [dispatch, isActive]);
+  useRunPolling(run == null || isRunActive(run), setIsPolling);
 
   if (error) {
     return <Text c="feedback-negative">{getErrorMessage(error)}</Text>;

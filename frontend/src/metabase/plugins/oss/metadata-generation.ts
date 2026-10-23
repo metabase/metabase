@@ -22,7 +22,6 @@ export type MetadataGenerationPendingBadgeProps = {
 };
 
 type MetadataGenerationPlugin = {
-  isEnabled: boolean;
   /** The "Generate metadata" button of the database details panel. */
   DatabaseButton: ComponentType<MetadataGenerationDatabaseButtonProps>;
   TableButton: ComponentType<MetadataGenerationTableButtonProps>;
@@ -31,7 +30,6 @@ type MetadataGenerationPlugin = {
 };
 
 const getDefaultPluginMetadataGeneration = (): MetadataGenerationPlugin => ({
-  isEnabled: false,
   DatabaseButton: () => null,
   TableButton: () => null,
   PendingBadge: () => null,

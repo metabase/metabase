@@ -2,17 +2,16 @@ import { msgid, ngettext, t } from "ttag";
 
 import { getSemanticTypeName } from "metabase/common/utils/fields";
 import { getDataSensitivityLabel } from "metabase/metadata/components";
-import {
-  type ApplyMetadataGenerationProposalsRequest,
-  FIELD_DATA_SENSITIVITY_TYPES,
-  type FieldDataSensitivity,
-  type MetadataGenerationApplyFailureReason,
-  type MetadataGenerationApplyResult,
-  type MetadataGenerationAttribute,
-  type MetadataGenerationProposal,
-  type MetadataGenerationProposalId,
-  type MetadataGenerationProposalTable,
+import type {
+  ApplyMetadataGenerationProposalsRequest,
+  MetadataGenerationApplyFailureReason,
+  MetadataGenerationApplyResult,
+  MetadataGenerationAttribute,
+  MetadataGenerationProposal,
+  MetadataGenerationProposalId,
+  MetadataGenerationProposalTable,
 } from "metabase-types/api";
+import { isFieldDataSensitivity } from "metabase-types/guards";
 
 export function getHumanSetPendingCount(
   tables: MetadataGenerationProposalTable[],
@@ -134,12 +133,6 @@ export function getTableLabel(table: MetadataGenerationProposalTable): string {
 
 export function getFieldLabel(proposal: MetadataGenerationProposal): string {
   return proposal.field_display_name || proposal.field_name;
-}
-
-export function isFieldDataSensitivity(
-  value: string,
-): value is FieldDataSensitivity {
-  return FIELD_DATA_SENSITIVITY_TYPES.some((type) => type === value);
 }
 
 export function formatProposalValue(

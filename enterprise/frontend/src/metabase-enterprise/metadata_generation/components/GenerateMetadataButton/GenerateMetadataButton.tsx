@@ -1,13 +1,12 @@
 import { useDisclosure } from "@mantine/hooks";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { t } from "ttag";
 
 import { getUserIsAdmin } from "metabase/current-user";
 import type { MetadataGenerationDatabaseButtonProps } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { Button, Icon, Loader } from "metabase/ui";
 import {
-  EnterpriseApi,
   useListMetadataGenerationProposalTablesQuery,
   useListMetadataGenerationRunsQuery,
 } from "metabase-enterprise/api";
@@ -16,7 +15,8 @@ import type {
   MetadataGenerationRunId,
 } from "metabase-types/api";
 
-import { RUN_POLLING_INTERVAL, getRunEndTags, isRunActive } from "../../utils";
+import { useRunPolling } from "../../hooks";
+import { RUN_POLLING_INTERVAL, isRunActive } from "../../utils";
 import { GenerateMetadataModal } from "../GenerateMetadataModal";
 import { ReviewModal } from "../ReviewModal";
 
@@ -40,7 +40,6 @@ function GenerateMetadataButtonContent({
     useDisclosure();
   const [startedRunId, setStartedRunId] =
     useState<MetadataGenerationRunId | null>(null);
-  const dispatch = useDispatch();
   const [hasActiveRun, setHasActiveRun] = useState(false);
   const { data: runs } = useListMetadataGenerationRunsQuery(
     { database_id: databaseId },
@@ -55,16 +54,7 @@ function GenerateMetadataButtonContent({
   const latestRun = runs?.[0] ?? null;
   const activeRun =
     latestRun != null && isRunActive(latestRun) ? latestRun : null;
-  const isActive = activeRun != null;
-  const wasActive = useRef(isActive);
-
-  useEffect(() => {
-    setHasActiveRun(isActive);
-    if (wasActive.current && !isActive) {
-      dispatch(EnterpriseApi.util.invalidateTags(getRunEndTags()));
-    }
-    wasActive.current = isActive;
-  }, [dispatch, isActive]);
+  useRunPolling(activeRun != null, setHasActiveRun);
 
   const modalRunId = startedRunId ?? activeRun?.id ?? null;
   const hasPending = (proposalTables?.length ?? 0) > 0;

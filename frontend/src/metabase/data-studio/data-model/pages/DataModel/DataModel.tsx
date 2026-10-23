@@ -1,7 +1,6 @@
 import { useDisclosure, useWindowEvent } from "@mantine/hooks";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   useGetTableQueryMetadataQuery,
@@ -16,18 +15,14 @@ import { useHasTokenFeature } from "metabase/common/hooks";
 import { hasLibraryCollection } from "metabase/data-studio/common/utils";
 import { isCypressActive } from "metabase/env";
 import {
-  AiPreviewFieldset,
-  FieldSection,
+  AiPreviewFieldSection,
   FieldValuesModal,
   NoDatabasesEmptyState,
   PreviewSection,
   type PreviewType,
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
-import {
-  getRawTableFieldId,
-  hasAiProposals,
-} from "metabase/metadata/utils/field";
+import { hasAiProposals } from "metabase/metadata/utils/field";
 import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_LIBRARY,
@@ -45,13 +40,7 @@ import {
   rem,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type {
-  DatabaseId,
-  Field,
-  FieldId,
-  Table,
-  TableId,
-} from "metabase-types/api";
+import type { DatabaseId, FieldId, Table, TableId } from "metabase-types/api";
 
 import { trackMetadataChange } from "../../analytics";
 
@@ -121,17 +110,9 @@ function DataModelContent() {
   } = useGetTableQueryMetadataQuery(
     getTableMetadataQuery(metadataTableId, { previewAiProposals: isAiPreview }),
   );
-  const fieldsByName = useMemo(() => {
-    return _.indexBy(table?.fields ?? [], (field) => field.name);
-  }, [table]);
   const field = table?.fields?.find((field) => field.id === fieldId);
-  const { isTablePreview, isFieldPreview } = getAiPreviewState(
-    isAiPreview,
-    table,
-    field,
-  );
-  const parentName = field?.nfc_path?.[0] ?? "";
-  const parentField = fieldsByName[parentName];
+  const isTablePreview =
+    isAiPreview && (table?.fields ?? []).some(hasAiProposals);
 
   const hasLibraryFeature = useHasTokenFeature("library");
   const { data: libraryCollection, isLoading: isLoadingLibrary } =
@@ -411,24 +392,17 @@ function DataModelContent() {
             <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
                 {field && table && databaseId != null && (
-                  <AiPreviewFieldset isPreview={isFieldPreview}>
-                    <FieldSection
-                      /**
-                       * Make sure internal component state is reset when changing fields.
-                       * This is to avoid state mix-up with optimistic updates.
-                       */
-                      key={getRawTableFieldId(field)}
-                      field={field}
-                      parent={parentField}
-                      table={table}
-                      getFieldHref={(fieldId) =>
-                        Urls.dataStudioData({ ...parsedParams, fieldId })
-                      }
-                      onTrackMetadataChange={trackMetadataChange}
-                      onFieldValuesClick={openFieldValuesModal}
-                      onPreviewClick={togglePreview}
-                    />
-                  </AiPreviewFieldset>
+                  <AiPreviewFieldSection
+                    field={field}
+                    table={table}
+                    isAiPreview={isAiPreview}
+                    getFieldHref={(fieldId) =>
+                      Urls.dataStudioData({ ...parsedParams, fieldId })
+                    }
+                    onTrackMetadataChange={trackMetadataChange}
+                    onFieldValuesClick={openFieldValuesModal}
+                    onPreviewClick={togglePreview}
+                  />
                 )}
               </LoadingAndErrorWrapper>
 
@@ -469,18 +443,6 @@ function DataModelContent() {
       )}
     </Flex>
   );
-}
-
-/** The panes are read-only while they show pending AI suggestions as if accepted. */
-function getAiPreviewState(
-  isAiPreview: boolean,
-  table: Table | undefined,
-  field: Field | undefined,
-) {
-  return {
-    isTablePreview: isAiPreview && (table?.fields ?? []).some(hasAiProposals),
-    isFieldPreview: isAiPreview && field != null && hasAiProposals(field),
-  };
 }
 
 function PendingBadge({

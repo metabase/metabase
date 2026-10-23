@@ -1,20 +1,14 @@
 import { useDisclosure } from "@mantine/hooks";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useGetTableQueryMetadataQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import {
-  AiPreviewFieldset,
-  FieldSection,
+  AiPreviewFieldSection,
   FieldValuesModal,
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
-import {
-  getRawTableFieldId,
-  hasAiProposals,
-} from "metabase/metadata/utils/field";
 import {
   ActionIcon,
   Group,
@@ -63,13 +57,7 @@ export function FieldDetailsPane({
     { open: openFieldValuesModal, close: closeFieldValuesModal },
   ] = useDisclosure();
 
-  const fieldsByName = useMemo(
-    () => _.indexBy(table?.fields ?? [], (field) => field.name),
-    [table],
-  );
   const field = table?.fields?.find((field) => field.id === fieldId);
-  const parent = fieldsByName[field?.nfc_path?.[0] ?? ""];
-  const isFieldPreview = isPreview && field != null && hasAiProposals(field);
 
   return (
     <Stack
@@ -106,24 +94,21 @@ export function FieldDetailsPane({
           <Text c="text-secondary">{t`This field no longer exists.`}</Text>
         )}
         {table != null && field != null && (
-          <AiPreviewFieldset isPreview={isFieldPreview}>
-            <FieldSection
-              key={getRawTableFieldId(field)}
-              field={field}
-              parent={parent}
-              table={table}
-              getFieldHref={(fieldId) =>
-                Urls.dataStudioData({
-                  databaseId: table.db_id,
-                  schemaName: table.schema,
-                  tableId: table.id,
-                  fieldId,
-                })
-              }
-              onTrackMetadataChange={trackMetadataChange}
-              onFieldValuesClick={openFieldValuesModal}
-            />
-          </AiPreviewFieldset>
+          <AiPreviewFieldSection
+            field={field}
+            table={table}
+            isAiPreview={isPreview}
+            getFieldHref={(fieldId) =>
+              Urls.dataStudioData({
+                databaseId: table.db_id,
+                schemaName: table.schema,
+                tableId: table.id,
+                fieldId,
+              })
+            }
+            onTrackMetadataChange={trackMetadataChange}
+            onFieldValuesClick={openFieldValuesModal}
+          />
         )}
       </ScrollArea>
       <FieldValuesModal

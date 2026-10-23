@@ -21,6 +21,7 @@ import {
   DataSensitivityPicker,
   SemanticTypePicker,
 } from "metabase/metadata/components";
+import { clamp } from "metabase/metadata/pages/shared/utils";
 import {
   ActionIcon,
   Badge,
@@ -65,6 +66,7 @@ import type {
   MetadataGenerationRun,
   MetadataGenerationRunId,
 } from "metabase-types/api";
+import { isFieldDataSensitivity } from "metabase-types/guards";
 
 import { getAttributeLabel, getRunRequest } from "../../utils";
 
@@ -85,7 +87,6 @@ import {
   getProposalValue,
   getTableCheckboxState,
   getTableLabel,
-  isFieldDataSensitivity,
   isHumanSet,
   isProposalEdited,
   setEdit,
@@ -380,11 +381,10 @@ function ReviewContent({
             onDragStart={() => (dragStartWidth.current = listWidth)}
             onDrag={(deltaX) =>
               setListWidth(
-                clamp(
-                  dragStartWidth.current + deltaX,
-                  MIN_LIST_WIDTH,
-                  MAX_LIST_WIDTH,
-                ),
+                clamp(dragStartWidth.current + deltaX, {
+                  min: MIN_LIST_WIDTH,
+                  max: MAX_LIST_WIDTH,
+                }),
               )
             }
           />
@@ -407,11 +407,10 @@ function ReviewContent({
               onDragStart={() => (dragStartWidth.current = paneWidth)}
               onDrag={(deltaX) =>
                 setPaneWidth(
-                  clamp(
-                    dragStartWidth.current - deltaX,
-                    MIN_PANE_WIDTH,
-                    MAX_PANE_WIDTH,
-                  ),
+                  clamp(dragStartWidth.current - deltaX, {
+                    min: MIN_PANE_WIDTH,
+                    max: MAX_PANE_WIDTH,
+                  }),
                 )
               }
             />
@@ -437,10 +436,6 @@ const MAX_LIST_WIDTH = 560;
 const DEFAULT_PANE_WIDTH = 416;
 const MIN_PANE_WIDTH = 280;
 const MAX_PANE_WIDTH = 720;
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
-}
 
 /** The display names of the database's tables, by table id. */
 function useTableDisplayNames(databaseId: DatabaseId): Record<number, string> {
@@ -1340,11 +1335,9 @@ function ValueInput({ proposal, value, label, onChange }: ValueInputProps) {
         <DataSensitivityPicker
           aria-label={label}
           value={isFieldDataSensitivity(value) ? value : null}
-          source={null}
           canClear={false}
           w={INPUT_WIDTH}
           onChange={(newValue) => newValue != null && onChange(newValue)}
-          onReset={() => undefined}
         />
       );
   }

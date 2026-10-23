@@ -14,6 +14,7 @@ import {
   type FieldDataSensitivity,
   type FieldDataSensitivitySource,
 } from "metabase-types/api";
+import { isFieldDataSensitivity } from "metabase-types/guards";
 
 const NO_LABEL_VALUE = "__no_label__";
 
@@ -22,11 +23,13 @@ interface Props extends Omit<
   "data" | "value" | "onChange" | "placeholder"
 > {
   value: FieldDataSensitivity | null;
-  source: FieldDataSensitivitySource | null;
+  /** When absent, no source line is shown. */
+  source?: FieldDataSensitivitySource | null;
   /** When false, "Unspecified" is not offered. */
   canClear?: boolean;
   onChange: (value: FieldDataSensitivity | null) => void;
-  onReset: () => void;
+  /** Needed when `source` can be `human`: the "Reset to automatic" button calls it. */
+  onReset?: () => void;
 }
 
 export const DataSensitivityPicker = ({
@@ -123,8 +126,4 @@ function getData(canClear: boolean) {
     })),
     ...(canClear ? [{ label: t`Unspecified`, value: NO_LABEL_VALUE }] : []),
   ];
-}
-
-function isFieldDataSensitivity(value: string): value is FieldDataSensitivity {
-  return FIELD_DATA_SENSITIVITY_TYPES.some((type) => type === value);
 }

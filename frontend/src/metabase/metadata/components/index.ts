@@ -1,3 +1,4 @@
+export * from "./AiPreviewFieldSection";
 export * from "./AiPreviewFieldset";
 export * from "./CoercionStrategyPicker";
 export * from "./CurrencyPicker";

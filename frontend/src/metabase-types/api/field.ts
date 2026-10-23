@@ -1,4 +1,9 @@
 import type { RowValue } from "./dataset";
+import type {
+  MetadataGenerationAttribute,
+  MetadataGenerationConfidence,
+  MetadataGenerationValueSource,
+} from "./metadata-generation";
 import type { DimensionReference, FieldReference } from "./query";
 import type { ConcreteTableId, Table, TableId } from "./table";
 
@@ -72,18 +77,16 @@ export const FIELD_DATA_SENSITIVITY_TYPES = [
 export type FieldDataSensitivity =
   (typeof FIELD_DATA_SENSITIVITY_TYPES)[number];
 
-export type FieldDataSensitivitySource = "human" | "ai" | "deterministic";
-
-export type FieldAiProposalAttribute =
-  | "data_sensitivity"
-  | "semantic_type"
-  | "description";
+export type FieldDataSensitivitySource = Exclude<
+  MetadataGenerationValueSource,
+  "none"
+>;
 
 /** A pending AI proposal of one attribute, as a preview read gives it. */
 export type FieldAiProposal = {
   value: string;
   reasoning: string | null;
-  confidence: "high" | "medium" | "low" | null;
+  confidence: MetadataGenerationConfidence | null;
   /** The proposal reads over a value a person set; accepting it clears that value. */
   conflict: boolean;
 };
@@ -136,7 +139,7 @@ export interface Field {
   data_sensitivity?: FieldDataSensitivity | null;
   data_sensitivity_source?: FieldDataSensitivitySource | null;
   /** Only in a read with `preview_ai_proposals`: the pending AI proposals, which the field reads as if accepted. */
-  ai_proposals?: Partial<Record<FieldAiProposalAttribute, FieldAiProposal>>;
+  ai_proposals?: Partial<Record<MetadataGenerationAttribute, FieldAiProposal>>;
 
   caveats?: string | null;
   points_of_interest?: string;

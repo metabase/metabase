@@ -9,12 +9,6 @@ import type {
   MetadataGenerationRun,
 } from "metabase-types/api";
 
-export function setupListMetadataGenerationRunsEndpoint(
-  runs: MetadataGenerationRun[],
-) {
-  fetchMock.get("path:/api/ee/data-sensitivity/runs", runs);
-}
-
 export function setupGetMetadataGenerationRunEndpoint(
   run: MetadataGenerationRun,
 ) {
