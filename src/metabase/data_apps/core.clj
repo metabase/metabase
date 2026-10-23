@@ -2,6 +2,7 @@
   (:require
    [metabase.data-apps.guards.card]
    [metabase.data-apps.guards.dashboard]
+   [metabase.data-apps.guards.database]
    [metabase.data-apps.guards.dataset]
    [metabase.data-apps.guards.field]
    [metabase.data-apps.guards.sandbox-table]
@@ -14,6 +15,8 @@
   card-guard]
  [metabase.data-apps.guards.dashboard
   dashboard-guard]
+ [metabase.data-apps.guards.database
+  database-guard]
  [metabase.data-apps.guards.dataset
   dataset-guard]
  [metabase.data-apps.guards.field

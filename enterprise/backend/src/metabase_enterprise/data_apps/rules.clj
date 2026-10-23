@@ -304,3 +304,94 @@
                                                   (data-apps.db/dashboard-by-id (parse-long dashboard-id)))]
     (when (or archived (not= collections/library-dashboards-collection-type collection_type))
       (throw (refusal (tru "A data app can use only the dashboards in the Library."))))))
+
+(defenterprise check-database!
+  "Throws a 403 unless the database with `database-id`, a route param, has tables published to the Library, when such a
+  database exists."
+  :feature :data-apps
+  [database-id]
+  (let [database-id (parse-long database-id)]
+    (when (and (data-apps.db/database-exists? database-id)
+               (not (contains? (data-apps.db/published-table-database-ids) database-id)))
+      (throw (refusal (tru "A data app can read only databases with tables published to the Library."))))))
+
+(defn- schema-name
+  "The name of the schema `schema`, a nil schema named as the empty string, as the schema endpoints name it."
+  [schema]
+  (or schema ""))
+
+(defn- published-schemas
+  "The names of the schemas of the database with `database-id` that hold tables published to the Library."
+  [database-id]
+  (into #{} (comp (filter :is_published) (map (comp schema-name :schema)))
+        (data-apps.db/database-tables database-id)))
+
+(defenterprise check-schema!
+  "Throws a 403 unless the schema named `schema` of the database with `database-id`, both route params, holds tables
+  published to the Library, whether or not such a schema exists."
+  :feature :data-apps
+  [database-id schema]
+  (when-not (contains? (published-schemas (parse-long database-id)) (schema-name schema))
+    (throw (refusal (tru "A data app can read only schemas with tables published to the Library.")))))
+
+(defenterprise filter-tables
+  "The `tables` published to the Library, each filtered as table metadata."
+  :feature :data-apps
+  [tables]
+  (let [table-ids (set (filter pos-int? (map :id tables)))
+        published (if (seq table-ids) (data-apps.db/published-table-ids table-ids) #{})]
+    (into [] (comp (filter (comp published :id)) (map filter-table-metadata)) tables)))
+
+(defenterprise filter-database
+  "The `database` with only its tables published to the Library, each filtered as table metadata, and only the schemas
+  that hold them."
+  :feature :data-apps
+  [{:keys [id] :as database}]
+  (cond-> database
+    (contains? database :tables)  (update :tables filter-tables)
+    (contains? database :schemas) (update :schemas (let [published (published-schemas id)]
+                                                     #(into [] (filter (comp published schema-name)) %)))))
+
+(defenterprise filter-databases
+  "The databases, a page of them or a list, with tables published to the Library, each filtered as a database, with the
+  page's total counting only those."
+  :feature :data-apps
+  [databases]
+  (let [published (data-apps.db/published-table-database-ids)
+        filter*   #(into [] (comp (filter (comp published :id)) (map filter-database)) %)]
+    (if (map? databases)
+      (let [data (filter* (:data databases))]
+        (assoc databases :data data :total (count data)))
+      (filter* databases))))
+
+(defenterprise filter-schemas
+  "The `schemas` of the database with `database-id` that hold tables published to the Library."
+  :feature :data-apps
+  [database-id schemas]
+  (let [published (published-schemas (parse-long database-id))]
+    (into [] (filter (comp published schema-name)) schemas)))
+
+(defn- suggestion-table-name
+  "The name of the table an autocomplete `suggestion`, a `[name detail]` pair, names, or that the field it names belongs
+  to, the part of its detail before the field's types."
+  [[suggestion-name detail]]
+  (if (= "Table" detail)
+    suggestion-name
+    (some-> (re-find #"^(.*?) :type/" (str detail)) second)))
+
+(defenterprise filter-autocomplete-suggestions
+  "The autocomplete `suggestions` of the database with `database-id` for tables published to the Library whose names no
+  unpublished table of the database shares."
+  :feature :data-apps
+  [database-id suggestions]
+  (let [tables      (data-apps.db/database-tables (parse-long database-id))
+        unpublished (into #{} (comp (remove :is_published) (map :name)) tables)
+        visible     (into #{} (comp (filter :is_published) (map :name) (remove unpublished)) tables)]
+    (into [] (filter (comp visible suggestion-table-name)) suggestions)))
+
+(defenterprise filter-cards
+  "The `cards` a data app may read whose queries read only tables published to the Library."
+  :feature :data-apps
+  [cards]
+  (let [readable (readable-card-ids (keep :id cards))]
+    (into [] (filter (comp readable :id)) cards)))

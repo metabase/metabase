@@ -463,6 +463,63 @@
             (testing "a request that is not a data app's still reads any dashboard"
               (is (= other-id (:id (mt/user-http-request :crowberto :get 200 (str "dashboard/" other-id)))))))))))))
 
+(deftest database-endpoints-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (mt/with-temp [:model/Database {other-db-id :id} {:name "Other" :engine :h2}
+                    :model/Table    _ {:db_id other-db-id :name "OTHER" :schema "PUBLIC" :active true}]
+       (data-apps.tu/with-published-tables! [(mt/id :venues)]
+         (let [db-path (fn [path] (format path (mt/id)))]
+           (testing "only databases with published tables are listed, with only those tables"
+             (let [{:keys [data total]} (get-as-data-app 200 "database?include=tables")]
+               (is (= [(mt/id)] (map :id data)))
+               (is (= 1 total))
+               (is (= ["VENUES"] (map :name (:tables (first data)))))))
+           (testing "a database is read with only its published tables, and one without any is refused"
+             (is (= ["VENUES"] (map :name (:tables (get-as-data-app 200 (db-path "database/%d?include=tables.fields"))))))
+             (is (re-find #"databases with tables published" (get-as-data-app 403 (str "database/" other-db-id))))
+             (get-as-data-app 404 "database/999999999"))
+           (testing "schemas and their tables are listed only when published"
+             (is (= ["PUBLIC"] (get-as-data-app 200 (db-path "database/%d/schemas"))))
+             (is (= ["VENUES"] (map :name (get-as-data-app 200 (db-path "database/%d/schema/PUBLIC"))))))
+           (testing "autocomplete suggests only published tables and their fields"
+             (is (= [["VENUES" "Table"]] (get-as-data-app 200 (db-path "database/%d/autocomplete_suggestions?prefix=VENUES"))))
+             (mt/with-temp [:model/Card _ {:name          "Venues"
+                                           :collection_id collection-id
+                                           :dataset_query (data-apps.tu/venues-query)}
+                            :model/Card _ {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}]
+               (is (= ["Venues"] (map :name (get-as-data-app 200 (db-path "database/%d/card_autocomplete_suggestions?query=Venues")))))))))))))
+
+(deftest database-schemas-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (testing "with no table published, no database is listed"
+       (is (= [] (:data (get-as-data-app 200 "database")))))
+     (mt/with-temp [:model/Table {secret-id :id} {:db_id (mt/id) :name "SECRET VENUES" :schema "SECRET" :active true}
+                    :model/Field _ {:table_id secret-id :name "SSN" :base_type :type/Text :database_type "VARCHAR"}]
+       (data-apps.tu/with-published-tables! [(mt/id :venues)]
+         (let [db-path (fn [path] (format path (mt/id)))]
+           (testing "a schema holding only unpublished tables is neither listed nor read, like one that doesn't exist"
+             (is (= ["PUBLIC"] (get-as-data-app 200 (db-path "database/%d/schemas"))))
+             (is (= ["PUBLIC"] (:schemas (first (:data (get-as-data-app 200 "database?include=schemas"))))))
+             (is (re-find #"schemas with tables published" (get-as-data-app 403 (db-path "database/%d/schema/SECRET"))))
+             (is (re-find #"schemas with tables published" (get-as-data-app 403 (db-path "database/%d/schema/NOPE"))))
+             (is (re-find #"schemas with tables published" (get-as-data-app 403 (db-path "database/%d/schema/?schema=SECRET")))))
+           (testing "a schema named by the query param holds its published tables"
+             (is (= ["VENUES"] (map :name (get-as-data-app 200 (db-path "database/%d/schema/?schema=PUBLIC"))))))
+           (testing "autocomplete drops a field of an unpublished table whose name starts with a published table's"
+             (mt/with-temp [:model/Table {venues-archive-id :id} {:db_id (mt/id) :name "VENUES ARCHIVE" :schema "PUBLIC" :active true}
+                            :model/Field _ {:table_id venues-archive-id :name "SSN" :base_type :type/Text :database_type "VARCHAR"}]
+               (is (= [] (get-as-data-app 200 (db-path "database/%d/autocomplete_suggestions?prefix=SSN"))))))
+           (testing "a schema's tables hold only the measures whose definitions read only the Library"
+             (let [venues   (data-apps.tu/venues-query)
+                   category (some #(when (= (mt/id :categories :name) (:id %)) %) (lib/filterable-columns venues))]
+               (mt/with-temp [:model/Measure {measure-id :id} {:name       "Categories"
+                                                               :table_id   (mt/id :venues)
+                                                               :definition (lib/aggregate venues (lib/distinct category))}]
+                 (is (not-any? #{measure-id}
+                               (map :id (mapcat :measures (get-as-data-app 200 (db-path "database/%d/schema/PUBLIC?include_measures=true")))))))))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app runs nothing"
     (mt/with-premium-features #{}

@@ -83,3 +83,51 @@
   metabase-enterprise.data-apps.rules
   [_dashboard-id]
   (throw (unavailable)))
+
+(defenterprise check-database!
+  "Throws a 403 unless a data app may read the database with `database-id`, when such a database exists."
+  metabase-enterprise.data-apps.rules
+  [_database-id]
+  (throw (unavailable)))
+
+(defenterprise check-schema!
+  "Throws a 403 unless a data app may read the schema named `schema` of the database with `database-id`."
+  metabase-enterprise.data-apps.rules
+  [_database-id _schema]
+  (throw (unavailable)))
+
+(defenterprise filter-databases
+  "The databases, as `GET /api/database` returns them, that a data app may see, with only the tables it may see."
+  metabase-enterprise.data-apps.rules
+  [_databases]
+  (throw (unavailable)))
+
+(defenterprise filter-database
+  "The `database` with only the tables, and their fields' references, that a data app may see."
+  metabase-enterprise.data-apps.rules
+  [_database]
+  (throw (unavailable)))
+
+(defenterprise filter-schemas
+  "The `schemas` of the database with `database-id` in which a data app may see a table."
+  metabase-enterprise.data-apps.rules
+  [_database-id _schemas]
+  (throw (unavailable)))
+
+(defenterprise filter-tables
+  "The `tables` a data app may see."
+  metabase-enterprise.data-apps.rules
+  [_tables]
+  (throw (unavailable)))
+
+(defenterprise filter-autocomplete-suggestions
+  "The autocomplete `suggestions` of the database with `database-id` that a data app may see."
+  metabase-enterprise.data-apps.rules
+  [_database-id _suggestions]
+  (throw (unavailable)))
+
+(defenterprise filter-cards
+  "The `cards` a data app may read."
+  metabase-enterprise.data-apps.rules
+  [_cards]
+  (throw (unavailable)))

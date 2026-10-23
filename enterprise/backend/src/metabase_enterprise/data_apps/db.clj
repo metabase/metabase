@@ -137,6 +137,19 @@
                  {:left-join [:collection [:= :collection.id :report_dashboard.collection_id]]
                   :where     [:= :report_dashboard.entity_id entity-id]}))
 
+(mu/defn published-table-database-ids :- [:set ::lib.schema.id/database]
+  "The IDs of the Databases with Tables published to the Library."
+  []
+  (or (t2/select-fn-set :db_id [:model/Table :db_id] :is_published true {:from [(warehouse-schema-overlay/table-query)]})
+      #{}))
+
+(mu/defn database-tables :- [:sequential [:map [:id ::lib.schema.id/table] [:name :string] [:schema [:maybe :string]]
+                                          [:is_published [:maybe :boolean]]]]
+  "The ID, name, schema and published state of every Table of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select [:model/Table :id :name :schema :is_published] :db_id database-id
+             {:from [(warehouse-schema-overlay/table-query)]}))
+
 (mu/defn data-app-readable-card-ids :- [:set ::lib.schema.id/card]
   "Among `card-ids`, the IDs of the cards a data app may read: the cards in data apps' collections and the metrics in
   the Library, unless archived."

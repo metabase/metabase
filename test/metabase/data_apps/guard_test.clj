@@ -8,6 +8,7 @@
    [metabase.data-apps.guard :as guard]
    [metabase.data-apps.guards.card :as guards.card]
    [metabase.data-apps.guards.dashboard :as guards.dashboard]
+   [metabase.data-apps.guards.database :as guards.database]
    [metabase.data-apps.guards.dataset :as guards.dataset]
    [metabase.data-apps.guards.field :as guards.field]
    [metabase.data-apps.guards.sandbox-table :as guards.sandbox-table]
@@ -23,7 +24,8 @@
    'metabase.warehouse-schema-rest.api.table {:path "table" :checks guards.table/checks}
    'metabase-enterprise.sandbox.api.table    {:path "table" :checks guards.sandbox-table/checks}
    'metabase.warehouse-schema-rest.api.field {:path "field" :checks guards.field/checks}
-   'metabase.dashboards-rest.api             {:path "dashboard" :checks guards.dashboard/checks}})
+   'metabase.dashboards-rest.api             {:path "dashboard" :checks guards.dashboard/checks}
+   'metabase.warehouses-rest.api             {:path "database" :checks guards.database/checks}})
 
 (def ^:private unguarded-namespaces
   "The namespaces with endpoints a data app reaches that no guard covers."
@@ -37,8 +39,7 @@
     'metabase.session.api
     'metabase.timeline.api.timeline
     'metabase.user-key-value.api
-    'metabase.users-rest.api
-    'metabase.warehouses-rest.api})
+    'metabase.users-rest.api})
 
 (defn- data-app-endpoints
   "API namespace => the `[method route]` pairs of its endpoints tagged with the data-app scope, with their route param
