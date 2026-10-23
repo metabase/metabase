@@ -93,6 +93,25 @@
   [files]
   (select-keys files (served-paths (fn [path] (some-> ^bytes (get files path) (String. "UTF-8"))))))
 
+(defn- export-bundle
+  "The files a plugin's stored `bundle` exports beside its YAML, or `::serdes/skip` for a dev-only plugin, which
+  has none, and for a stored archive that can't be read: that plugin exports as the YAML alone, so one broken plugin
+  doesn't fail the export, and it imports as an error plugin."
+  [{:keys [identifier]} _k bundle]
+  (if bundle
+    (try
+      (served-files (cache/bundle->files bundle))
+      (catch Exception e
+        (log/warnf "Not exporting the bundle of custom viz plugin \"%s\": %s" identifier (ex-message e))
+        ::serdes/skip))
+    ::serdes/skip))
+
+(defn- import-bundle
+  "The archive of the `files` read from beside a plugin's YAML. A file that isn't there is left out, and
+  validation names it."
+  [files]
+  (cache/files->bundle (into {} (filter val) files)))
+
 (defmethod serdes/make-spec "CustomVizPlugin"
   [_model-name _opts]
   {:copy      [:identifier :enabled]
@@ -102,22 +121,9 @@
                :dev_bundle_url]
    ;; a plugin is enabled unless the file says otherwise, as an upload enables it; the column defaults the same way
    :defaults  {:enabled true}
-   :transform {:bundle     {:as     :serdes/resources
-                            :export-with-context
-                            (fn [{:keys [identifier]} _k bundle]
-                              (if bundle
-                                (try
-                                  (served-files (cache/bundle->files bundle))
-                                  (catch Exception e
-                                    ;; a stored archive that can't be read exports as the YAML alone, so one broken
-                                    ;; plugin doesn't fail the export; it imports as an error plugin
-                                    (log/warnf "Not exporting the bundle of custom viz plugin \"%s\": %s"
-                                               identifier (ex-message e))
-                                    ::serdes/skip))
-                                ::serdes/skip))
-                            ;; a file that isn't there is left out, and validation names it
-                            :import (fn [files]
-                                      (cache/files->bundle (into {} (filter val) files)))}}})
+   :transform {:bundle {:as                  :serdes/resources
+                        :export-with-context export-bundle
+                        :import              import-bundle}}})
 
 (defn- case-colliding-identifiers
   "The lower-cased identifiers that more than one of `identifiers` share: their plugins would be one directory on a
