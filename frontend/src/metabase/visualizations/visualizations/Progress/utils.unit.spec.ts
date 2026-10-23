@@ -115,11 +115,9 @@ describe("getGoalValue", () => {
     expect(getGoalValue("total", { ...data, rows: rowsWithNull })).toBe(0);
   });
 
-  it("should handle Infinity in columns", () => {
+  it("should return 0 for Infinity in columns", () => {
     const rowsWithInfinity: RowValues[] = [[10, "Infinity", "test", 25.0]];
-    expect(getGoalValue("total", { ...data, rows: rowsWithInfinity })).toBe(
-      Infinity,
-    );
+    expect(getGoalValue("total", { ...data, rows: rowsWithInfinity })).toBe(0);
   });
 
   it("should return 0 when no goal is set", () => {

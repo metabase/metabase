@@ -188,6 +188,18 @@ describe("progress chart dynamic goal", () => {
     expect(screen.getByText("Goal 0")).toBeInTheDocument();
   });
 
+  it("measures against a goal of 0 with a warning in the query builder when the goal column's cell is Infinity", async () => {
+    setup({
+      cols: SELF_GOAL_COLS,
+      rows: [[50, "Infinity"]],
+      settings: SELF_GOAL_SETTINGS,
+      isQueryBuilder: true,
+    });
+
+    expect(await screen.findByLabelText("Goal warning")).toBeInTheDocument();
+    expect(screen.getByText("Goal 0")).toBeInTheDocument();
+  });
+
   it("measures against a goal of 0 without a warning outside the query builder", async () => {
     setup({ referencedEntities: createMockFailedReferencedEntitiesResults() });
 
