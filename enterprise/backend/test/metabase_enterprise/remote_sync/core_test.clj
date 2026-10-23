@@ -829,4 +829,8 @@
                                            remote-sync-transforms        "true"
                                            transforms-scheduling-enabled nil]
       (mt/with-temp-env-var-value! [mb-transforms-scheduling-enabled "false"]
+        (is (false? (transforms.settings/transforms-scheduling-enabled))))))
+  (testing "an env var false overrides a stored true"
+    (mt/with-temporary-raw-setting-values [transforms-scheduling-enabled "true"]
+      (mt/with-temp-env-var-value! [mb-transforms-scheduling-enabled "false"]
         (is (false? (transforms.settings/transforms-scheduling-enabled)))))))

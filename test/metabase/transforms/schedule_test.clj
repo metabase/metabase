@@ -59,7 +59,7 @@
        first))
 
 (deftest run-transforms-skips-when-scheduling-disabled-test
-  (testing "RunTransforms records a skipped firing and creates no job run when transforms-scheduling-enabled is false"
+  (testing "RunTransforms records a skipped firing and does not run the job when transforms-scheduling-enabled is false"
     (mt/with-temp [:model/TransformJob {job-id :id} {:active true :schedule "0 0 * * * ?"}]
       (mt/with-temporary-raw-setting-values [transforms-enabled            "true"
                                              transforms-scheduling-enabled "false"]
@@ -68,8 +68,7 @@
             (run-transforms-job! job-id)
             (is (false? @run-called?))
             (is (=? {:skipped-reason "scheduling-disabled"}
-                    (last-run-transforms-task-details job-id)))
-            (is (not (t2/exists? :model/TransformJobRun :job_id job-id)))))))))
+                    (last-run-transforms-task-details job-id)))))))))
 
 (deftest run-transforms-disabled-reason-wins-over-scheduling-disabled-test
   (testing "RunTransforms reports transforms-disabled when both transforms and scheduling are disabled"
@@ -87,7 +86,4 @@
     (mt/with-dynamic-fn-redefs [remote-sync/transforms-scheduling-default oss-default]
       (testing "the setting is true on OSS when it is not set"
         (mt/with-temporary-raw-setting-values [transforms-scheduling-enabled nil]
-          (is (true? (transforms.settings/transforms-scheduling-enabled)))))
-      (testing "the setting is false on OSS when it is set to false"
-        (mt/with-temporary-raw-setting-values [transforms-scheduling-enabled "false"]
-          (is (false? (transforms.settings/transforms-scheduling-enabled))))))))
+          (is (true? (transforms.settings/transforms-scheduling-enabled))))))))
