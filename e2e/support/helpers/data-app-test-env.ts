@@ -1,7 +1,9 @@
+import type { Card, CardId, CollectionId } from "metabase-types/api";
+
 /**
  * The config a spec injects into a data-app fixture (via `H.mockDataApp`'s
- * `testEnv`), so a fixture doesn't hard-code values that track the Cypress
- * snapshot — sample-DB ids, URLs, the id of an action the spec created.
+ * `testEnv`), so a fixture doesn't hard-code values that each test creates —
+ * the app's questions, URLs, the id of an action the spec created.
  *
  * It lives with the tests rather than inside a fixture because it's the contract
  * between the two, and the fixtures are standalone SDK apps outside this TS
@@ -14,7 +16,7 @@ export type DataAppTestEnv = {
   questionQuery: { source: CardSource };
   /**
    * `/download-question` page: the id of a saved CHART question (so a `.png`
-   * export is offered). Passed in because the id tracks the Cypress snapshot.
+   * export is offered), one of the app's questions that each test creates.
    */
   downloadQuestionId?: number;
   /**
@@ -58,3 +60,10 @@ export type DataAppTestEnv = {
 };
 
 type CardSource = { type: "card"; entityId: string };
+
+export type DataAppQuestions = {
+  collectionId: CollectionId;
+  ordersEntityId: Card["entity_id"];
+  ordersCountEntityId: Card["entity_id"];
+  ordersByYearId: CardId;
+};

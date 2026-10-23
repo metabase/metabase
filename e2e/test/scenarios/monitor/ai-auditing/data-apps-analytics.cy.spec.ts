@@ -1,4 +1,5 @@
 import { USERS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { PortableTable } from "e2e/support/helpers";
 
 const { H } = cy;
@@ -129,6 +130,7 @@ describe(
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
+      H.publishDataAppTables([SAMPLE_DATABASE.ORDERS_ID]);
 
       H.resetTestTable({ type: "postgres", table: SCOREBOARD_TABLE });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SCOREBOARD_TABLE });

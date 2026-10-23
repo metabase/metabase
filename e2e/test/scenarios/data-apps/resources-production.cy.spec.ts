@@ -1,4 +1,5 @@
 import { USERS } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type { PortableTable } from "e2e/support/helpers";
 import type { Card } from "metabase-types/api";
 
@@ -59,6 +60,7 @@ describe("scenarios > data apps > resources from a repository", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.publishDataAppTables([SAMPLE_DATABASE.ORDERS_ID]);
 
     removeTestFiles();
     cy.task("writeDataAppFiles", {
