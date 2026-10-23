@@ -85,7 +85,7 @@ describe("scenarios > data apps > data studio permissions", () => {
       );
       H.modal().findByRole("button", { name: "Add" }).click();
       cy.wait("@addGroups");
-      H.expectUnstructuredSnowplowEvent({ event: "data_app_groups_added" });
+      H.expectUnstructuredSnowplowEvent({ event: "data_app_group_added" });
 
       cy.get<string>("@groupName").then((name) =>
         H.main().findByText(name).should("be.visible"),

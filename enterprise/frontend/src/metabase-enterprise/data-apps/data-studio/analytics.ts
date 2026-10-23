@@ -15,9 +15,9 @@ export function trackDataAppMadeDraft(appId: DataAppId) {
   });
 }
 
-export function trackDataAppGroupsAdded(appId: DataAppId) {
+export function trackDataAppGroupAdded(appId: DataAppId) {
   trackSimpleEvent({
-    event: "data_app_groups_added",
+    event: "data_app_group_added",
     target_id: appId,
   });
 }
