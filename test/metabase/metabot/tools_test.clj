@@ -1,5 +1,6 @@
 (ns metabase.metabot.tools-test
   (:require
+   [clojure.edn :as edn]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
@@ -316,8 +317,9 @@
             (is (= (refused "Field " (pr-str (fk "CATEGORIES" "NAME")) " is on table \"CATEGORIES\", but its "
                             "`source-field` " (pr-str venue-id) " is a foreign key to table \"VENUES\", so the "
                             "field cannot be reached through it. \"VENUES\" has a foreign key to \"CATEGORIES\": "
-                            "join \"VENUES\" explicitly on " (pr-str venue-id) " and leave out `source-field`, so "
-                            "the field is reached through that join.")
+                            "join \"VENUES\" explicitly on " (pr-str venue-id) ", then reference the field with "
+                            "`source-field` " (pr-str (fk "VENUES" "CATEGORY_ID")) " and `source-field-join-alias` "
+                            "set to the new join's alias.")
                    (refusal opts (fk "CATEGORIES" "NAME")))))))
       (testing "a source-field that is not a foreign key is refused"
         (is (= (refused "Field " (pr-str (fk "VENUES" "NAME")) " is on table \"VENUES\", but its `source-field` "
@@ -327,7 +329,9 @@
       (testing (str "a one-hop reference builds and runs, as do the path the refusal names and a reference through "
                     "an explicit join, whose `source-field` the query processor ignores")
         (doseq [stage [{:breakout [["field" {:source-field venue-id} (fk "VENUES" "NAME")]]}
-                       {:joins [venues-join] :breakout [["field" {} (fk "CATEGORIES" "NAME")]]}
+                       {:joins [venues-join]
+                        :breakout [["field" {:source-field (fk "VENUES" "CATEGORY_ID") :source-field-join-alias "Venues"}
+                                    (fk "CATEGORIES" "NAME")]]}
                        {:joins    [venues-join]
                         :breakout [["field" {:join-alias "Venues" :source-field (fk "CHECKINS" "DATE")}
                                     (fk "VENUES" "NAME")]]}]]
@@ -348,13 +352,16 @@
                           "`join-alias`.")
                  (refusal {:source-field venue-id} (fk "CATEGORIES" "NAME")))))))))
 
-(defn- checkins-venues-join [db]
-  {:alias      "Venues"
+(defn- join-on-field [db alias table field]
+  {:alias      alias
    :strategy   "left-join"
-   :stages     [{:lib/type "mbql.stage/mbql" :source-table [db "PUBLIC" "VENUES"]}]
+   :stages     [{:lib/type "mbql.stage/mbql" :source-table [db "PUBLIC" table]}]
    :conditions [["=" {}
-                 ["field" {} [db "PUBLIC" "CHECKINS" "VENUE_ID"]]
-                 ["field" {:join-alias "Venues"} [db "PUBLIC" "VENUES" "ID"]]]]})
+                 field
+                 ["field" {:join-alias alias} [db "PUBLIC" table "ID"]]]]})
+
+(defn- checkins-venues-join [db]
+  (join-on-field db "Venues" "VENUES" ["field" {} [db "PUBLIC" "CHECKINS" "VENUE_ID"]]))
 
 (defn- construct-checkins-query [db stages]
   (construct/execute-representations-query
@@ -415,15 +422,6 @@
                   (is (= (set rows) (set (mt/rows (qp/process-query
                                                    (get-in (construct-checkins-query db corrected) [:structured-output :query])))))))))))))))
 
-(deftest construct-notebook-query-unavailable-source-field-test
-  (let [db (t2/select-one-fn :name :model/Database (mt/id))]
-    (mt/with-current-user (mt/user->id :rasta)
-      (is (map? (get-in (construct-checkins-query
-                         db [{:aggregation [["count" {}]]
-                              :breakout [["field" {:source-field [db "PUBLIC" "VENUES" "CATEGORY_ID"]}
-                                          [db "PUBLIC" "CATEGORIES" "NAME"]]]}])
-                        [:structured-output :query]))))))
-
 (deftest construct-notebook-query-wrong-source-field-context-test
   (let [db        (t2/select-one-fn :name :model/Database (mt/id))
         correct   ["field" {:source-field [db "PUBLIC" "VENUES" "CATEGORY_ID"]
@@ -441,9 +439,9 @@
         (assert-source-field-qp-failure! #(build! breakouts))
         (let [error (try (build! breakouts) (catch clojure.lang.ExceptionInfo e e))]
           (is (= :wrong-source-field (:error (ex-data error))))
-          (is (str/includes? (or (ex-message error) "") (str "`source-field` " (pr-str wrong-key))))
+          (is (str/includes? (or (ex-message error) "") (str "but its `source-field` " (pr-str wrong-key))))
           (is (not (str/includes? (or (ex-message error) "")
-                                  (str "`source-field` " (pr-str (get-in correct [1 :source-field])))))))))))
+                                  (str "but its `source-field` " (pr-str (get-in correct [1 :source-field])))))))))))
 
 (deftest construct-notebook-query-direct-source-field-hint-test
   (let [db       (t2/select-one-fn :name :model/Database (mt/id))
@@ -462,6 +460,101 @@
         (is (str/includes? (or (ex-message e) "") (str "Use `source-field` " (pr-str user-id)))))
       (testing "the direct key suggested by the hint builds and runs"
         (is (seq (mt/rows (qp/process-query (get-in (query user-id) [:structured-output :query])))))))))
+
+(defn- follow-source-field-hint! [db stage message explicit-joins]
+  (let [target (get-in stage [:breakout 0 2])]
+    (cond
+      (re-find #"Use `source-field` (\[[^\]]+\]) to reach" message)
+      (let [[_ key] (re-find #"Use `source-field` (\[[^\]]+\]) to reach" message)]
+        (assoc stage :breakout [["field" {:source-field (edn/read-string key)} target]]))
+
+      (re-find #"join \"([^\"]+)\" explicitly on (\[[^\]]+\])" message)
+      (let [[_ table key] (re-find #"join \"([^\"]+)\" explicitly on (\[[^\]]+\])" message)
+            [_ key-alias] (re-find #"set `join-alias` \"([^\"]+)\"" message)
+            [_ next-key] (re-find #"reference the field with `source-field` (\[[^\]]+\])" message)
+            join (join-on-field db "Hint" table
+                                ["field" (cond-> {} key-alias (assoc :join-alias key-alias)) (edn/read-string key)])]
+        (-> stage
+            (update :joins (fnil conj []) join)
+            (assoc :breakout [["field" (if next-key
+                                         {:source-field (edn/read-string next-key) :source-field-join-alias "Hint"}
+                                         {})
+                               target]])))
+
+      :else
+      (do
+        (is (str/includes? message "join \"CATEGORIES\" explicitly"))
+        (assoc stage :joins explicit-joins :breakout [["field" {:join-alias "Categories"} target]])))))
+
+(defn- assert-category-hint! [db source-kind source prefix-field stage explicit-joins]
+  (let [query (fn [stage]
+                {:lib/type "mbql/query"
+                 :stages (if (= source-kind :later-stage)
+                           [(merge {:lib/type "mbql.stage/mbql" :aggregation [["count" {}]]
+                                    :breakout [["field" {} prefix-field]]} source)
+                            (assoc stage :lib/type "mbql.stage/mbql")]
+                           [(merge {:lib/type "mbql.stage/mbql"} source stage)])})
+        build! #(construct/execute-representations-query (query %))
+        expected-stage (assoc stage :joins explicit-joins
+                              :breakout [["field" {:join-alias "Categories"} (get-in stage [:breakout 0 2])]])
+        expected (qp/process-query (get-in (build! expected-stage) [:structured-output :query]))
+        error (try (build! stage) (catch clojure.lang.ExceptionInfo e e))
+        message (or (ex-message error) "")]
+    (is (= :completed (:status expected)))
+    (is (= 28 (count (mt/rows expected))))
+    (is (= :wrong-source-field (:error (ex-data error))))
+    (assert-source-field-qp-failure! #(build! stage))
+    (let [corrected (follow-source-field-hint! db stage message explicit-joins)
+          result (qp/process-query (get-in (build! corrected) [:structured-output :query]))]
+      (is (= :completed (:status result)))
+      (is (= 28 (count (mt/rows result))))
+      (is (= (set (mt/rows expected)) (set (mt/rows result)))))))
+
+(deftest construct-notebook-query-category-hints-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [mp (mt/metadata-provider)
+          db (t2/select-one-fn :name :model/Database (mt/id))
+          fk (fn [table field] [db "PUBLIC" table field])
+          venues (checkins-venues-join db)
+          checkins (assoc-in (join-on-field db "Checkins" "CHECKINS" ["field" {} (fk "USERS" "ID")])
+                             [:conditions 0 3 2] (fk "CHECKINS" "USER_ID"))
+          aliased-venues (assoc-in venues [:conditions 0 2 1 :join-alias] "Checkins")
+          categories #(join-on-field db "Categories" "CATEGORIES" ["field" % (fk "VENUES" "CATEGORY_ID")])]
+      (doseq [{:keys [label table prefix-key key key-alias joins explicit-joins]}
+              [{:label "direct key" :table :venues :prefix-key :category_id :key (fk "VENUES" "ID")
+                :explicit-joins [(categories {})]}
+               {:label "intermediate join" :table :checkins :prefix-key :venue_id :key (fk "CHECKINS" "VENUE_ID")
+                :explicit-joins [venues (categories {:join-alias "Venues"})]}
+               {:label "explicit target join" :table :checkins :prefix-key :venue_id :key (fk "CHECKINS" "DATE")
+                :explicit-joins [venues (categories {:join-alias "Venues"})]}
+               {:label "aliased intermediate join" :table :users :prefix-key :id :key (fk "CHECKINS" "VENUE_ID")
+                :key-alias "Checkins" :joins [checkins]
+                :explicit-joins [checkins aliased-venues (categories {:join-alias "Venues"})]}]
+              source-kind [:table :question :model :later-stage :native-question :native-model]]
+        (testing (str label " from " source-kind)
+          (let [table-meta (lib.metadata/table mp (mt/id table))
+                table-name (:name table-meta)
+                source {:source-table [db "PUBLIC" table-name]}
+                stage (cond-> {:aggregation [["count" {}]]
+                               :breakout [["field" (cond-> {:source-field key}
+                                                     key-alias (assoc :source-field-join-alias key-alias))
+                                           (fk "CATEGORIES" "NAME")]]}
+                        (seq joins) (assoc :joins joins))
+                check! #(assert-category-hint! db source-kind % (fk table-name (:name (lib.metadata/field mp (mt/id table prefix-key))))
+                                               stage explicit-joins)]
+            (if (#{:table :later-stage} source-kind)
+              (check! source)
+              (let [native? (#{:native-question :native-model} source-kind)
+                    card-query (if native?
+                                 (lib/native-query mp (str "SELECT * FROM " table-name))
+                                 (lib/with-fields (lib/query mp table-meta)
+                                   (mapv #(lib.metadata/field mp %) (distinct [(mt/id table :id) (mt/id table prefix-key)]))))
+                    result (qp/process-query card-query)]
+                (is (= :completed (:status result)))
+                (mt/with-temp [:model/Card {eid :entity_id}
+                               {:name (str label " " source-kind) :type (if (#{:model :native-model} source-kind) :model :question)
+                                :dataset_query card-query :result_metadata (get-in result [:data :cols])}]
+                  (check! {:source-card eid}))))))))))
 
 (deftest construct-notebook-query-model-source-field-hint-test
   (mt/with-current-user (mt/user->id :rasta)
@@ -531,7 +624,7 @@
                                         :source-field-join-alias "Checkins"})
                 (catch clojure.lang.ExceptionInfo e e))]
         (is (= :wrong-source-field (:error (ex-data e))))
-        (is (str/includes? (or (ex-message e) "") "with `join-alias` \"Checkins\"")))
+        (is (str/includes? (or (ex-message e) "") "(set `join-alias` \"Checkins\" on this source key)")))
       (testing "the suggested join runs with an explicit or inferred alias for its key"
         (let [rows (mapv (fn [join-alias]
                            (let [venues-join (cond-> (checkins-venues-join db)
@@ -541,7 +634,7 @@
                                                      :source-field-join-alias "Venues"})]
                              (mt/rows (qp/process-query (get-in result [:structured-output :query])))))
                          [nil "Checkins"])]
-          (is (seq (first rows)))
+          (is (= 28 (count (first rows))))
           (is (= (set (first rows)) (set (second rows)))))))))
 
 (deftest construct-notebook-query-dependent-implicit-joins-test

@@ -680,6 +680,15 @@
                 (str/join " or " (map #(pr-str (nth (field-ref-for-error metadata-provider [:field {} (:id %)]) 2)) fields))
                 table-name)))))
 
+(defn- intermediate-source-field
+  [metadata-provider from-table-id to-table-id]
+  (let [fields (->> (resolve.mp/outbound-fks-from-table metadata-provider from-table-id)
+                    (map :source-field)
+                    entity-details/permission-filter-columns
+                    (filter #(= to-table-id (foreign-key-target-table-id metadata-provider %))))]
+    (when (= 1 (count fields))
+      (first fields))))
+
 (defn- wrong-source-field-error
   "Return an agent error for a field reached through an invalid foreign key."
   [metadata-provider [_ {:keys [source-field source-field-join-alias]} target] table-id fk-table-id columns]
@@ -694,19 +703,16 @@
                             (pr-str target) table-name (pr-str source-field)))
                   " "
                   (or (direct-source-field-hint metadata-provider columns table-id table-name)
-                      (if (and fk-table-name
-                               (= 1 (count (->> (resolve.mp/outbound-fks-from-table metadata-provider fk-table-id)
-                                                (map :source-field)
-                                                entity-details/permission-filter-columns
-                                                (keep :fk-target-field-id)
-                                                (filter #(= table-id (:table-id (fetch-field metadata-provider %))))))))
-                        (format "%s has a foreign key to %s: join %s explicitly on %s%s and leave out `source-field`, so the field is reached through that join."
-                                fk-table-name table-name fk-table-name (pr-str source-field)
-                                (if source-field-join-alias
-                                  (format " with `join-alias` %s" (pr-str source-field-join-alias))
-                                  ""))
-                        (format "Use a `source-field` that is a foreign key to %s, or join %s explicitly and reference the field with its `join-alias`."
-                                table-name table-name))))
+                      (when fk-table-name
+                        (when-let [field (intermediate-source-field metadata-provider fk-table-id table-id)]
+                          (format "%s has a foreign key to %s: join %s explicitly on %s%s, then reference the field with `source-field` %s and `source-field-join-alias` set to the new join's alias."
+                                  fk-table-name table-name fk-table-name (pr-str source-field)
+                                  (if source-field-join-alias
+                                    (format " (set `join-alias` %s on this source key)" (pr-str source-field-join-alias))
+                                    "")
+                                  (pr-str (nth (field-ref-for-error metadata-provider [:field {} (:id field)]) 2)))))
+                      (format "Use a `source-field` that is a foreign key to %s, or join %s explicitly and reference the field with its `join-alias`."
+                              table-name table-name)))
              {:agent-error? true
               :status-code  400
               :error        :wrong-source-field})))
