@@ -56,12 +56,22 @@
 
 (def ^:private ^:dynamic *sso-user-data* nil)
 
-(auth-identity/derive! :provider/test-sso ::provider/provider)
-(auth-identity/derive! :provider/test-sso ::provider/create-user-if-not-exists)
-
 (methodical/defmethod provider/authenticate :provider/test-sso
   [_provider _request]
   {:success? true :user-data *sso-user-data*})
+
+(defn- sso-login!
+  "Provision `user-data` by logging in through `:provider/test-sso`. The provider joins the auth-identity hierarchy only
+  for this call, so tests that check every registered provider (e.g. the MFA gate's) never see it."
+  [user-data]
+  (auth-identity/derive! :provider/test-sso ::provider/provider)
+  (auth-identity/derive! :provider/test-sso ::provider/create-user-if-not-exists)
+  (try
+    (binding [*sso-user-data* user-data]
+      (provider/login! :provider/test-sso {:session/skip? true}))
+    (finally
+      (auth-identity/underive! :provider/test-sso ::provider/create-user-if-not-exists)
+      (auth-identity/underive! :provider/test-sso ::provider/provider))))
 
 (defn- invite-user-accept-and-check-inboxes!
   "Create user by passing `invite-user-args` to `create-and-invite-user!`, or via a dummy sso provider,
@@ -79,8 +89,7 @@
                                  :password   password}]
         (try
           (if sso-auth?
-            (binding [*sso-user-data* (-> new-user (dissoc :password) (assoc :sso_source :google))]
-              (provider/login! :provider/test-sso {:session/skip? true}))
+            (sso-login! (-> new-user (dissoc :password) (assoc :sso_source :google)))
             (user/create-and-invite-user! new-user invitor false))
           (when accept-invite?
             (maybe-accept-invite! new-user-email))
