@@ -5,26 +5,27 @@
 
 (set! *warn-on-reflection* true)
 
-;; Custom `ConnectionProvider` implementation that uses our application DB connection pool to provide connections.
+;; Custom `ConnectionProvider` implementation that uses a dedicated connection pool for the application DB to provide
+;; connections.
 
-(defn- app-db ^javax.sql.DataSource []
-  ((requiring-resolve 'metabase.app-db.core/app-db)))
+(defn- quartz-data-source ^javax.sql.DataSource []
+  ((requiring-resolve 'metabase.app-db.core/quartz-data-source)))
 
 (defrecord ^:private ConnectionProvider []
   org.quartz.utils.ConnectionProvider
   (initialize [_])
   (getConnection [_]
-    ;; get a connection from our application DB connection pool. Quartz will close it (i.e., return it to the pool)
-    ;; when it's done
+    ;; get a connection from the dedicated Quartz connection pool. Quartz will close it (i.e., return it to the pool)
+    ;; when it's done.
     ;;
-    ;; very important! Fetch a new connection from the connection pool rather than using currently bound Connection if
-    ;; one already exists -- because Quartz will close this connection when done, we don't want to screw up the
-    ;; calling block
+    ;; very important! Fetch a new connection from the connection pool rather than reusing a Connection already bound
+    ;; to the calling thread (e.g. toucan2's *current-connectable*) -- Quartz manages the connection's whole
+    ;; lifecycle (setAutoCommit/commit/rollback/close), and its cluster locking relies on commit/rollback to release
+    ;; row locks on the QRTZ_LOCKS table, so it must never share a connection with an outer transaction.
     ;;
-    ;; in a perfect world we could just check whether we're creating a new Connection or not, and if using an existing
-    ;; Connection, wrap it in a delegating proxy wrapper that makes `.close()` a no-op but forwards all other methods.
-    ;; Now that would be a useful macro!
-    (.getConnection (app-db)))
+    ;; the pool is separate from the main application DB pool so that a Quartz operation triggered by a thread inside
+    ;; a `with-transaction` block can't deadlock when application code has saturated the main pool.
+    (.getConnection (quartz-data-source)))
   (shutdown [_]))
 
 (when-not *compile-files*
