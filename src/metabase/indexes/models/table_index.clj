@@ -148,5 +148,4 @@
   [_model-name _opts]
   {:copy      [:index_name :structured]
    :skip      [:status :error_message :last_executed_at :created_by]
-   :transform {:transform_id (serdes/parent-ref)
-               :created_at   (serdes/date)}})
+   :transform {:transform_id (serdes/parent-ref)}})

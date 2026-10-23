@@ -787,7 +787,7 @@ function useRelatedColumnGroup(
 }
 
 interface ValueInputProps {
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
   query: Lib.Query;
   stageIndex: number;
   filter: Lib.FilterClause | undefined;
@@ -935,7 +935,9 @@ const VIEWPORT_MARGIN = 16;
  * The widest dropdown that fits between the left edge of the pill and the
  * right edge of the window.
  */
-function useMaxDropdownWidth(inputRef: React.RefObject<HTMLInputElement>) {
+function useMaxDropdownWidth(
+  inputRef: React.RefObject<HTMLInputElement | null>,
+) {
   const { width: viewportWidth } = useViewportSize();
   const [pillLeft, setPillLeft] = useState(0);
   useLayoutEffect(() => {

@@ -549,11 +549,6 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-one :model/Collection :id collection-id))
 
-(mu/defn collection-namespace
-  "The namespace of the Collection with `collection-id`."
-  [collection-id :- ::lib.schema.id/collection]
-  (t2/select-one-fn :namespace :model/Collection :id collection-id))
-
 (mu/defn personal-or-descendant-collection-ids
   "The IDs among `collection-ids` that are personal Collections, or descendants of one."
   [collection-ids :- [:set ::lib.schema.id/collection]]

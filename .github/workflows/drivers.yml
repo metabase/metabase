@@ -685,6 +685,8 @@ jobs:
       MB_ORACLE_TEST_HOST: localhost
       MB_ORACLE_TEST_USER: '${{ matrix.version.env.user }}'
       MB_ORACLE_TEST_SERVICE_NAME: XEPDB1
+      # second PDB (created by ORACLE_DATABASE below) for the database routing tests
+      MB_ORACLE_TEST_SERVICE_NAME_ROUTING: MBROUTE
       # Only the non-SSL 18.4 tests specify password as an env var; the SSL 21.3 tests get it from the keystore I guess
       MB_ORACLE_TEST_PASSWORD: '${{ matrix.version.env.password }}'
       # These are ignored for the 18.4 tests which do not test SSL
@@ -703,6 +705,7 @@ jobs:
         image: ${{ matrix.version.image }}
         env:
           ORACLE_PASSWORD: password
+          ORACLE_DATABASE: MBROUTE
         ports:
           - "1521:${{ matrix.version.port }}"
     name: ${{ matrix.version.name }}
@@ -835,7 +838,7 @@ jobs:
     name: Presto
     services:
       presto:
-        image: metabase/presto-mb-ci:latest # version 0.254
+        image: metabase/presto-mb-ci:0.295
         ports:
           - "8443:8443"
         env:

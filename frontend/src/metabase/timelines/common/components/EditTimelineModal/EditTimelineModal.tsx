@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
 import type { Timeline, TimelineData } from "metabase-types/api";

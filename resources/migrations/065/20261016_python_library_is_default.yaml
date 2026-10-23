@@ -1,0 +1,32 @@
+## A Python library is the default one, as created, until it is edited. Remote sync only publishes transforms content
+## when there is some, and the built-in common.py the migrations create with an empty source isn't.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.pyld7a
+      author: ranquild
+      comment: Add is_default to python_library
+      changes:
+        - addColumn:
+            tableName: python_library
+            columns:
+              - column:
+                  name: is_default
+                  type: ${boolean.type}
+                  remarks: Whether the library is the default one, as created, never edited
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropColumn:
+            tableName: python_library
+            columnName: is_default
+
+  - changeSet:
+      id: v65.pyld7b
+      author: ranquild
+      comment: Mark the Python libraries with an empty source as the default ones
+      changes:
+        - sql:
+            sql: UPDATE python_library SET is_default = TRUE WHERE source = ''
+      rollback: []

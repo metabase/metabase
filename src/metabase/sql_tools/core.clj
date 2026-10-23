@@ -221,7 +221,7 @@
 (def ^:private TranspilationResult
   [:map
    [:status [:enum :success :error :skipped]]
-   [:reason {:optional true} [:enum :contains-templates :missing-dialect]]
+   [:reason {:optional true} [:enum :contains-templates :missing-dialect :multiple-statements]]
    [:error-message {:optional true} :string]
    [:transpiled-sql {:optional true} :string]])
 

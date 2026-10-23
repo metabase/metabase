@@ -16,6 +16,7 @@ import { Alert, Box, Button, Group, Icon, Modal, Stack } from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import type { WritebackAction } from "metabase-types/api";
 
+import { trackDataActionCreated } from "../../../analytics";
 import {
   ACTION_COLLECTION_NAMESPACES,
   ACTION_COLLECTION_PICKER_OPTIONS,
@@ -69,11 +70,12 @@ export function CreateActionModal({
       description: description || null,
       collection_id,
     }).unwrap();
+    trackDataActionCreated(action.id);
     onCreate(action);
   };
 
   return (
-    <Modal title={t`Save your action`} opened padding="xxl" onClose={onClose}>
+    <Modal title={t`Save your action`} opened onClose={onClose}>
       <FormProvider
         initialValues={initialValues}
         validationSchema={validationSchema}

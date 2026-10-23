@@ -82,7 +82,7 @@ export function KeyboardFilterRow({
   const [activeDraft, setActiveDraft] = useState<ActiveDraft | null>(null);
   const autoApply = useContext(FilterAutoApplyContext);
   const latestQuestion = useLatest(question);
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const isAutoApply =
     activeDraft != null && (autoApply?.isEnabled(activeDraft.query) ?? false);

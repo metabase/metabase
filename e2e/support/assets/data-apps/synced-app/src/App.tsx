@@ -3,8 +3,7 @@ import { useMetabaseQuery } from "@metabase/embedding-sdk-react/data-app";
 import { OrdersCount } from "../queries/orders.query";
 
 /**
- * Consumes a source-controlled query rather than an inline one, so a production
- * build runs the saved question its `savedQuestionEntityId` names. The spec that
+ * Runs the saved question its typed-schema definition names. The spec that
  * drives this app writes `queries/orders.query.ts` and the app's collection files
  * before publishing it.
  */

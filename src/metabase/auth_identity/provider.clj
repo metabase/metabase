@@ -83,6 +83,7 @@
 
 (def ^:private disabled-account-message (deferred-tru "Your account is disabled. Please contact your administrator."))
 (def ^:private disabled-account-snippet (deferred-tru "Your account is disabled."))
+(def ^:private personal-only-message (deferred-tru "This login is only for personal accounts."))
 
 ;;; -------------------------------------------------- Multimethod: validate --------------------------------------------------
 
@@ -220,6 +221,11 @@
        - Authentication data (credentials, tokens, etc.)
        - :device-info - Device information for session tracking
        - :redirect-url - Optional redirect URL after login
+       - :session/skip? - Optional; when true, the login creates no session
+       - :user/personal-only? - Optional; when true, a user who is not a personal account is refused before any
+         change is made to them
+       - :jwt/require-exp-and-iat? - Optional; when true, a JWT login refuses a JWT that lacks an `exp` or `iat`
+         claim, or whose `iat` is in the future
 
    Returns:
      Map with one of three result types:
@@ -291,6 +297,7 @@
    [:email {:optional true} [:maybe :string]]
    [:error {:optional true} [:maybe :keyword]]
    [:jwt-data {:optional true} [:maybe ms/JWTClaims]]
+   [:jwt/require-exp-and-iat? {:optional true} [:maybe :boolean]]
    [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
    [:oidc-nonce {:optional true} [:maybe :string]]
    [:oidc-provider {:optional true} [:maybe :keyword]]
@@ -304,6 +311,7 @@
    [:server-name {:optional true} [:maybe :string]]
    [:server-port {:optional true} [:maybe :int]]
    [:session/provider {:optional true} [:maybe :keyword]]
+   [:session/skip? {:optional true} [:maybe :boolean]]
    [:slack-data {:optional true} [:maybe [:map-of :string :string]]]
    [:state {:optional true} [:maybe :string]]
    [:success? {:optional true} [:maybe [:or :boolean [:enum :redirect]]]]
@@ -313,6 +321,7 @@
    [:user-data {:optional true} [:maybe UserData]]
    [:user-id {:optional true} [:maybe :int]]
    [:user-provisioning-enabled? {:optional true} [:maybe :boolean]]
+   [:user/personal-only? {:optional true} [:maybe :boolean]]
    [:username {:optional true} [:maybe :string]]])
 
 (mu/defn- apply-inactive-check
@@ -331,6 +340,24 @@
          (not (get-in request [:user :is_active]))) (assoc :success? false
                                                            :error disabled-account-snippet
                                                            :message disabled-account-message)))
+
+(mu/defn- apply-personal-only-check
+  "Refuses a `request` that sets `:user/personal-only?` for a user who is not a personal account.
+
+  Remove the user from the request on refusal so the rest of the login cannot change their account."
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user {:optional true} [:maybe ::users.schema/user]]]
+                     login-pipeline-entries)]]
+  (cond-> request
+    (and (:user/personal-only? request)
+         (:user request)
+         (not= :personal (get-in request [:user :type])))
+    (-> (dissoc :user)
+        (assoc :success? false
+               :error    :non-personal-user
+               :message  personal-only-message))))
 
 (mu/defn- create-session!
   "Create a new session for a user, attributed to the AuthIdentity of `(:session/provider request)` when a `login!`
@@ -407,6 +434,7 @@
                                  provider (some-> user-id class .getName))))
                  (when-let [email (get-in $ [:user-data :email])]
                    (auth-identity.db/user-login-columns-by-email email)))))
+    (apply-personal-only-check $)
     (cond-> $
       (and (:provider-id $) (:user-data $))
       (assoc-in [:user-data :provider-id] (:provider-id $)))
@@ -420,7 +448,8 @@
     (cond-> $
       (and (true? (:success? $))
            (:user $)
-           (not (:mfa/pending? $))) (create-session! provider))
+           (not (:mfa/pending? $))
+           (not (:session/skip? $))) (create-session! provider))
     (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims
                     :oidc-provider-key :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor])))
 

@@ -18,6 +18,7 @@
   51.x or older are now 'old'."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
@@ -26,6 +27,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.app-db.custom-migrations-test :as custom-migrations-test]
    [metabase.app-db.liquibase :as liquibase]
+   [metabase.app-db.liquibase.versions :as versions]
    [metabase.app-db.query :as mdb.query]
    [metabase.app-db.schema-migrations-test.impl :as impl]
    [metabase.cmd.dump-to-h2 :as dump-to-h2]
@@ -53,6 +55,27 @@
 (use-fixtures :each (fn [thunk]
                       (binding [search.ingestion/*disable-updates* true]
                         (thunk))))
+
+(deftest run-migrations-in-range-records-per-major-versions-test
+  (testing "run-migrations-in-range! gives each legacy major its own deployment_id + databasechangelog_version row,"
+    (impl/with-temp-empty-app-db [conn :h2]
+      ;; from the start through v46, so the range spans many majors (we assert on two adjacent ones)
+      (impl/run-migrations-in-range! conn ["v00.00-000" "v46.00-000"])
+      (let [versions-table (versions/versions-table-name)
+            rows           (jdbc/query {:connection conn}
+                                       [(format "SELECT deployment_id, metabase_version FROM %s" versions-table)])
+            major->deps    (-> (group-by #(versions/version->major (:metabase_version %)) rows)
+                               (update-vals #(set (map :deployment_id %))))]
+        (testing "both majors in the range are recorded"
+          (is (= #{"x.45.0.0"} (set (map :metabase_version (filter #(= 45 (versions/version->major (:metabase_version %))) rows))))
+              "major 45 recorded as x.45.0.0")
+          (is (= #{"x.46.0.0"} (set (map :metabase_version (filter #(= 46 (versions/version->major (:metabase_version %))) rows))))
+              "major 46 recorded as x.46.0.0"))
+        (testing "each major gets its own distinct deployment_id"
+          (is (= 1 (count (get major->deps 45))))
+          (is (= 1 (count (get major->deps 46))))
+          (is (empty? (set/intersection (get major->deps 45) (get major->deps 46)))
+              "major 45 and 46 use different deployment_ids"))))))
 
 (defn- migrations-versions []
   (letfn [(form->version [form]
@@ -173,7 +196,8 @@
     (impl/test-migrations ["v46.00-001" "v46.00-002"] [migrate!]
       (let [get-last-id (fn []
                           (-> {:datasource (mdb/app-db)}
-                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG ORDER BY ORDEREXECUTED DESC LIMIT 1"])
+                              ;; skip the version-tracking marker each run and rollback ends with
+                              (jdbc/query ["SELECT id FROM DATABASECHANGELOG WHERE filename <> 'legacy-version-tracking' ORDER BY ORDEREXECUTED DESC LIMIT 1"])
                               first
                               :id))]
         (migrate!)
@@ -3678,6 +3702,77 @@
         (is (= #{implicit-id} (t2/select-pks-set :action)))
         (is (= #{other-button} (t2/select-pks-set :report_dashboardcard :id [:in [http-button other-button]])))))))
 
+(deftest delete-actions-of-non-models-test
+  (testing "v65.2026-10-22T02:00:00: the actions of non-models and archived models, and the archived actions of models, are deleted
+            with their dashboard buttons"
+    (impl/test-migrations ["v65.2026-10-22T02:00:00"] [migrate!]
+      (let [user-id        (t2/insert-returning-pk! :core_user {:first_name  "Action"
+                                                                :last_name   "Owner"
+                                                                :email       "non-model-action-owner@metabase.com"
+                                                                :password    "superstrong"
+                                                                :entity_id   (u/generate-nano-id)
+                                                                :date_joined :%now})
+            db-id          (t2/insert-returning-pk! :metabase_database {:name       "Actions DB"
+                                                                        :engine     "h2"
+                                                                        :details    "{}"
+                                                                        :created_at :%now
+                                                                        :updated_at :%now})
+            dash-id        (t2/insert-returning-pk! :report_dashboard {:name       "Buttons"
+                                                                       :creator_id user-id
+                                                                       :parameters "[]"
+                                                                       :entity_id  (u/generate-nano-id)
+                                                                       :created_at :%now
+                                                                       :updated_at :%now})
+            insert-card!   (fn [card-type & {:keys [archived]}]
+                             (t2/insert-returning-pk! :report_card {:name                   "Card"
+                                                                    :entity_id              (u/generate-nano-id)
+                                                                    :type                   card-type
+                                                                    :archived               (boolean archived)
+                                                                    :display                "table"
+                                                                    :dataset_query          "{}"
+                                                                    :visualization_settings "{}"
+                                                                    :creator_id             user-id
+                                                                    :database_id            db-id
+                                                                    :created_at             :%now
+                                                                    :updated_at             :%now}))
+            insert-action! (fn [model-id & {:keys [archived archived-directly]}]
+                             (t2/insert-returning-pk! :action {:name              "Action"
+                                                               :entity_id         (u/generate-nano-id)
+                                                               :type              "query"
+                                                               :model_id          model-id
+                                                               :archived          (boolean archived)
+                                                               :archived_directly (boolean archived-directly)
+                                                               :created_at        :%now
+                                                               :updated_at        :%now}))
+            insert-button! (fn [action-id]
+                             (t2/insert-returning-pk! :report_dashboardcard {:dashboard_id           dash-id
+                                                                             :action_id              action-id
+                                                                             :parameter_mappings     "[]"
+                                                                             :visualization_settings "{}"
+                                                                             :entity_id              (u/generate-nano-id)
+                                                                             :size_x                 4
+                                                                             :size_y                 4
+                                                                             :row                    0
+                                                                             :col                    0
+                                                                             :created_at             :%now
+                                                                             :updated_at             :%now}))
+            model-id       (insert-card! "model")
+            model-action   (insert-action! model-id)
+            archived-alone (insert-action! model-id :archived true :archived-directly true)
+            archived-along (insert-action! model-id :archived true)
+            no-model       (insert-action! nil :archived true)
+            archived-model (insert-action! (insert-card! "model" :archived true))
+            question       (insert-action! (insert-card! "question"))
+            metric         (insert-action! (insert-card! "metric"))
+            kept-button    (insert-button! model-action)
+            deleted-button (insert-button! question)
+            action-ids     [model-action archived-alone archived-along no-model archived-model question metric]]
+        (t2/insert! :query_action {:action_id question :database_id db-id :dataset_query "{}"})
+        (migrate!)
+        (is (= #{model-action no-model} (t2/select-pks-set :action :id [:in action-ids])))
+        (is (= #{kept-button} (t2/select-pks-set :report_dashboardcard :id [:in [kept-button deleted-button]])))
+        (is (not (t2/exists? :query_action :action_id question)))))))
+
 (deftest timeline-event-entity-ids-test
   (testing "v65.h1c4r5 thru v65.lpm4z3: existing timeline events get distinct portable IDs, other data unchanged"
     (impl/test-migrations ["v65.h1c4r5" "v65.lpm4z3"] [migrate!]
@@ -3954,3 +4049,110 @@
         (is (t2/exists? :data_app :id app-id))
         (is (t2/exists? :permissions_group :id ordinary-group))
         (is (empty? (t2/select :data_app_group_assignment)))))))
+
+(deftest remote-sync-object-user-settings-test
+  (testing "v65.2026-10-20T00:00:02, v65.2026-10-16T00:00:01-02: the RemoteSyncObject rows of Tables and Fields with user settings become their
+           user settings' rows, keeping their status, unless those are already tracked, and the rest are deleted"
+    (impl/test-migrations ["v65.2026-10-20T00:00:02" "v65.2026-10-16T00:00:02"] [migrate!]
+      (let [db-id       (t2/insert-returning-pk! :metabase_database {:name       "Remote Sync User Settings Test DB"
+                                                                     :engine     "h2"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now
+                                                                     :details    "{}"})
+            table!      (fn [table-name]
+                          (t2/insert-returning-pk! :metabase_table {:active     true
+                                                                    :db_id      db-id
+                                                                    :name       table-name
+                                                                    :created_at :%now
+                                                                    :updated_at :%now}))
+            field!      (fn [table-id field-name]
+                          (t2/insert-returning-pk! :metabase_field {:table_id          table-id
+                                                                    :name              field-name
+                                                                    :display_name      field-name
+                                                                    :base_type         "type/Text"
+                                                                    :database_type     "TEXT"
+                                                                    :position          0
+                                                                    :database_position 0
+                                                                    :active            true
+                                                                    :preview_display   true
+                                                                    :created_at        :%now
+                                                                    :updated_at        :%now}))
+            rso!        (fn [model-type model-id status]
+                          (t2/insert-returning-pk! :remote_sync_object {:model_type        model-type
+                                                                        :model_id          model-id
+                                                                        :model_name        model-type
+                                                                        :status            status
+                                                                        :status_changed_at :%now
+                                                                        :file_path         (str model-type "/" model-id ".yaml")}))
+            published   (table! "published")
+            unpublished (table! "unpublished")
+            tracked     (table! "tracked")
+            edited      (field! published "edited")
+            unedited    (field! published "unedited")
+            tracked-fld (field! tracked "tracked")]
+        (t2/insert! :metabase_table_user_settings [{:table_id published :created_at :%now :updated_at :%now}
+                                                   {:table_id tracked :created_at :%now :updated_at :%now}])
+        (t2/insert! :metabase_field_user_settings [{:field_id edited :created_at :%now :updated_at :%now}
+                                                   {:field_id tracked-fld :created_at :%now :updated_at :%now}])
+        (let [table-rso (rso! "Table" published "create")
+              field-rso (rso! "Field" edited "update")
+              dropped   [(rso! "Table" unpublished "update") (rso! "Field" unedited "update")
+                         (rso! "Table" tracked "update") (rso! "Field" tracked-fld "update")]
+              kept      [(rso! "TableUserSettings" tracked "update") (rso! "FieldUserSettings" tracked-fld "update")]
+              card-rso  (rso! "Card" 1 "update")]
+          (migrate!)
+          (is (=? {:model_type "TableUserSettings" :model_id published :status "create"}
+                  (t2/select-one :remote_sync_object :id table-rso)))
+          (is (=? {:model_type "FieldUserSettings" :model_id edited :status "update"}
+                  (t2/select-one :remote_sync_object :id field-rso)))
+          (is (not (t2/exists? :remote_sync_object :id [:in dropped])))
+          (is (= (set kept)
+                 (set (concat (t2/select-pks-vec :remote_sync_object :model_type "TableUserSettings" :model_id tracked)
+                              (t2/select-pks-vec :remote_sync_object :model_type "FieldUserSettings" :model_id tracked-fld)))))
+          (is (t2/exists? :remote_sync_object :id card-rso)))))))
+
+(deftest python-library-is-default-test
+  (testing "v65.pyld7a-b: python_library.is_default is added, true for a library with an empty source"
+    (impl/test-migrations ["v65.pyld7a" "v65.pyld7b"] [migrate!]
+      (t2/delete! :python_library)
+      (let [library! (fn [path source]
+                       (t2/insert-returning-pk! :python_library {:path       path
+                                                                 :source     source
+                                                                 :entity_id  (u/generate-nano-id)
+                                                                 :created_at :%now
+                                                                 :updated_at :%now}))
+            unedited (library! "common.py" "")
+            edited   (library! "other.py" "def f(): pass")]
+        (migrate!)
+        (is (true? (t2/select-one-fn :is_default :python_library :id unedited)))
+        (is (false? (t2/select-one-fn :is_default :python_library :id edited)))))))
+
+(deftest data-app-unique-resource-collection-test
+  (testing "v65.2026-10-22T00:00:00-02: a shared resource collection stays with the first app, and no two apps share one"
+    (impl/test-migrations ["v65.2026-10-22T00:00:00" "v65.2026-10-22T00:00:02"] [migrate!]
+      (let [collection! (fn [slug]
+                          (t2/insert-returning-pk! :collection {:name       slug
+                                                                :slug       slug
+                                                                :location   "/"
+                                                                :namespace  "data-apps"
+                                                                :entity_id  (u/generate-nano-id)
+                                                                :created_at :%now}))
+            app!        (fn [slug collection-id]
+                          (t2/insert-returning-pk! :data_app {:name                   slug
+                                                              :display_name           slug
+                                                              :bundle_path            "dist/index.js"
+                                                              :entity_id              (u/generate-nano-id)
+                                                              :resource_collection_id collection-id
+                                                              :created_at             :%now
+                                                              :updated_at             :%now}))
+            shared      (collection! "shared")
+            own         (collection! "own")
+            first-app   (app! "first" shared)
+            second-app  (app! "second" shared)
+            other-app   (app! "other" own)]
+        (migrate!)
+        (is (= shared (t2/select-one-fn :resource_collection_id :data_app :id first-app)))
+        (is (nil? (t2/select-one-fn :resource_collection_id :data_app :id second-app)))
+        (is (= own (t2/select-one-fn :resource_collection_id :data_app :id other-app)))
+        (testing "a second app on a collection is refused"
+          (is (thrown? Exception (app! "third" shared))))))))

@@ -443,7 +443,7 @@
                   :name           "count"
                   :display-name   "Count"
                   :lib/source     :source/aggregations}
-                 {:settings       {:is_priceless true}
+                 {:settings       {:decimals 2}
                   :lib/type       :metadata/column
                   :effective-type :type/Integer
                   :name           "sum"
@@ -623,10 +623,10 @@
                      (filterv :selected?))))))))
 
 (deftest ^:parallel preserve-field-settings-metadata-test
-  (testing "Aggregation metadata should return the `:settings` for the field being aggregated, for some reason."
+  (testing "Aggregation metadata should inherit value-formatting `:settings` from the field being aggregated."
     (let [query (-> (lib.tu/venues-query)
                     (lib/aggregate (lib/sum (meta/field-metadata :venues :price))))]
-      (is (=? {:settings       {:is_priceless true}
+      (is (=? {:settings       {:decimals 2}
                :lib/type       :metadata/column
                :effective-type :type/Integer
                :name           "sum"

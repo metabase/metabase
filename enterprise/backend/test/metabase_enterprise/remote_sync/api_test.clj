@@ -17,6 +17,7 @@
    [metabase-enterprise.remote-sync.spec :as spec]
    [metabase-enterprise.remote-sync.test-helpers :as test-helpers]
    [metabase.driver.settings :as driver.settings]
+   [metabase.remote-sync.test-util :as remote-sync.tu]
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -52,6 +53,7 @@
             (f))))
 
 (use-fixtures :each
+  remote-sync.tu/allow-remote-synced-collections
   test-helpers/clean-remote-sync-state
   (fn [f]
     (mt/with-premium-features #{:remote-sync}
@@ -1038,17 +1040,15 @@
        (is (false? (remote-sync.object/dirty?)))
        (is (not (t2/exists? :model/RemoteSyncObject :model_type "Action")))))))
 
-(deftest push-tracks-archiving-an-action-test
-  (testing "GHY-4722: archiving an action removes its file on the next push, and unarchiving it writes the file back"
+(deftest push-tracks-deleting-an-action-test
+  (testing "deleting a model's action removes its file on the next push"
     (do-with-pushed-model-actions!
      (fn [{:keys [model push! repo-file]}]
        (let [action-id (t2/select-one-pk :model/Action :model_id (:id model) :name "Rename Venue")]
-         (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived true})
+         (is (some? (repo-file "collections/main/synced/rename_venue.yaml")))
+         (mt/user-http-request :crowberto :delete 204 (str "action/" action-id))
          (is (remote-sync.task/successful? (push!)))
-         (is (nil? (repo-file "collections/main/synced/rename_venue.yaml")))
-         (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:archived false})
-         (is (remote-sync.task/successful? (push!)))
-         (is (some? (repo-file "collections/main/synced/rename_venue.yaml"))))))))
+         (is (nil? (repo-file "collections/main/synced/rename_venue.yaml"))))))))
 
 (deftest push-tracks-moving-an-action-between-models-test
   (testing "GHY-4722: moving an action to a model outside the synced collections removes its file on the next push, and moving it back writes the file again"
@@ -2286,53 +2286,18 @@
             (is (true? (settings/remote-sync-transforms))
                 "Transforms setting should be preserved when not included in request")))))))
 
-;;; ------------------------------------------- Dirty Endpoint with Transforms Root Tests -------------------------------------------
-
-(deftest dirty-returns-transforms-root-collection-test
-  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection (id=-1) when present"
-    (test-helpers/with-clean-object
-      (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
-                                                :model_id settings/transforms-root-id
-                                                :model_name "Transforms"
-                                                :status "create"
-                                                :status_changed_at (java.time.OffsetDateTime/now)}]
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
-              dirty-items (:dirty response)]
-          (is (= 1 (count dirty-items)))
-          (is (= "Transforms" (:name (first dirty-items))))
-          (is (= "collection" (:model (first dirty-items))))
-          (is (= settings/transforms-root-id (:id (first dirty-items)))))))))
-
-(deftest dirty-returns-transforms-root-collection-with-delete-status-test
-  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection (id=-1) with delete status"
-    (test-helpers/with-clean-object
-      (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
-                                                :model_id settings/transforms-root-id
-                                                :model_name "Transforms"
-                                                :status "delete"
-                                                :status_changed_at (java.time.OffsetDateTime/now)}]
-        (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
-              dirty-items (:dirty response)]
-          (is (= 1 (count dirty-items)))
-          (is (= "Transforms" (:name (first dirty-items))))
-          (is (= "collection" (:model (first dirty-items))))
-          (is (= "delete" (:sync_status (first dirty-items))))
-          (is (= settings/transforms-root-id (:id (first dirty-items)))))))))
-
-(deftest dirty-returns-transforms-root-collection-when-setting-disabled-test
-  (testing "GET /api/ee/remote-sync/dirty returns the Transforms root collection when transforms setting is disabled"
+(deftest dirty-returns-removed-transform-when-setting-disabled-test
+  (testing "GET /api/ee/remote-sync/dirty lists a transform pending removal while transforms sync is disabled"
     (test-helpers/with-clean-object
       (mt/with-temporary-setting-values [remote-sync-transforms false]
-        (mt/with-temp [:model/RemoteSyncObject _ {:model_type "Collection"
-                                                  :model_id settings/transforms-root-id
-                                                  :model_name "Transforms"
-                                                  :status "delete"
-                                                  :status_changed_at (java.time.OffsetDateTime/now)}]
-          (let [response (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")
-                dirty-items (:dirty response)]
-            (is (= 1 (count dirty-items)) "Transforms root should be returned even when setting is disabled")
-            (is (= "Transforms" (:name (first dirty-items))))
-            (is (= "delete" (:sync_status (first dirty-items))))))))))
+        (mt/with-temp [:model/Transform {transform-id :id} {:name "Removed Transform"}
+                       :model/RemoteSyncObject _ {:model_type        "Transform"
+                                                  :model_id          transform-id
+                                                  :model_name        "Removed Transform"
+                                                  :status            "removed"
+                                                  :status_changed_at (t/offset-date-time)}]
+          (is (=? [{:id transform-id :model "transform" :name "Removed Transform" :sync_status "removed"}]
+                  (:dirty (mt/user-http-request :crowberto :get 200 "ee/remote-sync/dirty")))))))))
 
 (deftest settings-collections-not-marked-synced-when-settings-validation-fails-test
   (testing "PUT /api/ee/remote-sync/settings does not mark collections as synced when settings validation fails"
@@ -2439,11 +2404,11 @@
                 "no NEW RemoteSyncTask row should be created when the guard fires")))))))
 
 (deftest archiving-a-synced-model-with-actions-test
-  (testing "a model in a synced collection can be archived although it has actions, which are archived with it"
+  (testing "a model in a synced collection can be archived although it has actions, which are deleted with it"
     (mt/with-temporary-setting-values [remote-sync-type :read-write]
       (mt/with-temp [:model/Collection {synced-id :id} {:name "Synced" :is_remote_synced true :location "/"}
                      :model/Card       {model-id :id}  {:type :model :collection_id synced-id
                                                         :dataset_query (mt/mbql-query venues)}
                      :model/Action     {action-id :id} {:type :query :name "Rename" :model_id model-id}]
         (mt/user-http-request :crowberto :put 200 (str "card/" model-id) {:archived true})
-        (is (true? (t2/select-one-fn :archived :model/Action :id action-id)))))))
+        (is (not (t2/exists? :model/Action :id action-id)))))))

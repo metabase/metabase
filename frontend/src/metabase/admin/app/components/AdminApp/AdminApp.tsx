@@ -1,7 +1,10 @@
+import type { JSX } from "react";
+
 import { Outlet } from "metabase/router";
 import { Box, Flex } from "metabase/ui";
 
 import DeprecationNotice from "../../containers/DeprecationNotice";
+import { SdkReact18Notice } from "../SdkReact18Notice";
 
 export const AdminApp = (): JSX.Element => {
   return (
@@ -10,6 +13,7 @@ export const AdminApp = (): JSX.Element => {
       <Box flex="1" mih={0}>
         <Outlet />
       </Box>
+      <SdkReact18Notice />
     </Flex>
   );
 };

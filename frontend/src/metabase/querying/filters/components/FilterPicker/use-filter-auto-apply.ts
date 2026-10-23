@@ -64,7 +64,7 @@ export function useFilterAutoApply({
   );
   const autoApplyRef = useLatest(autoApply);
   const pendingDraftRef = useRef<Lib.ExpressionClause | null>(null);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   // Pickers report their initial state as a draft too. Only changes that the
   // user makes apply.
   const hasInteractedRef = useRef(false);
