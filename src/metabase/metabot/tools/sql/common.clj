@@ -92,7 +92,7 @@
   {:payload [:map {:closed true}]}
   [_]
   {:message "The SQL query contains more than one statement, and only one is supported. No changes were saved."
-   :recovery [{:uses #{} :text "Rewrite the SQL as one statement with nothing after its closing semicolon, then retry."}]})
+   :recovery [{:uses #{} :text "Rewrite the SQL as one statement, then retry."}]})
 
 (tools/defrecoverable blank-sql!
   "Creating, replacing, or editing the query would leave it with no SQL."

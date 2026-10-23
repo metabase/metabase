@@ -134,6 +134,12 @@ def statements(sql, dialect=None):
     return [ast for ast in sqlglot.parse(sql, read=dialect) if ast is not None]
 
 
+def _nonempty_statements(stmts):
+    """`stmts` from `sqlglot.parse` without the empty ones: a stray semicolon parses as `None`, and a comment after a
+    semicolon as a bare `exp.Semicolon`."""
+    return [s for s in stmts if s is not None and not isinstance(s, exp.Semicolon)]
+
+
 def table_references(ast):
     """Every table the statement `ast` names, as sqlglot Table nodes.
 
@@ -1830,7 +1836,7 @@ def transpile_sql(sql: str, from_dialect: str = None, to_dialect: str = None):
     else:
         try:
             write = sqlglot.Dialect.get_or_raise(to_dialect)
-            expressions = sqlglot.parse(sql, read=from_dialect)
+            expressions = _nonempty_statements(sqlglot.parse(sql, read=from_dialect))
 
             if len(expressions) > 1:
                 result['status'] = 'error'
@@ -2101,7 +2107,7 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
         stmts = sqlglot.parse(_split_placeholder_casts(sql, dialect), read=dialect)
         allowed_types = (exp.Select, exp.SetOperation)
         if stmt_type == "read-only":
-            stmts = [s for s in stmts if s is not None and not isinstance(s, exp.Semicolon)]
+            stmts = _nonempty_statements(stmts)
         elif stmt_type != "read":
             allowed_types = (exp.Update, exp.Insert, exp.Delete)
         problem = _not_read_only_reason(stmts, sql, dialect) if stmt_type == "read-only" else None

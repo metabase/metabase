@@ -150,6 +150,19 @@
         (is (= :multiple-statements reason))
         (is (str/includes? error-message "Multiple SQL statements"))))))
 
+(deftest ^:parallel transpile-sql-counts-statements-like-the-read-only-check-test
+  (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
+    (testing "a comment after a semicolon, or an empty statement, is not a second statement"
+      (doseq [sql ["SELECT 1; -- note" "SELECT 1; /* note */" "SELECT 1;;" "; SELECT 1"]]
+        (testing (pr-str sql)
+          (is (= :success (:status (sql-tools/transpile-sql sql "postgres" "postgres"))))
+          (is (nil? (sql-tools/read-only-select-problem :postgres sql))))))
+    (testing "a second query is a second statement for both checks"
+      (doseq [sql ["SELECT 1; SELECT 2" "SELECT 1; SELECT 2; -- note"]]
+        (testing (pr-str sql)
+          (is (= :multiple-statements (:reason (sql-tools/transpile-sql sql "postgres" "postgres"))))
+          (is (= :multiple-statements (:reason (sql-tools/read-only-select-problem :postgres sql)))))))))
+
 (deftest ^:parallel transpile-sql-parse-error-message-test
   (binding [sql-tools.settings/*parser-backend-override* :sqlglot]
     (testing "a parse error names the token and its place, without the parser's internals or terminal escapes"
