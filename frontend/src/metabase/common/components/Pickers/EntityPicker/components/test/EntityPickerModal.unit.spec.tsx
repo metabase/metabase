@@ -1078,4 +1078,204 @@ describe("EntityPickerModal", () => {
       expect(within(searchList).getAllByRole("link")).toHaveLength(2);
     });
   });
+
+  describe("Custom folders", () => {
+    it("lists a caller's folder at the root and picks its items through their own handler", async () => {
+      const onSelectOwls = jest.fn();
+      const { onChange } = await setup({
+        customFolders: [
+          {
+            id: "birds",
+            name: "Birds",
+            items: [
+              { id: 1, name: "Owls", icon: "app", onSelect: onSelectOwls },
+              { id: 2, name: "Herons", icon: "app", onSelect: jest.fn() },
+            ],
+          },
+        ],
+      });
+
+      await userEvent.click(await screen.findByText("Birds"));
+      await expectVisibleItem("Herons");
+      await userEvent.click(await screen.findByText("Owls"));
+
+      expect(onSelectOwls).toHaveBeenCalledTimes(1);
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("opens on the folder of a caller's selected item, with the item selected", async () => {
+      await setup({
+        customFolders: [
+          {
+            id: "birds",
+            name: "Birds",
+            items: [
+              { id: 1, name: "Owls", icon: "app", onSelect: jest.fn() },
+              {
+                id: 2,
+                name: "Herons",
+                icon: "app",
+                isSelected: true,
+                onSelect: jest.fn(),
+              },
+            ],
+          },
+        ],
+      });
+
+      await expectActiveItem("Herons");
+      await expectActiveItem("Birds");
+      await expectInactiveItem("Owls");
+    });
+
+    it("lists a caller's folder above the personal collections", async () => {
+      const personalCollection = createMockCollection({
+        id: 1,
+        name: "Bobby Tables's Personal Collection",
+        personal_owner_id: 1,
+        location: "/",
+      });
+      await setup({
+        isAdmin: true,
+        options: { hasRecents: false, hasDatabases: false },
+        additionalCollections: [personalCollection],
+        additionalCollectionItemEndpoints: [
+          { collection: personalCollection, collectionItems: [] },
+        ],
+        customFolders: [{ id: "birds", name: "Birds", items: [] }],
+      });
+
+      const rootList = await screen.findByTestId("item-picker-level-0");
+      await waitFor(() => {
+        expect(
+          within(rootList)
+            .getAllByRole("link")
+            .map((item) => item.textContent?.trim()),
+        ).toEqual([
+          "SQL Snippets",
+          "Our analytics",
+          "Birds",
+          "Bobby Tables's Personal Collection",
+          "All personal collections",
+        ]);
+      });
+    });
+
+    it("draws the folder of a caller's selected item as a parent of the selection", async () => {
+      await setup({
+        customFolders: [
+          {
+            id: "birds",
+            name: "Birds",
+            items: [
+              { id: 1, name: "Owls", icon: "app", onSelect: jest.fn() },
+              {
+                id: 2,
+                name: "Herons",
+                icon: "app",
+                isSelected: true,
+                onSelect: jest.fn(),
+              },
+            ],
+          },
+        ],
+      });
+
+      await expectActiveItem("Herons");
+      const activeItems = screen
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("data-active") === "true")
+        .map((link) => ({
+          name: link.textContent?.trim(),
+          variant: link.getAttribute("data-variant"),
+        }));
+      expect(activeItems).toEqual([
+        { name: "Birds", variant: "secondary" },
+        { name: "Herons", variant: "primary" },
+      ]);
+    });
+
+    it("keeps a built-in folder's own items when a caller's folder has the same id", async () => {
+      await setup({
+        customFolders: [
+          {
+            id: "root",
+            name: "Birds",
+            items: [{ id: 1, name: "Owls", icon: "app", onSelect: jest.fn() }],
+          },
+        ],
+      });
+
+      await userEvent.click(
+        await screen.findByRole("link", { name: /Our analytics/ }),
+      );
+
+      await waitFor(() => {
+        expect(
+          within(screen.getByTestId("item-picker-level-1"))
+            .getAllByRole("link")
+            .map((item) => item.textContent?.trim()),
+        ).toEqual(["First Collection", "Second Collection"]);
+      });
+    });
+
+    it("finds a caller's item by its name in the search", async () => {
+      await setup({
+        customFolders: [
+          {
+            id: "birds",
+            name: "Birds",
+            items: [
+              { id: 1, name: "Owls", icon: "app", onSelect: jest.fn() },
+              { id: 2, name: "Herons", icon: "app", onSelect: jest.fn() },
+            ],
+          },
+        ],
+      });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "Owls",
+        { delay: 50 },
+      );
+      await expectActiveItem('Search results for "Owls"');
+      await expectVisibleItem("Search Result Card 3");
+
+      const searchList = screen.getByTestId("item-picker-level-1");
+      expect(
+        within(searchList).getByRole("link", { name: /Owls/ }),
+      ).toBeVisible();
+      expect(
+        within(searchList).queryByRole("link", { name: /Herons/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("leaves a caller's items out of a search scoped to a collection", async () => {
+      await setup({
+        customFolders: [
+          {
+            id: "birds",
+            name: "Birds",
+            items: [{ id: 1, name: "Owls", icon: "app", onSelect: jest.fn() }],
+          },
+        ],
+      });
+
+      await userEvent.click(await screen.findByText("Our analytics"));
+      await userEvent.click(await screen.findByText("First Collection"));
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "Owls",
+        { delay: 50 },
+      );
+      await expectActiveItem('Search results for "Owls"');
+      await expectVisibleItem("Search Result Card 3");
+
+      expect(
+        within(screen.getByTestId("item-picker-level-1")).queryByRole("link", {
+          name: /Owls/,
+        }),
+      ).not.toBeInTheDocument();
+    });
+  });
 });
