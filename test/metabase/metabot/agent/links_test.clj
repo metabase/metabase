@@ -160,7 +160,7 @@
         (is (= expected
                (-> (binding [shared/*memory-atom* (atom {:state {:queries {"q-1" query}}})]
                      (test-util/call-tool charts/create-chart-tool {:data_source  {:query_id "q-1"}
-                                                                    :viz_settings {:chart_type "bar"}
+                                                                    :viz_settings {:chart_type "table"}
                                                                     :title        "Check-ins in July"
                                                                     :description  "Check-ins during July 2014."}))
                    (get-in [:data-parts 0 :data :query :query :parameters])
