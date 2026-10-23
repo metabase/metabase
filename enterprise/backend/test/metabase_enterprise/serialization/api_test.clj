@@ -7,6 +7,7 @@
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
+   [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
@@ -570,6 +571,28 @@
                             :continue_on_error true)
       io/input-stream
       slurp))
+
+(deftest import-query-schema-refusal-hint-test
+  (testing "GHY-4971: a query schema refusal tells API users how to skip the entity with their own parameter"
+    (mt/with-premium-features #{:serialization}
+      (let [refusal (try
+                      (serdes/import-mbql {:lib/type :mbql/query :database 1 :stages []})
+                      nil
+                      (catch clojure.lang.ExceptionInfo e e))
+            import! (fn [error]
+                      (mt/with-dynamic-fn-redefs [v2.load/load-metabase! (fn [& _] (throw error))]
+                        (binding [api.serialization/*additive-logging* false]
+                          (-> (mt/user-http-request :crowberto :post 500 "ee/serialization/import"
+                                                    {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                                    {:file (database-archive! "db" :postgres {})})
+                              io/input-stream
+                              slurp))))]
+        (is (serdes/query-schema-refusal? refusal))
+        (is (re-find #"continue_on_error"
+                     (import! (ex-info "Failed to load into database for Card x" {} refusal))))
+        (testing "other load failures get no hint"
+          (is (not (re-find #"continue_on_error"
+                            (import! (ex-info "Collection 'DoesNotExist' was not found" {}))))))))))
 
 ;; Connection details are never exported, but import takes whatever the archive holds. So both the engine
 ;; and the detail keys get checked on the way in.
