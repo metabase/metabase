@@ -37,8 +37,7 @@ export const EmptyVizState = ({
     chartType !== "object" &&
     chartType !== "list" &&
     chartType !== "boxplot" &&
-    chartType !== "cohort" &&
-    chartType !== "small_multiples";
+    chartType !== "cohort";
 
   const emptyVizChart = isValidChartType ? chartType : "bar";
 

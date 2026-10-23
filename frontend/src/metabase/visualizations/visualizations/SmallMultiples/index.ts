@@ -1,1 +1,0 @@
-export { SmallMultiples } from "./SmallMultiples";

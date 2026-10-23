@@ -5,10 +5,7 @@ import {
   getLightAccentColors,
   getMainAccentColors,
 } from "metabase/ui/colors/groups";
-import type {
-  CardDisplayType,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { VisualizationSettings } from "metabase-types/api";
 import { isRecord } from "metabase-types/guards";
 
 import type { ExtraColumn } from "../columns";
@@ -148,19 +145,28 @@ export const getBreakoutSeriesSettings = (
   ),
 });
 
-/** The title of the setting that stacks a chart per group, or puts them side by side. */
-export const getStackBreakoutsTitle = () => t`Stack breakouts`;
+/** Broken out, a chart, or the groups in a pivot table. */
+export type BreakoutView = "chart" | "pivot";
+
+export const BREAKOUT_VIEWS: readonly BreakoutView[] = ["chart", "pivot"];
 
 /**
- * Each group in a chart of its own, one above another. For a chart that would
- * otherwise draw one series, like a funnel's steps.
+ * Each group in a chart of its own, one above another, for a chart whose
+ * two dimensions are already in use, like stacked states over time.
  */
-export const getBreakoutChartsSettings = (
-  display: CardDisplayType,
-): Pick<
+export const getChartPerGroupSettings = (): Pick<
   VisualizationSettings,
-  "small_multiples.display" | "small_multiples.column"
+  "small_multiples.column"
+> => ({ "small_multiples.column": BREAKOUT_COLUMN });
+
+/**
+ * "Stack series" on, drawing a chart per group, for a chart whose groups are
+ * its series. Turning it off in the display panel puts them side by side.
+ */
+export const getStackedGroupsSettings = (): Pick<
+  VisualizationSettings,
+  "graph.split_panels" | "graph.split_panels_small_multiples"
 > => ({
-  "small_multiples.display": display,
-  "small_multiples.column": BREAKOUT_COLUMN,
+  "graph.split_panels": true,
+  "graph.split_panels_small_multiples": true,
 });

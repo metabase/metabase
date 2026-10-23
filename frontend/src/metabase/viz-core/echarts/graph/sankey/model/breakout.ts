@@ -1,10 +1,10 @@
 import _ from "underscore";
 
 import { getColorsForValues } from "metabase/ui/colors/charts";
-import { formatValue } from "metabase/value-formatting";
 import type { RawSeries, RowValue } from "metabase-types/api";
 
 import type { ComputedVisualizationSettings } from "../../../../types";
+import { formatBreakoutValue } from "../../../cartesian/model/series";
 
 export type SankeyBreakout = {
   columnIndex: number;
@@ -31,9 +31,9 @@ export const getSankeyBreakout = (
     return undefined;
   }
 
-  const columnSettings = settings.column?.(cols[columnIndex]) ?? {};
+  // Labeled like a cartesian chart's breakout series, "(empty)" included.
   const getLabel = (value: RowValue) =>
-    String(formatValue(value, columnSettings));
+    formatBreakoutValue(value, cols[columnIndex]);
   const colors = getColorsForValues(
     _.uniq(rows.map((row) => getLabel(row[columnIndex]))),
     settings["sankey.breakout_colors"],

@@ -12,11 +12,14 @@ import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
 import type { Granularity, LifecycleStateName, Period } from "../spec/types";
 import { pointString } from "../sql/analyses/base";
-import { BREAKOUT_COLUMN } from "../sql/analyses/breakout";
 import { FIRST_SEEN_EXTRA_COLUMN } from "../sql/analyses/lifecycle";
 import { grainTitle } from "../sql/compile/grain";
 
-import { getBreakoutExtraColumns, getBreakoutSpec } from "./breakout";
+import {
+  getBreakoutExtraColumns,
+  getBreakoutSpec,
+  getChartPerGroupSettings,
+} from "./breakout";
 import { getDateColumnOptions, isDateColumnInTable } from "./column-roles";
 import { commonSettings } from "./common-settings";
 import { getAxisTitleSettings } from "./series-settings";
@@ -111,11 +114,14 @@ const getFirstSeenColumn = (settings: LifecycleSettings): string | null =>
 const getPeriod = (granularity: Granularity): Period =>
   granularity === "hour" ? "day" : granularity;
 
+const { breakout_view: breakoutView, ...common } = commonSettings({
+  granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
+  breakout: true,
+  canPivot: true,
+});
+
 const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
-  ...commonSettings({
-    granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
-    breakout: true,
-  }),
+  ...common,
   "lifecycle.active": withWidgetProps({
     getTitle: () => t`What action counts as being active?`,
     getSection: () => "setup",
@@ -171,6 +177,8 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
       })),
     }),
   }),
+  // Last in setup, under what it shows.
+  breakout_view: breakoutView,
 };
 
 export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
@@ -216,14 +224,10 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
       ...getBreakoutExtraColumns(settings.breakout, context),
     ];
   },
-  // The states already stack, so each group gets a chart of its own. Small
-  // multiples draw one chart without a breakout, so the display stays put.
-  getDisplay: () => "small_multiples",
+  getDisplay: () => "bar",
   getVizSettings: (settings, colors) => ({
-    "small_multiples.display": "bar",
-    ...(settings.breakout !== null
-      ? { "small_multiples.column": BREAKOUT_COLUMN }
-      : {}),
+    // The states already stack, so each group gets a chart of its own.
+    ...(settings.breakout !== null ? getChartPerGroupSettings() : {}),
     "graph.dimensions": ["period", "state"],
     "graph.metrics": ["actors"],
     "stackable.stack_type": "stacked",

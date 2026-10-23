@@ -10,7 +10,7 @@ import { getSmallMultiples } from "./utils";
 const createSeries = (rows: (string | number | null)[][]): RawSeries => [
   {
     card: createMockCard({
-      display: "small_multiples",
+      display: "bar",
       visualization_settings: {
         "graph.dimensions": ["period", "state"],
         "graph.metrics": ["actors"],
@@ -38,7 +38,6 @@ describe("getSmallMultiples", () => {
       [null, "2026-01-19", "returning", 6],
     ]),
     "breakout",
-    "bar",
   );
 
   it("splits the rows by the column, in the order they first appear, labeled as a legend would", () => {

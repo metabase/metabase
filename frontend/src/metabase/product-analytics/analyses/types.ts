@@ -23,7 +23,7 @@ import type {
 } from "../spec/types";
 import type { DrillPoint } from "../sql/compose";
 
-import type { Breakout } from "./breakout";
+import type { Breakout, BreakoutView } from "./breakout";
 
 /** The table the person column links to, with its metadata loaded. */
 export type UsersTable = {
@@ -58,6 +58,8 @@ export type CommonSettings = ColumnRoleSettings & {
   granularity: Granularity;
   /** Null: no breakout. Only analyses that opt in read it. */
   breakout: Breakout | null;
+  /** Broken out, a chart or a pivot table. Only analyses that opt in read it. */
+  breakout_view: BreakoutView;
   filters: AnalysisFilters;
 };
 
@@ -68,8 +70,6 @@ export type FunnelSettings = CommonSettings & {
   "funnel.ordering": FunnelSpec["ordering"];
   "funnel.anchor": FunnelSpec["anchor"];
   "funnel.allow_retry": boolean;
-  /** Broken out, a chart per group for the bars, rather than side by side. Over time is a line per group. */
-  "funnel.stack_breakouts": boolean;
 };
 
 export type PathsSettings = CommonSettings & {
@@ -94,8 +94,6 @@ export type HabitSettings = CommonSettings & {
   "habit.measure": HabitSpec["measure"];
   /** The histogram's people as counts, or as a share of their group. */
   "habit.values": ValuesDisplay;
-  /** Broken out, a histogram per group, rather than side by side. */
-  "habit.stack_breakouts": boolean;
 };
 
 export type LifecycleSettings = CommonSettings & {

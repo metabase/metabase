@@ -16,11 +16,10 @@ import { TIME_TO_CONVERT_COLUMN } from "../sql/analyses/funnel";
 import { grainLabel, grainTitle } from "../sql/compile/grain";
 
 import {
-  getBreakoutChartsSettings,
   getBreakoutExtraColumns,
   getBreakoutSeriesSettings,
   getBreakoutSpec,
-  getStackBreakoutsTitle,
+  getStackedGroupsSettings,
 } from "./breakout";
 import { commonSettings } from "./common-settings";
 import {
@@ -94,9 +93,10 @@ const getStepLabel = (index: number, name: string): string =>
   `${index + 1}. ${name}`;
 
 // Hourly starts are noise next to a completion window that's usually days.
-const common = commonSettings({
+const { breakout_view: breakoutView, ...common } = commonSettings({
   granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
   breakout: true,
+  canPivot: true,
 });
 
 const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
@@ -134,18 +134,6 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
       w: "100%",
     }),
   }),
-  "funnel.stack_breakouts": {
-    getTitle: getStackBreakoutsTitle,
-    getSection: () => "setup",
-    inline: true,
-    widget: "toggle",
-    getDefault: () => true,
-    isValid: (value) => isBoolean(value),
-    // Over time is always a line per group.
-    getHidden: (_context, settings) =>
-      settings.breakout == null || settings["funnel.view"] === "overTime",
-    readDependencies: ["breakout", "funnel.view"],
-  },
   "funnel.window": {
     getTitle: () => t`How long does someone get to finish the steps?`,
     getSection: () => "advanced",
@@ -187,6 +175,15 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
     getDefault: () => false,
     isValid: (value) => isBoolean(value),
   },
+  // Last in setup, under the steps and view it shows. Over time's line per
+  // group already reads like a table's columns.
+  breakout_view: {
+    ...breakoutView,
+    getHidden: (context, settings) =>
+      settings["funnel.view"] === "overTime" ||
+      (breakoutView.getHidden?.(context, settings) ?? false),
+    readDependencies: ["breakout", "funnel.view"],
+  },
 };
 
 /**
@@ -207,11 +204,12 @@ const getOverTimeByGroupSettings = (
 });
 
 /**
- * The bars broken out side by side in one chart, rather than a chart per
- * group. The step chart's labels and ghost bars draw one series, so grouped
- * steps are plain bars that keep the steps' tooltip.
+ * The bars broken out: a chart per group, each a whole funnel, or with
+ * "Stack series" off, the groups side by side. The step chart's labels and
+ * ghost bars draw one series, so side by side, steps are plain bars that
+ * keep the steps' tooltip.
  */
-const getGroupedBarsSettings = (
+const getBarsByGroupSettings = (
   settings: FunnelSettings,
 ): VisualizationSettings => {
   const people = grainLabel(settings.counting);
@@ -221,6 +219,7 @@ const getGroupedBarsSettings = (
     ? {
         "graph.dimensions": [TIME_TO_CONVERT_COLUMN, BREAKOUT_COLUMN],
         "graph.metrics": [people],
+        ...getStackedGroupsSettings(),
         ...groupSettings,
         ...getAxisTitleSettings({ x: t`Time to finish`, y: peopleTitle }),
       }
@@ -230,25 +229,10 @@ const getGroupedBarsSettings = (
         "product_analytics.funnel_steps": true,
         // The step names say what the axis is.
         "graph.x_axis.labels_enabled": false,
+        ...getStackedGroupsSettings(),
         ...groupSettings,
         ...getAxisTitleSettings({ y: peopleTitle }),
       };
-};
-
-/**
- * Broken out, over time is a line per group, and the bars a chart per group
- * or the groups side by side.
- */
-const getBrokenOutView = (
-  settings: FunnelSettings,
-): "linePerGroup" | "groupedBars" | "chartPerGroup" | null => {
-  if (settings.breakout === null) {
-    return null;
-  }
-  if (settings["funnel.view"] === "overTime") {
-    return "linePerGroup";
-  }
-  return settings["funnel.stack_breakouts"] ? "chartPerGroup" : "groupedBars";
 };
 
 export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
@@ -299,21 +283,15 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         return "line";
       case "steps":
       case "timeToConvert":
-        return getBrokenOutView(settings) === "chartPerGroup"
-          ? "small_multiples"
-          : "bar";
+        return "bar";
     }
   },
   getVizSettings: (settings, colors) => {
-    const brokenOutView = getBrokenOutView(settings);
-    if (brokenOutView === "linePerGroup") {
-      return getOverTimeByGroupSettings(settings);
+    if (settings.breakout !== null) {
+      return settings["funnel.view"] === "overTime"
+        ? getOverTimeByGroupSettings(settings)
+        : getBarsByGroupSettings(settings);
     }
-    if (brokenOutView === "groupedBars") {
-      return getGroupedBarsSettings(settings);
-    }
-    const chartPerGroup =
-      brokenOutView === "chartPerGroup" ? getBreakoutChartsSettings("bar") : {};
     const people = grainLabel(settings.counting);
     const peopleTitle = grainTitle(settings.counting);
     const view = settings["funnel.view"];
@@ -327,11 +305,8 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
           "product_analytics.funnel_step_colors": steps.map((_step, index) =>
             getStepColor(view, index, colors),
           ),
-          // The step labels are drawn by the chart, so the layout shouldn't reserve x-axis tick space
-          "graph.x_axis.axis_enabled": false,
           ...getSeriesSettings(people, peopleTitle),
           ...getAxisTitleSettings({ y: peopleTitle }),
-          ...chartPerGroup,
         };
       case "overTime":
         return {
@@ -358,15 +333,13 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
           "graph.metrics": [people],
           ...getSeriesSettings(people, peopleTitle, colors[SERIES_COLOR_KEY]),
           ...getAxisTitleSettings({ x: t`Time to finish`, y: peopleTitle }),
-          ...chartPerGroup,
         };
     }
   },
   getColorSlots: (settings, colors) => {
     const view = settings["funnel.view"];
-    // Lines or bars per group have the groups' colors.
-    const brokenOutView = getBrokenOutView(settings);
-    if (brokenOutView === "linePerGroup" || brokenOutView === "groupedBars") {
+    // Broken out, the groups have the colors.
+    if (settings.breakout !== null) {
       return [];
     }
     if (view === "timeToConvert") {

@@ -68,7 +68,6 @@ import { ROW_CHART_DEFINITION } from "./visualizations/RowChart/definition";
 import { SANKEY_CHART_DEFINITION } from "./visualizations/SankeyChart/definition";
 import { SCALAR_CHART_DEFINITION } from "./visualizations/Scalar/definition";
 import { SCATTER_PLOT_DEFINITION } from "./visualizations/ScatterPlot/definition";
-import { SMALL_MULTIPLES_DEFINITION } from "./visualizations/SmallMultiples/definition";
 import { SmartScalarComparisonWidget } from "./visualizations/SmartScalar/SettingsComponents/SmartScalarSettingsWidgets";
 import { SMART_SCALAR_CHART_DEFINITION } from "./visualizations/SmartScalar/definition";
 import { TABLE_DEFINITION } from "./visualizations/Table/definition";
@@ -185,11 +184,6 @@ function registerVisualizationComponents() {
     import(
       /* webpackChunkName: "viz-cohort-table" */ "./visualizations/CohortTable"
     ).then((module) => module.CohortTable),
-  );
-  registerVisualization(SMALL_MULTIPLES_DEFINITION, () =>
-    import(
-      /* webpackChunkName: "viz-small-multiples" */ "./visualizations/SmallMultiples"
-    ).then((module) => module.SmallMultiples),
   );
   registerVisualization(LIST_DEFINITION, () =>
     import(

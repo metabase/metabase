@@ -135,6 +135,9 @@ export const getFunnelStepsOption = (
     type: "bar",
     barWidth,
     barGap: "-100%",
+    // Like other bars, a step no one reached is still a sliver, so the chart
+    // doesn't look like its data is off-screen.
+    barMinHeight: 1,
     data: counts.map((count, index) => ({
       value: count,
       itemStyle: { color: stepColors[index].string() },

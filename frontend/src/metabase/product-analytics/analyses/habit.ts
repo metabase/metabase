@@ -2,6 +2,7 @@ import { t } from "ttag";
 
 import { SegmentedControl } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { formatPeriod } from "../drills/describe";
@@ -12,11 +13,10 @@ import { BREAKOUT_COLUMN } from "../sql/analyses/breakout";
 import { grainLabel, grainTitle } from "../sql/compile/grain";
 
 import {
-  getBreakoutChartsSettings,
   getBreakoutExtraColumns,
   getBreakoutSeriesSettings,
   getBreakoutSpec,
-  getStackBreakoutsTitle,
+  getStackedGroupsSettings,
 } from "./breakout";
 import { commonSettings } from "./common-settings";
 import {
@@ -29,7 +29,6 @@ import {
 import {
   getCommonSpec,
   getEventDefinitionProps,
-  isBoolean,
   isOneOf,
   isOptionalEventDefinition,
   ready,
@@ -59,11 +58,14 @@ const getPercentLabel = (settings: Partial<HabitSettings>): string =>
 const ratioName = (granularity: Granularity): string =>
   toSubPeriod(granularity) === "week" ? t`WAU/MAU` : t`DAU/MAU`;
 
+const { breakout_view: breakoutView, ...common } = commonSettings({
+  granularity: { units: ["day", "week"], defaultUnit: "day" },
+  breakout: true,
+  canPivot: true,
+});
+
 const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
-  ...commonSettings({
-    granularity: { units: ["day", "week"], defaultUnit: "day" },
-    breakout: true,
-  }),
+  ...common,
   "habit.active": withWidgetProps({
     getTitle: () => t`What event counts as showing up?`,
     getSection: () => "setup",
@@ -115,47 +117,38 @@ const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
     }),
     readDependencies: ["habit.measure", "counting", "breakout"],
   }),
-  "habit.stack_breakouts": {
-    getTitle: getStackBreakoutsTitle,
-    getSection: () => "setup",
-    inline: true,
-    widget: "toggle",
-    getDefault: () => true,
-    isValid: (value) => isBoolean(value),
-    // The ratio is always a line per group.
-    getHidden: (_context, settings) =>
-      settings.breakout == null || settings["habit.measure"] !== "histogram",
+  // Last in setup, under what it shows. The ratio's line per group already
+  // reads like a table's columns.
+  breakout_view: {
+    ...breakoutView,
+    getHidden: (context, settings) =>
+      settings["habit.measure"] === "ratio" ||
+      (breakoutView.getHidden?.(context, settings) ?? false),
     readDependencies: ["breakout", "habit.measure"],
   },
 };
 
 /**
  * Broken out, a series per group in the groups' colors: the ratio's lines,
- * or the histogram's bars side by side. Otherwise one series, in the color
- * the display panel picked.
+ * or the histogram's bars, a chart per group with "Stack series" on. Otherwise
+ * one series, in the color the display panel picked.
  */
-const isSeriesPerGroup = (settings: HabitSettings) =>
-  settings.breakout !== null &&
-  (settings["habit.measure"] === "ratio" || !settings["habit.stack_breakouts"]);
-
-/** The x-axis, then the groups when each has a series. */
-const getDimensions = (settings: HabitSettings, x: string): string[] =>
-  isSeriesPerGroup(settings) ? [x, BREAKOUT_COLUMN] : [x];
-
-/** The groups' colors when each has a series, else the picked color. */
 const getHabitSeriesSettings = (
   settings: HabitSettings,
+  x: string,
   metric: string,
   title: string,
   pickedColor: string | undefined,
-) =>
-  isSeriesPerGroup(settings)
-    ? getBreakoutSeriesSettings(settings.breakout)
-    : getSeriesSettings(metric, title, pickedColor);
-
-/** Broken out without a series per group, the histogram gets a chart per group. */
-const isChartPerGroup = (settings: HabitSettings) =>
-  settings.breakout !== null && !isSeriesPerGroup(settings);
+): VisualizationSettings =>
+  settings.breakout !== null
+    ? {
+        "graph.dimensions": [x, BREAKOUT_COLUMN],
+        ...getBreakoutSeriesSettings(settings.breakout),
+      }
+    : {
+        "graph.dimensions": [x],
+        ...getSeriesSettings(metric, title, pickedColor),
+      };
 
 export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
   kind: "habit",
@@ -201,7 +194,7 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
   getDisplay: (settings) => {
     switch (settings["habit.measure"]) {
       case "histogram":
-        return isChartPerGroup(settings) ? "small_multiples" : "bar";
+        return "bar";
       case "ratio":
         return "line";
     }
@@ -214,12 +207,15 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
         const peopleTitle = grainTitle(settings.counting);
         const isPercent = settings["habit.values"] === "percent";
         return {
-          "graph.dimensions": getDimensions(settings, "periods"),
           "graph.metrics": [people],
-          ...(isChartPerGroup(settings)
-            ? getBreakoutChartsSettings("bar")
-            : {}),
-          ...getHabitSeriesSettings(settings, people, peopleTitle, pickedColor),
+          ...getHabitSeriesSettings(
+            settings,
+            "periods",
+            people,
+            peopleTitle,
+            pickedColor,
+          ),
+          ...(settings.breakout !== null ? getStackedGroupsSettings() : {}),
           ...(isPercent ? getConversionColumnSettings(people) : {}),
           ...getAxisTitleSettings({
             x:
@@ -234,9 +230,14 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
         const subPeriod = toSubPeriod(settings.granularity);
         const title = ratioName(settings.granularity);
         return {
-          "graph.dimensions": getDimensions(settings, subPeriod),
           "graph.metrics": ["ratio"],
-          ...getHabitSeriesSettings(settings, "ratio", title, pickedColor),
+          ...getHabitSeriesSettings(
+            settings,
+            subPeriod,
+            "ratio",
+            title,
+            pickedColor,
+          ),
           ...getConversionColumnSettings("ratio"),
           ...getAxisTitleSettings({
             x: Lib.describeTemporalUnit(subPeriod),
@@ -247,7 +248,7 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
     }
   },
   getColorSlots: (settings, colors) =>
-    isSeriesPerGroup(settings) ? [] : [getSeriesColorSlot(colors)],
+    settings.breakout !== null ? [] : [getSeriesColorSlot(colors)],
   describePoint: (settings, point) => {
     switch (settings["habit.measure"]) {
       case "histogram": {

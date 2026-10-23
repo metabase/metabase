@@ -327,6 +327,7 @@ export type VisualizationSettingsDefinitions = {
   "sankey.show_edge_color"?: SeriesSettingDefinition<Value, Props>;
   "sankey.show_edge_labels"?: SeriesSettingDefinition<Value, Props>;
   "sankey.source"?: SeriesSettingDefinition<Value, Props>;
+  "sankey.split_panels"?: SeriesSettingDefinition<Value, Props>;
   "sankey.target"?: SeriesSettingDefinition<Value, Props>;
   "sankey.value"?: SeriesSettingDefinition<Value, Props>;
   "scalar.compact_primary_number"?: SeriesSettingDefinition<Value, Props>;

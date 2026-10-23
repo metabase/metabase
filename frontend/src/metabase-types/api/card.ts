@@ -441,11 +441,14 @@ export type VisualizationSettings = {
   /** Draws a bar chart as product analytics funnel steps. Not user-editable. */
   "product_analytics.funnel_steps"?: boolean;
 
-  /** Small multiples: the column with each row's chart. */
-  "small_multiples.column"?: string;
+  /** A chart per value of this column, one above another. Not user-editable. */
+  "small_multiples.column"?: string | null;
 
-  /** Small multiples: how each chart draws, e.g. "bar". */
-  "small_multiples.display"?: string;
+  /**
+   * Draws split panels as a chart per breakout value, scrolling, rather than
+   * panels in one chart. Not user-editable.
+   */
+  "graph.split_panels_small_multiples"?: boolean;
 
   /** Each funnel step's bar color, by step. Set from the event analysis display panel. */
   "product_analytics.funnel_step_colors"?: string[];
@@ -539,6 +542,9 @@ export type VisualizationSettings = {
 
   /** Result column name that splits each Sankey flow into one per value. Not user-editable yet. */
   "sankey.breakout"?: string;
+
+  /** A Sankey per breakout value, one above another. */
+  "sankey.split_panels"?: boolean;
 
   /** Colors for Sankey breakout values, keyed by formatted value. Not user-editable yet. */
   "sankey.breakout_colors"?: Record<string, string>;

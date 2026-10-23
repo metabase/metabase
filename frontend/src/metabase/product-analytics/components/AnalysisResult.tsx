@@ -83,6 +83,8 @@ type AnalysisResultProps = {
   /** Omit when the setup panel is already open. */
   onOpenSetup?: () => void;
   clickActionsMode: ClickActionsMode;
+  /** Shown in place of the chart, once there's a result. */
+  placeholder?: string;
   isDisplayOpen: boolean;
   onToggleDisplay: () => void;
 };
@@ -99,6 +101,7 @@ export const AnalysisResult = ({
   setupLabel,
   onOpenSetup,
   clickActionsMode,
+  placeholder,
   isDisplayOpen,
   onToggleDisplay,
 }: AnalysisResultProps) => {
@@ -169,7 +172,14 @@ export const AnalysisResult = ({
           {!isIncomplete && !isLoading && !error && rawSeries === null && (
             <Text c="text-secondary">{t`Results will appear here.`}</Text>
           )}
-          {shownSeries !== null && (
+          {shownSeries !== null && placeholder !== undefined && (
+            <Stack align="center" justify="center" flex={1} ta="center">
+              <Text c="text-secondary" maw="32rem">
+                {placeholder}
+              </Text>
+            </Stack>
+          )}
+          {shownSeries !== null && placeholder === undefined && (
             <Box flex={1} mih={0} pos="relative">
               <Visualization
                 rawSeries={shownSeries}

@@ -26,7 +26,6 @@ const MCP_CHART_TYPE_ICONS: Record<CardDisplayType, IconName> = {
   waterfall: "waterfall",
   list: "table2",
   cohort: "table2",
-  small_multiples: "bar",
 };
 
 // Chart types that can be the alternative.
