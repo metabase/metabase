@@ -85,9 +85,15 @@
 
   [[metabase.metabot.tools.recoverable.pipeline/uri-in-source-table!]] and the Agent API's hint for the same code
   pick their sentence by `:entity-type`."
-  (for [entity-type [nil "metric" "question" "model" "card" "table"]]
-    (cond-> {:message "Query failed."}
-      entity-type (assoc :entity-type entity-type :entity-id 1))))
+  (concat
+   (for [entity-type [nil "metric" "question" "model" "card" "table"]]
+     (cond-> {:message "Query failed."}
+       entity-type (assoc :entity-type entity-type :entity-id 1)))
+   (for [card-type ["model" "question"]]
+     {:message "Query failed." :source-card 12 :source-card-type card-type})
+   [{:message "Invalid query."
+     :paths "stages[0].filters: invalid type"
+     :humanized {"stages" [{"filters" ["invalid type"]}]}}]))
 
 (defn- v1-recovery-texts
   "Every recovery sentence that Metabot or the Agent API can send for a pipeline error.
@@ -122,6 +128,15 @@
            `browse_data` or asks for a numeric id would send their agent the wrong way"
     (doseq [text (v1-recovery-texts)]
       (is (nil? (mcp-vocabulary text)) text))))
+
+(deftest ^:parallel payload-dependent-recovery-text-is-checked-test
+  (let [texts (set (v1-recovery-texts))]
+    (doseq [card-type ["model" "question"]
+            columns   ["columns" "foreign-key columns"]]
+      (let [text (str "Call `read_resource` with `metabase://" card-type "/12/fields` to list the "
+                      columns " this " card-type " returns.")]
+        (is (contains? texts text) text)))
+    (is (contains? texts "Invalid at stages[0].filters: invalid type. Fix the named paths."))))
 
 (deftest ^:parallel the-vocabulary-check-finds-only-mcp-advice-test
   (testing "MCP v2's own hints trip it, so the test above can't pass vacuously"
