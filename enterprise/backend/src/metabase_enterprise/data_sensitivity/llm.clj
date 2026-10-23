@@ -402,6 +402,15 @@
 (def ^:private url-re
   #"(?i)\b(?:https?://|www\.)[^\s\"'<>]+")
 
+(def ^:private markup-re
+  #"\[[^\]]*\]\s*[(\[]|</?[A-Za-z!][^<>]*>|`")
+
+(defn markup?
+  "True when `s` holds a Markdown link or image, an HTML tag, or a backtick. A description is plain text, and the
+  Markdown renderer keeps such markup as working links and formatting."
+  [s]
+  (boolean (re-find markup-re s)))
+
 (defn- field-text
   "The text of `field` a description may quote a link from: its name, display name, description, and values."
   [{:keys [name display_name description sample_values cached_values]}]
@@ -409,8 +418,8 @@
 
 (defn- proposed-description
   "The description the model proposed for `field`, on one line, or nil when it proposed none or the proposal is not
-  allowed: the field's description is human-set, the text is over [[description-cap]], or it holds a link that is not
-  in the field's own data. `count!` counts each refusal."
+  allowed: the field's description is human-set, the text is over [[description-cap]], it holds [[markup?]], or it
+  holds a link that is not in the field's own data. `count!` counts each refusal."
   [field s count!]
   (let [s (some-> s (str/replace #"\s+" " ") str/trim)]
     (cond
@@ -423,8 +432,9 @@
       (> (count s) description-cap)
       (do (count! :description-too-long) nil)
 
-      (some #(not (str/includes? (field-text field) (str/replace % #"[.,;:!?)\]]+$" "")))
-            (re-seq url-re s))
+      (or (markup? s)
+          (some #(not (str/includes? (field-text field) (str/replace % #"[.,;:!?)\]]+$" "")))
+                (re-seq url-re s)))
       (do (count! :description-unsafe) nil)
 
       :else

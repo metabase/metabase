@@ -153,6 +153,9 @@
         (> (count value) llm/description-cap)
         (throw (bad-request (tru "The description must be at most {0} characters." llm/description-cap)))
 
+        (llm/markup? value)
+        (throw (bad-request (tru "The description must be plain text, without links, HTML tags or code.")))
+
         :else
         value))))
 

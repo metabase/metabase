@@ -545,6 +545,25 @@
     (testing "the other attributes parse as before"
       (is (= :PUBLIC (get-in parsed [:fields "A" :data-sensitivity]))))))
 
+(deftest parse-response-description-markup-test
+  (let [field-a (field "A" :sample_values ["https://docs.example.com/x"])]
+    (doseq [description ["Customer email. [Verify account](//evil.example/login)"
+                         "Customer email. [Verify account](/login)"
+                         "Customer email. [Docs](https://docs.example.com/x)"
+                         "Customer email. ![logo](logo.png)"
+                         "Customer email. [Verify account][1]"
+                         "Customer email. <a href=\"/login\">Verify</a>"
+                         "Customer email. <img src=x>"
+                         "Customer email. Run `DROP TABLE users` to fix."]]
+      (testing (str "a description with a Markdown link, an HTML tag or a code span is dropped and counted: " description)
+        (let [parsed (llm/parse-response [field-a] {:fields [(entry "A" :description description)]} everything)]
+          (is (nil? (get-in parsed [:fields "A" :description])))
+          (is (= 1 (get-in parsed [:counts :description-unsafe])))))))
+  (testing "plain text with brackets or comparison signs is kept"
+    (doseq [description ["Order total [USD], net of tax." "Count of items where 1 < qty and qty > 0."]]
+      (is (= description (get-in (llm/parse-response [(field "A")] {:fields [(entry "A" :description description)]} everything)
+                                 [:fields "A" :description]))))))
+
 (deftest parse-response-attribute-subset-test
   (let [fields [(field "A") (field "B")]
         response {:fields [(entry "A" :data_sensitivity "PII" :semantic_type "type/Email" :description "An email")

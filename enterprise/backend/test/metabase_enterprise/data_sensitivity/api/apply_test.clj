@@ -342,6 +342,10 @@
          (testing "a description must be non-blank and at most the cap"
            (apply-edit! desc 400 "   ")
            (apply-edit! desc 400 (apply str (repeat 201 "x"))))
+         (testing "a description must not hold a Markdown link, an HTML tag or a code span"
+           (apply-edit! desc 400 "A field. [Verify account](//evil.example/login)")
+           (apply-edit! desc 400 "A field. <a href=\"/login\">Verify</a>")
+           (apply-edit! desc 400 "A field. Run `DROP TABLE users`."))
          (testing "a refused value leaves the proposal as it was"
            (is (= {sem :pending ds :pending desc :pending} (statuses [sem ds desc]))))
          (testing "a valid value is normalized and written"
