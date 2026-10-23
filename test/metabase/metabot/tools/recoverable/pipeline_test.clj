@@ -115,17 +115,17 @@
 (defn- mcp-vocabulary
   "The part of `text` that only MCP v2's recovery text uses, or nil.
 
-  That is the `browse_data` tool, or a sentence that mentions a numeric id together with `source-table:` or
+  That is the `browse_data` or `get_content` tool, or a sentence that mentions a numeric id with `source-table:` or
   `source-card:`. A `<numeric id>` placeholder inside a `metabase://` resource URI only names the resource to read,
   so it doesn't count."
   [text]
-  (or (re-find #"browse_data" text)
+  (or (re-find #"browse_data|get_content" text)
       (some #(when (and (re-find #"(?i)\bnumeric\b" %) (re-find #"source-(table|card)" %)) %)
             (str/split (str/replace text #"metabase://[^\s`]*<numeric id>" "") #"(?<=\.)\s+"))))
 
 (deftest ^:parallel v1-recovery-text-keeps-to-v1-vocabulary-test
   (testing "Metabot and the Agent API write portable FKs and entity_ids, so a recovery sentence that names
-           `browse_data` or asks for a numeric id would send their agent the wrong way"
+           `browse_data` or `get_content` or asks for a numeric id would send their agent the wrong way"
     (doseq [text (v1-recovery-texts)]
       (is (nil? (mcp-vocabulary text)) text))))
 
@@ -140,9 +140,12 @@
 
 (deftest ^:parallel the-vocabulary-check-finds-only-mcp-advice-test
   (testing "MCP v2's own hints trip it, so the test above can't pass vacuously"
-    (doseq [code [:ambiguous-fk :missing-source-in-first-stage]]
-      (is (some? (mcp-vocabulary (message/render (v2-hints/recovery-hint {:error code}))))
-          (str code))))
+    (doseq [data (concat [{:error :ambiguous-fk} {:error :missing-source-in-first-stage}]
+                         (for [code [:column-not-returned :unexportable-fk :ambiguous-fk]
+                               card-type ["model" "question"]]
+                           {:error code :source-card 12 :source-card-type card-type}))]
+      (is (some? (mcp-vocabulary (message/render (v2-hints/recovery-hint data))))
+          (pr-str data))))
   (testing "a numeric id placeholder outside a resource URI trips it"
     (doseq [text ["Put `<numeric id>` into `source-card:`."
                   "Use `<numeric id>` as `source-table:`."]]
