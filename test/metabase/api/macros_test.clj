@@ -221,3 +221,26 @@
       ""          "/:id"                      "/:id"
       nil         "/"                         "/"
       ""          "/"                         "/")))
+
+(api.macros/defendpoint :get "/:id/things/:thing"
+  "An endpoint for [[matching-route-test]]."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id    pos-int?]
+                    [:thing :string]]]
+  {:id id})
+
+(api.macros/defendpoint :get ["/:id" :id #"[1-9]\d*"]
+  "An endpoint for [[matching-route-test]]."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id pos-int?]]]
+  {:id id})
+
+(deftest ^:parallel matching-route-test
+  (testing "a request is matched to the endpoint the namespace's handler would route it to, with decoded route params"
+    (are [method path expected] (= expected
+                                   (api.macros/matching-route 'metabase.api.macros-test
+                                                              {:request-method method :uri path :path-info path}))
+      :get  "/1/things/a%20b" {:route [:get "/:id/things/:thing"] :route-params {:id "1" :thing "a b"}}
+      :get  "/1"              {:route [:get "/:id"] :route-params {:id "1"}}
+      :get  "/abc"            nil
+      :post "/1"              nil)))
