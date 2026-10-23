@@ -38,6 +38,31 @@ export const LOADING_SPINNER_DELAY_MS: NumberPrototypeSetting = {
   max: 5000,
 };
 
+export const FILTER_SUMMARY_TRIGGER: SegmentedPrototypeSetting = {
+  type: "segmented",
+  key: "filter-summary-trigger",
+  label: "Summarize filters",
+  description:
+    "Replace the filter pills with a short AI summary. After inactivity: when the pointer is away from the filter bar for a while. When saved: when the question is saved and has no changes. Hover the summary to see the pills.",
+  options: [
+    { value: "inactivity", label: "After inactivity" },
+    { value: "saved", label: "When saved" },
+    { value: "off", label: "Off" },
+  ],
+  defaultValue: "off",
+};
+
+export const FILTER_SUMMARY_DELAY_MS: NumberPrototypeSetting = {
+  type: "number",
+  key: "filter-summary-delay-ms",
+  label: "Summary delay, ms",
+  description:
+    "How long the filter bar waits with no activity before it shows the summary",
+  defaultValue: 4000,
+  min: 0,
+  max: 60000,
+};
+
 /**
  * The settings of the current prototype, in the order the prototype settings
  * submenu shows them. Each prototype branch lists its own settings here and
@@ -47,4 +72,6 @@ export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   AUTO_APPLY_TYPED_VALUES,
   AUTO_APPLY_DELAY_MS,
   LOADING_SPINNER_DELAY_MS,
+  FILTER_SUMMARY_TRIGGER,
+  FILTER_SUMMARY_DELAY_MS,
 ];

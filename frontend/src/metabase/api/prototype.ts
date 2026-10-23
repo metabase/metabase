@@ -73,6 +73,14 @@ export type PrototypeSamples = {
   columns: { field_id: FieldId; min: number; max: number }[];
 };
 
+// Prototype: the request and the response of POST /api/prototype/filter-summary.
+export type PrototypeFilterSummaryRequest = {
+  question_name?: string;
+  filters: string[];
+};
+
+export type PrototypeFilterSummaryResponse = { summary: string | null };
+
 export const prototypeApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     suggestPrototypeFilterValues: builder.mutation<
@@ -110,6 +118,17 @@ export const prototypeApi = Api.injectEndpoints({
         url: "/api/prototype/field-categories",
       }),
     }),
+    getPrototypeFilterSummary: builder.query<
+      PrototypeFilterSummaryResponse,
+      PrototypeFilterSummaryRequest
+    >({
+      query: (body) => ({
+        method: "POST",
+        url: "/api/prototype/filter-summary",
+        body,
+      }),
+      keepUnusedDataFor: 60 * 60,
+    }),
     getPrototypeSamples: builder.query<PrototypeSamples | null, void>({
       query: () => ({
         method: "GET",
@@ -125,4 +144,5 @@ export const {
   useListPrototypeFilterUsageQuery,
   useListPrototypeFieldCategoriesQuery,
   useGetPrototypeSamplesQuery,
+  useGetPrototypeFilterSummaryQuery,
 } = prototypeApi;

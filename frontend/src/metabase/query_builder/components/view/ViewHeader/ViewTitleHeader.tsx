@@ -234,6 +234,7 @@ export function ViewTitleHeader({
         <KeyboardFilterRow
           expanded={areFiltersExpanded}
           question={question}
+          isDirty={isDirty}
           draftKey={draftFilterKey}
           onAddDraft={addDraftFilter}
           onRemoveDraft={removeDraftFilter}

@@ -382,3 +382,38 @@
   border-left: 1px solid var(--mb-color-border-neutral);
   background-color: var(--mb-color-background_page-secondary);
 }
+
+/* Prototype: the AI summary of the filters, in place of the pills. */
+.filterSummary {
+  display: flex;
+  align-items: center;
+  gap: var(--mantine-spacing-sm);
+  min-width: 0;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--mb-color-text-secondary);
+  font: inherit;
+  font-size: var(--mantine-font-size-md);
+  text-align: left;
+  cursor: pointer;
+  animation: filter-summary-in 0.3s ease-out;
+
+  & svg {
+    flex-shrink: 0;
+    color: var(--mb-color-core-filter);
+  }
+
+  & span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@keyframes filter-summary-in {
+  from {
+    opacity: 0;
+  }
+}

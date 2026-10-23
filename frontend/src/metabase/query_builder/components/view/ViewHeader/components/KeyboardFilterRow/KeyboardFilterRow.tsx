@@ -2,6 +2,12 @@ import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
+import { skipToken, useGetPrototypeFilterSummaryQuery } from "metabase/api";
+import {
+  FILTER_SUMMARY_DELAY_MS,
+  FILTER_SUMMARY_TRIGGER,
+  usePrototypeSetting,
+} from "metabase/prototype";
 import { getFilterItems } from "metabase/querying/filters/components/FilterPanel/utils";
 import { FilterAutoApplyContext } from "metabase/querying/filters/components/FilterPicker/FilterAutoApplyContext";
 import type { QueryBuilderMode } from "metabase/redux/store";
@@ -19,7 +25,11 @@ import { type FilterPillPart, FilterPillParts } from "./FilterPillParts";
 import S from "./KeyboardFilterRow.module.css";
 import { PopoverFilterPill } from "./PopoverFilterPill";
 import type { DraftState } from "./types";
-import { getDraftStateFromFilter } from "./utils";
+import {
+  formatDraftValue,
+  getDraftStateFromFilter,
+  getPillOperatorLabel,
+} from "./utils";
 
 /** The filter that a draft pill edits, and the query from before the edit. */
 type ActiveDraft = {
@@ -35,8 +45,13 @@ type ActiveDraft = {
   newFilterPosition?: { stageIndex: number; filterIndex: number };
 };
 
+/** In the "saved" mode, the wait after the pointer leaves the filter bar. */
+const SAVED_SUMMARY_DELAY_MS = 1000;
+
 interface KeyboardFilterRowProps {
   question: Question;
+  /** True when the question has changes that are not saved. */
+  isDirty: boolean;
   expanded: boolean;
   draftKey: number | null;
   onAddDraft: () => void;
@@ -54,6 +69,7 @@ interface KeyboardFilterRowProps {
  */
 export function KeyboardFilterRow({
   question,
+  isDirty,
   expanded,
   draftKey,
   onAddDraft,
@@ -196,8 +212,40 @@ export function KeyboardFilterRow({
     });
   };
 
+  const { summary, onMouseEnter, onMouseLeave, onShowPills } = useFilterSummary(
+    {
+      question,
+      query,
+      items,
+      isDirty,
+      isEditing: activeDraft != null,
+    },
+  );
+
   if (!expanded) {
     return null;
+  }
+
+  if (summary != null) {
+    return (
+      <Flex
+        className={S.row}
+        align="center"
+        py="sm"
+        data-testid="keyboard-filter-row"
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
+      >
+        <button
+          className={S.filterSummary}
+          data-testid="filter-summary"
+          onClick={onShowPills}
+        >
+          <Icon name="filter" size={14} />
+          <span>{summary}</span>
+        </button>
+      </Flex>
+    );
   }
 
   const draftPill = activeDraft != null && (
@@ -225,6 +273,8 @@ export function KeyboardFilterRow({
       gap="sm"
       py="sm"
       data-testid="keyboard-filter-row"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <Tooltip label={t`Add a filter (F)`}>
         <button
@@ -297,6 +347,100 @@ export function KeyboardFilterRow({
       {activeDraft?.itemIndex == null && draftPill}
     </Flex>
   );
+}
+
+interface UseFilterSummaryOpts {
+  question: Question;
+  query: Lib.Query;
+  items: ReturnType<typeof getFilterItems>;
+  isDirty: boolean;
+  isEditing: boolean;
+}
+
+/**
+ * Prototype: a short AI summary that replaces the filter pills. It shows after
+ * a time with no activity in the filter bar, or when the question is saved,
+ * by the prototype setting. The pointer over the filter bar shows the pills.
+ */
+function useFilterSummary({
+  question,
+  query,
+  items,
+  isDirty,
+  isEditing,
+}: UseFilterSummaryOpts) {
+  const [trigger] = usePrototypeSetting(FILTER_SUMMARY_TRIGGER);
+  const [delayMs] = usePrototypeSetting(FILTER_SUMMARY_DELAY_MS);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isSummarized, setIsSummarized] = useState(false);
+
+  const filterTexts = useMemo(
+    () =>
+      items.map(({ filter, stageIndex }) =>
+        getFilterText(query, stageIndex, filter),
+      ),
+    [items, query],
+  );
+  const isEnabled = trigger !== "off" && filterTexts.length > 0;
+  const { currentData } = useGetPrototypeFilterSummaryQuery(
+    isEnabled
+      ? {
+          question_name: question.displayName() ?? undefined,
+          filters: filterTexts,
+        }
+      : skipToken,
+  );
+  const summary = currentData?.summary ?? null;
+
+  const canSummarize =
+    summary != null &&
+    !isEditing &&
+    !isHovered &&
+    (trigger === "inactivity" || (question.isSaved() && !isDirty));
+
+  // Each change of the query starts the wait again.
+  useEffect(() => {
+    if (!canSummarize) {
+      setIsSummarized(false);
+      return;
+    }
+    const timeout = setTimeout(
+      () => setIsSummarized(true),
+      trigger === "saved" ? SAVED_SUMMARY_DELAY_MS : delayMs,
+    );
+    return () => clearTimeout(timeout);
+  }, [canSummarize, trigger, delayMs, query]);
+
+  return {
+    summary: isSummarized ? summary : null,
+    onMouseEnter: () => setIsHovered(true),
+    onMouseLeave: () => setIsHovered(false),
+    onShowPills: () => setIsSummarized(false),
+  };
+}
+
+/**
+ * The text of a filter pill, with all its values. The display name of a filter
+ * hides many values, like "Plan is 2 selections".
+ */
+function getFilterText(
+  query: Lib.Query,
+  stageIndex: number,
+  filter: Lib.FilterClause,
+) {
+  const state = getDraftStateFromFilter(query, stageIndex, filter);
+  const { column, operator, values = [] } = state ?? {};
+  if (column == null || operator == null) {
+    return Lib.displayInfo(query, stageIndex, filter).displayName;
+  }
+  const separator = operator.valueKind === "range" ? ` ${t`and`} ` : ", ";
+  return [
+    column.label,
+    getPillOperatorLabel(operator),
+    values.map((value) => formatDraftValue(operator, value)).join(separator),
+  ]
+    .filter((part) => part.length > 0)
+    .join(" ");
 }
 
 type RenderCheckOpts = {
