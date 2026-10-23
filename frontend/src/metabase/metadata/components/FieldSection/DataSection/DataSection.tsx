@@ -22,13 +22,13 @@ import SubInputIllustration from "./illustrations/sub-input.svg?component";
 
 type DataSectionBaseProps = {
   field: Field;
-  readOnly?: boolean;
+  disabled?: boolean;
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
 const DataSectionBase = ({
   field,
-  readOnly,
+  disabled,
   onTrackMetadataChange,
 }: DataSectionBaseProps) => {
   const id = getRawTableFieldId(field);
@@ -136,7 +136,7 @@ const DataSectionBase = ({
                 <Stack>
                   <Switch
                     checked={isCasting}
-                    disabled={readOnly}
+                    disabled={disabled}
                     classNames={{
                       body: S.switchBody,
                     }}
@@ -149,7 +149,7 @@ const DataSectionBase = ({
                     <CoercionStrategyPicker
                       autoFocus={autoFocusCoercionPicker}
                       baseType={field.base_type}
-                      readOnly={readOnly}
+                      disabled={disabled}
                       dropdownOpened={isCoercionPickerOpen}
                       value={field.coercion_strategy ?? undefined}
                       onChange={handleCoercionStrategyChange}

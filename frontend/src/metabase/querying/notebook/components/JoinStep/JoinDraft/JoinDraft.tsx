@@ -148,6 +148,7 @@ export function JoinDraft({
           <NotebookCell
             className={S.JoinConditionCell}
             color={color}
+            align="flex-start"
             data-testid="new-join-condition"
             p={rem("6px")}
           >

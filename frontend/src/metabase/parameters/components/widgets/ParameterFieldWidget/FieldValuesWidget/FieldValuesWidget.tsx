@@ -1,5 +1,6 @@
 import cx from "classnames";
 import {
+  type JSX,
   type StyleHTMLAttributes,
   forwardRef,
   useEffect,

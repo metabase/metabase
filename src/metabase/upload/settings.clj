@@ -46,7 +46,7 @@
 ;; to migrate to the new way to set uploads settings.
 
 (defsetting uploads-enabled
-  (deferred-tru "Whether or not uploads are enabled")
+  "Whether or not uploads are enabled"
   :deprecated "0.50.0"
   :visibility :internal
   :export?    false
@@ -56,7 +56,7 @@
   :setter     (fn [_] (log/warn "'uploads-enabled' has been removed; use 'uploads_enabled' on the database instead")))
 
 (defsetting uploads-database-id
-  (deferred-tru "Database ID for uploads")
+  "Database ID for uploads"
   :deprecated "0.50.0"
   :visibility :internal
   :export?    false
@@ -65,7 +65,7 @@
   :setter     (fn [_] (log/warn "'uploads-database-id' has been removed; use 'uploads_enabled' on the database instead")))
 
 (defsetting uploads-schema-name
-  (deferred-tru "Schema name for uploads")
+  "Schema name for uploads"
   :deprecated "0.50.0"
   :encryption :no
   :visibility :internal
@@ -75,7 +75,7 @@
   :setter     (fn [_] (log/warn "'uploads-schema-name' has been removed; use 'uploads_schema_name' on the database instead")))
 
 (defsetting uploads-table-prefix
-  (deferred-tru "Prefix for upload table names")
+  "Prefix for upload table names"
   :encryption :no
   :deprecated "0.50.0"
   :visibility :internal

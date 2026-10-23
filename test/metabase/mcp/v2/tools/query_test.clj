@@ -10,6 +10,7 @@
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
@@ -986,6 +987,43 @@
         (is (str/includes? msg "1"))
         (is (str/includes? msg "fields"))))))
 
+(deftest ^:parallel malformed-clauses-name-the-offending-path-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [orders   (first (:stages (numeric-orders-query)))
+          post-agg (assoc orders :aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]])]
+      (doseq [[label path stages] [["a number as `aggregation`" "[0] \"aggregation\":"
+                                    [(assoc orders :aggregation 42)]]
+                                   ["an empty aggregation clause used in `order-by`" "[0] \"aggregation\":"
+                                    [(assoc orders :aggregation [[]] :order-by [["desc" {} []]])]]
+                                   ["a number as `joins`" "[0] \"joins\":"
+                                    [(assoc orders :joins 42)]]
+                                   ["a post-aggregation filter with a number as `order-by`" "[0] \"order-by\":"
+                                    [(assoc post-agg :order-by 42)]]
+                                   ["a post-aggregation filter with a number as `fields`" "[0] \"fields\":"
+                                    [(assoc post-agg :fields 42)]]
+                                   ["a post-aggregation filter with a string as `limit`" "[0] \"limit\":"
+                                    [(assoc post-agg :limit "x")]]
+                                   ["a later post-aggregation filter with a number as `fields`" "[1] \"fields\":"
+                                    [orders (assoc (dissoc post-agg :source-table) :fields 42)]]
+                                   ["a number as a later stage" "[1]" [orders 42]]
+                                   ["an aggregation list as a later stage" "[1]" [orders [["count" {}]]]]]]
+        (testing label
+          (is (str/starts-with? (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
+                                                                {:query {:lib/type "mbql/query" :stages stages}}))
+                                (str "\"Representations query has an invalid structure.\" "
+                                     "Invalid at \"stages\": " path " "))))))))
+
+(deftest ^:parallel post-aggregation-errors-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (doseq [clauses [{:aggregation [["count"]]
+                      :filters [[">" ["aggregation" 0] 1]]
+                      :limit 5}
+                     {:aggregation [["count" {}] ["count" {}]]
+                      :filters [[">" {} ["aggregation" {} 0] 1]]}]]
+      (is (re-find #"MBQL 5 requires"
+                   (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
+                                                   {:query (numeric-orders-query clauses)})))))))
+
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest repair-forgiven-shortcuts-still-execute-test
   (testing "GHY-4313: the shortcuts the repair layer exists to forgive are not schema failures"
@@ -1119,7 +1157,7 @@
       (mt/with-current-user (mt/user->id :rasta)
         (is (str/includes? (error-text (call! (str (random-uuid))
                                               {:query (assoc (numeric-orders-query {:limit 1}) :evil "x")}))
-                           ":evil"))))))
+                           "Failing paths: evil: disallowed key"))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest query-shape-still-reaches-the-qp-test
@@ -1139,3 +1177,16 @@
             params [{:type "number/=" :target ["variable" ["template-tag" "n"]] :value 1}]
             handle (stored-handle! sid (pk-ordered-orders-query {:parameters params}))]
         (is (= params (:parameters (capture-qp-query! {:query_handle handle}))))))))
+
+;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
+(deftest app-db-failure-in-query-run-is-internal-test
+  (testing "A handle run that fails in an app DB lookup is an internal error, without the app DB's SQL"
+    (mt/with-model-cleanup [:model/McpQueryHandle]
+      (let [sid    (str (random-uuid))
+            handle (stored-handle! sid (pk-ordered-orders-query nil))]
+        (mt/with-current-user (mt/user->id :rasta)
+          (mt/with-dynamic-fn-redefs [lib-be.db/columns (fn [& _]
+                                                          (t2/with-transaction [_conn]
+                                                            (t2/query ["SELECT no_such_column FROM metabase_field"])))]
+            (is (= {:result {:isError true :content [{:type "text" :text "Internal error"}]}}
+                   (call! sid {:query_handle handle})))))))))
