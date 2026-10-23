@@ -2,9 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.agent-lib.test-util :as agent-lib.tu]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -399,3 +401,15 @@
     (is (=? {:class :unrecoverable :code :internal} (pipeline-failure "boom" {}))))
   (testing "a successful body is returned untouched"
     (is (= :fine (tools/with-pipeline-errors :fine)))))
+
+(deftest ^:parallel structural-validation-paths-test
+  (let [e     (agent-lib.tu/structural-validation-error)
+        data  (ex-data e)
+        error (pipeline-failure (ex-message e) (assoc data :agent-error? true))
+        hint  "Invalid at stages[0].filters: invalid type. Fix the named paths."]
+    (is (= {:message "Representations query has an invalid structure."
+            :paths "stages[0].filters: invalid type"}
+           (:data error)))
+    (is (= hint (recovery-hints/recovery-hint data)))
+    (is (= (str "Representations query has an invalid structure.\n" hint)
+           (tools.error/recoverable-text error #{})))))
