@@ -10,6 +10,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import {
   createMockDatabase,
   createMockEngines,
@@ -65,6 +66,10 @@ const getListRequestParams = () => {
 };
 
 describe("DatabaseListApp", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("requests stub databases so they can be listed", async () => {
     setup();
 
