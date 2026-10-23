@@ -1,6 +1,12 @@
 import yaml from "js-yaml";
 
-import { USERS, USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USERS,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as Urls from "metabase/urls/data-apps";
 import type {
   Collection,
@@ -10,11 +16,19 @@ import type {
   DataApp,
   Group,
   GroupInfo,
+  VisualizationDisplay,
   WritebackAction,
 } from "metabase-types/api";
 
-import { createTestNativeQuery, updateSetting } from "./api";
-import type { DataAppTestEnv } from "./data-app-test-env";
+import {
+  type StructuredQuestionDetails,
+  createLibrary,
+  createQuestion,
+  createTestNativeQuery,
+  publishTables,
+  updateSetting,
+} from "./api";
+import type { DataAppQuestions, DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import {
   LOCAL_GIT_PATH,
@@ -56,10 +70,13 @@ type MockDataAppOptions<TestEnv> = {
   /** `allowed_hosts` served in the bundle response header. */
   allowedHosts?: string[];
   /**
-   * Config a fixture reads at runtime, rather than hard-coding ids that track the
-   * Cypress snapshot.
+   * Config a fixture reads at runtime, rather than hard-coding ids. As a
+   * function, it is called with the app's questions, after ORDERS is published
+   * to the Library and the questions are created on it in the app's collection.
    */
-  testEnv?: TestEnv;
+  testEnv?:
+    | TestEnv
+    | ((questions: DataAppQuestions) => TestEnv | Cypress.Chainable<TestEnv>);
   /** Delays the bundle response, so a loading assertion has a window to catch. */
   bundleDelayMs?: number;
 };
@@ -72,6 +89,25 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
   const displayName = options.displayName ?? appName;
   const allowedHosts = options.allowedHosts ?? [];
 
+  registerDataApp(slug, displayName, allowedHosts);
+
+  // Prelude runs in the sandbox realm before the bundle's factory, so the app
+  // can read the injected config as a global (see MockDataAppOptions.testEnv).
+  const prelude = (env: TestEnv | undefined) =>
+    env !== undefined
+      ? `globalThis.__METABASE_DATA_APP_TEST_ENV__ = ${JSON.stringify(env)};\n`
+      : "";
+
+  return resolveTestEnv(slug, options.testEnv).then((env) =>
+    buildMockDataApp(slug, displayName, allowedHosts, prelude(env), options),
+  );
+};
+
+const registerDataApp = (
+  slug: string,
+  displayName: string,
+  allowedHosts: string[],
+) => {
   // the entrypoint checks for app access before serving its HTML
   // we need to have a real app in the database - mocking the endpoint isn't enough
   cy.request({
@@ -98,15 +134,96 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
       group_ids: [USER_GROUPS.ALL_USERS_GROUP],
     });
   });
+};
 
-  // Prelude runs in the sandbox realm before the bundle's factory, so the app
-  // can read the injected config as a global (see MockDataAppOptions.testEnv).
-  const prelude =
-    options.testEnv !== undefined
-      ? `globalThis.__METABASE_DATA_APP_TEST_ENV__ = ${JSON.stringify(options.testEnv)};\n`
-      : "";
+export const publishDataAppTables = () =>
+  cy
+    .request<Collection | { data: null }>("GET", "/api/ee/library")
+    .then(({ body }) => {
+      if (!("id" in body)) {
+        createLibrary();
+      }
+      publishTables({ table_ids: [SAMPLE_DATABASE.ORDERS_ID] });
+    });
 
-  return cy.task<string>("buildDataApp", { appName }).then((bundleCode) => {
+const createDataAppQuestion = (
+  collectionId: CollectionId,
+  name: string,
+  query: Omit<StructuredQuestionDetails["query"], "source-table">,
+  display: VisualizationDisplay = "table",
+) =>
+  createQuestion({
+    name,
+    display,
+    query: { "source-table": SAMPLE_DATABASE.ORDERS_ID, ...query },
+    collection_id: collectionId,
+  }).then(({ body }) => body);
+
+const createDataAppQuestions = (
+  slug: string,
+): Cypress.Chainable<DataAppQuestions> => {
+  const { ORDERS } = SAMPLE_DATABASE;
+
+  publishDataAppTables();
+
+  return cy
+    .request<DataApp>("GET", `/api/ee/apps/${slug}`)
+    .then(({ body: { resource_collection_id } }) =>
+      createDataAppQuestion(resource_collection_id, "Orders", {}).then(
+        (orders) =>
+          createDataAppQuestion(resource_collection_id, "Orders count", {
+            aggregation: [["count"]],
+          }).then((ordersCount) =>
+            createDataAppQuestion(
+              resource_collection_id,
+              "Orders by year",
+              {
+                aggregation: [["count"]],
+                breakout: [
+                  ["field", ORDERS.CREATED_AT, { "temporal-unit": "year" }],
+                ],
+              },
+              "line",
+            ).then(
+              (ordersByYear): DataAppQuestions => ({
+                collectionId: resource_collection_id,
+                ordersEntityId: orders.entity_id,
+                ordersCountEntityId: ordersCount.entity_id,
+                ordersByYearId: ordersByYear.id,
+              }),
+            ),
+          ),
+      ),
+    );
+};
+
+const isTestEnvFactory = <TestEnv>(
+  testEnv: MockDataAppOptions<TestEnv>["testEnv"],
+): testEnv is (
+  questions: DataAppQuestions,
+) => TestEnv | Cypress.Chainable<TestEnv> => typeof testEnv === "function";
+
+const resolveTestEnv = <TestEnv>(
+  slug: string,
+  testEnv: MockDataAppOptions<TestEnv>["testEnv"],
+): Cypress.Chainable<TestEnv | undefined> =>
+  isTestEnvFactory(testEnv)
+    ? createDataAppQuestions(slug).then((questions) => {
+        const env = testEnv(questions);
+        return Cypress.isCy(env)
+          ? env
+          : cy.wrap<TestEnv | undefined>(env, { log: false });
+      })
+    : cy.wrap<TestEnv | undefined>(testEnv, { log: false });
+
+const buildMockDataApp = <TestEnv>(
+  slug: string,
+  displayName: string,
+  allowedHosts: string[],
+  prelude: string,
+  options: MockDataAppOptions<TestEnv>,
+) =>
+  cy.task<string>("buildDataApp", { appName: slug }).then((bundleCode) => {
     const app = fakeDataApp({
       name: slug,
       display_name: displayName,
@@ -138,7 +255,6 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
 
     return cy.wrap({ slug, displayName }, { log: false });
   });
-};
 
 /**
  * The two rejections endpoint scope enforcement can emit. `scope_not_permitted` comes from
@@ -596,11 +712,34 @@ export function visitDataAppDevApp(clientHost: string) {
   }).should("exist");
 }
 
+const DATA_APP_DEV_SLUG = "vite-6-data-app-host-app";
+const DATA_APP_DEV_ORDERS_ENTITY_ID = "vite6DataAppOrdersCrd";
+
 export function setUpDataAppDevServer(clientHost: string) {
   const mbUrl = Cypress.config("baseUrl");
   if (!mbUrl) {
     throw new Error("baseUrl must be set for the data-app dev-server suite");
   }
+
+  publishDataAppTables();
+  registerDataApp(DATA_APP_DEV_SLUG, "Vite 6 Data App", [
+    "https://allowed.data-app.test",
+  ]);
+  cy.request<DataApp>("GET", `/api/ee/apps/${DATA_APP_DEV_SLUG}`).then(
+    ({ body: { resource_collection_id } }) =>
+      cy.request("POST", "/api/card", {
+        name: "Orders",
+        display: "table",
+        visualization_settings: {},
+        collection_id: resource_collection_id,
+        entity_id: DATA_APP_DEV_ORDERS_ENTITY_ID,
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: { "source-table": SAMPLE_DATABASE.ORDERS_ID },
+        },
+      }),
+  );
 
   cy.task("removeDataAppPaths", { paths: [DATA_APP_DEV_ENV_PATH] });
   waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: false });

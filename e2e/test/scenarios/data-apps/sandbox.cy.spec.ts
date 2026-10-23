@@ -4,7 +4,7 @@ import {
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { dataAppTestEnv } from "./helpers";
 
 const { H } = cy;
 
@@ -47,15 +47,15 @@ describe("scenarios > data apps > sandbox & isolation", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
         allowedHosts: [ALLOWED_ORIGIN],
-        testEnv: {
-          ...TEST_ENV,
+        testEnv: (questions) => ({
+          ...dataAppTestEnv(questions),
           sandbox: {
             allowedUrl: ALLOWED_URL,
             blockedUrl: BLOCKED_URL,
             xhrAllowedUrl: ALLOWED_URL,
             xhrBlockedUrl: BLOCKED_URL,
           },
-        },
+        }),
       });
 
       visitAppRoute("sandboxing");
@@ -97,7 +97,7 @@ describe("scenarios > data apps > sandbox & isolation", () => {
     it("serves the embed document with locked-down headers, renders the app in a sandboxed iframe, and keeps the app's CSS and JS globals inside it", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
+        testEnv: dataAppTestEnv,
       });
 
       cy.request({

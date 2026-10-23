@@ -10,7 +10,7 @@ import {
   type GroupPermissions,
 } from "metabase-types/api";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { dataAppTestEnv } from "./helpers";
 
 const { H } = cy;
 
@@ -33,7 +33,7 @@ describe("scenarios > data apps > viewing & routing", () => {
     it("lets a non-admin open a data app by direct URL", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
+        testEnv: dataAppTestEnv,
       });
 
       // A normal (non-admin) user has data access, so the app opens and renders
@@ -58,7 +58,7 @@ describe("scenarios > data apps > viewing & routing", () => {
 
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
+        testEnv: dataAppTestEnv,
       });
 
       cy.signIn("nodata");
@@ -90,7 +90,7 @@ describe("scenarios > data apps > viewing & routing", () => {
     it("keeps the loader up until the app's bundle has actually rendered", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
+        testEnv: dataAppTestEnv,
         bundleDelayMs: 2000,
       });
 
@@ -113,7 +113,7 @@ describe("scenarios > data apps > viewing & routing", () => {
     it("starts on a deep-linked sub-route, and mirrors link and imperative route changes into the parent URL", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
+        testEnv: dataAppTestEnv,
       });
 
       cy.log("deep-link directly to a sub-route");
@@ -194,7 +194,7 @@ describe("scenarios > data apps > viewing & routing", () => {
     it("shows a themed host error screen when the bundle throws while rendering", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
+        testEnv: dataAppTestEnv,
       });
 
       visitAppRoute("throw");

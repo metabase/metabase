@@ -1,11 +1,10 @@
-import { ORDERS_BY_YEAR_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
   DATA_APP_NAME as APP_NAME,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { dataAppTestEnv } from "./helpers";
 
 const { H } = cy;
 
@@ -21,13 +20,13 @@ describe("scenarios > data apps > SDK runtime", () => {
     const setupQueryStatesApp = () =>
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
-        testEnv: {
-          ...TEST_ENV,
+        testEnv: (questions) => ({
+          ...dataAppTestEnv(questions),
           // A card that doesn't exist, so the query resolves to an error.
           errorQuery: {
             source: { type: "card", entityId: "missingQuestionEntity" },
           },
-        },
+        }),
       });
 
     it("surfaces the useMetabaseQuery error state, and re-runs the query when the app calls refetch", () => {
@@ -64,7 +63,7 @@ describe("scenarios > data apps > SDK runtime", () => {
     it("renders a StaticQuestion from useMetabaseQueryObject", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
+        testEnv: dataAppTestEnv,
       });
 
       visitAppRoute("static-question");
@@ -99,7 +98,7 @@ describe("scenarios > data apps > SDK runtime", () => {
     it("writes text to the clipboard from a user click", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
+        testEnv: dataAppTestEnv,
       });
 
       visitAppRoute("clipboard");
@@ -137,7 +136,7 @@ describe("scenarios > data apps > SDK runtime", () => {
     it("shows the default neutral error state for a missing question", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
-        testEnv: TEST_ENV,
+        testEnv: dataAppTestEnv,
       });
 
       visitAppRoute("missing-question");
@@ -169,10 +168,10 @@ describe("scenarios > data apps > SDK runtime", () => {
     it("downloads a chart question as PNG", () => {
       H.mockDataApp(APP_NAME, {
         displayName: APP_DISPLAY_NAME,
-        testEnv: {
-          ...TEST_ENV,
-          downloadQuestionId: ORDERS_BY_YEAR_QUESTION_ID,
-        },
+        testEnv: (questions) => ({
+          ...dataAppTestEnv(questions),
+          downloadQuestionId: questions.ordersByYearId,
+        }),
       });
 
       visitAppRoute("download-question");
