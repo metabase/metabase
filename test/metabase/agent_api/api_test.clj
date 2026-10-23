@@ -2138,6 +2138,26 @@
         (is (= (if (= delivery :respond) initial (inc initial))
                (mt/metric-value system :metabase-api/unhandled-errors)))))))
 
+(deftest client-error-wrapping-database-error-is-generic-test
+  (testing "A client status does not expose an app DB failure in the cause chain"
+    (mt/with-prometheus-system! [_ system]
+      (doseq [status-code [400 403]]
+        (mt/with-dynamic-fn-redefs [metabot-search/search
+                                    (fn [& args]
+                                      (try
+                                        (apply reject-app-db-lookup args)
+                                        (catch Throwable e
+                                          (throw (ex-info "App DB lookup detail"
+                                                          {:status-code status-code :error "internal-app-db"} e)))))]
+          (mt/with-log-messages-for-level [messages [metabase.agent-api :error]]
+            (let [initial (mt/metric-value system :metabase-api/unhandled-errors)]
+              (is (= {:message "Something went wrong"}
+                     (mt/user-http-request :rasta :post 500 "agent/v1/search" {:term_queries ["orders"]})))
+              (is (= initial (mt/metric-value system :metabase-api/unhandled-errors)))
+              (is (=? [{:message "Database failure in Agent API"}] (messages)))
+              (is (some #(re-find #"(?i)no_such_column" (ex-message %))
+                        (take-while some? (iterate ex-cause (:e (first (messages))))))))))))))
+
 (deftest client-disconnect-is-not-an-error-test
   (testing "A client that disconnects before its response is written gets no error response, count or error log"
     (mt/with-prometheus-system! [_ system]

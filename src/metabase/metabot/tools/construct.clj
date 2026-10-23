@@ -653,16 +653,21 @@
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
 (defn database-error?
-  "Returns true for database failures that must not be relayed as input errors."
-  [e]
-  (let [{:keys [status-code agent-error? error]} (ex-data e)
-        causes (u/full-exception-chain e)]
-    (boolean
-     (and (not (and status-code (<= 400 status-code 499)))
-          (or (some #(instance? SQLException %) causes)
-              (and (not (and (nil? status-code)
-                             (or agent-error? (tools/pipeline-error-code error))))
-                   (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))
+  "Returns true for database failures that must not be relayed as input errors.
+  With `:ignore-status?`, inspect SQL causes even when an exception carries an explicit client status."
+  ([e]
+   (database-error? e {}))
+  ([e {:keys [ignore-status?]}]
+   (let [{:keys [status-code agent-error? error]} (ex-data e)
+         causes (u/full-exception-chain e)
+         client-error? (and status-code (<= 400 status-code 499))]
+     (boolean
+      (and (or ignore-status? (not client-error?))
+           (or (some #(instance? SQLException %) causes)
+               (and (not client-error?)
+                    (not (and (nil? status-code)
+                              (or agent-error? (tools/pipeline-error-code error))))
+                    (some #(contains? (ex-data %) :toucan2/context-trace) causes))))))))
 
 (defn- as-agent-input-error
   "Return database failures unchanged; wrap other exceptions as agent-input errors.

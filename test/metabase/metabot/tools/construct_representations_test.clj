@@ -264,6 +264,16 @@
            (construct/database-error?
             (ex-info "Failure" (assoc data :status-code status :toucan2/context-trace [])))))))
 
+(deftest ^:parallel database-errors-with-client-status-test
+  (doseq [[label cause] (metadata-lookup-failures)
+          status-code [400 403]]
+    (testing label
+      (let [e (ex-info "Lookup failed" {:status-code status-code} cause)]
+        (is (false? (construct/database-error? e)))
+        (is (= (contains? #{"JDBC" "nested JDBC" "declared JDBC"} label)
+               (construct/database-error? e {:ignore-status? true}))))))
+  (is (false? (construct/database-error? (ex-info "Bad input" {:status-code 400}) {:ignore-status? true}))))
+
 (deftest declared-errors-in-toucan-scopes-are-recoverable-test
   (with-mp-and-stubs!
     (fn []
