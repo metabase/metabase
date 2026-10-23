@@ -6,7 +6,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.query-permissions.core :as query-perms]
@@ -149,18 +148,17 @@
 ;;; |                                                Writeback fns                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- check-no-sandboxed-action-access
+(defn- check-no-sandboxed-action-access
   "Throws a 403 when the current user has a sandbox on any table of the Database with `database-id`, since actions
   write around sandboxes."
-  [database-id :- ::lib.schema.id/database]
+  [database-id]
   (when (and *current-user-id* (perms/sandboxed-user-for-db? database-id))
-    (throw (ex-info (tru "You can''t run actions on a database where your data access is sandboxed.")
+    (throw (ex-info (tru "You can''t run actions on this database because row and column security applies to your data access.")
                     {:type        qp.error-type/missing-required-permissions
                      :status-code 403}))))
 
 (mu/defn check-query-action-permissions*
-  "Check that User with `user-id` has permissions to run query action `query`, or throw an exception. Takes
-  as [[metabase.actions.args/action-arg-map-schema]]."
+  "Throws unless the current user can run an action with the already preprocessed `query`."
   [{database-id :database, :as query} :- ::lib.schema/query]
   (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
   (check-no-sandboxed-action-access database-id)
