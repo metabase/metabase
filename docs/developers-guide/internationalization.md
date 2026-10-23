@@ -55,14 +55,7 @@ The functions `trs` and `tru` create instances of two records, `SiteLocalizedStr
 
 ### The maps from source to translated string
 
-One step in our build process creates an edn file of source to translated string for each locale we support. These are located in `resources/i18n`. If you do not have these files, you can run `./bin/i18n/build-translation-resources` to generate them.
-
-Translation catalogs live in [ChrisVandoo/metabase-i18n](https://github.com/ChrisVandoo/metabase-i18n).
-The build reads `locales/metabase-i18n.commit` and downloads that commit's `.po` files into
-`locales/metabase-i18n/<commit>/`, which Git ignores. Run
-`./bin/i18n/build-translation-resources` before backend-only development or translation tests
-to generate missing resources or refresh them after the pin changes. It does nothing when the
-resources are up to date. Frontend builds do not run it. Without the resources, the app shows English.
+One step in our build process creates an edn file of source to translated string for each locale we support. These are located in `resources/i18n`. If you do not have these files, you can run `bin/build-translation-resources` to generate them.
 
 We have lots of contributors who help us keep a corpus of translated strings into many different languages. We use [Crowdin](https://crowdin.com/project/metabase-i18n) to keep an authoritative list. We export `.po` files from this, which is essentially a dictionary from source to translated string. As part of our build process we format these files as edn files, maps from the source to translated string, for each locale.
 
