@@ -13,6 +13,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.agent-lib.representations.repair :as repr.repair]
+   [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
@@ -255,6 +256,33 @@
    :stages   [{:lib/type     "mbql.stage/mbql"
                :source-table ["Sample" "PUBLIC" "ORDERS"]
                :fields       [["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]]}]})
+
+(deftest export-validation-failures-end-metabot-turn-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [export-query (mt/original-fn #'repr.resolve/export-query)]
+        (mt/with-dynamic-fn-redefs [repr.resolve/export-query
+                                    (fn [& args]
+                                      (assoc-in (apply export-query args) ["stages" 0 "filters"] {"op" ">"}))]
+          (let [caught (try
+                         (tools/with-pipeline-errors
+                           (construct/execute-representations-query orders-id-query))
+                         (catch Throwable e e))
+                entries (tools/entries [construct/construct-notebook-query-tool])
+                outcome (tools.runtime/invoke entries
+                                              {:profile-id :nlq :metabot nil
+                                               :user-scope #{"agent:notebook:create"}
+                                               :tool-names (set (keys entries))}
+                                              "construct_notebook_query"
+                                              {:query orders-id-query
+                                               :title "Order IDs" :description "IDs of orders."})]
+            (is (nil? (:error (ex-data caught))))
+            (is (= :unrecoverable (:class (tools.error/classify caught))))
+            (is (= {:output "This call failed and the user was shown the error (:internal). Don't retry it."
+                    :error {:class :unrecoverable :code :internal}}
+                   outcome))
+            (is (= "Something went wrong."
+                   (#'agent/terminal-error-message [{:type :tool-output :result outcome}])))))))))
 
 (deftest metadata-lookup-failures-propagate-test
   (with-mp-and-stubs!
@@ -773,6 +801,7 @@
             (is (true? (:agent-error? (ex-data e))))
             (is (= :query-not-runnable (:error (ex-data e))))
             (is (re-find #"`offset` cannot be custom columns" (ex-message e)))
+            (is (str/includes? (ex-message e) "Failing paths: stages[0].expressions[0]:"))
             (is (re-find #"non-aggregation expression" (ex-message e)))))))))
 
 (deftest editor-gate-offset-in-filter-surfaces-error-end-to-end-test
@@ -907,7 +936,7 @@
               bad  (assoc-in good [:stages 0 :breakout 0] [:field {} "PRODUCT_ID"])]
           (is (nil? (#'construct/query-not-runnable-explanation good)))
           (is (str/includes? (#'construct/query-not-runnable-explanation bad)
-                             "[:stages 0 :breakout 0 1 :base-type]: a field reference by name is missing `base-type`")))))))
+                             "stages[0].breakout[0][1].base-type: a field reference by name is missing `base-type`")))))))
 
 ;;; ============================================================
 ;;; Step-9 contract: expressions (custom columns)
@@ -1021,7 +1050,10 @@
           (is (= {:class    :recoverable
                   :code     :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query
                   :message  "Representations query has an invalid structure."
-                  :recovery []}
+                  :recovery [{:uses #{}
+                              :text (str "Invalid at stages[0].aggregation[1]: should be a vector, "
+                                         "clause must be [operator-string, options-map, \u2026args]. "
+                                         "Fix the named paths.")}]}
                  (select-keys (tools.error/classify e) [:class :code :message :recovery]))))))))
 
 (deftest aggregation-ref-integer-index-in-order-by-end-to-end-test
@@ -3201,14 +3233,35 @@
         invalid (fn [k] {:schema (mc/schema :int) :value "x" :in [:stages 0 k]})
         hint    #"\. This usually means a field reference is missing its type"]
     (testing "identical problems are listed once"
-      (is (= "[:stages 0 :alias]: missing `alias`" (explain (missing :alias) (missing :alias)))))
+      (is (= "stages[0].alias: missing `alias`" (explain (missing :alias) (missing :alias)))))
     (testing "at most three problems are listed"
       (is (= 3 (count (str/split (apply explain (map missing [:a :b :c :d])) #"; ")))))
     (testing "problems with a known cause are listed before Malli's own messages"
       (is (str/starts-with? (explain (invalid :a) (invalid :b) (invalid :c) (missing :alias))
-                            "[:stages 0 :alias]: missing `alias`; [:stages 0 :a]: should be an integer")))
+                            "stages[0].alias: missing `alias`; stages[0].a: should be an integer")))
     (testing "the usual causes are added only when no problem has a known cause"
       (is (re-find hint (explain (invalid :a))))
       (is (not (re-find hint (explain (invalid :a) (missing :alias))))))
     (testing "an explanation with no errors falls back to a generic sentence and the usual causes"
       (is (str/starts-with? (explain) "the query does not match the query builder's schema. This usually means")))))
+
+(deftest structural-validation-locations-end-to-end-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [[filters details]
+              [[{"op" ">"} "stages[0].filters: invalid type"]
+               [[{"op" ">"} {"op" "<"}]
+                (str "stages[0].filters[0]: should be a vector, "
+                     "clause must be [operator-string, options-map, \u2026args]; "
+                     "stages[0].filters[1]: should be a vector, "
+                     "clause must be [operator-string, options-map, \u2026args]")]]]
+        (let [query (query-data {"lib/type" "mbql/query"
+                                 "stages" [{"lib/type" "mbql.stage/mbql"
+                                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                            "filters" filters}]})
+              hint  (str "Invalid at " details ". Fix the named paths.")
+              error (try
+                      (tools/with-pipeline-errors (construct/execute-representations-query query))
+                      (catch clojure.lang.ExceptionInfo e e))]
+          (is (= (str "Representations query has an invalid structure.\n" hint)
+                 (tools.error/recoverable-text (tools.error/classify error) #{}))))))))

@@ -712,7 +712,8 @@
     (when-let [explanation (mr/explain :metabase.lib.schema/query pmbql-query)]
       (let [errors (sort-by (comp nil? not-runnable-problem) (:errors explanation))]
         (cond-> (or (some->> errors
-                             (map #(str (pr-str (:in %)) ": " (or (not-runnable-problem %) (me/error-message %))))
+                             (map #(str (repr/query-path (:in %)) ": "
+                                        (or (not-runnable-problem %) (me/error-message %))))
                              distinct
                              (take 3)
                              seq
@@ -822,11 +823,9 @@
   shape and concentrates on the LLM-friendly repair passes.
 
   Pipeline:
-    1. Boundary-validate the keyword-keyed input against `::lib.schema/external-query`
-       ([[repr/validate-external-query]]). Catches structural issues — missing `stages`,
-       typo'd stage keys (e.g. `aggreagation` vs `aggregation`), wrong top-level `lib/type`,
-       etc. — that the loose `:map` wire schema doesn't catch.
-    2. Convert to the string-keyed portable form the repair pipeline operates on.
+    1. Convert to the string-keyed portable form the repair pipeline operates on.
+    2. Reject unknown stage keys, such as `aggreagation` for `aggregation`
+       ([[repr/assert-known-stage-keys!]]).
     3. Resolve the database id from the first stage's `source-table:` / `source-card:`
        ([[resolve-database-id-from-first-stage]]) and build an application-DB-backed
        `MetadataProvider`.
@@ -889,7 +888,7 @@
             _validated    (repr/validate-query repaired)
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query)]
-                            (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. Problem in {0}."
+                            (throw (ex-info (tru "The constructed query is not runnable - it would fail the query builder''s validation, so it cannot be visualized or saved. Failing paths: {0}."
                                                  why)
                                             {:agent-error? true
                                              :error        :query-not-runnable
@@ -911,7 +910,11 @@
                                                :usable-sources usable-sources
                                                :status-code    400}))))
             exported-repr (repr.resolve/export-query mp pmbql-query permission-aware-content-store)
-            _validated'   (repr/validate-query exported-repr)
+            _validated'   (try
+                            (repr/validate-query exported-repr)
+                            (catch clojure.lang.ExceptionInfo e
+                              (throw (IllegalStateException.
+                                      "Exported representations query has an invalid structure." e))))
             query-id      (u/generate-nano-id)]
         {:structured-output {:query-id       query-id
                              :query          pmbql-query

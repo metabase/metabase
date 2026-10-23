@@ -323,7 +323,7 @@
           (testing label
             (is (=? {:class :recoverable
                      :code  :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query
-                     :text  #"^Representations query has an invalid structure\."}
+                     :text  #"Representations query has an invalid structure\.\nInvalid at .+\. Fix the named paths\."}
                     (test-util/tool-failure agent-tools/construct-notebook-query-tool
                                             {:query       {:lib/type "mbql/query" :stages stages}
                                              :title       "Orders"
