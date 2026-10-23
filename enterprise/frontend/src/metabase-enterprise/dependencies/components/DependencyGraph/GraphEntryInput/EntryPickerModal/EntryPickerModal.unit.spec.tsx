@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
@@ -19,6 +20,7 @@ import {
   screen,
   waitFor,
 } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import { defer } from "metabase/utils/promise";
 import { EnterpriseApi } from "metabase-enterprise/api";
 import { listTag } from "metabase-enterprise/api/tags";
@@ -71,23 +73,26 @@ function setup({
     collectionItems: [],
   });
 
+  const state = createMockState({
+    settings: mockSettings({
+      "token-features": createMockTokenFeatures({ "data-apps": hasDataApps }),
+    }),
+  });
+  setupEnterpriseOnlyPlugin("data-apps");
+
   const onChange = jest.fn<void, [DependencyEntry]>();
   const { store } = renderWithProviders(
     <EntryPickerModal value={value} onChange={onChange} onClose={jest.fn()} />,
-    {
-      storeInitialState: createMockState({
-        settings: mockSettings({
-          "token-features": createMockTokenFeatures({
-            "data-apps": hasDataApps,
-          }),
-        }),
-      }),
-    },
+    { storeInitialState: state },
   );
   return { onChange, store };
 }
 
 describe("EntryPickerModal", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   it("picks a data app from the Data apps folder as the entry", async () => {
     const { onChange } = setup();
 
