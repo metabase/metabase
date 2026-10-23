@@ -99,14 +99,14 @@
     (testing "a usage part without a finish reason (older adapters) is not truncation"
       (is (= :stop (#'agent/finish-reason 0 20 #{} [{:type :text} {:type :usage}]))))))
 
-(deftest legacy-terminal-tools-test
-  (let [terminal (for [[_profile-id profile] @@#'profiles/*profiles
-                       tool (:tools profile)
-                       :let [tool-name (:name (tools.legacy/declaration-of tool))]
-                       :when (and (contains? (:terminal-tools profile) tool-name)
-                                  (tools.legacy/legacy-tool? tool))]
-                   tool-name)]
-    (is (= (set terminal) @#'agent/legacy-terminal-tool-names))))
+(deftest terminal-tools-are-converted-test
+  (testing "a terminal tool ends the turn on a call without an `:error`, so it can't be a legacy tool, which returns
+           its failures as results"
+    (is (empty? (for [[_profile-id profile] @@#'profiles/*profiles
+                      tool (:tools profile)
+                      :when (and (contains? (:terminal-tools profile) (:name (tools.legacy/declaration-of tool)))
+                                 (tools.legacy/legacy-tool? tool))]
+                  tool)))))
 
 (deftest create-terminal-without-structured-output-test
   (let [parts [{:type :tool-input :id "create" :function "create_sql_query"}
@@ -139,15 +139,9 @@
       (is (not (#'agent/terminal-tool-call? terminal read))))
     (testing "terminality is per-profile: an empty terminal set never ends the turn"
       (is (not (#'agent/terminal-tool-call? #{} success))))
-    (testing "legacy terminal tools require structured output on success"
-      (doseq [tool-name ["document_construct_sql_chart" "document_construct_model_chart"]]
-        (let [parts [{:type :tool-input :id "d" :function tool-name}
-                     {:type :tool-output :id "d" :result {:output "Query construction failed"}}]]
-          (is (not (#'agent/terminal-tool-call? #{tool-name} parts)))
-          (is (#'agent/terminal-tool-call? #{tool-name}
-                                           (assoc-in parts [1 :result :structured-output] {:query-id "q1"}))))))
     (testing "converted terminal tools can answer without structured output"
-      (doseq [tool-name ["edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"]]
+      (doseq [tool-name ["edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"
+                         "document_construct_sql_chart" "document_construct_model_chart"]]
         (let [parts [{:type :tool-input :id "e" :function tool-name}
                      {:type :tool-output :id "e" :result {:output "Done"}}]]
           (is (#'agent/terminal-tool-call? #{tool-name} parts))
@@ -297,9 +291,14 @@
          (-> (#'agent/summarize-tool-ios [(unrecoverable-part "a" nil)])
              :tool-results first :error))))
 
+(def ^:private sql-editor-viewing
+  [{:type    "code_editor"
+    :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}])
+
 (defn- run-sql-denial-turn!
-  "Run one turn whose first LLM response calls `create_sql_query` against `database-id`."
-  [profile-id database-id]
+  "Run one turn whose first LLM response calls `create_sql_query` against `database-id` while the user views
+  `viewing`, by default a SQL editor."
+  [profile-id database-id & {:keys [viewing] :or {viewing sql-editor-viewing}}]
   (let [call-count (atom 0)]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
@@ -319,9 +318,19 @@
                                :state      {}
                                :profile-id profile-id
                                :context    {:capabilities    ["permission:write_sql_queries"]
-                                            :user_is_viewing [{:type    "code_editor"
-                                                               :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}}))]
+                                            :user_is_viewing viewing}}))]
           {:llm-calls @call-count :parts parts})))))
+
+(deftest missing-sql-editor-ends-a-forced-tool-call-turn-test
+  (testing "the SQL profile ends the turn when no SQL editor is open, and tells the user why"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql db-id :viewing [])]
+          (is (= 1 llm-calls))
+          (is (= :terminal-error (:finish-reason (last parts))))
+          (is (some #(and (= :text (:type %))
+                          (str/includes? (:text %) "No active SQL editor was found"))
+                    parts)))))))
 
 (deftest permission-denial-ends-a-forced-tool-call-turn-test
   (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}

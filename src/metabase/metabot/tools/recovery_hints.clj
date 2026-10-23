@@ -12,6 +12,7 @@
    which is the intended failure mode: a missing hint reads as terse, a wrong one sends the
    agent at a tool it does not have."
   (:require
+   [metabase.agent-lib.representations :as repr]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -43,10 +44,20 @@
     (str "Call `read_resource` with `metabase://" source-card-type "/" source-card "/fields` to list the " what
          " this " source-card-type " returns.")))
 
+(defn- structural-validation-hint
+  "Describe the failing paths in a humanized structural explanation, or nil when it has no errors."
+  [humanized]
+  (let [paths (repr/humanized->paths humanized)]
+    (when (seq paths)
+      (tru "Invalid at {0}. Fix the named paths." paths))))
+
 (defn recovery-hint
   "The v1 recovery sentence for an agent error's `ex-data`, or nil when it has none."
-  [{:keys [error entity-type entity-id] :as data}]
+  [{:keys [error entity-type entity-id humanized] :as data}]
   (case error
+    :invalid-representations-query
+    (structural-validation-hint humanized)
+
     :uri-in-source-table
     (uri-hint entity-type entity-id)
 
@@ -64,6 +75,9 @@
 
     (:unknown-field :unknown-field-id)
     (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns.")
+
+    :ambiguous-field
+    (tru "The field name matches more than one column in this table, so it cannot be referenced by name. Tell the user about the ambiguous column name.")
 
     :ambiguous-fk
     (or (card-fields-hint data "foreign-key columns")
@@ -84,8 +98,14 @@
     (:unknown-segment :unknown-segment-id)
     (tru "Do not invent or guess entity_ids: read the table that owns the segment with `read_resource` (`metabase://table/<numeric id>`) and copy the exact `portable_entity_id` from its `<segment>` tag.")
 
+    (:cross-database-card :cross-database-measure :cross-database-segment)
+    (tru "A query can only reference saved questions, models, metrics, measures and segments from its own database. Use one from that database, or change the source to a table in the referenced item''s database.")
+
     :unknown-database
     (tru "Use the exact database name as reported by search / `read_resource` (it appears as the first element of every portable FK, e.g. `source-table: [<db-name>, <schema>, <table>]`).")
+
+    :ambiguous-database-name
+    (tru "Ask the user to rename one of the databases.")
 
     :missing-source-in-first-stage
     (tru "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an entity_id string.")

@@ -71,7 +71,13 @@
                   :schema-filters-patterns session-schema}
         details* (merge details*
                         (truststore-details)
-                        (keystore-details))]
+                        (keystore-details))
+        ;; database routing needs a second database whose tables have the same owner and names; on Oracle that is a
+        ;; second PDB, reached by service name on the same host
+        details* (cond-> details*
+                   tx/*use-routing-details*
+                   (assoc :sid          nil
+                          :service-name (tx/db-test-env-var-or-throw :oracle :service-name-routing "MBROUTE")))]
     ;; if user or password are not set and we cannot possibly be using SSL auth, set the defaults
     (cond-> details*
       (and (nil? (:user details*)) (not (:ssl-use-keystore details*)))
@@ -268,6 +274,20 @@
   [_]
   (drop-user! session-schema)
   (create-user! session-schema))
+
+(def ^:private routing-session-user
+  "[[tx/before-run]] only creates the session user in the main database. The routing database gets its own, once per
+  process, the first time a dataset is created there."
+  (delay
+    (binding [tx/*use-routing-details* true]
+      (drop-user! session-schema)
+      (create-user! session-schema))))
+
+(defmethod tx/create-db! :oracle
+  [driver dbdef & options]
+  (when tx/*use-routing-details*
+    @routing-session-user)
+  (apply (get-method tx/create-db! :sql-jdbc/test-extensions) driver dbdef options))
 
 (defmethod tx/aggregate-column-info :oracle
   ([driver ag-type]

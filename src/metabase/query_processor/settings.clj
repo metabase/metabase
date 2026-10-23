@@ -12,7 +12,7 @@
   :audit      :getter)
 
 (defsetting use-native-pivot-tables
-  (deferred-tru "When enabled, run pivot queries as a single native GROUPING SETS query on drivers that support it, instead of running one query per breakout combination.")
+  "When enabled, run pivot queries as a single native GROUPING SETS query on drivers that support it, instead of running one query per breakout combination."
   :type       :boolean
   :default    false
   :export?    false
@@ -55,7 +55,7 @@
                        "pivots can exceed it. Must be less than 1048575."))
 
 (defsetting attachment-row-limit
-  (deferred-tru "Row limit in file attachments excluding the header.")
+  "Row limit in file attachments excluding the header."
   :visibility :internal
   :export?    true
   :type       :positive-integer)
@@ -78,7 +78,7 @@
   absolute-max-results)
 
 (defsetting download-row-limit
-  (deferred-tru "Row limit in file exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher.")
+  "Row limit in file exports excluding the header. Enforces 1048575 excluding header as minimum. xlsx downloads are inherently limited to 1048575 rows even if this limit is higher."
   :visibility :internal
   :export?    true
   :type       :positive-integer

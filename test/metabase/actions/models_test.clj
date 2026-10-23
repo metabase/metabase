@@ -252,8 +252,8 @@
               (is (=? {:model_id nil :collection_id app-id}
                       (action/select-action :id (insert! app-id)))))))))))
 
-(deftest action-in-a-data-apps-collection-is-read-only-test
-  (testing "Nobody writes an action in a collection of the data apps namespace, administrators included"
+(deftest action-in-a-data-apps-collection-is-admin-only-test
+  (testing "Only administrators write an action in a collection of the data apps namespace"
     (mt/with-temp [:model/Collection {app-id :id}  {:namespace "data-apps"}
                    :model/Collection {coll-id :id} {:namespace "data-actions"}]
       (mt/with-model-cleanup [:model/Action]
@@ -267,14 +267,15 @@
               action    (action/select-action :id (action/insert! (action-in app-id)))
               elsewhere (action/select-action :id (action/insert! (action-in coll-id)))]
           (mt/with-test-user :crowberto
+            (is (true? (mi/can-write? action)))
+            (is (true? (:can_write (t2/hydrate action :can_write))))
+            (is (true? (mi/can-create? :model/Action (action-in app-id))))
+            (is (true? (mi/can-update? elsewhere {:collection_id app-id}))))
+          (mt/with-test-user :rasta
             (is (false? (mi/can-write? action)))
             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
                                   (api/write-check :model/Action (:id action))))
-            (is (false? (:can_write (t2/hydrate action :can_write))))
-            (testing "nor creates one there, or moves one in"
-              (is (false? (mi/can-create? :model/Action (action-in app-id))))
-              (is (true? (mi/can-write? elsewhere)))
-              (is (false? (mi/can-update? elsewhere {:collection_id app-id}))))))))))
+            (is (false? (mi/can-create? :model/Action (action-in app-id))))))))))
 
 (deftest implicit-action-requires-model-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
@@ -312,13 +313,13 @@
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
-      (testing "Non-implicit actions are archived directly, and their dashboard buttons deleted, if their model is converted to a saved question"
+      (testing "Non-implicit actions and their dashboard buttons are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :query}]
           (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id}  {:action_id action-id :dashboard_id dashboard-id}]
             (is (false? (t2/select-one-fn :archived :model/Action action-id)))
             (t2/update! :model/Card model-id {:type :question})
-            (is (= [true true] ((juxt :archived :archived_directly) (t2/select-one :model/Action :id action-id))))
+            (is (not (t2/exists? :model/Action :id action-id)))
             (is (not (t2/exists? :model/DashboardCard :id dashcard-id))))))
       (testing "Implicit actions are deleted if their model is converted to a saved question"
         (mt/with-actions [{:keys [action-id model-id]} {:type :implicit}]
@@ -481,12 +482,12 @@
       (is (not (t2/exists? :model/Action :entity_id entity-id))))))
 
 (deftest storage-path-test
-  (testing "actions without a model in the data actions root or namespace are stored in the data-actions folder"
+  (testing "actions without a model in the data actions root or namespace are stored in the data_actions folder"
     (mt/with-temp [:model/Collection {folder-eid :entity_id} {:namespace "data-actions"}
                    :model/Collection {app-eid :entity_id}    {:namespace "data-apps"}]
       (let [folder-label (fn [action]
                            (:label (second (serdes/storage-path (assoc action :serdes/meta [{:model "Action"}]) {}))))]
-        (is (= "data-actions" (folder-label {:name "At root" :entity_id "x" :model_id nil :collection_id nil})))
-        (is (= "data-actions" (folder-label {:name "In folder" :entity_id "x" :model_id nil :collection_id folder-eid})))
+        (is (= "data_actions" (folder-label {:name "At root" :entity_id "x" :model_id nil :collection_id nil})))
+        (is (= "data_actions" (folder-label {:name "In folder" :entity_id "x" :model_id nil :collection_id folder-eid})))
         (is (= "main" (folder-label {:name "App copy" :entity_id "x" :model_id nil :collection_id app-eid})))
         (is (= "main" (folder-label {:name "On a model" :entity_id "x" :model_id "model-eid" :collection_id nil})))))))
