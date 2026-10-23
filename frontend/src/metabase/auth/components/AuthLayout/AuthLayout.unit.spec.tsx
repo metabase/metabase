@@ -6,6 +6,10 @@ import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 import { AuthLayout } from "./AuthLayout";
 
+jest.mock("metabase/common/components/LighthouseIllustration", () => ({
+  LighthouseIllustration: () => <div data-testid="lighthouse-illustration" />,
+}));
+
 const LOGO_URL = "data:image/jpeg;base64,/9j/4AAQSkZJRg==";
 const ILLUSTRATION_URL =
   "api/session/illustration/login-page-illustration-custom?v=0123456789abcdef";
@@ -42,12 +46,21 @@ describe("AuthLayout (EE with whitelabel)", () => {
     });
   });
 
+  it("should show the lighthouse illustration by default", () => {
+    setup({ loginPageIllustration: "default" });
+
+    expect(screen.getByTestId("lighthouse-illustration")).toBeInTheDocument();
+  });
+
   it("should not show an illustration when it is turned off", () => {
     setup({ loginPageIllustration: "none" });
 
     expect(screen.getByTestId("login-page")).toBeInTheDocument();
     expect(
       screen.queryByTestId("login-page-illustration"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("lighthouse-illustration"),
     ).not.toBeInTheDocument();
   });
 });
