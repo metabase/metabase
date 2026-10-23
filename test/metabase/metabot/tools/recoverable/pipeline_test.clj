@@ -250,15 +250,21 @@
                          :metabase.metabot.tools.recoverable.pipeline/ambiguous-fk
                          orders-uri))))))
 
-(deftest recovery-steps-do-not-name-an-unreadable-database-test
-  (testing "the database is found by name before any permission check, so a user who cannot read it
-           gets the placeholder instead of its id"
-    (mt/with-no-data-perms-for-all-users!
-      (mt/with-current-user (mt/user->id :rasta)
-        (let [{:keys [code text]} (construct-failure {"source-table" [(:name (mt/db)) "PUBLIC" "ORDRS"]
-                                                      "aggregation"  [["count" {}]]})]
-          (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
-          (is (= "metabase://database/<numeric id>/tables" (recovery-uri text))))))))
+(deftest recovery-steps-name-the-database-only-when-the-user-can-read-it-test
+  (let [stage {"source-table" [(:name (mt/db)) "PUBLIC" "ORDRS"]
+               "aggregation"  [["count" {}]]}]
+    (testing "the database is found by name before any permission check, so a user who cannot read it
+             gets the placeholder instead of its id"
+      (mt/with-no-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [code text]} (construct-failure stage)]
+            (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
+            (is (= "metabase://database/<numeric id>/tables" (recovery-uri text)))))))
+    (testing "a user who can read it gets its id"
+      (mt/with-full-data-perms-for-all-users!
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [{:keys [text]} (construct-failure stage)]
+            (is (= (str "metabase://database/" (mt/id) "/tables") (recovery-uri text)))))))))
 
 (deftest recovery-steps-do-not-name-a-routing-destination-test
   (testing "`read_resource` never opens a routing destination, so even an admin gets the placeholder"
