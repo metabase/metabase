@@ -41,7 +41,6 @@ export const AccountHeader = ({
 
   return (
     <Flex
-      className={S.root}
       data-testid="account-header"
       direction="column"
       justify="center"

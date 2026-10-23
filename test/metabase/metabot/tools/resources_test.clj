@@ -6,12 +6,15 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase.activity-feed.core :as activity-feed]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as metabot.tools]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.entity-details :as entity-details]
+   [metabase.metabot.tools.field-stats :as field-stats]
    [metabase.metabot.tools.resources :as read-resource]
    [metabase.metabot.tools.shared :as tools.shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
@@ -21,6 +24,7 @@
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.transforms.core :as transforms.core]
    [toucan2.core :as t2]))
@@ -1192,6 +1196,26 @@
             (with-redefs [mi/can-read? (constantly false)]
               (is (error? (read-uris {:uris [(str "metabase://segment/" segment-id)]}))))))))))
 
+(deftest read-measure-and-segment-on-inactive-table-test
+  (mt/test-drivers #{:h2}
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [orders (mt/id :orders)
+            total  (mt/id :orders :total)]
+        (mt/with-temp [:model/Measure {measure-id :id}
+                       {:name       "Order Revenue"
+                        :table_id   orders
+                        :creator_id (mt/user->id :crowberto)
+                        :definition (measure-definition orders total)}
+                       :model/Segment {segment-id :id}
+                       {:name       "Big Orders"
+                        :table_id   orders
+                        :definition (segment-definition orders total 100)}]
+          (mt/with-temp-vals-in-db :model/Table orders {:active false}
+            (is (=? {:resources [{:content {:structured-output {:type :measure :name "Order Revenue"}}}
+                                 {:content {:structured-output {:type :segment :name "Big Orders"}}}]}
+                    (read-uris {:uris [(str "metabase://measure/" measure-id)
+                                       (str "metabase://segment/" segment-id)]})))))))))
+
 (deftest read-dashboard-items-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Dashboard {dash-id :id} {}
@@ -1325,6 +1349,63 @@
       (let [{:keys [output]} (read-uris {:uris ["metabase://user/recent-items"]})]
         (is (str/includes? output "<list type=\"recent-items\""))))))
 
+(deftest read-user-recents-links-test
+  (let [mp (mt/metadata-provider)
+        query (lib/query mp (lib.metadata/table mp (mt/id :products)))]
+    (doseq [[entity-model attributes type]
+            [[:model/Card {:type :question :dataset_query query} "question"]
+             [:model/Card {:type :model :dataset_query query} "model"]
+             [:model/Card {:type :metric :dataset_query (lib/aggregate query (lib/count))} "metric"]
+             [:model/Table {:db_id (mt/id)} "table"]
+             [:model/Dashboard {} "dashboard"]
+             [:model/Collection {} "collection"]
+             [:model/Document {:document {:type "doc" :content []}} "document"]]]
+      (testing type
+        (mt/with-temp [:model/User {user-id :id} {:is_superuser true}
+                       entity-model {id :id} (assoc attributes :name "Recent item")
+                       :model/RecentViews _ {:user_id user-id
+                                             :model (if (= entity-model :model/Card) "card" type)
+                                             :model_id id
+                                             :context "view"}]
+          (mt/with-current-user user-id
+            (let [{:keys [output resources]} (read-uris {:uris ["metabase://user/recent-items"]})
+                  items (get-in resources [0 :content :structured-output :items])
+                  uri (str "metabase://" type "/" id)]
+              (is (=? [{:type type :id id :name "Recent item" :timestamp string? :uri uri}] items))
+              (is (str/includes? output (str "type=\"" type "\"")))
+              (is (str/includes? output (str "uri=\"" uri "\"")))
+              (is (=? {:resources [{:content {:structured-output map?}}]}
+                      (read-uris {:uris (mapv :uri items)}))))))))))
+
+(deftest ^:parallel read-user-recents-pagination-test
+  (let [recents (mapv (fn [id]
+                        {:id id
+                         :name (str "Recent item " id)
+                         :model (if (odd? id) :card :dashboard)
+                         :timestamp "2026-10-20T12:00:00Z"})
+                      (range 1 31))]
+    (mt/with-dynamic-fn-redefs [activity-feed/get-recents (constantly {:recents recents})]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [first-result (read-uris {:uris ["metabase://user/recent-items"]})
+              first-page (get-in first-result [:resources 0 :content :structured-output])
+              next-uri (:next-page-uri first-page)]
+          (testing "the first page gives the model 25 items and a link to the rest"
+            (is (=? {:page 1 :pages 2 :total 30
+                     :next-page-uri "metabase://user/recent-items?page=2"}
+                    first-page))
+            (is (= (range 1 26) (map :id (:items first-page))))
+            (is (= 25 (count (re-seq #"<item " (:output first-result)))))
+            (is (str/includes? (:output first-result) "truncated=\"true\""))
+            (is (str/includes? (:output first-result) next-uri)))
+          (testing "following that link returns the remaining five items"
+            (let [{:keys [output resources]} (read-uris {:uris [next-uri]})
+                  second-page (get-in resources [0 :content :structured-output])]
+              (is (=? {:page 2 :pages 2 :total 30} second-page))
+              (is (= (range 26 31) (map :id (:items second-page))))
+              (is (= 5 (count (re-seq #"<item " output))))
+              (is (str/includes? output "truncated=\"false\""))
+              (is (nil? (:next-page-uri second-page))))))))))
+
 (deftest read-list-shape-test
   (testing "list responses carry total/page/pages/showing/truncated attrs in the rendered XML"
     (mt/with-current-user (mt/user->id :crowberto)
@@ -1358,10 +1439,100 @@
 
 (deftest ^:parallel a-uri-attribute-is-escaped-test
   (mt/with-current-user (mt/user->id :crowberto)
-    (testing "the URI is the agent's own text and reaches the model inside an attribute, so a quote
-             in it must not be able to close that attribute early"
-      (let [{:keys [output]} (read-uris {:uris ["metabase://table/\"><script>"]})]
-        (is (str/includes? output "<resource uri=\"metabase://table/\\\"><script>\">"))))))
+    (let [{:keys [output]} (read-uris {:uris ["metabase://table/<&\""]})]
+      (is (str/includes? output "<resource uri=\"metabase://table/&lt;&amp;&quot;\">")))))
+
+(deftest read-missing-fields-test
+  (let [mp       (mt/metadata-provider)
+        query    (lib/query mp (lib.metadata/table mp (mt/id :products)))
+        metadata (-> query qp/process-query :data :results_metadata :columns)]
+    (mt/with-temp [:model/Card {question-id :id} {:type :question :dataset_query query :result_metadata metadata}
+                   :model/Card {model-id :id} {:type :model :dataset_query query :result_metadata metadata}
+                   :model/Card {metric-id :id} {:type :metric :dataset_query (lib/aggregate query (lib/count))}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (doseq [[kind id child] [["table" (mt/id :products) "fields"]
+                                 ["question" question-id "fields"]
+                                 ["model" model-id "fields"]
+                                 ["metric" metric-id "dimensions"]]
+                field-id ["999999" "CATEGORY"]]
+          (let [uri (str "metabase://" kind "/" id "/" child "/" field-id)]
+            (testing uri
+              (let [{:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+                (is (= :recoverable class))
+                (is (str/includes? text (str "**Error:** Field " field-id " was not found in " kind " " id
+                                             ". Valid field IDs: ")))
+                (is (str/includes? text "Retry with one of these field IDs."))))))))))
+
+(deftest read-missing-field-parent-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[kind child] [["table" "fields"] ["question" "fields"]
+                          ["model" "fields"] ["metric" "dimensions"]]]
+      (let [uri (str "metabase://" kind "/999999/" child "/123")
+            {:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+        (is (= :recoverable class))
+        (is (str/includes? text (str "**Error:** " (str/capitalize kind) " 999999 was not found.")))))))
+
+(deftest read-unreadable-field-parent-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/Collection {collection-id :id} {}
+                   :model/Card {card-id :id} {:collection_id collection-id}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [[kind child] [["question" "fields"] ["model" "fields"] ["metric" "dimensions"]]]
+          (let [uri (str "metabase://" kind "/" card-id "/" child "/123")
+                {:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+            (is (= :recoverable class))
+            (is (str/includes? text (str "**Error:** " (str/capitalize kind) " " card-id " was not found."))))))))
+  (mt/with-no-data-perms-for-all-users!
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [uri (str "metabase://table/" (mt/id :products) "/fields/123")
+            {:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+        (is (= :recoverable class))
+        (is (str/includes? text (str "**Error:** Table " (mt/id :products) " was not found.")))))))
+
+(deftest read-inactive-field-parent-test
+  (mt/with-temp [:model/Table {table-id :id} {:db_id (mt/id) :active false}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [uri (str "metabase://table/" table-id "/fields/123")
+            {:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+        (is (= :recoverable class))
+        (is (str/includes? text (str "**Error:** Table " table-id " was not found.")))))))
+
+(deftest read-field-refusal-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [status [403 404]]
+      (mt/with-dynamic-fn-redefs [field-stats/field-values
+                                  (fn [_] (throw (ex-info "Field lookup refused" {:status-code status})))]
+        (let [uri (str "metabase://table/" (mt/id :products) "/fields/999999")
+              {:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+          (is (= :recoverable class))
+          (is (str/includes? text "**Error:** Field 999999 was not found.")))))))
+
+(deftest read-legacy-detail-failures-test
+  (mt/with-temp [:model/Card {question-id :id} {:type :question}
+                 :model/Card {model-id :id} {:type :model}
+                 :model/Card {metric-id :id} {:type :metric}]
+    (mt/with-current-user (mt/user->id :crowberto)
+      (let [failure (constantly {:output "Legacy detail not found" :status-code 404})]
+        (mt/with-dynamic-fn-redefs [entity-details/get-table-details failure
+                                    entity-details/get-metric-details failure
+                                    entity-details/get-measure-details failure
+                                    entity-details/get-segment-details failure]
+          (doseq [[kind id suffix] [["table" (mt/id :products) ""]
+                                    ["table" (mt/id :products) "/fields"]
+                                    ["question" question-id ""]
+                                    ["question" question-id "/fields"]
+                                    ["model" model-id ""]
+                                    ["model" model-id "/fields"]
+                                    ["metric" metric-id ""]
+                                    ["metric" metric-id "/dimensions"]
+                                    ["measure" 999999 ""]
+                                    ["segment" 999999 ""]]]
+            (let [uri (str "metabase://" kind "/" id suffix)]
+              (testing uri
+                (let [{:keys [class text]} (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})]
+                  (is (= :recoverable class))
+                  (is (str/includes? text (str "**Error:** " (str/capitalize kind) " " id " was not found.")))
+                  (is (str/includes? text "Call `search`")))))))))))
 
 ;; ===== Behavioral tests for patterns where the dispatch contract isn't enough =====
 
@@ -1538,6 +1709,30 @@
           (is (str/includes? output "| Widget |"))
           (is (not (str/includes? output "This list shows"))))))))
 
+(deftest read-table-field-whose-database-cannot-be-sampled-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [field-id (mt/id :orders :total)
+          uri      (str "metabase://table/" (mt/id :orders) "/fields/" field-id)]
+      (mt/with-temp-vals-in-db :model/Field field-id {:fingerprint nil}
+        (testing "field details include a note and no statistics when sync can't compute a fingerprint"
+          (doseq [[failure refingerprint] {"no connection"
+                                           (constantly :sync/no-connection)
+                                           "a sample query that failed"
+                                           (constantly (ex-info "Table \"ORDERS\" not found" {}))
+                                           "a transient connection error"
+                                           (fn [_] (throw (java.net.ConnectException. "Connection refused")))}]
+            (testing failure
+              (mt/with-dynamic-fn-redefs [sync/refingerprint-field! refingerprint]
+                (let [{:keys [resources output]} (read-uris {:uris [uri]})]
+                  (is (= {:statistics_unavailable true}
+                         (get-in resources [0 :content :structured-output :value_metadata])))
+                  (is (str/includes? output (str "Metabase couldn't sample this field from the database, so"
+                                                 " there are no statistics to show."))))))))
+        (testing "any other exception fails the read as an internal error"
+          (mt/with-dynamic-fn-redefs [sync/refingerprint-field! (fn [_] (throw (NullPointerException.)))]
+            (is (= {:class :unrecoverable :code :internal}
+                   (test-util/tool-failure read-resource/read-resource-tool {:uris [uri]})))))))))
+
 (deftest read-card-question-vs-model-test
   (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id} {}
@@ -1640,6 +1835,35 @@
         (let [result (read-uris
                       {:uris [(str "metabase://database/" db-id "/tables?page=999")]})]
           (is (=? {:resources [{:error string?}]} result)))))))
+
+(deftest pagination-copied-xml-uri-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-temp [:model/Collection {parent-id :id} {:name "Paging" :location "/"}]
+      (t2/insert! :model/Collection
+                  (for [i (range 60)]
+                    {:name     (format "Child-%02d" i)
+                     :location (str "/" parent-id "/")}))
+      (let [read-page     (fn [uri] (test-util/call-tool read-resource/read-resource-tool {:uris [uri]}))
+            page-1        (read-page "metabase://collections?tree=true")
+            next-page-uri (second (re-find #"Fetch (\S+) for the next page" (:output page-1)))
+            page-2        (read-page next-page-uri)
+            resource-uri  (second (re-find #"<resource uri=\"([^\"]+)\">" (:output page-2)))
+            copied-page-2 (read-page resource-uri)
+            structured-1 (first (:structured-output page-1))
+            structured-2 (first (:structured-output page-2))]
+        (is (> (:total structured-1) 25))
+        (is (= 25 (count (:items structured-1))))
+        (is (= "metabase://collections?tree=true&amp;page=2" next-page-uri))
+        (testing "a URI copied from the note opens the next page"
+          (is (= 2 (:page structured-2)))
+          (is (= 25 (count (:items structured-2))))
+          (is (= "metabase://collections?tree=true&page=3" (:next-page-uri structured-2)))
+          (is (str/includes? (:output page-2) "Fetch metabase://collections?tree=true&amp;page=3"))
+          (is (empty? (set/intersection (set (map :id (:items structured-1)))
+                                        (set (map :id (:items structured-2)))))))
+        (testing "the escaped resource attribute can also be copied as-is"
+          (is (= "metabase://collections?tree=true&amp;page=2" resource-uri))
+          (is (= structured-2 (first (:structured-output copied-page-2)))))))))
 
 (deftest pagination-xml-output-test
   (testing "truncated list XML includes page/pages attrs and a truncation note with next-page URI hint"

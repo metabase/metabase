@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Stack } from "metabase/ui";

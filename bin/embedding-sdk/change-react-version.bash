@@ -4,6 +4,34 @@ function restore_package_files() {
   git checkout -- bun.lock package.json
 }
 
+function pin_react_resolutions() {
+  # `resolutions` overrides every react/react-dom version, so a plain `bun add
+  # react@^18` still installs the version pinned there. Rewrite the pins to the
+  # target major first, otherwise the React 18 job silently runs React 19.
+  local version=$1
+  node -e '
+    const fs = require("fs");
+    const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+    const range = "^" + process.argv[1] + ".0.0";
+    for (const key of ["react", "react-dom", "@types/react", "@types/react-dom"]) {
+      if (pkg.resolutions && key in pkg.resolutions) {
+        pkg.resolutions[key] = range;
+      }
+    }
+    fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+  ' "$version"
+}
+
+function assert_react_version() {
+  local version=$1
+  local installed=$(node -e 'console.log(require("react/package.json").version)')
+  if [[ "$installed" != "$version."* ]]; then
+    echo "Error: expected React $version.x but node_modules has $installed"
+    exit 1
+  fi
+  echo "React $installed is installed"
+}
+
 function install_packages() {
   local version=$1
   local cypress_react_package=$(get_cypress_react_package "$version")
@@ -14,9 +42,13 @@ function install_packages() {
     exit 1
   fi
 
+  pin_react_resolutions "$version"
+
   # Install React and Cypress React test harness
   echo "Installing $dependencies"
   bun add $dependencies
+
+  assert_react_version "$version"
 }
 
 function print_usage() {
