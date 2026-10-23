@@ -24,6 +24,7 @@
    [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (deftest all-tools-test
@@ -886,6 +887,13 @@
                                             {:query {:lib/type "mbql/query" :stages [stage]}
                                              :title "Orders" :description "Orders by count."})))))))))
 
+(mu/defn ^{:tool-name "unconverted"}
+  unconverted-tool
+  "A tool declared through its var's metadata. The real ones are converted one at a time, so the tests
+  keep their own."
+  [{:keys [text]} :- [:map {:closed true} [:text :string]]]
+  text)
+
 (deftest ->entries-test
   (testing "an entry carries what the adapters and the system message read"
     (let [entries (agent-tools/->entries [#'agent-tools/create-sql-query-tool
@@ -900,15 +908,15 @@
             (is (some? (:schema entry)))
             (is (fn? (:fn entry))))))))
   (testing "an unconverted tool's schema comes from its var metadata"
-    (let [entries (agent-tools/->entries [#'agent-tools/list-timelines-tool] (atom {}) nil :nlq)
-          [_:=> [_:cat declared] _out] (:schema (get entries "list_timelines"))
-          [_:=> [_:cat original] _out] (:schema (meta #'agent-tools/list-timelines-tool))]
+    (let [entries (agent-tools/->entries [#'unconverted-tool] (atom {}) nil :nlq)
+          [_:=> [_:cat declared] _out] (:schema (get entries "unconverted"))
+          [_:=> [_:cat original] _out] (:schema (meta #'unconverted-tool))]
       (is (= original declared))))
   (testing "a converted tool and an unconverted one sit side by side"
-    (let [entries (agent-tools/->entries [#'agent-tools/list-snippets-tool        ; mu/defn var
+    (let [entries (agent-tools/->entries [#'unconverted-tool                      ; mu/defn var
                                           #'agent-tools/get-timeline-details-tool] ; record
                                          (atom {}) nil :nlq)]
-      (is (= #{"list_snippets" "get_timeline_details"} (set (keys entries))))
+      (is (= #{"unconverted" "get_timeline_details"} (set (keys entries))))
       (is (every? fn? (map :fn (vals entries))))))
   (testing "the entry's :fn goes through the runtime, so it reports rather than throws"
     (let [entries (agent-tools/->entries [#'agent-tools/search-tool] (atom {}) nil :nlq)
