@@ -6,8 +6,10 @@
   reveals the bounds and statistics of the rows that are hidden from them, so it is removed from every result column.
 
   `:results_metadata` is built after this middleware runs: with no fingerprint left on the cols, the insights step
-  computes one from the returned rows, so it describes the rows the user got. Such a run must not persist its
-  metadata on the Card, where every reader would see it; [[row-restricted?]] is the guard for that."
+  computes one from the returned rows. That one describes the rows the user got, but the frontend posts
+  `:results_metadata` back as the Card's `result_metadata` when the user saves the question, so the results-metadata
+  middleware drops it again with [[remove-fingerprints]] and skips persisting a row-restricted run's metadata on the
+  Card; [[row-restricted?]] is the guard for both."
   (:require
    [metabase.util.match :as match]
    [metabase.util.performance :as perf]))
@@ -41,8 +43,10 @@
       (impersonated? query)
       (db-routed? query)))
 
-(defn- remove-fingerprints [metadata]
-  (update metadata :cols (fn [cols] (perf/mapv #(dissoc % :fingerprint) cols))))
+(defn remove-fingerprints
+  "`cols` without their `:fingerprint`."
+  [cols]
+  (perf/mapv #(dissoc % :fingerprint) cols))
 
 (defn strip-row-restricted-fingerprints
   "Post-processing middleware. Removes `:fingerprint` from every result col when the current user's row access is
@@ -52,5 +56,5 @@
   [query rff]
   (if (row-restricted? query)
     (fn strip-row-restricted-fingerprints-rff* [metadata]
-      (rff (remove-fingerprints metadata)))
+      (rff (update metadata :cols remove-fingerprints)))
     rff))

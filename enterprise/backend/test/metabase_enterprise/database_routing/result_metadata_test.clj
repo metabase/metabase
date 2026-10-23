@@ -60,8 +60,9 @@
          (testing "sanity check: the query was routed"
            (is (= [["destination"]] (mt/rows result))))
          (is (every? nil? (vals (col-fingerprints result))))
-         (testing "results_metadata is computed over the destination's rows, not copied from the router's fingerprint"
-           (is (=? {"STR" {:global {:distinct-count 1}}} (results-metadata-fingerprints result))))
+         (testing "results_metadata carries no fingerprint either: the frontend posts it back as the Card's result_metadata"
+           (is (seq (-> result :data :results_metadata :columns)))
+           (is (every? nil? (vals (results-metadata-fingerprints result)))))
          (testing "a user routed to the router itself still gets the fingerprint, in cols and results_metadata"
            (let [result (mt/user-http-request :crowberto :post 202 "dataset" query)]
              (is (= [["router"]] (mt/rows result)))

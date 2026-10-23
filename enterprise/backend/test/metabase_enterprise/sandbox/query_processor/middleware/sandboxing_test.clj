@@ -2421,8 +2421,9 @@
   (into {} (map (juxt :name :fingerprint)) (mt/cols result)))
 
 (defn- results-metadata-fingerprints
-  "`{col-name fingerprint}` for every column of the `:results_metadata` of a query `result`. The insights step computes
-  these over the returned rows when the cols carry no fingerprint, and copies the cols' fingerprint when they do."
+  "`{col-name fingerprint}` for every column of the `:results_metadata` of a query `result`. The insights step copies
+  the cols' fingerprint when they carry one; a row-restricted run returns none here either, since the frontend posts
+  `:results_metadata` back as the Card's `result_metadata` on save."
   [result]
   (into {} (map (juxt :name :fingerprint)) (-> result :data :results_metadata :columns)))
 
@@ -2445,9 +2446,9 @@
           (is (= #{1} (into #{} (map #(nth % 5)) (mt/rows result)))))
         (is (seq (mt/cols result)))
         (is (every? nil? (vals (col-fingerprints result))))
-        (testing "results_metadata is computed over the rows the sandbox returned, not copied from the table"
-          (is (=? {"PRICE" {:global {:distinct-count 1}, :type {:type/Number {:min 1.0, :max 1.0}}}}
-                  (results-metadata-fingerprints result))))
+        (testing "results_metadata carries no fingerprint either: the frontend posts it back as the Card's result_metadata"
+          (is (seq (-> result :data :results_metadata :columns)))
+          (is (every? nil? (vals (results-metadata-fingerprints result)))))
         (testing "an unsandboxed admin still gets the fingerprint, in cols and results_metadata"
           (let [result (mt/user-http-request :crowberto :post 202 "dataset" query)]
             (is (=? {"PRICE"    {:global {:distinct-count 4}}
@@ -2483,8 +2484,8 @@
                 (is (true? (-> result :data :is_sandboxed)))
                 (is (seq (mt/cols result)))
                 (is (every? nil? (vals (col-fingerprints result))))
-                (testing "the sandboxed run's results_metadata describes the rows the sandbox returned"
-                  (is (=? {:name "PRICE", :fingerprint {:global {:distinct-count 1}}}
+                (testing "the sandboxed run's results_metadata carries no fingerprint either"
+                  (is (=? {:name "PRICE", :fingerprint (symbol "nil #_\"key is not present.\"")}
                           (last (-> result :data :results_metadata :columns)))))
                 (testing "and is not persisted on the Card, where every reader would see it (BOT-2115)"
                   (is (= persisted (t2/select-one-fn :result_metadata :model/Card :id card-id))))))))))))
@@ -2544,7 +2545,7 @@
             (is (true? (-> result :data :is_sandboxed)))
             (is (seq (mt/cols result)))
             (is (every? nil? (vals (col-fingerprints result))))
-            (is (=? {"PRICE" {:global {:distinct-count 1}}} (results-metadata-fingerprints result))))
+            (is (every? nil? (vals (results-metadata-fingerprints result)))))
           (testing "cache entry should be saved within 5 seconds"
             (let [[_ chan] (a/alts!! [save-chan (a/timeout 5000)])]
               (is (= save-chan chan))))
@@ -2553,8 +2554,9 @@
             (is (true? (-> result :data :is_sandboxed)))
             (is (seq (mt/cols result)))
             (is (every? nil? (vals (col-fingerprints result))))
-            (testing "results_metadata is recomputed over the replayed rows"
-              (is (=? {"PRICE" {:global {:distinct-count 1}}} (results-metadata-fingerprints result))))))))))
+            (testing "results_metadata is rebuilt on replay and carries no fingerprint either"
+              (is (seq (-> result :data :results_metadata :columns)))
+              (is (every? nil? (vals (results-metadata-fingerprints result)))))))))))
 
 (deftest sandboxed-pivot-results-omit-fingerprints-test
   (testing "BOT-2115: pivot query results for a sandboxed user carry no fingerprint"
