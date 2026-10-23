@@ -2116,22 +2116,27 @@
 
 (deftest error-response-callback-failure-test
   (mt/with-prometheus-system! [_ system]
-    (doseq [database-error? [false true]
-            delivery [:throw :raise]]
-      (let [failure          (if database-error? (SQLException. "Database failure") (Exception. "Handler failure"))
-            callback-failure (if database-error? (SQLException. "Callback failure") (Exception. "Callback failure"))
+    (doseq [callback-kind [:ordinary :database :disconnect]
+            delivery [:respond :throw :raise]]
+      (let [failure          (if (= callback-kind :database) (SQLException. "Database failure") (Exception. "Handler failure"))
+            callback-failure (case callback-kind
+                               :ordinary (Exception. "Callback failure")
+                               :database (SQLException. "Callback failure")
+                               :disconnect (EofException. "Client went away"))
             calls            (atom 0)
             callback         (fn [_] (swap! calls inc) (throw callback-failure))
             handler          (#'agent-api.api/wrap-error-responses
-                              (fn [_request _respond raise]
+                              (fn [_request respond raise]
                                 (case delivery
+                                  :respond (respond {:status 200 :body "ok"})
                                   :throw (throw failure)
                                   :raise (raise failure))))
             initial          (mt/metric-value system :metabase-api/unhandled-errors)
             caught           (try (handler {} callback callback) (catch Throwable e e))]
         (is (identical? callback-failure caught))
         (is (= 1 @calls))
-        (is (= (inc initial) (mt/metric-value system :metabase-api/unhandled-errors)))))))
+        (is (= (if (= delivery :respond) initial (inc initial))
+               (mt/metric-value system :metabase-api/unhandled-errors)))))))
 
 (deftest client-disconnect-is-not-an-error-test
   (testing "A client that disconnects before its response is written gets no error response, count or error log"

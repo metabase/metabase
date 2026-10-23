@@ -1872,18 +1872,20 @@
   logs a canceled request, as on any other route."
   [handler]
   (fn [request respond raise]
-    (let [raised?  (volatile! false)
+    (let [callback-called? (volatile! false)
           respond' (fn [response]
-                     (respond (streaming-response/with-error-response-fn response query-failure-body)))
+                     (let [response (streaming-response/with-error-response-fn response query-failure-body)]
+                       (vreset! callback-called? true)
+                       (respond response)))
           raise'   (fn [e]
-                     (vreset! raised? true)
+                     (vreset! callback-called? true)
                      (if (instance? EofException e)
                        (raise e)
                        (respond' (exception-response e))))]
       (try
         (handler request respond' raise')
         (catch Throwable e
-          (if @raised?
+          (if @callback-called?
             (throw e)
             (raise' e)))))))
 
