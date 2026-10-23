@@ -270,9 +270,9 @@
   "The AISDK parts for this call of the turn: what the previous call sent, exactly as sent, then the parts added since.
   Rebuilding the history fetches the viewing context again and inverts links against a registry that grows within
   the turn, and Claude Opus and Sonnet 5.5 reject a replayed thinking block once anything before it has changed."
-  [sent-parts context memory link-registry]
+  [sent-parts context memory tools link-registry]
   (into sent-parts
-        (invert-links (subvec (messages/build-message-history context memory) (count sent-parts))
+        (invert-links (subvec (messages/build-message-history context memory tools) (count sent-parts))
                       link-registry)))
 
 (defn- call-llm
@@ -583,7 +583,7 @@
           memory             @memory-atom
           parts-atom         (atom [])
           link-registry-atom (atom (get-in memory [:state :link-registry] {}))
-          input-parts        (turn-input-parts sent-parts context memory @link-registry-atom)
+          input-parts        (turn-input-parts sent-parts context memory tools @link-registry-atom)
           xf                 (comp (accumulate-usage-xf usage-atom (:model profile))
                                    (u/tee-xf parts-atom))
           ;; We use `reduce` instead of `transduce` because rf is the outer reducing
