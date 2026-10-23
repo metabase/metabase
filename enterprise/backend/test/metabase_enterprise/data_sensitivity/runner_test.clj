@@ -2,8 +2,10 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
+   [metabase-enterprise.data-sensitivity.context :as context]
    [metabase-enterprise.data-sensitivity.core :as core]
    [metabase-enterprise.data-sensitivity.core-test :as core-test]
+   [metabase-enterprise.data-sensitivity.db :as ds.db]
    [metabase-enterprise.data-sensitivity.llm :as llm]
    [metabase-enterprise.data-sensitivity.runner :as runner]
    [metabase.api.common :as api]
@@ -604,3 +606,123 @@
           (is (< (count (first (:messages (first only)))) (count (first (:messages (first default)))))))
         (finally
           (t2/delete! :model/MetadataGenerationRun :id [:in @run-ids]))))))
+
+(defn- poll-run
+  "Poll the run until `pred` holds or `ms` milliseconds pass. Returns the last row read."
+  [run-id pred ms]
+  (let [timer (u/start-timer)]
+    (loop []
+      (let [run (run-row run-id)]
+        (if (or (pred run) (> (u/since-ms timer) ms))
+          run
+          (do (Thread/sleep 50) (recur)))))))
+
+(defn- do-with-busy-workers!
+  "Run `(f)` while every worker thread executes a run whose chunk call blocks, then release the blocked runs and wait
+  for them to end."
+  [f]
+  (let [n       @#'runner/worker-pool-size
+        release (promise)
+        started (CountDownLatch. n)
+        run-ids (atom [])]
+    (letfn [(go [i]
+              (if (< i n)
+                (do-with-temp-tables
+                 1
+                 (fn [db _tables]
+                   (swap! run-ids conj (:id (start! db {:attributes [:data_sensitivity]})))
+                   (go (inc i))))
+                (try
+                  (is (.await started 10 TimeUnit/SECONDS))
+                  (f)
+                  (finally
+                    (deliver release true)
+                    (run! wait-ended @run-ids)))))]
+      (core-test/do-with-llm!
+       (fn [& args]
+         (.countDown started)
+         @release
+         (apply (core-test/canned-llm (constantly {})) args))
+       #(go 0)))))
+
+(deftest cancel-pending-run-test
+  (testing "a canceled pending run becomes canceled while every worker is busy, and its database can start a new run"
+    (do-with-temp-tables
+     1
+     (fn [db _tables]
+       (let [run-ids (atom [])]
+         (try
+           (do-with-busy-workers!
+            (fn []
+              (let [run (start! db {:attributes [:data_sensitivity]})]
+                (swap! run-ids conj (:id run))
+                (is (=? {:status :pending} (run-row (:id run))))
+                (runner/cancel-run! (:id run))
+                (is (=? {:status :canceled :is_active nil}
+                        (poll-run (:id run) #(nil? (:is_active %)) (* 2 runner/poll-ms))))
+                (let [next-run (try (start! db {:attributes [:data_sensitivity]})
+                                    (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+                  (some->> (:id next-run) (swap! run-ids conj))
+                  (is (=? {:status :pending} next-run))))))
+           (finally
+             (doseq [id @run-ids]
+               (u/ignore-exceptions (runner/cancel-run! id))
+               (wait-ended id)))))))))
+
+(deftest queued-run-gone-leaves-local-runs-test
+  (testing "a queued run that stops being active is removed from the node's local runs when the heartbeat cancels it"
+    (do-with-temp-tables
+     1
+     (fn [db _tables]
+       (let [run-id (atom nil)]
+         (try
+           (do-with-busy-workers!
+            (fn []
+              (reset! run-id (:id (start! db {:attributes [:data_sensitivity]})))
+              (t2/update! :model/MetadataGenerationRun @run-id
+                          {:last_heartbeat (.minusMinutes (OffsetDateTime/now) 10)})
+              (is (= [@run-id] (mapv :id (runner/reap-orphaned-runs! runner/heartbeat-stale-minutes))))
+              (runner/heartbeat-tick!)
+              (is (=? {:status :failed :is_active nil} (run-row @run-id)))
+              (is (not (contains? @@#'runner/local-runs @run-id)))))
+           (finally
+             (some->> @run-id (swap! @#'runner/local-runs dissoc)))))))))
+
+(deftest cancel-after-last-table-test
+  (testing "a cancel that arrives after the last table is recorded ends the run as canceled"
+    (do-with-temp-tables
+     2
+     (fn [db _tables]
+       (let [record-table! (mt/original-fn #'ds.db/record-table!)
+             recorded      (atom 0)]
+         (core-test/do-with-llm!
+          (core-test/canned-llm (constantly {:data_sensitivity "PII"}))
+          (fn []
+            (mt/with-dynamic-fn-redefs [ds.db/record-table! (fn [run-id changes proposals]
+                                                              (let [result (record-table! run-id changes proposals)]
+                                                                (when (= 2 (swap! recorded inc))
+                                                                  (runner/cancel-run! run-id))
+                                                                result))]
+              (let [ended (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))]
+                (is (= 2 @recorded))
+                (is (=? {:status :canceled :done_tables 2} ended)))))))))))
+
+(deftest cancel-interrupts-row-sample-test
+  (testing "a cancel stops a run whose worker is building the row sample of a table"
+    (do-with-temp-tables
+     1
+     (fn [db _tables]
+       (let [started (CountDownLatch. 1)]
+         (core-test/do-with-llm!
+          (core-test/canned-llm (constantly {}))
+          (fn []
+            (mt/with-dynamic-fn-redefs [context/table-packet (fn [& _]
+                                                               (.countDown started)
+                                                               (Thread/sleep 30000))]
+              (let [run (start! db {:attributes [:data_sensitivity]})]
+                (is (.await started 10 TimeUnit/SECONDS))
+                (runner/cancel-run! (:id run))
+                (let [timer (u/start-timer)
+                      ended (wait-ended (:id run))]
+                  (is (< (u/since-ms timer) runner/poll-ms))
+                  (is (=? {:status :canceled :done_tables 0} ended))))))))))))

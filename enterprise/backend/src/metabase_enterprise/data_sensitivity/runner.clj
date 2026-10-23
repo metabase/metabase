@@ -4,9 +4,10 @@
   writes no field metadata. The chunk calls of a table run on the shared pool of [[llm/submit-packet]]. One run per database can be
   active.
 
-  Cancel and stop (decision `ghy-4721-run-cancel-and-stop-statuses`): [[cancel-run!]] sets the status to `canceling`
-  on the run row, so a cancel from any node reaches the worker. The worker reads the status between tables and every
-  [[poll-ms]] while it waits on chunk calls, cancels the chunks in flight, and writes `canceled`. A usage limit ends the
+  Cancel and stop (decision `ghy-4721-run-cancel-and-stop-statuses`): [[cancel-run!]] ends a pending run as
+  `canceled` at once. For a running run it sets the status to `canceling` on the run row, so a cancel from any node
+  reaches the worker, and interrupts the worker when it runs on this node. The worker reads the status between tables
+  and every [[poll-ms]] while it waits on chunk calls, cancels the chunks in flight, and writes `canceled`. A usage limit ends the
   run with status `usage_limit`. A table that fails is recorded on the run and the run continues. Tables the run did
   not finish go to `table_errors` with error code `not_processed`, so [[retry-failed!]] covers them.
 
@@ -127,27 +128,29 @@
     table_ids               {:type :tables :table_ids (vec (distinct table_ids))}
     :else                   {:type :database}))
 
+(defn- tables-in-scope
+  "The active tables of `database-id` that `scope` names, ordered by schema then name."
+  [database-id {scope-type :type :keys [schemas table_ids]}]
+  (let [tables (db/active-tables database-id nil)]
+    (vec (case scope-type
+           :database tables
+           :schemas  (filter (comp (set schemas) :schema) tables)
+           :tables   (filter (comp (set table_ids) :id) tables)))))
+
 (defn- scope-tables
   "The active tables of `database-id` that `scope` names, ordered by schema then name. Throws a 400 when the scope
   names a schema or table that has no active table in the database, or when it holds no table."
-  [database-id {scope-type :type :keys [schemas table_ids]}]
-  (let [tables (db/active-tables database-id nil)
-        tables (case scope-type
-                 :database tables
-                 :schemas  (let [wanted  (set schemas)
-                                 missing (remove (set (map :schema tables)) schemas)]
-                             (when (seq missing)
-                               (throw (bad-request (tru "No active tables in schemas: {0}." (pr-str (vec missing))))))
-                             (filter #(wanted (:schema %)) tables))
-                 :tables   (let [wanted  (set table_ids)
-                                 found   (filter #(wanted (:id %)) tables)
-                                 missing (remove (set (map :id found)) table_ids)]
-                             (when (seq missing)
-                               (throw (bad-request (tru "Not active tables of this database: {0}." (pr-str (vec missing))))))
-                             found))]
+  [database-id {scope-type :type :keys [schemas table_ids] :as scope}]
+  (let [tables (tables-in-scope database-id scope)]
+    (case scope-type
+      :database nil
+      :schemas  (when-let [missing (seq (remove (set (map :schema tables)) schemas))]
+                  (throw (bad-request (tru "No active tables in schemas: {0}." (pr-str (vec missing))))))
+      :tables   (when-let [missing (seq (remove (set (map :id tables)) table_ids))]
+                  (throw (bad-request (tru "Not active tables of this database: {0}." (pr-str (vec missing)))))))
     (when (empty? tables)
       (throw (bad-request (tru "The database has no active tables to classify."))))
-    (vec tables)))
+    tables))
 
 (defn- check-attributes! [attributes]
   (when-let [unsupported (seq (remove supported-attributes attributes))]
@@ -327,6 +330,16 @@
 (defn- not-processed [state tables message]
   (update state :errors into (map #(table-error % message "not_processed")) tables))
 
+(def ^:private start-state
+  {:done 0 :failed 0 :errors [] :usage zero-usage})
+
+(defn- canceled-changes
+  "The changes that end a run canceled from `state`, with `tables` recorded as not processed."
+  [state tables]
+  (-> (not-processed state tables (tru "The run was canceled."))
+      progress
+      (assoc :status :canceled :message (tru "Canceled."))))
+
 (defn- add-spent
   "Add the usage of the chunks that finished in a table that failed or stopped, and its slow calls, from
   [[classify-table]], to `state`."
@@ -341,10 +354,10 @@
 (defn- run-tables!
   "Classify `tables` in order and record each one on the run. Returns the final state, with `:end` set to how the
   run ended: `:succeeded`, `[:stopped reason]` or `[:usage-limit message]`."
-  [{:keys [run-id attributes spent] :as ctx} database tables]
+  [{:keys [run-id attributes spent stop] :as ctx} database tables]
   (let [sample-error (core/sample-connection-error database nil)
         packet-opts  (cond-> {} sample-error (assoc :include-values? false))]
-    (loop [state             {:done 0 :failed 0 :errors [] :usage zero-usage}
+    (loop [state             start-state
            [table & more :as remaining] tables]
       (if-not table
         (assoc state :end :succeeded)
@@ -363,7 +376,7 @@
                         (catch Exception e
                           (cond
                             (stop-reason e)         {:end [:stopped (stop-reason e)]}
-                            (interrupted? e)        {:end [:stopped :gone]}
+                            (interrupted? e)        {:end [:stopped (or @stop :gone)]}
                             (usage-limit-message e) {:end [:usage-limit (usage-limit-message e)]}
                             :else                   {:error e})))
               elapsed (long (u/since-ms timer))]
@@ -394,19 +407,19 @@
                 (assoc state :end [:stopped :gone] :remaining more)))))))))
 
 (defn- finish!
-  "Write the terminal status of a run from the final `state` of [[run-tables!]]. A run that ended elsewhere is left
-  as it is."
+  "Write the terminal status of a run from the final `state` of [[run-tables!]]. A run that is `canceling` after its
+  last table ends canceled. A run that ended elsewhere is left as it is."
   [run-id {:keys [end remaining] :as state}]
   (let [[kind reason] (if (keyword? end) [end] end)]
     (case kind
       :succeeded
-      (db/update-active-run! run-id (assoc (progress state) :status :succeeded))
+      (when (and (zero? (db/update-run-with-status! run-id :running (assoc (progress state) :status :succeeded)))
+                 (= :canceling (db/run-status run-id)))
+        (db/update-run-with-status! run-id :canceling (canceled-changes state nil)))
 
       :stopped
       (if (= :canceled reason)
-        (db/update-active-run! run-id (-> (not-processed state remaining (tru "The run was canceled."))
-                                          progress
-                                          (assoc :status :canceled :message (tru "Canceled."))))
+        (db/update-active-run! run-id (canceled-changes state remaining))
         (log/infof "Metadata generation run %d ended elsewhere; the worker stops" run-id))
 
       :usage-limit
@@ -416,22 +429,34 @@
 
 (defn- execute-run!
   "Execute the run in `ctx` over `tables`. Marks it running unless it was canceled while pending, runs the tables,
-  and writes the terminal status. An unexpected failure fails the run."
-  [{:keys [run-id] :as ctx} database tables]
+  and writes the terminal status. A cancel interrupts the worker, so the interrupt flag is cleared before the terminal
+  write. An unexpected failure fails the run, unless the run was canceled."
+  [{:keys [run-id stop] :as ctx} database tables]
   (try
     (if (pos? (db/update-run-with-status! run-id :pending {:status :running :started_at (OffsetDateTime/now) :last_heartbeat (OffsetDateTime/now)}))
-      (finish! run-id (run-tables! ctx database tables))
+      (let [state (run-tables! ctx database tables)]
+        (Thread/interrupted)
+        (finish! run-id state))
       (when (= :canceling (db/run-status run-id))
-        (db/update-active-run! run-id (-> (not-processed {:done 0 :failed 0 :errors [] :usage zero-usage}
-                                                         tables (tru "The run was canceled."))
-                                          progress
-                                          (assoc :status :canceled :message (tru "Canceled."))))))
+        (db/update-active-run! run-id (canceled-changes start-state tables))))
     (catch Throwable e
-      (log/errorf e "Metadata generation run %d failed" run-id)
-      (u/ignore-exceptions
-        (db/update-active-run! run-id {:status :failed :message (or (ex-message e) (str (class e)))})))
+      (Thread/interrupted)
+      (if (= :canceled @stop)
+        (u/ignore-exceptions
+          (db/update-active-run! run-id {:status :canceled :message (tru "Canceled.")}))
+        (do
+          (log/errorf e "Metadata generation run %d failed" run-id)
+          (u/ignore-exceptions
+            (db/update-active-run! run-id {:status :failed :message (or (ex-message e) (str (class e)))})))))
     (finally
       (swap! local-runs dissoc run-id))))
+
+(defn- interrupt-local-run!
+  "Set the stop flag of the run with `run-id` that this node executes to `reason`, and interrupt its worker."
+  [run-id reason]
+  (when-let [{:keys [stop future]} (get @local-runs run-id)]
+    (reset! stop reason)
+    (some-> ^Future future (.cancel true))))
 
 (defn- submit-worker!
   "Run [[execute-run!]] on the worker pool as `creator-id`, so the chunk calls count against that user's usage."
@@ -524,14 +549,20 @@
       run)))
 
 (mu/defn cancel-run! :- [:maybe (ms/InstanceOf :model/MetadataGenerationRun)]
-  "Ask the run with `run-id` to stop. A pending or running run becomes `canceling` and its worker writes `canceled`
+  "Stop the run with `run-id`. A pending run becomes `canceled` at once, with the tables of its scope recorded as not
+  processed. A running run becomes `canceling`; its worker, interrupted when it runs on this node, writes `canceled`
   when it stops. Returns the run after the request. Throws a 409 when the run has already ended."
   [run-id :- ms/PositiveInt]
   (when-let [run (db/run run-id)]
     (when-not (run/active-statuses (:status run))
       (throw (ex-info (tru "The run has already ended.") {:status-code 409})))
-    (db/update-run-with-status! run-id #{:pending :running} {:status :canceling})
-    (some-> (get-in @local-runs [run-id :stop]) (reset! :canceled))
+    (if (pos? (db/update-run-with-status! run-id :pending
+                                          (canceled-changes start-state (tables-in-scope (:database_id run) (:scope run)))))
+      (when-let [{:keys [future]} (get @local-runs run-id)]
+        (swap! local-runs dissoc run-id)
+        (some-> ^Future future (.cancel false)))
+      (do (db/update-run-with-status! run-id :running {:status :canceling})
+          (interrupt-local-run! run-id :canceled)))
     (db/run run-id)))
 
 (mu/defn retry-failed! :- (ms/InstanceOf :model/MetadataGenerationRun)
@@ -551,8 +582,9 @@
 ;;; Heartbeat and reaper
 
 (defn heartbeat-tick!
-  "Heartbeat the runs this node executes. Raise the stop flag of a run that is `canceling`; stop and interrupt the
-  worker of a run that is no longer active."
+  "Heartbeat the runs this node executes. Stop and interrupt the worker of a run that is `canceling`. Stop and
+  interrupt the worker of a run that is no longer active, and remove the run from the local runs, as a worker that
+  never started does not remove it."
   []
   (let [ids (vec (keys @local-runs))]
     (rt/heartbeat-and-reconcile!
@@ -561,11 +593,10 @@
       :ids        ids
       :heartbeat! #(rt/heartbeat-ids! :model/MetadataGenerationRun [:is_active true] :last_heartbeat %)
       :on-gone    (fn [id]
-                    (when-let [{:keys [stop future]} (get @local-runs id)]
-                      (reset! stop :gone)
-                      (some-> ^Future future (.cancel true))))})
+                    (interrupt-local-run! id :gone)
+                    (swap! local-runs dissoc id))})
     (doseq [id (db/canceling-run-ids ids)]
-      (some-> (get-in @local-runs [id :stop]) (reset! :canceled)))))
+      (interrupt-local-run! id :canceled))))
 
 (defn reap-orphaned-runs!
   "Fail every active run whose heartbeat is older than `stale-minutes`. Returns the reaped rows."
