@@ -166,6 +166,18 @@ export function KeyboardFilterRow({
     closeDraft();
   };
 
+  const handleRemove = () => {
+    if (activeDraft?.filter != null) {
+      const { query, stageIndex, filter } = activeDraft;
+      setQuery(
+        Lib.dropEmptyStages(Lib.removeClause(query, stageIndex, filter)),
+      );
+      closeDraft();
+    } else {
+      handleCancel();
+    }
+  };
+
   const startEditing = (
     itemIndex: number,
     stageIndex: number,
@@ -201,6 +213,7 @@ export function KeyboardFilterRow({
       onSubmitFilters={handleSubmitFilters}
       onDone={closeDraft}
       onCancel={handleCancel}
+      onRemove={handleRemove}
     />
   );
 

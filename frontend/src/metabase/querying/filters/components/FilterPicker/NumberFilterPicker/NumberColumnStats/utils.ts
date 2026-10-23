@@ -296,3 +296,38 @@ export function roundEstimate(count: number) {
   const magnitude = 10 ** (Math.floor(Math.log10(count)) - 1);
   return Math.round(count / magnitude) * magnitude;
 }
+
+/** The row count of each value of the column, with the most common first. */
+export function getValueCountsQuery({
+  query,
+  stageIndex,
+  column,
+}: StatsBase): Lib.Query | null {
+  const breakoutColumn = Lib.findMatchingColumn(
+    query,
+    stageIndex,
+    column,
+    Lib.breakoutableColumns(query, stageIndex),
+  );
+  if (breakoutColumn == null) {
+    return null;
+  }
+  return aggregate(
+    Lib.breakout(query, stageIndex, breakoutColumn),
+    stageIndex,
+    null,
+    "count",
+  );
+}
+
+/** Row counts by value, as strings. Rows with no value count as `null`. */
+export function parseValueCountRows(rows: RowValue[][]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const [value, count] of rows) {
+    if (typeof count === "number") {
+      const key = value == null ? "null" : String(value);
+      counts.set(key, (counts.get(key) ?? 0) + count);
+    }
+  }
+  return counts;
+}

@@ -16,7 +16,7 @@ import type { DraftOperator, SuggestionGroup } from "./types";
 
 const MAX_TILE_OPTIONS = 8;
 const WIDE_DROPDOWN_WIDTH = 400;
-const TILES_DROPDOWN_WIDTH = 320;
+const TILES_DROPDOWN_WIDTH = 360;
 
 export type ValueAndLabel = [string, string];
 

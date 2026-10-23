@@ -42,6 +42,8 @@ interface SuggestionInputProps {
   optionsMaxHeight?: string;
   /** Content above the options, like presets or a map. */
   header?: ReactNode;
+  /** Content below the options, like the count of matching rows. */
+  footer?: ReactNode;
   /** Shown when no option matches the text. */
   emptyMessage?: string;
   onTextChange: (text: string) => void;
@@ -75,12 +77,14 @@ export function SuggestionInput({
   dropdownWidth = DEFAULT_DROPDOWN_WIDTH,
   optionsMaxHeight,
   header,
+  footer,
   emptyMessage = t`No results`,
   onTextChange,
   onOptionSubmit,
   onKeyDown,
 }: SuggestionInputProps) {
   const combobox = useCombobox({ defaultOpened: true });
+
   const { selectFirstOption, resetSelectedOption } = combobox;
 
   const filteredGroups = useMemo(() => {
@@ -190,10 +194,20 @@ export function SuggestionInput({
         <Combobox.Option
           key={option.value}
           value={option.value}
-          className={S.tile}
+          className={cx(S.tile, { [S.shareTile]: option.share != null })}
+          style={
+            option.share != null
+              ? { "--tile-share": `${option.share.value * 100}%` }
+              : undefined
+          }
           aria-pressed={option.isChecked ?? false}
         >
-          <OptionLabel option={option} />
+          <OptionLabel
+            option={option.isChecked ? { ...option, icon: "check" } : option}
+          />
+          {option.share != null && (
+            <span className={S.tileShare}>{option.share.label}</span>
+          )}
         </Combobox.Option>
       );
     }
@@ -228,7 +242,11 @@ export function SuggestionInput({
       position="bottom-start"
       width={dropdownWidth}
       withinPortal={false}
-      classNames={{ groupLabel: S.groupLabel, option: S.option }}
+      classNames={{
+        dropdown: S.pillDropdown,
+        groupLabel: S.groupLabel,
+        option: S.option,
+      }}
       onOptionSubmit={(value) => {
         onOptionSubmit(value);
         if (isMultiSelect) {
@@ -314,6 +332,7 @@ export function SuggestionInput({
               <Combobox.Empty>{emptyMessage}</Combobox.Empty>
             )}
           </Combobox.Options>
+          {footer != null && <div className={S.dropdownFooter}>{footer}</div>}
         </Combobox.Dropdown>
       )}
     </Combobox>

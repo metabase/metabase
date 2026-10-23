@@ -62,15 +62,15 @@ interface UseNumberColumnStatsResult {
 }
 
 /** Rows of the sample below which an estimate is not reliable. */
-const MIN_SAMPLE_ROWS = 100;
+export const MIN_SAMPLE_ROWS = 100;
 
 /** Matching rows of the sample below which the count is only "a few". */
-const MIN_SAMPLE_MATCHES = 5;
+export const MIN_SAMPLE_MATCHES = 5;
 
 /** The slider changes the values quickly, so the count waits for a pause. */
 const MATCH_COUNT_DELAY_MS = 150;
 
-type StatsSource =
+export type StatsSource =
   | { type: "none" }
   | { type: "fast" }
   | {
@@ -89,7 +89,7 @@ const NO_STATS: StatsSource = { type: "none" };
  * sample of that table, which Metabase makes in the background. Other queries
  * get no stats, because a slow table makes each query wait for seconds.
  */
-function useStatsSource(query: Lib.Query): StatsSource {
+export function useStatsSource(query: Lib.Query): StatsSource {
   const prototypeData = useSetting("prototype-data");
   const { data: samples } = useGetPrototypeSamplesQuery();
   return useMemo(() => {
@@ -141,7 +141,7 @@ function useStatsSource(query: Lib.Query): StatsSource {
  * new query object makes a new request, and in the notebook every response
  * makes a new query object.
  */
-function useStableJsQuery(query: Lib.Query | null) {
+export function useStableJsQuery(query: Lib.Query | null) {
   const ref = useRef<{
     key: string;
     jsQuery: ReturnType<typeof Lib.toJsQuery>;

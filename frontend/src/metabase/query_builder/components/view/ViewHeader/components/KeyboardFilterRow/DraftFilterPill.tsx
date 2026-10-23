@@ -20,7 +20,9 @@ import {
   MatchCount,
   SampleNote,
   UnavailableNote,
+  type ValueCounts,
   useNumberColumnStats,
+  useValueCounts,
 } from "metabase/querying/filters/components/FilterPicker/NumberFilterPicker/NumberColumnStats";
 import { Icon, Loader, Popover, Stack, Tooltip } from "metabase/ui";
 import { parseNumber } from "metabase/utils/number";
@@ -88,6 +90,8 @@ interface DraftFilterPillProps {
   onDone: () => void;
   /** The user discarded the changes in the pill. */
   onCancel: () => void;
+  /** The user removed the filter with the cross of the pill. */
+  onRemove: () => void;
 }
 
 /**
@@ -105,6 +109,7 @@ export function DraftFilterPill({
   onSubmitFilters,
   onDone,
   onCancel,
+  onRemove,
 }: DraftFilterPillProps) {
   const [draft, setDraft] = useState<DraftState>(
     () => initialState ?? { values: [] },
@@ -401,7 +406,7 @@ export function DraftFilterPill({
           <div className={S.draftPill} data-testid="draft-filter-pill">
             {columnSegment}
             <span className={S.placeholder}>…</span>
-            <RemoveIcon onClick={onCancel} />
+            <RemoveIcon onClick={onRemove} />
           </div>
         </Popover.Target>
         <Popover.Dropdown>
@@ -516,6 +521,8 @@ export function DraftFilterPill({
             <ValueInput
               inputRef={inputRef}
               query={query}
+              stageIndex={stageIndex}
+              filter={filter}
               column={column.column}
               operator={operator}
               values={values}
@@ -534,7 +541,7 @@ export function DraftFilterPill({
         )}
         {(aiValues.state.status === "loading" ||
           aiFilters.state.status === "loading") && <Loader size="xs" />}
-        <RemoveIcon onClick={onCancel} />
+        <RemoveIcon onClick={onRemove} />
       </div>
     </Tooltip>
   );
@@ -774,6 +781,8 @@ function useRelatedColumnGroup(
 interface ValueInputProps {
   inputRef: React.RefObject<HTMLInputElement>;
   query: Lib.Query;
+  stageIndex: number;
+  filter: Lib.FilterClause | undefined;
   column: Lib.ColumnMetadata;
   operator: DraftOperator;
   values: string[];
@@ -792,6 +801,8 @@ interface ValueInputProps {
 function ValueInput({
   inputRef,
   query,
+  stageIndex,
+  filter,
   column,
   operator,
   values,
@@ -817,6 +828,32 @@ function ValueInput({
     onValuesChange,
     onToggleValue,
   });
+  const valueCounts = useValueCounts({
+    query,
+    stageIndex,
+    column,
+    filter,
+    isEnabled: widget.isTiles,
+  });
+  const groups = useMemo(
+    () =>
+      valueCounts.type === "counts"
+        ? widget.groups.map((group) => ({
+            ...group,
+            options: group.options.map((option) => {
+              const share = valueCounts.getShare(option.value);
+              return {
+                ...option,
+                share: {
+                  value: share,
+                  label: formatShare(share, valueCounts.isEstimate),
+                },
+              };
+            }),
+          }))
+        : widget.groups,
+    [widget.groups, valueCounts],
+  );
   const labels = useMemo(
     () =>
       new Map(
@@ -842,8 +879,17 @@ function ValueInput({
       )}
       <SuggestionInput
         inputRef={inputRef}
-        groups={isAiPromptText ? NO_GROUPS : widget.groups}
+        groups={isAiPromptText ? NO_GROUPS : groups}
         header={isAiPromptText ? undefined : widget.header}
+        footer={
+          isAiPromptText ? undefined : (
+            <ValueCountsFooter
+              valueCounts={valueCounts}
+              operator={operator}
+              values={values}
+            />
+          )
+        }
         isTiles={widget.isTiles}
         columns={widget.columns}
         dropdownWidth={widget.dropdownWidth}
@@ -857,6 +903,48 @@ function ValueInput({
       />
     </>
   );
+}
+
+const MATCH_COUNT_OPERATORS = new Set(["=", "!="]);
+
+function ValueCountsFooter({
+  valueCounts,
+  operator,
+  values,
+}: {
+  valueCounts: ValueCounts;
+  operator: DraftOperator;
+  values: string[];
+}) {
+  if (valueCounts.type === "unavailable") {
+    return <UnavailableNote />;
+  }
+  if (valueCounts.type !== "counts") {
+    return null;
+  }
+  const hasMatchCount =
+    values.length > 0 && MATCH_COUNT_OPERATORS.has(operator.key);
+  if (!hasMatchCount && !valueCounts.isEstimate) {
+    return null;
+  }
+  return (
+    <>
+      {hasMatchCount && (
+        <MatchCount
+          matchCount={valueCounts.getMatchCount(values, operator.key === "!=")}
+        />
+      )}
+      {valueCounts.isEstimate && <SampleNote />}
+    </>
+  );
+}
+
+/** A share as a percent, like "34%", or "~34%" for an estimate. */
+function formatShare(share: number, isEstimate: boolean) {
+  const percent = share * 100;
+  const label =
+    percent > 0 && percent < 0.5 ? "<1%" : `${Math.round(percent)}%`;
+  return isEstimate ? `~${label}` : label;
 }
 
 interface ValueTokensProps {

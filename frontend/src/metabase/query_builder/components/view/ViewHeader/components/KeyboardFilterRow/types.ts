@@ -14,6 +14,8 @@ export type SuggestionOption = {
   /** Shown after the label in grey, like a state code. */
   description?: string;
   isChecked?: boolean;
+  /** The share of the rows with this value, shown on a tile. */
+  share?: { value: number; label: string };
 };
 
 export type SuggestionGroup = {
