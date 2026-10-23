@@ -3171,6 +3171,49 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
 
+(deftest ^:parallel split-post-agg-refuses-present-trailing-clauses-test
+  (doseq [trailing-clauses (concat
+                            (for [clause ["order-by" "limit" "fields"]
+                                  value  [42 false "" "TOTAL"]]
+                              {clause value})
+                            [{"fields" 42, "order-by" [["desc" {} ["aggregation" {} 0]]]}
+                             {"fields" 42, "limit" 5}
+                             {"order-by" 42, "fields" [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                             {"order-by" 42, "limit" 5}
+                             {"order-by" 42, "fields" 42, "limit" 5}])]
+    (testing (pr-str trailing-clauses)
+      (let [stage (merge {"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "filters"      [[">" {} ["aggregation" {} 0] 10]]}
+                         trailing-clauses)]
+        (try
+          (repair/repair trivial-mp {"lib/type" "mbql/query"
+                                     "database" "Sample"
+                                     "stages"   [stage]})
+          (is false "Expected advice to split the stage")
+          (catch clojure.lang.ExceptionInfo e
+            (is (=? {:agent-error? true
+                     :error        :post-agg-filter-with-trailing-clauses}
+                    (ex-data e)))
+            (is (re-find #"Please author this as two stages explicitly" (ex-message e)))))))))
+
+(deftest ^:parallel split-post-agg-with-absent-trailing-clauses-test
+  (doseq [clause ["order-by" "limit" "fields"]
+          value  [nil [] {}]]
+    (testing (pr-str {clause value})
+      (let [query {"lib/type" "mbql/query"
+                   "database" "Sample"
+                   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                "aggregation"  [["count" {}]]
+                                "filters"      [[">" {} ["aggregation" {} 0] 10]]
+                                clause         value}]}
+            stages (get (repair/repair trivial-mp query) "stages")]
+        (is (= 2 (count stages)))
+        (is (= [[">" {} ["field" {} "count"] 10]]
+               (get-in stages [1 "filters"])))))))
+
 (deftest ^:parallel split-post-agg-refuses-when-order-by-is-a-string-test
   (testing "a string `order-by` with a post-aggregation filter gets advice to split the stage"
     (is (=? {:error :post-agg-filter-with-trailing-clauses}
@@ -3364,8 +3407,7 @@
 (deftest ^:parallel malformed-clauses-reach-validation-test
   (testing "repair leaves malformed stages and clauses for validation"
     ;; ORDERS has to resolve for the cross-stage pass to reach a later stage
-    (let [orders   {"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}
-          post-agg (assoc orders "aggregation" [["count" {}]] "filters" [[">" {} ["aggregation" {} 0] 1]])]
+    (let [orders {"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
       (doseq [[label stages] {"a number as `aggregation`"
                               [(assoc orders "aggregation" 42)]
                               "an empty aggregation clause used in `order-by`"
@@ -3374,10 +3416,10 @@
                               [(assoc orders "joins" 42)]
                               "a join-alias reference with a number as `joins`"
                               [(assoc orders "joins" 42 "breakout" [["field" {"join-alias" "P"} "CATEGORY"]])]
-                              "a post-aggregation filter with a number as `order-by`"
-                              [(assoc post-agg "order-by" 42)]
-                              "a post-aggregation filter with a number as `fields`"
-                              [(assoc post-agg "fields" 42)]
+                              "a number as `order-by`"
+                              [(assoc orders "order-by" 42)]
+                              "a number as `fields`"
+                              [(assoc orders "fields" 42)]
                               "a number as a later stage"            [orders 42]
                               "a string as a later stage"            [orders "ORDERS"]
                               "true as a later stage"                [orders true]
