@@ -76,17 +76,22 @@
   {:payload     [:or
                  [:map {:closed true}
                   [:kind [:enum :collection :dashboard :document]]
-                  [:id   :int]]
+                  [:id   :int]
+                  [:has-personal-collection? :boolean]]
                  ;; The root collection has no ID.
                  [:map {:closed true}
-                  [:kind [:= :collection]]]]
+                  [:kind [:= :collection]]
+                  [:has-personal-collection? :boolean]]]
    :status-code 403}
-  [{:keys [kind id]}]
+  [{:keys [kind id has-personal-collection?]}]
   {:message  (str "The user doesn't have permission to save to "
                   (if id (str (name kind) " " id) "the root collection") ".")
-   :recovery [{:uses #{}
-               :text (str "Tell the user and offer to save the chart to their personal collection."
-                          " Omit `collection_id` from a collection destination to use it.")}
+   :recovery [(if has-personal-collection?
+                {:uses #{}
+                 :text (str "Tell the user and offer to save the chart to their personal collection."
+                            " Omit `collection_id` from a collection destination to use it.")}
+                {:uses #{}
+                 :text "Choose another collection, or ask the user which collection to save the chart to."})
               {:uses #{"read_resource"}
                :text (str "To offer another collection, read `metabase://collections?tree=true` with"
                           " `read_resource` and pick one with `can_write=true`.")}]})
@@ -99,7 +104,9 @@
     (check)
     (catch clojure.lang.ExceptionInfo e
       (if (= 403 (:status-code (ex-data e)))
-        (destination-not-writable! destination)
+        (destination-not-writable!
+         (assoc destination :has-personal-collection?
+                (some? (collection/user->personal-collection api/*current-user-id*))))
         (throw e)))))
 
 (tools/defrecoverable invalid-query!

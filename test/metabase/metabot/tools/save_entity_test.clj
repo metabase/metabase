@@ -435,3 +435,21 @@
         (is (=? {:error  {:class :recoverable :code ::save-entity/invalid-query}
                  :output #(str/starts-with? % "This query refers to a field that is not available for querying.")}
                 (invoke-save-entity memory (assoc chart-args :destination {:target_type "collection"}))))))))
+
+(deftest read-only-destination-without-personal-collection-test
+  (mt/with-non-admin-groups-no-root-collection-perms
+    (mt/with-temp [:model/User {user-id :id} {:type :api-key}
+                   :model/Collection coll {}
+                   :model/Dashboard dash {:collection_id (:id coll)}
+                   :model/Document doc {:collection_id (:id coll) :document document-ast}]
+      (perms/grant-collection-read-permissions! (perms-group/all-users) coll)
+      (mt/with-current-user user-id
+        (doseq [destination [{:target_type "collection" :collection_id (:id coll)}
+                             {:target_type "collection" :collection_id nil}
+                             {:target_type "dashboard" :dashboard_id (:id dash)}
+                             {:target_type "document" :document_id (:id doc)}]]
+          (let [{:keys [class code text]} (failure destination)]
+            (is (= [:recoverable ::save-entity/destination-not-writable] [class code]))
+            (is (str/includes? text "`can_write=true`"))
+            (is (str/includes? text "ask the user"))
+            (is (not (str/includes? text "personal collection")))))))))
