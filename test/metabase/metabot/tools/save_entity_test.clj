@@ -250,17 +250,18 @@
                                                   :destination {:target_type "collection"}))))))
 
 (deftest ^:parallel name-length-matches-app-db-test
-  (let [args-schema (:args (tools.core/declaration save-entity/save-entity-tool))
-        ^String ducks (apply str (repeat 128 "\uD83E\uDD86"))]
+  (let [^String ducks (apply str (repeat 128 "\uD83E\uDD86"))]
     (is (= [256 128] [(.length ducks) (.codePointCount ducks 0 (.length ducks))]))
     (doseq [db-type [:h2 :postgres :mysql]]
       (testing (str "the name limit matches " db-type)
         (mt/with-dynamic-fn-redefs [mdb/db-type (constantly db-type)]
-          (is (= (not= :h2 db-type)
-                 (mr/validate args-schema (assoc chart-args :name ducks :destination {:target_type "collection"})))))))
+          (let [args-schema (:args (tools.core/declaration save-entity/save-entity-tool))]
+            (is (= (not= :h2 db-type)
+                   (mr/validate args-schema (assoc chart-args :name ducks :destination {:target_type "collection"}))))))))
     (testing "the tool schema gives the LLM the same name length limit"
       (is (= {:type "string" :minLength 1 :maxLength 254}
-             (get-in (mjs/transform args-schema) [:properties :name]))))))
+             (get-in (mjs/transform (:args (tools.core/declaration save-entity/save-entity-tool)))
+                     [:properties :name]))))))
 
 (deftest ^:parallel unknown-chart-test
   (let [args (assoc chart-args :chart_id "c-9" :destination {:target_type "collection" :collection_id nil})]
@@ -508,5 +509,6 @@
                                 :name question-name
                                 :destination {:target_type "collection" :collection_id (:id coll)}))]
             (is (= {:class :validation :code :invalid-arguments} (:error outcome)))
-            (is (str/includes? (:output outcome) "`name`"))))
+            (is (= "Invalid tool arguments: `name` must be a non-blank string; received a string."
+                   (:output outcome)))))
         (is (not (t2/exists? :model/Card :collection_id (:id coll))))))))
