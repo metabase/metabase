@@ -129,6 +129,7 @@ describe(
       H.restore("postgres-writable");
       cy.signInAsAdmin();
       H.activateToken("bleeding-edge");
+      H.publishDataAppTables();
 
       H.resetTestTable({ type: "postgres", table: SCOREBOARD_TABLE });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: SCOREBOARD_TABLE });

@@ -8,7 +8,7 @@ import {
 } from "e2e/support/helpers";
 import type { CollectionPermission } from "metabase-types/api";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { dataAppTestEnv } from "./helpers";
 
 const { H } = cy;
 
@@ -34,11 +34,11 @@ describe(
       createDataAppScoreboardAction().then((action) => {
         H.mockDataApp(APP_NAME, {
           displayName: APP_DISPLAY_NAME,
-          testEnv: {
-            ...TEST_ENV,
+          testEnv: (questions) => ({
+            ...dataAppTestEnv(questions),
             actionEntityId: action.entity_id,
             actionParams,
-          },
+          }),
         });
       });
 
@@ -108,11 +108,11 @@ describe(
               (action) => {
                 H.mockDataApp(APP_NAME, {
                   displayName: APP_DISPLAY_NAME,
-                  testEnv: {
-                    ...TEST_ENV,
+                  testEnv: (questions) => ({
+                    ...dataAppTestEnv(questions),
                     actionEntityId: action.entity_id,
                     actionParams: { team_name: "Data App FC", score: 7 },
-                  },
+                  }),
                 });
               },
             ),

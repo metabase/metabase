@@ -59,6 +59,7 @@ describe("scenarios > data apps > resources from a repository", () => {
     H.restore();
     cy.signInAsAdmin();
     H.activateToken("bleeding-edge");
+    H.publishDataAppTables();
 
     removeTestFiles();
     cy.task("writeDataAppFiles", {

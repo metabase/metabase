@@ -4,7 +4,7 @@ import {
 } from "e2e/support/helpers";
 import type { DataApp } from "metabase-types/api";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { dataAppTestEnv } from "./helpers";
 
 const { H } = cy;
 
@@ -27,7 +27,7 @@ describe("scenarios > data apps > data studio", () => {
   it("lists a data app and previews it on the app's overview", () => {
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
-      testEnv: TEST_ENV,
+      testEnv: dataAppTestEnv,
     });
 
     cy.intercept("POST", "/api/dataset").as("dataAppQuery");
