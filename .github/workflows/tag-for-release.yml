@@ -162,33 +162,13 @@ jobs:
           || (echo "Commit not found in correct release branch" && exit 1)
         git checkout -
 
-  trigger-milestone-check:
-    # Posts a Slack FYI about issues that still need review for this release.
-    # Informational only — nothing depends on it, so it never blocks the release.
-    #
-    # NOTE: this workflow only runs in https://github.com/metabase/metabase.
-    needs: [check-version, check-commit]
-    permissions:
-      contents: read
-      issues: read
-    uses: ./.github/workflows/release-milestone-check.yml
-    secrets: inherit
-    with:
-      version: ${{ inputs.version }}
-      commit: ${{ inputs.commit }}
-
   manage-milestones:
     # Close the milestone we're about to ship and open the next one BEFORE tagging,
     # so any PRs that merge while the release is in flight are tagged with the next
     # milestone (not the one about to be released).
     #
-    # Sequenced after trigger-milestone-check so that the check sees the milestone
-    # in its open state. milestone-check is informational and must never block, so
-    # we run regardless of its outcome; only preflight failures suppress this.
-    #
     # NOTE: this workflow only runs in https://github.com/metabase/metabase.
-    needs: [check-version, check-commit, trigger-milestone-check]
-    if: ${{ !cancelled() && needs.check-version.result == 'success' && needs.check-commit.result == 'success' }}
+    needs: [check-version, check-commit]
     permissions:
       contents: read
       issues: write
