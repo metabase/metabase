@@ -1,4 +1,4 @@
-(ns ^:mb/driver-tests metabase.metabot.tools.run-query-test
+(ns metabase.metabot.tools.run-query-test
   (:require
    [clojure.core.async :as a]
    [clojure.string :as str]
@@ -1219,7 +1219,7 @@
         (is (= {:llm-calls 2, :result expected, :text "Done.", :finish :stop}
                (run-turn! profile query)))))))
 
-(deftest run-query-database-error-after-first-row-test
+(deftest ^:mb/driver-tests run-query-database-error-after-first-row-test
   (mt/test-driver :sqlite
     (test-database-error-after-first-row!
      "SELECT json_extract(CASE WHEN ID = 1 THEN '{\"n\":1}' ELSE 'broken' END, '$.n') AS N FROM VENUES"
