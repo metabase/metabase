@@ -6,6 +6,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
    [metabase.metabot.db :as metabot.db]
    [metabase.models.interface :as mi]
    [metabase.util :as u]))
@@ -262,8 +263,8 @@
     (when-let [query (and card-id
                           (not (seen card-id))
                           (not-empty (:dataset-query (lib.metadata/card metadata-providerable card-id))))]
-      (or (lib/primary-source-table-id query)
-          (recur (lib/primary-source-card-id query) (conj seen card-id))))))
+      (or (lib.util/source-table-id query)
+          (recur (lib.util/source-card-id query) (conj seen card-id))))))
 
 (defn metric-required-source
   "Return the source required to use metric `card`, or nil when its definition cannot be read.
