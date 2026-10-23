@@ -61,17 +61,16 @@ export function getAnswerMarkdown({
   return [content, [t`Sources:`, ...sourceLines].join("\n")].join("\n\n");
 }
 
+/** The conversation with a label on each message, to paste into a support request. */
 export function getConversationMarkdown(
   entries: readonly HelpAssistantChatEntry[],
+  versionTag: string | undefined,
 ): string {
-  return entries
-    .map((entry) =>
-      entry.role === "user"
-        ? entry.content
-            .split("\n")
-            .map((line) => `> ${line}`)
-            .join("\n")
-        : getAnswerMarkdown(entry),
-    )
-    .join("\n\n");
+  const messages = entries.map((entry) =>
+    entry.role === "user"
+      ? `**${t`Question:`}**\n${entry.content}`
+      : `**${t`Help assistant:`}**\n${getAnswerMarkdown(entry)}`,
+  );
+  const version = versionTag ? [t`Metabase version: ${versionTag}`] : [];
+  return [...version, ...messages].join("\n\n");
 }

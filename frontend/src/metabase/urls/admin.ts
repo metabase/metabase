@@ -172,6 +172,10 @@ export function adminHelp() {
   return "/admin/help";
 }
 
+export function adminHelpChat(conversationId: string) {
+  return `${adminHelp()}/chat/${conversationId}`;
+}
+
 export function adminHelpDiagnostics() {
   return `${adminHelp()}/diagnostics`;
 }

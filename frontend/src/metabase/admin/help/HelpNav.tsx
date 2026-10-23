@@ -7,6 +7,7 @@ import {
 import { UpsellBetterSupport } from "metabase/admin/upsells";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { canAccessMonitoringTools } from "metabase/common/monitor/selectors";
+import { getUserIsAdmin } from "metabase/current-user";
 import { PLUGIN_SUPPORT } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { useLocation } from "metabase/router";
@@ -16,32 +17,32 @@ import { Divider, Icon, NavLink, Stack } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { IconName } from "metabase-types/api";
 
-import {
-  HelpAssistantRecentChats,
-  useHelpAssistantChatContext,
-} from "./HelpAssistant";
+import { HelpAssistantRecentChats } from "./HelpAssistant";
 import { useDiagnosticInfo } from "./use-diagnostic-info";
-import { getGithubIssueUrl, getHelpUrl, isHelpAssistantPath } from "./utils";
+import { getGithubIssueUrl, getHelpUrl } from "./utils";
 
 export function HelpNav() {
   const { tag } = useSetting("version");
   const isPaidPlan = useSelector(getIsPaidPlan);
   const canSeeLogs = useSelector(canAccessMonitoringTools);
+  // Only admins can use the assistant.
+  const isAdmin = useSelector(getUserIsAdmin);
   const { diagnosticInfo, compactDiagnosticInfo } = useDiagnosticInfo();
-  const { isConversationSaved } = useHelpAssistantChatContext();
   const { pathname } = useLocation();
 
   return (
     <AdminNavWrapper justify="space-between" aria-label={t`Help`}>
       <Stack gap="xxs">
-        <AdminNavItem
-          icon="metabot"
-          label={t`Help assistant`}
-          path={Urls.adminHelp()}
-          // A saved chat has its own item in the recent chats.
-          active={isHelpAssistantPath(pathname) && !isConversationSaved}
-        />
-        <HelpAssistantRecentChats />
+        {isAdmin && (
+          <>
+            <AdminNavItem
+              icon="metabot"
+              label={t`Help assistant`}
+              path={Urls.adminHelp()}
+            />
+            <HelpAssistantRecentChats />
+          </>
+        )}
         <AdminNavItem
           icon="info"
           label={t`Diagnostic info`}

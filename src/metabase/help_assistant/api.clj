@@ -7,8 +7,14 @@
 
 (set! *warn-on-reflection* true)
 
-#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
-(api.macros/defendpoint :post "/chat"
+(def ^:private Source
+  [:map {:closed true}
+   [:title :string]
+   [:url :string]])
+
+(api.macros/defendpoint :post "/chat" :- [:map {:closed true}
+                                          [:reply :string]
+                                          [:sources [:sequential Source]]]
   "Send the conversation so far to the Help page assistant and get its reply. Admins only."
   [_route-params
    _query-params
@@ -30,9 +36,7 @@
             [:comment {:optional true} [:maybe :string]]
             [:question :string]
             [:answer :string]
-            [:sources {:optional true} [:sequential [:map {:closed true}
-                                                     [:title :string]
-                                                     [:url :string]]]]]]
+            [:sources {:optional true} [:sequential Source]]]]
   (api/check-superuser)
   (help-assistant/log-feedback! body)
   nil)

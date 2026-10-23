@@ -1,14 +1,16 @@
 import { useClipboard, useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
-import { useLayoutEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { jt, t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks/use-toast";
+import { getUserIsAdmin } from "metabase/current-user";
 import { AIProviderConfigurationModal } from "metabase/metabot/components/AIProviderConfigurationModal";
 import { AIProviderConfigurationNotice } from "metabase/metabot/components/AIProviderConfigurationNotice";
 import { useSelector } from "metabase/redux";
+import { Navigate, useNavigate, useParams } from "metabase/router";
 import { getIsPaidPlan } from "metabase/selectors/settings";
 import { useSetting } from "metabase/settings";
 import {
@@ -44,6 +46,7 @@ import { getHelpUrl } from "../utils";
 import S from "./HelpAssistant.module.css";
 import { HelpAssistantAnswer } from "./HelpAssistantAnswer";
 import { useHelpAssistantChatContext } from "./HelpAssistantChatContext";
+import type { HelpAssistantChat } from "./use-help-assistant-chat";
 import { getConversationMarkdown } from "./utils";
 
 // Space above a question when it's scrolled to the top of the conversation.
@@ -60,9 +63,50 @@ const getSuggestedPrompts = () => [
 ];
 
 export const HelpAssistant = () => {
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  // People with the Monitoring permission can open Help, but only admins can
+  // use the assistant.
+  if (!isAdmin) {
+    return <Navigate to={Urls.adminHelpDiagnostics()} replace />;
+  }
+  return <HelpAssistantChatPage />;
+};
+
+function HelpAssistantChatPage() {
   const chat = useHelpAssistantChatContext();
   const isConfigured = !!useSetting("llm-metabot-configured?");
   const hasMessages = chat.entries.length > 0;
+  const navigate = useNavigate();
+  const [sendToast] = useToast();
+  const { conversationId: routeConversationId } = useParams();
+  useConversationUrl(chat);
+
+  const startNewChat = () => {
+    chat.startNewChat();
+    if (routeConversationId != null) {
+      navigate(Urls.adminHelp());
+    }
+  };
+
+  const deleteConversation = () => {
+    const id = chat.conversationId;
+    const conversation = id ? chat.deleteConversation(id) : undefined;
+    if (!id || !conversation) {
+      return;
+    }
+    navigate(Urls.adminHelp());
+    sendToast({
+      message: t`Chat deleted`,
+      actionLabel: t`Undo`,
+      actions: [
+        () => {
+          chat.restoreConversation(id, conversation);
+          navigate(Urls.adminHelpChat(id));
+        },
+      ],
+    });
+  };
 
   const input = (
     <HelpAssistantInput
@@ -75,7 +119,7 @@ export const HelpAssistant = () => {
       onStop={chat.stop}
     />
   );
-  const footer = (
+  const footer = isConfigured && (
     <HelpAssistantFooter
       includeDiagnosticInfo={chat.includeDiagnosticInfo}
       onIncludeDiagnosticInfoChange={chat.setIncludeDiagnosticInfo}
@@ -87,16 +131,14 @@ export const HelpAssistant = () => {
       <HelpAssistantHeader
         entries={chat.entries}
         canDelete={chat.isConversationSaved}
-        onNewChat={chat.startNewChat}
-        onDelete={() => {
-          if (chat.conversationId) {
-            chat.deleteConversation(chat.conversationId);
-          }
-        }}
+        onNewChat={startNewChat}
+        onDelete={deleteConversation}
       />
       {hasMessages ? (
         <>
           <ConversationHistory
+            // A different chat starts at its own scroll position.
+            key={chat.conversationId}
             entries={chat.entries}
             isLoading={chat.isLoading}
             error={chat.error}
@@ -147,7 +189,65 @@ export const HelpAssistant = () => {
       )}
     </Flex>
   );
-};
+}
+
+/**
+ * Keeps the open chat and the URL in step. `/admin/help/chat/:conversationId`
+ * is a saved chat, and `/admin/help` is the new chat.
+ */
+function useConversationUrl(chat: HelpAssistantChat) {
+  const { conversationId: routeConversationId = null } = useParams();
+  const navigate = useNavigate();
+  // The route this page has already acted on. It acts once per route, so that
+  // a state change, such as "New chat" before its navigation is done, can't
+  // open the chat again.
+  const handledRouteRef = useRef<string | null | undefined>(undefined);
+  const {
+    conversationId,
+    isConversationSaved,
+    areConversationsLoaded,
+    hasConversation,
+    openConversation,
+    openNewChat,
+  } = chat;
+
+  useEffect(() => {
+    const isNewRoute = handledRouteRef.current !== routeConversationId;
+
+    if (routeConversationId == null) {
+      if (isNewRoute) {
+        handledRouteRef.current = null;
+        openNewChat();
+      } else if (conversationId != null && isConversationSaved) {
+        // The new chat got its first answer, so it is saved now.
+        navigate(Urls.adminHelpChat(conversationId), { replace: true });
+      }
+      return;
+    }
+
+    if (!isNewRoute || !areConversationsLoaded) {
+      return;
+    }
+    handledRouteRef.current = routeConversationId;
+    if (routeConversationId === conversationId) {
+      return;
+    }
+    if (hasConversation(routeConversationId)) {
+      openConversation(routeConversationId);
+    } else {
+      navigate(Urls.adminHelp(), { replace: true });
+    }
+  }, [
+    routeConversationId,
+    conversationId,
+    isConversationSaved,
+    areConversationsLoaded,
+    hasConversation,
+    openConversation,
+    openNewChat,
+    navigate,
+  ]);
+}
 
 interface HelpAssistantHeaderProps {
   entries: HelpAssistantChatEntry[];
@@ -210,9 +310,10 @@ function ConversationMenu({
 }: ConversationMenuProps) {
   const clipboard = useClipboard();
   const [sendToast] = useToast();
+  const { tag } = useSetting("version");
 
   const copyConversation = () => {
-    clipboard.copy(getConversationMarkdown(entries));
+    clipboard.copy(getConversationMarkdown(entries, tag));
     sendToast({ message: t`Copied the conversation as Markdown` });
   };
 
@@ -231,13 +332,7 @@ function ConversationMenu({
           {t`Copy conversation`}
         </Menu.Item>
         {canDelete && (
-          <Menu.Item
-            leftSection={<Icon name="trash" />}
-            onClick={() => {
-              onDelete();
-              sendToast({ message: t`Chat deleted` });
-            }}
-          >
+          <Menu.Item leftSection={<Icon name="trash" />} onClick={onDelete}>
             {t`Delete chat`}
           </Menu.Item>
         )}
@@ -281,7 +376,9 @@ function ContactSupportButton({
           <Group gap="sm">
             <Button
               leftSection={<Icon name={clipboard.copied ? "check" : "copy"} />}
-              onClick={() => clipboard.copy(getConversationMarkdown(entries))}
+              onClick={() =>
+                clipboard.copy(getConversationMarkdown(entries, tag))
+              }
             >
               {clipboard.copied ? t`Copied` : t`Copy conversation`}
             </Button>
@@ -338,6 +435,11 @@ function HelpAssistantInput({
           value={value}
           onChange={(event) => onChange(event.currentTarget.value)}
           onKeyDown={(event) => {
+            // Enter also confirms a word in an input method editor (IME), for
+            // example for Japanese.
+            if (event.nativeEvent.isComposing) {
+              return;
+            }
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
               onSubmit();

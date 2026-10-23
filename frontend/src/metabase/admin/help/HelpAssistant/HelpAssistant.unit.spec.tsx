@@ -10,9 +10,16 @@ import {
   setupUserMetabotPermissionsEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState, createMockState } from "__support__/state";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+  within,
+} from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
 import { Route } from "metabase/router";
+import { checkNotNull } from "metabase/utils/types";
 import type {
   HelpAssistantChatResponse,
   HelpAssistantConversation,
@@ -43,15 +50,19 @@ const SAVED_CONVERSATION: HelpAssistantConversation = {
 };
 
 const setup = ({
+  isAdmin = true,
   isConfigured = true,
   chatResponse = REPLY,
   chatDelay,
   conversations = {},
+  initialRoute = "/admin/help",
 }: {
+  isAdmin?: boolean;
   isConfigured?: boolean;
   chatResponse?: HelpAssistantChatResponse | number;
   chatDelay?: number;
   conversations?: Record<string, HelpAssistantConversation>;
+  initialRoute?: string;
 } = {}) => {
   setupBugReportingDetailsEndpoint();
   setupUserMetabotPermissionsEndpoint();
@@ -59,7 +70,7 @@ const setup = ({
   setupHelpAssistantFeedbackEndpoint();
   setupHelpAssistantConversationsEndpoints(conversations);
 
-  renderWithProviders(
+  const { router } = renderWithProviders(
     <Route
       path="/admin/help"
       element={
@@ -70,19 +81,22 @@ const setup = ({
       }
     >
       <Route index element={<HelpAssistant />} />
+      <Route path="chat/:conversationId" element={<HelpAssistant />} />
       <Route path="diagnostics" element={<div>Diagnostics page</div>} />
     </Route>,
     {
       withRouter: true,
-      initialRoute: "/admin/help",
+      initialRoute,
       storeInitialState: createMockState({
-        currentUser: createMockUser({ is_superuser: true }),
+        currentUser: createMockUser({ is_superuser: isAdmin }),
         settings: createMockSettingsState({
           "llm-metabot-configured?": isConfigured,
         }),
       }),
     },
   );
+
+  return { router: checkNotNull(router) };
 };
 
 const getLastRequestBody = async (routeName: string): Promise<unknown> =>
@@ -187,11 +201,11 @@ describe("HelpAssistant", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("keeps the conversation after opening the diagnostic info and coming back", async () => {
-    setup();
+  it("keeps a question that waits for its first answer after opening the diagnostic info and coming back", async () => {
+    setup({ chatDelay: 60_000 });
 
     await ask("Why is sync slow?");
-    await screen.findByText("connection string");
+    expect(await screen.findByText("Working on it…")).toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole("link", { name: "diagnostic info" }),
@@ -199,7 +213,13 @@ describe("HelpAssistant", () => {
     expect(await screen.findByText("Diagnostics page")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("link", { name: /Help assistant/ }));
-    expect(await screen.findByText("connection string")).toBeInTheDocument();
+    expect(await screen.findByText("Working on it…")).toBeInTheDocument();
+    expect(screen.getByRole("log", { name: "Conversation" })).toHaveTextContent(
+      "Why is sync slow?",
+    );
+
+    // Don't leave the request open after the test.
+    await userEvent.click(screen.getByRole("button", { name: "Stop" }));
   });
 
   it("shows an error and asks the same question again on retry", async () => {
@@ -264,7 +284,7 @@ describe("HelpAssistant", () => {
     );
 
     expect(writeText).toHaveBeenCalledWith(
-      `> Why is sync slow?\n\nCheck the **connection string**.\n\nSources:\n- [${SOURCE.title}](${SOURCE.url})`,
+      `Metabase version: v1\n\n**Question:**\nWhy is sync slow?\n\n**Help assistant:**\nCheck the **connection string**.\n\nSources:\n- [${SOURCE.title}](${SOURCE.url})`,
     );
   });
 
@@ -293,11 +313,86 @@ describe("HelpAssistant", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /New chat/ }));
     await userEvent.click(
-      within(getRecentChats()).getByRole("button", {
+      within(getRecentChats()).getByRole("link", {
         name: "Why is sync slow?",
       }),
     );
     expect(await screen.findByText("connection string")).toBeInTheDocument();
+  });
+
+  it("gives a saved chat its own URL", async () => {
+    const { router } = setup();
+
+    await ask("Why is sync slow?");
+    await screen.findByText("connection string");
+
+    await waitFor(() =>
+      expect(router.location.pathname).toMatch(/^\/admin\/help\/chat\/.+/),
+    );
+    expect(
+      within(getRecentChats()).getByRole("link", { name: "Why is sync slow?" }),
+    ).toHaveAttribute("href", router.location.pathname);
+  });
+
+  it("opens a saved chat from its URL", async () => {
+    setup({
+      conversations: { "saved-chat": SAVED_CONVERSATION },
+      initialRoute: "/admin/help/chat/saved-chat",
+    });
+
+    expect(await screen.findByText("hourly")).toBeInTheDocument();
+  });
+
+  it("goes to a new chat when the chat in the URL doesn't exist", async () => {
+    const { router } = setup({
+      conversations: { "saved-chat": SAVED_CONVERSATION },
+      initialRoute: "/admin/help/chat/missing-chat",
+    });
+
+    await waitFor(() => expect(router.location.pathname).toBe("/admin/help"));
+    expect(
+      screen.getByRole("heading", { name: "How can we help?" }),
+    ).toBeInTheDocument();
+  });
+
+  it("starts a new chat from the Help assistant link while a saved chat is open", async () => {
+    setup({
+      conversations: { "saved-chat": SAVED_CONVERSATION },
+      initialRoute: "/admin/help/chat/saved-chat",
+    });
+    await screen.findByText("hourly");
+
+    await userEvent.click(screen.getByRole("link", { name: /Help assistant/ }));
+
+    expect(
+      await screen.findByRole("heading", { name: "How can we help?" }),
+    ).toBeInTheDocument();
+  });
+
+  it("goes between saved chats with the browser's back button", async () => {
+    const { router } = setup({
+      conversations: {
+        "saved-chat": SAVED_CONVERSATION,
+        "other-chat": {
+          title: "Set up SSO",
+          updated_at: "2026-10-21T10:00:00.000Z",
+          messages: [
+            { role: "user", content: "Set up SSO" },
+            { role: "assistant", content: "Use **SAML**." },
+          ],
+        },
+      },
+      initialRoute: "/admin/help/chat/saved-chat",
+    });
+    await screen.findByText("hourly");
+
+    await userEvent.click(
+      within(getRecentChats()).getByRole("link", { name: "Set up SSO" }),
+    );
+    expect(await screen.findByText("SAML")).toBeInTheDocument();
+
+    router.back();
+    expect(await screen.findByText("hourly")).toBeInTheDocument();
   });
 
   it("opens and deletes a saved conversation", async () => {
@@ -305,7 +400,7 @@ describe("HelpAssistant", () => {
 
     await userEvent.click(
       await within(await screen.findByLabelText("Recent chats")).findByRole(
-        "button",
+        "link",
         { name: "How often does sync run?" },
       ),
     );
@@ -317,7 +412,7 @@ describe("HelpAssistant", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "How can we help?" }),
+      await screen.findByRole("heading", { name: "How can we help?" }),
     ).toBeInTheDocument();
     expect(await screen.findByText("Chat deleted")).toBeInTheDocument();
     await waitFor(() =>
@@ -329,6 +424,30 @@ describe("HelpAssistant", () => {
     expect(screen.queryByLabelText("Recent chats")).not.toBeInTheDocument();
   });
 
+  it("brings a deleted chat back with Undo", async () => {
+    setup({
+      conversations: { "saved-chat": SAVED_CONVERSATION },
+      initialRoute: "/admin/help/chat/saved-chat",
+    });
+    await screen.findByText("hourly");
+
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /Delete chat/ }),
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Undo" }));
+
+    expect(await screen.findByText("hourly")).toBeInTheDocument();
+    expect(
+      await getLastRequestBody(HELP_ASSISTANT_ROUTES.saveConversation),
+    ).toEqual({ value: SAVED_CONVERSATION });
+    expect(
+      within(getRecentChats()).getByRole("link", {
+        name: "How often does sync run?",
+      }),
+    ).toBeInTheDocument();
+  });
+
   it("marks only the open chat as active in the sidebar", async () => {
     setup({ conversations: { "saved-chat": SAVED_CONVERSATION } });
 
@@ -337,7 +456,7 @@ describe("HelpAssistant", () => {
 
     const savedChat = await within(
       await screen.findByLabelText("Recent chats"),
-    ).findByRole("button", { name: "How often does sync run?" });
+    ).findByRole("link", { name: "How often does sync run?" });
     await userEvent.click(savedChat);
     await screen.findByText("hourly");
 
@@ -346,7 +465,9 @@ describe("HelpAssistant", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /New chat/ }));
 
-    expect(assistantLink).toHaveAttribute("data-active", "true");
+    await waitFor(() =>
+      expect(assistantLink).toHaveAttribute("data-active", "true"),
+    );
     expect(savedChat).not.toHaveAttribute("data-active");
   });
 
@@ -417,5 +538,81 @@ describe("HelpAssistant", () => {
       }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+    expect(
+      screen.queryByRole("checkbox", { name: /Include diagnostic info/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("doesn't send a question while an input method editor composes a word", async () => {
+    setup();
+
+    const input = screen.getByLabelText("Ask the help assistant");
+    await userEvent.type(input, "nihongo");
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+
+    expect(input).toHaveValue("nihongo");
+    expect(
+      fetchMock.callHistory.called(HELP_ASSISTANT_ROUTES.chat),
+    ).toBeFalsy();
+  });
+
+  it("keeps a rating given while the next answer loads", async () => {
+    setup();
+
+    await ask("Why is sync slow?");
+    await screen.findByText("connection string");
+
+    let sendSecondReply = () => {};
+    fetchMock.modifyRoute(HELP_ASSISTANT_ROUTES.chat, {
+      response: () =>
+        new Promise((resolve) => {
+          sendSecondReply = () =>
+            resolve({ reply: "Turn on **SSL**.", sources: [] });
+        }),
+    });
+    await ask("Still slow");
+    await screen.findByText("Working on it…");
+    await userEvent.click(screen.getByRole("button", { name: "Helpful" }));
+
+    sendSecondReply();
+    expect(await screen.findByText("SSL")).toBeInTheDocument();
+
+    expect(
+      screen.getAllByRole("button", { name: "Helpful" })[0],
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      await getLastRequestBody(HELP_ASSISTANT_ROUTES.saveConversation),
+    ).toEqual({
+      value: expect.objectContaining({
+        messages: [
+          { role: "user", content: "Why is sync slow?" },
+          expect.objectContaining({ feedback: { positive: true } }),
+          { role: "user", content: "Still slow" },
+          { role: "assistant", content: "Turn on **SSL**.", sources: [] },
+        ],
+      }),
+    });
+  });
+
+  it("sends a positive rating once, and says thanks", async () => {
+    setup();
+
+    await ask("Why is sync slow?");
+    await screen.findByText("connection string");
+    await userEvent.click(screen.getByRole("button", { name: "Helpful" }));
+    await userEvent.click(screen.getByRole("button", { name: "Helpful" }));
+
+    expect(
+      await screen.findByText("Thanks for the feedback"),
+    ).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.calls(HELP_ASSISTANT_ROUTES.feedback),
+    ).toHaveLength(1);
+  });
+
+  it("sends people who aren't admins to the diagnostic info", async () => {
+    setup({ isAdmin: false });
+
+    expect(await screen.findByText("Diagnostics page")).toBeInTheDocument();
   });
 });

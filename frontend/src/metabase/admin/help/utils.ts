@@ -4,7 +4,10 @@ import * as Urls from "metabase/urls";
 import { getBasename } from "metabase/utils/basename";
 
 export function isHelpAssistantPath(pathname: string) {
-  return pathname.replace(/\/$/, "") === Urls.adminHelp();
+  const path = pathname.replace(/\/$/, "");
+  return (
+    path === Urls.adminHelp() || path.startsWith(`${Urls.adminHelp()}/chat/`)
+  );
 }
 
 export function navigatorInfo() {

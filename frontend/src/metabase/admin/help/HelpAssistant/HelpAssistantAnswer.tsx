@@ -3,6 +3,7 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { ExternalLink } from "metabase/common/components/ExternalLink";
+import { useToast } from "metabase/common/hooks/use-toast";
 import { AIMarkdown } from "metabase/metabot/components/AIMarkdown";
 import {
   ActionIcon,
@@ -61,12 +62,18 @@ function AnswerSources({ sources }: { sources: HelpAssistantSource[] }) {
 
 function AnswerActions({ entry, onRate }: HelpAssistantAnswerProps) {
   const clipboard = useClipboard({ timeout: 2000 });
+  const [sendToast] = useToast();
   const [
     isFeedbackFormOpen,
     { open: openFeedbackForm, close: closeFeedbackForm },
   ] = useDisclosure(false);
   const rating = entry.feedback?.positive;
   const copyLabel = clipboard.copied ? t`Copied` : t`Copy as Markdown`;
+
+  const rate = (feedback: HelpAssistantFeedback) => {
+    onRate(feedback);
+    sendToast({ message: t`Thanks for the feedback` });
+  };
 
   return (
     <Group gap="xs" mt="sm">
@@ -83,7 +90,11 @@ function AnswerActions({ entry, onRate }: HelpAssistantAnswerProps) {
           aria-label={t`Helpful`}
           aria-pressed={rating === true}
           c={rating === true ? "brand" : undefined}
-          onClick={() => onRate({ positive: true })}
+          onClick={() => {
+            if (rating !== true) {
+              rate({ positive: true });
+            }
+          }}
         >
           <Icon name="thumbs_up" />
         </ActionIcon>
@@ -110,7 +121,7 @@ function AnswerActions({ entry, onRate }: HelpAssistantAnswerProps) {
         <Popover.Dropdown p="md">
           <NegativeFeedbackForm
             onSubmit={(comment) => {
-              onRate({ positive: false, comment });
+              rate({ positive: false, comment });
               closeFeedbackForm();
             }}
             onCancel={closeFeedbackForm}

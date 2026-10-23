@@ -1,9 +1,13 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { useLatest } from "react-use";
 
 import { isAbortError } from "metabase/api/client";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import { uuid } from "metabase/utils/uuid";
 import type {
   HelpAssistantChatEntry,
+  HelpAssistantConversation,
   HelpAssistantConversationId,
   HelpAssistantFeedback,
 } from "metabase-types/api";
@@ -33,7 +37,15 @@ export type HelpAssistantChat = ReturnType<typeof useHelpAssistantChat>;
 export function useHelpAssistantChat(diagnosticInfo: string) {
   const [conversationId, setConversationId] =
     useState<HelpAssistantConversationId | null>(null);
-  const [entries, setEntries] = useState<HelpAssistantChatEntry[]>([]);
+  const [entries, setEntriesState] = useState<HelpAssistantChatEntry[]>([]);
+  // An answer can arrive after the chat has changed, for example after a
+  // rating. The ref lets it build on the current chat, not the one it was
+  // asked in.
+  const entriesRef = useRef(entries);
+  const setEntries = useCallback((nextEntries: HelpAssistantChatEntry[]) => {
+    entriesRef.current = nextEntries;
+    setEntriesState(nextEntries);
+  }, []);
   const [draft, setDraft] = useState("");
   const [includeDiagnosticInfo, setIncludeDiagnosticInfo] = useState(true);
   const pendingRequestRef = useRef<ChatRequest | null>(null);
@@ -43,7 +55,13 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
   const [sendFeedback] = useSendHelpAssistantFeedbackMutation();
   const [saveConversation] = useSaveHelpAssistantConversationMutation();
   const [deleteConversation] = useDeleteHelpAssistantConversationMutation();
-  const { data: savedConversations } = useListHelpAssistantConversationsQuery();
+  // Only admins can use the assistant, so only they have saved chats.
+  const isAdmin = useSelector(getUserIsAdmin);
+  const { data: savedConversations, isSuccess: areConversationsLoaded } =
+    useListHelpAssistantConversationsQuery(undefined, { skip: !isAdmin });
+
+  // The same for saved chats: they can change while an answer loads.
+  const savedConversationsRef = useLatest(savedConversations);
 
   const conversations = useMemo(
     () => getRecentConversations(savedConversations ?? {}),
@@ -59,7 +77,7 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       messages: HelpAssistantChatEntry[],
       updatedAt = new Date().toISOString(),
     ) => {
-      const isNew = savedConversations?.[id] == null;
+      const saved = savedConversationsRef.current ?? {};
       saveConversation({
         id,
         conversation: {
@@ -68,13 +86,13 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
           messages,
         },
       });
-      if (isNew) {
-        conversations
+      if (saved[id] == null) {
+        getRecentConversations(saved)
           .slice(MAX_SAVED_CONVERSATIONS - 1)
           .forEach((conversation) => deleteConversation(conversation.id));
       }
     },
-    [conversations, deleteConversation, saveConversation, savedConversations],
+    [deleteConversation, saveConversation, savedConversationsRef],
   );
 
   const abortPendingRequest = useCallback(() => {
@@ -109,14 +127,21 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       if (result.data) {
         const { reply, sources } = result.data;
         const answeredEntries: HelpAssistantChatEntry[] = [
-          ...nextEntries,
+          ...entriesRef.current,
           { role: "assistant", content: reply, sources },
         ];
         setEntries(answeredEntries);
         save(id, answeredEntries);
       }
     },
-    [diagnosticInfo, includeDiagnosticInfo, reset, save, sendMessage],
+    [
+      diagnosticInfo,
+      includeDiagnosticInfo,
+      reset,
+      save,
+      sendMessage,
+      setEntries,
+    ],
   );
 
   const send = useCallback(
@@ -136,7 +161,7 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       setDraft("");
       request(id, nextEntries);
     },
-    [conversationId, entries, isLoading, request],
+    [conversationId, entries, isLoading, request, setEntries],
   );
 
   const retry = useCallback(() => {
@@ -152,7 +177,7 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
     if (question) {
       setDraft(question.content);
     }
-  }, [abortPendingRequest, entries]);
+  }, [abortPendingRequest, entries, setEntries]);
 
   const startNewChat = useCallback(() => {
     abortPendingRequest();
@@ -160,7 +185,19 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
     setEntries([]);
     setDraft("");
     reset();
-  }, [abortPendingRequest, reset]);
+  }, [abortPendingRequest, reset, setEntries]);
+
+  // Keeps a chat that has no answer yet: it is the new chat.
+  const openNewChat = useCallback(() => {
+    if (isConversationSaved) {
+      startNewChat();
+    }
+  }, [isConversationSaved, startNewChat]);
+
+  const hasConversation = useCallback(
+    (id: HelpAssistantConversationId) => savedConversations?.[id] != null,
+    [savedConversations],
+  );
 
   const openConversation = useCallback(
     (id: HelpAssistantConversationId) => {
@@ -174,17 +211,28 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       setDraft("");
       reset();
     },
-    [abortPendingRequest, reset, savedConversations],
+    [abortPendingRequest, reset, savedConversations, setEntries],
   );
 
+  /** Returns the deleted conversation, so that it can be restored. */
   const removeConversation = useCallback(
     (id: HelpAssistantConversationId) => {
+      const conversation = savedConversations?.[id];
       deleteConversation(id);
       if (id === conversationId) {
         startNewChat();
       }
+      return conversation;
     },
-    [conversationId, deleteConversation, startNewChat],
+    [conversationId, deleteConversation, savedConversations, startNewChat],
+  );
+
+  const restoreConversation = useCallback(
+    (
+      id: HelpAssistantConversationId,
+      conversation: HelpAssistantConversation,
+    ) => saveConversation({ id, conversation }),
+    [saveConversation],
   );
 
   const rateAnswer = useCallback(
@@ -213,13 +261,22 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
         sources: answer.sources,
       });
     },
-    [conversationId, entries, save, savedConversations, sendFeedback],
+    [
+      conversationId,
+      entries,
+      save,
+      savedConversations,
+      sendFeedback,
+      setEntries,
+    ],
   );
 
   return useMemo(
     () => ({
       conversationId,
       conversations,
+      areConversationsLoaded,
+      hasConversation,
       isConversationSaved,
       entries,
       draft,
@@ -232,13 +289,17 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       retry,
       stop,
       startNewChat,
+      openNewChat,
       openConversation,
       deleteConversation: removeConversation,
+      restoreConversation,
       rateAnswer,
     }),
     [
       conversationId,
       conversations,
+      areConversationsLoaded,
+      hasConversation,
       isConversationSaved,
       entries,
       draft,
@@ -249,8 +310,10 @@ export function useHelpAssistantChat(diagnosticInfo: string) {
       retry,
       stop,
       startNewChat,
+      openNewChat,
       openConversation,
       removeConversation,
+      restoreConversation,
       rateAnswer,
     ],
   );

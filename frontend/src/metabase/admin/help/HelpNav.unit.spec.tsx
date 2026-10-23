@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupBugReportingDetailsEndpoint,
@@ -111,9 +113,58 @@ describe("HelpNav", () => {
     const recentChats = await screen.findByLabelText("Recent chats");
     expect(
       within(recentChats)
-        .getAllByRole("button")
-        .map((button) => button.textContent),
+        .getAllByRole("link")
+        .map((link) => link.textContent),
     ).toEqual(["Set up SSO", "Why is sync slow?"]);
+    expect(
+      within(recentChats).getByRole("link", { name: "Set up SSO" }),
+    ).toHaveAttribute("href", "/admin/help/chat/newer");
+  });
+
+  it("shows the 5 newest chats, and the rest on request", async () => {
+    setup({
+      conversations: Object.fromEntries(
+        [1, 2, 3, 4, 5, 6, 7].map((day) => [
+          `chat-${day}`,
+          createConversation(`Chat ${day}`, `2026-10-0${day}T10:00:00Z`),
+        ]),
+      ),
+    });
+
+    const recentChats = await screen.findByLabelText("Recent chats");
+    const getChatTitles = () =>
+      within(recentChats)
+        .getAllByRole("link")
+        .map((link) => link.textContent);
+    expect(getChatTitles()).toEqual([
+      "Chat 7",
+      "Chat 6",
+      "Chat 5",
+      "Chat 4",
+      "Chat 3",
+    ]);
+
+    await userEvent.click(
+      within(recentChats).getByRole("button", { name: "Show all" }),
+    );
+    expect(getChatTitles()).toHaveLength(7);
+  });
+
+  it("hides the help assistant from people who aren't admins", async () => {
+    setup({
+      isAdmin: false,
+      conversations: {
+        older: createConversation("Why is sync slow?", "2026-10-01T10:00:00Z"),
+      },
+    });
+
+    expect(
+      screen.queryByRole("link", { name: /Help assistant/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Recent chats")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Diagnostic info/ }),
+    ).toBeInTheDocument();
   });
 
   it("links admins to the application logs in Monitor", () => {
