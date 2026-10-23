@@ -193,7 +193,7 @@ For more granular options, check out [AI usage controls](./usage-controls.md).
 
 The best thing you can do to improve Metabot's answers is to prep your data like you would for a new (human) hire: describe your tables, columns, models, and metrics, define company terms in the glossary, and mark foreign keys.
 
-For what to change and how each change affects Metabot, see [Configure Metabot context](./metabot-context-sources.md).
+For what to change and how each change affects Metabot, see [Configure Metabot context](./configure-metabot-context.md).
 
 ## Metabot permissions are Metabase permissions
 
@@ -214,7 +214,7 @@ On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](
 ## Further reading
 
 - [Using Metabot](metabot.md)
-- [Configure Metabot context](metabot-context-sources.md)
+- [Configure Metabot context](configure-metabot-context.md)
 - [Supported AI providers](providers.md)
 - [MCP server](mcp.md)
 - [AI privacy](privacy.md)
