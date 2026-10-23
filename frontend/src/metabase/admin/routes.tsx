@@ -415,7 +415,16 @@ export const getRoutes = (
             <Route
               path="security-center"
               lazy={PLUGIN_SECURITY_CENTER.securityCenterPage}
-            />
+            >
+              <Route
+                path="advisories"
+                lazy={PLUGIN_SECURITY_CENTER.securityCenterAdvisoriesPage}
+              />
+              <Route
+                path="health-checks"
+                lazy={PLUGIN_SECURITY_CENTER.securityCenterHealthChecksPage}
+              />
+            </Route>
           </Route>
         )}
 

@@ -4412,12 +4412,16 @@
            premium-features
            security-center
            settings
+           sso
            system
            task
            util
            util.config}
    :model-exports #{:model/SecurityAdvisory}
-   :model-imports #{:model/User}}
+   :model-imports #{:model/DataPermissions
+                    :model/Database
+                    :model/Permissions
+                    :model/User}}
 
   enterprise/serialization
   {:team "Graphy"
