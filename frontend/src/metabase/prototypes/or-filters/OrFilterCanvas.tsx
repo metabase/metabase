@@ -238,14 +238,18 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
 
           <Stack gap="sm">
             <Title order={3}>{t`Notebook mode`}</Title>
-            <NotebookFrame>
-              <direction.Component
-                query={query}
-                stageIndex={STAGE_INDEX}
-                variant="notebook"
-                onChange={setQuery}
-              />
-            </NotebookFrame>
+            {direction.NotebookCanvas ? (
+              <direction.NotebookCanvas query={query} onChange={setQuery} />
+            ) : (
+              <NotebookFrame>
+                <direction.Component
+                  query={query}
+                  stageIndex={STAGE_INDEX}
+                  variant="notebook"
+                  onChange={setQuery}
+                />
+              </NotebookFrame>
+            )}
           </Stack>
         </>
       )}

@@ -32,6 +32,8 @@ export type FilterDirection = {
   canHideFilters?: boolean;
   /** Replaces the chill and notebook frames with the direction's own view. */
   Canvas?: ComponentType<FilterCanvasProps>;
+  /** Replaces only the notebook frame, keeping the chill mode. */
+  NotebookCanvas?: ComponentType<FilterCanvasProps>;
   /** Turns the plain Orders query into the direction's starting query. */
   prepareQuery?: (query: Lib.Query) => Lib.Query;
 };
