@@ -103,6 +103,7 @@
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
+   [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features]
@@ -283,6 +284,11 @@
    ;; TODO -- this should only do anything if we have an appropriate token (we should get a token for testing this before
    ;; enabling that check tho)
    (when-let [m (config parsed-config opts)]
+     ;; The `:workspace` section loads these databases' metadata from a file, after the `:databases` section has
+     ;; created them; a sync started on creation would race that load and redo its work. An explicit value in the
+     ;; `:settings` section, applied first, still wins.
+     (when (get-in m [:config :workspace :metadata_file])
+       (advanced-config.settings/config-from-file-sync-databases! false))
      (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
        ;; You can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature.
        ;; The `:settings` section is the lone carve-out — you may need it to *install* the token.

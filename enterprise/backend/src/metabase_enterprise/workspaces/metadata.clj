@@ -8,7 +8,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.util :as u]))
 
-(defn- input-schemas
+(defn input-schemas
   "The schemas to read `db`'s tables from, or nil for every schema: engines without schemas (MySQL) list the bound
   database in `:input_schemas`, which no Table's `:schema` matches."
   [db wsd]

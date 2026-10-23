@@ -34,6 +34,42 @@
    [:schema {:optional true} [:maybe :string]]
    [:table  :string]])
 
+(mr/def ::table.insert
+  [:map {:closed true}
+   [:db_id               ::lib.schema.id/database]
+   [:schema              [:maybe :string]]
+   [:name                :string]
+   [:active              :boolean]
+   [:initial_sync_status :string]])
+
+(mr/def ::field.insert
+  [:map {:closed true}
+   [:table_id          ::lib.schema.id/table]
+   [:name              :string]
+   [:base_type         :keyword]
+   [:database_type     :string]
+   [:position          :int]
+   [:database_position :int]
+   [:active            :boolean]])
+
+(mr/def ::table-user-settings.insert
+  [:map {:closed true}
+   [:table_id        ::lib.schema.id/table]
+   [:display_name    {:optional true} :string]
+   [:description     {:optional true} :string]
+   [:visibility_type {:optional true} :string]])
+
+(mr/def ::field-user-settings.insert
+  [:map {:closed true}
+   [:field_id           ::lib.schema.id/field]
+   [:display_name       {:optional true} :string]
+   [:description        {:optional true} :string]
+   [:visibility_type    {:optional true} :string]
+   [:semantic_type      {:optional true} :keyword]
+   [:effective_type     {:optional true} :keyword]
+   [:coercion_strategy  {:optional true} :keyword]
+   [:fk_target_field_id {:optional true} ::lib.schema.id/field]])
+
 ;;; ------------------------------------------------- Database -------------------------------------------------
 
 (mu/defn database
@@ -112,6 +148,86 @@
                          [:= :active true]
                          [:in :visibility_type ["normal" "details-only"]]]
               :order-by [:id]}))
+
+;;; ------------------------------------------------ Load metadata -----------------------------------------------
+
+(mu/defn load-metadata-tables
+  "The active Tables of the Database with `database-id`, hidden ones included, as users see them (user-set values
+  merged in), restricted to `schemas` unless it is nil."
+  [database-id :- ::lib.schema.id/database
+   schemas     :- [:maybe [:sequential :string]]]
+  (t2/select [:model/Table :id :name :schema :display_name :description :visibility_type]
+             {:from     [(warehouse-schema-overlay/table-query)]
+              :where    [:and
+                         [:= :db_id database-id]
+                         [:= :active true]
+                         (if schemas [:in :schema schemas] true)]
+              :order-by [:schema :name]}))
+
+(mu/defn load-metadata-fields
+  "The active top-level Fields of the Tables with ids in `table-ids`, whatever their visibility, as users see them
+  (user-set values merged in)."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/select [:model/Field :id :table_id :name :display_name :description :base_type :effective_type
+              :coercion_strategy :database_type :semantic_type :visibility_type :position :database_position
+              :fk_target_field_id]
+             {:from     [(warehouse-schema-overlay/field-query)]
+              :where    [:and
+                         [:in :table_id table-ids]
+                         [:= :active true]
+                         [:= :parent_id nil]]
+              :order-by [:table_id :database_position :name]}))
+
+(mu/defn database-has-tables?
+  "Whether the Database with `database-id` has any Table rows."
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Table :db_id database-id
+              {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+
+(mu/defn insert-tables!
+  "Insert the Table rows `tables`."
+  [tables :- [:sequential ::table.insert]]
+  (t2/insert! :model/Table tables))
+
+(mu/defn table-ids-by-schema-and-name
+  "Map of `[schema name]` to id for the Tables of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (into {}
+        (map (juxt (juxt :schema :name) :id))
+        (t2/select [:model/Table :id :schema :name] :db_id database-id
+                   {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]})))
+
+(mu/defn insert-fields!
+  "Insert the Field rows `fields`."
+  [fields :- [:sequential ::field.insert]]
+  (t2/insert! :model/Field fields))
+
+(mu/defn field-ids-by-table-and-name
+  "Map of `[table-id name]` to id for the top-level Fields of the Tables with ids in `table-ids`."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (into {}
+        (map (juxt (juxt :table_id :name) :id))
+        (t2/select [:model/Field :id :table_id :name] :table_id [:in table-ids] :parent_id nil
+                   {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]})))
+
+(mu/defn insert-table-user-settings!
+  "Insert the TableUserSettings rows `settings`, one statement per set of columns: a multi-row insert writes NULL for a
+  column a row leaves out, and the insert hook only sets the `_set` flags of the columns a row has."
+  [settings :- [:sequential ::table-user-settings.insert]]
+  (doseq [rows (vals (group-by (comp set keys) settings))]
+    (t2/insert! :model/TableUserSettings rows)))
+
+(mu/defn insert-field-user-settings!
+  "Insert the FieldUserSettings rows `settings`, one statement per set of columns: a multi-row insert writes NULL for a
+  column a row leaves out, and the insert hook only sets the `_set` flags of the columns a row has."
+  [settings :- [:sequential ::field-user-settings.insert]]
+  (doseq [rows (vals (group-by (comp set keys) settings))]
+    (t2/insert! :model/FieldUserSettings rows)))
+
+(mu/defn mark-database-synced!
+  "Set the Database with `database-id`'s initial sync status to complete."
+  [database-id :- ::lib.schema.id/database]
+  (t2/update! :model/Database database-id {:initial_sync_status "complete"}))
 
 ;;; ------------------------------------------------- Workspace ------------------------------------------------
 
