@@ -26,6 +26,10 @@ type AnalysisToolbarProps = {
   onToggleSegments: () => void;
   /** The segments button is hovered, so the segments panel can show it's the one. */
   onHintSegments: (isHinted: boolean) => void;
+  isPeopleSegmentsOpen: boolean;
+  onTogglePeopleSegments: () => void;
+  /** Likewise for the people segments button and its panel. */
+  onHintPeopleSegments: (isHinted: boolean) => void;
   setupLabel: string;
   sql: string | null;
   canSave: boolean;
@@ -53,6 +57,9 @@ export const AnalysisToolbar = ({
   isSegmentsOpen,
   onToggleSegments,
   onHintSegments,
+  isPeopleSegmentsOpen,
+  onTogglePeopleSegments,
+  onHintPeopleSegments,
   setupLabel,
   sql,
   canSave,
@@ -68,6 +75,9 @@ export const AnalysisToolbar = ({
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
   const filtersSetting = findSetting(widgets, "filters");
   const hasTable = tableId !== undefined;
+  const peopleSegmentsLabel = isPeopleSegmentsOpen
+    ? t`Hide people segments`
+    : t`Show people segments`;
 
   const filtersButton = filtersSetting !== undefined &&
     !filtersSetting.hidden && (
@@ -112,6 +122,24 @@ export const AnalysisToolbar = ({
             onHintSegments={onHintSegments}
             filtersButton={filtersButton}
           />
+          <Button.Group>
+            <ToolbarSetting setting={findSetting(widgets, "counting")} />
+            <ToolbarSetting setting={findSetting(widgets, "breakout")} />
+            <Tooltip label={peopleSegmentsLabel}>
+              <Button
+                variant="default"
+                px="sm"
+                aria-label={peopleSegmentsLabel}
+                aria-pressed={isPeopleSegmentsOpen}
+                disabled={!hasTable}
+                onClick={onTogglePeopleSegments}
+                onMouseEnter={() => onHintPeopleSegments(true)}
+                onMouseLeave={() => onHintPeopleSegments(false)}
+              >
+                <Icon name="segment" />
+              </Button>
+            </Tooltip>
+          </Button.Group>
           <Button
             variant="default"
             leftSection={<Icon name="sliders" />}
@@ -123,10 +151,6 @@ export const AnalysisToolbar = ({
           >
             {setupLabel}
           </Button>
-          <Button.Group>
-            <ToolbarSetting setting={findSetting(widgets, "counting")} />
-            <ToolbarSetting setting={findSetting(widgets, "breakout")} />
-          </Button.Group>
         </Group>
 
         <Group gap="sm">

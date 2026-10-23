@@ -72,6 +72,9 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   const [isSetupHinted, setIsSetupHinted] = useState(false);
   // Likewise the segments button's hover and the segments panel.
   const [isSegmentsHinted, setIsSegmentsHinted] = useState(false);
+  // People segments have their own panel and button, after Break out.
+  const [isPeopleSegmentsOpen, setIsPeopleSegmentsOpen] = useState(false);
+  const [isPeopleSegmentsHinted, setIsPeopleSegmentsHinted] = useState(false);
   // Collapsed behind the Filters button until it's clicked; showing an empty
   // row opens its column picker, which a page load shouldn't do on its own.
   const [areFiltersExpanded, setAreFiltersExpanded] = useState(false);
@@ -96,6 +99,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   } = useAnalysisState<AnalysisSettingsByKind[K]>(savedSettings);
   const isSetupOpen = panel !== null && tableId !== undefined;
   const isSegmentsShowing = isSegmentsOpen && tableId !== undefined;
+  const isPeopleSegmentsShowing = isPeopleSegmentsOpen && tableId !== undefined;
   const {
     config,
     table,
@@ -222,6 +226,11 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             isSegmentsOpen={isSegmentsOpen}
             onToggleSegments={handleToggleSegments}
             onHintSegments={setIsSegmentsHinted}
+            isPeopleSegmentsOpen={isPeopleSegmentsOpen}
+            onTogglePeopleSegments={() =>
+              setIsPeopleSegmentsOpen((isOpen) => !isOpen)
+            }
+            onHintPeopleSegments={setIsPeopleSegmentsHinted}
             setupLabel={config.setupLabel}
             sql={query.sql}
             canSave={canSave}
@@ -257,11 +266,22 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
         >
           {isSegmentsShowing && (
             <SegmentsPanel
+              source="event"
               table={table}
               usersTable={usersTable}
               onSelectPeopleSegment={handleAddPeopleFilter}
               isHinted={isSegmentsHinted}
               onClose={() => setIsSegmentsOpen(false)}
+            />
+          )}
+          {isPeopleSegmentsShowing && (
+            <SegmentsPanel
+              source="people"
+              table={table}
+              usersTable={usersTable}
+              onSelectPeopleSegment={handleAddPeopleFilter}
+              isHinted={isPeopleSegmentsHinted}
+              onClose={() => setIsPeopleSegmentsOpen(false)}
             />
           )}
           {isSetupOpen && (

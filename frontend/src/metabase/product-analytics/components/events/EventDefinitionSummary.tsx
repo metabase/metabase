@@ -63,7 +63,9 @@ export const EventDefinitionSummary = ({
 }: EventDefinitionSummaryProps) => {
   const { isPaletteOpen, onTogglePalette, startEventDrag, endDrag } =
     useSegmentDrag();
-  const segmentsLabel = isPaletteOpen ? t`Hide segments` : t`Show segments`;
+  const segmentsLabel = isPaletteOpen
+    ? t`Hide event segments`
+    : t`Show event segments`;
   const { isActive, isOver, dropProps } = useSegmentDropTarget(dropTarget);
   const dropLabel =
     name === undefined

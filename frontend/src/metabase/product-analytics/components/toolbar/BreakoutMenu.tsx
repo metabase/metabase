@@ -1,28 +1,29 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
 import { ListSearchField } from "metabase/common/components/ListSearchField";
+import { useMetadataProvider } from "metabase/metadata-store";
 import {
-  Box,
-  Button,
-  Checkbox,
-  Icon,
-  Loader,
-  Menu,
-  Tabs,
-  Text,
-  Tooltip,
-} from "metabase/ui";
-import type { IconName, TableId } from "metabase-types/api";
+  FilterColumnPicker,
+  isSegmentListItem,
+} from "metabase/querying/filters/components/FilterPicker/FilterColumnPicker";
+import type {
+  ColumnListItem,
+  SegmentListItem,
+} from "metabase/querying/filters/components/FilterPicker/types";
+import { Box, Button, Icon, Menu, Text, Tooltip } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type { IconName, Table } from "metabase-types/api";
 
 import type { Breakout } from "../../analyses/breakout";
 import { toPeopleSegmentRef } from "../../segments/people-segment-ref";
-import type { PaletteSegment, PeopleSegmentRef } from "../../segments/types";
+import type { PeopleSegmentRef } from "../../segments/types";
 import { usePaletteSegments } from "../../segments/use-palette-segments";
-import { useSegmentDrafts } from "../../segments/use-segment-drafts";
 import type { SettingWidgetProps } from "../../settings/types";
 
 import S from "./BreakoutMenu.module.css";
+
+const STAGE = -1;
 
 /**
  * In the active gray of the pressed label beside it, hovered, clicked or
@@ -41,25 +42,28 @@ const DROPDOWN_WIDTH = 280;
 
 type ColumnOption = { value: string; label: string; icon: IconName };
 
-type BreakoutTab = Breakout["type"];
-
 type BreakoutMenuProps = SettingWidgetProps<Breakout | null> & {
+  /** Event table properties, for when no users table is linked. */
   columns?: ColumnOption[];
-  /** Undefined while no users table is linked; cohorts live on it. */
-  usersTableId?: TableId;
+  /** The linked users table, whose segments and fields it breaks out by. */
+  usersTable?: Table;
 };
 
 /** "By Country", the one segment's name, or "2 Segments"; null while unset. */
 const getButtonLabel = (
   value: Breakout | null,
   columns: ColumnOption[],
+  usersTable: Table | undefined,
 ): string | null => {
   switch (value?.type) {
     case undefined:
       return null;
     case "property": {
-      const column = columns.find((option) => option.value === value.column);
-      return column !== undefined ? t`By ${column.label}` : null;
+      const name =
+        usersTable?.fields?.find((field) => field.name === value.column)
+          ?.display_name ??
+        columns.find((option) => option.value === value.column)?.label;
+      return name !== undefined ? t`By ${name}` : null;
     }
     case "cohorts": {
       const [first] = value.segments;
@@ -73,34 +77,27 @@ const getButtonLabel = (
 
 /**
  * An icon button in the toolbar's button group, labeled while set, with a
- * button beside it that clears the breakout. Its menu breaks out by a
- * property or by people segments, one or the other: picking from the other
- * tab replaces the breakout. A search box above the tabs narrows both.
+ * button beside it that clears the breakout. Its menu is the users table's
+ * segments and fields, in the same picker as the filter popover's: a field
+ * breaks out by its values, and a segment is toggled, beside any already
+ * picked. Either closes the menu.
  */
 export const BreakoutMenu = ({
   value,
   onChange,
   columns = [],
-  usersTableId,
+  usersTable,
 }: BreakoutMenuProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const label = getButtonLabel(value, columns);
+  const label = getButtonLabel(value, columns, usersTable);
   const isSet = label !== null;
-  const canBreakOut = columns.length > 0 || usersTableId !== undefined;
-
-  const handleOpenChange = (isOpening: boolean) => {
-    setIsOpen(isOpening);
-    if (!isOpening) {
-      setSearchText("");
-    }
-  };
+  const canBreakOut = columns.length > 0 || usersTable !== undefined;
 
   return (
     // Siblings in the toolbar's button group, so the clear button joins the
     // label without a button inside a button.
     <>
-      <Menu position="bottom-start" opened={isOpen} onChange={handleOpenChange}>
+      <Menu position="bottom-start" opened={isOpen} onChange={setIsOpen}>
         <Menu.Target>
           <Tooltip label={t`Break out`} disabled={isOpen || isSet}>
             <Button
@@ -116,56 +113,21 @@ export const BreakoutMenu = ({
             </Button>
           </Tooltip>
         </Menu.Target>
-        {/* Spaced like the filter picker: the search field pads itself. */}
-        <Menu.Dropdown w={DROPDOWN_WIDTH} p={0}>
-          <ListSearchField
-            autoFocus
-            placeholder={t`Find...`}
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-            onResetClick={() => setSearchText("")}
-            p="sm"
-          />
-          <Tabs defaultValue={value?.type ?? "property"}>
-            <Tabs.List className={S.tabList} grow>
-              <Tabs.Tab value={"property" satisfies BreakoutTab}>
-                {t`Properties`}
-              </Tabs.Tab>
-              <Tabs.Tab value={"cohorts" satisfies BreakoutTab}>
-                {t`People segments`}
-              </Tabs.Tab>
-            </Tabs.List>
-            <Box mah={MAX_DROPDOWN_HEIGHT} p="xs" style={{ overflowY: "auto" }}>
-              <Tabs.Panel value={"property" satisfies BreakoutTab}>
-                <PropertyOptions
-                  columns={columns}
-                  searchText={searchText}
-                  value={value?.type === "property" ? value.column : null}
-                  onChange={(column) => onChange({ type: "property", column })}
-                />
-              </Tabs.Panel>
-              <Tabs.Panel value={"cohorts" satisfies BreakoutTab}>
-                {usersTableId !== undefined ? (
-                  <CohortOptions
-                    usersTableId={usersTableId}
-                    searchText={searchText}
-                    value={value?.type === "cohorts" ? value.segments : []}
-                    onChange={(segments) =>
-                      onChange(
-                        segments.length > 0
-                          ? { type: "cohorts", segments }
-                          : null,
-                      )
-                    }
-                  />
-                ) : (
-                  <EmptyMessage>
-                    {t`Link a Customers or Users table to the person column first.`}
-                  </EmptyMessage>
-                )}
-              </Tabs.Panel>
-            </Box>
-          </Tabs>
+        <Menu.Dropdown p={0}>
+          {usersTable !== undefined ? (
+            <UsersTablePicker
+              usersTable={usersTable}
+              value={value}
+              onChange={onChange}
+              onClose={() => setIsOpen(false)}
+            />
+          ) : (
+            <PropertyOptions
+              columns={columns}
+              value={value?.type === "property" ? value.column : null}
+              onChange={(column) => onChange({ type: "property", column })}
+            />
+          )}
         </Menu.Dropdown>
       </Menu>
       {isSet && (
@@ -185,128 +147,136 @@ export const BreakoutMenu = ({
   );
 };
 
-/** Whether a name has the search text in it, ignoring case. */
-const matchesSearch = (name: string, searchText: string) =>
-  name.toLowerCase().includes(searchText.trim().toLowerCase());
+type UsersTablePickerProps = {
+  usersTable: Table;
+  value: Breakout | null;
+  onChange: (value: Breakout | null) => void;
+  onClose: () => void;
+};
 
-const getNoResultsMessage = () => t`Didn't find any results`;
+/**
+ * The filter popover's column picker on the users table: its segments, then
+ * its fields. Mounted with the dropdown, so it lists the current segments.
+ */
+const UsersTablePicker = ({
+  usersTable,
+  value,
+  onChange,
+  onClose,
+}: UsersTablePickerProps) => {
+  const metadataProvider = useMetadataProvider(usersTable.db_id);
+  const query = useMemo(() => {
+    const metadata = Lib.tableOrCardMetadata(metadataProvider, usersTable.id);
+    return metadata
+      ? Lib.queryFromTableOrCardMetadata(metadataProvider, metadata)
+      : undefined;
+  }, [metadataProvider, usersTable.id]);
+  // The picker's segments carry no id; the saved segments, matched by name, do.
+  const { saved } = usePaletteSegments(usersTable.id, "people", []);
+  const pickedSegments = value?.type === "cohorts" ? value.segments : [];
+
+  const findSegmentRef = (
+    item: SegmentListItem,
+  ): PeopleSegmentRef | undefined => {
+    const segment = saved.find((option) => option.name === item.displayName);
+    return segment !== undefined ? toPeopleSegmentRef(segment) : undefined;
+  };
+
+  const handleSegmentSelect = (item: SegmentListItem) => {
+    const ref = findSegmentRef(item);
+    if (ref === undefined) {
+      return;
+    }
+    const isPicked = pickedSegments.some((picked) => picked.key === ref.key);
+    const segments = isPicked
+      ? pickedSegments.filter((picked) => picked.key !== ref.key)
+      : [...pickedSegments, ref];
+    onChange(segments.length > 0 ? { type: "cohorts", segments } : null);
+    onClose();
+  };
+
+  const handleColumnSelect = (item: ColumnListItem) => {
+    if (query === undefined) {
+      return;
+    }
+    // A table the users table links to can't be broken out by.
+    const info = Lib.displayInfo(query, STAGE, item.column);
+    if (info.isImplicitlyJoinable || info.isFromJoin) {
+      return;
+    }
+    onChange({ type: "property", column: info.name });
+    onClose();
+  };
+
+  if (query === undefined) {
+    return <EmptyMessage>{t`Loading the people table…`}</EmptyMessage>;
+  }
+  return (
+    <FilterColumnPicker
+      query={query}
+      stageIndexes={[STAGE]}
+      checkItemIsSelected={(item) =>
+        isSegmentListItem(item)
+          ? pickedSegments.some(
+              (picked) => picked.key === findSegmentRef(item)?.key,
+            )
+          : "column" in item &&
+            value?.type === "property" &&
+            item.name === value.column
+      }
+      onColumnSelect={handleColumnSelect}
+      onSegmentSelect={handleSegmentSelect}
+      withCustomExpression={false}
+    />
+  );
+};
 
 type PropertyOptionsProps = {
   columns: ColumnOption[];
-  searchText: string;
   value: string | null;
   onChange: (column: string) => void;
 };
 
+/** Without a users table, the event table's properties, with a search box. */
 const PropertyOptions = ({
   columns,
-  searchText,
   value,
   onChange,
 }: PropertyOptionsProps) => {
+  const [searchText, setSearchText] = useState("");
   const matching = columns.filter((column) =>
-    matchesSearch(column.label, searchText),
+    column.label.toLowerCase().includes(searchText.trim().toLowerCase()),
   );
-  if (columns.length === 0) {
-    return <EmptyMessage>{t`No properties to break out by.`}</EmptyMessage>;
-  }
-  if (matching.length === 0) {
-    return <EmptyMessage>{getNoResultsMessage()}</EmptyMessage>;
-  }
   return (
-    <>
-      {matching.map((column) => (
-        <Menu.Item
-          key={column.value}
-          className={S.option}
-          aria-selected={column.value === value}
-          leftSection={<Icon name={column.icon} className={S.icon} />}
-          onClick={() => onChange(column.value)}
-        >
-          {column.label}
-        </Menu.Item>
-      ))}
-    </>
-  );
-};
-
-type CohortOptionsProps = {
-  usersTableId: TableId;
-  searchText: string;
-  value: PeopleSegmentRef[];
-  onChange: (segments: PeopleSegmentRef[]) => void;
-};
-
-/**
- * The users table's segments and this session's drafts, with checkboxes that
- * keep the menu open. Mounted with the dropdown, so drafts made since the
- * last time it opened show up.
- */
-const CohortOptions = ({
-  usersTableId,
-  searchText,
-  value,
-  onChange,
-}: CohortOptionsProps) => {
-  const { drafts } = useSegmentDrafts(usersTableId);
-  const { saved, drafted, isLoading } = usePaletteSegments(
-    usersTableId,
-    "people",
-    drafts,
-  );
-  const segments: PaletteSegment[] = [...saved, ...drafted];
-
-  const toggle = (segment: PaletteSegment) => {
-    const isPicked = value.some((picked) => picked.key === segment.key);
-    if (isPicked) {
-      onChange(value.filter((picked) => picked.key !== segment.key));
-      return;
-    }
-    const ref = toPeopleSegmentRef(segment);
-    if (ref !== undefined) {
-      onChange([...value, ref]);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <Box ta="center" py="sm">
-        <Loader size="xs" />
+    <Box w={DROPDOWN_WIDTH}>
+      <ListSearchField
+        autoFocus
+        placeholder={t`Find...`}
+        value={searchText}
+        onChange={(event) => setSearchText(event.target.value)}
+        onResetClick={() => setSearchText("")}
+        p="sm"
+      />
+      <Box mah={MAX_DROPDOWN_HEIGHT} p="xs" style={{ overflowY: "auto" }}>
+        {columns.length === 0 ? (
+          <EmptyMessage>{t`No properties to break out by.`}</EmptyMessage>
+        ) : matching.length === 0 ? (
+          <EmptyMessage>{t`Didn't find any results`}</EmptyMessage>
+        ) : (
+          matching.map((column) => (
+            <Menu.Item
+              key={column.value}
+              className={S.option}
+              aria-selected={column.value === value}
+              leftSection={<Icon name={column.icon} className={S.icon} />}
+              onClick={() => onChange(column.value)}
+            >
+              {column.label}
+            </Menu.Item>
+          ))
+        )}
       </Box>
-    );
-  }
-  if (segments.length === 0) {
-    return (
-      <EmptyMessage>{t`No segments on the people table yet.`}</EmptyMessage>
-    );
-  }
-  const matching = segments.filter((segment) =>
-    matchesSearch(segment.name, searchText),
-  );
-  if (matching.length === 0) {
-    return <EmptyMessage>{getNoResultsMessage()}</EmptyMessage>;
-  }
-  return (
-    <>
-      {matching.map((segment) => (
-        <Menu.Item
-          key={segment.key}
-          closeMenuOnClick={false}
-          leftSection={<Icon name="segment" className={S.segmentIcon} />}
-          rightSection={
-            <Checkbox
-              checked={value.some((picked) => picked.key === segment.key)}
-              readOnly
-              tabIndex={-1}
-              style={{ pointerEvents: "none" }}
-            />
-          }
-          onClick={() => toggle(segment)}
-        >
-          {segment.name}
-        </Menu.Item>
-      ))}
-    </>
+    </Box>
   );
 };
 

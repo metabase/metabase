@@ -33,7 +33,9 @@ export const TableSegmentsButton = ({
   onHintSegments,
   filtersButton,
 }: TableSegmentsButtonProps) => {
-  const segmentsLabel = isSegmentsOpen ? t`Hide segments` : t`Show segments`;
+  const segmentsLabel = isSegmentsOpen
+    ? t`Hide event segments`
+    : t`Show event segments`;
 
   return (
     <Button.Group>

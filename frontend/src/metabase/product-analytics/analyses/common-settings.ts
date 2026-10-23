@@ -101,15 +101,21 @@ const breakoutSetting = (
     getHidden: () => !isEnabled,
     getProps: (context, settings) => ({
       columns: getUserPropertyOptions(context, getColumnRoles(settings)),
-      usersTableId: context.usersTable?.table.id,
+      usersTable: context.usersTable?.table,
     }),
   });
 
-/** People segments live on the users table, so cohorts need one linked. */
+/**
+ * Any of the users table's fields, as its picker offers them all, or else
+ * an event table property. People segments live on the users table, so
+ * cohorts need one linked.
+ */
 const isBreakoutValid = (context: AnalysisContext, value: unknown) =>
   isBreakout(value) &&
   (value.type === "property"
-    ? isUserPropertyColumn(context, value.column)
+    ? context.usersTable !== undefined
+      ? isColumnInTable(context.usersTable.table, value.column)
+      : isUserPropertyColumn(context, value.column)
     : context.usersTable !== undefined);
 
 /**

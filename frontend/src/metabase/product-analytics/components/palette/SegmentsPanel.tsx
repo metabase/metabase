@@ -8,13 +8,14 @@ import { useSelector } from "metabase/redux";
 import {
   Box,
   Button,
+  Group,
   Icon,
   Loader,
   Paper,
   Stack,
-  Tabs,
   Text,
   TextInput,
+  Title,
   Tooltip,
 } from "metabase/ui";
 import * as Urls from "metabase/urls";
@@ -49,10 +50,12 @@ import S from "./SegmentsPanel.module.css";
 const MIN_WIDTH = 240;
 const MAX_WIDTH = 480;
 const DEFAULT_WIDTH = 360;
-/** Segments in a tab, drafts included, from which it gets a search box. */
+/** Segments in the panel, drafts included, from which it gets a search box. */
 const SEARCH_THRESHOLD = 10;
 
 type SegmentsPanelProps = {
+  /** Which segments: the event table's, or the linked people table's. */
+  source: SegmentSource;
   table: Table | undefined;
   usersTable: UsersTable | undefined;
   /** A click on a people segment, which adds it as a filter. */
@@ -63,11 +66,13 @@ type SegmentsPanelProps = {
 };
 
 /**
- * The column left of the setup panel: the event table's segments and the
- * linked people table's, each draggable onto the setup panel's slots. The
- * button beside the toolbar's table picker shows and hides it.
+ * A column left of the setup panel with one kind of segment, each draggable
+ * onto the setup panel's slots or the toolbar. Event segments are shown and
+ * hidden by the button beside the table picker; people segments by the one
+ * after Break out.
  */
 export const SegmentsPanel = ({
+  source,
   table,
   usersTable,
   onSelectPeopleSegment,
@@ -75,6 +80,7 @@ export const SegmentsPanel = ({
   onClose,
 }: SegmentsPanelProps) => {
   const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const isPeople = source === "people";
   return (
     <Paper
       withBorder
@@ -90,34 +96,30 @@ export const SegmentsPanel = ({
         max={MAX_WIDTH}
         onResize={setWidth}
       />
-      {/* The same tab bar inset as the setup panel's, so both line up. */}
-      <Tabs defaultValue="event" className={S.tabs}>
-        <Tabs.List px="lg" pt="sm">
-          <Tabs.Tab value="event">{t`Event segments`}</Tabs.Tab>
-          <Tabs.Tab value="people">{t`People segments`}</Tabs.Tab>
-          <PanelCloseButton onClose={onClose} isInTabBar />
-        </Tabs.List>
-        <Box className={S.scroll}>
-          <Tabs.Panel value="event" py="md">
-            <PaletteSection
-              source="event"
-              table={table}
-              emptyMessage={t`No segments on this table yet.`}
-            />
-          </Tabs.Panel>
-          <Tabs.Panel value="people" py="md">
-            <PaletteSection
-              source="people"
-              table={usersTable?.table}
-              samples={
-                usersTable === undefined ? getSamplePeopleSegments() : []
-              }
-              emptyMessage={t`No segments on this table yet.`}
-              onSelect={onSelectPeopleSegment}
-            />
-          </Tabs.Panel>
-        </Box>
-      </Tabs>
+      {/* The same header as the setup panel's when it has no tabs. */}
+      <Group justify="space-between" wrap="nowrap" px="lg" pt="lg">
+        <Title order={4}>
+          {isPeople ? t`People segments` : t`Event segments`}
+        </Title>
+        <PanelCloseButton onClose={onClose} />
+      </Group>
+      <Box className={S.scroll} py="md">
+        {isPeople ? (
+          <PaletteSection
+            source="people"
+            table={usersTable?.table}
+            samples={usersTable === undefined ? getSamplePeopleSegments() : []}
+            emptyMessage={t`No segments on this table yet.`}
+            onSelect={onSelectPeopleSegment}
+          />
+        ) : (
+          <PaletteSection
+            source="event"
+            table={table}
+            emptyMessage={t`No segments on this table yet.`}
+          />
+        )}
+      </Box>
     </Paper>
   );
 };
