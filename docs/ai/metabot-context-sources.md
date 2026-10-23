@@ -22,12 +22,21 @@ In documents, **Ask Metabot** works differently from the chat sidebar. It only b
 
 ## Add descriptions to tables, columns, models, and metrics
 
-Metabot reads an item's description when it looks at that item, and search matches questions against descriptions.
+Metabot reads an item's description when it looks at that item, and search matches questions against descriptions. Descriptions on questions and dashboards help Metabot find them, too.
 
 - Say what the item means to your business and which questions it answers. Metabot already knows column types.
 - Start with columns that are easy to misread: codes, flags, anything called `status`, and anything with an internal encoding.
+- Include the names people use for the item outside your database. Metabot can't know these on its own.
 
-Admins and data analysts can edit table and column descriptions in [Data Studio](../data-modeling/metadata/managing-tables.md).
+For example, here's a useful description for an ID column:
+
+```txt
+Unique ID for the product. Customer-facing emails and screens call this the "Invoice number" or "Confirmation number".
+```
+
+You can ask Metabot to draft descriptions, but it only knows what's in your database. It can't know that this ID is called the "Invoice number" in your app, which is exactly the kind of context worth writing down.
+
+Admins and data analysts can edit table and column descriptions in [Data Studio](../data-modeling/metadata/managing-tables.md). To add descriptions to a model's columns, see [Add metadata to columns in a model](../data-modeling/models/models.md#add-metadata-to-columns-in-a-model).
 
 ## Define company terms in the glossary
 
@@ -36,6 +45,14 @@ Add acronyms, product names, and terms with a company-specific meaning to the [g
 - Metabot gets the glossary with every message, in every place people use Metabot.
 - Metabot only gets the 100 most recently updated terms.
 - Keep definitions short, since they're sent with every message.
+
+For example, if you define "MRR" as "Monthly Recurring Revenue", Metabot knows what people mean when they ask "What's our MRR for Q4?"
+
+## Mark foreign keys so Metabot can join tables
+
+When a column's [semantic type](../data-modeling/metadata/metadata-editing.md#semantic-type) is **Foreign Key** and points to a column in another table, Metabot sees which table and column it links to. Without that, Metabot sees a column like `customer_id` with no hint that it joins anywhere, and may look for customer fields in the wrong table.
+
+Metabase picks up foreign keys that your database defines as constraints. Many databases don't define them, so check the columns people join on most. Metabot doesn't see other semantic types, like **Creation date** or **Category**.
 
 ## Define measures and segments for calculations people get wrong
 
