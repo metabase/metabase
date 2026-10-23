@@ -2,7 +2,9 @@
   (:require
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.chain-filter :as chain-filter]
    [metabase.parameters.custom-values :as custom-values]
    [metabase.parameters.params :as params]
@@ -15,19 +17,78 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(defn- field-ref->endpoint
+  "Extract `{:table :field :join-alias}` from an MBQL 5 `:field` clause."
+  [mp [_tag opts field-id]]
+  {:table      (:table-id (lib.metadata/field mp field-id))
+   :field      field-id
+   :join-alias (:join-alias opts)})
+
+(defn- condition->link
+  "If `condition` is `[:= _opts <field> <field>]` where exactly one field carries `:join-alias = out-alias`, return
+  `{:in <endpoint> :out <endpoint>}`. `:out` is the hop we're walking *out of* (this join's side); `:in` is the side
+  we're walking *into* next — its `:join-alias` names the previous hop, or nil when we've reached the base table.
+  Return nil when the clause isn't a qualifying link."
+  [mp out-alias condition]
+  (when (lib/clause-of-type? condition :=)
+    (let [[_= _opts a b] condition]
+      (when (and (lib/clause-of-type? a :field) (lib/clause-of-type? b :field))
+        (let [ea (field-ref->endpoint mp a)
+              eb (field-ref->endpoint mp b)
+              [in out] (cond
+                         (and (= out-alias (:join-alias ea))
+                              (not= out-alias (:join-alias eb))) [eb ea]
+                         (and (= out-alias (:join-alias eb))
+                              (not= out-alias (:join-alias ea))) [ea eb])]
+          (when in {:in in, :out out}))))))
+
+(defn- target->via-path
+  "Walk `query`'s joins backward from the alias on parameter `target`, emitting the ordered edge list (base table
+  outward) in the shape `metabase.parameters.chain-filter/find-joins` uses. For each join, the first condition that
+  qualifies as a link contributes an edge; walking continues from the incoming side's `:join-alias` until the base
+  table is reached. Return nil when the target has no `:join-alias`, when the alias doesn't resolve to a join on the
+  target's stage, or when no condition on the chain's joins qualifies as a link."
+  [query target]
+  (when-let [target-alias (:join-alias (lib/parameter-target-field-options target))]
+    (let [stage-number (lib/parameter-target-stage-number target)]
+      (loop [alias target-alias, path ()]
+        (when-let [join (lib/maybe-resolve-join query stage-number alias)]
+          (when-let [{:keys [in out]} (some #(condition->link query alias %) (lib/join-conditions join))]
+            (let [edge  {:lhs (select-keys in  [:table :field])
+                         :rhs (select-keys out [:table :field])}
+                  path' (cons edge path)]
+              (if-let [next-alias (:join-alias in)]
+                (recur next-alias path')
+                (vec path')))))))))
+
 (def ^:const result-limit
   "How many results to return when chain filtering"
   1000)
+
+(defn- card->query
+  "Build a lib query for the card's `:dataset_query`, or nil when the card can't yield one."
+  [card]
+  (when (and card (seq (:dataset_query card)) (pos-int? (:database_id card)))
+    (lib/query (lib-be/application-database-metadata-provider (:database_id card))
+               (:dataset_query card))))
 
 (mu/defn- param->fields
   [param :- ::parameters.schema/resolved-parameter
    & {:keys [op-override]} :- [:maybe [:map {:closed true} [:op-override {:optional true} [:maybe :keyword]]]]]
   (let [op      (or op-override (params/param-type->op (:type param)))
         options (or (:options param) (params/param-type->default-options (:type param)))]
-    (for [field-id (params/dashboard-param->field-ids param)]
+    (for [mapping (:mappings param)
+          ;; Resolve the field-id one mapping at a time so each entry keeps its own `:via-path`.
+          :let [field-id (first (params/dashboard-param->field-ids (assoc param :mappings #{mapping})))]
+          :when field-id
+          :let [target   (:target mapping)
+                card     (:card (:dashcard mapping))
+                via-path (when (:join-alias (lib/parameter-target-field-options target))
+                           (some-> (card->query card) (target->via-path target)))]]
       {:field-id field-id
        :op       op
-       :options  options})))
+       :options  options
+       :via-path via-path})))
 
 (mu/defn ^:private chain-filter-constraints :- ::chain-filter/constraints
   [dashboard                   :- :metabase.dashboards.schema/dashboard
@@ -90,8 +151,8 @@
                        (nil? (:resolved-params dashboard)) (t2/hydrate :resolved-params))
          constraints (chain-filter-constraints dashboard constraint-param-key->value)
          param       (get-in dashboard [:resolved-params param-key])
-         field-ids   (into #{} (map :field-id (param->fields param)))]
-     (if (empty? field-ids)
+         entries     (vec (param->fields param))]
+     (if (empty? entries)
        (or (filter-values-from-field-refs dashboard param-key)
            (throw (ex-info (tru "Parameter {0} does not have any Fields associated with it" (pr-str param-key))
                            {:param       (get (:resolved-params dashboard) param-key)
@@ -99,10 +160,15 @@
                             :status-code 400})))
        (try
          (let [;; results can come back as [[value] ...] *or* as [[value remapped] ...].
-               results         (map (if (seq query)
-                                      #(chain-filter/chain-filter-search % constraints query :limit result-limit)
-                                      #(chain-filter/chain-filter % constraints :limit result-limit))
-                                    field-ids)
+               ;; One chain-filter call per mapping, each threading its own :via-path so a parameter mapped to the
+               ;; same base field via multiple joins unions each mapping's dropdown values.
+               call            (fn [{:keys [field-id via-path]}]
+                                 (let [opts (cond-> [:limit result-limit]
+                                              (seq via-path) (into [:via-path via-path]))]
+                                   (if (seq query)
+                                     (apply chain-filter/chain-filter-search field-id constraints query opts)
+                                     (apply chain-filter/chain-filter field-id constraints opts))))
+               results         (map call entries)
                has_more_values (boolean (some true? (map :has_more_values results)))]
            {:values          (or (combine-chained-filter-results results)
                                  ;; chain filter results can't be nil

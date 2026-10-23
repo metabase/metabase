@@ -65,6 +65,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [medley.core :as m]
    [metabase.app-db.core :as mdb]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -98,21 +99,6 @@
 ;; so the hydration method for name_field is loaded
 (comment params/keep-me)
 
-(mr/def ::constraint
-  "Schema for a constraint on a field."
-  [:map {:closed true}
-   [:field-id ::lib.schema.id/field]
-   [:op       :keyword] ; name of an MBQL filter clause e.g. `:=` or `:starts-with`
-   [:value    [:or ms/FieldValue [:sequential ms/FieldValue] [:set ms/FieldValue]]]
-   [:options  {:optional true} [:maybe [:merge
-                                        ::lib.schema.common/options
-                                        [:map {:closed true}
-                                         [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]]]])
-
-(mr/def ::constraints
-  "Schema for a list of constraints."
-  [:sequential ::constraint])
-
 (mr/def ::table-field-endpoint
   [:map {:closed true}
    [:table ::lib.schema.id/table]
@@ -123,6 +109,23 @@
   [:map {:closed true}
    [:lhs ::table-field-endpoint]
    [:rhs ::table-field-endpoint]])
+
+(mr/def ::constraint
+  "Schema for a constraint on a field. `:via-path`, when present, pins the sequence of FK edges that reach the
+  constraint field's table from the source table — bypassing the join-graph search for those hops."
+  [:map {:closed true}
+   [:field-id ::lib.schema.id/field]
+   [:op       :keyword] ; name of an MBQL filter clause e.g. `:=` or `:starts-with`
+   [:value    [:or ms/FieldValue [:sequential ms/FieldValue] [:set ms/FieldValue]]]
+   [:options  {:optional true} [:maybe [:merge
+                                        ::lib.schema.common/options
+                                        [:map {:closed true}
+                                         [:lib/uuid {:optional true} ::lib.schema.common/uuid]]]]]
+   [:via-path {:optional true} [:maybe [:sequential ::join-info]]]])
+
+(mr/def ::constraints
+  "Schema for a list of constraints."
+  [:sequential ::constraint])
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *enable-reverse-joins*
@@ -569,25 +572,49 @@
               query
               (map-indexed vector table-id-groups)))))
 
+(mu/defn- orient-via-path :- [:sequential ::join-info]
+  "Reverse `via-path` if `source-table-id` is at the path's far end (last-RHS) instead of the near end (first-LHS).
+  Each edge is also flipped `lhs`/`rhs` so the oriented path threads `source-table-id` through every hop in order.
+  Paths already oriented from `source-table-id`, paths whose terminals don't involve `source-table-id`, and nil/empty
+  inputs are returned as-is (coerced to a vector)."
+  [source-table-id :- ::lib.schema.id/table
+   via-path        :- [:maybe [:sequential ::join-info]]]
+  (if (and (seq via-path)
+           (not= source-table-id (get-in (first via-path) [:lhs :table]))
+           (= source-table-id (get-in (last via-path) [:rhs :table])))
+    (mapv (fn [{:keys [lhs rhs]}] {:lhs rhs :rhs lhs}) (reverse via-path))
+    (vec via-path)))
+
 (mu/defn- constraint-joins :- [:map {:closed true}
                                [:joins           [:maybe [:sequential ::join-info]]]
                                [:semi-join-paths [:map-of ::lib.schema.id/table ::one-to-many-path]]]
   "Plan how a query on `source-table-id` reaches the Fields of `constraints` and the additional `field-ids`. `:joins`
   are ordinary joins for [[add-joins]]; `:semi-join-paths` lead to the Tables whose constraints [[add-semi-joins]]
-  applies, i.e. those reached only through a one-to-many join and not joined anyway."
+  applies, i.e. those reached only through a one-to-many join and not joined anyway.
+
+  Pinned edges — each constraint's `:via-path` and the caller-supplied `extra-via-path` — are oriented from
+  `source-table-id` and win over graph-search edges to the same `:rhs :table`. Field-ids of pinned constraints are
+  excluded from the graph search."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    database-id           :- ::lib.schema.id/database
    source-table-id       :- ::lib.schema.id/table
    constraints           :- [:maybe ::constraints]
-   field-ids             :- [:set ::lib.schema.id/field]]
-  (let [constraint-field-ids (into #{} (map :field-id) constraints)
+   field-ids             :- [:set ::lib.schema.id/field]
+   extra-via-path        :- [:maybe [:sequential ::join-info]]]
+  (let [orient               #(orient-via-path source-table-id %)
+        pinned-edges         (into (orient extra-via-path)
+                                   (mapcat #(orient (:via-path %)))
+                                   constraints)
+        unpinned-constraints (remove :via-path constraints)
+        constraint-field-ids (into #{} (map :field-id) unpinned-constraints)
         paths                (one-to-many-paths metadata-providerable database-id source-table-id constraint-field-ids)
         direct-field-ids     (into field-ids
                                    (comp (remove #(contains? paths (:table-id %)))
                                          (map :id))
                                    (lib.metadata/bulk-metadata metadata-providerable :metadata/column
                                                                constraint-field-ids))
-        joins                (find-all-joins metadata-providerable database-id source-table-id direct-field-ids)]
+        graph-joins          (find-all-joins metadata-providerable database-id source-table-id direct-field-ids)
+        joins                (vec (m/distinct-by #(get-in % [:rhs :table]) (concat pinned-edges graph-joins)))]
     {:joins           joins
      :semi-join-paths (apply dissoc paths (map #(get-in % [:rhs :table]) joins))}))
 
@@ -596,15 +623,17 @@
   [:map {:closed true}
    [:original-field-id {:optional true} [:maybe ::lib.schema.id/field]]
    ;; return at most the lesser of `limit` (if specified) and `max-results`.
-   [:limit {:optional true} [:maybe ms/PositiveInt]]])
+   [:limit {:optional true} [:maybe ms/PositiveInt]]
+   ;; edges from the listed-field's parameter mapping to pin as joins before graph search.
+   [:via-path {:optional true} [:maybe [:sequential ::join-info]]]])
 
 (def ^:private max-results 1000)
 
 (mu/defn- chain-filter-mbql-query :- ::lib.schema/query
   "Generate the MBQL query powering `chain-filter`."
-  [field-id                          :- ::lib.schema.id/field
-   constraints                       :- [:maybe ::constraints]
-   {:keys [original-field-id limit]} :- [:maybe ::options]]
+  [field-id                                   :- ::lib.schema.id/field
+   constraints                                :- [:maybe ::constraints]
+   {:keys [original-field-id limit via-path]} :- [:maybe ::options]]
   (log/tracef "Chain filter %s with %d constraint(s)" (name-for-logging :model/Field field-id) (count constraints))
   ;; `field-id->database-id` is the one place we still bootstrap from a raw field-id: we need the Database before we
   ;; can build a (per-Database) metadata provider. Every other table-id/db-id below comes from `mp`.
@@ -621,7 +650,8 @@
         remap-field-ids   (cond-> #{}
                             reversed?       (conj field-id)
                             (not reversed?) (cond-> original-field-id (conj original-field-id)))
-        {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints remap-field-ids)
+        {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints
+                                                          remap-field-ids via-path)
         joined-table-ids  (set (map #(get-in % [:rhs :table]) joins))
         field             (cond-> (lib.metadata/field mp field-id)
                             reversed? (lib/with-join-alias (joined-table-alias field-table-id)))
@@ -773,22 +803,28 @@
     ;; -> {:values          [1 2 3] (there are no BBQ places with price = 4)
            :has_more_values false}
 
-  `options` are key-value options. Currently two options are supported, `:limit` and `:remapping-field`:
+  `options` are key-value options:
 
-  - :limit
-    ;; fetch first 10 values of venues.price
-    (chain-filter %venues.price {} :limit 10)
+  - `:limit` — return at most this many values.
 
-  - :remapping-field
-  ;; Explicitly specify a Field ID to use for Field->Field remapping instead of auto-detecting.
-  ;; This bypasses automatic remapping detection and directly uses the specified field for remapping.
-  (chain-filter %venues.category_id {} :remapping-field %categories.name)
+      (chain-filter %venues.price {} :limit 10)
+
+  - `:remapping-field` — explicitly specify a Field ID for Field->Field remapping instead of auto-detecting.
+
+      (chain-filter %venues.category_id {} :remapping-field %categories.name)
+
+  - `:relax-fk-requirement?` — for `:fk->pk->name` remappings, allow searching the underlying FK's target table when
+    there is no direct FK from the listed field.
+
+  - `:via-path` — a sequence of `::join-info` edges to pin as joins before the FK graph search runs. Used when the
+    caller already knows the specific join path from the source table to the constraint — e.g. the FE's parameter
+    mapping names a join alias on the card. Each edge must be oriented from the source table outward.
 
   For remapped columns (when remapping is detected or when an explicit remapping field-id is provided), this returns
   results as a sequence of `[value remapped-value]` pairs."
   [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe ::constraints]
-   & options   :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt]]]
+   & options   :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt [:sequential ::join-info]]]]
   (assert (even? (count options)))
   (let [{:as options}         options
         relax-fk-requirement? (:relax-fk-requirement? options)
@@ -808,7 +844,9 @@
       (-> (unremapped-chain-filter field-id constraints options)
           (update :values add-human-readable-values v->human-readable))
 
-      (and (use-cached-field-values? field-id) (nil? @remapping))
+      ;; Cached field-values are keyed by (field-id, constraints) only — they can't distinguish between pinned paths,
+      ;; so skip the cache when the caller asked for a specific `:via-path`.
+      (and (use-cached-field-values? field-id) (nil? @remapping) (empty? (:via-path options)))
       (do
         (check-field-value-query-permissions field-id constraints options)
         (cached-field-values field-id constraints options))
@@ -843,7 +881,7 @@
   (let [database-id      (field/field-id->database-id field-id)
         mp               (lib-be/application-database-metadata-provider database-id)
         source-table-id  (:table-id (lib.metadata/field mp field-id))
-        {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints #{})
+        {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints #{} nil)
         joined-table-ids (set (map #(get-in % [:rhs :table]) joins))
         field            (lib.metadata/field mp field-id)]
     (when (seq joins)
@@ -972,7 +1010,7 @@
   [field-id     :- ::lib.schema.id/field
    constraints  :- [:maybe ::constraints]
    query-string :- [:maybe ms/NonBlankString]
-   & options    :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt]]]
+   & options    :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt [:sequential ::join-info]]]]
   (assert (even? (count options)))
   (let [{:as options}         options
         v->human-readable     (delay (schema.metadata-queries/human-readable-remapping-map field-id))
@@ -992,7 +1030,8 @@
       (some? @v->human-readable)
       (human-readable-values-remapped-chain-filter-search field-id @v->human-readable constraints query-string options)
 
-      (and (search-cached-field-values? field-id constraints) (nil? @the-remapped-field-id))
+      (and (search-cached-field-values? field-id constraints) (nil? @the-remapped-field-id)
+           (empty? (:via-path options)))
       (do
         (check-field-value-query-permissions field-id constraints options)
         (cached-field-values-search field-id query-string constraints options))
