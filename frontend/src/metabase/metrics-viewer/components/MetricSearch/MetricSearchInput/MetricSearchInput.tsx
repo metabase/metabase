@@ -1,5 +1,5 @@
 import type { ReactCodeMirrorRef } from "@uiw/react-codemirror";
-import { useMemo, useRef } from "react";
+import { type ReactNode, useMemo, useRef } from "react";
 import { t } from "ttag";
 
 import { CodeMirror } from "metabase/common/components/CodeMirror";
@@ -52,10 +52,13 @@ type MetricSearchInputProps = {
   onAddMetric: (metric: SelectedMetric) => void;
   onRemoveMetric: (metricId: number, sourceType: "metric" | "measure") => void;
   onSwapMetric: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
-  onSetBreakout: (
+  /** Omit to hide the per-metric series breakout controls. */
+  onSetBreakout?: (
     entity: MetricDefinitionEntry,
     dimension: ProjectionClause | undefined,
   ) => void;
+  /** Rendered ahead of the metric pills and the formula editor, e.g. pills for non-metric values. */
+  leadingContent?: ReactNode;
 };
 
 export function MetricSearchInput({
@@ -69,6 +72,7 @@ export function MetricSearchInput({
   onRemoveMetric,
   onSwapMetric,
   onSetBreakout,
+  leadingContent,
 }: MetricSearchInputProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<ReactCodeMirrorRef>(null);
@@ -156,6 +160,7 @@ export function MetricSearchInput({
       data-testid="metrics-formula-input"
     >
       <Flex align="center" gap="sm" flex={1} wrap="wrap" mih="2rem">
+        {leadingContent}
         {isCollapsed ? (
           // Unfocused: each formula entity rendered as MetricPill or MetricExpressionPill
           <>
@@ -194,8 +199,10 @@ export function MetricSearchInput({
                       onRemove={(_id, _sourceType) =>
                         handleRemoveItem(entryIndex)
                       }
-                      onSetBreakout={(dimension) =>
-                        onSetBreakout(entry, dimension)
+                      onSetBreakout={
+                        onSetBreakout
+                          ? (dimension) => onSetBreakout(entry, dimension)
+                          : undefined
                       }
                     />
                   </span>

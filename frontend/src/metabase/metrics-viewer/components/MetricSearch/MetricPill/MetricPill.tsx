@@ -31,7 +31,8 @@ type MetricPillProps = {
   isDisabled?: boolean;
   onSwap: (oldMetric: SelectedMetric, newMetric: SelectedMetric) => void;
   onRemove: (metricId: number, sourceType: "metric" | "measure") => void;
-  onSetBreakout: (dimension: ProjectionClause | undefined) => void;
+  /** Omit to hide the series breakout menu items. */
+  onSetBreakout?: (dimension: ProjectionClause | undefined) => void;
   onOpen?: () => void;
 };
 
@@ -99,7 +100,7 @@ export function MetricPill({
   }, []);
 
   const handleRemoveBreakout = useCallback(() => {
-    onSetBreakout(undefined);
+    onSetBreakout?.(undefined);
     setPopoverState("closed");
   }, [onSetBreakout]);
 
@@ -213,7 +214,7 @@ export function MetricPill({
           >
             {t`Replace`}
           </Menu.Item>
-          {dimensions.size > 0 && definition && (
+          {onSetBreakout && dimensions.size > 0 && definition && (
             <>
               {breakoutDimension && (
                 <Menu.Item
@@ -247,7 +248,7 @@ export function MetricPill({
           )}
         </Menu.Dropdown>
       </Menu>
-      {definition && (
+      {onSetBreakout && definition && (
         <Popover
           opened={popoverState === "breakout-picker"}
           onChange={(opened) => {

@@ -46,7 +46,7 @@ import { remapDimensionMappings } from "../utils/remap-dimension-mappings";
 import { useViewerDerivedData } from "./use-viewer-derived-data";
 import { type LoadSourcesRequest, useViewerUrl } from "./use-viewer-url";
 
-async function loadMetricDefinition(
+export async function loadMetricDefinition(
   dispatch: ReturnType<typeof useDispatch>,
   getState: ReturnType<typeof useStore>["getState"],
   metricId: MetricId,
@@ -66,7 +66,7 @@ async function loadMetricDefinition(
   return LibMetric.fromMetricMetadata(provider, meta);
 }
 
-async function loadMeasureDefinition(
+export async function loadMeasureDefinition(
   dispatch: ReturnType<typeof useDispatch>,
   getState: ReturnType<typeof useStore>["getState"],
   measureId: MeasureId,

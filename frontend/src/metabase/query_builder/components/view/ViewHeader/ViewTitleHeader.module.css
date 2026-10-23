@@ -99,7 +99,6 @@
 .ViewHeaderContainer {
   --app-subheader-height: 48px;
 
-  border-bottom: 1px solid var(--mb-color-border-neutral);
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
 

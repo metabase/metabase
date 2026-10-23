@@ -68,6 +68,7 @@ import combine_component from "./combine.svg?component";
 import comment_component from "./comment.svg?component";
 import company_component from "./company.svg?component";
 import compare_component from "./compare.svg?component";
+import compass_component from "./compass.svg?component";
 import connections_component from "./connections.svg?component";
 import contract_component from "./contract.svg?component";
 import copy_component from "./copy.svg?component";
@@ -371,6 +372,7 @@ export const Icons: Record<IconName, React.FC> = {
   cloud_12: cloud_12_component,
   cloud_filled: cloud_filled_component,
   compare: compare_component,
+  compass: compass_component,
   combine: combine_component,
   company: company_component,
   comment: comment_component,
