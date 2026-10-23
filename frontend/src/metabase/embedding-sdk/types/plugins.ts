@@ -2,8 +2,6 @@
 import type { MantineColor } from "@mantine/core";
 import type { ReactNode } from "react";
 
-import type { ClickAction } from "metabase/visualizations/types";
-
 import type { IconName } from "./icon";
 import type { MetabaseQuestion } from "./question";
 
@@ -27,10 +25,14 @@ export type MetabaseDataPointObject = {
   };
 };
 
+export type MetabaseClickAction = {
+  name: string;
+} & Record<string, any>;
+
 export type MetabaseClickActionPluginsConfig = (
-  clickActions: ClickAction[],
+  clickActions: MetabaseClickAction[],
   clickedDataPoint: MetabaseDataPointObject,
-) => ClickAction[] | { onClick: () => void };
+) => MetabaseClickAction[] | { onClick: () => void };
 
 export type DashboardCardMenuCustomElement = ({
   question,
