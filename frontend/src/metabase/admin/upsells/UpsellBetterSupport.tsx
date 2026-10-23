@@ -1,5 +1,6 @@
 import { c, t } from "ttag";
 
+import { UpsellCard } from "metabase/common/components/upsells/UpsellCard";
 import { UpsellBanner } from "metabase/common/components/upsells/components";
 import { UPGRADE_URL } from "metabase/common/components/upsells/constants";
 import { PLUGIN_ADMIN_SETTINGS } from "metabase/plugins";
@@ -7,7 +8,14 @@ import { useSelector } from "metabase/redux";
 import { getPlan, getSetting } from "metabase/settings";
 import { Text } from "metabase/ui";
 
-export const UpsellBetterSupport = ({ location }: { location: string }) => {
+export const UpsellBetterSupport = ({
+  location,
+  variant = "banner",
+}: {
+  location: string;
+  /** Use "card" in a narrow space, such as an admin sidebar. */
+  variant?: "banner" | "card";
+}) => {
   const campaign = "better-hosting";
   const { triggerUpsellFlow } = PLUGIN_ADMIN_SETTINGS.useUpsellFlow({
     campaign,
@@ -22,20 +30,43 @@ export const UpsellBetterSupport = ({ location }: { location: string }) => {
     return null;
   }
 
+  const title = t`Get expert help`;
+  const buttonText = t`Try for free`;
+  const description = (
+    <Text size="sm" lh="1rem">
+      {t`Unlimited support from success engineers whenever you need it with any paid plan.`}{" "}
+      {c("Reasons why paid support is better.")
+        .t`No hold lines, no customer service runaround.`}
+    </Text>
+  );
+
+  if (variant === "card") {
+    return (
+      <UpsellCard
+        title={title}
+        campaign={campaign}
+        buttonText={buttonText}
+        buttonLink={UPGRADE_URL}
+        location={location}
+        fullWidth
+        maxWidth="initial"
+        onClick={triggerUpsellFlow}
+      >
+        {description}
+      </UpsellCard>
+    );
+  }
+
   return (
     <UpsellBanner
-      title={t`Get expert help`}
+      title={title}
       campaign={campaign}
-      buttonText={t`Try for free`}
+      buttonText={buttonText}
       buttonLink={UPGRADE_URL}
       location={location}
       onClick={triggerUpsellFlow}
     >
-      <Text size="sm">
-        {t`Unlimited support from success engineers whenever you need it with any paid plan.`}{" "}
-        {c("Reasons why paid support is better.")
-          .t`No chatbots, no hold lines, no customer service runaround.`}
-      </Text>
+      {description}
     </UpsellBanner>
   );
 };

@@ -2,20 +2,20 @@ import { dayjs } from "metabase/dayjs";
 
 const { H } = cy;
 
+const helpNav = () => cy.findByTestId("admin-layout-sidebar");
+
 describe("scenarios > admin > help", { tags: "@OSS" }, () => {
   beforeEach(() => {
     H.restore();
     cy.signInAsAdmin();
   });
 
-  it("should link `Get help` to help", () => {
+  it("should link `Docs and support` to help", () => {
     cy.visit("/admin/help");
 
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Metabase Admin");
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Get help")
-      .parents("a")
+    cy.findByRole("heading", { name: "How can we help?" }).should("be.visible");
+    helpNav()
+      .findByRole("link", { name: /Docs and support/ })
       .should("have.prop", "href")
       .and(
         "match",
@@ -68,18 +68,21 @@ describe("scenarios > admin > help > helping hand", () => {
     H.mockSessionPropertiesTokenFeatures({ "support-users": true });
   });
 
-  it("should only display the `Helping hand` section for cloud customers, and link `Get help` to help-premium on paid plans", () => {
+  it("should only display `Support access` for cloud customers, and link `Docs and support` to help-premium on paid plans", () => {
     cy.visit("/admin/help");
-    cy.findByRole("heading", { name: "Helping hand" }).should("not.exist");
+    helpNav()
+      .findByRole("link", { name: /Support access/ })
+      .should("not.exist");
 
     H.activateToken("pro-self-hosted");
     cy.reload();
-    cy.findByRole("heading", { name: "Helping hand" }).should("not.exist");
+    helpNav()
+      .findByRole("link", { name: /Support access/ })
+      .should("not.exist");
 
-    cy.log("should link `Get help` to help-premium");
-    cy.findByTestId("admin-layout-content")
-      .findByText("Get help")
-      .parents("a")
+    cy.log("should link `Docs and support` to help-premium");
+    helpNav()
+      .findByRole("link", { name: /Docs and support/ })
       .should("have.prop", "href")
       .and(
         "match",
@@ -88,6 +91,9 @@ describe("scenarios > admin > help > helping hand", () => {
 
     H.activateToken("starter");
     cy.reload();
+    helpNav()
+      .findByRole("link", { name: /Support access/ })
+      .click();
     cy.findByRole("heading", { name: "Helping hand" }).should("be.visible");
 
     H.activateToken("pro-cloud");
@@ -97,7 +103,7 @@ describe("scenarios > admin > help > helping hand", () => {
 
   it("allow creating an access grant with a ticket number and custom notes", () => {
     H.activateToken("pro-cloud");
-    cy.visit("/admin/help");
+    cy.visit("/admin/help/support");
 
     executeCreateGrantAccessFlow("48 hours", "TICKET-999", "Custom notes");
 
@@ -113,7 +119,7 @@ describe("scenarios > admin > help > helping hand", () => {
 
   it("should allow creating a new access grant, disallow more than one active access grant, and revoke it", () => {
     H.activateToken("pro-cloud");
-    cy.visit("/admin/help");
+    cy.visit("/admin/help/support");
 
     cy.findByTestId("access-grant-list-table").should("not.exist");
 

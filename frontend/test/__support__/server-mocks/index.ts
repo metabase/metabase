@@ -26,6 +26,7 @@ export * from "./gdrive";
 export * from "./geojson";
 export * from "./google";
 export * from "./group";
+export * from "./help-assistant";
 export * from "./impersonation";
 export * from "./index-manager";
 export * from "./library";
