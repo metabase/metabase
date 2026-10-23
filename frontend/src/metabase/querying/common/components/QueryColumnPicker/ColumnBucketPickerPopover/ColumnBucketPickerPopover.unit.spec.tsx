@@ -16,8 +16,12 @@ const dateColumn = findColumn("ORDERS", "CREATED_AT");
 const numericColumn = findColumn("ORDERS", "TOTAL");
 const coordinateColumn = findColumn("PEOPLE", "LATITUDE");
 
-function setup({ column }: { column: Lib.ColumnMetadata }) {
-  const onSelect = jest.fn();
+interface SetupOpts {
+  column: Lib.ColumnMetadata;
+}
+
+function setup({ column }: SetupOpts) {
+  const onSelect = jest.fn<void, [Lib.ColumnMetadata]>();
   render(
     <div data-testid="container">
       <ColumnBucketPickerPopover
@@ -31,25 +35,123 @@ function setup({ column }: { column: Lib.ColumnMetadata }) {
       />
     </div>,
   );
+  return { onSelect };
 }
 
-async function setupBinningPicker({ column }: { column: Lib.ColumnMetadata }) {
-  setup({ column });
+async function setupBinningPicker({ column }: SetupOpts) {
+  const result = setup({ column });
   await userEvent.click(screen.getByLabelText("Binning strategy"));
   await screen.findByText("Auto bin");
+  return result;
 }
 
-async function setupTemporalBucketPicker({
-  column,
-}: {
-  column: Lib.ColumnMetadata;
-}) {
-  setup({ column });
+async function setupTemporalBucketPicker({ column }: SetupOpts) {
+  const result = setup({ column });
   await userEvent.click(screen.getByLabelText("Temporal bucket"));
   await screen.findByText("Year");
+  return result;
 }
 
+function getOptionNames() {
+  return screen
+    .getAllByRole("menuitem")
+    .map((option) => option.textContent ?? "");
+}
+
+const NUMBER_BUCKETS = [
+  "Auto bin",
+  "10 bins",
+  "50 bins",
+  "100 bins",
+  "Don't bin",
+];
+
+const TIME_BUCKETS = [
+  "Minute",
+  "Hour",
+  "Day",
+  "Week",
+  "Month",
+  "Quarter",
+  "Year",
+  "Minute of hour",
+  "Hour of day",
+  "Day of week",
+  "Day of month",
+  "Day of year",
+  "Week of year",
+  "Month of year",
+  "Quarter of year",
+  "Don't bin",
+];
+
+const COORDINATE_BUCKETS = [
+  "Auto bin",
+  "Bin every 0.1 degrees",
+  "Bin every 1 degree",
+  "Bin every 10 degrees",
+  "Bin every 20 degrees",
+  "Bin every 0.05 degrees",
+  "Bin every 0.01 degrees",
+  "Bin every 0.005 degrees",
+  "Don't bin",
+];
+
 describe("ColumnBucketPickerPopover", () => {
+  it("should list every binning option of a numeric column once", async () => {
+    await setupBinningPicker({ column: numericColumn });
+    expect(getOptionNames()).toEqual(NUMBER_BUCKETS);
+  });
+
+  it("should list every temporal bucket once when expanded", async () => {
+    await setupTemporalBucketPicker({ column: dateColumn });
+    await userEvent.click(screen.getByRole("button", { name: "More…" }));
+    expect(getOptionNames()).toEqual(TIME_BUCKETS);
+  });
+
+  it("should list every binning option of a coordinate column once when expanded", async () => {
+    await setupBinningPicker({ column: coordinateColumn });
+    await userEvent.click(screen.getByRole("button", { name: "More…" }));
+    expect(getOptionNames()).toEqual(COORDINATE_BUCKETS);
+  });
+
+  it("should highlight the selected binning option of a coordinate column", async () => {
+    const strategy = Lib.availableBinningStrategies(
+      query,
+      0,
+      coordinateColumn,
+    ).find(
+      (strategy) =>
+        Lib.displayInfo(query, 0, strategy).displayName ===
+        "Bin every 20 degrees",
+    );
+    const column = Lib.withBinning(coordinateColumn, strategy ?? null);
+    await setupBinningPicker({ column });
+
+    expect(
+      screen.getByRole("menuitem", { name: "Bin every 20 degrees" }),
+    ).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("menuitem", { name: "Auto bin" })).toHaveAttribute(
+      "aria-selected",
+      "false",
+    );
+  });
+
+  it("should apply the picked binning option of a coordinate column", async () => {
+    const { onSelect } = await setupBinningPicker({ column: coordinateColumn });
+
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Bin every 20 degrees" }),
+    );
+
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    const [nextColumn] = onSelect.mock.calls[0];
+    const binning = Lib.binning(nextColumn);
+    expect(binning && Lib.displayInfo(query, 0, binning).displayName).toBe(
+      "20°",
+    );
+  });
+
   it("should collapse advanced temporal bucket options", async () => {
     const buckets = Lib.availableTemporalBuckets(query, 0, dateColumn);
     await setupTemporalBucketPicker({ column: dateColumn });
