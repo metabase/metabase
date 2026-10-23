@@ -6,6 +6,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.documents.core :as documents]
+   [metabase.documents.models.document :as m.document]
+   [metabase.explorations.db :as explorations.db]
    [metabase.explorations.derived-perms :as derived-perms]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -275,7 +277,7 @@
                      (let [thread (thread-with-snapshots! (specs n))
                            calls  (atom 0)]
                        (dynamic-redefs/with-dynamic-fn-redefs
-                         [queries/viewer-can-view-cached-result? (fn [_] (swap! calls inc) true)]
+                         [queries/viewer-can-view-cached-result? (fn [& _] (swap! calls inc) true)]
                          (request/with-current-user (mt/user->id :rasta)
                            (derived-perms/thread-ids-with-visible-derived-data [thread])))
                        @calls))]
@@ -324,6 +326,27 @@
     (mt/with-temp [:model/Document {doc-id :id} {:creator_id (mt/user->id :lucky)}]
       (is (true? (boolean (doc-content-visible? (t2/select-one :model/Document :id doc-id) :rasta))))
       (is (true? (boolean (doc-content-visible? (t2/select-one [:model/Document :id :name] :id doc-id) :rasta)))))))
+
+(deftest superuser-skips-content-gate-test
+  (testing "a superuser passes the content gate without it loading anything to adjudicate"
+    (let [thread  (thread-with-snapshots! [{:creator-id (mt/user->id :lucky) :table :venues :token nil}])
+          expl    (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)
+          loads   (atom 0)
+          counted (fn [f] (fn [& args] (swap! loads inc) (apply f args)))]
+      (mt/with-temp [:model/Document {doc-id :id} {:exploration_id expl :creator_id (mt/user->id :lucky)}]
+        (let [document (t2/select-one :model/Document :id doc-id)]
+          (dynamic-redefs/with-dynamic-fn-redefs
+            [explorations.db/thread-ids-for-exploration
+             (counted (dynamic-redefs/original-fn #'explorations.db/thread-ids-for-exploration))
+             explorations.db/lens-stamped-queries
+             (counted (dynamic-redefs/original-fn #'explorations.db/lens-stamped-queries))]
+            (testing "the gate denies everyone else here"
+              (is (false? (visible? thread :rasta)))
+              (is (false? (boolean (doc-content-visible? document :rasta))))
+              (reset! loads 0))
+            (is (true? (visible? thread :crowberto)))
+            (is (true? (boolean (doc-content-visible? document :crowberto))))
+            (is (zero? @loads))))))))
 
 ;;; --------------------------- Cards scoped to a gated Summary document ---------------------------
 
@@ -416,9 +439,8 @@
 
 (deftest content-gate-verdict-is-memoized-within-a-scope-test
   (testing "every Card in a Summary document shares one document, and therefore one verdict. Without
-            memoization each card re-runs the whole rollup — ~20 app-DB queries apiece — so a
-            document's cards cost N times what one costs. Bulk read paths scope the cache
-            themselves; see the callers of `with-content-gate-cache`."
+            memoization each card re-runs the whole rollup — ~20 app-DB queries apiece. Bulk read
+            paths scope the cache themselves; see the callers of `with-content-gate-cache`."
     (let [thread  (thread-with-snapshots! (repeat 5 {:creator-id (mt/user->id :lucky)
                                                      :table :venues :token {}}))
           expl-id (t2/select-one-fn :exploration_id :model/ExplorationThread :id thread)]
@@ -435,14 +457,16 @@
                                                         :display "table" :visualization_settings {}
                                                         :collection_id coll-id :document_id doc-id})))]
           (request/with-current-user (mt/user->id :rasta)
+            ;; Count calls to the registered gate rather than app-DB queries: each Card still reads
+            ;; its own document and snapshots, and the rollup's cost differs between editions.
             (let [cards (t2/select :model/Card :id [:in card-ids])
-                  measure (fn [instances]
-                            (documents/with-content-gate-cache
-                              (t2/with-call-count [call-count]
-                                (doseq [card instances] (mi/can-read? card))
-                                (call-count))))
-                  one (measure [(first cards)])
-                  ten (measure cards)]
-              (is (< ten (* 2 one))
-                  (format "one verdict should serve every card (1 card: %d queries, 10 cards: %d)"
-                          one ten)))))))))
+                  gate  @#'m.document/doc-content-visibility-fn
+                  orig  @gate
+                  calls (atom 0)]
+              (try
+                (reset! gate (fn [doc] (swap! calls inc) (orig doc)))
+                (documents/with-content-gate-cache
+                  (is (every? mi/can-read? cards)))
+                (is (= 1 @calls) "one verdict should serve every card")
+                (finally
+                  (reset! gate orig))))))))))

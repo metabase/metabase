@@ -36,6 +36,7 @@
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.public-sharing.core :as public-sharing]
    [metabase.pulse.core :as pulse]
+   [metabase.queries.cached-result :as cached-result]
    [metabase.queries.card-schema :as card-schema]
    [metabase.queries.db :as queries.db]
    [metabase.queries.models.card.metadata :as card.metadata]
@@ -157,6 +158,14 @@
     (:id card)                    (queries.db/card-document-id (:id card))
     :else                         ::not-adjudicable))
 
+(defn- summary-card-snapshots
+  "The snapshots linked to `card` when it is an ephemeral card of an exploration Summary (`document`), or nil when it
+  is not one or has none. Such a card renders only those snapshots — a composite links its own plus one per source —
+  so it is gated on their artifact verdicts rather than on the Summary's content gate over every thread."
+  [card document]
+  (when (and (:exploration_id document) (:id card))
+    (not-empty (queries.db/stored-results-for-card (:id card)))))
+
 (defn- parent-document-permits?
   "Whether the parent Document of `card`, if it has one, grants `read-or-write` to the current user.
 
@@ -166,14 +175,23 @@
   values discovered under the *creator's* data-access lens (see
   [[metabase.explorations.derived-perms]]). Collection permissions alone cannot adjudicate that
   material — withholding it is the entire reason the Document's content gate exists — so a Card
-  that carries those values must be gated exactly as the document embedding it is."
+  that carries those values is gated by the document embedding it: on read, by its own snapshots
+  where it has any (see [[summary-card-snapshots]]) plus the Summary's collection-level read. A
+  Summary's cards are never writable, by anyone: each renders a stored snapshot, and editing the
+  card would desynchronise the two. Edits to a Summary chart save as new draft cards through the
+  document instead."
   [card read-or-write]
   (let [document-id (parent-document-id card)]
     (if (or (= ::not-adjudicable document-id) (nil? document-id))
       true
-      (case read-or-write
-        :read  (mi/can-read? :model/Document document-id)
-        :write (mi/can-write? :model/Document document-id)))))
+      (let [document (queries.db/document-collection-and-exploration document-id)]
+        (case read-or-write
+          :read  (if-let [snapshots (summary-card-snapshots card document)]
+                   (and (mi/current-user-has-full-permissions? :read document)
+                        (every? cached-result/viewer-can-view-cached-result? snapshots))
+                   (mi/can-read? :model/Document document-id))
+          :write (and (nil? (:exploration_id document))
+                      (mi/can-write? :model/Document document-id)))))))
 
 ;; NOTE: deliberately a plain `defmethod` rather than `perms/define-collection-based-visibility!`.
 ;; That macro's contract is "read perms are determined *fully* by `:collection_id`", which stopped

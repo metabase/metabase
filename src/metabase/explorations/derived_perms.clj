@@ -22,6 +22,7 @@
    [metabase.api.common :as api]
    [metabase.explorations.db :as explorations.db]
    [metabase.lib-be.core :as lib-be]
+   [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.query-permissions.core :as query-perms]
    [metabase.util :as u]))
@@ -37,7 +38,7 @@
   over one metric card, so their queries differ textually while requiring identical permissions.
 
   The verdict's halves project the query *differently*, so the key has to carry each of them or it is
-  not a partition. The lens comparison resolves the query first (`query->resolved-source-ids`
+  not a partition. The lens comparison resolves the query first (`query->source-footprint`
   preprocesses, expanding implicit joins and card chains); `can-run-query?` needs both the raw
   projection and the resolved one — the latter because `:card-ids` only exist after preprocessing and
   each one costs a read-permission check on that card's collection.
@@ -62,25 +63,26 @@
   `resolve-source-ids` is the resolving half, passed in so a batch can share one memo — resolution is
   a pure function of the query (it runs as admin with the per-user lens skipped), so repeats are free
   to collapse."
-  [resolve-source-ids {:keys [database_id dataset_query data_access_token]}]
+  [resolve-source-ids {:keys [database_id dataset_query data_access_token source_footprint]}]
   (let [source-ids (try
                      (some-> dataset_query query-perms/query->source-ids)
                      (catch Throwable _ ::unprojectable))]
-    [database_id data_access_token (resolve-source-ids dataset_query)
+    [database_id data_access_token
+     (or source_footprint (resolve-source-ids dataset_query))
      (cond
        (= ::unprojectable source-ids)                                  ::unprojectable
        (or (seq (:table-ids source-ids)) (seq (:card-ids source-ids))) source-ids
        :else                                                           dataset_query)]))
 
 (defn- source-ids-resolver
-  "A memoized [[metabase.query-permissions.core/query->resolved-source-ids]] for one batch.
+  "A memoized [[metabase.query-permissions.core/query->source-footprint]] for one batch.
   Throws are absorbed into a marker rather than propagated: an unpreprocessable query (a deleted card
   in its source chain) is one the lens check denies anyway, and it must not take the batch down with
   it."
   []
   (memoize (fn [query]
              (try
-               (some-> query query-perms/query->resolved-source-ids)
+               (some-> query query-perms/query->source-footprint)
                (catch Throwable _ ::unresolvable)))))
 
 (defn- finalized-queries
@@ -119,7 +121,8 @@
                         :exploration_thread_id thread-id
                         :database_id           (:database_id card)
                         :dataset_query         (:dataset_query card)
-                        :data_access_token     (:data_access_token thread)}
+                        :data_access_token     (:data_access_token thread)
+                        :source_footprint      (:source_footprint thread)}
                  ;; The Card is what the stamp was computed over, and it does not outlive a delete:
                  ;; both `exploration_query.card_id` and `exploration_page.card_id` cascade, so
                  ;; deleting it strips every other adjudicable row while the thread's name survives.
@@ -131,9 +134,9 @@
   "The gate's verdict for one artifact.
 
   An artifact marked [[::indeterminate]] has no query left to adjudicate, so the gate cannot be asked
-  (it throws without a `:dataset_query`). It denies instead, leaving only the superuser exemption the
-  gate itself would have applied — the same fail-closed choice [[source-ids-resolver]] makes for a
-  query it cannot resolve."
+  (it throws without a `:dataset_query`). It denies instead — the same fail-closed choice
+  [[source-ids-resolver]] makes for a query it cannot resolve. Callers exempt superusers before
+  reaching here; the superuser check keeps the gate's own answer if this is reached directly."
   [artifact]
   (if (::indeterminate artifact)
     (boolean api/*is-superuser?*)
@@ -145,19 +148,20 @@
   Artifacts sharing a [[visibility-key]] share a verdict by construction, so grouping by it lets
   the expensive check run once per group rather than once per artifact."
   [artifacts]
-  (->> (group-by (partial visibility-key (source-ids-resolver)) artifacts)
-       (remove (fn [[_key [representative]]]
-                 (artifact-visible? representative)))
-       (mapcat val)
-       (map :exploration_thread_id)
-       set))
+  (perms/with-data-access-token-memo
+    (->> (group-by (partial visibility-key (source-ids-resolver)) artifacts)
+         (remove (fn [[_key [representative]]]
+                   (artifact-visible? representative)))
+         (mapcat val)
+         (map :exploration_thread_id)
+         set)))
 
 (defn thread-ids-with-visible-derived-data
   "The subset of `thread-ids` whose derived read-data the current user may see: every row carrying
   text derived from warehouse values must pass the gate
   ([[metabase.queries.cached-result/viewer-can-view-cached-result?]]) for the *current* user — the
   creator included. A thread carrying no such text yet stays visible, because there is nothing on it
-  that was computed under anyone's lens. Returns a set.
+  that was computed under anyone's lens. A superuser sees every thread. Returns a set.
 
   Held inside one metadata-provider cache: [[visibility-key]] preprocesses each artifact's query, and
   a thread's charts are variants over the same card, so they read the same tables and fields over and
@@ -165,8 +169,10 @@
   caller that doesn't."
   [thread-ids]
   (let [thread-ids (set thread-ids)]
-    (if (empty? thread-ids)
-      #{}
+    (cond
+      (empty? thread-ids) #{}
+      api/*is-superuser?* thread-ids
+      :else
       (lib-be/with-metadata-provider-cache
         (set/difference thread-ids
                         (blocked-thread-ids (concat (finalized-queries thread-ids)
@@ -175,7 +181,8 @@
 (defn- exploration-content-visible?
   "The gate's verdict for a document owned by `exploration-id` (nil => not a Summary, unaffected)."
   [exploration-id]
-  (if (nil? exploration-id)
+  ;; The superuser check only skips the thread-id read; the gate would pass them anyway.
+  (if (or (nil? exploration-id) api/*is-superuser?*)
     true
     (let [thread-ids (explorations.db/thread-ids-for-exploration exploration-id)]
       (or (empty? thread-ids)

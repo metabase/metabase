@@ -163,9 +163,10 @@
             ;; but it still enumerates which tables the creator is sandboxed on and which databases
             ;; are impersonated or routed — and a response schema validates and encodes without
             ;; stripping (see [[redact-query-error]]), so it has to come off here.
-            (dissoc (or (get enriched (:id thread))
-                        (assoc thread :queries [] :blocks [] :name nil :status "forbidden"))
-                    :data_access_token))
+            (-> (or (get enriched (:id thread))
+                    (assoc thread :queries [] :blocks [] :name nil :status "forbidden"))
+                (dissoc :data_access_token :source_footprint)
+                (u/update-if-exists :queries #(some->> % (mapv (fn [q] (dissoc q :source_footprint)))))))
           threads)))
 
 (defn- thread-status
@@ -654,20 +655,22 @@
                            {:object persisted :user-id api/*current-user-id*})
     (hydrate-exploration persisted)))
 
-(defn- drill-thread-token
-  "The lens stamp for the thread `explore-further` creates.
+(defn- drill-thread-stamp
+  "The lens stamp for the thread `explore-further` creates. Its `:source_footprint` is the union of the block's
+  metric cards', so the gate holds a viewer to every table the token was computed over.
 
-  Computed under the *creator's* identity rather than the caller's. The values this thread is named
+  The token is computed under the *creator's* identity rather than the caller's. The values this thread is named
   for were read out of results the creator's lens produced, and its queries will execute under that
   same identity (see [[metabase.explorations.runner]]), which is the lens `finalize-row!` stamps them
   with."
   [exploration cards]
-  (request/with-current-user (:creator_id exploration)
-    (perms/data-access-token
-     {:database-id (:database_id (first cards))
-      :table-ids   (into #{}
-                         (mapcat #(query-perms/query->resolved-source-table-ids (:dataset_query %)))
-                         cards)})))
+  (let [footprint (query-perms/merge-source-footprints
+                   (map #(query-perms/query->source-footprint (:dataset_query %)) cards))]
+    {:data_access_token (request/with-current-user (:creator_id exploration)
+                          (perms/data-access-token
+                           {:database-id (:database_id (first cards))
+                            :table-ids   (:table-ids footprint)}))
+     :source_footprint  footprint}))
 
 (api.macros/defendpoint :post "/:id/explore-further" :- ::HydratedExploration
   "Start a follow-up investigation scoped to a clicked chart segment.
@@ -717,15 +720,15 @@
           next-position (inc (or (explorations.db/last-thread-position id) 0))]
       (t2/with-transaction [_]
         (let [thread (explorations.db/insert-thread!
-                      {:exploration_id    id
-                       :name              (explore-further-thread-name card-name
-                                                                       enriched-filters
-                                                                       top-level-follow-up?)
-                       :data_access_token (drill-thread-token exploration cards)
-                       :position          next-position
-                       ;; drill lineage — lets the sidebar nest this thread
-                       ;; under the one owning the drilled page
-                       :source_page_id    page_id})
+                      (merge {:exploration_id id
+                              :name           (explore-further-thread-name card-name
+                                                                           enriched-filters
+                                                                           top-level-follow-up?)
+                              :position       next-position
+                              ;; drill lineage — lets the sidebar nest this thread
+                              ;; under the one owning the drilled page
+                              :source_page_id page_id}
+                             (drill-thread-stamp exploration cards)))
               tid    (:id thread)]
           (explorations.db/insert-blocks! {:exploration_thread_id tid
                                            :metrics               metrics'
@@ -1037,7 +1040,7 @@
                          "child_target_id"  (str page-id)
                          "host_data"        (cond-> {:query_ids exploration_query_ids}
                                               explore-filters (assoc :explore_filters explore-filters))}]
-        (documents/add-card-to-document!
+        (documents/add-card-to-document-row!
          (:id doc) card-id nil
          :extra-attrs extra-attrs)))
     (document-summary (:id doc))))
