@@ -298,8 +298,13 @@
   (testing "a destination that is hidden from the user or does not exist is reported as not found"
     (mt/with-non-admin-groups-no-root-collection-perms
       (mt/with-model-cleanup [:model/Card]
-        (mt/with-temp [:model/Collection hidden {}]
+        (mt/with-temp [:model/Collection hidden {}
+                       :model/Dashboard trashed-dash {:collection_id (:id hidden) :archived true}
+                       :model/Document trashed-doc {:collection_id (:id hidden)
+                                                    :archived true :document document-ast}]
           (doseq [[user target-type id] [[:rasta     "collection" (:id hidden)]
+                                         [:rasta     "dashboard"  (:id trashed-dash)]
+                                         [:rasta     "document"   (:id trashed-doc)]
                                          [:crowberto "dashboard"  Integer/MAX_VALUE]
                                          [:crowberto "document"   Integer/MAX_VALUE]]
                   :let [entity (str (str/capitalize target-type) " " id)]]
@@ -421,6 +426,14 @@
                     (invoke-save-entity
                      (assoc chart-args :destination {:target_type "document" :document_id (:id doc)}))))
             (is (not (t2/exists? :model/Card :document_id (:id doc))))))))))
+
+(deftest transaction-server-error-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (mt/with-dynamic-fn-redefs [queries/create-card!
+                                (fn [& _] (throw (ex-info "Private save failure." {:status-code 500})))]
+      (is (= {:error {:class :unrecoverable :code :internal}
+              :output "This call failed and the user was shown the error (:internal). Don't retry it."}
+             (invoke-save-entity (assoc chart-args :destination {:target_type "collection"})))))))
 
 (deftest sensitive-query-test
   (let [provider (mt/metadata-provider)
