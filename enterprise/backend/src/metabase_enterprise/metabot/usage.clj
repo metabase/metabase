@@ -102,8 +102,9 @@
      ZoneOffset/UTC)))
 
 (defn- usage-query
-  "Query ai_usage_log for current-period usage, narrowed by the optional `user-id` and `tenant-id`.
-  Returns a token sum or row count depending on `metabot-limit-unit`."
+  "Current-period usage, narrowed by the optional `user-id` and `tenant-id`. Depending on `metabot-limit-unit`,
+  the millions of tokens logged in `ai_usage_log`, or the user messages sent to Metabot: `metabot_message` rows with
+  role `user`, one per turn however many LLM calls the turn made."
   [& {:keys [user-id tenant-id]}]
   (let [limit-type (metabot.settings/metabot-limit-unit)
         start      (period-start)]

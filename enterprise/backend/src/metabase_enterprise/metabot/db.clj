@@ -135,13 +135,6 @@
   [row :- ::metabot.schema/ai-usage-log.update]
   (t2/insert! :model/AiUsageLog row))
 
-(defn- usage-window-expr
-  [period-start user-id tenant-id]
-  [:and
-   [:>= :created_at period-start]
-   (when user-id [:= :user_id user-id])
-   (when tenant-id [:= :tenant_id tenant-id])])
-
 (mu/defn usage-token-sum
   "The `:sum` row of tokens logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
   [period-start :- ms/TemporalInstant
@@ -149,16 +142,30 @@
    tenant-id    :- [:maybe ms/PositiveInt]]
   (t2/query-one {:select [[[:sum :total_tokens] :sum]]
                  :from   [:ai_usage_log]
-                 :where  (usage-window-expr period-start user-id tenant-id)}))
+                 :where  [:and
+                          [:>= :created_at period-start]
+                          (when user-id [:= :user_id user-id])
+                          (when tenant-id [:= :tenant_id tenant-id])]}))
 
 (mu/defn usage-message-count
-  "The `:cnt` row of messages logged since `period-start`, narrowed by the optional `user-id` and `tenant-id`."
+  "The `:cnt` row of user messages sent to Metabot since `period-start`, narrowed by the optional `user-id` and
+  `tenant-id`.
+
+  Counts `metabot_message` rows with role `user`, not `ai_usage_log` rows: a turn inserts one user message and then
+  logs one `ai_usage_log` row per LLM call, so a question with tool calls would otherwise count several times. A
+  retried turn reuses its user row and so counts once. Soft-deleted messages still count: the message was sent and
+  the LLM ran. `metabot_message` has no tenant column, so the tenant window joins the sender's `core_user` row."
   [period-start :- ms/TemporalInstant
    user-id      :- [:maybe ::lib.schema.id/user]
    tenant-id    :- [:maybe ms/PositiveInt]]
-  (t2/query-one {:select [[[:count :*] :cnt]]
-                 :from   [:ai_usage_log]
-                 :where  (usage-window-expr period-start user-id tenant-id)}))
+  (t2/query-one (cond-> {:select [[[:count :*] :cnt]]
+                         :from   [[:metabot_message :m]]
+                         :where  [:and
+                                  [:= :m.role "user"]
+                                  [:>= :m.created_at period-start]
+                                  (when user-id [:= :m.user_id user-id])
+                                  (when tenant-id [:= :u.tenant_id tenant-id])]}
+                  tenant-id (assoc :join [[:core_user :u] [:= :u.id :m.user_id]]))))
 
 (mu/defn delete-usage-logs-created-before!
   "Delete the AiUsageLogs created before `cutoff`, returning the number deleted."

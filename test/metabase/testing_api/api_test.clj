@@ -13,7 +13,8 @@
    [metabase.test :as mt]
    [metabase.testing-api.api :as testing]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -154,3 +155,25 @@
                                 :model-reasoning "true"}}]]
             (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers" {:value vllm})))
             (is (= vllm (vec (llm.settings/llm-providers))))))))))
+
+(deftest seed-ai-usage-test
+  (testing "POST seeds one ai_usage_log row and one user metabot_message per count, DELETE removes them"
+    (let [user-id         (mt/user->id :rasta)
+          usage-rows      #(t2/count :model/AiUsageLog :user_id user-id :source "e2e-test")
+          user-messages   #(t2/count :model/MetabotMessage :user_id user-id :role "user")
+          usage-before    (usage-rows)
+          messages-before (user-messages)]
+      (try
+        (is (= {:inserted 3}
+               (mt/user-http-request :crowberto :post 200 "testing/metabot/seed-ai-usage"
+                                     {:user_id user-id :count 3})))
+        (is (= (+ usage-before 3) (usage-rows)))
+        (is (= (+ messages-before 3) (user-messages)))
+        (testing "a second seed reuses the conversation"
+          (mt/user-http-request :crowberto :post 200 "testing/metabot/seed-ai-usage" {:user_id user-id :count 2})
+          (is (= (+ messages-before 5) (user-messages))))
+        (finally
+          (is (= {:deleted 5}
+                 (mt/user-http-request :crowberto :delete 200 "testing/metabot/seed-ai-usage" {:user_id user-id})))
+          (is (= usage-before (usage-rows)))
+          (is (= messages-before (user-messages))))))))

@@ -33,6 +33,25 @@
 (defn- cleanup-test-usage! [user-id]
   (t2/delete! :model/AiUsageLog :user_id user-id :source "test"))
 
+(defn- insert-messages!
+  "Insert one conversation of `user-id` holding one message per role in `roles`, and return the conversation id."
+  [user-id roles]
+  (let [conversation-id (str (random-uuid))]
+    (t2/insert! :model/MetabotConversation {:id conversation-id :user_id user-id :title "usage test"})
+    (doseq [role roles]
+      (t2/insert! :model/MetabotMessage {:conversation_id conversation-id
+                                         :user_id         user-id
+                                         :role            role
+                                         :profile_id      "internal"
+                                         :data            []
+                                         :data_version    2
+                                         :total_tokens    0}))
+    conversation-id))
+
+(defn- cleanup-conversation! [conversation-id]
+  (t2/delete! :model/MetabotMessage :conversation_id conversation-id)
+  (t2/delete! :model/MetabotConversation :id conversation-id))
+
 (deftest ^:parallel valid-usage-profile-id-test
   (is (= "internal" (ee.usage/valid-usage-profile-id "internal")))
   (is (= :slackbot (ee.usage/valid-usage-profile-id :slackbot)))
@@ -415,22 +434,31 @@
 
 ;;; ------------------------------------------ Messages limit type ------------------------------------------
 
-(deftest messages-limit-type-counts-rows-test
+(deftest messages-limit-counts-user-messages-not-llm-calls-test
   (mt/with-premium-features #{:ai-controls}
     (ee.usage/clear-limit-cache!)
     (mt/with-temporary-setting-values [metabot-limit-unit "messages"
                                        metabot-quota-reached-message "test limit reached"]
-      (testing "Instance limit with :messages type counts rows, not tokens"
-        (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 2}]
-          (let [user-id (mt/user->id :rasta)]
-            ;; Insert 3 rows each with 1 token — row count (3) exceeds limit (2)
-            (dotimes [_ 3]
-              (insert-usage! user-id 1))
-            (try
+      (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 2}]
+        (let [user-id         (mt/user->id :rasta)
+              ;; one turn: one user message, one agent message, several LLM calls
+              conversation-id (insert-messages! user-id ["user" "agent"])]
+          (dotimes [_ 5]
+            (insert-usage! user-id 1))
+          (try
+            (testing "ai_usage_log rows and agent messages do not count: one turn is one message"
               (mt/with-test-user :rasta
-                (is (= "test limit reached" (usage/check-usage-limits!))))
-              (finally
-                (cleanup-test-usage! user-id)))))))))
+                (is (nil? (usage/check-usage-limits!)))))
+            (testing "user messages count: three turns exceed a limit of two"
+              (dotimes [_ 2]
+                (t2/insert! :model/MetabotMessage {:conversation_id conversation-id :user_id user-id :role "user"
+                                                   :profile_id "internal" :data [] :data_version 2 :total_tokens 0}))
+              (ee.usage/clear-limit-cache!)
+              (mt/with-test-user :rasta
+                (is (= "test limit reached" (usage/check-usage-limits!)))))
+            (finally
+              (cleanup-conversation! conversation-id)
+              (cleanup-test-usage! user-id))))))))
 
 (deftest messages-under-limit-returns-nil-test
   (mt/with-premium-features #{:ai-controls}
@@ -438,13 +466,51 @@
     (mt/with-temporary-setting-values [metabot-limit-unit "messages"]
       (testing "Instance limit with :messages type: under limit returns nil"
         (mt/with-temp [:model/MetabotInstanceLimit _ {:tenant_id nil :max_usage 100}]
-          (let [user-id (mt/user->id :rasta)]
-            (insert-usage! user-id 1)
+          (let [user-id         (mt/user->id :rasta)
+                conversation-id (insert-messages! user-id ["user" "agent"])]
             (try
               (mt/with-test-user :rasta
                 (is (nil? (usage/check-usage-limits!))))
               (finally
-                (cleanup-test-usage! user-id)))))))))
+                (cleanup-conversation! conversation-id)))))))))
+
+(deftest messages-user-limit-counts-only-that-users-messages-test
+  (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
+    (mt/with-temporary-setting-values [metabot-limit-unit "messages"
+                                       metabot-quota-reached-message "test limit reached"]
+      ;; Rasta's one group gets the limit: a user in any group without a limit is unlimited.
+      (let [rasta-id (mt/user->id :rasta)
+            group-id (first (t2/select-fn-set :group_id :model/PermissionsGroupMembership :user_id rasta-id))]
+        (mt/with-temp [:model/MetabotGroupLimit _ {:group_id group-id :max_usage 2}]
+          (let [rasta-convo (insert-messages! rasta-id ["user" "agent" "user" "agent"])
+                lucky-convo (insert-messages! (mt/user->id :lucky) ["user" "agent" "user" "agent" "user" "agent"])]
+            (try
+              (testing "Lucky's three messages do not count against Rasta's two"
+                (mt/with-test-user :rasta
+                  (is (= "test limit reached" (usage/check-usage-limits!)))))
+              (finally
+                (cleanup-conversation! rasta-convo)
+                (cleanup-conversation! lucky-convo)))))))))
+
+(deftest messages-tenant-limit-counts-the-tenants-users-messages-test
+  (mt/with-premium-features #{:ai-controls}
+    (ee.usage/clear-limit-cache!)
+    (mt/with-temporary-setting-values [metabot-limit-unit "messages"
+                                       metabot-quota-reached-message "test limit reached"]
+      (testing "Tenant limit joins the sender's tenant: metabot_message has no tenant column"
+        (mt/with-temp [:model/Tenant {tenant-id :id} {}
+                       :model/User {tenant-user-id :id} {:tenant_id tenant-id}
+                       :model/MetabotInstanceLimit _ {:tenant_id tenant-id :max_usage 2}]
+          (let [tenant-convo (insert-messages! tenant-user-id ["user" "agent" "user" "agent"])
+                rasta-convo  (insert-messages! (mt/user->id :rasta) ["user" "agent" "user" "agent" "user" "agent"])]
+            (try
+              (binding [api/*current-user-id* tenant-user-id
+                        api/*current-user*    (delay {:tenant_id tenant-id})]
+                (is (= "test limit reached" (usage/check-usage-limits!))))
+              (finally
+                (cleanup-conversation! tenant-convo)
+                (cleanup-conversation! rasta-convo)))))))))
 
 ;;; ------------------------------------------ Custom quota message ------------------------------------------
 
