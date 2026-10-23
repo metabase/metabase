@@ -1222,7 +1222,7 @@
   [_driver _feature _database]
   true)
 
-;;; ClickHouse needs at least one equality of a left column and a right column in a join condition.
+;;; Clickhouse doesn't support certain join conditions so we exclude it when necessary
 (defmethod driver/database-supports? [:clickhouse ::arbitrary-join-conditions]
   [_driver _feature _database]
   false)
