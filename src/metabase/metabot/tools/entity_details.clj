@@ -319,9 +319,9 @@
   The result is `{card-id -> boolean}`, including false for missing or unreadable cards. Read the requirements
   through [[metabase.metabot.tools.util/metric-required-source]], since a multi-stage card metric requires its
   base table, not the card named by its first stage."
-  [metric-cards]
+  [metadata-provider metric-cards]
   (let [source-card-ids (into #{}
-                              (keep #(let [r (metabot.tools.u/metric-required-source %)]
+                              (keep #(let [r (metabot.tools.u/metric-required-source metadata-provider %)]
                                        (when (= :card (:kind r)) (:card-id r))))
                               metric-cards)]
     (when (seq source-card-ids)
@@ -364,7 +364,7 @@
          database-name (:name database)
          ;; A metric's required source can differ from the first stage of its definition or its base table.
          ;; See [[metabase.metabot.tools.util/metric-required-source]].
-         required (metabot.tools.u/metric-required-source card)
+         required (metabot.tools.u/metric-required-source metadata-provider card)
          source-table-id (when (= :table (:kind required)) (:table-id required))
          source-card-id (when (= :card (:kind required)) (:card-id required))
          source-table (when (and source-table-id
@@ -538,7 +538,7 @@
                          ;; Table queries can list card metrics through their base table; batch the source-card read checks.
                          :metrics (when with-metrics?
                                     (let [metrics  (lib/available-metrics table-query)
-                                          verdicts (card-read-verdicts-for-metrics metrics)]
+                                          verdicts (card-read-verdicts-for-metrics mp metrics)]
                                       (when-let [ids (seq (keep (fn [[id readable?]] (when readable? id)) verdicts))]
                                         (lib.metadata/bulk-metadata mp :metadata/card ids))
                                       (not-empty (mapv #(convert-metric % mp options verdicts) metrics))))
@@ -732,7 +732,7 @@
     (let [mp (lib-be/application-database-metadata-provider database-id)
           ;; Only metrics need these source-card permissions. A question or model's own source is not used downstream.
           card-read-verdicts (when (= card-type :metric)
-                               (card-read-verdicts-for-metrics cards))
+                               (card-read-verdicts-for-metrics mp cards))
           readable-source-card-ids (into #{} (keep (fn [[id readable?]] (when readable? id))) card-read-verdicts)
           detail-fn (case card-type
                       :metric #(metric-details %1 %2 %3 card-read-verdicts)
