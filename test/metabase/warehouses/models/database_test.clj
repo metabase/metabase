@@ -288,6 +288,18 @@
                 "id"          3}
                (encode-decode pg-db)))))))
 
+(deftest unknown-database-setting-test
+  (testing "a removed setting left in a database's settings is hidden, and isn't logged as an error (GHY-4961)"
+    (let [db (mi/instance :model/Database {:id       3
+                                           :settings {:database-enable-actions true
+                                                      :removed-setting         true}})]
+      (request/with-current-user (mt/user->id :rasta)
+        (mt/with-log-messages-for-level [messages [metabase.warehouses.models.database :debug]]
+          (is (= {"database-enable-actions" true}
+                 (get (json/decode (json/encode db)) "settings")))
+          (is (=? [{:level :debug, :message #"Hiding unknown setting :removed-setting.*"}]
+                  (filter #(re-find #"removed-setting" (:message %)) (messages)))))))))
+
 (deftest driver-supports-actions-and-database-enable-actions-test
   (mt/test-drivers #{:sqlite}
     (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"
