@@ -5,7 +5,7 @@ const { H } = cy;
 describe("scenarios > embedding > sdk iframe embedding > csv downloads", () => {
   beforeEach(() => {
     cy.deleteDownloadsFolder();
-    H.prepareSdkIframeEmbedTest({ signOut: true });
+    H.prepareSdkIframeEmbedTest();
   });
 
   const addGroupBy = (column: string) => {

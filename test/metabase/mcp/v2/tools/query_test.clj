@@ -12,6 +12,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.queries :as v2.queries]
    [metabase.mcp.v2.registry :as registry]
@@ -22,7 +23,10 @@
    [metabase.test :as mt]
    [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -582,6 +586,36 @@
                   (catch Exception e e))]
           (is (= 400 (:status-code (ex-data e)))))))))
 
+(deftest ^:parallel metadata-lookup-failure-is-internal-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [query (orders-query {:fields [(field-name-ref :orders :id)]})]
+      (doseq [failure [(ex-info "SELECT private_metadata failed" {:toucan2/context-trace []})
+                       (ex-info "Metadata lookup failed" {} (SQLException. "Connection unavailable"))]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table (fn [& _] (throw failure))]
+          (is (= {:result {:isError true :content [{:type "text" :text "Internal error"}]}}
+                 (registry/call-tool execute-scope (str (random-uuid)) "execute_query" {:query query}))))))))
+
+(deftest ^:parallel declared-errors-in-toucan-scopes-are-recoverable-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [query (orders-query {:fields [(field-name-ref :orders :id)]})]
+      (doseq [status-code [nil 400]
+              agent-error? [false true]
+              [error message expected] [[:invalid-representations-query
+                                         "Representations query has an invalid structure."
+                                         "\"Representations query has an invalid structure.\""]
+                                        [:unknown-field
+                                         "Unknown field"
+                                         (str "\"Unknown field\"\nCall \"browse_data\" with action \"get_fields\" for "
+                                              "the table to list its columns with their numeric ids.")]]]
+        (mt/with-dynamic-fn-redefs [lib.metadata.protocols/metadatas-for-table
+                                    (fn [& _]
+                                      (t2/with-connection [_conn]
+                                        (throw (ex-info message (cond-> {:error error}
+                                                                  status-code (assoc :status-code status-code)
+                                                                  agent-error? (assoc :agent-error? true))))))]
+          (is (= {:result {:isError true :content [{:type "text" :text expected}]}}
+                 (registry/call-tool execute-scope (str (random-uuid)) "execute_query" {:query query}))))))))
+
 (deftest ^:parallel native-query-rejection-test
   (mt/with-current-user (mt/user->id :rasta)
     (let [sid (str (random-uuid))]
@@ -952,6 +986,43 @@
         (is (str/includes? msg "1"))
         (is (str/includes? msg "fields"))))))
 
+(deftest ^:parallel malformed-clauses-name-the-offending-path-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [orders   (first (:stages (numeric-orders-query)))
+          post-agg (assoc orders :aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]])]
+      (doseq [[label path stages] [["a number as `aggregation`" "[0] \"aggregation\":"
+                                    [(assoc orders :aggregation 42)]]
+                                   ["an empty aggregation clause used in `order-by`" "[0] \"aggregation\":"
+                                    [(assoc orders :aggregation [[]] :order-by [["desc" {} []]])]]
+                                   ["a number as `joins`" "[0] \"joins\":"
+                                    [(assoc orders :joins 42)]]
+                                   ["a post-aggregation filter with a number as `order-by`" "[0] \"order-by\":"
+                                    [(assoc post-agg :order-by 42)]]
+                                   ["a post-aggregation filter with a number as `fields`" "[0] \"fields\":"
+                                    [(assoc post-agg :fields 42)]]
+                                   ["a post-aggregation filter with a string as `limit`" "[0] \"limit\":"
+                                    [(assoc post-agg :limit "x")]]
+                                   ["a later post-aggregation filter with a number as `fields`" "[1] \"fields\":"
+                                    [orders (assoc (dissoc post-agg :source-table) :fields 42)]]
+                                   ["a number as a later stage" "[1]" [orders 42]]
+                                   ["an aggregation list as a later stage" "[1]" [orders [["count" {}]]]]]]
+        (testing label
+          (is (str/starts-with? (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
+                                                                {:query {:lib/type "mbql/query" :stages stages}}))
+                                (str "\"Representations query has an invalid structure.\" "
+                                     "Invalid at \"stages\": " path " "))))))))
+
+(deftest ^:parallel post-aggregation-errors-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (doseq [clauses [{:aggregation [["count"]]
+                      :filters [[">" ["aggregation" 0] 1]]
+                      :limit 5}
+                     {:aggregation [["count" {}] ["count" {}]]
+                      :filters [[">" {} ["aggregation" {} 0] 1]]}]]
+      (is (re-find #"MBQL 5 requires"
+                   (error-text (registry/call-tool execute-scope (str (random-uuid)) "execute_query"
+                                                   {:query (numeric-orders-query clauses)})))))))
+
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest repair-forgiven-shortcuts-still-execute-test
   (testing "GHY-4313: the shortcuts the repair layer exists to forgive are not schema failures"
@@ -1085,7 +1156,7 @@
       (mt/with-current-user (mt/user->id :rasta)
         (is (str/includes? (error-text (call! (str (random-uuid))
                                               {:query (assoc (numeric-orders-query {:limit 1}) :evil "x")}))
-                           ":evil"))))))
+                           "Failing paths: evil: disallowed key"))))))
 
 ;; not ^:parallel: mt/with-model-cleanup on the shared query-handle table
 (deftest query-shape-still-reaches-the-qp-test

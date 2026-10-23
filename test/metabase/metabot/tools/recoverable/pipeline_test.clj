@@ -12,8 +12,7 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.recovery-hints :as v2-hints]
    [metabase.metabot.tools.error :as tools.error]
-   ;; loaded for its declarations; the codes are read out of the catalog, not off the vars
-   [metabase.metabot.tools.recoverable.pipeline]
+   [metabase.metabot.tools.recoverable.pipeline :as pipeline]
    [metabase.metabot.tools.recovery-hints :as v1-hints]))
 
 (set! *warn-on-reflection* true)
@@ -139,6 +138,19 @@
                   "Call `search` to find the portable FK for `source-table:`."]]
       (is (nil? (mcp-vocabulary text)) text))))
 
+(deftest ^:parallel structural-paths-payload-test
+  (doseq [[paths expected-class] [["stages[0].filters: invalid type" :recoverable]
+                                  [nil :unrecoverable]
+                                  [42 :unrecoverable]
+                                  [{"stages" [{"filters" "invalid type"}]} :unrecoverable]]]
+    (testing (pr-str paths)
+      (let [error (try
+                    (tools.error/throw-recoverable! ::pipeline/invalid-representations-query
+                                                    {:message "Invalid query." :paths paths})
+                    (catch Throwable e
+                      (tools.error/classify e)))]
+        (is (= expected-class (:class error)))))))
+
 ;;; ===== Can one declaration serve both surfaces? =====
 
 ;; The pipeline is shared by Metabot (portable FKs, `read_resource`) and MCP v2 (numeric ids,
@@ -209,5 +221,11 @@
         (testing code
           (is (some? (v1-hints/recovery-hint {:error code :entity-type "table" :entity-id 1})))
           (is (some? (v2-hints/recovery-hint {:error code :entity-type "table" :entity-id 1})))))
+      (testing "and so do the codes only a `source-card:` stage raises, given the card"
+        (doseq [code [:column-not-returned :unexportable-fk]]
+          (testing code
+            (let [data {:error code :source-card 12 :source-card-type "model"}]
+              (is (some? (v1-hints/recovery-hint data)))
+              (is (some? (v2-hints/recovery-hint data)))))))
       (testing "and every one of them is declared here"
         (is (= #{} (set/difference (set codes) (declared-codes))))))))

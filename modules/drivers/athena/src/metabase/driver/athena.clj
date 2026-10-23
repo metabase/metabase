@@ -34,7 +34,9 @@
   [_driver]
   ["AthenaEndpoint" "AthenaStreamingEndpoint" "S3Endpoint" "StsEndpoint" "LakeFormationEndpoint"
    "SsoAdminEndpoint" "SsoOidcEndpoint" "SsoLoginUrl" "IdentityCenterIssuerUrl" "IdpHostName"
-   "IdpWellKnownConfigurationUrl" "DataZoneEndpointOverride" "ProxyHost"])
+   "IdpWellKnownConfigurationUrl" "DataZoneEndpointOverride" "ProxyHost"
+   ;; added by the 3.8.2 client
+   "GlueEndpoint" "SsoEndpoint" "SsoStartUrl"])
 
 (defmethod driver/non-host-parameters :athena
   [_driver]

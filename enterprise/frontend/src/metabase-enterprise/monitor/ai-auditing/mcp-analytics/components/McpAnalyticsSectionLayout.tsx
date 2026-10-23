@@ -9,6 +9,7 @@ import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 import { AiAnalyticsSectionLayout } from "metabase-enterprise/monitor/ai-auditing/components/AiAnalyticsSectionLayout";
 import { NewQuestionButton } from "metabase-enterprise/monitor/ai-auditing/components/NewQuestionButton";
+import { useAuditRowCount } from "metabase-enterprise/monitor/ai-auditing/hooks/useAuditRowCount";
 import {
   VIEW_GROUP_MEMBERS,
   VIEW_MCP_TOOL_CALLS,
@@ -48,6 +49,7 @@ export function McpAnalyticsSectionLayout() {
   const hasPii = useSetting("analytics-pii-retention-enabled") === true;
   const toolCallsAudit = useAuditTable(VIEW_MCP_TOOL_CALLS);
   const groupMembersAudit = useAuditTable(VIEW_GROUP_MEMBERS);
+  const tabCount = useAuditRowCount(toolCallsAudit);
 
   const dataSources = useMemo(
     () => ({
@@ -85,6 +87,7 @@ export function McpAnalyticsSectionLayout() {
     },
     {
       label: t`Tool calls`,
+      count: tabCount,
       to: `${eventsPath}${location.search}`,
       isSelected: (pathname) => pathname === eventsPath,
     },
@@ -132,17 +135,26 @@ export function McpAnalyticsSectionLayout() {
         <McpToolCallsFilter
           date={date}
           onDateChange={(val) => patchUrlState({ date: val, page: 0 })}
-          user={user}
-          onUserChange={(val) => patchUrlState({ user: val, page: 0 })}
-          userOptions={userOptions}
-          group={group}
-          onGroupChange={(val) => patchUrlState({ group: val, page: 0 })}
-          groupOptions={groupOptions}
-          groupNoFilterValue={groupNoFilterValue}
-          tenant={tenant}
-          onTenantChange={(val) => patchUrlState({ tenant: val, page: 0 })}
-          tenantOptions={tenantOptions}
-          hasTenants={hasTenants}
+          userFilter={{
+            value: user,
+            options: userOptions,
+            onChange: (val) => patchUrlState({ user: val, page: 0 }),
+          }}
+          groupFilter={{
+            value: group,
+            options: groupOptions,
+            noFilterValue: groupNoFilterValue,
+            onChange: (val) => patchUrlState({ group: val, page: 0 }),
+          }}
+          tenantFilter={
+            hasTenants
+              ? {
+                  value: tenant,
+                  options: tenantOptions,
+                  onChange: (val) => patchUrlState({ tenant: val, page: 0 }),
+                }
+              : undefined
+          }
         />
       }
       emptyState={

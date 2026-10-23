@@ -64,7 +64,7 @@ const getColorWidget = () =>
   screen.getByTestId("chart-settings-widget-graph.trendline_color");
 
 const getDashedOption = () =>
-  within(getStyleWidget()).getByRole("button", { name: /line_style_dashed/i });
+  within(getStyleWidget()).getByRole("radio", { name: "Dashed" });
 
 describe("graph trend line settings for a single series", () => {
   describe("in the query builder", () => {
@@ -83,11 +83,7 @@ describe("graph trend line settings for a single series", () => {
     it("should write the style into the series settings under the metric key", async () => {
       const { onChange } = setup();
 
-      await userEvent.click(
-        within(getStyleWidget()).getByRole("img", {
-          name: /line_style_dashed/i,
-        }),
-      );
+      await userEvent.click(getDashedOption());
 
       const [settings] = onChange.mock.lastCall ?? [];
       expect(settings).toMatchObject({
@@ -134,7 +130,7 @@ describe("graph trend line settings for a single series", () => {
       expect(
         within(getColorWidget()).getByLabelText(CUSTOM_COLOR),
       ).toBeInTheDocument();
-      expect(getDashedOption()).toHaveAttribute("data-variant", "filled");
+      expect(getDashedOption()).toBeChecked();
     });
   });
 });

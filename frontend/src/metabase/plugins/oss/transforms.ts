@@ -63,6 +63,11 @@ export type PythonTransformsPlugin = {
   sharedLibImportPath: string;
 };
 
+export type TransformsTestingPlugin = {
+  isEnabled: boolean;
+  getTransformTestRoutes: () => ReactNode;
+};
+
 const getDefaultPluginTransforms = (): TransformsPlugin => ({
   isEnabled: true, // transforms are enabled by default in OSS
   TransformsUpsellPage: PluginPlaceholder,
@@ -86,4 +91,13 @@ const getDefaultPluginTransformsPython = (): PythonTransformsPlugin => ({
 
 export const PLUGIN_TRANSFORMS_PYTHON = definePluginSlot(
   getDefaultPluginTransformsPython,
+);
+
+const getDefaultPluginTransformsTesting = (): TransformsTestingPlugin => ({
+  isEnabled: false,
+  getTransformTestRoutes: () => null,
+});
+
+export const PLUGIN_TRANSFORMS_TESTING = definePluginSlot(
+  getDefaultPluginTransformsTesting,
 );

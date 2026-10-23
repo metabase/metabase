@@ -9,17 +9,9 @@
  * runtime through its own `getTestEnv()`.
  */
 export type DataAppTestEnv = {
-  /**
-   * A deployed app runs the card its query was published as, so every query the
-   * fixture renders names one by entity ID. The swap drops the static clauses the
-   * card already contains, so each card must match its whole authored query.
-   */
-  scalarQuery: {
-    source: TableSource;
-    aggregations: CountAggregation[];
-    savedQuestionEntityId: string;
-  };
-  questionQuery: { source: TableSource; savedQuestionEntityId: string };
+  /** Every query the fixture renders is a saved question, named by entity ID. */
+  scalarQuery: { source: CardSource };
+  questionQuery: { source: CardSource };
   /**
    * `/download-question` page: the id of a saved CHART question (so a `.png`
    * export is offered). Passed in because the id tracks the Cypress snapshot.
@@ -44,21 +36,14 @@ export type DataAppTestEnv = {
   };
   /**
    * `/query-states` page: a deliberately invalid query (a card that does not
-   * exist), so the hook resolves to an `error` state rather than to the refusal
-   * a query without a saved question would raise; the page also exercises
+   * exist), so the hook resolves to an `error` state; the page also exercises
    * `refetch`.
    */
-  errorQuery?: { source: TableSource; savedQuestionEntityId: string };
+  errorQuery?: { source: CardSource };
   /**
-   * `/actions` page: the id of the action the spec creates and `useAction`
-   * executes, so it can't be hard-coded in the app. Left out to exercise the "no
-   * action id" path, where the hook must not request anything.
-   */
-  actionId?: number;
-  /**
-   * `/actions` page: the entity ID of that action. A deployed app runs the copy
-   * its definition names by entity ID; this fixture has no collection files, so the
-   * "copy" is the action itself.
+   * `/actions` page: the entity ID of the action the spec creates and
+   * `useAction` executes, so it can't be hard-coded in the app. Left out to
+   * exercise the "no action" path, where the hook must not request anything.
    */
   actionEntityId?: string;
   /** `/actions` page: the parameters the page passes to `execute()`. */
@@ -72,7 +57,4 @@ export type DataAppTestEnv = {
   nativeQuery?: { database: number; query: string };
 };
 
-// The queries use the SDK's `source` API (`{ type: "table", id }`); the database
-// is resolved from the SDK's metadata store, so no databaseId is passed.
-type TableSource = { type: "table"; id: number };
-type CountAggregation = { type: "operator"; operator: "count"; args: [] };
+type CardSource = { type: "card"; entityId: string };

@@ -2,9 +2,11 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.agent-lib.test-util :as agent-lib.tu]
    [metabase.metabot.metadata-perms :as metabot.perms]
    [metabase.metabot.tools.core :as tools]
    [metabase.metabot.tools.error :as tools.error]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
@@ -301,6 +303,18 @@
                             (tools/with-entity {:kind :timeline :id 5}
                               (throw (ex-info "nope" {:status-code status})))))))))))
 
+(deftest ^:parallel with-entity-keeps-inner-entity-test
+  (doseq [status [403 404]]
+    (is (=? {:class   :recoverable
+             :code    :metabase.metabot.tools.recoverable.common/not-found
+             :message "Field 2 was not found. It may not exist, or you may not have access to it."
+             :data    {:kind :field :id 2}}
+            (tools.error/classify
+             (is (thrown? clojure.lang.ExceptionInfo
+                          (tools/with-entity {:kind :table :id 1}
+                            (tools/with-entity {:kind :field :id 2}
+                              (throw (ex-info "Field lookup refused" {:status-code status})))))))))))
+
 (deftest ^:parallel with-entity-passes-everything-else-through-test
   (testing "a real failure inside the body stays unrecoverable instead of being reported as a miss"
     (doseq [data [{:status-code 500} {} {:status-code 400}]]
@@ -320,7 +334,9 @@
   (try
     (tools/with-pipeline-errors (throw (ex-info message data)))
     (catch Throwable e
-      (assoc (tools.error/classify e) ::ex-message (ex-message e)))))
+      (assoc (tools.error/classify e)
+             ::ex-message   (ex-message e)
+             ::agent-error? (:agent-error? (ex-data e))))))
 
 (deftest ^:parallel with-pipeline-errors-converts-declared-codes-test
   (testing "an :agent-error? with a declared :error code becomes that error, keeping the pipeline's
@@ -339,7 +355,24 @@
                :data {:entity-type "metric" :entity-id 7}}
               error))
       (is (str/starts-with? (:text (first (:recovery error)))
-                            "Metrics are aggregations, not sources.")))))
+                            "Metrics are aggregations, not sources."))))
+  (testing "an error from a `source-card:` stage carries the card, so the recovery step reads that card's columns"
+    (doseq [[error what] [[:column-not-returned "columns"]
+                          [:unexportable-fk "columns"]
+                          [:ambiguous-fk "foreign-key columns"]]]
+      (testing error
+        (is (=? {:data     {:source-card 12 :source-card-type "model"}
+                 :recovery [{:uses #{"read_resource"}
+                             :text (str "Call `read_resource` with `metabase://model/12/fields` to list the " what
+                                        " this model returns.")}]}
+                (pipeline-failure "The field cannot be referenced here."
+                                  {:agent-error? true :error error :source-card 12 :source-card-type "model"}))))))
+  (testing "an ambiguous foreign key on a `source-table:` stage still points at the table's fields"
+    (is (=? {:recovery [{:uses #{"read_resource"}
+                         :text (str "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source "
+                                    "table to list the available foreign-key columns.")}]}
+            (pipeline-failure "Two foreign keys reach the table."
+                              {:agent-error? true :error :ambiguous-fk :source-table 3})))))
 
 (deftest ^:parallel with-pipeline-errors-converts-refusals-test
   (doseq [status [403 404]]
@@ -352,12 +385,11 @@
               (pipeline-failure "no" {:status-code status}))))))
 
 (deftest ^:parallel with-pipeline-errors-does-not-relay-foreign-messages-test
-  (testing "`as-agent-input-error` stamps :agent-error? onto exceptions from lib, toucan2 and JDBC
-           too. Without an :error code there is nothing to say the message was written for a model,
-           so it stays unrecoverable and the model never sees it."
-    (is (=? {:class       :unrecoverable
-             :code        :internal
-             ::ex-message "No matching clause: :whatever"}
+  (testing "Lib exceptions stay unrecoverable without a declared `:error` code and lose the `:agent-error?` flag."
+    (is (=? {:class         :unrecoverable
+             :code          :internal
+             ::ex-message   "No matching clause: :whatever"
+             ::agent-error? nil}
             (pipeline-failure "No matching clause: :whatever"
                               {:agent-error? true :status-code 400}))))
   (testing "an :error code with no declaration is not converted either — the pipeline-code test is
@@ -369,3 +401,15 @@
     (is (=? {:class :unrecoverable :code :internal} (pipeline-failure "boom" {}))))
   (testing "a successful body is returned untouched"
     (is (= :fine (tools/with-pipeline-errors :fine)))))
+
+(deftest ^:parallel structural-validation-paths-test
+  (let [e     (agent-lib.tu/structural-validation-error)
+        data  (ex-data e)
+        error (pipeline-failure (ex-message e) (assoc data :agent-error? true))
+        hint  "Invalid at stages[0].filters: invalid type. Fix the named paths."]
+    (is (= {:message "Representations query has an invalid structure."
+            :paths "stages[0].filters: invalid type"}
+           (:data error)))
+    (is (= hint (recovery-hints/recovery-hint data)))
+    (is (= (str "Representations query has an invalid structure.\n" hint)
+           (tools.error/recoverable-text error #{})))))
