@@ -38,7 +38,11 @@ export function TransformTestRunSection({
             </Anchor>
           }
         />
-        <TransformTestRunButton test={test} readOnly={readOnly} />
+        <TransformTestRunButton
+          test={test}
+          readOnly={readOnly}
+          triggeredFrom="test_overview"
+        />
       </Group>
     </TitleSection>
   );
