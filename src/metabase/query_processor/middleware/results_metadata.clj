@@ -12,6 +12,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.query-processor.middleware.row-restricted-metadata :as row-restricted-metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -78,6 +79,9 @@
                  card-id
                  ;; don't want to update metadata when we use a Card as a source Card.
                  (not (:qp/source-card-id query))
+                 ;; A row-restricted run (sandbox, impersonation, DB routing) returns metadata without fingerprints.
+                 ;; Persisting it would erase the whole-table fingerprints an unrestricted run stored for every reader.
+                 (not (row-restricted-metadata/row-restricted? query))
                  ;; Only update changed metadata
                  (not= (comparable-metadata actual-metadata)
                        (comparable-metadata
@@ -124,14 +128,16 @@
    insights-col-metadata))
 
 (mu/defn- insights-xform :- fn?
-  [orig-metadata :- [:maybe :map]
-   record!       :- ifn?
-   rf            :- ifn?]
+  [orig-metadata      :- [:maybe :map]
+   record!            :- ifn?
+   keep-fingerprints? :- :boolean
+   rf                 :- ifn?]
   (qp.reducible/combine-additional-reducing-fns
    rf
    [(analyze/insights-rf orig-metadata)]
    (fn combine [result {:keys [metadata insights]}]
-     (let [metadata (merge-final-column-metadata (-> result :data :cols) metadata)]
+     (let [metadata (cond-> (merge-final-column-metadata (-> result :data :cols) metadata)
+                      (not keep-fingerprints?) row-restricted-metadata/remove-fingerprints)]
        (record! metadata)
        (rf (cond-> result
              (map? result)
@@ -148,9 +154,14 @@
    rff                                                       :- ::qp.schema/rff]
   (if skip-results-metadata?
     rff
-    (let [record! (partial record-metadata! query)]
+    (let [record! (partial record-metadata! query)
+          ;; With no fingerprint on the cols of a row-restricted run (sandbox, impersonation, DB routing), the insights
+          ;; step computes one over the rows the current user sees. The frontend posts `:results_metadata` back as the
+          ;; Card's `result_metadata` when the user saves the question, which would hand that subset's statistics to
+          ;; every reader of the Card, so such a run returns no fingerprint in `:results_metadata` either.
+          keep-fingerprints? (not (row-restricted-metadata/row-restricted? query))]
       (fn record-and-return-metadata!-rff* [metadata]
-        (insights-xform metadata record! (rff metadata))))))
+        (insights-xform metadata record! keep-fingerprints? (rff metadata))))))
 
 (mu/defn store-previous-result-metadata!
   "Store the previous value of a card's result metadata in the qp.store"
