@@ -62,10 +62,23 @@ describe("SchedulingPausedCallout", () => {
 
     expect(
       screen.getByTestId("transforms-scheduling-paused-callout"),
-    ).toBeInTheDocument();
+    ).toHaveTextContent(
+      "Scheduled job runs are paused on this instance. You can still run jobs and transforms manually.",
+    );
     expect(
       screen.queryByRole("button", { name: "Turn scheduling back on" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("hides the override until the setting details load", async () => {
+    setup({ isAdmin: true });
+
+    expect(
+      screen.queryByRole("button", { name: "Turn scheduling back on" }),
+    ).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("button", { name: "Turn scheduling back on" }),
+    ).toBeInTheDocument();
   });
 
   it("lets an admin turn scheduling back on", async () => {
