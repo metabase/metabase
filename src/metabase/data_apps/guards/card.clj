@@ -28,10 +28,16 @@
       (throw (ex-info (tru "A data app can run a card only as it is saved, without parameters, a dashboard, a collection preview or a stored result.")
                       {:status-code 403})))))
 
+(defn- check-card-query-metadata!
+  "Checks the card whose query metadata a `request` asks for, returning the filter of that metadata."
+  [request route-params]
+  (check-card! request route-params)
+  rules/filter-query-metadata)
+
 (def checks
   "The checks of a data-app request to each endpoint of [[metabase.queries-rest.api.card]]."
   {[:get "/:id"]                                      check-card!
-   [:get "/:id/query_metadata"]                       check-card!
+   [:get "/:id/query_metadata"]                       check-card-query-metadata!
    [:post "/:card-id/query"]                          check-card-run!
    [:post "/:card-id/query/:export-format"]           check-card-run!
    [:post "/pivot/:card-id/query"]                    check-card-run!

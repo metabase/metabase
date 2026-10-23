@@ -87,6 +87,19 @@
   [entity-id :- :string]
   (t2/select-one [:model/Card :id :database_id] :entity_id entity-id))
 
+(mu/defn published-table-ids :- [:set ::lib.schema.id/table]
+  "Among `table-ids`, the IDs of the Tables published to the Library."
+  [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
+  (or (t2/select-pks-set :model/Table :id [:in table-ids] :is_published true {:from [(warehouse-schema-overlay/table-query)]})
+      #{}))
+
+(mu/defn field-table-ids :- [:map-of ::lib.schema.id/field ::lib.schema.id/table]
+  "The IDs of the Tables of the Fields with `field-ids`, by field ID."
+  [field-ids :- [:set {:min 1} ::lib.schema.id/field]]
+  (or (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in field-ids]
+                        {:from [(warehouse-schema-overlay/field-query)]})
+      {}))
+
 (mu/defn data-app-readable-card-ids :- [:set ::lib.schema.id/card]
   "Among `card-ids`, the IDs of the cards a data app may read: the cards in data apps' collections and the metrics in
   the Library, unless archived."

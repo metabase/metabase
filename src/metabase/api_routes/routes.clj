@@ -270,7 +270,7 @@
    "/setting"              (+auth 'metabase.settings-rest.api)
    "/setup"                'metabase.setup-rest.api
    "/slack"                (+auth metabase.channel.rest.api/slack-routes)
-   "/table"                (+auth metabase.warehouse-schema-rest.api/table-routes)
+   "/table"                (+auth (data-apps/table-guard metabase.warehouse-schema-rest.api/table-routes))
    "/task"                 (+auth 'metabase.task-history.api)
    "/testing"              (if metabase.testing-api.core/enable-testing-routes? 'metabase.testing-api.api pass-thru-handler)
    "/tiles"                (+auth 'metabase.tiles.api)

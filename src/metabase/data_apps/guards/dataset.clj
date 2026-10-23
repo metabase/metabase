@@ -24,11 +24,17 @@
   (let [query (:query (api.macros/request-body request))]
     (rules/check-query! (cond-> query (string? query) json/decode+kw))))
 
+(defn- check-body-query-metadata!
+  "Checks the query whose metadata a `request` asks for, returning the filter of that metadata."
+  [request route-params]
+  (check-body-query! request route-params)
+  rules/filter-query-metadata)
+
 (def checks
   "The checks of a data-app request to each endpoint of [[metabase.query-processor.api]]."
   {[:post "/"]                        check-body-query!
    [:post "/:export-format"]          check-export-query!
-   [:post "/query_metadata"]          check-body-query!
+   [:post "/query_metadata"]          check-body-query-metadata!
    [:post "/native"]                  check-native-body-query!
    [:post "/pivot"]                   check-body-query!
    [:post "/parameter/values"]        guard/refuse

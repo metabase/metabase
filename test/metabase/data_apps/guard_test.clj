@@ -8,21 +8,24 @@
    [metabase.data-apps.guard :as guard]
    [metabase.data-apps.guards.card :as guards.card]
    [metabase.data-apps.guards.dataset :as guards.dataset]
+   [metabase.data-apps.guards.sandbox-table :as guards.sandbox-table]
+   [metabase.data-apps.guards.table :as guards.table]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
 
 (def ^:private guarded
   "API namespace => the path under `/api` of its guarded mount, and the checks of that mount's guard."
-  {'metabase.query-processor.api   {:path "dataset" :checks guards.dataset/checks}
-   'metabase.queries-rest.api.card {:path "card" :checks guards.card/checks}})
+  {'metabase.query-processor.api             {:path "dataset" :checks guards.dataset/checks}
+   'metabase.queries-rest.api.card           {:path "card" :checks guards.card/checks}
+   'metabase.warehouse-schema-rest.api.table {:path "table" :checks guards.table/checks}
+   'metabase-enterprise.sandbox.api.table    {:path "table" :checks guards.sandbox-table/checks}})
 
 (def ^:private unguarded-namespaces
   "The namespaces with endpoints a data app reaches that no guard covers."
   #{'metabase-enterprise.content-translation.routes
     'metabase-enterprise.custom-viz-plugin.api
     'metabase-enterprise.data-apps.api
-    'metabase-enterprise.sandbox.api.table
     'metabase.actions-rest.api
     'metabase.collections-rest.api
     'metabase.dashboards-rest.api
@@ -33,7 +36,6 @@
     'metabase.user-key-value.api
     'metabase.users-rest.api
     'metabase.warehouse-schema-rest.api.field
-    'metabase.warehouse-schema-rest.api.table
     'metabase.warehouses-rest.api})
 
 (defn- data-app-endpoints
@@ -148,3 +150,15 @@
                             (request :post "/" true))]
       (is (instance? Throwable result))
       (is (not= :handled result)))))
+
+(deftest check-filter-test
+  (testing "the function a check returns filters the body of a 2xx response, and only of one"
+    (doseq [[status filtered?] [[200 true] [202 true] [400 false]]]
+      (let [result (promise)]
+        ((#'guard/guard 'metabase.query-processor.api
+                        {[:post "/"] (fn [_request _route-params] #(assoc % :filtered true))}
+                        (fn [_request respond _raise] (respond {:status status :body {}})))
+         (request :post "/" true)
+         #(deliver result %)
+         #(deliver result %))
+        (is (= filtered? (boolean (get-in (deref result 1000 ::timed-out) [:body :filtered]))))))))

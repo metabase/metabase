@@ -226,6 +226,98 @@
               (t2/update! :model/Card metric-id {:collection_id nil})
               (is (re-find #"Venue count" (mt/user-http-request :crowberto :get 403 (str "card/" app-card-id) as-data-app)))))))))))
 
+(defn- get-as-data-app
+  "The response to a data app's `GET` of `path`, expecting `status`."
+  [status path]
+  (mt/user-http-request :crowberto :get status path as-data-app))
+
+(deftest table-endpoints-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (data-apps.tu/with-published-tables! [(mt/id :venues)]
+       (testing "a published table is read, an unpublished one is refused, and a missing one is left to the 404"
+         (is (= (mt/id :venues) (:id (get-as-data-app 200 (str "table/" (mt/id :venues))))))
+         (is (re-find #"not CHECKINS" (get-as-data-app 403 (format "table/%d/query_metadata" (mt/id :checkins)))))
+         (get-as-data-app 404 "table/999999999"))
+       (let [category-id (fn [metadata]
+                           (some #(when (= (mt/id :venues :category_id) (:id %)) %) (:fields metadata)))]
+         (testing "a foreign key into an unpublished table is dropped from the metadata"
+           (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :venues :category_id)
+                                              :name                    "Category"
+                                              :type                    :external
+                                              :human_readable_field_id (mt/id :categories :name)}]
+             (let [field (category-id (get-as-data-app 200 (format "table/%d/query_metadata" (mt/id :venues))))]
+               (is (=? {:fk_target_field_id nil :dimensions []} field))
+               (is (not (contains? field :target))))
+             (data-apps.tu/with-published-tables! [(mt/id :categories)]
+               (is (=? {:fk_target_field_id (mt/id :categories :id)
+                        :target             {:id (mt/id :categories :id)}
+                        :dimensions         [{:human_readable_field_id (mt/id :categories :name)}]}
+                       (category-id (get-as-data-app 200 (format "table/%d/query_metadata" (mt/id :venues))))))))))
+       (testing "a foreign key from an unpublished table is dropped from a table's foreign keys"
+         (is (= [] (get-as-data-app 200 (format "table/%d/fks" (mt/id :venues)))))
+         (data-apps.tu/with-published-tables! [(mt/id :checkins)]
+           (is (=? [{:origin_id (mt/id :checkins :venue_id)}]
+                   (get-as-data-app 200 (format "table/%d/fks" (mt/id :venues)))))))
+       (mt/with-temp [:model/Card {app-card-id :id} {:name          "Venues"
+                                                     :collection_id collection-id
+                                                     :dataset_query (data-apps.tu/venues-query)}
+                      :model/Card {other-card-id :id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}]
+         (testing "a card's metadata as a table is read only for a card a data app may read"
+           (is (seq (:fields (get-as-data-app 200 (format "table/card__%d/query_metadata" app-card-id)))))
+           (is (re-find #"Venues elsewhere" (get-as-data-app 403 (format "table/card__%d/query_metadata" other-card-id))))))))))
+
+(deftest query-metadata-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (data-apps.tu/with-published-tables! [(mt/id :venues)]
+       (mt/with-temp [:model/Card {app-card-id :id} {:name          "Venues"
+                                                     :collection_id collection-id
+                                                     :dataset_query (data-apps.tu/venues-query)}
+                      :model/Card {other-metric-id :id} {:name          "Venues elsewhere"
+                                                         :type          :metric
+                                                         :dataset_query (lib/aggregate (data-apps.tu/venues-query) (lib/count))}]
+         (doseq [[label response] {"a query's metadata" (mt/user-http-request :crowberto :post 200 "dataset/query_metadata" as-data-app
+                                                                              (lib/->legacy-MBQL (data-apps.tu/venues-query)))
+                                   "a card's metadata"  (get-as-data-app 200 (format "card/%d/query_metadata" app-card-id))}]
+           (testing (str label " holds only published tables and readable metrics")
+             (is (= [(mt/id :venues)] (map :id (:tables response))))
+             (is (not-any? #{other-metric-id} (map :id (mapcat :metrics (:tables response)))))))
+         (testing "a query on a data app's card holds the card as a table"
+           (is (= [(str "card__" app-card-id)]
+                  (map :id (:tables (mt/user-http-request :crowberto :post 200 "dataset/query_metadata" as-data-app
+                                                          (lib/->legacy-MBQL (card-query app-card-id)))))))))))))
+
+(deftest table-metadata-macros-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (data-apps.tu/do-with-sources!
+      (fn [{:keys [metric-id]}]
+        (data-apps.tu/with-published-tables! [(mt/id :venues)]
+          (let [venues   (data-apps.tu/venues-query)
+                category (some #(when (= (mt/id :categories :name) (:id %)) %) (lib/filterable-columns venues))]
+            (mt/with-temp [:model/Card {other-metric-id :id} {:name          "Venues elsewhere"
+                                                              :type          :metric
+                                                              :dataset_query (lib/aggregate venues (lib/count))}
+                           :model/Segment {bars-id :id} {:name       "Bars"
+                                                         :table_id   (mt/id :venues)
+                                                         :definition (lib/filter venues (lib/= category "Bar"))}
+                           :model/Segment {cheap-id :id} {:name       "Cheap"
+                                                          :table_id   (mt/id :venues)
+                                                          :definition (lib/filter venues (lib/= (lib.metadata/field (mt/metadata-provider)
+                                                                                                                    (mt/id :venues :price))
+                                                                                                1))}]
+              (let [metadata (get-as-data-app 200 (format "table/%d/query_metadata" (mt/id :venues)))]
+                (testing "a table's metadata holds only the metrics a data app may read"
+                  (is (contains? (set (map :id (:metrics metadata))) metric-id))
+                  (is (not (contains? (set (map :id (:metrics metadata))) other-metric-id))))
+                (testing "and only the segments whose definitions read only the Library"
+                  (is (contains? (set (map :id (:segments metadata))) cheap-id))
+                  (is (not (contains? (set (map :id (:segments metadata))) bars-id)))))
+              (testing "a query on a Library metric has its metadata"
+                (is (seq (:tables (mt/user-http-request :crowberto :post 200 "dataset/query_metadata" as-data-app
+                                                        (lib/->legacy-MBQL (lib/aggregate venues (lib.metadata/metric (mt/metadata-provider) metric-id))))))))))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app runs nothing"
     (mt/with-premium-features #{}

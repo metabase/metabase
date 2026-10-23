@@ -105,8 +105,9 @@
     (testing "the InteractiveQuestion.Editor data-source surface is reachable when marked"
       (is (mt/user-http-request :crowberto :get 200 "database" as-data-app)))
     (testing "a pre-built-def route (table-routes, mounted by value not ns-symbol) enforces the tag"
-      (is (mt/user-http-request :crowberto :get 200
-                                (format "table/%d/query_metadata" (mt/id :venues)) as-data-app)))))
+      (is (not= "scope_not_permitted"
+                (:error (mt/user-http-request :crowberto :get
+                                              (format "table/%d/query_metadata" (mt/id :venues)) as-data-app)))))))
 
 (deftest data-app-marker-reaches-object-detail-action-reads-test
   ;; The SDK's "Detail" visualization renders `ObjectDetailPanel`, which lists a writable model's

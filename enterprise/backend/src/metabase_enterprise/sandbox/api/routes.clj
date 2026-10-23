@@ -8,6 +8,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.api.util.handlers :as handlers]
+   [metabase.data-apps.core :as data-apps]
    [metabase.util.i18n :refer [deferred-tru]]))
 
 (comment metabase-enterprise.sandbox.api.table/keep-me)
@@ -31,6 +32,7 @@
   When sandboxing is enabled we *replace* GET /api/table/:id/query_metadata with a special EE version. If sandboxing
   is not enabled, this passes thru to the OSS implementation of the endpoint."
   (->> (api.macros/ns-handler 'metabase-enterprise.sandbox.api.table)
+       data-apps/sandbox-table-guard
        +auth
        ;; sandboxing swaps out the OSS table endpoint; +when-premium-feature is the only swap mechanism
        #_{:clj-kondo/ignore [:deprecated-var]}

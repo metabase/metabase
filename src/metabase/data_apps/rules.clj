@@ -23,3 +23,27 @@
   metabase-enterprise.data-apps.rules
   [_card-id]
   (throw (unavailable)))
+
+(defenterprise check-table!
+  "Throws a 403 unless a data app may read the table with `table-id`, when such a table exists."
+  metabase-enterprise.data-apps.rules
+  [_table-id]
+  (throw (unavailable)))
+
+(defenterprise filter-table-metadata
+  "The table or card `metadata` with the references a data app may not follow dropped from its fields."
+  metabase-enterprise.data-apps.rules
+  [_metadata]
+  (throw (unavailable)))
+
+(defenterprise filter-foreign-keys
+  "The foreign keys into a table, as `GET /api/table/:id/fks` returns them, that a data app may see."
+  metabase-enterprise.data-apps.rules
+  [_foreign-keys]
+  (throw (unavailable)))
+
+(defenterprise filter-query-metadata
+  "The metadata of a query or a card, as the query metadata endpoints return it, that a data app may see."
+  metabase-enterprise.data-apps.rules
+  [_metadata]
+  (throw (unavailable)))

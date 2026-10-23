@@ -105,3 +105,103 @@
         (check-lib-query! card-query #{id})
         (check-preprocessed-query! card-query))))
   nil)
+
+(defenterprise check-table!
+  "Throws a 403 unless the table with `table-id`, a route param, is published to the Library, when such a table exists."
+  :feature :data-apps
+  [table-id]
+  (when-let [unpublished (not-empty (queries/unpublished-table-names #{(parse-long table-id)}))]
+    (throw (refusal (tru "A data app can read only tables published to the Library, not {0}."
+                         (str/join ", " (sort unpublished)))))))
+
+(defn- unpublished-field-ids
+  "Among `field-ids`, the IDs of the fields whose tables aren't published to the Library."
+  [field-ids]
+  (if-let [table-ids (some-> (not-empty (set (remove nil? field-ids))) data-apps.db/field-table-ids)]
+    (let [published (data-apps.db/published-table-ids (set (vals table-ids)))]
+      (into #{} (keep (fn [[field-id table-id]] (when-not (published table-id) field-id))) table-ids))
+    #{}))
+
+(defn- reads-only-published?
+  "Whether `query`, an MBQL query on the database with `database-id`, reads only tables published to the Library."
+  [database-id query]
+  (boolean
+   (when (and (pos-int? database-id) (seq query))
+     (try
+       (empty? (queries/unpublished-read-table-names
+                (lib/query (lib-be/application-database-metadata-provider database-id) query)))
+       (catch Exception _
+         false)))))
+
+(defn- readable-card-ids
+  "Among `card-ids`, the IDs of the cards a data app may read whose queries read only tables published to the Library."
+  [card-ids]
+  (if-let [card-ids (not-empty (set (filter pos-int? card-ids)))]
+    (into #{}
+          (filter (fn [card-id]
+                    (when-let [{:keys [database_id]} (data-apps.db/card-by-id card-id)]
+                      (let [mp (lib-be/application-database-metadata-provider database_id)]
+                        (reads-only-published? database_id (:dataset-query (lib.metadata/card mp card-id)))))))
+          (data-apps.db/data-app-readable-card-ids card-ids))
+    #{}))
+
+(defn- filter-macros
+  "The table or card `metadata` with only the metrics a data app may read and the segments and measures whose definitions
+  read only tables published to the Library."
+  [{:keys [db_id] :as metadata}]
+  (let [readable (readable-card-ids (keep :id (:metrics metadata)))]
+    (cond-> metadata
+      (sequential? (:metrics metadata))  (update :metrics #(filterv (comp readable :id) %))
+      (sequential? (:segments metadata)) (update :segments #(filterv (comp (partial reads-only-published? db_id) :definition) %))
+      (sequential? (:measures metadata)) (update :measures #(filterv (comp (partial reads-only-published? db_id) :definition) %)))))
+
+(defn- filter-field-references
+  "`field` with its foreign key target and its remappings dropped when they are among the `hidden` field IDs."
+  [hidden {:keys [fk_target_field_id dimensions] :as field}]
+  (cond-> field
+    (hidden fk_target_field_id) (-> (dissoc :target)
+                                    (assoc :fk_target_field_id nil))
+    (sequential? dimensions)    (update :dimensions (partial filterv (comp not hidden :human_readable_field_id)))))
+
+(defenterprise filter-table-metadata
+  "The table or card `metadata` with its fields' foreign key targets and remappings into tables that aren't published to
+  the Library dropped, only the metrics, segments and measures a data app may read, and no transform."
+  :feature :data-apps
+  [metadata]
+  (let [hidden (unpublished-field-ids (mapcat (fn [{:keys [fk_target_field_id dimensions]}]
+                                                (cons fk_target_field_id (keep :human_readable_field_id dimensions)))
+                                              (:fields metadata)))]
+    (cond-> (dissoc (filter-macros metadata) :transform)
+      (seq hidden) (update :fields (partial mapv (partial filter-field-references hidden))))))
+
+(defenterprise filter-foreign-keys
+  "The foreign keys into a table whose origin fields are in tables published to the Library."
+  :feature :data-apps
+  [foreign-keys]
+  (let [hidden (unpublished-field-ids (map :origin_id foreign-keys))]
+    (into [] (remove (comp hidden :origin_id)) foreign-keys)))
+
+(defn- card-table-id
+  "The ID of the card that the table ID `table-id` of a query's metadata names, as `card__<id>`, or nil."
+  [table-id]
+  (when (string? table-id)
+    (some-> (re-matches #"card__(\d+)" table-id) second parse-long)))
+
+(defenterprise filter-query-metadata
+  "The `metadata` of a query or a card with only the tables published to the Library and the cards a data app may read,
+  each filtered as table metadata, their fields and databases, and no snippets."
+  :feature :data-apps
+  [{:keys [tables fields] :as metadata}]
+  (let [table-ids    (set (filter pos-int? (map :id tables)))
+        published    (if (seq table-ids) (data-apps.db/published-table-ids table-ids) #{})
+        readable     (readable-card-ids (keep (comp card-table-id :id) tables))
+        kept?        (fn [table-id]
+                       (if-let [card-id (card-table-id table-id)]
+                         (contains? readable card-id)
+                         (contains? published table-id)))
+        tables       (into [] (comp (filter (comp kept? :id)) (map filter-table-metadata)) tables)
+        database-ids (set (keep :db_id tables))]
+    (cond-> (assoc metadata :tables tables)
+      (contains? metadata :fields)    (assoc :fields (into [] (filter (comp kept? :table_id)) fields))
+      (contains? metadata :databases) (update :databases #(into [] (filter (comp database-ids :id)) %))
+      (contains? metadata :snippets)  (assoc :snippets []))))
