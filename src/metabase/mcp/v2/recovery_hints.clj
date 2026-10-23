@@ -122,4 +122,7 @@
     :missing-source-in-first-stage
     (message/msg ["`source-table:` takes a numeric table id; `source-card:` takes a saved-card numeric id."])
 
+    :query-preprocessing-failed
+    (message/msg ["Fix that part of the query and retry."])
+
     nil))
