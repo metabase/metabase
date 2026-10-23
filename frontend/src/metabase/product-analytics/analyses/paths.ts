@@ -198,6 +198,23 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
       output: { pathsEdgeMetric: settings["paths.edge_metric"] },
     });
   },
+  // A direction that shows an empty well takes the event from the one it
+  // hides, so switching from "after" to "backwards from" keeps the event.
+  getFollowingChanges: (changes, settings) => {
+    const direction = changes["paths.direction"];
+    if (direction === undefined || direction === settings["paths.direction"]) {
+      return {};
+    }
+    const start = settings["paths.start"];
+    const end = settings["paths.end"];
+    if (direction === "to" && end === null && start !== null) {
+      return { "paths.end": start };
+    }
+    if (direction === "from" && start === null && end !== null) {
+      return { "paths.start": end };
+    }
+    return {};
+  },
   getDisplay: () => "sankey",
   getVizSettings: () => ({
     "sankey.source": "source",

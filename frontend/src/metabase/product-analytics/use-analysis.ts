@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { useMetadataProvider } from "metabase/metadata-store";
@@ -94,6 +94,14 @@ export const useAnalysis = <K extends AnalysisKind>({
     () => ({ ...context, displayColors: colors }),
     [context, colors],
   );
+  const handleChangeSettings = useCallback(
+    (changes: Partial<AnalysisSettingsByKind[K]>) =>
+      onChangeSettings({
+        ...changes,
+        ...config.getFollowingChanges?.(changes, computed),
+      }),
+    [config, computed, onChangeSettings],
+  );
   const widgets = useMemo(
     () =>
       getSettingWidgets(
@@ -101,9 +109,9 @@ export const useAnalysis = <K extends AnalysisKind>({
         widgetContext,
         stored,
         computed,
-        onChangeSettings,
+        handleChangeSettings,
       ),
-    [config, widgetContext, stored, computed, onChangeSettings],
+    [config, widgetContext, stored, computed, handleChangeSettings],
   );
 
   const flags = createFlagAllocator();

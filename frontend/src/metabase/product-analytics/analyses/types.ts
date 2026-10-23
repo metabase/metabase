@@ -171,6 +171,14 @@ export type AnalysisConfig<K extends AnalysisKind> = {
   /** The chart's title when it depends on the settings, in place of `question`. */
   getQuestion?: (settings: AnalysisSettingsByKind[K]) => string;
   /**
+   * More changes that follow from a user's change, applied with it. Setting
+   * widgets only write their own key; this keeps related ones in step.
+   */
+  getFollowingChanges?: (
+    changes: Partial<AnalysisSettingsByKind[K]>,
+    settings: AnalysisSettingsByKind[K],
+  ) => Partial<AnalysisSettingsByKind[K]>;
+  /**
    * Names the actors in a clicked point, e.g. "Reached step 2: Signed up".
    * `null`, or omitted, when the chart's clicks can't be traced to actors.
    */
