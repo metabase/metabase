@@ -102,20 +102,34 @@
         (destination-not-writable! destination)
         (throw e)))))
 
+(tools/defrecoverable invalid-query!
+  "The query cannot be saved until its invalid content is corrected."
+  {:payload [:map {:closed true} [:message :string]]}
+  [{:keys [message]}]
+  {:message message
+   :recovery [{:uses #{"construct_notebook_query"}
+               :text (str "Use `construct_notebook_query` to make a chart without the invalid query content,"
+                          " then retry with its chart ID.")}]})
+
 (defn- check-query-permissions!
   "Require permission to run `dataset-query`.
-  A refusal ends the turn with a message for the user."
+  A permission refusal ends the turn; invalid query content can be corrected by the agent."
   [dataset-query]
   (try
     (query-perms/check-run-permissions-for-query dataset-query)
     (catch clojure.lang.ExceptionInfo e
       (let [status-code (:status-code (ex-data e))]
-        (if (and (int? status-code) (<= 400 status-code 499))
-          ;; The agent cannot offer a different query for this chart.
+        (cond
+          (= 403 status-code)
           (tools/unrecoverable!
            ::no-query-permission
            {:user-message (tru "You can''t save this chart because you don''t have permission to run its query.")
             :cause        e})
+
+          (and (int? status-code) (<= 400 status-code 499))
+          (tools.error/throw-recoverable! ::invalid-query {:message (ex-message e)} {:cause e})
+
+          :else
           (throw e))))))
 
 (defn- chart-query

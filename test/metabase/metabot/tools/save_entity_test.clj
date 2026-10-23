@@ -423,3 +423,15 @@
                     (invoke-save-entity
                      (assoc chart-args :destination {:target_type "document" :document_id (:id doc)}))))
             (is (not (t2/exists? :model/Card :document_id (:id doc))))))))))
+
+(deftest sensitive-query-test
+  (let [provider (mt/metadata-provider)
+        query    (-> (lib/query provider (lib.metadata/table provider (mt/id :users)))
+                     (lib/filter (lib/= (lib.metadata/field provider (mt/id :users :password)) "secret")))
+        memory   (chart-memory)]
+    (swap! memory assoc-in [:state :charts "c-1" :queries] [query])
+    (mt/with-current-user (mt/user->id :rasta)
+      (testing "a sensitive-field refusal reaches the agent as a query error it can fix"
+        (is (=? {:error  {:class :recoverable :code ::save-entity/invalid-query}
+                 :output #(str/starts-with? % "This query refers to a field that is not available for querying.")}
+                (invoke-save-entity memory (assoc chart-args :destination {:target_type "collection"}))))))))
