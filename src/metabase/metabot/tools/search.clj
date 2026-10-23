@@ -179,7 +179,8 @@
   from access to the metric itself.
 
   Requires `:database_name` on each result (see [[enrich-with-database-engines]]) to build portable FKs.
-  Query count is fixed per search call, but each metric's stored definition must be read."
+  Query count is fixed per search call, except that a multi-stage metric defined on a card also reads the cards it is
+  built on."
   [results]
   (let [metric-ids (->> results (filter #(= "metric" (:type %))) (keep :id) distinct)
         card-id->source (when (seq metric-ids)

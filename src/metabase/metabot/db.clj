@@ -817,16 +817,16 @@
 (mu/defn card-source-info
   "Return a map of Card IDs to stored metric definitions for `card-ids`.
 
-  Each row contains `:table_id` and `:dataset_query` for [[metabase.metabot.tools.util/metric-required-source]].
+  Each row contains the `:dataset_query` for [[metabase.metabot.tools.util/metric-required-source]].
   Queries are returned with the model's output transform, without running card-schema upgrades."
   ;; The first stage's `:source_card_id` cannot distinguish single-stage and multi-stage card metrics.
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
   (let [query-out (:out lib-be/transform-query)]
     (into {}
-          (map (fn [{:keys [id table_id dataset_query]}]
-                 [id {:table_id table_id, :dataset_query (query-out dataset_query)}]))
+          (map (fn [{:keys [id dataset_query]}]
+                 [id {:dataset_query (query-out dataset_query)}]))
           (when (seq card-ids)
-            (t2/select [(t2/table-name :model/Card) :id :table_id :dataset_query] :id [:in card-ids])))))
+            (t2/select [(t2/table-name :model/Card) :id :dataset_query] :id [:in card-ids])))))
 
 (mu/defn card-source-rows
   "Return the source cards in `card-ids`, including the columns needed by `can-read?`."

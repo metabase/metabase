@@ -2686,12 +2686,16 @@
   (let [mp (mt/metadata-provider)]
     (lib/query mp (lib.metadata/table mp (mt/id table-key)))))
 
+(defn- card-query
+  "A Lib query on the card with `card-id`."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/card mp card-id))))
+
 (defn- card-count-query
   "A count query on the card with `card-id`."
   [card-id]
-  (let [mp (mt/metadata-provider)]
-    (-> (lib/query mp (lib.metadata/card mp card-id))
-        (lib/aggregate (lib/count)))))
+  (lib/aggregate (card-query card-id) (lib/count)))
 
 (defn- field-col
   [table-key field-key]
@@ -2727,6 +2731,53 @@
                            (metric-query-data {"source-card" model-eid} metric-eid))
                           (get-in [:structured-output :query]))]
             (is (= [[18760]] (mt/rows (qp/process-query query))))))))))
+
+(deftest metric-source-check-follows-a-source-card-that-changed-table-test
+  (testing "After C1 moves from ORDERS to PRODUCTS, the check follows it as the query processor does"
+    (mt/with-temp [:model/Card {c1-id :id}
+                   {:name "C1" :type :question :dataset_query (table-query :orders)}
+                   :model/Card {c2-id :id, c2-eid :entity_id}
+                   {:name "C2" :type :question :dataset_query (card-query c1-id)}
+                   :model/Card {products-metric-eid :entity_id}
+                   {:name "Product count" :type :metric
+                    :dataset_query (lib/aggregate (table-query :products) (lib/count))}
+                   :model/Card {orders-metric-id :id, orders-metric-eid :entity_id}
+                   {:name "Order count" :type :metric
+                    :dataset_query (lib/aggregate (table-query :orders) (lib/count))}
+                   :model/Card {two-stage-id :id, two-stage-eid :entity_id}
+                   {:name "Two-stage count" :type :metric
+                    :dataset_query (-> (card-query c1-id) lib/append-stage (lib/aggregate (lib/count)))}]
+      (t2/update! :model/Card c1-id {:dataset_query (table-query :products)})
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp      (mt/metadata-provider)
+              rows    (fn [source metric-eid]
+                        (-> (construct/execute-representations-query (metric-query-data source metric-eid))
+                            (get-in [:structured-output :query])
+                            qp/process-query
+                            mt/rows))
+              check   (fn [source metric-eid]
+                        (try
+                          (construct/execute-representations-query (metric-query-data source metric-eid))
+                          :accepted
+                          (catch clojure.lang.ExceptionInfo e
+                            (:error (ex-data e)))))]
+          (testing "precondition: C2 and the two-stage metric still store the table C1 had when they were saved"
+            (is (= [(mt/id :orders) (mt/id :orders)]
+                   (map #(:table-id (lib.metadata/card mp %)) [c2-id two-stage-id]))))
+          (testing "on C2, a metric on PRODUCTS is accepted and runs"
+            (is (= [[200]] (rows {"source-card" c2-eid} products-metric-eid))))
+          (testing "on C2, a metric on ORDERS is refused, as the query processor refuses it"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Incompatible metric"
+                                  (qp/process-query (lib/aggregate (card-query c2-id)
+                                                                   (lib.metadata/metric mp orders-metric-id)))))
+            (is (= :incompatible-metric (check {"source-card" c2-eid} orders-metric-eid))))
+          (testing "a two-stage metric on C1 is accepted on PRODUCTS and runs"
+            (is (= [[200]] (rows {"source-table" (products-source-table-fk)} two-stage-eid))))
+          (testing "a two-stage metric on C1 is refused on ORDERS, as the query processor refuses it"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Incompatible metric"
+                                  (qp/process-query (lib/aggregate (table-query :orders)
+                                                                   (lib.metadata/metric mp two-stage-id)))))
+            (is (= :incompatible-metric (check {"source-table" (orders-source-table-fk)} two-stage-eid)))))))))
 
 (deftest metric-with-unreadable-definition-is-rejected-on-any-source-test
   (testing "A metric with a blank definition has no usable source"
@@ -3150,6 +3201,29 @@
                                                    (assoc join-source
                                                           "breakout"    [["field" {} (column "PRODUCTS" "ID")]]
                                                           "aggregation" [["count" {}]])))))))))))))))
+
+(deftest ^:parallel metric-compatibility-uses-caller-metadata-test
+  (let [orders-query   (lib/query mp (lib.metadata/table mp 10))
+        products-query (lib/query mp (lib.metadata/table mp 20))
+        source-card    {:id 901, :name "Orders source", :type :question, :database-id 1
+                        :dataset-query orders-query}
+        provider       (lib.tu/merged-mock-metadata-provider mp {:cards [source-card]})
+        definition     (-> (lib/query provider (lib.metadata/card provider 901))
+                           lib/append-stage
+                           (lib/aggregate (lib/count)))
+        provider       (lib.tu/merged-mock-metadata-provider
+                        provider
+                        {:cards [{:id 902, :name "Orders metric", :type :metric, :database-id 1
+                                  :dataset-query definition}]})
+        other-provider (lib.tu/merged-mock-metadata-provider
+                        mp {:cards [(assoc source-card :dataset-query products-query)]})]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (constantly other-provider)]
+      (doseq [[table-id expected] [[10 nil]
+                                   [20 {902 {:kind :table, :table-id 10, :bare-table-only? true}}]]]
+        (testing (str "Compatibility with table " table-id " uses the caller's source card")
+          (let [query (-> (lib/query provider (lib.metadata/table provider table-id))
+                          (lib/aggregate (lib.metadata/metric provider 902)))]
+            (is (= expected (#'construct/incompatible-metrics provider query)))))))))
 
 (deftest gate-checks-only-the-first-stage-test
   (testing "Metric compatibility is checked only in the first stage"
