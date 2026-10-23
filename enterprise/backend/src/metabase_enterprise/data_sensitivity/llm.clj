@@ -10,6 +10,7 @@
    [com.climate.claypoole :as cp]
    [com.climate.claypoole.impl :as cp.impl]
    [metabase-enterprise.data-sensitivity.context :as context]
+   [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
    [metabase.config.core :as config]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
@@ -108,13 +109,8 @@
        (strip-delimiters (str content))
        "\n</" tag ">"))
 
-(def all-attributes
-  "The attributes one call can propose, in the order of the response properties. The description comes before the
-  semantic type so that a correct semantic type does not make the model skip the description."
-  [:data_sensitivity :description :semantic_type])
-
 (mr/def ::attributes
-  [:set {:min 1} (into [:enum] all-attributes)])
+  [:set {:min 1} ::run/attribute])
 
 (def default-attributes
   "The attributes of a call that names none."
@@ -195,10 +191,6 @@
                   (attributes :semantic_type) (conj "semantic type")))
      ". Respond only with the structured object.")))
 
-(def system-prompt
-  "The system message for [[default-attributes]]. The user message carries only fenced data."
-  (system-prompt-for default-attributes))
-
 (defn- pct [x]
   (str (Math/round (* 100.0 (double x))) "%"))
 
@@ -256,42 +248,38 @@
   "One line of the `<fields>` block. The current `data_sensitivity` is deliberately absent so the model's answer is
   independent of the deterministic classifier's. When `attributes` holds `:description`, a missing description is
   rendered as `none`, and one a person cleared as `none [human-set]`, so the rule can name both."
-  ([field]
-   (render-field-line field default-attributes))
-  ([{:keys [name base_type database_type semantic_type description display_name fk_target fingerprint
-            cached_values sample_values] :as field}
-    attributes]
-   (let [values (budgeted-values (distinct (concat sample_values cached_values)))]
-     (str "- " name
-          " (" (subs (str base_type) 1) (when database_type (str ", " (capped database_type)))
-          (when semantic_type (str "; semantic: " (subs (str semantic_type) 1) (human-set-marker field :semantic_type)))
-          (when (contains? (:human_set field) :display_name) (str "; display name: " (quoted (capped display_name)) " [human-set]"))
-          (cond
-            (not (str/blank? description))
-            (str "; description: " (quoted (capped description)) (human-set-marker field :description))
+  [{:keys [name base_type database_type semantic_type description display_name fk_target fingerprint
+           cached_values sample_values] :as field}
+   attributes]
+  (let [values (budgeted-values (distinct (concat sample_values cached_values)))]
+    (str "- " name
+         " (" (subs (str base_type) 1) (when database_type (str ", " (capped database_type)))
+         (when semantic_type (str "; semantic: " (subs (str semantic_type) 1) (human-set-marker field :semantic_type)))
+         (when (contains? (:human_set field) :display_name) (str "; display name: " (quoted (capped display_name)) " [human-set]"))
+         (cond
+           (not (str/blank? description))
+           (str "; description: " (quoted (capped description)) (human-set-marker field :description))
 
-            (attributes :description)
-            (str "; description: none" (human-set-marker field :description)))
-          (when fk_target (str "; fk -> " fk_target))
-          (when-let [fp (fingerprint-fragment fingerprint)] (str "; " fp))
-          (when (seq values) (str "; values: " (str/join ", " values)))
-          ")"))))
+           (attributes :description)
+           (str "; description: none" (human-set-marker field :description)))
+         (when fk_target (str "; fk -> " fk_target))
+         (when-let [fp (fingerprint-fragment fingerprint)] (str "; " fp))
+         (when (seq values) (str "; values: " (str/join ", " values)))
+         ")")))
 
 (defn user-message
   "The data half of the prompt for `fields`, a subset of the packet's fields when the table is chunked."
-  ([packet fields]
-   (user-message packet fields default-attributes))
-  ([{:keys [table]} fields attributes]
-   (let [{:keys [name schema engine entity_type description]} table]
-     (str "TABLE:\n"
-          (data-block "table"
-                      (str "name: " name
-                           (when schema (str "\nschema: " schema))
-                           (when engine (str "\nengine: " (clojure.core/name engine)))
-                           (when entity_type (str "\nentity type: " (subs (str entity_type) 1)))
-                           (when-not (str/blank? description) (str "\ndescription: " (capped description)))))
-          "\n\nCOLUMNS (" (count fields) "):\n"
-          (data-block "fields" (str/join "\n" (map #(render-field-line % attributes) fields)))))))
+  [{:keys [table]} fields attributes]
+  (let [{:keys [name schema engine entity_type description]} table]
+    (str "TABLE:\n"
+         (data-block "table"
+                     (str "name: " name
+                          (when schema (str "\nschema: " schema))
+                          (when engine (str "\nengine: " (clojure.core/name engine)))
+                          (when entity_type (str "\nentity type: " (subs (str entity_type) 1)))
+                          (when-not (str/blank? description) (str "\ndescription: " (capped description)))))
+         "\n\nCOLUMNS (" (count fields) "):\n"
+         (data-block "fields" (str/join "\n" (map #(render-field-line % attributes) fields))))))
 
 ;;; Response schema
 
@@ -306,7 +294,7 @@
   the call proposes it. The description cap is checked in [[parse-response]], not here: not every provider
   adapter accepts `maxLength`."
   [attributes :- ::attributes]
-  (let [proposals (filter attributes all-attributes)
+  (let [proposals (filter attributes run/attributes)
         ordered   (concat [:name :reasoning]
                           (if (attributes :data_sensitivity)
                             (concat [:data_sensitivity :confidence] (remove #{:data_sensitivity} proposals))
@@ -325,10 +313,6 @@
      :required             ["fields"]
      :additionalProperties false}))
 
-(def response-schema
-  "JSON schema for the forced tool call of [[default-attributes]]."
-  (response-schema-for default-attributes))
-
 ;;; Call
 
 (def ^:private temperature 0.0)
@@ -341,10 +325,8 @@
   "Output budget for a call over `field-count` columns. Measured usage is 80 to 100 tokens per column with the
   reasoning bounded to one sentence; 120 leaves room for longer names and a default chunk under the 8192 cap. A
   description adds [[description-tokens]] per column."
-  ([field-count]
-   (max-tokens field-count default-attributes))
-  ([field-count attributes]
-   (min 8192 (+ 512 (* (cond-> 120 (attributes :description) (+ description-tokens)) field-count)))))
+  [field-count attributes]
+  (min 8192 (+ 512 (* (cond-> 120 (attributes :description) (+ description-tokens)) field-count))))
 
 (defn- call! [model attributes packet fields]
   (metabot.self/call-llm-structured-with-trace
@@ -446,77 +428,74 @@
   stay as the model wrote them. Entries naming an unknown field are counted and ignored; fields with no entry are
   dropped. When a name appears twice the first entry wins.
 
-  Only the proposals of `attributes` (default [[default-attributes]]) are read. With `:data_sensitivity`, an invalid
+  Only the proposals of `attributes` are read. With `:data_sensitivity`, an invalid
   category drops the field and `UNSURE` abstains; without it, every entry is `:labeled`. An invalid semantic type, or
   one that does not fit the field's type (see [[semantic-type-fits?]]), is nulled and counted. A description is nulled
   as [[proposed-description]] says; an entry has `:description` only when `attributes` holds it."
-  ([fields   :- [:sequential ::context/field]
-    response :- [:maybe [:map {::mr/deliberately-open true}]]]
-   (parse-response fields response default-attributes))
-  ([fields     :- [:sequential ::context/field]
-    response   :- [:maybe [:map {::mr/deliberately-open true}]]
-    attributes :- ::attributes]
-   (let [known        (into {} (map (juxt :name identity)) fields)
-         sensitivity? (attributes :data_sensitivity)
-         description? (attributes :description)
-         counts       (volatile! zero-counts)
-         count!       (fn [k] (vswap! counts update k inc))
-         parsed       (reduce
-                       (fn [acc entry]
-                         (let [{:keys [name reasoning data_sensitivity confidence semantic_type description]}
-                               (update-keys entry keyword)]
-                           (cond
-                             (not (contains? known name))
-                             (do (count! :dropped-unknown) acc)
+  [fields     :- [:sequential ::context/field]
+   response   :- [:maybe [:map {::mr/deliberately-open true}]]
+   attributes :- ::attributes]
+  (let [known        (into {} (map (juxt :name identity)) fields)
+        sensitivity? (attributes :data_sensitivity)
+        description? (attributes :description)
+        counts       (volatile! zero-counts)
+        count!       (fn [k] (vswap! counts update k inc))
+        parsed       (reduce
+                      (fn [acc entry]
+                        (let [{:keys [name reasoning data_sensitivity confidence semantic_type description]}
+                              (update-keys entry keyword)]
+                          (cond
+                            (not (contains? known name))
+                            (do (count! :dropped-unknown) acc)
 
-                             (contains? acc name)
-                             acc
+                            (contains? acc name)
+                            acc
 
-                             :else
-                             (let [{:keys [base_type effective_type] :as field} (get known name)
-                                   semantic-type (cond
-                                                   (or (not (attributes :semantic_type))
-                                                       (nil? semantic_type)
-                                                       (= no-semantic-type semantic_type))
-                                                   nil
+                            :else
+                            (let [{:keys [base_type effective_type] :as field} (get known name)
+                                  semantic-type (cond
+                                                  (or (not (attributes :semantic_type))
+                                                      (nil? semantic_type)
+                                                      (= no-semantic-type semantic_type))
+                                                  nil
 
-                                                   (not (contains? semantic-type-set semantic_type))
-                                                   (do (count! :semantic-dropped) nil)
+                                                  (not (contains? semantic-type-set semantic_type))
+                                                  (do (count! :semantic-dropped) nil)
 
-                                                   (not (semantic-type-fits? (keyword semantic_type)
-                                                                             (or effective_type base_type)))
-                                                   (do (count! :semantic-misfit) nil)
+                                                  (not (semantic-type-fits? (keyword semantic_type)
+                                                                            (or effective_type base_type)))
+                                                  (do (count! :semantic-misfit) nil)
 
-                                                   :else
-                                                   (keyword semantic_type))
-                                   base          (cond-> {:confidence    confidence
-                                                          :semantic-type semantic-type
-                                                          :reasoning     reasoning}
-                                                   description? (assoc :description
-                                                                       (proposed-description field description count!)))]
-                               (assoc acc name
-                                      (cond
-                                        (not sensitivity?)
-                                        (assoc base :data-sensitivity nil :status :labeled)
+                                                  :else
+                                                  (keyword semantic_type))
+                                  base          (cond-> {:confidence    confidence
+                                                         :semantic-type semantic-type
+                                                         :reasoning     reasoning}
+                                                  description? (assoc :description
+                                                                      (proposed-description field description count!)))]
+                              (assoc acc name
+                                     (cond
+                                       (not sensitivity?)
+                                       (assoc base :data-sensitivity nil :status :labeled)
 
-                                        (= unsure data_sensitivity)
-                                        (assoc base :data-sensitivity nil :status :abstain)
+                                       (= unsure data_sensitivity)
+                                       (assoc base :data-sensitivity nil :status :abstain)
 
-                                        (contains? category-set data_sensitivity)
-                                        (assoc base :data-sensitivity (keyword data_sensitivity) :status :labeled)
+                                       (contains? category-set data_sensitivity)
+                                       (assoc base :data-sensitivity (keyword data_sensitivity) :status :labeled)
 
-                                        :else
-                                        (do (count! :dropped-invalid)
-                                            (assoc base :data-sensitivity nil :status :dropped))))))))
-                       {}
-                       (:fields response))
-         entries      (into {} (map (fn [{:keys [name]}]
-                                      [name (or (get parsed name)
-                                                (do (count! :dropped-missing)
-                                                    (cond-> dropped description? (assoc :description nil))))]))
-                            fields)]
-     {:fields entries
-      :counts @counts})))
+                                       :else
+                                       (do (count! :dropped-invalid)
+                                           (assoc base :data-sensitivity nil :status :dropped))))))))
+                      {}
+                      (:fields response))
+        entries      (into {} (map (fn [{:keys [name]}]
+                                     [name (or (get parsed name)
+                                               (do (count! :dropped-missing)
+                                                   (cond-> dropped description? (assoc :description nil))))]))
+                           fields)]
+    {:fields entries
+     :counts @counts}))
 
 ;;; Classify
 

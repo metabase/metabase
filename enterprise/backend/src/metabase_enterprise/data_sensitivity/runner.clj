@@ -33,6 +33,7 @@
    [metabase.run-tracking.core :as rt]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -43,22 +44,14 @@
 
 (set! *warn-on-reflection* true)
 
-(def supported-attributes
-  "The attributes a run can generate."
-  (set llm/all-attributes))
-
-(def default-attributes
-  "The attributes of a run that names none."
-  [:data_sensitivity :semantic_type])
-
 (def poll-ms
   "How often, in milliseconds, a worker that waits on chunk calls reads the status of its run."
   1000)
 
 (defn call-timeout-ms
-  "How long, in milliseconds, one chunk call may run, its retries included, before the worker fails it. Haiku chunk
-  calls take 5 to 20 s. The Metabot client socket timeout bounds only the gap between two reads, so a stalled
-  connection can hold a call far longer."
+  "How long, in milliseconds, one chunk call may run, its retries included, before the worker fails it. The
+  Metabot client socket timeout bounds only the gap between two reads, so a stalled connection can hold a call far
+  longer."
   []
   180000)
 
@@ -120,12 +113,9 @@
    [:table_ids  {:optional true} [:maybe [:sequential {:min 1} ms/PositiveInt]]]
    [:attributes {:optional true} [:maybe [:sequential {:min 1} ::run/attribute]]]])
 
-(defn- bad-request [message]
-  (ex-info message {:status-code 400}))
-
 (defn- request-scope [{:keys [schemas table_ids]}]
   (cond
-    (and schemas table_ids) (throw (bad-request (tru "Give schemas or table_ids, not both.")))
+    (and schemas table_ids) (throw (core/bad-request (tru "Give schemas or table_ids, not both.")))
     schemas                 {:type :schemas :schemas (vec (distinct schemas))}
     table_ids               {:type :tables :table_ids (vec (distinct table_ids))}
     :else                   {:type :database}))
@@ -147,16 +137,21 @@
     (case scope-type
       :database nil
       :schemas  (when-let [missing (seq (remove (set (map :schema tables)) schemas))]
-                  (throw (bad-request (tru "No active tables in schemas: {0}." (pr-str (vec missing))))))
+                  (throw (core/bad-request (tru "No active tables in schemas: {0}." (pr-str (vec missing))))))
       :tables   (when-let [missing (seq (remove (set (map :id tables)) table_ids))]
-                  (throw (bad-request (tru "Not active tables of this database: {0}." (pr-str (vec missing)))))))
+                  (throw (core/bad-request (tru "Not active tables of this database: {0}." (pr-str (vec missing)))))))
     (when (empty? tables)
-      (throw (bad-request (tru "The database has no active tables to classify."))))
+      (throw (core/bad-request (tru "The database has no active tables to classify."))))
     tables))
 
-(defn- check-attributes! [attributes]
-  (when-let [unsupported (seq (remove supported-attributes attributes))]
-    (throw (bad-request (tru "Attributes not supported yet: {0}." (pr-str (mapv name unsupported)))))))
+(defn- parse-request
+  "The `:scope`, `:attributes` and `:tables` of a start `request` for `database-id`. `:attributes` defaults to
+  [[llm/default-attributes]]. Throws the 400s of [[scope-tables]]."
+  [database-id request]
+  (let [scope (request-scope request)]
+    {:scope      scope
+     :attributes (vec (distinct (or (:attributes request) (sort llm/default-attributes))))
+     :tables     (scope-tables database-id scope)}))
 
 ;;; Stop
 
@@ -166,14 +161,14 @@
 (defn- stop-reason
   "The `::stop` reason in the cause chain of `e`, or nil."
   [e]
-  (some #(::stop (ex-data %)) (take-while some? (iterate ex-cause e))))
+  (some #(::stop (ex-data %)) (u.jvm/full-exception-chain e)))
 
 (defn- usage-limit-message
   "The message of a usage-limit failure in the cause chain of `e`, or nil."
   [e]
   (some #(when (= :metabot/usage-limit-reached (:type (ex-data %)))
            (or (:message (ex-data %)) (ex-message %)))
-        (take-while some? (iterate ex-cause e))))
+        (u.jvm/full-exception-chain e)))
 
 (defn- interrupted? [e]
   (or (.isInterrupted (Thread/currentThread))
@@ -238,11 +233,6 @@
     (when (and proposed (not= (some-> description str/trim) proposed))
       proposed)))
 
-(defn- key-type?
-  "Whether `semantic-type` is a key type, which sync owns: apply never replaces it."
-  [semantic-type]
-  (or (isa? semantic-type :type/PK) (isa? semantic-type :type/FK)))
-
 (defn- confidence [s]
   (#{:high :medium :low} (some-> s keyword)))
 
@@ -274,7 +264,7 @@
                               :proposed_value (name (:data_sensitivity proposed))))
 
                  (and (attributes :semantic_type) semantic_changed
-                      (not (key-type? (:semantic_type current))))
+                      (not (isa? (:semantic_type current) :Relation/*)))
                  (conj (assoc base
                               :attribute      :semantic_type
                               :proposed_value (u/qualified-name (:semantic_type proposed))))
@@ -393,29 +383,23 @@
                             (usage-limit-message e) {:end [:usage-limit (usage-limit-message e)]}
                             :else                   {:error e})))
               elapsed (long (u/since-ms timer))]
-          (cond
-            (:end outcome)
+          (if (:end outcome)
             (assoc (add-spent state @spent) :end (:end outcome) :remaining remaining)
-
-            (:error outcome)
             (let [e     (:error outcome)
-                  state (-> (add-spent state @spent)
-                            (add-table-time elapsed)
-                            (update :failed inc)
-                            (update :errors conj (table-error table (or (ex-message e) (str (class e))) (error-code e)
-                                                              elapsed)))]
-              (log/warnf e "Metadata generation run %d failed for table %d" run-id (:id table))
-              (if (db/record-table! run-id (progress state) nil)
-                (recur state more)
-                (assoc state :end [:stopped :gone] :remaining more)))
-
-            :else
-            (let [state (-> state
-                            (add-table-time elapsed)
-                            (update :done inc)
-                            (update :done-ids conj (:id table))
-                            (update :slow-calls (fnil + 0) (:slow-calls outcome))
-                            (update :usage add-usage (:model outcome) (:usage outcome)))]
+                  state (if e
+                          (-> (add-spent state @spent)
+                              (add-table-time elapsed)
+                              (update :failed inc)
+                              (update :errors conj (table-error table (or (ex-message e) (str (class e))) (error-code e)
+                                                                elapsed)))
+                          (-> state
+                              (add-table-time elapsed)
+                              (update :done inc)
+                              (update :done-ids conj (:id table))
+                              (update :slow-calls (fnil + 0) (:slow-calls outcome))
+                              (update :usage add-usage (:model outcome) (:usage outcome))))]
+              (when e
+                (log/warnf e "Metadata generation run %d failed for table %d" run-id (:id table)))
               (if (db/record-table! run-id (progress state) (:proposals outcome))
                 (recur state more)
                 (assoc state :end [:stopped :gone] :remaining more)))))))))
@@ -513,16 +497,14 @@
 
 (mu/defn estimate :- ::estimate
   "The size of a run that [[start-run!]] would start for `request`: tables, fields, and about how many tokens and USD
-  it uses. `:unavailable_reason` is why a start would fail now, or nil. Throws a 400 for the same scope and attribute
-  errors as [[start-run!]]."
+  it uses. `:unavailable_reason` is why a start would fail now, or nil. Throws a 400 for the same scope errors as
+  [[start-run!]]."
   [database :- (ms/InstanceOf :model/Database)
    request  :- ::start-request]
-  (let [attributes  (vec (distinct (or (:attributes request) default-attributes)))
-        _           (check-attributes! attributes)
-        tables      (scope-tables (:id database) (request-scope request))
+  (let [{:keys [attributes tables]} (parse-request (:id database) request)
         field-count (db/active-field-count (mapv :id tables))
         ratio       (or (per-field-cost (set attributes))
-                        (per-field-cost (set llm/all-attributes)))]
+                        (per-field-cost (set run/attributes)))]
     {:table_count        (count tables)
      :field_count        field-count
      :total_tokens       (* field-count (:tokens ratio))
@@ -537,17 +519,13 @@
 
 (mu/defn start-run! :- (ms/InstanceOf :model/MetadataGenerationRun)
   "Start a run over the active tables of `database` that the request names: all of them, those in `:schemas`, or
-  `:table_ids`. `:attributes` defaults to [[default-attributes]]. Returns the new run. Throws a 409 when a run is active
-  for the database, and a 400 when Metabot cannot run, the scope holds no active table, or an attribute is not
-  supported. The run executes as `creator-id`."
+  `:table_ids`. `:attributes` defaults to [[llm/default-attributes]]. Returns the new run. Throws a 409 when a run is active
+  for the database, and a 400 when Metabot cannot run or the scope holds no active table. The run executes as `creator-id`."
   [database   :- (ms/InstanceOf :model/Database)
    request    :- ::start-request
    creator-id :- ms/PositiveInt]
   (let [database-id (:id database)
-        scope       (request-scope request)
-        attributes  (vec (distinct (or (:attributes request) default-attributes)))
-        _           (check-attributes! attributes)
-        tables      (scope-tables database-id scope)]
+        {:keys [scope attributes tables]} (parse-request database-id request)]
     (when (db/active-run database-id)
       (throw (conflict database-id)))
     (when-let [reason (core/unavailable-reason)]
@@ -592,11 +570,11 @@
    run        :- (ms/InstanceOf :model/MetadataGenerationRun)
    creator-id :- ms/PositiveInt]
   (when (run/active-statuses (:status run))
-    (throw (bad-request (tru "The run has not ended."))))
+    (throw (core/bad-request (tru "The run has not ended."))))
   (let [active    (set (map :id (db/active-tables (:id database) nil)))
         table-ids (into [] (comp (map :table_id) (distinct) (filter active)) (:table_errors run))]
     (when (empty? table-ids)
-      (throw (bad-request (tru "The run has no failed tables that are still active."))))
+      (throw (core/bad-request (tru "The run has no failed tables that are still active."))))
     (start-run! database {:table_ids table-ids :attributes (:attributes run)} creator-id)))
 
 ;;; Heartbeat and reaper

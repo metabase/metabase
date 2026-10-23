@@ -18,7 +18,7 @@
   (:require
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase-enterprise.data-sensitivity.context :as context]
+   [metabase-enterprise.data-sensitivity.core :as core]
    [metabase-enterprise.data-sensitivity.db :as db]
    [metabase-enterprise.data-sensitivity.llm :as llm]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-proposal :as proposal]
@@ -29,6 +29,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.field :as warehouse-schema.field]
    [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [toucan2.core :as t2]))
@@ -38,7 +39,7 @@
 (defn- human-set?
   "Whether a person set the value of the attribute of proposal `p` now."
   [settings {:keys [field_id attribute]}]
-  (= :human (context/value-source (get settings field_id) attribute nil)))
+  (warehouse-schema-overlay/field-user-set? (get settings field_id) attribute))
 
 (mr/def ::table-counts
   [:map {:closed true}
@@ -92,7 +93,8 @@
 
 (defn- current-source [settings field attribute]
   (let [value (current-value field attribute)]
-    (context/value-source settings attribute (if (= :description attribute) (not-empty value) value))))
+    (or (warehouse-schema-overlay/field-value-source settings attribute (if (= :description attribute) (not-empty value) value))
+        :none)))
 
 (defn- with-current
   "`proposals` with the `source` and `current_value` of the value readers see now."
@@ -114,12 +116,6 @@
 
 ;;; Edit
 
-(defn- bad-request [message]
-  (ex-info message {:status-code 400}))
-
-(defn- key-type? [semantic-type]
-  (or (isa? semantic-type :type/PK) (isa? semantic-type :type/FK)))
-
 (defn- edited-value
   "`value` as the edited value of `attribute` of `field`, normalized, or throw a 400 when a person cannot set it: the
   same rules as generation and apply."
@@ -128,17 +124,17 @@
     :data_sensitivity
     (if (some #{value} llm/categories)
       value
-      (throw (bad-request (tru "Data sensitivity must be one of {0}." (str/join ", " llm/categories)))))
+      (throw (core/bad-request (tru "Data sensitivity must be one of {0}." (str/join ", " llm/categories)))))
 
     :semantic_type
     (let [semantic-type (keyword value)
           field-type    ((some-fn :effective_type :base_type) field)]
       (cond
-        (not (and (isa? semantic-type :Semantic/*) (not (key-type? semantic-type))))
-        (throw (bad-request (tru "{0} is not a semantic type that can be set here." value)))
+        (not (isa? semantic-type :Semantic/*))
+        (throw (core/bad-request (tru "{0} is not a semantic type that can be set here." value)))
 
         (not (llm/semantic-type-fits? semantic-type field-type))
-        (throw (bad-request (tru "{0} does not fit a field of type {1}." value (u/qualified-name field-type))))
+        (throw (core/bad-request (tru "{0} does not fit a field of type {1}." value (u/qualified-name field-type))))
 
         :else
         (u/qualified-name semantic-type)))
@@ -147,13 +143,13 @@
     (let [value (str/trim value)]
       (cond
         (str/blank? value)
-        (throw (bad-request (tru "The description must not be blank.")))
+        (throw (core/bad-request (tru "The description must not be blank.")))
 
         (> (count value) llm/description-cap)
-        (throw (bad-request (tru "The description must be at most {0} characters." llm/description-cap)))
+        (throw (core/bad-request (tru "The description must be at most {0} characters." llm/description-cap)))
 
         (llm/markup? value)
-        (throw (bad-request (tru "The description must be plain text, without links, HTML tags or code.")))
+        (throw (core/bad-request (tru "The description must be plain text, without links, HTML tags or code.")))
 
         :else
         value))))
@@ -201,7 +197,7 @@
     (nil? field)                                                        :field_not_found
     (not (:can_write field))                                            :not_writable
     (not= :semantic_type attribute)                                     :write
-    (key-type? (:semantic_type field))                                  :key_field
+    (isa? (:semantic_type field) :Relation/*)                           :key_field
     (not (llm/semantic-type-fits? (value-to-write s)
                                   ((some-fn :effective_type :base_type) field))) :type_mismatch
     :else                                                               :write))
@@ -291,11 +287,11 @@
 
 (defn- check-request [{:keys [accept edits reject_all database_id]}]
   (when (and reject_all (not database_id))
-    (throw (bad-request (tru "reject_all needs database_id."))))
+    (throw (core/bad-request (tru "reject_all needs database_id."))))
   (when (and database_id (not reject_all))
-    (throw (bad-request (tru "database_id needs reject_all."))))
+    (throw (core/bad-request (tru "database_id needs reject_all."))))
   (when (and reject_all (or (seq accept) (seq edits)))
-    (throw (bad-request (tru "Give accept and edits, or reject_all, not both.")))))
+    (throw (core/bad-request (tru "Give accept and edits, or reject_all, not both.")))))
 
 (defn- reject-all!
   "Mark every pending proposal of active fields of the database `database-id` `rejected`, decided by `user-id`."

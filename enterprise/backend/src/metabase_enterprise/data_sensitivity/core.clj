@@ -31,6 +31,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn bad-request
+  "An exception for a 400 response with `message`."
+  [message]
+  (ex-info message {:status-code 400}))
+
 (def required-permission
   "The Metabot permission the structured call declares. Granted by the all-yes binding, so it only labels the call;
   the API limits callers to superusers instead."

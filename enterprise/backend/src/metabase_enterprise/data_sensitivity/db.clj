@@ -30,6 +30,16 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
+(defn- active-fields-where
+  "The `:where` of [[active-fields]] over the tables that `table-condition` selects."
+  [table-condition]
+  [:and
+   table-condition
+   [:= :active true]
+   [:not= :visibility_type "retired"]
+   [:= :nfc_path nil]
+   [:= :parent_id nil]])
+
 (mu/defn active-fields
   "The active, non-retired, top-level Fields of `table-id`, ordered by position then id. Hidden and sensitive fields
   are included. JSON child fields are excluded: SQL unfolding sets only `nfc_path`, Mongo sets `nfc_path` and
@@ -37,12 +47,7 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Field
              {:from     [(warehouse-schema-overlay/field-query)]
-              :where    [:and
-                         [:= :table_id table-id]
-                         [:= :active true]
-                         [:not= :visibility_type "retired"]
-                         [:= :nfc_path nil]
-                         [:= :parent_id nil]]
+              :where    (active-fields-where [:= :table_id table-id])
               :order-by [[:position :asc] [:id :asc]]}))
 
 (mu/defn active-field-count :- ms/IntGreaterThanOrEqualToZero
@@ -51,12 +56,7 @@
   (if (seq table-ids)
     (t2/count :model/Field
               {:from  [(warehouse-schema-overlay/field-query)]
-               :where [:and
-                       [:in :table_id table-ids]
-                       [:= :active true]
-                       [:not= :visibility_type "retired"]
-                       [:= :nfc_path nil]
-                       [:= :parent_id nil]]})
+               :where (active-fields-where [:in :table_id table-ids])})
     0))
 
 (mu/defn user-settings-by-field
@@ -204,11 +204,17 @@
    [:schema      {:optional true} [:maybe :string]]
    [:table_ids   {:optional true} [:maybe [:sequential ::lib.schema.id/table]]]])
 
-(defn- scope-where [{:keys [database_id schema table_ids]}]
-  (cond-> [:and [:= :t.active true] [:= :f.active true]]
-    database_id     (conj [:= :t.db_id database_id])
-    schema          (conj [:= :t.schema schema])
-    (seq table_ids) (conj [:in :p.table_id table_ids])))
+(defn- pending-in-scope
+  "The `:from`, `:join` and `:where` of a query over the pending proposals in `scope` of active fields of active
+  tables, with the proposal table aliased `p`, the Table `t` and the Field `f`."
+  [{:keys [database_id schema table_ids]}]
+  {:from  [[:metadata_generation_proposal :p]]
+   :join  [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :p.table_id]
+           (warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :p.field_id]]
+   :where (cond-> [:and [:= :p.status "pending"] [:= :t.active true] [:= :f.active true]]
+            database_id     (conj [:= :t.db_id database_id])
+            schema          (conj [:= :t.schema schema])
+            (seq table_ids) (conj [:in :p.table_id table_ids]))})
 
 (mu/defn pending-proposals :- [:sequential (ms/InstanceOf :model/MetadataGenerationProposal)]
   "The pending proposals in `scope` of active fields of active tables, with the field's `field_name`,
@@ -216,14 +222,11 @@
   field id and attribute."
   [scope :- ::scope]
   (t2/select :model/MetadataGenerationProposal
-             {:select   [:p.* [:f.name :field_name] [:f.display_name :field_display_name]
-                         [:f.base_type :field_base_type] [:f.effective_type :field_effective_type]]
-              :from     [[:metadata_generation_proposal :p]]
-              :join     [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :p.table_id]
-                         (warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :p.field_id]]
-              :where    (conj (scope-where scope) [:= :p.status "pending"])
-              :order-by [[:t.schema :asc] [:t.name :asc] [:p.table_id :asc]
-                         [:f.position :asc] [:f.id :asc] [:p.attribute :asc]]}))
+             (assoc (pending-in-scope scope)
+                    :select   [:p.* [:f.name :field_name] [:f.display_name :field_display_name]
+                               [:f.base_type :field_base_type] [:f.effective_type :field_effective_type]]
+                    :order-by [[:t.schema :asc] [:t.name :asc] [:p.table_id :asc]
+                               [:f.position :asc] [:f.id :asc] [:p.attribute :asc]])))
 
 (mu/defn pending-proposal-keys :- [:sequential [:map
                                                 [:id        ms/PositiveInt]
@@ -234,12 +237,9 @@
   by id."
   [scope :- ::scope]
   (t2/select :model/MetadataGenerationProposal
-             {:select   [:p.id :p.table_id :p.field_id :p.attribute]
-              :from     [[:metadata_generation_proposal :p]]
-              :join     [(warehouse-schema-overlay/table-query {:alias :t}) [:= :t.id :p.table_id]
-                         (warehouse-schema-overlay/field-query {:alias :f}) [:= :f.id :p.field_id]]
-              :where    (conj (scope-where scope) [:= :p.status "pending"])
-              :order-by [[:p.id :asc]]}))
+             (assoc (pending-in-scope scope)
+                    :select   [:p.id :p.table_id :p.field_id :p.attribute]
+                    :order-by [[:p.id :asc]])))
 
 (mu/defn proposals-by-id :- [:sequential (ms/InstanceOf :model/MetadataGenerationProposal)]
   "The proposals with `ids`, ordered by id."

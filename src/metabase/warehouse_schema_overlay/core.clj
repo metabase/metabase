@@ -87,6 +87,32 @@
    (field-user-set-condition column settings-alias)
    [:not= (u/qualified-key settings-alias (field-ai-columns column)) nil]])
 
+(defn field-user-set?
+  "Whether the user set `column` in `user-settings`, a `metabase_field_user_settings` row or nil. The Clojure form of
+  the test that [[field-query]] makes in SQL."
+  [user-settings column]
+  (if-let [flag (field-user-settings-flags column)]
+    (true? (get user-settings flag))
+    (some? (get user-settings (if (= column :coercion_strategy) :effective_type column)))))
+
+(defn field-ai-set?
+  "Whether readers see the accepted AI value of `column` in `user-settings`: it has one and the user did not set the
+  column."
+  [user-settings column]
+  (boolean (when-let [ai-column (field-ai-columns column)]
+             (and (some? (get user-settings ai-column))
+                  (not (field-user-set? user-settings column))))))
+
+(defn field-value-source
+  "The layer that gives readers the value of `column`, when that value is `value`: `:human`, `:ai` (see
+  [[field-ai-columns]]), `:deterministic`, or nil when no layer has a value. `user-settings` is the Field's
+  `metabase_field_user_settings` row or nil."
+  [user-settings column value]
+  (cond
+    (field-user-set? user-settings column) :human
+    (field-ai-set? user-settings column)   :ai
+    (some? value)                          :deterministic))
+
 (defenterprise field-ai-proposal
   "Honey SQL for the pending AI proposal of `attribute`, a key of [[field-ai-columns]], for the Field aliased
   `field-alias`, with the proposal table aliased `proposal-alias`: a map of `:join`, a `:left-join` pair that adds at

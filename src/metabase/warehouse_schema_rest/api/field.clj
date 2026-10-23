@@ -119,6 +119,14 @@
                (not (schema.field/internal-remapping-allowed? base-type new-semantic-type)))
       (warehouse-schema-rest.db/delete-dimension! old-dim-id))))
 
+(defn- updated-field-response!
+  "`field`, read again after a write, hydrated as the Field endpoints return it. Publishes its `:event/field-update`."
+  [field]
+  (u/prog1 (-> field
+               (t2/hydrate :dimensions :has_field_values :data_sensitivity_source)
+               (schema.field/hydrate-target-with-data-model-perms))
+    (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})))
+
 (defn- update-nested-fields-on-json-unfolding-change!
   "If JSON unfolding was enabled for a JSON field, it activates previously synced nested fields from the JSON field.
    If JSON unfolding was disabled for that field, it inactivates the nested fields from the JSON field.
@@ -213,10 +221,7 @@
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (let [updated (warehouse-schema-rest.db/field id)]
-      (u/prog1 (-> updated
-                   (t2/hydrate :dimensions :has_field_values :data_sensitivity_source)
-                   (schema.field/hydrate-target-with-data-model-perms))
-        (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
+      (u/prog1 (updated-field-response! updated)
         (when (not= effective-type (:effective_type field))
           (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
           ;; Run with admin perms to match behavior during normal sync.
@@ -232,10 +237,7 @@
                          [:columns [:sequential {:min 1} [:enum "data_sensitivity"]]]]]
   (let [field (api/write-check (warehouse-schema-rest.db/field id))]
     (schema.field-user-settings/unset-user-settings! field (mapv keyword columns))
-    (u/prog1 (-> (warehouse-schema-rest.db/field id)
-                 (t2/hydrate :dimensions :has_field_values :data_sensitivity_source)
-                 (schema.field/hydrate-target-with-data-model-perms))
-      (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*}))))
+    (updated-field-response! (warehouse-schema-rest.db/field id))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 

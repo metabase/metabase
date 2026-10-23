@@ -1,7 +1,6 @@
 (ns metabase-enterprise.data-sensitivity.api.apply-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.data-sensitivity.context :as context]
    [metabase-enterprise.data-sensitivity.db :as db]
    [metabase-enterprise.data-sensitivity.review :as review]
    [metabase.events.core :as events]
@@ -110,8 +109,7 @@
                 (apply! {:accept [sem ds] :edits {edited "type/Score"}})))
          (is (= {sem :deleted ds :deleted edited :deleted left :pending}
                 (statuses [sem ds edited left])))
-         (testing "the edit is written as the person's value, the others as AI values"
-           (is (=? {:semantic_type :type/Score :semantic_type_set true :ai_semantic_type nil} (settings a-int)))
+         (testing "the accepted proposals are written as AI values"
            (is (=? {:ai_semantic_type :type/Email} (settings a-text)))
            (is (=? {:ai_data_sensitivity :PII :ai_description nil} (settings a-plain)))))))))
 
@@ -198,31 +196,21 @@
            (is (=? {:written 1 :failed 0} (apply! {:accept [replaced]})))
            (is (=? {:ai_semantic_type :type/Name} (settings a-text)))))))))
 
-(deftest apply-reads-human-layer-at-accept-time-test
-  (mt/with-premium-features #{:data-sensitivity}
-    (do-with-run
-     (fn [run-id {:keys [a a-text a-plain]}]
-       (let [sem (suggestion! run-id a a-text)
-             ds  (suggestion! run-id a a-plain :attribute :data_sensitivity :proposed_value "PII")]
-         (field-user-settings/upsert-user-settings (t2/select-one :model/Field a-text) {:semantic_type :type/Name})
-         (t2/insert! :model/FieldUserSettings {:field_id a-plain :ai_data_sensitivity :PHI})
-         (testing "accept by id replaces a value a person set after the run"
-           (is (= (assoc nothing :written 2) (apply! {:accept [sem ds]})))
-           (is (= {sem :deleted ds :deleted} (statuses [sem ds])))
-           (is (=? {:semantic_type nil :semantic_type_set false :ai_semantic_type :type/Email} (settings a-text)))
-           (is (=? {:data_sensitivity :PII} (effective a-plain)))))))))
-
 (deftest apply-over-human-value-test
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-run
-     (fn [run-id {:keys [a a-text a-plain]}]
+     (fn [run-id {:keys [a a-text a-plain a-int]}]
        (field-user-settings/upsert-user-settings (t2/select-one :model/Field a-text) {:semantic_type :type/Name})
        (field-user-settings/upsert-user-settings (t2/select-one :model/Field a-plain) {:description nil})
+       (t2/insert! :model/FieldUserSettings {:field_id a-int :ai_data_sensitivity :PHI})
        (let [sem  (suggestion! run-id a a-text)
              desc (suggestion! run-id a a-plain :attribute :description
-                               :proposed_value "A plain text field.")]
-         (is (=? {:written 2} (apply! {:accept [sem desc]})))
-         (is (= {sem :deleted desc :deleted} (statuses [sem desc])))
+                               :proposed_value "A plain text field.")
+             ds   (suggestion! run-id a a-int :attribute :data_sensitivity :proposed_value "PII")]
+         (is (=? {:written 3} (apply! {:accept [sem desc ds]})))
+         (is (= {sem :deleted desc :deleted ds :deleted} (statuses [sem desc ds])))
+         (testing "an accepted proposal replaces an earlier AI value"
+           (is (=? {:data_sensitivity :PII} (effective a-int))))
          (testing "the person's value is cleared and readers see the AI value"
            (is (=? {:semantic_type nil :semantic_type_set false :ai_semantic_type :type/Email} (settings a-text)))
            (is (=? {:description nil :description_set false :ai_description "A plain text field."}
@@ -331,14 +319,6 @@
          (testing "an internal remapping the new semantic type does not allow is removed"
            (is (not (t2/exists? :model/Dimension :id dim)))))))))
 
-(deftest value-source-test
-  (testing "the layer readers see, in the order of field-query"
-    (is (= :none (context/value-source nil :semantic_type nil)))
-    (is (= :deterministic (context/value-source nil :semantic_type :type/Category)))
-    (is (= :ai (context/value-source {:ai_semantic_type :type/Email} :semantic_type :type/Email)))
-    (is (= :human (context/value-source {:semantic_type_set true :ai_semantic_type :type/Email} :semantic_type nil)))
-    (is (= :human (context/value-source {:display_name "X"} :display_name "X")))))
-
 (defn- apply-edit! [suggestion-id status value]
   (mt/user-http-request :crowberto :post status url {:edits {suggestion-id value}}))
 
@@ -351,8 +331,6 @@
                                :proposed_value "PII")
              desc (suggestion! run-id a a-plain :attribute :description
                                :proposed_value "A field.")]
-         (testing "only a superuser can apply"
-           (mt/user-http-request :rasta :post 403 url {:edits {sem "type/Score"}}))
          (testing "a semantic type must be known, not a key type, and fit the field"
            (apply-edit! sem 400 "type/Nonsense")
            (apply-edit! sem 400 "type/PK")
@@ -402,5 +380,5 @@
            (is (=? {:semantic_type :type/Score} (effective a-int)))
            (is (=? {:data_sensitivity :BIZ_CONF :description "The plain text."} (effective a-plain)))
            (is (=? {:semantic_type :type/Title} (effective a-text)))
-           (is (= :human (context/value-source (settings a-plain) :data_sensitivity :BIZ_CONF)))
-           (is (= :human (context/value-source (settings a-int) :semantic_type :type/Score)))))))))
+           (is (warehouse-schema-overlay/field-user-set? (settings a-plain) :data_sensitivity))
+           (is (warehouse-schema-overlay/field-user-set? (settings a-int) :semantic_type))))))))

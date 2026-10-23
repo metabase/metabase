@@ -17,8 +17,13 @@
 (derive :model/MetadataGenerationRun :metabase/model)
 (derive :model/MetadataGenerationRun :hook/timestamped?)
 
+(def attributes
+  "The attributes a run can generate, in the order of the properties of the LLM response. The description comes before
+  the semantic type so that a correct semantic type does not make the model skip the description."
+  [:data_sensitivity :description :semantic_type])
+
 (mr/def ::attribute
-  [:enum :data_sensitivity :semantic_type :description])
+  (into [:enum] attributes))
 
 (mr/def ::status
   [:enum :pending :running :canceling :succeeded :failed :canceled :usage_limit])
