@@ -776,12 +776,12 @@
 
 (defn collection-namespace-folder
   "The folder under `collections/` that holds the collections of `collection-namespace`, `main` for the default one.
-  The `data-apps` namespace is the `data_apps` folder, spelled like the top-level directory of the apps themselves."
+  A dashed namespace is spelled with an underscore, like the top-level `data_apps` directory of the apps themselves."
   [collection-namespace]
   (case (some-> collection-namespace keyword)
     :snippets     "snippets"
     :transforms   "transforms"
-    :data-actions "data-actions"
+    :data-actions "data_actions"
     :data-apps    "data_apps"
     "main"))
 

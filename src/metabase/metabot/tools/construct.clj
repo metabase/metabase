@@ -45,7 +45,7 @@
 
 (def ^:private construct-visualization-schema
   [:map {:closed true}
-   [:chart_type :string]])
+   [:chart_type (into [:enum] shared/chart-types)]])
 
 (def ^:private construct-notebook-query-json-schema
   "Hand-authored JSON Schema for the `:query` argument, attached to the deliberately open,
@@ -668,18 +668,40 @@
                              (or agent-error? (tools/pipeline-error-code error))))
                    (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))
 
+(defn- has-valid-trailing-clause?
+  "Return whether a stage has a nonempty trailing clause with a valid portable structure."
+  [stage]
+  (boolean
+   (some (fn [k]
+           (let [clause (get stage k)]
+             (and (mr/validate repr/stage-schema (select-keys stage ["lib/type" k]))
+                  (or (integer? clause) (seq clause)))))
+         ["order-by" "limit" "fields"])))
+
 (defn- as-agent-input-error
   "Return database failures unchanged; wrap other exceptions as agent-input errors.
 
+  A valid trailing clause preserves split advice, even if another clause is malformed.
+  Otherwise, a structural error in the unsplit query takes precedence.
   The wrapper sets `:agent-error?` for tool callers and defaults `:status-code` to 400 for HTTP
   callers. Existing status codes are preserved."
   [^clojure.lang.ExceptionInfo e]
-  (if (database-error? e)
-    e
-    (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
-          data   (cond-> base
-                   (nil? (:status-code base)) (assoc :status-code 400))]
-      (ex-info (ex-message e) data e))))
+  (let [e (if-let [query (when (and (#{:post-agg-filter-with-trailing-clauses
+                                       :post-agg-filter-needs-multi-stage} (:error (ex-data e)))
+                                    (not (has-valid-trailing-clause? (:stage (ex-data e)))))
+                           (:query (ex-data e)))]
+            (try
+              (repr/validate-query query)
+              e
+              (catch clojure.lang.ExceptionInfo validation-error
+                validation-error))
+            e)]
+    (if (database-error? e)
+      e
+      (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
+            data   (cond-> base
+                     (nil? (:status-code base)) (assoc :status-code 400))]
+        (ex-info (ex-message e) data e)))))
 
 (defn- not-runnable-problem
   "What is wrong at a Malli schema `error`, phrased for the LLM, or nil when there is nothing to add

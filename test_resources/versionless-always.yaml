@@ -1,0 +1,30 @@
+# Test changelog for the runAlways tests in metabase.app-db.liquibase.versions-test and rollback-test.
+# A base changeset and a runAlways view: every update run re-runs the view (Liquibase passes ALREADY_RAN, not
+# RUN_AGAIN, for it) and moves its changelog row into that run's deployment.
+databaseChangeLog:
+  - logicalFilePath: migrations/2026/versionless_always.yaml
+  - changeSet:
+      id: always_base
+      author: test
+      comment: base migration (scenario test)
+      changes:
+        - createTable:
+            tableName: always_base_table
+            columns:
+              - column:
+                  name: id
+                  type: int
+      rollback:
+        - dropTable:
+            tableName: always_base_table
+  - changeSet:
+      id: always_view
+      author: test
+      runAlways: true
+      comment: runAlways view (scenario test)
+      changes:
+        - sql:
+            sql: CREATE OR REPLACE VIEW v_always AS SELECT 1 AS x
+      rollback:
+        - sql:
+            sql: DROP VIEW IF EXISTS v_always

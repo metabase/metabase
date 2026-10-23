@@ -329,6 +329,32 @@
                                              :title       "Orders"
                                              :description "Orders by count."})))))))))
 
+(deftest construct-notebook-query-tool-post-aggregation-errors-test
+  (let [source [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]]
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [[error cases] {:post-agg-filter-with-trailing-clauses
+                             [{:limit 5}
+                              {:fields 42 :order-by [["desc" {} ["aggregation" {} 0]]]}
+                              {:fields 42 :limit 5}
+                              {:order-by 42 :fields [["field" {} (conj source "PRODUCT_ID")]]}
+                              {:order-by 42 :limit 5}
+                              {:order-by 42 :fields 42 :limit 5}]
+                             :post-agg-filter-needs-multi-stage
+                             [{:aggregation [["count" {}] ["count" {}]]}]}
+              clauses cases]
+        (testing (pr-str clauses)
+          (let [stage (merge {:lib/type "mbql.stage/mbql"
+                              :source-table source
+                              :aggregation [["count" {}]]
+                              :filters [[">" {} ["aggregation" {} 0] 1]]}
+                             clauses)]
+            (is (=? {:class :recoverable
+                     :code (keyword "metabase.metabot.tools.recoverable.pipeline" (name error))
+                     :text #".*MBQL 5 requires.*"}
+                    (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                                            {:query {:lib/type "mbql/query" :stages [stage]}
+                                             :title "Orders" :description "Orders by count."})))))))))
+
 (deftest ->entries-test
   (testing "an entry carries what the adapters and the system message read"
     (let [entries (agent-tools/->entries [#'agent-tools/create-sql-query-tool
@@ -343,9 +369,9 @@
             (is (some? (:schema entry)))
             (is (fn? (:fn entry))))))))
   (testing "an unconverted tool's schema comes from its var metadata"
-    (let [entries (agent-tools/->entries [#'agent-tools/create-chart-tool] (atom {}) nil :nlq)
-          [_:=> [_:cat declared] _out] (:schema (get entries "create_chart"))
-          [_:=> [_:cat original] _out] (:schema (meta #'agent-tools/create-chart-tool))]
+    (let [entries (agent-tools/->entries [#'agent-tools/list-snippets-tool] (atom {}) nil :nlq)
+          [_:=> [_:cat declared] _out] (:schema (get entries "list_snippets"))
+          [_:=> [_:cat original] _out] (:schema (meta #'agent-tools/list-snippets-tool))]
       (is (= original declared))))
   (testing "a converted tool and an unconverted one sit side by side"
     (let [entries (agent-tools/->entries [#'agent-tools/list-timelines-tool       ; mu/defn var
@@ -360,12 +386,10 @@
 
 (deftest tool-schemas-exclude-state-keys-test
   (testing "create_chart schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/create-chart-tool)
-          [_:=> [_:cat params] _out] schema]
+    (let [params (:args (tools.legacy/declaration-of #'agent-tools/create-chart-tool))]
       (is (not-any? #(= :charts_state (first %)) (rest params)))))
   (testing "edit_chart schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/edit-chart-tool)
-          [_:=> [_:cat params] _out] schema]
+    (let [params (:args (tools.legacy/declaration-of #'agent-tools/edit-chart-tool))]
       (is (not-any? #(= :queries_state (first %)) (rest params)))))
   (doseq [tool [agent-tools/create-sql-query-tool agent-tools/create-sql-query-code-edit-tool
                 agent-tools/edit-sql-query-tool agent-tools/replace-sql-query-tool]]
@@ -389,8 +413,8 @@
                                      (->> (t2/hydrate (t2/select :model/Pulse :dashboard_id dash-id) :channels)
                                           (mapcat :channels)
                                           (mapv (juxt :schedule_type :schedule_hour :schedule_day :schedule_frame))))]
-        (binding [shared/*memory-atom* (atom {:context {:slack_channel_id "C123"}})]
-          (mt/with-current-user (mt/user->id :crowberto)
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [ctx {:memory-atom (atom {:context {:slack_channel_id "C123"}})}]
             (doseq [[schedule expected-cron expected-subscription]
                     [[{:frequency "hourly"}
                       "0 0 * * * ? *" [:hourly nil nil nil]]
@@ -413,5 +437,6 @@
                             {:dashboard_id inapp-dash-id :slack_channel "data-team"}
                             #(subscription-schedules inapp-dash-id) expected-subscription]]]
                     (testing (str tool)
-                      (is (= {:output "success"} (tool (assoc args :schedule schedule))))
+                      (is (=? {:output #"^Created (alert|subscription) \d+ .*"}
+                              (tools.core/call @tool (assoc args :schedule schedule) ctx)))
                       (is (= [expected] (stored-schedules))))))))))))))
