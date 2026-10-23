@@ -2,6 +2,7 @@ import { registerVisualizations } from "metabase/visualizations/register";
 import type {
   AnalysisFindingError,
   AnalysisFindingErrorType,
+  CardType,
   DependencyEntry,
   DependencyGroupType,
   DependencyNode,
@@ -1190,4 +1191,17 @@ describe("getNodeDataSourceEntry", () => {
   ])("should return $expected for $description", ({ node, expected }) => {
     expect(getNodeSourceReplacementEntry(node)).toEqual(expected);
   });
+
+  it.each<CardType>(["question", "model"])(
+    "should return null for a %s card in a data app's collection",
+    (type) => {
+      const node = createMockCardDependencyNode({
+        data: createMockCardDependencyNodeData({
+          type,
+          collection: createMockCollection({ namespace: "data-apps" }),
+        }),
+      });
+      expect(getNodeSourceReplacementEntry(node)).toBeNull();
+    },
+  );
 });
