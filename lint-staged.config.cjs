@@ -1,36 +1,29 @@
 const lintFix =
   "oxlint --disable-nested-config --no-error-on-unmatched-pattern --max-warnings 0 --report-unused-disable-directives --fix";
+const format = "oxfmt --write --no-error-on-unmatched-pattern";
 
 module.exports = {
   "+(frontend|enterprise)/**/*.styled.tsx": [
     "stylelint --customSyntax postcss-styled-syntax --fix",
   ],
-  "+(frontend|enterprise/frontend|e2e)/**/*.css": [
-    "stylelint --fix",
-    "oxfmt --write",
-  ],
+  "+(frontend|enterprise/frontend|e2e)/**/*.css": ["stylelint --fix", format],
   "+(frontend|enterprise/frontend)/**/*.{js,jsx,ts,tsx}": [
     `cross-env LINT_CSS_MODULES=true ${lintFix}`,
-    "oxfmt --write",
+    format,
     "bun bin/verify-doc-links/verify-doc-links.ts",
   ],
-  "e2e/**/!(cypress_sample_instance_data).{js,jsx,ts,tsx}": [
-    lintFix,
-    "oxfmt --write",
-  ],
+  "e2e/**/!(cypress_sample_instance_data).{js,jsx,ts,tsx}": [lintFix, format],
   "**/*.{clj,cljc,cljs,bb}": [
     "./bin/mage cljfmt-files",
     "./bin/mage fix-unused-requires",
   ],
   "e2e/test/scenarios/**/*.{js,ts}": ["node e2e/validate-e2e-test-files.js"],
-  "enterprise/frontend/src/embedding-sdk-package/README.md": ["oxfmt --write"],
-  "+(frontend|enterprise/frontend|e2e)/**/*.{mjs,cjs,mts,cts}": [
-    "oxfmt --write",
-  ],
+  "enterprise/frontend/src/embedding-sdk-package/README.md": [format],
+  "+(frontend|enterprise/frontend|e2e)/**/*.{mjs,cjs,mts,cts}": [format],
   "!(frontend|enterprise|e2e)/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,css}": [
-    "oxfmt --write",
+    format,
   ],
-  "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,css}": ["oxfmt --write"],
+  "./*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,css}": [format],
   "**/*": [
     /**
      * Run mage token-scan for each staged file individually.
