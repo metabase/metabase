@@ -28,7 +28,7 @@ import type {
 } from "metabase/common/components/Pickers";
 import {
   CollectionPickerModal,
-  isInDbTree,
+  isInCollectionTree,
 } from "metabase/common/components/Pickers";
 import { SnippetCollectionName } from "metabase/common/components/SnippetCollectionName";
 import { useUniqueId } from "metabase/common/hooks/use-unique-id";
@@ -193,7 +193,9 @@ export function FormCollectionAndDashboardPicker({
   const handleChange = useCallback(
     async (item: OmniPickerItem) => {
       const { id, model } = item;
-      const collection_id = isInDbTree(item) ? undefined : item.collection?.id;
+      const collection_id = isInCollectionTree(item)
+        ? item.collection?.id
+        : undefined;
 
       collectionIdHelpers.setValue(
         canonicalCollectionId(model === "dashboard" ? collection_id : id),

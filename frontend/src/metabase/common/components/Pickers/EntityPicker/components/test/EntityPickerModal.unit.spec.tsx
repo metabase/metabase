@@ -1,10 +1,14 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { findRequests } from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockDataApp,
+  createMockSearchResult,
 } from "metabase-types/api/mocks";
 
 import type { OmniPickerItem } from "../../types";
@@ -157,6 +161,7 @@ const libraryPickerSetup = {
 describe("EntityPickerModal", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    reinitialize();
   });
 
   describe("Default Behavior", () => {
@@ -1070,203 +1075,216 @@ describe("EntityPickerModal", () => {
     });
   });
 
-  describe("Custom folders", () => {
-    it("lists a caller's folder at the root and picks its items through their own handler", async () => {
-      const onSelectOwls = jest.fn();
-      const { onChange } = await setup({
-        customFolders: [
-          {
-            id: "birds",
-            name: "Birds",
-            items: [
-              { id: 1, name: "Owls", icon: "app", onSelect: onSelectOwls },
-              { id: 2, name: "Herons", icon: "app", onSelect: jest.fn() },
-            ],
-          },
-        ],
-      });
+  describe("Data apps", () => {
+    const OWLS = createMockDataApp({
+      id: 8,
+      name: "owls",
+      display_name: "Owls",
+    });
+    const HERONS = createMockDataApp({
+      id: 9,
+      name: "herons",
+      display_name: "Herons",
+    });
+    const options = { hasDataApps: true, hasConfirmButtons: false };
+    const models: OmniPickerItem["model"][] = ["card", "data-app"];
 
-      await userEvent.click(await screen.findByText("Birds"));
+    it("lists the user's data apps in a Data apps folder", async () => {
+      await setup({ options, models, dataApps: [OWLS, HERONS] });
+
+      await userEvent.click(await screen.findByText("Data apps"));
+
+      await expectVisibleItem("Owls");
       await expectVisibleItem("Herons");
+      const dataAppList = screen.getByTestId("item-picker-level-1");
+      expect(within(dataAppList).getAllByRole("link")).toHaveLength(2);
+    });
+
+    it("picks a data app", async () => {
+      const { onChange } = await setup({ options, models, dataApps: [OWLS] });
+
+      await userEvent.click(await screen.findByText("Data apps"));
       await userEvent.click(await screen.findByText("Owls"));
 
-      expect(onSelectOwls).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith({
+        model: "data-app",
+        id: OWLS.id,
+        name: "Owls",
+      });
+    });
+
+    it("doesn't pick the Data apps folder when the picker also picks collections", async () => {
+      const { onChange } = await setup({
+        options,
+        models: ["collection", "data-app"],
+        dataApps: [OWLS],
+      });
+
+      await userEvent.click(await screen.findByText("Data apps"));
+
+      await expectVisibleItem("Owls");
       expect(onChange).not.toHaveBeenCalled();
     });
 
-    it("opens on the folder of a caller's selected item, with the item selected", async () => {
-      await setup({
-        customFolders: [
-          {
-            id: "birds",
-            name: "Birds",
-            items: [
-              { id: 1, name: "Owls", icon: "app", onSelect: jest.fn() },
-              {
-                id: 2,
-                name: "Herons",
-                icon: "app",
-                isSelected: true,
-                onSelect: jest.fn(),
-              },
-            ],
-          },
-        ],
-      });
+    it("lists the Data apps folder after the other root items", async () => {
+      await setup({ options, models, dataApps: [OWLS] });
 
-      await expectActiveItem("Herons");
-      await expectActiveItem("Birds");
-      await expectInactiveItem("Owls");
-    });
-
-    it("lists a caller's folder above the personal collections", async () => {
-      const personalCollection = createMockCollection({
-        id: 1,
-        name: "Bobby Tables's Personal Collection",
-        personal_owner_id: 1,
-        location: "/",
-      });
-      await setup({
-        isAdmin: true,
-        options: { hasRecents: false, hasDatabases: false },
-        additionalCollections: [personalCollection],
-        additionalCollectionItemEndpoints: [
-          { collection: personalCollection, collectionItems: [] },
-        ],
-        customFolders: [{ id: "birds", name: "Birds", items: [] }],
-      });
-
-      const rootList = await screen.findByTestId("item-picker-level-0");
-      await waitFor(() => {
-        expect(
-          within(rootList)
-            .getAllByRole("link")
-            .map((item) => item.textContent?.trim()),
-        ).toEqual([
-          "SQL Snippets",
-          "Our analytics",
-          "Birds",
-          "Bobby Tables's Personal Collection",
-          "All personal collections",
-        ]);
-      });
-    });
-
-    it("draws the folder of a caller's selected item as a parent of the selection", async () => {
-      await setup({
-        customFolders: [
-          {
-            id: "birds",
-            name: "Birds",
-            items: [
-              { id: 1, name: "Owls", icon: "app", onSelect: jest.fn() },
-              {
-                id: 2,
-                name: "Herons",
-                icon: "app",
-                isSelected: true,
-                onSelect: jest.fn(),
-              },
-            ],
-          },
-        ],
-      });
-
-      await expectActiveItem("Herons");
-      const activeItems = screen
-        .getAllByRole("link")
-        .filter((link) => link.getAttribute("data-active") === "true")
-        .map((link) => ({
-          name: link.textContent?.trim(),
-          variant: link.getAttribute("data-variant"),
-        }));
-      expect(activeItems).toEqual([
-        { name: "Birds", variant: "secondary" },
-        { name: "Herons", variant: "primary" },
+      await expectVisibleItem("Data apps");
+      const rootItems = within(
+        screen.getByTestId("item-picker-level-0"),
+      ).getAllByRole("link");
+      expect(rootItems.map((item) => item.textContent?.trim())).toEqual([
+        "Recent items",
+        "Our analytics",
+        "Data apps",
       ]);
     });
 
-    it("keeps a built-in folder's own items when a caller's folder has the same id", async () => {
+    it("opens on the data app given as the value", async () => {
       await setup({
-        customFolders: [
-          {
-            id: "root",
-            name: "Birds",
-            items: [{ id: 1, name: "Owls", icon: "app", onSelect: jest.fn() }],
-          },
+        options,
+        models,
+        dataApps: [OWLS, HERONS],
+        value: { model: "data-app", id: HERONS.id },
+      });
+
+      await expectActiveItem("Data apps");
+      await expectActiveItem("Herons");
+      await expectInactiveItem("Owls");
+    });
+
+    it("opens on the data app when the app list arrives after the rest of the picker", async () => {
+      await setup({
+        options,
+        models,
+        dataApps: [OWLS, HERONS],
+        dataAppsDelayMs: 300,
+        value: { model: "data-app", id: HERONS.id },
+      });
+
+      await expectActiveItem("Data apps");
+      await expectActiveItem("Herons");
+    });
+
+    it("opens on no data app without the hasDataApps option", async () => {
+      await setup({
+        options: { hasConfirmButtons: false },
+        models,
+        dataApps: [OWLS],
+        value: { model: "data-app", id: OWLS.id },
+      });
+
+      await expectVisibleItem("Our analytics");
+      expect(screen.queryByText("Owls")).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.called("path:/api/ee/apps")).toBe(false);
+    });
+
+    it("finds a data app in search, located in the Data apps folder", async () => {
+      const { onChange } = await setup({
+        options,
+        models,
+        dataApps: [OWLS],
+        searchResults: [
+          createMockSearchResult({
+            model: "data-app",
+            id: OWLS.id,
+            name: "Owls",
+          }),
         ],
       });
 
-      await userEvent.click(
-        await screen.findByRole("link", { name: /Our analytics/ }),
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "Owls",
+        { delay: 50 },
       );
+      const result = await screen.findByTestId("result-item");
+      expect(
+        within(result).getByTestId("picker-item-location"),
+      ).toHaveTextContent("Data apps");
+      const searches = (await findRequests("GET")).filter((request) =>
+        request.url.includes("/api/search"),
+      );
+      expect(searches.at(-1)?.url).toContain("models=data-app");
 
+      await userEvent.click(within(result).getByText("Owls"));
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "data-app", id: OWLS.id }),
+      );
+    });
+
+    it("doesn't search data apps without the hasDataApps option", async () => {
+      await setup({
+        options: { hasConfirmButtons: false },
+        models,
+        dataApps: [OWLS],
+        searchResults: [
+          createMockSearchResult({
+            model: "data-app",
+            id: OWLS.id,
+            name: "Owls",
+          }),
+          createMockSearchResult({
+            model: "card",
+            id: 1,
+            name: "Owl sightings",
+          }),
+        ],
+      });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "Owl",
+        { delay: 50 },
+      );
+      await expectVisibleItem("Owl sightings");
+      expect(screen.queryByText("Owls")).not.toBeInTheDocument();
+      const searches = (await findRequests("GET")).filter((request) =>
+        request.url.includes("/api/search"),
+      );
+      expect(searches.at(-1)?.url).not.toContain("models=data-app");
+    });
+
+    it("has no Data apps folder without the hasDataApps option", async () => {
+      await setup({
+        options: { hasConfirmButtons: false },
+        models,
+        dataApps: [OWLS],
+      });
+
+      await expectVisibleItem("Our analytics");
+      expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.called("path:/api/ee/apps")).toBe(false);
+    });
+
+    it("has no Data apps folder when the picker doesn't pick data apps", async () => {
+      await setup({ options, models: ["card"], dataApps: [OWLS] });
+
+      await expectVisibleItem("Our analytics");
+      expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
+    });
+
+    it("has no Data apps folder when the picker picks collections but not data apps", async () => {
+      await setup({
+        options,
+        models: ["card", "collection"],
+        dataApps: [OWLS],
+      });
+
+      await expectVisibleItem("Our analytics");
+      expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
+    });
+
+    it("has no Data apps folder when the user has no data apps", async () => {
+      await setup({ options, models, dataApps: [] });
+
+      await expectVisibleItem("Our analytics");
       await waitFor(() => {
-        expect(
-          within(screen.getByTestId("item-picker-level-1"))
-            .getAllByRole("link")
-            .map((item) => item.textContent?.trim()),
-        ).toEqual(["First Collection", "Second Collection"]);
+        expect(fetchMock.callHistory.called("path:/api/ee/apps")).toBe(true);
       });
-    });
-
-    it("finds a caller's item by its name in the search", async () => {
-      await setup({
-        customFolders: [
-          {
-            id: "birds",
-            name: "Birds",
-            items: [
-              { id: 1, name: "Owls", icon: "app", onSelect: jest.fn() },
-              { id: 2, name: "Herons", icon: "app", onSelect: jest.fn() },
-            ],
-          },
-        ],
-      });
-
-      await userEvent.type(
-        await screen.findByPlaceholderText("Search…"),
-        "Owls",
-        { delay: 50 },
-      );
-      await expectActiveItem('Search results for "Owls"');
-      await expectVisibleItem("Search Result Card 3");
-
-      const searchList = screen.getByTestId("item-picker-level-1");
-      expect(
-        within(searchList).getByRole("link", { name: /Owls/ }),
-      ).toBeVisible();
-      expect(
-        within(searchList).queryByRole("link", { name: /Herons/ }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("leaves a caller's items out of a search scoped to a collection", async () => {
-      await setup({
-        customFolders: [
-          {
-            id: "birds",
-            name: "Birds",
-            items: [{ id: 1, name: "Owls", icon: "app", onSelect: jest.fn() }],
-          },
-        ],
-      });
-
-      await userEvent.click(await screen.findByText("Our analytics"));
-      await userEvent.click(await screen.findByText("First Collection"));
-      await userEvent.type(
-        await screen.findByPlaceholderText("Search…"),
-        "Owls",
-        { delay: 50 },
-      );
-      await expectActiveItem('Search results for "Owls"');
-      await expectVisibleItem("Search Result Card 3");
-
-      expect(
-        within(screen.getByTestId("item-picker-level-1")).queryByRole("link", {
-          name: /Owls/,
-        }),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
     });
   });
 });
