@@ -19,6 +19,7 @@ export const createMockMetadataGenerationRun = (
   done_tables: 0,
   failed_tables: 0,
   table_errors: null,
+  done_table_ids: null,
   message: null,
   usage: null,
   creator_id: 1,

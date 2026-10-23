@@ -8,8 +8,10 @@
   `canceled` at once. For a running run it sets the status to `canceling` on the run row, so a cancel from any node
   reaches the worker, and interrupts the worker when it runs on this node. The worker reads the status between tables
   and every [[poll-ms]] while it waits on chunk calls, cancels the chunks in flight, and writes `canceled`. A usage limit ends the
-  run with status `usage_limit`. A table that fails is recorded on the run and the run continues. Tables the run did
-  not finish go to `table_errors` with error code `not_processed`, so [[retry-failed!]] covers them.
+  run with status `usage_limit`. A table that fails is recorded on the run and the run continues. The run records
+  the tables it finished in `done_table_ids`. When a run ends before its last table (cancel, usage limit, an unexpected
+  failure, or the reaper), the tables of its scope that it did not finish go to `table_errors` with error code
+  `not_processed`, so [[retry-failed!]] covers them.
 
   Each node heartbeats the runs it owns ([[heartbeat-tick!]]); [[reap-orphaned-runs!]] fails an active run whose
   heartbeat is stale, for example after its node died. The heartbeat does not show that the chunk calls progress, so
@@ -321,17 +323,18 @@
   (let [{:keys [error-code type]} (ex-data e)]
     (some-> (or error-code type) u/qualified-name)))
 
-(defn- progress [{:keys [done failed errors usage max-table-ms slow-calls] :or {max-table-ms 0 slow-calls 0}}]
-  {:done_tables   done
-   :failed_tables failed
-   :table_errors  errors
-   :usage         (assoc usage :max_table_ms max-table-ms :slow_calls slow-calls)})
+(defn- progress [{:keys [done done-ids failed errors usage max-table-ms slow-calls] :or {max-table-ms 0 slow-calls 0}}]
+  {:done_tables    done
+   :done_table_ids done-ids
+   :failed_tables  failed
+   :table_errors   errors
+   :usage          (assoc usage :max_table_ms max-table-ms :slow_calls slow-calls)})
 
 (defn- not-processed [state tables message]
   (update state :errors into (map #(table-error % message "not_processed")) tables))
 
 (def ^:private start-state
-  {:done 0 :failed 0 :errors [] :usage zero-usage})
+  {:done 0 :done-ids [] :failed 0 :errors [] :usage zero-usage})
 
 (defn- canceled-changes
   "The changes that end a run canceled from `state`, with `tables` recorded as not processed."
@@ -339,6 +342,16 @@
   (-> (not-processed state tables (tru "The run was canceled."))
       progress
       (assoc :status :canceled :message (tru "Canceled."))))
+
+(defn- with-unprocessed-errors
+  "The `table_errors` of the saved `run`, plus a `not_processed` error with `message` for each table of its scope that
+  is neither in `done_table_ids` nor in `table_errors`."
+  [run message]
+  (let [finished (into (set (:done_table_ids run)) (map :table_id) (:table_errors run))]
+    (into (vec (:table_errors run))
+          (comp (remove (comp finished :id))
+                (map #(table-error % message "not_processed")))
+          (tables-in-scope (:database_id run) (:scope run)))))
 
 (defn- add-spent
   "Add the usage of the chunks that finished in a table that failed or stopped, and its slow calls, from
@@ -400,6 +413,7 @@
             (let [state (-> state
                             (add-table-time elapsed)
                             (update :done inc)
+                            (update :done-ids conj (:id table))
                             (update :slow-calls (fnil + 0) (:slow-calls outcome))
                             (update :usage add-usage (:model outcome) (:usage outcome)))]
               (if (db/record-table! run-id (progress state) (:proposals outcome))
@@ -441,13 +455,18 @@
         (db/update-active-run! run-id (canceled-changes start-state tables))))
     (catch Throwable e
       (Thread/interrupted)
-      (if (= :canceled @stop)
+      (let [canceled? (= :canceled @stop)
+            errors    (u/ignore-exceptions
+                        (with-unprocessed-errors (db/run run-id) (if canceled?
+                                                                   (tru "The run was canceled.")
+                                                                   (tru "The run failed before it processed the table."))))]
+        (when-not canceled?
+          (log/errorf e "Metadata generation run %d failed" run-id))
         (u/ignore-exceptions
-          (db/update-active-run! run-id {:status :canceled :message (tru "Canceled.")}))
-        (do
-          (log/errorf e "Metadata generation run %d failed" run-id)
-          (u/ignore-exceptions
-            (db/update-active-run! run-id {:status :failed :message (or (ex-message e) (str (class e)))})))))
+          (db/update-active-run! run-id (cond-> (if canceled?
+                                                  {:status :canceled :message (tru "Canceled.")}
+                                                  {:status :failed :message (or (ex-message e) (str (class e)))})
+                                          errors (assoc :table_errors errors))))))
     (finally
       (swap! local-runs dissoc run-id))))
 
@@ -567,7 +586,8 @@
 
 (mu/defn retry-failed! :- (ms/InstanceOf :model/MetadataGenerationRun)
   "Start a new run over the tables in the `table_errors` of the ended run `run` that are still active, with its
-  attributes, as `creator-id`. Throws a 400 when the run is active or none of its failed tables is active."
+  attributes, as `creator-id`. These are the tables that failed and the tables the run did not process. Throws a 400
+  when the run is active or none of these tables is active."
   [database   :- (ms/InstanceOf :model/Database)
    run        :- (ms/InstanceOf :model/MetadataGenerationRun)
    creator-id :- ms/PositiveInt]
@@ -599,13 +619,23 @@
       (interrupt-local-run! id :canceled))))
 
 (defn reap-orphaned-runs!
-  "Fail every active run whose heartbeat is older than `stale-minutes`. Returns the reaped rows."
+  "Fail every active run whose heartbeat is older than `stale-minutes`, and record the tables it did not process as
+  `not_processed` in its `table_errors`. Returns the reaped rows."
   [stale-minutes]
-  (rt/reap-orphaned! {:model    :model/MetadataGenerationRun
-                      :active   [:is_active true]
-                      :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
-                      :terminal {:status    "failed"
-                                 :ended_at  :%now
-                                 :is_active nil
-                                 :message   (str "The run stopped sending heartbeats for " stale-minutes
-                                                 " minutes; its node probably stopped.")}}))
+  (let [reaped (rt/reap-orphaned! {:model    :model/MetadataGenerationRun
+                                   :active   [:is_active true]
+                                   :stale    [{:column :last_heartbeat :age stale-minutes :unit :minute}]
+                                   :terminal {:status    "failed"
+                                              :ended_at  :%now
+                                              :is_active nil
+                                              :message   (str "The run stopped sending heartbeats for " stale-minutes
+                                                              " minutes; its node probably stopped.")}})]
+    (doseq [{run-id :id} reaped]
+      (try
+        (when-let [run (db/run run-id)]
+          (db/update-run-with-status! run-id :failed
+                                      {:table_errors (with-unprocessed-errors
+                                                       run (tru "The run stopped before it processed the table."))}))
+        (catch Exception e
+          (log/warnf e "Could not record the unprocessed tables of reaped metadata generation run %d" run-id))))
+    reaped))

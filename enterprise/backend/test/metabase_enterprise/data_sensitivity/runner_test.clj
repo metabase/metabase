@@ -726,3 +726,53 @@
                       ended (wait-ended (:id run))]
                   (is (< (u/since-ms timer) runner/poll-ms))
                   (is (=? {:status :canceled :done_tables 0} ended))))))))))))
+
+(deftest retry-of-reaped-run-covers-unprocessed-tables-test
+  (do-with-temp-tables
+   4
+   (fn [db [t0 t1 t2 t3]]
+     (let [reaped-run (fn [table-errors]
+                        (let [run (t2/insert-returning-instance!
+                                   :model/MetadataGenerationRun
+                                   {:database_id    (:id db) :scope {:type :database}
+                                    :attributes     [:data_sensitivity] :status :running :total_tables 4
+                                    :done_tables    1 :done_table_ids [(:id t0)]
+                                    :failed_tables  (count table-errors) :table_errors table-errors
+                                    :last_heartbeat (.minusMinutes (OffsetDateTime/now) 10)})]
+                          (is (= [(:id run)] (mapv :id (runner/reap-orphaned-runs! runner/heartbeat-stale-minutes))))
+                          (run-row (:id run))))
+           retry      (fn [run]
+                        (let [retry (runner/retry-failed! db run (mt/user->id :crowberto))]
+                          (wait-ended (:id retry))
+                          (set (get-in retry [:scope :table_ids]))))]
+       (core-test/do-with-llm!
+        (core-test/canned-llm (constantly {:data_sensitivity "PII"}))
+        (fn []
+          (testing "retry of a reaped run covers its failed tables and the tables it did not process"
+            (let [run (reaped-run [{:table_id (:id t1) :table_name (:name t1) :schema "S"
+                                    :message "boom" :error_code "provider_error"}])]
+              (is (=? {:status       :failed
+                       :table_errors [{:table_id (:id t1) :error_code "provider_error"}
+                                      {:table_id (:id t2) :error_code "not_processed"}
+                                      {:table_id (:id t3) :error_code "not_processed"}]}
+                      run))
+              (is (= #{(:id t1) (:id t2) (:id t3)} (retry run)))))
+          (testing "retry of a reaped run with no failed table covers the tables it did not process"
+            (let [run (reaped-run [])]
+              (is (= #{(:id t1) (:id t2) (:id t3)} (retry run)))))))))))
+
+(deftest run-that-fails-unexpectedly-records-unprocessed-tables-test
+  (testing "a run that fails outside a table records every table it did not finish as not processed"
+    (do-with-temp-tables
+     2
+     (fn [db [t0 t1]]
+       (core-test/do-with-llm!
+        (core-test/canned-llm (constantly {:data_sensitivity "PII"}))
+        (fn []
+          (mt/with-dynamic-fn-redefs [core/sample-connection-error (fn [& _] (throw (ex-info "boom" {})))]
+            (let [run (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))]
+              (is (=? {:status       :failed
+                       :message      "boom"
+                       :table_errors [{:table_id (:id t0) :error_code "not_processed"}
+                                      {:table_id (:id t1) :error_code "not_processed"}]}
+                      run))))))))))

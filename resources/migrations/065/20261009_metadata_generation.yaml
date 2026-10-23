@@ -85,6 +85,12 @@ databaseChangeLog:
                   constraints:
                     nullable: true
               - column:
+                  name: done_table_ids
+                  type: ${text.type}
+                  remarks: "JSON: ids of the tables processed successfully"
+                  constraints:
+                    nullable: true
+              - column:
                   name: message
                   type: ${text.type}
                   remarks: Error message for the whole run, when it failed

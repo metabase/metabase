@@ -56,6 +56,7 @@ export type MetadataGenerationRun = {
   done_tables: number;
   failed_tables: number;
   table_errors: MetadataGenerationTableError[] | null;
+  done_table_ids: ConcreteTableId[] | null;
   message: string | null;
   usage: MetadataGenerationUsage | null;
   creator_id: UserId | null;

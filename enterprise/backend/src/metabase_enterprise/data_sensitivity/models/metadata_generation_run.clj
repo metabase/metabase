@@ -66,6 +66,7 @@
    [:done_tables    ms/IntGreaterThanOrEqualToZero]
    [:failed_tables  ms/IntGreaterThanOrEqualToZero]
    [:table_errors   [:maybe [:sequential ::table-error]]]
+   [:done_table_ids [:maybe [:sequential ms/PositiveInt]]]
    [:message        [:maybe :string]]
    [:usage          [:maybe ::usage]]
    [:creator_id     [:maybe ms/PositiveInt]]
@@ -94,6 +95,7 @@
    [:done_tables    {:optional true} ms/IntGreaterThanOrEqualToZero]
    [:failed_tables  {:optional true} ms/IntGreaterThanOrEqualToZero]
    [:table_errors   {:optional true} [:maybe [:sequential ::table-error]]]
+   [:done_table_ids {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:usage          {:optional true} [:maybe ::usage]]
    [:message        {:optional true} [:maybe :string]]])
 
@@ -106,12 +108,13 @@
    :out (comp #(cond->> % (sequential? %) (mapv keyword)) mi/json-out-with-keywordization)})
 
 (t2/deftransforms :model/MetadataGenerationRun
-  {:status       mi/transform-keyword
-   :is_active    mi/transform-boolean
-   :scope        transform-scope
-   :attributes   transform-attributes
-   :table_errors mi/transform-json
-   :usage        mi/transform-json})
+  {:status         mi/transform-keyword
+   :is_active      mi/transform-boolean
+   :scope          transform-scope
+   :attributes     transform-attributes
+   :table_errors   mi/transform-json
+   :done_table_ids mi/transform-json
+   :usage          mi/transform-json})
 
 (defn- terminal-status-changes
   "Changes to apply when `status` moves the run out of [[active-statuses]]."
