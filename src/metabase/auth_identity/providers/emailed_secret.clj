@@ -134,7 +134,7 @@
   been consumed.
 
   Returns a map with `:success?` true and `:user-id` and `:auth-identity` on success, or `:success?` false with an
-  `:error` keyword (`:invalid-token`, `:expired-token`, `:consumed-token`, `:no-auth-identity`, or `:server-error`)
+  `:error` keyword (`:invalid-token`, `:expired-token`, `:consumed-token`, `:no-auth-identity`, `:inactive-account`, or `:server-error`)
   and human-readable `:message` on failure."
   [provider {:keys [token]}]
   (log/debug "Authenticating with emailed_secret provider for token")
@@ -147,26 +147,31 @@
     (try
       (if-let [user-id (parse-token-user-id token)]
         (if-let [auth-identity (auth-identity.db/auth-identity user-id (name provider))]
-          (let [verification-result (verify-reset-token token (:credentials auth-identity))]
-            (case verification-result
-              :valid
-              (do
-                (log/debugf "Valid reset token for user %s" user-id)
-                {:success? true
-                 :user-id user-id
-                 :auth-identity auth-identity})
-              :expired
-              {:success? false
-               :error :expired-token
-               :message "Reset token has expired"}
-              :consumed
-              {:success? false
-               :error :consumed-token
-               :message "Reset token has already been used"}
-              :invalid
-              {:success? false
-               :error :invalid-token
-               :message "Reset token is invalid"}))
+          (if-not (auth-identity.db/user-active? user-id)
+            {:success? false
+             :error :inactive-account
+             :message "Inactive Account"}
+            (let [verification-result (verify-reset-token token (:credentials auth-identity))]
+              (case verification-result
+                :valid
+                (do
+                  (log/debugf "Valid reset token for user %s" user-id)
+                  {:success? true
+                   :user-id user-id
+                   ;; Need to remove :is_active so that saving via t2 works properly later
+                   :auth-identity (dissoc auth-identity :is_active)})
+                :expired
+                {:success? false
+                 :error :expired-token
+                 :message "Reset token has expired"}
+                :consumed
+                {:success? false
+                 :error :consumed-token
+                 :message "Reset token has already been used"}
+                :invalid
+                {:success? false
+                 :error :invalid-token
+                 :message "Reset token is invalid"})))
           {:success? false
            :error :no-auth-identity
            :message "No reset token found for this user"})
