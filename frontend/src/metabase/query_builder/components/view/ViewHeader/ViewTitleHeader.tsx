@@ -15,6 +15,7 @@ import type Question from "metabase-lib/v1/Question";
 import type { Dataset } from "metabase-types/api";
 
 import { ViewSection } from "../ViewSection";
+import type { QuerySheet } from "../query-sheet";
 
 import ViewTitleHeaderS from "./ViewTitleHeader.module.css";
 import {
@@ -22,6 +23,7 @@ import {
   QueryBuilderBackButton,
   QuestionFiltersHeader,
   SavedQuestionLeftSide,
+  SheetTitleLeftSide,
   ViewTitleHeaderRightSide,
 } from "./components";
 
@@ -74,6 +76,11 @@ interface ViewTitleHeaderProps {
 
   updateQuestion: (question: Question, opts?: { run?: boolean }) => void;
 
+  /** The sheet showing in the sheet layout; the title follows the summary and compare sheets. */
+  activeSheet?: QuerySheet;
+  /** Toggles the compare sheet, which replaces the Editor button, growing it out of `origin`. */
+  onToggleCompare?: (origin: DOMRect) => void;
+
   className?: string;
   style?: React.CSSProperties;
 }
@@ -107,6 +114,8 @@ export function ViewTitleHeader({
   isShowingQuestionInfoSidebar,
   onCloseQuestionInfo,
   className,
+  activeSheet = "data",
+  onToggleCompare,
   style,
 }: ViewTitleHeaderProps): React.JSX.Element {
   const [
@@ -160,7 +169,14 @@ export function ViewTitleHeader({
       >
         <Flex className={ViewTitleHeaderS.ViewHeaderLeftSideWrapper}>
           <QueryBuilderBackButton mr="sm" />
-          {isSaved ? (
+          {activeSheet !== "data" ? (
+            <SheetTitleLeftSide
+              question={question}
+              activeSheet={activeSheet}
+              onShowData={onCloseSummary}
+              onShowSummary={editSummary}
+            />
+          ) : isSaved ? (
             <SavedQuestionLeftSide
               question={question}
               isObjectDetail={isObjectDetail}
@@ -207,6 +223,8 @@ export function ViewTitleHeader({
           areFiltersExpanded={areFiltersExpanded}
           onExpandFilters={expandFilters}
           onCollapseFilters={collapseFilters}
+          isShowingCompare={activeSheet === "compare"}
+          onToggleCompare={onToggleCompare}
         />
       </ViewSection>
 
