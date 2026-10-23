@@ -106,23 +106,16 @@ test_stale_update_is_rejected() {
   [ "$(cat "$pin")" = "$second" ] || fail "pin changed"
 }
 
-test_resources_rebuild_when_pin_or_outputs_change() {
+test_resources_always_rebuild_with_cached_catalogs() {
   setup resources
-  mkdir -p bin/build/src/i18n/create_artifacts src/metabase/util/i18n stubs
-  touch deps.edn bin/build/src/i18n/a.clj bin/build/src/i18n/create_artifacts/a.clj src/metabase/util/i18n/validation.clj
+  mkdir stubs
   printf 'check_clojure_cli() { :; }\n' > bin/check-clojure-cli.sh
   printf '#!/usr/bin/env bash\necho build >> target/builds\nmkdir -p resources/i18n\ntouch resources/i18n/en-ZZ.edn\n' > stubs/clojure
   chmod +x stubs/clojure
   mkdir target
   PATH="$project/stubs:$PATH" bin/i18n/build-translation-resources
-  PATH="$project/stubs:$PATH" bin/i18n/build-translation-resources
-  [ "$(wc -l < target/builds)" -eq 1 ] || fail "rebuilt without changes"
-  echo "$second" > "$pin"
-  PATH="$project/stubs:$PATH" bin/i18n/build-translation-resources
-  [ "$(wc -l < target/builds)" -eq 2 ] || fail "pin change ignored"
-  rm resources/i18n/en-ZZ.edn
-  PATH="$project/stubs:$PATH" bin/i18n/build-translation-resources
-  [ "$(wc -l < target/builds)" -eq 3 ] || fail "missing output ignored"
+  METABASE_I18N_REPOSITORY="$root/unavailable" PATH="$project/stubs:$PATH" bin/i18n/build-translation-resources
+  [ "$(wc -l < target/builds)" -eq 2 ] || fail "resources were not rebuilt"
 }
 
 for test in $(declare -F | awk '$3 ~ /^test_/ { print $3 }'); do

@@ -10,24 +10,11 @@ fi
 script_directory=`dirname "${BASH_SOURCE[0]}"`
 cd "$script_directory/../.."
 
-stamp=target/i18n-resources.key
-key=""
 if [ -z "${source_directory:-}" ]; then
   source_directory=$(./bin/i18n/fetch-translations)
-  key=$({
-    basename "$source_directory"
-    git hash-object deps.edn bin/i18n/build-translation-resources bin/build/src/i18n/*.clj bin/build/src/i18n/create_artifacts/*.clj src/metabase/util/i18n/validation.clj
-  } | git hash-object --stdin)
-  if [ -f resources/i18n/en-ZZ.edn ] && [ "$(cat "$stamp" 2>/dev/null)" = "$key" ]; then
-    exit 0
-  fi
 fi
 
 source "./bin/check-clojure-cli.sh"
 check_clojure_cli
 
-rm -f "$stamp"
 clojure -X:build:build/i18n :source-directory "\"$source_directory\""
-if [ -n "$key" ]; then
-  printf '%s\n' "$key" > "$stamp"
-fi

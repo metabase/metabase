@@ -24,8 +24,8 @@ Builds clone that commit and extract its catalogs into the ignored directory
 Completed snapshots are reused without network access and are never edited by the scripts.
 
 Run `./bin/i18n/build-translation-resources` to fetch the catalogs and generate frontend JSON
-and backend EDN resources. It skips the build when the pin and the build code did not change
-since the last build. Full builds (`./bin/build.sh`) run it automatically. Frontend builds and
+and backend EDN resources. It reuses downloaded catalogs and regenerates the resources on
+every run. Full builds (`./bin/build.sh`) run it automatically. Frontend builds and
 `bun run dev` do not: without the resources, the app shows English, which is the source text.
 Run it by hand when you need another language. Runtime translation does not access GitHub.
 
