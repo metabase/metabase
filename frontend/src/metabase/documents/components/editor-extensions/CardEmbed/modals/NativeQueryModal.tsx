@@ -1,4 +1,4 @@
-import { useElementSize } from "@mantine/hooks";
+import { useElementSize, useHotkeys } from "@mantine/hooks";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { c, t } from "ttag";
 
@@ -214,6 +214,16 @@ export const NativeQueryModal = ({
       setCurrentQueryPromise(null);
     }
   }, [currentQueryPromise]);
+
+  const handleCmdEnter = () => {
+    if (isQueryRunning) {
+      handleCancelQuery();
+    } else {
+      handleRunQuery();
+    }
+  };
+
+  useHotkeys([["mod+Enter", handleCmdEnter]], []);
 
   const handleSave = useCallback(() => {
     if (!modifiedQuestion) {
