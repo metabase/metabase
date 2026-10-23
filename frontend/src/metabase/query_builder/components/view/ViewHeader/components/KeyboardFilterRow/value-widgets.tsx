@@ -3,7 +3,10 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { UsStatesMap } from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/UsStatesMap";
+import {
+  UsStatesMap,
+  WorldMap,
+} from "metabase/querying/common/components/FieldValuePicker/ListValuePicker/UsStatesMap";
 import {
   type ContinentPreset,
   getContinentPresets,
@@ -18,10 +21,14 @@ import S from "./KeyboardFilterRow.module.css";
 import type { DraftOperator, SuggestionGroup } from "./types";
 
 const MAX_TILE_OPTIONS = 8;
-const WIDE_DROPDOWN_WIDTH = 400;
 const TILES_DROPDOWN_WIDTH = 360;
 const STATES_DROPDOWN_WIDTH = 720;
 const STATES_MAP_WIDTH = 400;
+const COUNTRIES_LIST_WIDTH = 340;
+const MIN_WORLD_MAP_WIDTH = 380;
+const MAX_WORLD_MAP_WIDTH = 650;
+/** The padding and the border of the map panel. */
+const MAP_PANEL_INSET = 49;
 
 /** The value of the option that selects all the values, or none. */
 export const SELECT_ALL_VALUE = "__prototype_select_all__";
@@ -50,6 +57,8 @@ interface UseValueWidgetOpts {
   getShare?: (value: string) => number;
   /** True when the shares are estimates from a sample. */
   isShareEstimate?: boolean;
+  /** The widest dropdown that fits in the window. */
+  maxDropdownWidth?: number;
   onValuesChange: (values: string[]) => void;
   onToggleValue: (value: string) => void;
 }
@@ -87,6 +96,7 @@ export function useValueWidget({
   values,
   getShare,
   isShareEstimate = false,
+  maxDropdownWidth = Infinity,
   onValuesChange,
   onToggleValue,
 }: UseValueWidgetOpts): ValueWidget {
@@ -120,6 +130,14 @@ export function useValueWidget({
   }
 
   if (countryValues != null) {
+    // The map grows up to its max width when the window has space for it.
+    const worldMapWidth = Math.max(
+      MIN_WORLD_MAP_WIDTH,
+      Math.min(
+        MAX_WORLD_MAP_WIDTH,
+        maxDropdownWidth - COUNTRIES_LIST_WIDTH - MAP_PANEL_INSET,
+      ),
+    );
     return {
       groups: [
         {
@@ -142,9 +160,22 @@ export function useValueWidget({
           onChange={onValuesChange}
         />
       ),
+      aside: (
+        <WorldMap
+          valuesByCode={
+            new Map(
+              countryValues.map(([value]) => [value.toUpperCase(), value]),
+            )
+          }
+          selectedValues={values}
+          width={worldMapWidth}
+          getShare={getShare}
+          onToggle={onToggleValue}
+        />
+      ),
       isTiles: false,
       columns: 1,
-      dropdownWidth: WIDE_DROPDOWN_WIDTH,
+      dropdownWidth: COUNTRIES_LIST_WIDTH + worldMapWidth + MAP_PANEL_INSET,
     };
   }
 

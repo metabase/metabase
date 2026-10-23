@@ -1,7 +1,7 @@
-import { useClickOutside } from "@mantine/hooks";
+import { useClickOutside, useViewportSize } from "@mantine/hooks";
 import { skipToken } from "@reduxjs/toolkit/query/react";
 import type { KeyboardEvent, ReactNode } from "react";
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -820,6 +820,7 @@ function ValueInput({
   onKeyDown,
 }: ValueInputProps) {
   const isAiPromptText = isAiPrompt(text);
+  const maxDropdownWidth = useMaxDropdownWidth(inputRef);
   const { fieldValues, isListed } = useFieldValues(
     query,
     column,
@@ -840,6 +841,7 @@ function ValueInput({
     values,
     getShare: valueCounts.type === "counts" ? valueCounts.getShare : undefined,
     isShareEstimate: valueCounts.type === "counts" && valueCounts.isEstimate,
+    maxDropdownWidth,
     onValuesChange,
     onToggleValue,
   });
@@ -924,6 +926,24 @@ function ValueInput({
 }
 
 const MATCH_COUNT_OPERATORS = new Set(["=", "!="]);
+
+const VIEWPORT_MARGIN = 16;
+
+/**
+ * The widest dropdown that fits between the left edge of the pill and the
+ * right edge of the window.
+ */
+function useMaxDropdownWidth(inputRef: React.RefObject<HTMLInputElement>) {
+  const { width: viewportWidth } = useViewportSize();
+  const [pillLeft, setPillLeft] = useState(0);
+  useLayoutEffect(() => {
+    const pill = inputRef.current?.closest("[data-testid='draft-filter-pill']");
+    if (pill != null) {
+      setPillLeft(pill.getBoundingClientRect().left);
+    }
+  }, [inputRef, viewportWidth]);
+  return viewportWidth - pillLeft - VIEWPORT_MARGIN;
+}
 
 /** The match count and the notes under the options, or null for none. */
 function getValueCountsFooter(

@@ -328,7 +328,7 @@
 .dropdownWithAside .dropdownMain {
   display: flex;
   flex-direction: column;
-  height: 26rem;
+  height: 32.5rem;
 }
 
 .dropdownWithAside .options {
