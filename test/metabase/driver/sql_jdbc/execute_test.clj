@@ -432,10 +432,11 @@
 
 #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
 (deftest ^:parallel clickhouse-server-errors-need-more-than-class-22-test
-  (doseq [[message code] [["Memory limit exceeded" 241] ["Too many rows or bytes" 396]]]
-    (let [e (SQLException. message "22000" code)]
-      (is (false? (#'sql-jdbc.execute/error-in-query? :clickhouse e)))
-      (is (true? (#'sql-jdbc.execute/error-in-query? :h2 e))))))
+  (mt/test-driver :clickhouse
+    (doseq [[message code] [["Memory limit exceeded" 241] ["Too many rows or bytes" 396]]]
+      (let [e (SQLException. message "22000" code)]
+        (is (false? (#'sql-jdbc.execute/error-in-query? :clickhouse e)))
+        (is (true? (#'sql-jdbc.execute/error-in-query? :h2 e)))))))
 
 (defn- do-with-presto-cancellation!
   "Run `f` with a Presto HTTP endpoint that cancels after its first page of rows."
