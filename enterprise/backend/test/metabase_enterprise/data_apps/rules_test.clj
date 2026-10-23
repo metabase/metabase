@@ -318,6 +318,45 @@
                 (is (seq (:tables (mt/user-http-request :crowberto :post 200 "dataset/query_metadata" as-data-app
                                                         (lib/->legacy-MBQL (lib/aggregate venues (lib.metadata/metric (mt/metadata-provider) metric-id))))))))))))))))
 
+(deftest field-endpoints-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (data-apps.tu/with-published-tables! [(mt/id :venues)]
+       (testing "a field of a published table is read, one of an unpublished table is refused, and a missing one is left to the 404"
+         (is (= (mt/id :venues :name) (:id (get-as-data-app 200 (str "field/" (mt/id :venues :name))))))
+         (is (get-as-data-app 200 (format "field/%d/values" (mt/id :venues :name))))
+         (doseq [path ["field/%d" "field/%d/values" "field/%d/summary" "field/%d/related"]]
+           (is (re-find #"not CHECKINS" (get-as-data-app 403 (format path (mt/id :checkins :date))))))
+         (get-as-data-app 404 "field/999999999"))
+       (testing "the values of a foreign key, read from its target, are refused while the target's table is unpublished"
+         (is (=? {:fk_target_field_id nil} (get-as-data-app 200 (str "field/" (mt/id :venues :category_id)))))
+         (doseq [path [(format "field/%d/values" (mt/id :venues :category_id))
+                       (format "field/%d/search/%d" (mt/id :venues :category_id) (mt/id :venues :category_id))
+                       (format "field/%d/search/%d" (mt/id :venues :name) (mt/id :categories :name))
+                       (format "field/%d/remapping/%d" (mt/id :venues :category_id) (mt/id :categories :name))]]
+           (testing path
+             (is (re-find #"not CATEGORIES" (get-as-data-app 403 path))))))
+       (testing "the values of a field remapped to a field of an unpublished table are refused"
+         (mt/with-temp [:model/Dimension _ {:field_id                (mt/id :venues :name)
+                                            :name                    "Name"
+                                            :type                    :external
+                                            :human_readable_field_id (mt/id :categories :name)}]
+           (is (re-find #"not CATEGORIES" (get-as-data-app 403 (format "field/%d/values" (mt/id :venues :name)))))))
+       (testing "a field's related entities hold only the segments whose definitions read only the Library"
+         (let [venues   (data-apps.tu/venues-query)
+               category (some #(when (= (mt/id :categories :name) (:id %)) %) (lib/filterable-columns venues))]
+           (mt/with-temp [:model/Segment {bars-id :id} {:name       "Bars"
+                                                        :table_id   (mt/id :venues)
+                                                        :definition (lib/filter venues (lib/= category "Bar"))}
+                          :model/Segment {cheap-id :id} {:name       "Cheap"
+                                                         :table_id   (mt/id :venues)
+                                                         :definition (lib/filter venues (lib/= (lib.metadata/field (mt/metadata-provider)
+                                                                                                                   (mt/id :venues :price))
+                                                                                               1))}]
+             (let [segment-ids (set (map :id (:segments (get-as-data-app 200 (format "field/%d/related" (mt/id :venues :price))))))]
+               (is (contains? segment-ids cheap-id))
+               (is (not (contains? segment-ids bars-id)))))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app runs nothing"
     (mt/with-premium-features #{}

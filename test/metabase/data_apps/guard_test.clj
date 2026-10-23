@@ -8,6 +8,7 @@
    [metabase.data-apps.guard :as guard]
    [metabase.data-apps.guards.card :as guards.card]
    [metabase.data-apps.guards.dataset :as guards.dataset]
+   [metabase.data-apps.guards.field :as guards.field]
    [metabase.data-apps.guards.sandbox-table :as guards.sandbox-table]
    [metabase.data-apps.guards.table :as guards.table]
    [metabase.test :as mt]))
@@ -19,7 +20,8 @@
   {'metabase.query-processor.api             {:path "dataset" :checks guards.dataset/checks}
    'metabase.queries-rest.api.card           {:path "card" :checks guards.card/checks}
    'metabase.warehouse-schema-rest.api.table {:path "table" :checks guards.table/checks}
-   'metabase-enterprise.sandbox.api.table    {:path "table" :checks guards.sandbox-table/checks}})
+   'metabase-enterprise.sandbox.api.table    {:path "table" :checks guards.sandbox-table/checks}
+   'metabase.warehouse-schema-rest.api.field {:path "field" :checks guards.field/checks}})
 
 (def ^:private unguarded-namespaces
   "The namespaces with endpoints a data app reaches that no guard covers."
@@ -35,7 +37,6 @@
     'metabase.timeline.api.timeline
     'metabase.user-key-value.api
     'metabase.users-rest.api
-    'metabase.warehouse-schema-rest.api.field
     'metabase.warehouses-rest.api})
 
 (defn- data-app-endpoints

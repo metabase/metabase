@@ -205,3 +205,44 @@
       (contains? metadata :fields)    (assoc :fields (into [] (filter (comp kept? :table_id)) fields))
       (contains? metadata :databases) (update :databases #(into [] (filter (comp database-ids :id)) %))
       (contains? metadata :snippets)  (assoc :snippets []))))
+
+(defn- check-field-tables!
+  "Throws unless the fields with `field-ids` that exist are in tables published to the Library."
+  [field-ids]
+  (when-let [table-ids (some->> (not-empty field-ids) data-apps.db/field-table-ids vals set not-empty)]
+    (when-let [unpublished (not-empty (queries/unpublished-table-names table-ids))]
+      (throw (refusal (tru "A data app can read only tables published to the Library, not {0}."
+                           (str/join ", " (sort unpublished))))))))
+
+(defn- value-source-field-ids
+  "`field-ids` with the fields their values may be read from: the fields they point to as foreign keys, and the fields
+  that replace their values or those of their foreign key targets through a remapping."
+  [field-ids]
+  (if (empty? field-ids)
+    #{}
+    (let [field-ids (into field-ids (data-apps.db/fk-target-field-ids field-ids))]
+      (into field-ids (data-apps.db/remap-field-ids field-ids)))))
+
+(defenterprise check-field!
+  "Throws a 403 unless the field with `field-id`, a route param, is in a table published to the Library, when such a
+  field exists."
+  :feature :data-apps
+  [field-id]
+  (check-field-tables! #{(parse-long field-id)}))
+
+(defenterprise check-field-values!
+  "Throws a 403 unless the field with `field-id`, a route param, and every field its values may be read from are in
+  tables published to the Library, for those of them that exist."
+  :feature :data-apps
+  [field-id]
+  (check-field-tables! (value-source-field-ids #{(parse-long field-id)})))
+
+(defenterprise filter-related
+  "The entities related to a field, filtered as the metadata of the field's table is: only the metrics, segments and
+  measures a data app may read, and its fields' references into tables outside the Library dropped."
+  :feature :data-apps
+  [related]
+  (-> related
+      (assoc :db_id (get-in related [:table :db_id]))
+      filter-table-metadata
+      (dissoc :db_id)))

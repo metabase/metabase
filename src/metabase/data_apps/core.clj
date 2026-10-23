@@ -2,6 +2,7 @@
   (:require
    [metabase.data-apps.guards.card]
    [metabase.data-apps.guards.dataset]
+   [metabase.data-apps.guards.field]
    [metabase.data-apps.guards.sandbox-table]
    [metabase.data-apps.guards.table]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -12,6 +13,8 @@
   card-guard]
  [metabase.data-apps.guards.dataset
   dataset-guard]
+ [metabase.data-apps.guards.field
+  field-guard]
  [metabase.data-apps.guards.sandbox-table
   sandbox-table-guard]
  [metabase.data-apps.guards.table

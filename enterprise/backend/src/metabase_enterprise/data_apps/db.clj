@@ -100,6 +100,24 @@
                         {:from [(warehouse-schema-overlay/field-query)]})
       {}))
 
+(mu/defn remap-field-ids :- [:set ::lib.schema.id/field]
+  "The IDs of the Fields whose values replace the values of the Fields with `field-ids`, through a remapping of any
+  type."
+  [field-ids :- [:set {:min 1} ::lib.schema.id/field]]
+  (or (t2/select-fn-set :human_readable_field_id :model/Dimension
+                        :field_id [:in field-ids]
+                        :human_readable_field_id [:not= nil])
+      #{}))
+
+(mu/defn fk-target-field-ids :- [:set ::lib.schema.id/field]
+  "The IDs of the Fields that the Fields with `field-ids` point to as foreign keys."
+  [field-ids :- [:set {:min 1} ::lib.schema.id/field]]
+  (or (t2/select-fn-set :fk_target_field_id [:model/Field :fk_target_field_id]
+                        :id [:in field-ids]
+                        :fk_target_field_id [:not= nil]
+                        {:from [(warehouse-schema-overlay/field-query)]})
+      #{}))
+
 (mu/defn data-app-readable-card-ids :- [:set ::lib.schema.id/card]
   "Among `card-ids`, the IDs of the cards a data app may read: the cards in data apps' collections and the metrics in
   the Library, unless archived."

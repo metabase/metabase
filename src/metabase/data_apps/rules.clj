@@ -47,3 +47,21 @@
   metabase-enterprise.data-apps.rules
   [_metadata]
   (throw (unavailable)))
+
+(defenterprise check-field!
+  "Throws a 403 unless a data app may read the metadata of the field with `field-id`."
+  metabase-enterprise.data-apps.rules
+  [_field-id]
+  (throw (unavailable)))
+
+(defenterprise check-field-values!
+  "Throws a 403 unless a data app may read the values of the field with `field-id`, wherever they are read from."
+  metabase-enterprise.data-apps.rules
+  [_field-id]
+  (throw (unavailable)))
+
+(defenterprise filter-related
+  "The entities related to a field, as `GET /api/field/:id/related` returns them, that a data app may see."
+  metabase-enterprise.data-apps.rules
+  [_related]
+  (throw (unavailable)))
