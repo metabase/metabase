@@ -345,7 +345,7 @@ describe("Scalar conditional colors", () => {
   function setup(
     series: Series,
     segments: ScalarSegment[],
-    { isQueryBuilder = false } = {},
+    { isQueryBuilder = false, width = 230 } = {},
   ) {
     const onOpenChartSettings = jest.fn();
 
@@ -360,7 +360,7 @@ describe("Scalar conditional colors", () => {
         settings={{ ...settings, "scalar.segments": segments }}
         showTitle
         visualizationIsClickable={() => false}
-        width={230}
+        width={width}
         onOpenChartSettings={onOpenChartSettings}
       />,
     );
@@ -472,6 +472,25 @@ describe("Scalar conditional colors", () => {
     expect(onOpenChartSettings).toHaveBeenCalledWith({
       initialChartSettings: { section: "Conditional colors" },
     });
+  });
+
+  it("compacts a value that fits the card but not next to the warning", () => {
+    setup(createPartlyFailedScalarSeries(), PARTLY_FAILED_SEGMENTS, {
+      isQueryBuilder: true,
+      width: 180,
+    });
+
+    expect(screen.getByLabelText("Goal warning")).toBeInTheDocument();
+    expect(screen.getByText("12.3k")).toBeInTheDocument();
+  });
+
+  it("does not compact a value that fits the card without the warning", () => {
+    setup(createPartlyFailedScalarSeries(), PARTLY_FAILED_SEGMENTS, {
+      width: 180,
+    });
+
+    expect(screen.queryByLabelText("Goal warning")).not.toBeInTheDocument();
+    expect(screen.getByText("12,345")).toBeInTheDocument();
   });
 
   it("colors the value as if a bound that failed to load were unset, without a warning outside the query builder", () => {

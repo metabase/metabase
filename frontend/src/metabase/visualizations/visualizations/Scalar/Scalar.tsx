@@ -5,7 +5,10 @@ import _ from "underscore";
 import DashboardS from "metabase/css/dashboard.module.css";
 import { Box, Stack, Text, Tooltip } from "metabase/ui";
 import { GoalResolvingState } from "metabase/visualizations/components/GoalResolvingState";
-import { GoalWarningIcon } from "metabase/visualizations/components/GoalWarning";
+import {
+  GOAL_WARNING_ICON_SIZE,
+  GoalWarningIcon,
+} from "metabase/visualizations/components/GoalWarning";
 import {
   ScalarCardShell,
   useScalarCardShell,
@@ -33,6 +36,8 @@ import {
 import { ScalarValueContainer } from "./ScalarValueContainer";
 import { SCALAR_CHART_DEFINITION } from "./definition";
 import { scalarToBarTransform } from "./scalars-bar-transform";
+
+const GOAL_WARNING_GAP_PX = 6;
 
 // convert legacy `scalar.*` visualization settings to format options
 function legacyScalarSettingsToFormatOptions(
@@ -131,9 +136,21 @@ function ScalarComponent(
   const color = getColor(value, segments);
   const tooltipContent = getTooltipContent(segments, formatOptions);
 
+  const handleGoalWarningClick =
+    isQueryBuilder && hasGoalErrors && onOpenChartSettings
+      ? () =>
+          onOpenChartSettings({
+            initialChartSettings: { section: t`Conditional colors` },
+          })
+      : undefined;
+  // reserved on both sides so the value stays centered
+  const goalWarningWidthPx = handleGoalWarningClick
+    ? GOAL_WARNING_ICON_SIZE + GOAL_WARNING_GAP_PX
+    : 0;
+
   const { displayValue, fullScalarValue } = compactifyValue(
     value,
-    availableWidth,
+    Math.max(availableWidth - 2 * goalWarningWidthPx, 0),
     tier.valueFontSize,
     formatOptions,
   );
@@ -173,6 +190,7 @@ function ScalarComponent(
       <Box
         maw="100%"
         pos="relative"
+        px={`${goalWarningWidthPx}px`}
         {...(hasValueTooltip ? innerTooltipHoverHandlers : {})}
       >
         <ScalarValueContainer
@@ -209,15 +227,11 @@ function ScalarComponent(
             </Stack>
           </Tooltip>
         </ScalarValueContainer>
-        {isQueryBuilder && hasGoalErrors && onOpenChartSettings && (
-          <Box pos="absolute" top={0} left="100%" ml="xs">
+        {handleGoalWarningClick && (
+          <Box pos="absolute" top={0} right={0}>
             <GoalWarningIcon
               source="color-ranges"
-              onClick={() =>
-                onOpenChartSettings({
-                  initialChartSettings: { section: t`Conditional colors` },
-                })
-              }
+              onClick={handleGoalWarningClick}
             />
           </Box>
         )}
