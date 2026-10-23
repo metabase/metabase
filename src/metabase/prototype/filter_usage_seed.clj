@@ -13,6 +13,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.prototype.dataset :as dataset]
    [metabase.prototype.db :as prototype.db]
+   [metabase.prototype.runtime-estimate :as runtime-estimate]
    [metabase.prototype.settings :as prototype.settings]
    [metabase.queries.core :as queries]
    [metabase.request.core :as request]
@@ -157,5 +158,7 @@
    (fn []
      (try
        (ensure-questions!)
+       ;; Prototype: the seeded runtimes also need an admin.
+       (runtime-estimate/ensure-seeded!)
        (catch Throwable e
          (log/error e "Prototype data: the filter usage questions failed"))))))

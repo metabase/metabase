@@ -8,6 +8,7 @@
    [metabase.prototype.filter-summary :as filter-summary]
    [metabase.prototype.filter-usage :as filter-usage]
    [metabase.prototype.filter-values :as filter-values]
+   [metabase.prototype.runtime-estimate :as runtime-estimate]
    [metabase.prototype.samples :as samples]
    [metabase.util.malli.schema :as ms]))
 
@@ -123,3 +124,18 @@
             [:question_name {:optional true} [:maybe :string]]
             [:filters       [:sequential {:min 1} ms/NonBlankString]]]]
   (filter-summary/summarize-filters body))
+
+(api.macros/defendpoint :get "/runtime-estimate"
+  :- [:map
+      [:basis     [:maybe [:enum "question" "table"]]]
+      [:run_count {:optional true} :int]
+      [:days      {:optional true} :int]
+      [:p50_ms    {:optional true} :int]
+      [:p90_ms    {:optional true} :int]]
+  "Prototype: how long a query usually runs, from past runs. Uses the runs of the saved question `card-id` when it
+  has enough, or else the runs of all queries on the source table `table-id`."
+  [_route-params
+   query-params :- [:map {:closed true}
+                    [:card-id  {:optional true} [:maybe ms/PositiveInt]]
+                    [:table-id {:optional true} [:maybe ms/PositiveInt]]]]
+  (runtime-estimate/estimate query-params))

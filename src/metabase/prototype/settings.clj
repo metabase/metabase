@@ -63,3 +63,12 @@
   :encryption :no
   :export?    false
   :doc        false)
+
+(defsetting prototype-runtime-seed-version
+  "Prototype: the version of the seeded history of query runtimes on this instance. See
+  [[metabase.prototype.runtime-estimate]]."
+  :type       :integer
+  :visibility :internal
+  :encryption :no
+  :export?    false
+  :doc        false)

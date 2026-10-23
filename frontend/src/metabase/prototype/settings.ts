@@ -1,4 +1,5 @@
 import type {
+  BooleanPrototypeSetting,
   NumberPrototypeSetting,
   PrototypeSetting,
   SegmentedPrototypeSetting,
@@ -63,6 +64,15 @@ export const FILTER_SUMMARY_DELAY_MS: NumberPrototypeSetting = {
   max: 60000,
 };
 
+export const SHOW_RUNTIME_ESTIMATE: BooleanPrototypeSetting = {
+  type: "boolean",
+  key: "show-runtime-estimate",
+  label: "Show runtime estimates",
+  description:
+    "Show how long a question usually takes, from its past runs, on the run button and while it runs.",
+  defaultValue: true,
+};
+
 /**
  * The settings of the current prototype, in the order the prototype settings
  * submenu shows them. Each prototype branch lists its own settings here and
@@ -74,4 +84,5 @@ export const PROTOTYPE_SETTINGS: readonly PrototypeSetting[] = [
   LOADING_SPINNER_DELAY_MS,
   FILTER_SUMMARY_TRIGGER,
   FILTER_SUMMARY_DELAY_MS,
+  SHOW_RUNTIME_ESTIMATE,
 ];

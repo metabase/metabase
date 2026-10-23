@@ -19,6 +19,7 @@ import * as Lib from "metabase-lib";
 import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import S from "./QueryVisualization.module.css";
+import { useRuntimeEstimateHint } from "./RuntimeEstimate";
 import { VisualizationError } from "./VisualizationError";
 import { VisualizationResult } from "./VisualizationResult";
 import type { QueryVisualizationProps } from "./types";
@@ -41,6 +42,7 @@ export function QueryVisualization(props: QueryVisualizationProps) {
   const canRun = Lib.canRun(question.query(), question.type());
   const [spinnerDelayMs] = usePrototypeSetting(LOADING_SPINNER_DELAY_MS);
   const isSpinnerShown = useIsRunningLong(Boolean(isRunning), spinnerDelayMs);
+  const estimateHint = useRuntimeEstimateHint(question, Boolean(isRunning));
   const [warnings, setWarnings] = useState<string[]>([]);
 
   // The result is not rendered until the query returns, so the chart chunk
@@ -63,10 +65,14 @@ export function QueryVisualization(props: QueryVisualizationProps) {
   return (
     <Box pos="relative" h="100%" className={cx(className, S.root)}>
       {isSpinnerShown ? (
-        <VisualizationRunningState className={cx(S.overlay, S.fadeIn)} />
+        <VisualizationRunningState
+          className={cx(S.overlay, S.fadeIn)}
+          hint={estimateHint}
+        />
       ) : null}
       <VisualizationDirtyState
         {...props}
+        estimateHint={estimateHint}
         hidden={!isDirtyStateShown}
         className={S.overlay}
       />
@@ -151,6 +157,7 @@ type VisualizationDirtyStateProps = {
   cancelQuery?: () => void;
   onResetChanges?: () => void;
   hidden?: boolean;
+  estimateHint?: string | null;
 };
 
 export const VisualizationDirtyState = ({
@@ -160,6 +167,7 @@ export const VisualizationDirtyState = ({
   cancelQuery,
   onResetChanges,
   hidden,
+  estimateHint,
 }: VisualizationDirtyStateProps) => {
   const keyboardShortcut = getRunQueryShortcut();
 
@@ -198,6 +206,9 @@ export const VisualizationDirtyState = ({
           <Icon name="play" size={20} />
           {t`Run`}
           <span className={S.runPillShortcut}>{keyboardShortcut}</span>
+          {estimateHint != null && (
+            <span className={S.runPillHint}>{estimateHint}</span>
+          )}
         </button>
       )}
       {!hidden && onResetChanges != null && (

@@ -8,6 +8,7 @@
    [metabase.prototype.db :as prototype.db]
    [metabase.prototype.field-categories :as field-categories]
    [metabase.prototype.filter-usage-seed :as filter-usage-seed]
+   [metabase.prototype.runtime-estimate :as runtime-estimate]
    [metabase.prototype.samples :as samples]
    [metabase.prototype.seed :as seed]
    [metabase.prototype.semantic-layer :as semantic-layer]
@@ -106,5 +107,6 @@
         (samples/ensure-samples! seeded?)
         (semantic-layer/ensure-semantic-layer!)
         (filter-usage-seed/ensure-questions!)
+        (runtime-estimate/ensure-seeded!)
         (field-categories/seed-categories!
          (prototype.db/table-ids-by-name (:id database) dataset/schema-name))))))

@@ -1,4 +1,4 @@
-import type { FieldId, TableId } from "metabase-types/api";
+import type { CardId, FieldId, TableId } from "metabase-types/api";
 
 import { Api } from "./api";
 
@@ -81,6 +81,22 @@ export type PrototypeFilterSummaryRequest = {
 
 export type PrototypeFilterSummaryResponse = { summary: string | null };
 
+// Prototype: the request and the response of GET /api/prototype/runtime-estimate.
+export type PrototypeRuntimeEstimateRequest = {
+  "card-id"?: CardId;
+  "table-id"?: TableId;
+};
+
+export type PrototypeRuntimeEstimate =
+  | {
+      basis: "question" | "table";
+      run_count: number;
+      days: number;
+      p50_ms: number;
+      p90_ms: number;
+    }
+  | { basis: null };
+
 export const prototypeApi = Api.injectEndpoints({
   endpoints: (builder) => ({
     suggestPrototypeFilterValues: builder.mutation<
@@ -129,6 +145,16 @@ export const prototypeApi = Api.injectEndpoints({
       }),
       keepUnusedDataFor: 60 * 60,
     }),
+    getPrototypeRuntimeEstimate: builder.query<
+      PrototypeRuntimeEstimate,
+      PrototypeRuntimeEstimateRequest
+    >({
+      query: (params) => ({
+        method: "GET",
+        url: "/api/prototype/runtime-estimate",
+        params,
+      }),
+    }),
     getPrototypeSamples: builder.query<PrototypeSamples | null, void>({
       query: () => ({
         method: "GET",
@@ -145,4 +171,5 @@ export const {
   useListPrototypeFieldCategoriesQuery,
   useGetPrototypeSamplesQuery,
   useGetPrototypeFilterSummaryQuery,
+  useGetPrototypeRuntimeEstimateQuery,
 } = prototypeApi;

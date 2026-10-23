@@ -87,6 +87,12 @@
   opacity: 0.8;
 }
 
+.runPillHint {
+  font-size: 0.75rem;
+  font-weight: normal;
+  opacity: 0.8;
+}
+
 .resetButton {
   padding: 0.125rem 0.625rem;
   border: none;
