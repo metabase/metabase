@@ -133,7 +133,12 @@
                                         "q-sql"        sql
                                         "q-sql-legacy" (lib/->legacy-MBQL sql)
                                         "q-sql-staged" (lib/append-stage sql)
-                                        "q-draft"      {:database (mt/id)}}))))))
+                                        "q-draft"      {:database (mt/id)}})))))
+  (testing "a long list of IDs is cut to complete IDs, so the recovery step still reaches the model"
+    (let [{:keys [output error]} (invoke {:query_id "q-9"}
+                                         (zipmap (repeatedly 100 #(str (random-uuid))) (repeat (venues-query))))]
+      (is (= {:class :recoverable :code ::recoverable.common/unknown-query-id} error))
+      (is (re-find #"\" and \d+ more\.\nUse an available query ID from this conversation\.$" output)))))
 
 (deftest one-source-test
   (testing "a call that sets no source, or two, is rejected before any source is read"

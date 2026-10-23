@@ -1016,20 +1016,27 @@
     (is (=? {:structured-output {:query-id "q1" :returned 1}}
             (run-sql-only-tool! {"q1" (mt/native-query {:query "SELECT COUNT(*) FROM VENUES"})} {:query_id "q1"})))))
 
-(deftest run-sql-query-tool-many-query-ids-test
-  (testing "a long list of known IDs is cut to leave room for the recovery step"
-    (let [ids                    (repeatedly 200 u/generate-nano-id)
-          {:keys [output error]} (run-sql-only-tool! (zipmap ids (repeat (venues-by-id))) {:query_id "nope"})
-          [message step]         (str/split-lines output)
-          listed                 (some->> (re-find #"Available query IDs: (.*) and 100 more\." message)
-                                          second
-                                          (re-seq #"\"([^\"]*)\"")
-                                          (map second))]
-      (is (= ::recoverable.common/unknown-query-id (:code error)))
-      (is (= 100 (count listed)))
-      (is (every? (set ids) listed))
-      (is (= "To run one, write SQL that reads it with `create_sql_query`, then run that query with `run_query`."
-             step)))))
+(deftest run-query-many-query-ids-test
+  (let [built-or-saved (str "Use the ID of a query that you built, or a saved question or model that the user can "
+                            "read.")
+        write-sql      (str "To run one, write SQL that reads it with `create_sql_query`, then run that query with "
+                            "`run_query`.")]
+    (testing "a long list of known IDs is cut to complete IDs, so the advice after it survives the runtime's cut"
+      (doseq [[id-kind ids]        {"NanoIDs" (repeatedly 200 u/generate-nano-id)
+                                    "UUIDs"   (repeatedly 100 #(str (random-uuid)))}
+              [profile run advice] [["ordinary" run-tool! built-or-saved]
+                                    ["SQL-only" run-sql-only-tool! write-sql]]]
+        (testing (str profile " run_query, " id-kind)
+          (let [{:keys [output error]} (run (zipmap ids (repeat (venues-by-id))) {:query_id "nope"})
+                [_ shown more]         (re-find #"Available query IDs: ([^.]*?)(?: and (\d+) more)?\." output)
+                listed                 (some->> shown (re-seq #"\"([^\"]*)\"") (map second))]
+            (is (= ::recoverable.common/unknown-query-id (:code error)))
+            (is (str/includes? output advice))
+            (is (every? (set ids) listed))
+            (is (= (- (count ids) (count listed)) (some-> more parse-long)))))))
+    (testing "an ID too long to fit is counted rather than cut"
+      (is (str/includes? (:output (run-tool! {(apply str (repeat 5000 "y")) (venues-by-id)} {:query_id "nope"}))
+                         (str "Available query IDs: 1, too long to list. " built-or-saved))))))
 
 (deftest run-sql-query-tool-huge-query-id-test
   (testing "an invented ID is cut to leave room for the recovery step"
