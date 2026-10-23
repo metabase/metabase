@@ -4,7 +4,7 @@ Metabase's internationalization pipeline has two halves that the scripts in this
 orchestrate:
 
 1. **[Extraction](#extraction)** — scan Clojure/TypeScript source for `trs` / `tru` / ttag `t`
-   tagged-template call sites, emit a gettext source template in a writable external checkout.
+   tagged-template call sites, emit a gettext source template.
 2. **[Artifact generation](#artifact-generation)** — read back translated `locales/metabase-i18n/<commit>/*.po` files,
    apply [autofixes](#autofix-pass) for unambiguously repairable translator mistakes, validate
    the rest, and emit the runtime artifacts at `resources/i18n/*.edn` (backend) and
@@ -24,54 +24,46 @@ Builds clone that commit and extract its catalogs into the ignored directory
 Completed snapshots are reused without network access and are never edited by the scripts.
 
 Run `./bin/i18n/build-translation-resources` to fetch the catalogs and generate frontend JSON
-and backend EDN resources. Full builds do this automatically. Frontend build and development
-commands use `./bin/i18n/ensure-translation-resources`, which also rebuilds when the pin,
-build code, or required output files change. For backend-only development or tests, run that
-command before starting the backend. Runtime translation does not access GitHub.
+and backend EDN resources. It skips the build when the pin and the build code did not change
+since the last build. Full builds and the frontend rspack build (`TranslationResources` plugin
+in `rspack.main.config.js`) run it automatically. For backend-only development or tests, run it
+before you start the backend. Runtime translation does not access GitHub.
+
+The `en-ZZ` pseudo-locale is generated from the pinned `metabase.po` into `target/i18n/en-ZZ.po`
+on every build. It is not stored in the external repository.
 
 ## Publish translation changes
 
-Run `./bin/i18n/update-translation-template` to extract source strings, regenerate `en-ZZ.po`,
-validate the catalogs, and publish the changed `.po` files. Use `--check` to validate without
-pushing or changing the pin.
-
 Publishing requires Git credentials with write access to `ChrisVandoo/metabase-i18n` and a
-configured Git author name and email. The script pushes a `metabase-<commit>` branch to keep
-the new commit available, then updates `locales/metabase-i18n.commit`. Commit the pin and any
-changes to `resources/locales.clj` in Metabase. A failed push leaves the pin unchanged.
+configured Git author name and email. The Crowdin workflow does these steps. Its automation
+token must have write access to both repositories.
 
-The Crowdin workflow uses the same scripts. Its automation token must have write access to
-both repositories. Keep the sync workflow in Metabase; the copied workflow and tools in the
-external repository are not used by this pipeline.
-
-For a custom update, prepare a writable checkout:
+To publish an update by hand, run these commands from the project root:
 
 ```sh
 checkout=$(./bin/i18n/prepare-translation-update)
-export METABASE_I18N_SOURCE_DIR="$checkout/locales"
-```
-
-Run the generation scripts or download Crowdin catalogs into that directory, then run:
-
-```sh
-./bin/i18n/build-translation-resources
+./bin/i18n/update-translation-template "$checkout/locales"
+./bin/i18n/build-translation-resources "$checkout/locales"
 ./bin/i18n/publish-translations "$checkout"
-unset METABASE_I18N_SOURCE_DIR
 rm -rf "$(dirname "$checkout")"
 ```
 
+`update-translation-template` writes `metabase.po` to the directory you give it. Without an
+argument, it writes to `target/i18n/`. Lint uses this to check that the template can be built.
+
+`publish-translations` commits the changed `.po` files, pushes a `metabase-<commit>` branch to
+keep the new commit available, then updates `locales/metabase-i18n.commit`. Commit the pin and
+any changes to `resources/locales.clj` in Metabase. A failed push leaves the pin unchanged.
+Intermediate `.pot` files are not published.
+
 `./bin/i18n/merge-translations <branch> [-o]` merges the catalogs referenced by another
 Metabase branch, validates and publishes the result, and updates the current pin. It also
-supports older branches that still track `locales/*.po`.
-
-Update commands retain their ignored working checkout on failure and print its location so
-you can recover or retry. Successful updates remove it. Only `.po` files are committed to the
-external repository; intermediate `.pot` files are not published. `en-ZZ.po` is regenerated
-when the source template changes and is consumed from the pinned snapshot during builds.
+supports older branches that still track `locales/*.po`. On failure, it keeps its working
+checkout and prints its location so you can recover or retry.
 
 For a local Git fixture or an SSH remote, set `METABASE_I18N_REPOSITORY` to the repository URL.
 The default uses public HTTPS for reads. Test the checkout and publishing helpers with
-`python3 bin/i18n/test_external_repo.py`.
+`./bin/i18n/test-external-repo`.
 
 ```mermaid
 flowchart LR

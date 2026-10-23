@@ -19,7 +19,5 @@ i18n_clone() {
   git clone --quiet --no-checkout --depth 1 "$I18N_REPOSITORY" "$destination" >&2
   git -C "$destination" fetch --quiet --depth 1 origin "$commit" >&2
   git -C "$destination" checkout --quiet --detach "$commit" >&2
-  test "$(git -C "$destination" rev-parse HEAD)" = "$commit"
   test -f "$destination/locales/metabase.po"
-  test -f "$destination/locales/en-ZZ.po"
 }

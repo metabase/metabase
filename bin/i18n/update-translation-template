@@ -2,12 +2,9 @@
 
 set -euo pipefail
 
-check_only=false
-case "${1:-}" in
-  --check) check_only=true ;;
-  "") ;;
-  *) echo "Usage: $0 [--check]" >&2; exit 1 ;;
-esac
+if [ -n "${1:-}" ]; then
+  output_directory=$(cd "$1" && pwd)
+fi
 
 # gettext installed via homebrew is "keg-only", add it to the PATH
 if [ -d "/usr/local/opt/gettext/bin" ]; then
@@ -21,21 +18,16 @@ if ! command -v xgettext > /dev/null; then
 fi
 
 # switch to project root directory if we're not already there
-script_directory=$(dirname "${BASH_SOURCE[0]}")
+script_directory=`dirname "${BASH_SOURCE[0]}"`
 cd "$script_directory/../.."
 
 source "./bin/check-clojure-cli.sh"
 check_clojure_cli
 
-checkout=""
-if [ -z "${METABASE_I18N_SOURCE_DIR:-}" ]; then
-  checkout=$(./bin/i18n/prepare-translation-update)
-  export METABASE_I18N_SOURCE_DIR="$checkout/locales"
-  trap 'if [ "$?" = 0 ]; then rm -rf "$(dirname "$checkout")"; else echo "Update retained at $checkout" >&2; fi' EXIT
-fi
-test -f "$METABASE_I18N_SOURCE_DIR/../.git/metabase-base"
+output_directory="${output_directory:-$PWD/target/i18n}"
+mkdir -p "$output_directory"
 
-POT_NAME="$METABASE_I18N_SOURCE_DIR/metabase.po"
+POT_NAME="$output_directory/metabase.po"
 POT_BACKEND_NAME="locales/metabase-backend.pot"
 # NOTE: hardcoded in .babelrc
 POT_FRONTEND_NAME="locales/metabase-frontend.pot"
@@ -73,12 +65,3 @@ clojure -M:generate-automagic-dashboards-pot
 ##################
 
 msgcat --add-location=file -F "$POT_FRONTEND_NAME" "$POT_BACKEND_NAME" "$POT_AUTODASH_NAME" > "$POT_NAME"
-
-clojure -X:build i18n.pseudo-locale/generate-pseudo-locale-po!
-
-if [ -n "$checkout" ]; then
-  ./bin/i18n/build-translation-resources
-  if [ "$check_only" = false ]; then
-    ./bin/i18n/publish-translations "$checkout"
-  fi
-fi

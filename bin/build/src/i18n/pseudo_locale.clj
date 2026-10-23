@@ -1,5 +1,20 @@
 (ns i18n.pseudo-locale
-  "Generates the `en-ZZ` test catalog in a writable translation checkout."
+  "Generates the `en-ZZ` pseudo-locale `.po` file used by E2E tests.
+
+  This file is the build-time companion to the pseudo-locale strategy described in UXW-3460. Every English source
+  string from the pinned `metabase.po` is transformed into `[zz] {English}`, and the resulting `target/i18n/en-ZZ.po`
+  is picked up by the normal i18n build pipeline (same as every other real locale).
+
+  E2E tests can then switch the UI to `en-ZZ` and assert on the predictable `[zz] ...` prefix, without depending on
+  fragile real-language strings that Crowdin may update at any time.
+
+  The file is never committed — it is regenerated on every build from the pinned `metabase.po`, so it never
+  drifts. Crowdin does not know about `en-ZZ` (it's not in `locales/crowdin.yml`) so the translation-update workflow
+  leaves it alone.
+
+  See `src/metabase/util/i18n/impl.clj:available-locale?` for the backend allowlist that makes `en_ZZ` a valid
+  settable locale, and `src/metabase/util/i18n.clj:available-locales-with-names` for the dev/test-only visibility
+  filter that hides it from production language pickers."
   (:require
    [clojure.java.io :as io]
    [metabuild-common.core :as u])
@@ -65,27 +80,26 @@
       (.addExtractedComment dst comment))
     dst))
 
-(defn- source-catalog ^Catalog [directory]
+(defn- source-catalog ^Catalog [source-directory]
   (let [parser (PoParser.)
-        source-file (io/file directory "metabase.po")]
+        source-file (io/file source-directory "metabase.po")]
     (.parseCatalog parser source-file)))
 
 (defn generate-pseudo-locale-po!
-  "Write `en-ZZ.po` beside `metabase.po` in the supplied writable source directory."
-  [{:keys [source-directory]}]
-  (let [directory (or source-directory (System/getenv "METABASE_I18N_SOURCE_DIR"))]
-    (when-not directory
-      (throw (ex-info "A writable translation source directory is required." {})))
-    (u/step (format "Generate pseudo-locale %s.po" pseudo-locale-code)
-      (let [src        (source-catalog directory)
-            dst        (Catalog.)
-            target     (io/file directory (str pseudo-locale-code ".po"))
-            msg-count  (volatile! 0)]
-        (.addMessage dst (build-pseudo-header))
-        (doseq [^Message msg (iterator-seq (.iterator src))
-                :when        (not (.isHeader msg))]
-          (.addMessage dst (build-pseudo-message msg))
-          (vswap! msg-count inc))
-        (u/delete-file-if-exists! (.getAbsolutePath target))
-        (.write (PoWriter.) dst target)
-        (u/announce "Wrote %d pseudo-locale messages to %s." @msg-count (.getAbsolutePath target))))))
+  "Read `metabase.po` from `source-directory` and write `en-ZZ.po` to `target-directory` with every msgstr prefixed
+  with `[zz] `. Idempotent: running this repeatedly produces the same output (modulo jgettext's internal ordering)."
+  [source-directory target-directory]
+  (u/step (format "Generate pseudo-locale %s.po" pseudo-locale-code)
+    (let [src        (source-catalog source-directory)
+          dst        (Catalog.)
+          target     (io/file target-directory (str pseudo-locale-code ".po"))
+          msg-count  (volatile! 0)]
+      (.addMessage dst (build-pseudo-header))
+      (doseq [^Message msg (iterator-seq (.iterator src))
+              :when        (not (.isHeader msg))]
+        (.addMessage dst (build-pseudo-message msg))
+        (vswap! msg-count inc))
+      (u/create-directory-unless-exists! (str target-directory))
+      (u/delete-file-if-exists! (.getAbsolutePath target))
+      (.write (PoWriter.) dst target)
+      (u/announce "Wrote %d pseudo-locale messages to %s." @msg-count (.getAbsolutePath target)))))

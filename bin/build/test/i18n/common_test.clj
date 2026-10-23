@@ -32,11 +32,10 @@
       (is (= (str (io/file directory "fr.po"))
              (common/locale-source-po-filename "fr" directory))))))
 
-(deftest pseudo-locale-in-update-directory-test
+(deftest pseudo-locale-test
   (with-catalogs
     (fn [directory]
-      (let [source (slurp (io/file directory "metabase.po"))]
-        (pseudo-locale/generate-pseudo-locale-po! {:source-directory directory})
-        (is (= source (slurp (io/file directory "metabase.po")))))
-      (is (= #{"fr" "en-ZZ"} (common/locales directory)))
-      (is (= "[zz] Hello" (-> (common/po-contents "en-ZZ" directory) :messages first :str))))))
+      (let [target (str (io/file directory "pseudo"))]
+        (pseudo-locale/generate-pseudo-locale-po! directory target)
+        (is (= #{"en-ZZ"} (common/locales target)))
+        (is (= "[zz] Hello" (-> (common/po-contents "en-ZZ" target) :messages first :str)))))))

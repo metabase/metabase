@@ -9,10 +9,6 @@ if [ "$(i18n_commit)" != "$base" ]; then
   echo "The translation pin changed while this update was being prepared. Start a new update." >&2
   exit 1
 fi
-if ! git -C "$checkout" diff --cached --quiet; then
-  echo "The update checkout already has staged changes. Unstage them before publishing." >&2
-  exit 1
-fi
 git -C "$checkout" add -- 'locales/*.po'
 if ! git -C "$checkout" diff --cached --quiet; then
   git -C "$checkout" -c core.hooksPath=/dev/null commit -m "Update Metabase translations" >&2
@@ -23,12 +19,5 @@ if [ "$commit" = "$base" ]; then
   exit 0
 fi
 git -C "$checkout" push origin "HEAD:refs/heads/metabase-$commit" >&2
-if [ "$(i18n_commit)" != "$base" ]; then
-  echo "Published $commit, but the translation pin changed. Leaving the pin untouched." >&2
-  exit 1
-fi
-pin_tmp=$(mktemp "$I18N_PIN.XXXXXX")
-trap 'rm -f "$pin_tmp"' EXIT
-printf '%s\n' "$commit" > "$pin_tmp"
-mv "$pin_tmp" "$I18N_PIN"
+printf '%s\n' "$commit" > "$I18N_PIN"
 printf '%s\n' "$commit"

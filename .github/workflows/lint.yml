@@ -119,7 +119,7 @@ jobs:
       - name: Check xgettext version
         run: xgettext --version
       - name: Check i18n tags/make sure template can be built
-        run: ./bin/i18n/update-translation-template --check
+        run: ./bin/i18n/update-translation-template
       - name: Verify i18n translations (.po files)
         run: ./bin/i18n/build-translation-resources
 

@@ -8,37 +8,23 @@
 
 (set! *warn-on-reflection* true)
 
-(defn source-directory!
-  "Return the supplied catalog directory, or fetch the pinned catalogs."
-  []
-  (let [directory (or (System/getenv "METABASE_I18N_SOURCE_DIR")
-                      (first (u/sh {:dir u/project-root-directory, :quiet? true}
-                                   "bash" "bin/i18n/fetch-translations")))]
-    (u/assert-file-exists (str (io/file directory "metabase.po")))
-    (u/assert-file-exists (str (io/file directory "en-ZZ.po")))
-    directory))
-
 (defn locales
-  "Set of all locales for which we have i18n bundles.
+  "Set of all locales with a catalog in `directory`.
 
-    (locales) ; -> #{\"nl\" \"pt\" \"zh\" \"tr\" \"it\" \"fa\" ...}"
-  ([]
-   (locales (source-directory!)))
-  ([directory]
-   (into
-    (sorted-set)
-    (for [^java.io.File file (.listFiles (io/file directory))
-          :let               [file-name (.getName file)]
-          :when              (and (str/ends-with? file-name ".po")
-                                  (not (str/starts-with? file-name "metabase")))]
-      (str/replace file-name #"\.po$" "")))))
+    (locales directory) ; -> #{\"nl\" \"pt\" \"zh\" \"tr\" \"it\" \"fa\" ...}"
+  [directory]
+  (into
+   (sorted-set)
+   (for [^java.io.File file (.listFiles (io/file directory))
+         :let               [file-name (.getName file)]
+         :when              (and (str/ends-with? file-name ".po")
+                                 (not (str/starts-with? file-name "metabase")))]
+     (str/replace file-name #"\.po$" ""))))
 
 (defn locale-source-po-filename
-  "Path to the catalog for `locale` in the current translation source directory."
-  ([locale]
-   (locale-source-po-filename locale (source-directory!)))
-  ([locale directory]
-   (str (io/file directory (format "%s.po" locale)))))
+  "Path to the catalog for `locale` in `directory`."
+  [locale directory]
+  (str (io/file directory (format "%s.po" locale))))
 
 ;; see https://github.com/zanata/jgettext/tree/master/src/main/java/org/fedorahosted/tennera/jgettext
 
@@ -71,11 +57,9 @@
 
 (defn po-contents
   "Contents of the PO file for a `locale`."
-  ([locale]
-   (po-contents locale (source-directory!)))
-  ([locale directory]
-   {:headers  (po-headers locale directory)
-    :messages (po-messages-seq locale directory)}))
+  [locale directory]
+  {:headers  (po-headers locale directory)
+   :messages (po-messages-seq locale directory)})
 
 (defn backend-message?
   "True if `message` (the shape returned by `po-messages-seq`) originates from a Clojure source file

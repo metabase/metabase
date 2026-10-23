@@ -15,7 +15,7 @@ git rev-parse --verify "$other_branch^{commit}" > /dev/null
 
 checkout=$(./bin/i18n/prepare-translation-update)
 trap 'if [ "$?" = 0 ]; then rm -rf "$(dirname "$checkout")"; else echo "Update retained at $checkout" >&2; fi' EXIT
-export METABASE_I18N_SOURCE_DIR="$checkout/locales"
+source_directory="$checkout/locales"
 
 if other_commit=$(git show "$other_branch:locales/metabase-i18n.commit" 2>/dev/null); then
   other_directory=$(./bin/i18n/fetch-translations "$other_commit")
@@ -26,9 +26,7 @@ else
 fi
 
 for other_po in "$other_directory/"*.po; do
-  name=$(basename "$other_po")
-  [ "$name" != en-ZZ.po ] || continue
-  po="$METABASE_I18N_SOURCE_DIR/$name"
+  po="$source_directory/$(basename "$other_po")"
   if [ ! -f "$po" ]; then
     cp "$other_po" "$po"
     chmod u+w "$po"
@@ -41,6 +39,5 @@ for other_po in "$other_directory/"*.po; do
   fi
 done
 
-clojure -X:build i18n.pseudo-locale/generate-pseudo-locale-po!
-./bin/i18n/build-translation-resources
+./bin/i18n/build-translation-resources "$source_directory"
 ./bin/i18n/publish-translations "$checkout"

@@ -72,7 +72,7 @@ jobs:
       uses: ./.github/actions/prepare-backend
 
     - name: Test external translation checkouts and publishing
-      run: python3 bin/i18n/test_external_repo.py
+      run: ./bin/i18n/test-external-repo
     - name: Run build and release script tests
       run: clojure -X:dev:drivers:build:build-dev:build-test:ci
       timeout-minutes: 15
