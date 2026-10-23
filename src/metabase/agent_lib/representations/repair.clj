@@ -3052,12 +3052,12 @@
   [problems]
   (ex-info
    (format "Some join column references name a column their join doesn't return: %s. Reference a join column by its machine name (e.g. an aggregation is `min`, `count`, `sum` - never its display label like `Min of X`), and only columns the join returns: a grouped join returns just its breakouts and aggregations."
-        (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
-                         (format "stage %s, join %s doesn't return %s (available: %s)"
-                              stage
-                              (quoting/quoted join-alias)
-                              (str/join ", " (map quoting/quoted columns))
-                              (str/join ", " (map quoting/quoted available))))))
+           (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
+                            (format "stage %s, join %s doesn't return %s (available: %s)"
+                                    stage
+                                    (quoting/quoted join-alias)
+                                    (str/join ", " (map quoting/quoted columns))
+                                    (str/join ", " (map quoting/quoted available))))))
    {:agent-error? true
     :error        :unresolved-join-alias-field
     :problems     problems}))
@@ -3159,8 +3159,8 @@
         (when-let [bad (first-unresolved-cross-stage-ref stage cols)]
           (throw (ex-info
                   (format "No column named %s is available to reference in this stage. Reference a column by its machine name (e.g. an aggregation is `max`, `count`, `sum` - never its display label like `Max of X`), not a UI label. Available column names: %s."
-                       (quoting/quoted (nth bad 2))
-                       (str/join ", " (map (comp quoting/quoted :name) cols)))
+                          (quoting/quoted (nth bad 2))
+                          (str/join ", " (map (comp quoting/quoted :name) cols)))
                   {:agent-error? true
                    :error        :unresolved-cross-stage-field
                    :stage        idx
@@ -3381,7 +3381,7 @@
                   false))
        (throw (ex-info
                (format "Move the temporal unit in `%s` off the literal. Write a range with `>=` the first day of the period and `<` the first day after the period, both as plain date strings (not `between`, which drops everything after midnight on its last day). To exclude `2025-01-31`, use an `or` of `< \"2025-01-31\"` and `>= \"2025-02-01\"` on the column. These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count. Join `conditions:` cannot hold an `or`, so a date exclusion cannot be written there; tell the user that it cannot be added to the join. You can instead put the unit on the column with `temporal-unit` in `filters:` and `expressions:`, then compare the column to the first day of the period as a plain date string. Do not put the unit on the column in `aggregation:` or join `conditions:`, where the query engine does not turn it into a range. Use the range for `year` on an `expression` reference, which the query engine reads as a number."
-                    (pr-str node))
+                       (pr-str node))
                {:agent-error? true
                 :error        :unencodable-temporal-clause
                 :clause       node})))
@@ -3586,7 +3586,7 @@
                      :filter      "`filters:`")]
          (throw (ex-info
                  (format "The query builder's expression editor rejects a %s clause in stage %s: %s. The query would build but could not be visualized or saved - rewrite the offending clause."
-                      where original-idx (str/replace message #"\.$" ""))
+                         where original-idx (str/replace message #"\.$" ""))
                  {:agent-error? true
                   :error        :expression-editor-rejection
                   :status-code  400
@@ -3644,9 +3644,9 @@
             unit-name   (name temporal-unit)]
         (throw (ex-info (if (= :expression (nth clause 0))
                           (format "%s is a %s custom column, so it cannot be bucketed by %s. Compare it to a plain value, or bucket a date / datetime column instead."
-                               column-name type-name unit-name)
+                                  column-name type-name unit-name)
                           (format "%s is a %s column, so it cannot be bucketed by %s. Compare it to a plain value, or bucket a date / datetime column instead."
-                               column-name type-name unit-name))
+                                  column-name type-name unit-name))
                         {:agent-error?  true
                          :error         :temporal-unit-on-non-temporal-column
                          :status-code   400

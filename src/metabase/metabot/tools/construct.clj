@@ -1050,7 +1050,7 @@
             pmbql-query   (repr.resolve/resolve-query mp repaired permission-aware-content-store)
             _runnable     (when-let [why (query-not-runnable-explanation pmbql-query repaired)]
                             (throw (ex-info (format "The constructed query is not runnable - it would fail the query builder's validation, so it cannot be visualized or saved. Failing paths: %s."
-                                                 why)
+                                                    why)
                                             {:agent-error? true
                                              :error        :query-not-runnable
                                              :status-code  400})))
