@@ -746,7 +746,7 @@
         (not-empty
          (into (sorted-map)
                (keep (fn [metric-id]
-                       (let [required    (tools.u/metric-required-source (lib.metadata/card mp metric-id))
+                       (let [required    (tools.u/metric-required-source mp (lib.metadata/card mp metric-id))
                              compatible? (and required
                                               (tools.u/metric-compatible-with-stage?
                                                required

@@ -3065,6 +3065,29 @@
                                                           "breakout"    [["field" {} (column "PRODUCTS" "ID")]]
                                                           "aggregation" [["count" {}]])))))))))))))))
 
+(deftest ^:parallel metric-compatibility-uses-caller-metadata-test
+  (let [orders-query   (lib/query mp (lib.metadata/table mp 10))
+        products-query (lib/query mp (lib.metadata/table mp 20))
+        source-card    {:id 901, :name "Orders source", :type :question, :database-id 1
+                        :dataset-query orders-query}
+        provider       (lib.tu/merged-mock-metadata-provider mp {:cards [source-card]})
+        definition     (-> (lib/query provider (lib.metadata/card provider 901))
+                           lib/append-stage
+                           (lib/aggregate (lib/count)))
+        provider       (lib.tu/merged-mock-metadata-provider
+                        provider
+                        {:cards [{:id 902, :name "Orders metric", :type :metric, :database-id 1
+                                  :dataset-query definition}]})
+        other-provider (lib.tu/merged-mock-metadata-provider
+                        mp {:cards [(assoc source-card :dataset-query products-query)]})]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (constantly other-provider)]
+      (doseq [[table-id expected] [[10 nil]
+                                   [20 {902 {:kind :table, :table-id 10, :bare-table-only? true}}]]]
+        (testing (str "Compatibility with table " table-id " uses the caller's source card")
+          (let [query (-> (lib/query provider (lib.metadata/table provider table-id))
+                          (lib/aggregate (lib.metadata/metric provider 902)))]
+            (is (= expected (#'construct/incompatible-metrics provider query)))))))))
+
 (deftest gate-checks-only-the-first-stage-test
   (testing "Metric compatibility is checked only in the first stage"
     (mt/with-temp [:model/Card {question-id :id}

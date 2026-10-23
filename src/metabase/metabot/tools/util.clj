@@ -272,28 +272,33 @@
   `{:kind :table, :table-id T, :bare-table-only? boolean}`. A single-stage table metric also works on a card over T;
   a multi-stage metric requires a stage directly on T, even when its definition starts from a card. For such a
   definition, T is the table that the card reads from, per [[card-source-table-id]].
-  A nil table ID means there is no usable table source.
+  A nil table ID means there is no usable table source. Read source cards through `metadata-providerable` when
+  supplied, or an app-DB metadata provider for the definition's database otherwise.
 
   This follows `splice-compatible-metrics` in [[metabase.query-processor.middleware.metrics]]. The query processor
   compares the metric's last stage, so the first stage's `report_card.source_card_id` is insufficient.
   Legacy definitions are converted to MBQL 5 before classification. Missing, blank, or unconvertible definitions
   return nil."
-  [card]
-  (let [definition (metric-card-shape-get card :dataset-query :dataset_query)
-        stages     (or (not-empty (:stages definition))
-                       (when (seq definition)
-                         (try
-                           (:stages (lib/->mbql5 definition))
-                           (catch Exception _ nil))))]
-    (when (seq stages)
-      (if-let [card-id (and (= 1 (count stages)) (:source-card (first stages)))]
-        {:kind :card, :card-id card-id}
-        {:kind             :table
-         :table-id         (or (:source-table (first stages))
-                               (some->> (:source-card (first stages))
-                                        (card-source-table-id (lib-be/application-database-metadata-provider
-                                                               (:database definition)))))
-         :bare-table-only? (> (count stages) 1)}))))
+  ([card]
+   (metric-required-source nil card))
+  ([metadata-providerable card]
+   (let [definition (metric-card-shape-get card :dataset-query :dataset_query)
+         stages     (or (not-empty (:stages definition))
+                        (when (seq definition)
+                          (try
+                            (:stages (lib/->mbql5 definition))
+                            (catch Exception _ nil))))]
+     (when (seq stages)
+       (if-let [card-id (and (= 1 (count stages)) (:source-card (first stages)))]
+         {:kind :card, :card-id card-id}
+         {:kind             :table
+          :table-id         (or (:source-table (first stages))
+                                (some->> (:source-card (first stages))
+                                         (card-source-table-id
+                                          (or metadata-providerable
+                                              (lib-be/application-database-metadata-provider
+                                               (:database definition))))))
+          :bare-table-only? (> (count stages) 1)})))))
 
 (defn metric-compatible-with-stage?
   "Return whether `required` permits a metric on the stage's source.
