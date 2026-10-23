@@ -30,6 +30,12 @@
   (check-body-query! request route-params)
   rules/filter-query-metadata)
 
+(defn- check-parameter!
+  "Checks the parameter, and the fields, whose values a `request` asks for."
+  [request _route-params]
+  (let [{:keys [parameter field_ids]} (api.macros/request-body request)]
+    (rules/check-parameter! parameter field_ids)))
+
 (def checks
   "The checks of a data-app request to each endpoint of [[metabase.query-processor.api]]."
   {[:post "/"]                        check-body-query!
@@ -37,9 +43,9 @@
    [:post "/query_metadata"]          check-body-query-metadata!
    [:post "/native"]                  check-native-body-query!
    [:post "/pivot"]                   check-body-query!
-   [:post "/parameter/values"]        guard/refuse
-   [:post "/parameter/search/:query"] guard/refuse
-   [:post "/parameter/remapping"]     guard/refuse})
+   [:post "/parameter/values"]        check-parameter!
+   [:post "/parameter/search/:query"] check-parameter!
+   [:post "/parameter/remapping"]     check-parameter!})
 
 (def dataset-guard
   "Ring middleware guarding the data-app requests to the `/api/dataset` mount."

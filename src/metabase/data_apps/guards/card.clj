@@ -16,7 +16,7 @@
 
 (defn- check-card-run!
   "Checks the card a `request` runs, refusing a run that sends parameters, names a dashboard, previews the card in a
-  collection or serves a stored result."
+  collection, serves a stored result or sorts one."
   [request route-params]
   (check-card! request route-params)
   (let [{:keys [parameters dashboard_id collection_preview stored_result_id sort]} (api.macros/request-body request)]
@@ -27,6 +27,12 @@
               (some? sort))
       (throw (ex-info (tru "A data app can run a card only as it is saved, without parameters, a dashboard, a collection preview or a stored result.")
                       {:status-code 403})))))
+
+(defn- check-card-parameter!
+  "Checks the card whose parameter's values a `request` asks for, and that parameter."
+  [request {:keys [id card-id param-key] :as route-params}]
+  (check-card! request route-params)
+  (rules/check-card-parameter! (or id card-id) param-key))
 
 (defn- check-card-query-metadata!
   "Checks the card whose query metadata a `request` asks for, returning the filter of that metadata."
@@ -41,9 +47,9 @@
    [:post "/:card-id/query"]                          check-card-run!
    [:post "/:card-id/query/:export-format"]           check-card-run!
    [:post "/pivot/:card-id/query"]                    check-card-run!
-   [:get "/:card-id/params/:param-key/values"]        guard/refuse
-   [:get "/:card-id/params/:param-key/search/:query"] guard/refuse
-   [:get "/:id/params/:param-key/remapping"]          guard/refuse})
+   [:get "/:card-id/params/:param-key/values"]        check-card-parameter!
+   [:get "/:card-id/params/:param-key/search/:query"] check-card-parameter!
+   [:get "/:id/params/:param-key/remapping"]          check-card-parameter!})
 
 (def card-guard
   "Ring middleware guarding the data-app requests to the `/api/card` mount."

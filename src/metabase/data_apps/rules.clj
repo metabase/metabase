@@ -65,3 +65,15 @@
   metabase-enterprise.data-apps.rules
   [_related]
   (throw (unavailable)))
+
+(defenterprise check-parameter!
+  "Throws a 403 unless a data app may read the values of `parameter` and of the fields with `field-ids`."
+  metabase-enterprise.data-apps.rules
+  [_parameter _field-ids]
+  (throw (unavailable)))
+
+(defenterprise check-card-parameter!
+  "Throws a 403 unless a data app may read the values of the parameter with `param-key` of the card with `card-id`."
+  metabase-enterprise.data-apps.rules
+  [_card-id _param-key]
+  (throw (unavailable)))

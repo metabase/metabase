@@ -8,6 +8,7 @@
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.queries.core :as queries]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -92,18 +93,23 @@
     (data-apps.db/card-by-entity-id card-id)
     (data-apps.db/card-by-id (parse-long card-id))))
 
-(defenterprise check-card!
-  "Throws a 403 unless the card with `card-id`, an ID or an entity ID, is a card of a data app or a metric in the Library
-  whose query reads only the Library through MBQL, when such a card exists."
-  :feature :data-apps
-  [card-id]
-  (when-let [{:keys [id database_id]} (card-row card-id)]
+(defn- check-card-row!
+  "Throws unless a data app may read the card with `card-row`, its ID and database ID, when it is non-nil."
+  [{:keys [id database_id] :as card-row}]
+  (when card-row
     (let [mp (lib-be/application-database-metadata-provider database_id)]
       (when-not (contains? (data-apps.db/data-app-readable-card-ids #{id}) id)
         (refuse-cards! mp #{id}))
       (let [card-query (lib/query mp (:dataset-query (lib.metadata/card mp id)))]
         (check-lib-query! card-query #{id})
-        (check-preprocessed-query! card-query))))
+        (check-preprocessed-query! card-query)))))
+
+(defenterprise check-card!
+  "Throws a 403 unless the card with `card-id`, an ID or an entity ID, is a card of a data app or a metric in the Library
+  whose query reads only the Library through MBQL, when such a card exists."
+  :feature :data-apps
+  [card-id]
+  (check-card-row! (card-row card-id))
   nil)
 
 (defenterprise check-table!
@@ -246,3 +252,43 @@
       (assoc :db_id (get-in related [:table :db_id]))
       filter-table-metadata
       (dissoc :db_id)))
+
+(defn- ref-field-ids
+  "The IDs of the fields that the legacy or MBQL 5 field `ref`, a parameter's value or label field, names or reaches
+  through a foreign key."
+  [ref]
+  (when (and (sequential? ref) (= "field" (some-> (first ref) name)))
+    (let [[_ x y]   ref
+          [id opts] (if (map? x) [y x] [x y])]
+      (cond-> #{}
+        (pos-int? id)                   (conj id)
+        (pos-int? (:source-field opts)) (conj (:source-field opts))))))
+
+(defenterprise check-parameter!
+  "Throws a 403 unless a data app may read the values of `parameter`, from the card it names and its value and label
+  fields, and of the field it targets and the fields with `field-ids`, wherever their values are read from."
+  :feature :data-apps
+  [{:keys [values_source_type values_source_config target]} field-ids]
+  (when-not (every? pos-int? field-ids)
+    (throw (refusal (tru "A data app can read the values only of fields named by their IDs."))))
+  (when (= "card" (some-> values_source_type name))
+    (let [card-id (:card_id values_source_config)]
+      (when-not (pos-int? card-id)
+        (throw (refusal (tru "A data app can read the values only of cards named by their IDs."))))
+      (check-card-row! (data-apps.db/card-by-id card-id))))
+  (check-field-tables! (value-source-field-ids
+                        (cond-> (into (set field-ids)
+                                      (mapcat ref-field-ids)
+                                      [(:value_field values_source_config) (:label_field values_source_config)])
+                          target (into (filter pos-int?)
+                                       [(lib/parameter-target-field-id (lib/normalize ::lib.schema.parameter/target target))]))))
+  nil)
+
+(defenterprise check-card-parameter!
+  "Throws a 403 unless a data app may read the values of the parameter with `param-key` of the card with `card-id`, both
+  route params, when the card has such a parameter."
+  :feature :data-apps
+  [card-id param-key]
+  (when-let [parameter (some #(when (= param-key (:id %)) %)
+                             (some-> (card-row card-id) :id data-apps.db/card-parameters))]
+    (check-parameter! parameter nil)))

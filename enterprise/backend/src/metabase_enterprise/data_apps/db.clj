@@ -118,6 +118,11 @@
                         {:from [(warehouse-schema-overlay/field-query)]})
       #{}))
 
+(mu/defn card-parameters :- [:maybe [:sequential :map]]
+  "The parameters of the Card with `card-id`."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-fn :parameters :model/Card :id card-id))
+
 (mu/defn data-app-readable-card-ids :- [:set ::lib.schema.id/card]
   "Among `card-ids`, the IDs of the cards a data app may read: the cards in data apps' collections and the metrics in
   the Library, unless archived."

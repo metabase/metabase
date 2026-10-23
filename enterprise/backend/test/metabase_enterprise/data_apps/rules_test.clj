@@ -184,27 +184,25 @@
              (is (re-find #"Venues elsewhere" (request :post 403 (format "card/pivot/%d/query" other-card-id)))))
            (testing "a card that doesn't exist is left to the endpoint's 404"
              (request :get 404 "card/999999999"))
-           (testing "a data app's card isn't run with parameters, in a dashboard, as a collection preview or from a stored result"
+           (testing "a data app's card isn't run in a dashboard, as a collection preview or from a stored result"
              (doseq [body [{:dashboard_id dashboard-id}
                            {:collection_preview true}
-                           {:stored_result_id 1}
-                           {:parameters [{:type :category :target [:variable [:template-tag "x"]] :value "Bar"}]}]]
+                           {:stored_result_id 1}]]
                (is (re-find #"as it is saved" (request :post 403 (format "card/%d/query" app-card-id) body))))
              (is (re-find #"as it is saved" (request :post 403 (format "card/pivot/%d/query" app-card-id)
                                                      {:dashboard_id dashboard-id}))))
            (testing "a data app downloads its card from a form, and not with parameters"
              (is (form-download 200 app-card-id "[]"))
              (is (re-find #"as it is saved" (form-download 403 app-card-id (json/encode [{:type   :category
-                                                                                          :target [:variable [:template-tag "x"]]
-                                                                                          :value  "Bar"}])))))
+                                                                                          :target [:dimension [:field (mt/id :categories :name)
+                                                                                                               {:source-field (mt/id :venues :category_id)}]]
+                                                                                          :value  ["Bar"]}])))))
            (testing "a card outside data apps' collections isn't read by entity ID, its metadata or its download"
              (is (re-find #"Venues elsewhere" (request :get 403 (str "card/" other-card-eid))))
              (is (re-find #"Venues elsewhere" (request :get 403 (format "card/%d/query_metadata" other-card-id))))
              (is (re-find #"Venues elsewhere" (form-download 403 other-card-id "[]"))))
            (testing "a card that doesn't exist is left to the endpoint's 404 by entity ID too"
              (request :get 404 "card/AbCdEfGhIjKlMnOpQrStU"))
-           (testing "a card's parameter values are refused until their rule comes"
-             (request :get 403 (format "card/%d/params/x/values" app-card-id)))
            (testing "a data app's card whose table is no longer published is refused"
              (t2/update! :model/TableUserSettings :table_id (mt/id :venues) {:is_published false})
              (is (re-find #"not VENUES" (request :get 403 (str "card/" app-card-id)))))))))))
@@ -356,6 +354,65 @@
              (let [segment-ids (set (map :id (:segments (get-as-data-app 200 (format "field/%d/related" (mt/id :venues :price))))))]
                (is (contains? segment-ids cheap-id))
                (is (not (contains? segment-ids bars-id)))))))))))
+
+(defn- field-target
+  "A parameter target on the field with `field-id`, through the foreign key with `fk-field-id` when it is non-nil."
+  [field-id & [fk-field-id]]
+  [:dimension [:field field-id (when fk-field-id {:source-field fk-field-id})]])
+
+(deftest parameter-values-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (data-apps.tu/with-published-tables! [(mt/id :venues)]
+       (mt/with-temp [:model/Card {app-card-id :id} {:name          "Venues"
+                                                     :collection_id collection-id
+                                                     :dataset_query (data-apps.tu/venues-query)
+                                                     :parameters    [{:id     "price"
+                                                                      :slug   "price"
+                                                                      :name   "Price"
+                                                                      :type   :number/=
+                                                                      :target (field-target (mt/id :venues :price))}]}
+                      :model/Card {other-card-id :id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}]
+         (let [parameter (fn [& {:as source}]
+                           (merge {:id "p" :type :category} source))
+               values    (fn [status body]
+                           (mt/user-http-request :crowberto :post status "dataset/parameter/values" as-data-app body))]
+           (testing "values of a field of a published table, or from a card a data app may read"
+             (is (values 200 {:parameter (parameter) :field_ids [(mt/id :venues :name)]}))
+             (is (values 200 {:parameter (parameter :values_source_type   "card"
+                                                    :values_source_config {:card_id app-card-id :value_field [:field (mt/id :venues :name) nil]})})))
+           (testing "values of a field of an unpublished table, or from a card a data app may not read, are refused"
+             (is (re-find #"not CHECKINS" (values 403 {:parameter (parameter) :field_ids [(mt/id :checkins :date)]})))
+             (is (re-find #"Venues elsewhere" (values 403 {:parameter (parameter :values_source_type   "card"
+                                                                                 :values_source_config {:card_id other-card-id})}))))
+           (testing "a card's parameter values are read, searched and remapped when their fields are published"
+             (is (get-as-data-app 200 (format "card/%d/params/price/values" app-card-id)))
+             (is (get-as-data-app 200 (format "card/%d/params/price/search/1" app-card-id)))
+             (doseq [path ["dataset/parameter/search/a" "dataset/parameter/remapping"]]
+               (is (mt/user-http-request :crowberto :post 200 path as-data-app
+                                         (cond-> {:parameter (parameter) :field_ids [(mt/id :venues :name)]}
+                                           (= path "dataset/parameter/remapping") (assoc :value "Bar"))))))
+           (testing "field IDs that aren't integers are refused"
+             (is (re-find #"named by their IDs" (values 403 {:parameter (parameter) :field_ids [(str (mt/id :checkins :date))]}))))
+           (testing "a card source's value field reached through a foreign key into an unpublished table is refused"
+             (is (re-find #"not CATEGORIES" (values 403 {:parameter (parameter :values_source_type   "card"
+                                                                                :values_source_config {:card_id     app-card-id
+                                                                                                       :value_field [:field (mt/id :categories :name)
+                                                                                                                     {:source-field (mt/id :venues :category_id)}]})}))))
+           (testing "a card's parameter on a field of an unpublished table is refused, and doesn't block its other parameters"
+             (t2/update! :model/Card app-card-id {:parameters [{:id     "price"
+                                                                :slug   "price"
+                                                                :name   "Price"
+                                                                :type   :number/=
+                                                                :target (field-target (mt/id :venues :price))}
+                                                               {:id     "category"
+                                                                :slug   "category"
+                                                                :name   "Category"
+                                                                :type   :category
+                                                                :target (field-target (mt/id :categories :name)
+                                                                                      (mt/id :venues :category_id))}]})
+             (is (re-find #"not CATEGORIES" (get-as-data-app 403 (format "card/%d/params/category/values" app-card-id))))
+             (is (get-as-data-app 200 (format "card/%d/params/price/values" app-card-id))))))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app runs nothing"
