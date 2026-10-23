@@ -43,7 +43,6 @@
    [metabase.query-processor.middleware.large-int :as large-int]
    [metabase.query-processor.schema :as qp.schema]
    ;; still passes state via the store's miscellaneous-value slot; general-cached-value migration pending
-   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -541,9 +540,8 @@
   "Converts `values` to a type compatible with the `base-type` found for `col`. These values should be directly
   comparable with the values returned from the database for the given `col`.
 
-  When `large-int` has converted a would-be `BigInteger` column to strings, `stringified?` is truthy; in that case
-  the values are further transformed to strings."
-  [{:keys [base-type]} values stringified?]
+  Also, attempt to convert each value that is a large integer to a string."
+  [{:keys [base-type]} values]
   (let [transform (condp #(isa? %2 %1) base-type
                     :type/Decimal    bigdec
                     :type/Float      double
@@ -551,8 +549,7 @@
                     :type/Integer    long
                     :type/Text       str
                     identity)
-        transform (cond->> transform
-                    stringified? (comp large-int/maybe-large-int->string))]
+        transform (comp large-int/maybe-large-int->string transform)]
     (map #(some-> % transform) values)))
 
 (defn- infer-human-readable-values-type
@@ -583,14 +580,11 @@
    {{:keys [values human-readable-values], remap-to :name} :lib/internal-remap
     :as                                                    col} :- ::column-with-optional-base-type]
   (when (seq values)
-    (let [remap-from       (:name col)
-          ;; existing usage -- don't use going forward
-          stringified-mask #_{:clj-kondo/ignore [:deprecated-var]} (qp.store/miscellaneous-value [::large-int/column-index-mask])]
+    (let [remap-from (:name col)]
       {:col-index       idx
        :from            remap-from
        :to              remap-to
-       :value->readable (zipmap (transform-values-for-col col values
-                                                          (and stringified-mask (nth stringified-mask idx)))
+       :value->readable (zipmap (transform-values-for-col col values)
                                 human-readable-values)
        :new-column      (create-remapped-col remap-to
                                              remap-from
