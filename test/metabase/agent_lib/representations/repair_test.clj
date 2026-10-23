@@ -9,11 +9,13 @@
    [metabase.agent-lib.representations.repair :as repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.test :as mt]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.malli.registry :as mr]))
 
 (set! *warn-on-reflection* true)
 
@@ -747,8 +749,15 @@
       (get "stages")
       first))
 
-(defn- repair-filter [filter-clause]
-  (first (get (repair-in-stage {"filters" [filter-clause]}) "filters")))
+(defn- repair-filter
+  "Repair and return one filter clause.
+
+  Throw if repair splits it into several entries, as with a top-level `and`, so a test can't
+  silently check only the first condition."
+  [filter-clause]
+  (let [filters (get (repair-in-stage {"filters" [filter-clause]}) "filters")]
+    (assert (= 1 (count filters)) (str "repair split the filter into " (count filters) " entries"))
+    (first filters)))
 
 (defn- hoist-filter
   "Run only Pass 2.95 over a stage carrying `filter-clause`, returning the rewritten clause.
@@ -996,9 +1005,9 @@
 
 (deftest ^:parallel hoist-temporal-bucket-nested-in-filter-test
   (testing "hoisting reaches comparisons nested under boolean combinators"
-    (is (= ["and" {} ["=" {} (created-at-bucketed "month") "2025-01-01"]
+    (is (= ["or" {} ["=" {} (created-at-bucketed "month") "2025-01-01"]
             ["not" {} ["=" {} (created-at-bucketed "year") "2024-01-01"]]]
-           (repair-filter ["and" {}
+           (repair-filter ["or" {}
                            ["=" {} created-at (abs-dt "2025-01-01" "month")]
                            ["not" {} ["=" {} created-at (abs-dt "2024-01-01" "year")]]])))))
 
@@ -1066,6 +1075,148 @@
     (let [once (repair-filter ["between" {} created-at (abs-dt "2025-01-01" "month") (abs-dt "2025-06-01" "month")])]
       (is (= once (repair-filter once))))))
 
+(deftest ^:parallel conditional-aggregations-with-temporal-buckets-test
+  (doseq [operator ["count-where" "sum-where" "distinct-where" "share"]
+          [start-unit end-unit] [["day" "day"] ["default" "default"] ["day" "default"] ["default" "day"]]]
+    (testing (str operator " with " start-unit "/" end-unit)
+      (let [args (cond-> [operator {}]
+                   (contains? #{"sum-where" "distinct-where"} operator)
+                   (conj ["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]]))
+            input (conj args ["between" {} created-at (abs-dt "2026-01-01" start-unit) (abs-dt "2026-01-31" end-unit)])
+            expected (conj args ["and" {} [">=" {} created-at "2026-01-01"] ["<" {} created-at "2026-02-01"]])
+            stage (repair-in-stage {"aggregation" [input]})]
+        (is (= [expected] (get stage "aggregation")))
+        (is (= stage (repair-in-stage stage)))))))
+
+(deftest ^:parallel date-only-comparisons-use-whole-day-ranges-test
+  (doseq [unit ["day" "default"]
+          :let [date (fn [literal] (abs-dt literal unit))
+                jan31 ["and" {} [">=" {} created-at "2017-01-31"] ["<" {} created-at "2017-02-01"]]
+                leap-day ["and" {} [">=" {} created-at "2024-02-29"] ["<" {} created-at "2024-03-01"]]]
+          [input expected] [[["=" {} created-at (date "2017-01-31")] jan31]
+                            [["=" {} created-at (date "2017-01-31") (date "2024-02-29")] ["or" {} jan31 leap-day]]
+                            [["in" {} created-at (date "2017-01-31") (date "2024-02-29")] ["or" {} jan31 leap-day]]
+                            [["<=" {} created-at (date "2017-01-31")] ["<" {} created-at "2017-02-01"]]
+                            [[">" {} created-at (date "2017-12-31")] [">=" {} created-at "2018-01-01"]]
+                            [["<" {} created-at (date "2017-01-31")] ["<" {} created-at "2017-01-31"]]
+                            [[">=" {} created-at (date "2017-01-31")] [">=" {} created-at "2017-01-31"]]]]
+    (testing (pr-str input)
+      (let [stage (repair-in-stage {"aggregation" [["count-where" {} input]]})]
+        (is (= [["count-where" {} expected]] (get stage "aggregation")))
+        (is (= stage (repair-in-stage stage)))))))
+
+(deftest ^:parallel whole-day-ranges-in-order-by-and-joined-aggregations-test
+  (let [predicate ["between" {} created-at (abs-dt "2017-01-01" "day") (abs-dt "2017-01-31" "default")]
+        expected ["and" {} [">=" {} created-at "2017-01-01"] ["<" {} created-at "2017-02-01"]]]
+    (testing "an inline order-by aggregation"
+      (let [stage (repair-in-stage {"order-by" [["desc" {} ["count-where" {} predicate]]]})]
+        (is (= ["count-where" {} expected] (get-in stage ["order-by" 0 2])))))
+    (testing "an aggregation in a join's source query"
+      (let [stage (repair-in-stage
+                   {"joins" [{"lib/type" "mbql/join" "alias" "O2"
+                              "stages" [{"lib/type" "mbql.stage/mbql"
+                                         "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                         "aggregation" [["count-where" {} predicate]]}]}]})]
+        (is (= [["count-where" {} expected]] (get-in stage ["joins" 0 "stages" 0 "aggregation"])))))))
+
+(deftest ^:parallel inline-order-by-with-equivalent-temporal-aggregations-test
+  (let [range-clause ["and" {} [">=" {} created-at "2017-01-01"] ["<" {} created-at "2017-02-01"]]]
+    (doseq [[aggregation-predicate order-predicate]
+            [[["between" {} created-at (abs-dt "2017-01-01" "day") (abs-dt "2017-01-31" "day")]
+              ["between" {} created-at (abs-dt "2017-01-01" "default") (abs-dt "2017-01-31" "default")]]
+             [["between" {} created-at (abs-dt "2017-01-01" "day") (abs-dt "2017-01-31" "day")]
+              range-clause]
+             [range-clause
+              ["between" {} created-at (abs-dt "2017-01-01" "day") (abs-dt "2017-01-31" "day")]]
+             [[">=" {} created-at (abs-dt "2017-01-01T12:00:00" "default")]
+              [">=" {} created-at "2017-01-01T12:00:00"]]]]
+      (testing (pr-str [aggregation-predicate order-predicate])
+        (let [stage (repair-in-stage {"aggregation" [["count-where" {} aggregation-predicate]]
+                                      "order-by" [["desc" {} ["count-where" {} order-predicate]]]})
+              uuid (get-in stage ["aggregation" 0 1 "lib/uuid"])]
+          (is (some? uuid))
+          (is (= ["aggregation" {} uuid] (get-in stage ["order-by" 0 2])))
+          (is (= stage (repair-in-stage stage))))))))
+
+(deftest ^:parallel join-conditions-with-temporal-literals-stay-refused-test
+  (doseq [operator ["in" "=" "between"]
+          [start-unit end-unit] [["day" "day"] ["default" "default"] ["day" "default"] ["default" "day"]]]
+    (testing (str operator " with " start-unit "/" end-unit)
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"Move the temporal unit"
+           (repair-in-stage
+            {"joins" [{"lib/type" "mbql/join" "alias" "O2"
+                       "stages" [{"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
+                       "conditions" [[operator {} created-at
+                                      (abs-dt "2017-01-30" start-unit)
+                                      (abs-dt "2017-01-31" end-unit)]]}]}))))))
+
+(deftest ^:parallel default-timestamps-keep-their-time-test
+  (doseq [separator ["T" " "]]
+    (let [input ["between" {} created-at (abs-dt (str "2026-01-01" separator "12:30:00") "default")
+                 (abs-dt (str "2026-01-31" separator "12:30:00") "default")]
+          expected ["between" {} created-at "2026-01-01T12:30:00" "2026-01-31T12:30:00"]]
+      (is (= [["count-where" {} expected]]
+             (get (repair-in-stage {"aggregation" [["count-where" {} input]]}) "aggregation"))
+          (pr-str input)))))
+
+(deftest ^:parallel between-a-whole-day-and-now-or-a-timestamp-test
+  (doseq [unit ["day" "default"]
+          [end end'] [[["now" {}] ["now" {}]]
+                      ["now" ["now" {}]]
+                      [(abs-dt "2026-01-31T12:30:00" "default") "2026-01-31T12:30:00"]
+                      ["2026-01-31T12:30:00" "2026-01-31T12:30:00"]
+                      [(abs-dt "2026-01-31 12:30:00" "default") "2026-01-31T12:30:00"]
+                      ["2026-01-31 12:30:00" "2026-01-31T12:30:00"]]]
+    (testing (pr-str [unit end])
+      (let [stage (repair-in-stage
+                   {"aggregation" [["count-where" {} ["between" {} created-at (abs-dt "2026-01-01" unit) end]]]})]
+        (is (= [["count-where" {} ["between" {} created-at "2026-01-01" end']]] (get stage "aggregation")))
+        (is (= stage (repair-in-stage stage)))))))
+
+(deftest ^:parallel conditional-aggregations-with-refused-temporal-clauses-test
+  (doseq [predicate (concat
+                     (for [[literal units] [["2026-01-01" ["week" "month" "quarter" "year"]]
+                                            ["2026-01-01T10:00:00" ["hour" "minute" "second"]]]
+                           unit units]
+                       [">" {} created-at (abs-dt literal unit)])
+                     [["!=" {} created-at (abs-dt "2026-01-31" "day")]
+                      ["not-in" {} created-at (abs-dt "2026-01-30" "default") (abs-dt "2026-01-31" "day")]
+                      [">" {} created-at (abs-dt "2026-01-01T12:30:00" "day")]
+                      ["during" {} created-at "2026-01-01" "day"]
+                      ["between" {} created-at (abs-dt "2026-01-01" "day") (abs-dt "2026-01-31" "month")]
+                      ["between" {} created-at (abs-dt "2026-01-01" "day") "2026-01-31"]
+                      ["between" {} created-at (abs-dt "2026-01-01" "day") ["relative-datetime" {} -1 "day"]]
+                      ["between" {} created-at (abs-dt "2026-01-01" "day") ["today" {}]]
+                      ["between" {} created-at (abs-dt "2026-01-01T12:30:00" "default") (abs-dt "2026-01-31" "default")]
+                      ["=" {} (created-at-bucketed "day") (abs-dt "2026-01-01" "day")]
+                      ["=" {} (abs-dt "2026-01-01" "day") created-at]])]
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"Move the temporal unit"
+         (repair-in-stage {"aggregation" [["count-where" {} predicate]]})))))
+
+(deftest ^:parallel partial-dates-in-conditional-aggregations-stay-refused-test
+  (let [user-id ["field" {} ["Sample" "PUBLIC" "ORDERS" "USER_ID"]]]
+    (doseq [unit ["day" "default"]
+            [start end] [["2026-01" "2026-03"] ["2025" "2026"]]
+            predicate [["=" {} created-at (abs-dt start unit)]
+                       ["between" {} created-at (abs-dt start unit) (abs-dt end unit)]
+                       ["between" {} created-at (abs-dt start unit) ["now" {}]]]
+            aggregation [["count-where" {} predicate]
+                         ["sum-where" {} user-id predicate]
+                         ["distinct-where" {} user-id predicate]
+                         ["share" {} predicate]]]
+      (testing (pr-str aggregation)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"Move the temporal unit"
+             (repair-in-stage {"aggregation" [aggregation]})))))))
+
+(deftest ^:parallel standalone-temporal-literals-keep-their-type-test
+  (let [literal (abs-dt "2026-01-01" "day")]
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo #"Move the temporal unit"
+         (repair-in-stage {"aggregation" [["min" {} literal]]})))))
+
 (deftest ^:parallel unencodable-temporal-clause-error-test
   (testing "a temporal clause the hoist pass could not move becomes a retryable agent error"
     (doseq [[label stage-kvs]
@@ -1131,8 +1282,26 @@
     ;; plain upper date keeps only midnight of the last day
     (is (thrown-with-msg?
          clojure.lang.ExceptionInfo
-         #"`>=` its first day and `<` the first day after it.*not `between`.*`year` on an `expression` reference"
-         (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-01" "year")])))))
+         #"`>=` the first day of the period and `<` the first day after the period.*not `between`.*`year` on an `expression` reference"
+         (repair-filter ["=" {} ["expression" {} "Ship Date"] (abs-dt "2025-06-01" "year")]))))
+  (testing "date negations leave the choice of counting NULL dates to the model"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count"
+         (repair-in-stage {"aggregation" [["count-where" {} ["!=" {} created-at (abs-dt "2025-01-31" "day")]]]}))))
+  (testing "a date exclusion in a join has no rewrite, so the model tells the user"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Join `conditions:` cannot hold an `or`, so a date exclusion cannot be written there; tell the user that it cannot be added to the join."
+         (repair-in-stage
+          {"joins" [{"lib/type" "mbql/join" "alias" "O2"
+                     "stages" [{"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}]
+                     "conditions" [["!=" {} created-at (abs-dt "2025-01-31" "day")]]}]}))))
+  (testing "a bucketed column is ruled out where the query engine does not turn it into a range"
+    (is (thrown-with-msg?
+         clojure.lang.ExceptionInfo
+         #"Do not put the unit on the column in `aggregation:` or join `conditions:`"
+         (repair-in-stage {"aggregation" [["count-where" {} [">" {} created-at (abs-dt "2025-01-01" "month")]]]})))))
 
 ;;; ============================================================
 ;;; Pass 1.867 - rewrite temporal-extract to its get-* equivalent
@@ -1373,6 +1542,118 @@
           once  (repair/repair trivial-mp input)
           twice (repair/repair trivial-mp once)]
       (is (= once twice)))))
+
+;;; ============================================================
+;;; Pass 1.56 - split top-level `and` filters
+;;; ============================================================
+
+(def ^:private status-filter
+  ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "paid"])
+
+(def ^:private total-filter
+  [">" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]] 100])
+
+(def ^:private id-filter
+  ["not-null" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "ID"]]])
+
+(defn- filters-query [filters]
+  {"lib/type" "mbql/query"
+   "database" "Sample"
+   "stages"   [{"lib/type"     "mbql.stage/mbql"
+                "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                "filters"      filters}]})
+
+(defn- repaired-filters [filters]
+  (get-in (repair/repair trivial-mp (filters-query filters)) ["stages" 0 "filters"]))
+
+(deftest ^:parallel split-top-level-and-filters-test
+  (testing "a top-level `and` becomes separate `filters:` entries (BOT-1446)"
+    (is (= [status-filter total-filter]
+           (repaired-filters [["and" {} status-filter total-filter]]))))
+  (testing "`and` nested directly in a top-level `and` is flattened too, keeping order"
+    (is (= [id-filter status-filter total-filter]
+           (repaired-filters [id-filter ["and" {} status-filter ["and" {} total-filter]]]))))
+  (testing "a bare `and` with no options map is split once Pass 1 has added `{}`"
+    (is (= [status-filter total-filter]
+           (repaired-filters [["and" status-filter total-filter]]))))
+  (testing "the `and` head is matched case-insensitively"
+    (is (= [status-filter total-filter]
+           (repaired-filters [["AND" {} status-filter total-filter]]))))
+  (testing "an `and` with a non-clause operand stays intact so validation can report it"
+    (let [filters [["and" {} status-filter total-filter {"trailing" "x"}]]]
+      (is (= filters (repaired-filters filters))))))
+
+(deftest ^:parallel split-top-level-and-filters-with-bare-field-path-test
+  (let [clause   ["and" {} id-filter ["Sample" "PUBLIC" "ORDERS" "IS_ACTIVE"]]
+        repaired (repair/repair mp-temporal (filters-query [clause]))
+        resolved (repr.resolve/resolve-query mp-temporal repaired)
+        errors   (:errors (mr/explain ::lib.schema/query resolved))]
+    (is (= [clause] (get-in repaired ["stages" 0 "filters"])))
+    (testing "validation reports the original `and` at filter index 0"
+      (is (= [[:stages 0 :filters 0]]
+             (mapv #(vec (take 4 (:in %))) errors))))))
+
+(deftest ^:parallel split-top-level-and-filters-still-repairs-each-conjunct-test
+  (testing "temporal buckets and trailing options are repaired in each condition from a split `and`"
+    (is (= [["=" {} (created-at-bucketed "month") "2025-01-01"]
+            ["contains" {"case-sensitive" false}
+             ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "@gmail.com"]]
+           (get (repair-in-stage
+                 {"filters" [["and" {}
+                              ["=" {} created-at (abs-dt "2025-01-01" "month")]
+                              ["contains" {}
+                               ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]]
+                               "@gmail.com" {"case-sensitive" false}]]]})
+                "filters")))))
+
+(deftest ^:parallel split-top-level-and-filters-keeps-boolean-logic-test
+  (testing "an `and` under `or` or `not` stays nested"
+    (let [filters [["or" {} ["and" {} status-filter total-filter] id-filter]
+                   ["not" {} ["and" {} status-filter total-filter]]]]
+      (is (= filters (repaired-filters filters))))))
+
+(deftest ^:parallel split-top-level-and-filters-nested-stages-test
+  (testing "a top-level `and` is split in a later stage and in a join's stage, not just stage 0"
+    (let [q   {"lib/type" "mbql/query"
+               "database" "Sample"
+               "stages"   [{"lib/type"     "mbql.stage/mbql"
+                            "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                            "joins"        [{"lib/type"   "mbql/join"
+                                             "alias"      "Products"
+                                             "stages"     [{"lib/type"     "mbql.stage/mbql"
+                                                            "source-table" ["Sample" "PUBLIC" "PRODUCTS"]
+                                                            "filters"      [["and" {} status-filter total-filter]]}]
+                                             "conditions" [["=" {}
+                                                            ["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]
+                                                            ["field" {"join-alias" "Products"}
+                                                             ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]}]}
+                           {"lib/type" "mbql.stage/mbql"
+                            "filters"  [["and" {} total-filter id-filter]]}]}
+          out (repair/repair trivial-mp q)]
+      (is (= [status-filter total-filter]
+             (get-in out ["stages" 0 "joins" 0 "stages" 0 "filters"])))
+      (is (= [total-filter id-filter]
+             (get-in out ["stages" 1 "filters"]))))))
+
+(deftest ^:parallel split-top-level-and-filters-before-post-agg-split-test
+  (testing (str "an `and` with conditions on rows and aggregations is split before Pass 2.9,\n"
+                "so only the condition on an aggregation moves to the new stage")
+    (let [q {"lib/type" "mbql/query"
+             "database" "Sample"
+             "stages"   [{"lib/type"     "mbql.stage/mbql"
+                          "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                          "aggregation"  [["count" {}]]
+                          "breakout"     [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]
+                          "filters"      [["and" {} status-filter [">" {} ["aggregation" {} 0] 10]]]}]}
+          stages (get (repair/repair trivial-mp q) "stages")]
+      (is (=? [{"filters" [status-filter]}
+               {"filters" [[">" {} ["field" {} "count"] 10]]}]
+              stages)))))
+
+(deftest ^:parallel split-top-level-and-filters-idempotent-test
+  (let [once  (repair/repair trivial-mp (filters-query [["and" {} status-filter ["and" {} total-filter id-filter]]]))
+        twice (repair/repair trivial-mp once)]
+    (is (= once twice))))
 
 ;;; ============================================================
 ;;; Pass 1.87 - rewrite misspelled `lib/type` aliases
@@ -2014,6 +2295,26 @@
           out (repair/repair mp-fks q)]
       (is (= {} (get-in out ["stages" 0 "breakout" 0 1]))))))
 
+(deftest ^:parallel fill-from-candidates-unexportable-fk-test
+  (let [fill     #'repair/fill-from-candidates
+        unused   #(throw (ex-info "unexpected resolver call" {}))
+        resolver (reify serdes.resolve/SerdesExportResolver
+                   (export-fk [_ _ _] (unused))
+                   (export-fk-keyed [_ _ _ _] (unused))
+                   (export-user [_ _] (unused))
+                   (export-table-fk [_ _] (unused))
+                   (export-field-fk [_ _] (throw (ex-info "boom" {}))))
+        clause   ["field" {} ["DB" "PUBLIC" "PRODUCTS" "CATEGORY"]]
+        run      (fn [strict?]
+                   (fill clause {} (nth clause 2) resolver [{:source-field-id 1}]
+                         {:source-label "Orders by user" :target-table-id 2 :strict? strict?}))]
+    (testing "a single candidate whose FK cannot be exported is its own error on a strict stage, not :no-fk-path"
+      (let [e (try (run true) nil (catch clojure.lang.ExceptionInfo e e))]
+        (is (=? {:error :unexportable-fk, :agent-error? true, :target-table 2} (ex-data e)))
+        (is (re-find #"only through a foreign key that could not be resolved" (ex-message e)))))
+    (testing "and leaves the clause bare on a non-strict stage"
+      (is (= clause (run false))))))
+
 (deftest ^:parallel implicit-join-no-fk-path-test
   (testing "throws :no-fk-path when the target table isn't reachable via any FK"
     (try
@@ -2024,9 +2325,10 @@
           (is (= :no-fk-path (:error d)))
           (is (true? (:agent-error? d)))
           (is (= (str "Field [\"Sample\" \"PUBLIC\" \"PRODUCTS\" \"CATEGORY\"] is on table \"PRODUCTS\", which has no foreign key "
-                      "from the source table \"ORDERS\", so it cannot be reached implicitly. "
+                      "from the source \"ORDERS\", so it cannot be reached implicitly. "
                       "To group or filter by a column from that table, add an explicit `joins:` entry "
-                      "and reference the field using the join alias. Otherwise use a field from the source table.")
+                      "and reference the field using the join alias. If the foreign key comes from a table you joined "
+                      "in this stage, set `source-field-join-alias` instead. Otherwise use a field from the source.")
                  (ex-message e))))))))
 
 (deftest ^:parallel implicit-join-ambiguous-fk-test
@@ -2869,6 +3171,21 @@
         (catch clojure.lang.ExceptionInfo e
           (is (= :post-agg-filter-with-trailing-clauses (:error (ex-data e)))))))))
 
+(deftest ^:parallel split-post-agg-refuses-when-order-by-is-a-string-test
+  (testing "a string `order-by` with a post-aggregation filter gets advice to split the stage"
+    (is (=? {:error :post-agg-filter-with-trailing-clauses}
+            (try
+              (repair/repair trivial-mp {"lib/type" "mbql/query"
+                                         "database" "Sample"
+                                         "stages"   [{"lib/type"     "mbql.stage/mbql"
+                                                      "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                                      "aggregation"  [["count" {}]]
+                                                      "filters"      [[">" {} ["aggregation" {} 0] 10]]
+                                                      "order-by"     "TOTAL"}]})
+              nil
+              (catch clojure.lang.ExceptionInfo e
+                (ex-data e)))))))
+
 (deftest ^:parallel split-post-agg-refuses-when-raw-column-order-by-test
   (testing (str "specifically the pre-agg `order-by [desc TOTAL]` case the reviewer flagged "
                 "as silent-intent-destruction in the prior implementation: TOTAL doesn't "
@@ -3043,6 +3360,35 @@
                (get-in (repair/repair trivial-mp
                                       (build ["count-where" {} ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]]))
                        ["stages" 1 "filters"])))))))
+
+(deftest ^:parallel malformed-clauses-reach-validation-test
+  (testing "repair leaves malformed stages and clauses for validation"
+    ;; ORDERS has to resolve for the cross-stage pass to reach a later stage
+    (let [orders   {"lib/type" "mbql.stage/mbql" "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+          post-agg (assoc orders "aggregation" [["count" {}]] "filters" [[">" {} ["aggregation" {} 0] 1]])]
+      (doseq [[label stages] {"a number as `aggregation`"
+                              [(assoc orders "aggregation" 42)]
+                              "an empty aggregation clause used in `order-by`"
+                              [(assoc orders "aggregation" [[]] "order-by" [["desc" {} []]])]
+                              "a number as `joins`"
+                              [(assoc orders "joins" 42)]
+                              "a join-alias reference with a number as `joins`"
+                              [(assoc orders "joins" 42 "breakout" [["field" {"join-alias" "P"} "CATEGORY"]])]
+                              "a post-aggregation filter with a number as `order-by`"
+                              [(assoc post-agg "order-by" 42)]
+                              "a post-aggregation filter with a number as `fields`"
+                              [(assoc post-agg "fields" 42)]
+                              "a number as a later stage"            [orders 42]
+                              "a string as a later stage"            [orders "ORDERS"]
+                              "true as a later stage"                [orders true]
+                              "an empty list as a later stage"       [orders []]
+                              "an aggregation list as a later stage" [orders [["count" {}]]]}]
+        (testing label
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Representations query has an invalid structure"
+                                (repr/validate-query
+                                 (repair/repair mp-fks {"lib/type" "mbql/query"
+                                                        "database" "Sample"
+                                                        "stages"   stages})))))))))
 
 ;;; ============================================================
 ;;; Pass 6 - friendly error messages (E1..E6)
@@ -3378,13 +3724,12 @@
                              "x.*" {"case-sensitive" false}]))))))
 
 (deftest ^:parallel merge-trailing-options-nested-in-filters-test
-  (testing (str "the misplaced trailing options can be nested arbitrarily deep - repair's\n"
-                "postwalk reaches a time-interval clause nested inside `and` inside the\n"
-                "stage's filters: block.")
+  (testing (str "postwalk finds trailing options at any nesting depth, including a time-interval\n"
+                "clause inside `or` in the stage's `filters:` block")
     (let [q   {"lib/type" "mbql/query"
                "stages"   [{"lib/type"     "mbql.stage/mbql"
                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                            "filters"      [["and" {}
+                            "filters"      [["or" {}
                                              ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "x"]
                                              ["time-interval" {}
                                               ["field" {} ["Sample" "PUBLIC" "ORDERS" "CREATED_AT"]]
@@ -3507,19 +3852,19 @@
                            ["field" {} ["S" "P" "T" "C"]] "x"
                            {"case-sensitive" false}])))))
 
-(deftest ^:parallel merge-string-filter-trailing-options-nested-in-and-test
-  (testing (str "a contains clause with trailing case-sensitivity options, nested inside `and`\n"
-                "inside the stage filters (the gmail-customers repro), is repaired via postwalk")
+(deftest ^:parallel merge-string-filter-trailing-options-nested-in-or-test
+  (testing (str "postwalk repairs a contains clause with trailing case-sensitivity options\n"
+                "inside `or` in the stage filters (the gmail-customers repro)")
     (let [q   {"lib/type" "mbql/query"
                "stages"   [{"lib/type"     "mbql.stage/mbql"
                             "source-table" ["Sample" "PUBLIC" "ORDERS"]
-                            "filters"      [["and" {}
+                            "filters"      [["or" {}
                                              ["=" {} ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "active"]
                                              ["contains" {}
                                               ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]]
                                               "@gmail.com" {"case-sensitive" false}]]]}]}
           out (repair/repair trivial-mp q)
-          ;; and-clause is ["and" {} <=-cond> <contains-cond>]; the contains is at index 3
+          ;; An `or` keeps both conditions in one entry; Pass 1.56 would split an `and`.
           c   (get-in out ["stages" 0 "filters" 0 3])]
       (is (= ["contains" {"case-sensitive" false}
               ["field" {} ["Sample" "PUBLIC" "ORDERS" "STATUS"]] "@gmail.com"]

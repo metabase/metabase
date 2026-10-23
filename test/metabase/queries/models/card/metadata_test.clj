@@ -93,6 +93,35 @@
   (let [mp (mt/metadata-provider)]
     (lib/query mp (lib.metadata/table mp (mt/id :venues)))))
 
+(deftest maybe-async-result-metadata-recompute-failure-preserves-original-test
+  (testing "when the metadata recompute throws (missing required native parameter), preserve original-metadata (#83734)"
+    (let [mp                (mt/metadata-provider)
+          state-tag         {:id           "_STATE_"
+                             :name         "state"
+                             :display-name "State"
+                             :type         :text
+                             :required     true}
+          original-metadata [{:name "ID"    :base_type :type/BigInteger :display_name "ID"
+                              :field_ref [:field "ID" {:base-type :type/BigInteger}]}
+                             {:name "NAME"  :base_type :type/Text       :display_name "Name"
+                              :field_ref [:field "NAME" {:base-type :type/Text}]}
+                             {:name "EMAIL" :base_type :type/Text       :display_name "Email"
+                              :field_ref [:field "EMAIL" {:base-type :type/Text}]}]
+          with-default      (-> (lib/native-query mp "SELECT ID, NAME, EMAIL FROM PEOPLE WHERE STATE = {{state}}")
+                                (lib/with-template-tags {"state" (assoc state-tag :default "CA")}))
+          without-default   (-> (lib/native-query
+                                 mp
+                                 "SELECT ID, NAME, EMAIL FROM PEOPLE WHERE STATE = {{state}}\n-- edited")
+                                (lib/with-template-tags {"state" state-tag}))
+          result            (card.metadata/maybe-async-result-metadata
+                             {:original-query    with-default
+                              :query             without-default
+                              :original-metadata original-metadata
+                              :model?            false})]
+      (is (= (map :name original-metadata)
+             (map :name (:metadata result)))
+          "existing columns should be preserved when the recompute fails on missing required parameter"))))
+
 (deftest backfill-untyped-model-metadata!-test
   (testing "backfill-untyped-model-metadata! infers the untyped metadata of the models on a database (GHY-4213)"
     (mt/with-temp [:model/Table {inactive-table-id :id} {:db_id (mt/id) :name "GHY_4213_NOT_SYNCED" :active false}

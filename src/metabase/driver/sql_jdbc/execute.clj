@@ -34,7 +34,7 @@
    (com.mchange.v2.c3p0 PooledDataSource)
    (com.mchange.v2.resourcepool TimeoutException)
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLException SQLFeatureNotSupportedException
-             SQLNonTransientConnectionException SQLRecoverableException SQLTimeoutException Statement Types)
+             Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.util.concurrent Executors)
    (javax.sql DataSource)))
@@ -887,34 +887,22 @@
              (assoc :query/query-canceled? true))
            e))
 
-(def ^:private connection-or-timeout-exception-classes
-  "JDBC exception classes that drivers throw for a failed connection or a timeout, with SQLStates of their own. Not
-  `SQLTransientConnectionException`: MariaDB Connector/J throws it for every SQLState class it doesn't map, `HY000`
-  errors in the query included."
-  [SQLTimeoutException SQLNonTransientConnectionException SQLRecoverableException])
+(def ^:private query-error-codes
+  "Query errors whose SQLState alone does not identify them, indexed by driver and SQLState."
+  {:mysql  {"HY000" #{4176}}
+   :sqlite {nil #{1 19 20}}})
 
 (defn- error-in-query?
   "Whether `e`, raised while reading rows, is the database rejecting the query.
-  A canceled or timed-out statement, a failed connection and a rolled-back transaction are not. It is never one when
-  the query processor canceled the statement, which its query timeout does too, or when [[driver/query-canceled?]]
-  recognizes a cancel. Otherwise the SQLState class decides when it can: `08` (connection exception), `40`
-  (transaction rollback) and `57` (operator intervention) are not errors in the query, while `0A` and the `2x`, `3x`
-  and `4x` classes are. For any other SQLState, or none, [[connection-or-timeout-exception-classes]] decide."
+  Only SQLState classes `21` (cardinality), `22` (data), `23` (integrity) and `42` (syntax or access rule), or a known
+  driver query error code, identify errors in the query. Unknown failures keep their QP classification. Cancellation
+  by the query processor or [[driver/query-canceled?]] takes precedence over that evidence."
   [driver ^SQLException e]
-  (let [sql-state (str (.getSQLState e))]
-    (cond
-      (or (some-> (driver-api/canceled-chan) a/poll!)
-          (driver/query-canceled? driver e))
-      false
-
-      (re-find #"^(?:08|40|57)" sql-state)
-      false
-
-      (re-find #"^(?:0A|[234])" sql-state)
-      true
-
-      :else
-      (not-any? #(instance? % e) connection-or-timeout-exception-classes))))
+  (let [sql-state (.getSQLState e)]
+    (and (not (or (some-> (driver-api/canceled-chan) a/poll!)
+                  (driver/query-canceled? driver e)))
+         (or (boolean (re-find #"^(?:21|22|23|42)" (str sql-state)))
+             (contains? (get-in query-error-codes [driver sql-state]) (.getErrorCode e))))))
 
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."

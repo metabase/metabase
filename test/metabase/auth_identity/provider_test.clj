@@ -155,6 +155,31 @@
         (is (nil? (get-in result [:session :auth_identity_id]))
             "the session is attributed to the provider that actually authenticated, which has no AuthIdentity")))))
 
+(deftest login!-without-a-session-test
+  (testing "a login with `:session/skip?` returns the user without creating a session or login history"
+    (mt/with-temp [:model/User user {}]
+      (let [result (provider/login! :provider/test-plain-attribution
+                                    {:user-id       (:id user)
+                                     :session/skip? true
+                                     :device-info   {:device_id          "test"
+                                                     :embedded           false
+                                                     :token_exchange     false
+                                                     :device_description "Test"
+                                                     :ip_address         "127.0.0.1"}})]
+        (is (true? (:success? result)))
+        (is (= (:id user) (get-in result [:user :id])))
+        (is (nil? (:session result)))
+        (is (not (t2/exists? :model/Session :user_id (:id user))))
+        (is (not (t2/exists? :model/LoginHistory :user_id (:id user))))))))
+
+(deftest login!-personal-only-test
+  (testing "a login with `:user/personal-only?` refuses accounts that aren't personal without creating a session"
+    (mt/with-temp [:model/User user {:type :api-key}]
+      (is (=? {:success? false, :error :non-personal-user}
+              (provider/login! :provider/test-plain-attribution
+                               {:user-id (:id user), :user/personal-only? true})))
+      (is (not (t2/exists? :model/Session :user_id (:id user)))))))
+
 (deftest ^:parallel ^:parallel three-valued-success-state-test
   (testing "Success states work correctly"
     (testing "Success state: true"

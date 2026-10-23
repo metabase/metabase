@@ -15,6 +15,7 @@
    [metabase.config.core :as config]
    [metabase.request.current :as request.current]
    [metabase.request.user-agent :as request.user-agent]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -43,6 +44,17 @@
      ~@body))
 
 (defn get-client "Returns [[*client*]] dynamic var" [] *client*)
+
+(def ^:private data-app-client
+  "The [[*client*]] a published data app reports. It must match `EMBEDDING_SDK_CONFIG.metabaseClientRequestHeader` on
+  the FE: [[metabase.server.middleware.data-app-scope]] confines requests that carry it."
+  "data-app")
+
+(defn data-app-client?
+  "Whether `client`, by default the current [[*client*]], is a published data app. A data app's dev preview reports
+  another client."
+  ([] (data-app-client? (get-client)))
+  ([client] (= data-app-client client)))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic *client-identifier*
@@ -191,12 +203,12 @@
     "embedding-iframe-static"
     "embedding-public"
     "embedding-simple"
-    "data-app"})
+    data-app-client})
 
 (defn- track-sdk-response
   "Tabulates the number of responses by status code made by clients of the SDK."
   [sdk-client {:keys [status]}]
-  (case sdk-client
+  (condp = sdk-client
     "embedding-sdk-react"       (analytics/inc! :metabase-sdk/response {:status (str status)})
     "embedding-iframe"          (analytics/inc! :metabase-embedding-iframe/response {:status (str status)})
     "embedding-iframe-full-app" (analytics/inc! :metabase-embedding-iframe-full-app/response {:status (str status)})
@@ -204,7 +216,7 @@
     "embedding-public"          (analytics/inc! :metabase-embedding-public/response {:status (str status)})
     "embedding-simple"          (analytics/inc! :metabase-embedding-simple/response {:status (str status)})
     ;; Known client, but a response-code counter tells us nothing actionable about data apps - so no metric.
-    "data-app"                  nil
+    data-app-client             nil
     (log/info "Unknown client.")))
 
 (defn embedding-context?
@@ -228,21 +240,24 @@
                  (when (str/starts-with? (or uri "") prefix) surface))
                embedding-route-mapping)))
 
+(defn- truncate-header
+  "The embedding columns are varchar(254); truncate rather than fail the row insert on an oversized header."
+  [s]
+  (some-> s (u/truncate 254)))
+
 (defn embedding-mw
   "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."
   [handler]
   (fn embedding-mw-fn
     [request respond raise]
     (let [metabase-client-header (get-in request [:headers "x-metabase-client"])
-          version (get-in request [:headers "x-metabase-client-version"])
-          ;; column is varchar(254); truncate rather than fail the row insert on an oversized header
-          identifier (some-> (get-in request [:headers "x-metabase-client-identifier"])
-                             (as-> s (subs s 0 (min (count s) 254))))
+          version (truncate-header (get-in request [:headers "x-metabase-client-version"]))
+          identifier (truncate-header (get-in request [:headers "x-metabase-client-identifier"]))
           preview? (= (get-in request [:headers "x-metabase-embedded-preview"]) "true")
           route (embedding-route (:uri request))
           ;; *client* is the SDK/client identity from the header, with -preview suffix if applicable
-          client (cond-> metabase-client-header
-                   preview? (some-> (str "-preview")))]
+          client (truncate-header (cond-> metabase-client-header
+                                    preview? (some-> (str "-preview"))))]
       (binding [*client*            client
                 *client-identifier* identifier
                 *route*             route

@@ -1833,19 +1833,20 @@
 
 (defn- exception-response
   "The response to an exception raised while handling an Agent API request, never with a stack trace.
-  A 4xx exception keeps its message and client-facing ex-data. Any other exception is unexpected: it goes to the
+  A 4xx exception without a database cause keeps its message and client-facing ex-data. Any other exception goes to the
   server log, as a database failure when [[metabot-construct/database-error?]] says it is one, and the caller gets a
   generic 500 whatever `hide-stacktraces` says."
   [e]
   (let [{:keys [status-code] :as data} (ex-data e)
-        client-data                     (api-error/response-data data)]
-    (if (and status-code (<= 400 status-code 499))
+        client-data                     (api-error/response-data data)
+        database-error?                 (metabot-construct/database-error? e {:ignore-status? true})]
+    (if (and (not database-error?) status-code (<= 400 status-code 499))
       {:status status-code
        :body   (if (empty? client-data)
                  (ex-message e)
                  (merge {:message (ex-message e)} client-data))}
       (do
-        (if (metabot-construct/database-error? e)
+        (if database-error?
           (log/error e "Database failure in Agent API")
           (log/error e "Unhandled error in Agent API request"))
         (when (nil? status-code)
@@ -1872,18 +1873,20 @@
   logs a canceled request, as on any other route."
   [handler]
   (fn [request respond raise]
-    (let [raised?  (volatile! false)
+    (let [callback-called? (volatile! false)
           respond' (fn [response]
-                     (respond (streaming-response/with-error-response-fn response query-failure-body)))
+                     (let [response (streaming-response/with-error-response-fn response query-failure-body)]
+                       (vreset! callback-called? true)
+                       (respond response)))
           raise'   (fn [e]
-                     (vreset! raised? true)
+                     (vreset! callback-called? true)
                      (if (instance? EofException e)
                        (raise e)
                        (respond' (exception-response e))))]
       (try
         (handler request respond' raise')
         (catch Throwable e
-          (if @raised?
+          (if @callback-called?
             (throw e)
             (raise' e)))))))
 

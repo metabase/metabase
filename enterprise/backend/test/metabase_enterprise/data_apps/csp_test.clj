@@ -4,7 +4,8 @@
    [clojure.test :refer :all]
    [metabase.config.core :as config]
    [metabase.server.middleware.security :as mw.security]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -55,15 +56,10 @@
                                    :allowed_hosts ["https://api.example.com"]}]
     (testing "with the :data-apps feature the EE impl returns the app's allowed_hosts"
       (mt/with-premium-features #{:data-apps}
-        (is (= ["https://api.example.com"] (mw.security/data-app-connect-src-hosts "boba")))))
+        (is (= ["https://api.example.com"] (mw.security/data-app-connect-src-hosts "boba")))
+        (testing "including a disabled app's, whose document only superusers reach"
+          (t2/update! :model/DataApp {:name "boba"} {:enabled false})
+          (is (= ["https://api.example.com"] (mw.security/data-app-connect-src-hosts "boba"))))))
     (testing "without the feature it falls back to []"
       (mt/with-premium-features #{}
-        (is (= [] (mw.security/data-app-connect-src-hosts "boba")))))
-    (testing "a disabled app contributes nothing"
-      (mt/with-premium-features #{:data-apps}
-        (mt/with-temp [:model/DataApp _ {:name          "off"
-                                         :display_name  "Off"
-                                         :bundle_path   "x"
-                                         :enabled       false
-                                         :allowed_hosts ["https://nope.example.com"]}]
-          (is (= [] (mw.security/data-app-connect-src-hosts "off"))))))))
+        (is (= [] (mw.security/data-app-connect-src-hosts "boba")))))))

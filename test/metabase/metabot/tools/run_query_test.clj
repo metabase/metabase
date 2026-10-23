@@ -925,6 +925,19 @@
             (testing "and offers no way to its values when they can't"
               (is (= (metric-refusal on-hidden no-values-step)
                      (run-viewing! [{:type "metric", :id on-hidden}] (str on-hidden))))))))
+      (testing "a viewed metric that aggregates in a stage after the model it starts from names the base table"
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {model :id}  {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                   :type          :model}
+                         :model/Card {metric :id} {:dataset_query (-> (lib/query mp (lib.metadata/card mp model))
+                                                                      lib/append-stage
+                                                                      (lib/aggregate (lib/count)))
+                                                   :type          :metric}]
+            (is (= (metric-refusal metric
+                                   (str "To get its values, use `construct_notebook_query` to build a notebook query "
+                                        "with the metric's base table as its source. Put the metric in `aggregation`, "
+                                        "then run the query with `run_query`."))
+                   (run-viewing! [{:type "metric", :id metric}] (str metric)))))))
       (testing "a viewed metric the user can't read is refused like an id that names nothing"
         (mt/with-non-admin-groups-no-root-collection-perms
           (mt/with-temp [:model/Collection {hidden :id}        {}
