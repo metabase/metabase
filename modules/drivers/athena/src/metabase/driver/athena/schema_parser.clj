@@ -7,7 +7,7 @@
 (set! *warn-on-reflection* true)
 
 (defn- column->base-type [column-name column-type]
-  (sql-jdbc.sync/database-type->base-type-or-warn :athena [column-name] (re-find #"\w+" column-type)))
+  (sql-jdbc.sync/database-type->base-type-or-warn :athena [column-name] (-> column-type (str/replace #"[(<].*" "") str/trim)))
 
 #_(defn- create-nested-fields [schema database-position]
     (set (map (fn [[k v]]
