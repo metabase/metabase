@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { t } from "ttag";
 
+import { useToast } from "metabase/common/hooks";
 import { useNavigate } from "metabase/router";
 import * as Urls from "metabase/urls";
 import type {
@@ -21,8 +22,6 @@ import type { DrillQueries } from "./use-drill-queries";
 
 const STAGE = -1;
 
-export type DrillModal = { type: "members"; drill: ChartDrill };
-
 type UseDrillActionsArgs = {
   /** The chart's count column, e.g. "people". */
   countColumn: string;
@@ -31,7 +30,8 @@ type UseDrillActionsArgs = {
 };
 
 /**
- * The click actions on an analysis's chart, and the modal one of them opened.
+ * The click actions on an analysis's chart. Both open the query builder on
+ * the clicked actors.
  */
 export const useDrillActions = ({
   countColumn,
@@ -39,7 +39,7 @@ export const useDrillActions = ({
   queries,
 }: UseDrillActionsArgs) => {
   const navigate = useNavigate();
-  const [modal, setModal] = useState<DrillModal | null>(null);
+  const [sendToast] = useToast();
   // The analysis lives in its URL, so browser back restores it after a drill.
   const isDrillingRef = useRef(false);
   const navigateAway = useCallback(
@@ -53,7 +53,13 @@ export const useDrillActions = ({
     },
     [navigate],
   );
-  const { grain, fetchMemberIds, buildCohortEventsQuery, canDrill } = queries;
+  const {
+    grain,
+    fetchMemberIds,
+    buildMembersQuery,
+    buildCohortEventsQuery,
+    canDrill,
+  } = queries;
 
   const toCohort = useCallback(
     async (drill: ChartDrill): Promise<CohortFilter> => ({
@@ -96,6 +102,31 @@ export const useDrillActions = ({
     [toCohort, buildCohortEventsQuery, navigateAway],
   );
 
+  // The clicked actors as a table in the query builder.
+  const seeMembers = useCallback(
+    async (drill: ChartDrill) => {
+      try {
+        const query = buildMembersQuery(await toCohort(drill));
+        navigateAway(
+          Urls.serializedQuestion({
+            display: "table",
+            dataset_query: Lib.toJsQuery(query),
+            visualization_settings: {},
+          }),
+        );
+      } catch (error) {
+        sendToast({
+          icon: "warning",
+          message:
+            error instanceof Error
+              ? error.message
+              : t`These can't be opened right now.`,
+        });
+      }
+    },
+    [buildMembersQuery, toCohort, navigateAway, sendToast],
+  );
+
   // Columns to break out by. The cohort's filter is added once it's chosen.
   const breakoutQuery = useMemo(() => {
     try {
@@ -133,7 +164,7 @@ export const useDrillActions = ({
             title: getSeeMembersTitle(grain),
             onClick: ({ closePopover }) => {
               closePopover();
-              setModal({ type: "members", drill });
+              seeMembers(drill);
             },
           },
         ];
@@ -156,12 +187,18 @@ export const useDrillActions = ({
         return actions;
       },
     };
-  }, [canDrill, grain, countColumn, describePoint, breakout, breakoutQuery]);
+  }, [
+    canDrill,
+    grain,
+    countColumn,
+    describePoint,
+    seeMembers,
+    breakout,
+    breakoutQuery,
+  ]);
 
   return {
     mode,
-    modal,
-    closeModal: () => setModal(null),
     /** Lets a drill's navigation through the unsaved-changes guard. */
     isDrilling: () => isDrillingRef.current,
   };

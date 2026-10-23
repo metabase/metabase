@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
 import { Button, Icon, Tooltip } from "metabase/ui";
@@ -14,11 +15,14 @@ type TableSegmentsButtonProps = {
   onToggleSegments: () => void;
   /** The segments button is hovered, so the open panel can show it's the one. */
   onHintSegments: (isHinted: boolean) => void;
+  /** The Filters button, between the table and the segments button. */
+  filtersButton?: ReactNode;
 };
 
 /**
- * The event table, joined to the button that shows and hides its segments.
- * Until a table is picked, the picker opens on its own.
+ * The event table, joined to the Filters button and the button that shows
+ * and hides its segments. Until a table is picked, the picker opens on its
+ * own.
  */
 export const TableSegmentsButton = ({
   tableId,
@@ -27,6 +31,7 @@ export const TableSegmentsButton = ({
   isSegmentsOpen,
   onToggleSegments,
   onHintSegments,
+  filtersButton,
 }: TableSegmentsButtonProps) => {
   const segmentsLabel = isSegmentsOpen ? t`Hide segments` : t`Show segments`;
 
@@ -48,6 +53,7 @@ export const TableSegmentsButton = ({
           {tableName ?? t`Loading…`}
         </Button>
       )}
+      {filtersButton}
       <Tooltip label={segmentsLabel}>
         <Button
           variant="default"

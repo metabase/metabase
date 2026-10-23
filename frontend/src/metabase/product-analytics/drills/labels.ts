@@ -12,15 +12,3 @@ export const getSeeMembersTitle = (grain: Grain): string => {
       return t`See these events`;
   }
 };
-
-/** What a single actor is called, e.g. as a column header. */
-export const getActorTitle = (grain: Grain): string => {
-  switch (grain) {
-    case "person":
-      return t`Person`;
-    case "session":
-      return t`Session`;
-    case "event":
-      return t`Event`;
-  }
-};

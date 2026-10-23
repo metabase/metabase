@@ -36,7 +36,6 @@ import { AnalysisToolbar } from "./AnalysisToolbar";
 import { DisplayPanel } from "./DisplayPanel";
 import { FilterPills, useFilterCount } from "./FilterPills";
 import { SetupPanel } from "./SetupPanel";
-import { MembersModal } from "./drills/MembersModal";
 import { SegmentsPanel } from "./palette/SegmentsPanel";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
 
@@ -341,13 +340,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           card={savedCard}
           onClose={closePicker}
           onChangeLocation={navigate}
-        />
-      )}
-      {drillActions.modal?.type === "members" && (
-        <MembersModal
-          drill={drillActions.modal.drill}
-          queries={drillQueries}
-          onClose={drillActions.closeModal}
         />
       )}
       <LeaveRouteConfirmModal

@@ -69,6 +69,36 @@ export const AnalysisToolbar = ({
   const filtersSetting = findSetting(widgets, "filters");
   const hasTable = tableId !== undefined;
 
+  const filtersButton = filtersSetting !== undefined &&
+    !filtersSetting.hidden && (
+      <Tooltip label={t`Filters`}>
+        <Button
+          variant="default"
+          px="sm"
+          rightSection={
+            filterCount > 0 && (
+              <Badge
+                size="xs"
+                variant="filled"
+                color="neutral"
+                bg={areFiltersExpanded ? "core-filter-strong" : undefined}
+                c={areFiltersExpanded ? "text-primary-inverse" : undefined}
+                style={{ cursor: "inherit" }}
+              >
+                {filterCount}
+              </Badge>
+            )
+          }
+          aria-label={t`Filters`}
+          aria-pressed={areFiltersExpanded}
+          disabled={!hasTable}
+          onClick={onToggleFilters}
+        >
+          <Icon name="filter" />
+        </Button>
+      </Tooltip>
+    );
+
   return (
     <>
       <Group justify="space-between" align="center" wrap="wrap" gap="sm">
@@ -80,6 +110,7 @@ export const AnalysisToolbar = ({
             isSegmentsOpen={isSegmentsOpen}
             onToggleSegments={onToggleSegments}
             onHintSegments={onHintSegments}
+            filtersButton={filtersButton}
           />
           <Button
             variant="default"
@@ -95,40 +126,6 @@ export const AnalysisToolbar = ({
           <Button.Group>
             <ToolbarSetting setting={findSetting(widgets, "counting")} />
             <ToolbarSetting setting={findSetting(widgets, "breakout")} />
-            {filtersSetting !== undefined && !filtersSetting.hidden && (
-              <Tooltip label={t`Filters`}>
-                <Button
-                  variant="default"
-                  px="sm"
-                  rightSection={
-                    filterCount > 0 && (
-                      <Badge
-                        size="xs"
-                        variant="filled"
-                        color="neutral"
-                        bg={
-                          areFiltersExpanded ? "core-filter-strong" : undefined
-                        }
-                        c={
-                          areFiltersExpanded
-                            ? "text-primary-inverse"
-                            : undefined
-                        }
-                        style={{ cursor: "inherit" }}
-                      >
-                        {filterCount}
-                      </Badge>
-                    )
-                  }
-                  aria-label={t`Filters`}
-                  aria-pressed={areFiltersExpanded}
-                  disabled={!hasTable}
-                  onClick={onToggleFilters}
-                >
-                  <Icon name="filter" />
-                </Button>
-              </Tooltip>
-            )}
           </Button.Group>
         </Group>
 
