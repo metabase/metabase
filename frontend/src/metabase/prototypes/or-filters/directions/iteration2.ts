@@ -6,6 +6,10 @@ import type { FilterDirection } from "../types";
 import { ExpressionBarNotebook } from "./expression-bar-2/ExpressionBarNotebook";
 import { ExpressionBarInline2Prototype } from "./expression-bar-2/ExpressionBarPrototype";
 import {
+  DebugBar,
+  withFourLevelsByMonth,
+} from "./expression-bar-debug/DebugBar";
+import {
   QuestionView,
   withSumOfTotalByMonth,
 } from "./expression-bar-drill/QuestionView";
@@ -40,6 +44,18 @@ export const ITERATION_2_DIRECTIONS: FilterDirection[] = [
     Component: ExpressionBarInline2Prototype,
     Canvas: QuestionView,
     prepareQuery: withSumOfTotalByMonth,
+  },
+  {
+    id: "expression-bar-debug",
+    get name() {
+      return t`Filter debug`;
+    },
+    get description() {
+      return t`The drill-through bar, prefilled with a four-level filter: a or (b and (c or (d and e))). The "Explain" button on the right of the bar opens a modal: on top, a plain-language explanation of the filter written by Metabot (canned for the prototype); below, the same filter as railroad tracks with row counts at every step, so you can see where rows drop off.`;
+    },
+    Component: ExpressionBarInline2Prototype,
+    Canvas: (props) => createElement(QuestionView, { ...props, Bar: DebugBar }),
+    prepareQuery: withFourLevelsByMonth,
   },
   {
     id: "expression-bar-summarize-selection",

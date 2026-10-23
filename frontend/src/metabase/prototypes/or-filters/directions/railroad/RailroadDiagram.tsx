@@ -238,7 +238,12 @@ type StageCountProps = {
 };
 
 /** Rows that reach this point on the track: one count query per stage. */
-function StageCount({ shape, query, stageIndex, root }: StageCountProps) {
+export function StageCount({
+  shape,
+  query,
+  stageIndex,
+  root,
+}: StageCountProps) {
   const { stage, x, y, anchor } = shape;
   const countJsQuery = useMemo(() => {
     const stageQuery = writeRailTree(query, stageIndex, stageTree(root, stage));
@@ -264,7 +269,7 @@ function StageCount({ shape, query, stageIndex, root }: StageCountProps) {
 const FALLBACK_CHAR_WIDTH = 8;
 
 /** Label widths from a canvas, in the diagram's font, so pills fit their text. */
-function useLabelMeasurer() {
+export function useLabelMeasurer() {
   return useMemo(() => {
     const context = document.createElement("canvas").getContext("2d");
     const family = getComputedStyle(document.body)
