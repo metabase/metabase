@@ -5,6 +5,7 @@ import {
   type MouseEvent,
   type ReactNode,
   type Ref,
+  useContext,
   useEffect,
   useImperativeHandle,
   useLayoutEffect,
@@ -39,6 +40,7 @@ import {
   activateSuggestion,
   useSuggestions,
 } from "./FilterSearchDropdown";
+import { CompactReadingContext } from "./settings";
 import {
   CLOSE_PAREN,
   OPEN_PAREN,
@@ -116,6 +118,8 @@ export function ExpressionBar({
   hasInlineActions = false,
   renderActions,
 }: ExpressionBarProps) {
+  const compactReading = useContext(CompactReadingContext);
+  const [isFocused, setIsFocused] = useState(false);
   const committedTokens = useMemo(
     () => readTokens(query, stageIndex),
     [query, stageIndex],
@@ -439,6 +443,7 @@ export function ExpressionBar({
         token={token}
         hasError={index === errorPosition}
         isFresh={freshIndexes.has(index)}
+        compact={compactReading && !isFocused && !isDirty && !isDropdownOpen}
         canToggleOperator={allowOr}
         onReplace={(next) => setTokens(replaceTokenAt(tokens, index, next))}
         onRemove={() => {
@@ -492,7 +497,15 @@ export function ExpressionBar({
     const headLength = tokens.length > 0 ? 3 : stream.length;
     return (
       <>
-        <Box className={cx(S.segment, className)}>
+        <Box
+          className={cx(S.segment, className)}
+          onFocusCapture={() => setIsFocused(true)}
+          onBlurCapture={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+              setIsFocused(false);
+            }
+          }}
+        >
           {leading ? (
             <Box component="span" className={S.segmentHead}>
               {leading}
@@ -523,6 +536,12 @@ export function ExpressionBar({
       <Box
         className={cx(S.bar, className, { [S.barInvalid]: !parsed.ok })}
         onClick={handleBarClick}
+        onFocusCapture={() => setIsFocused(true)}
+        onBlurCapture={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget)) {
+            setIsFocused(false);
+          }
+        }}
       >
         {stream}
         {hasInlineActions ? (
@@ -576,6 +595,7 @@ type TokenViewProps = {
   hasError: boolean;
   /** The token came from outside the bar (a drill, an example) a moment ago. */
   isFresh: boolean;
+  compact: boolean;
   canToggleOperator: boolean;
   onReplace: (token: Token) => void;
   onRemove: () => void;
@@ -588,6 +608,7 @@ function TokenView({
   hasError,
   isFresh,
   canToggleOperator,
+  compact,
   onReplace,
   onRemove,
 }: TokenViewProps) {
@@ -634,6 +655,7 @@ function TokenView({
     <FilterTokenView
       query={query}
       stageIndex={stageIndex}
+      compact={compact}
       clause={token.clause}
       className={errorClass}
       onReplace={(filterable) =>
@@ -647,6 +669,7 @@ function TokenView({
 type FilterTokenViewProps = {
   query: Lib.Query;
   stageIndex: number;
+  compact: boolean;
   clause: Lib.FilterClause;
   className?: string;
   onReplace: (filterable: Lib.Filterable) => void;
@@ -657,6 +680,7 @@ function FilterTokenView({
   query,
   stageIndex,
   clause,
+  compact,
   className,
   onReplace,
   onRemove,
@@ -676,7 +700,14 @@ function FilterTokenView({
             onClick={() => setIsOpened((opened) => !opened)}
             onRemove={onRemove}
           >
-            {getFilterLabel(query, stageIndex, clause)}
+            {compact && !isOpened
+              ? getFilterLabel(query, stageIndex, clause)
+                  .replaceAll("is greater than or equal to", "≥")
+                  .replaceAll("is less than or equal to", "≤")
+                  .replaceAll("is greater than", ">")
+                  .replaceAll("is less than", "<")
+                  .replaceAll("is equal to", "=")
+              : getFilterLabel(query, stageIndex, clause)}
           </TokenPill>
         </Box>
       </Popover.Target>

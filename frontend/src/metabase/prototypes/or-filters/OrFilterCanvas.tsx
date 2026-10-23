@@ -9,12 +9,14 @@ import {
   Loader,
   Paper,
   Stack,
+  Switch,
   Text,
   Title,
 } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { CardDisplayType } from "metabase-types/api";
 
+import { CompactReadingContext } from "./directions/expression-bar-2/settings";
 import { ChillFrame } from "./frames/ChillFrame";
 import { NotebookFrame } from "./frames/NotebookFrame";
 import { FilterTreeInspector } from "./harness/FilterTreeInspector";
@@ -118,6 +120,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
   const { query: baseQuery, isLoading, error } = useOrdersQuery();
   const [query, setQuery] = useState<Lib.Query>();
   const [display, setDisplay] = useState<CardDisplayType>(DEFAULT_DISPLAY);
+  const [compactReading, setCompactReading] = useState(false);
   const [areFiltersHidden, setAreFiltersHidden] = useState(false);
 
   useEffect(() => {
@@ -134,132 +137,155 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
   }
 
   return (
-    <Stack gap="xl">
-      <Stack gap="sm">
-        <Title order={3}>{direction.name}</Title>
-        <Paper p="lg" radius="md">
-          <Stack gap="lg">
-            <Box>
-              <Text c="text-secondary">{direction.description}</Text>
-            </Box>
+    <CompactReadingContext.Provider
+      value={direction.id === "expression-bar-inline-2" && compactReading}
+    >
+      <Stack gap="xl">
+        <Stack gap="sm">
+          <Title order={3}>{direction.name}</Title>
+          <Paper p="lg" radius="md">
+            <Stack gap="lg">
+              <Box>
+                <Text c="text-secondary">{direction.description}</Text>
+              </Box>
 
-            <Group gap="sm" align="center">
-              <Text fw="bold" c="text-secondary">{t`Examples`}</Text>
-              {EXAMPLES.map(({ label, load, display: exampleDisplay }) => (
+              <Group gap="sm" align="center">
+                <Text fw="bold" c="text-secondary">{t`Examples`}</Text>
+                {EXAMPLES.map(({ label, load, display: exampleDisplay }) => (
+                  <Button
+                    key={label}
+                    size="sm"
+                    variant="default"
+                    onClick={() => {
+                      setQuery(load(baseQuery ?? query, STAGE_INDEX));
+                      setDisplay(exampleDisplay ?? DEFAULT_DISPLAY);
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
                 <Button
-                  key={label}
+                  ml="auto"
                   size="sm"
-                  variant="default"
+                  variant="subtle"
+                  leftSection={<Icon name="close" />}
+                  onClick={() => setQuery(clearFilters(query, STAGE_INDEX))}
+                >
+                  {t`Clear filters`}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="subtle"
+                  leftSection={<Icon name="refresh" />}
+                  disabled={!baseQuery}
                   onClick={() => {
-                    setQuery(load(baseQuery ?? query, STAGE_INDEX));
-                    setDisplay(exampleDisplay ?? DEFAULT_DISPLAY);
+                    if (baseQuery) {
+                      setQuery(baseQuery);
+                      setDisplay(DEFAULT_DISPLAY);
+                    }
                   }}
                 >
-                  {label}
+                  {t`Reset`}
                 </Button>
-              ))}
-              <Button
-                ml="auto"
-                size="sm"
-                variant="subtle"
-                leftSection={<Icon name="close" />}
-                onClick={() => setQuery(clearFilters(query, STAGE_INDEX))}
-              >
-                {t`Clear filters`}
-              </Button>
-              <Button
-                size="sm"
-                variant="subtle"
-                leftSection={<Icon name="refresh" />}
-                disabled={!baseQuery}
-                onClick={() => {
-                  if (baseQuery) {
-                    setQuery(baseQuery);
-                    setDisplay(DEFAULT_DISPLAY);
-                  }
-                }}
-              >
-                {t`Reset`}
-              </Button>
-            </Group>
-          </Stack>
-        </Paper>
-      </Stack>
+              </Group>
+            </Stack>
+          </Paper>
+        </Stack>
 
-      {direction.Canvas ? (
-        <direction.Canvas query={query} onChange={setQuery} />
-      ) : (
-        <>
-          <Stack gap="sm">
-            <Title order={3}>{t`Chill mode`}</Title>
-            <ChillFrame
-              isHidden={direction.canHideFilters && areFiltersHidden}
-              filterButton={
-                direction.canHideFilters ? (
-                  <Button
-                    size="compact-md"
-                    variant="default"
-                    leftSection={<Icon name="filter" />}
-                    onClick={() => setAreFiltersHidden((hidden) => !hidden)}
-                  >
-                    {areFiltersHidden ? t`Show filters` : t`Hide filters`}
-                  </Button>
-                ) : (
-                  direction.FilterButton && (
-                    <direction.FilterButton
-                      query={query}
-                      stageIndex={STAGE_INDEX}
-                      variant="chill"
-                      onChange={setQuery}
-                    />
-                  )
-                )
-              }
-              results={
-                <QueryResults
-                  query={query}
-                  stageIndex={STAGE_INDEX}
-                  display={display}
-                  onChange={(nextQuery, nextDisplay) => {
-                    setQuery(nextQuery);
-                    setDisplay(nextDisplay);
-                  }}
-                />
-              }
-            >
-              <direction.Component
-                query={query}
-                stageIndex={STAGE_INDEX}
-                variant="chill"
-                onChange={setQuery}
+        {direction.id === "expression-bar-inline-2" && (
+          <Paper withBorder p="lg" radius="md">
+            <Stack gap="sm">
+              <Text fw="bold">{t`Prototype settings`}</Text>
+              <Switch
+                label={t`Compact reading`}
+                checked={compactReading}
+                onChange={(event) =>
+                  setCompactReading(event.currentTarget.checked)
+                }
               />
-            </ChillFrame>
-          </Stack>
+              <Text
+                size="sm"
+                c="text-secondary"
+              >{t`Use shorter comparisons when reading filters. Editing shows the full labels.`}</Text>
+            </Stack>
+          </Paper>
+        )}
 
-          <Stack gap="sm">
-            <Title order={3}>{t`Notebook mode`}</Title>
-            {direction.NotebookCanvas ? (
-              <direction.NotebookCanvas query={query} onChange={setQuery} />
-            ) : (
-              <NotebookFrame>
+        {direction.Canvas ? (
+          <direction.Canvas query={query} onChange={setQuery} />
+        ) : (
+          <>
+            <Stack gap="sm">
+              <Title order={3}>{t`Chill mode`}</Title>
+              <ChillFrame
+                isHidden={direction.canHideFilters && areFiltersHidden}
+                filterButton={
+                  direction.canHideFilters ? (
+                    <Button
+                      size="compact-md"
+                      variant="default"
+                      leftSection={<Icon name="filter" />}
+                      onClick={() => setAreFiltersHidden((hidden) => !hidden)}
+                    >
+                      {areFiltersHidden ? t`Show filters` : t`Hide filters`}
+                    </Button>
+                  ) : (
+                    direction.FilterButton && (
+                      <direction.FilterButton
+                        query={query}
+                        stageIndex={STAGE_INDEX}
+                        variant="chill"
+                        onChange={setQuery}
+                      />
+                    )
+                  )
+                }
+                results={
+                  <QueryResults
+                    query={query}
+                    stageIndex={STAGE_INDEX}
+                    display={display}
+                    onChange={(nextQuery, nextDisplay) => {
+                      setQuery(nextQuery);
+                      setDisplay(nextDisplay);
+                    }}
+                  />
+                }
+              >
                 <direction.Component
                   query={query}
                   stageIndex={STAGE_INDEX}
-                  variant="notebook"
+                  variant="chill"
                   onChange={setQuery}
                 />
-              </NotebookFrame>
-            )}
-          </Stack>
-        </>
-      )}
+              </ChillFrame>
+            </Stack>
 
-      <Stack gap="sm">
-        <Title order={3}>{t`Preview query`}</Title>
-        <Paper withBorder radius="md" p="lg">
-          <FilterTreeInspector query={query} stageIndex={STAGE_INDEX} />
-        </Paper>
+            <Stack gap="sm">
+              <Title order={3}>{t`Notebook mode`}</Title>
+              {direction.NotebookCanvas ? (
+                <direction.NotebookCanvas query={query} onChange={setQuery} />
+              ) : (
+                <NotebookFrame>
+                  <direction.Component
+                    query={query}
+                    stageIndex={STAGE_INDEX}
+                    variant="notebook"
+                    onChange={setQuery}
+                  />
+                </NotebookFrame>
+              )}
+            </Stack>
+          </>
+        )}
+
+        <Stack gap="sm">
+          <Title order={3}>{t`Preview query`}</Title>
+          <Paper withBorder radius="md" p="lg">
+            <FilterTreeInspector query={query} stageIndex={STAGE_INDEX} />
+          </Paper>
+        </Stack>
       </Stack>
-    </Stack>
+    </CompactReadingContext.Provider>
   );
 }

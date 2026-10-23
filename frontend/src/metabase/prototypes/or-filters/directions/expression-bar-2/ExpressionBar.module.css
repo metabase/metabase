@@ -325,7 +325,7 @@
 }
 
 .summaryStage {
-  --stage-band: var(--mb-color-background_surface-success);
+  --stage-band: var(--mb-color-background_page-filter);
 }
 
 /* The slot is a band item (tinted, stretched); the circle sits inside it. */
