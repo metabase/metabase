@@ -136,24 +136,16 @@ export type MetadataGenerationProposal = {
 };
 
 /**
- * One review. Give `accept`, or `all` with a scope (`database_id` with an optional `schema`, `table_ids` or
- * `field_ids`). `all` accepts every pending proposal of the scope except those in `except` or `reject`, and except
- * those over a value a person set unless `include_human_set`. An edit replaces the proposed value and accepts its
- * proposal. `proposed_values` gives the proposed value the client saw: a proposal that a run changed since is
- * skipped as `changed`.
+ * One review. Give `accept` and `edits`, or `reject_all` with `database_id`. An edit replaces the proposed value and
+ * accepts its proposal. `proposed_values` gives the proposed value the client saw: a proposal that a run changed
+ * since is skipped as `changed`. `reject_all` rejects every pending proposal of the database.
  */
 export type ApplyMetadataGenerationProposalsRequest = {
   accept?: MetadataGenerationProposalId[];
-  all?: boolean;
-  except?: MetadataGenerationProposalId[];
-  database_id?: DatabaseId;
-  schema?: SchemaName;
-  table_ids?: ConcreteTableId[];
-  field_ids?: FieldId[];
-  include_human_set?: boolean;
-  reject?: MetadataGenerationProposalId[];
   edits?: Record<MetadataGenerationProposalId, string>;
   proposed_values?: Record<MetadataGenerationProposalId, string>;
+  reject_all?: boolean;
+  database_id?: DatabaseId;
 };
 
 export type MetadataGenerationApplyFailureReason =

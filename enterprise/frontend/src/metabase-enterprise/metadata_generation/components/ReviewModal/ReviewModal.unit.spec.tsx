@@ -18,7 +18,7 @@ import { ReviewModal } from "./ReviewModal";
 const DATABASE_ID = 1;
 const APPLY_PATH = "path:/api/ee/data-sensitivity/proposals/apply";
 
-function setup() {
+function setup({ onDiscard }: { onDiscard?: () => void } = {}) {
   const tables = [
     createMockMetadataGenerationProposalTable({
       table_id: 10,
@@ -100,7 +100,12 @@ function setup() {
   );
 
   return renderWithProviders(
-    <ReviewModal databaseId={DATABASE_ID} opened onClose={jest.fn()} />,
+    <ReviewModal
+      databaseId={DATABASE_ID}
+      opened
+      onClose={jest.fn()}
+      onDiscard={onDiscard}
+    />,
   );
 }
 
@@ -343,5 +348,29 @@ describe("ReviewModal", () => {
     expect(
       screen.getByRole("button", { name: "Apply 0 selected" }),
     ).toBeDisabled();
+  });
+
+  it("rejects every suggestion of the database on the server when the person discards them", async () => {
+    const onDiscard = jest.fn();
+    setup({ onDiscard });
+
+    await userEvent.click(
+      await getRowCheckbox("Accept Data sensitivity of Email"),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Discard all suggestions" }),
+    );
+    expect(getMutationCalls()).toHaveLength(0);
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", { name: /Discard all/ }),
+      ).getByRole("button", { name: "Discard" }),
+    );
+
+    expect(await getApplyBody()).toEqual({
+      database_id: DATABASE_ID,
+      reject_all: true,
+    });
+    await waitFor(() => expect(onDiscard).toHaveBeenCalledTimes(1));
   });
 });

@@ -54,15 +54,14 @@
   (review/pending-proposals (scope params)))
 
 (api.macros/defendpoint :post "/proposals/apply" :- ::review/apply-result
-  "Apply a review in one request: write the proposals in `accept`, or with `all` every pending proposal of the fields
-  in `field_ids`, the tables in `table_ids` or the database `database_id` (in `schema` when given) except those in
-  `except`, and mark those in `reject` as rejected. `all` leaves out proposals over a value a person set unless
-  `include_human_set` is true. `edits` maps a proposal id to a value that replaces the proposed value and accepts the
+  "Apply a review in one request: write the proposals in `accept` and `edits`, or with `reject_all` mark every pending
+  proposal of the database `database_id` as rejected; a rejected proposal is hidden until a later run proposes a value
+  for its field again. `edits` maps a proposal id to a value that replaces the proposed value and accepts the
   proposal; the value follows the rules of the attribute (a data-sensitivity category, a semantic type that fits the
   field and is not a key type, or a non-blank description), else the request is a 400 and nothing is written. An
   edited value is written as the person's value, any other as an AI value, and an unedited proposal over a value a
   person set clears that value. `proposed_values` maps a proposal id to the proposed value that the client saw: a
-  proposal that a run changed or deleted since is not written or rejected, and is listed in `failures` as `changed`.
+  proposal that a run changed or deleted since is not written, and is listed in `failures` as `changed`.
   Each table is one transaction; a written proposal is deleted. A proposal that cannot be written stays pending and
   is listed in `failures`."
   [_route-params

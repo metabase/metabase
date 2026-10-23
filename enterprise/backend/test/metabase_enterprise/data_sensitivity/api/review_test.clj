@@ -55,7 +55,7 @@
        (mt/user-http-request :rasta :get 403 "ee/data-sensitivity/proposals/tables" :database-id db-id)
        (mt/user-http-request :rasta :get 403 "ee/data-sensitivity/proposals" :database-id db-id)
        (mt/user-http-request :rasta :post 403 "ee/data-sensitivity/proposals/apply"
-                             {:all true :database_id db-id})))))
+                             {:reject_all true :database_id db-id})))))
 
 (deftest table-counts-test
   (mt/with-premium-features #{:data-sensitivity}

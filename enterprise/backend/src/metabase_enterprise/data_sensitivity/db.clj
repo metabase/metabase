@@ -198,20 +198,18 @@
 ;;; Review
 
 (mr/def ::scope
-  "The proposals of the fields in `field_ids`, of the tables in `table_ids`, or of the tables of `database_id` (in
-  `schema` when given). Given keys all apply."
+  "The proposals of the tables in `table_ids`, or of the tables of `database_id` (in `schema` when given). Given keys
+  all apply."
   [:map {:closed true}
    [:database_id {:optional true} [:maybe ::lib.schema.id/database]]
    [:schema      {:optional true} [:maybe :string]]
-   [:table_ids   {:optional true} [:maybe [:sequential ::lib.schema.id/table]]]
-   [:field_ids   {:optional true} [:maybe [:sequential ::lib.schema.id/field]]]])
+   [:table_ids   {:optional true} [:maybe [:sequential ::lib.schema.id/table]]]])
 
-(defn- scope-where [{:keys [database_id schema table_ids field_ids]}]
+(defn- scope-where [{:keys [database_id schema table_ids]}]
   (cond-> [:and [:= :t.active true] [:= :f.active true]]
     database_id     (conj [:= :t.db_id database_id])
     schema          (conj [:= :t.schema schema])
-    (seq table_ids) (conj [:in :p.table_id table_ids])
-    (seq field_ids) (conj [:in :p.field_id field_ids])))
+    (seq table_ids) (conj [:in :p.table_id table_ids])))
 
 (mu/defn pending-proposals :- [:sequential (ms/InstanceOf :model/MetadataGenerationProposal)]
   "The pending proposals in `scope` of active fields of active tables, with the field's `field_name`,

@@ -102,7 +102,7 @@ type ReviewModalProps = {
   onRegenerate?: (run: MetadataGenerationRun) => void;
   /** Called when the person is done and there are no suggestions. */
   onDone?: () => void;
-  /** Called after the person confirms discarding every suggestion. */
+  /** Called after every suggestion of the database is discarded. */
   onDiscard?: () => void;
 };
 
@@ -148,6 +148,7 @@ export function ReviewModal({
           <Group gap="sm" wrap="nowrap">
             {opened && hasTables && (
               <ReviewActions
+                databaseId={databaseId}
                 draft={draft}
                 onApply={setApplyResult}
                 onDiscard={onDiscard && handleDiscard}
@@ -505,14 +506,22 @@ function ResizeHandle({
 }
 
 type ReviewActionsProps = {
+  databaseId: DatabaseId;
   draft: ReviewDraftState;
   onApply: (result: MetadataGenerationApplyResult) => void;
   onDiscard?: () => void;
 };
 
 /** The discard and apply actions of the modal header. */
-function ReviewActions({ draft, onApply, onDiscard }: ReviewActionsProps) {
+function ReviewActions({
+  databaseId,
+  draft,
+  onApply,
+  onDiscard,
+}: ReviewActionsProps) {
   const [applyProposals, { isLoading: isApplying }] =
+    useApplyMetadataGenerationProposalsMutation();
+  const [discardProposals, { isLoading: isDiscarding }] =
     useApplyMetadataGenerationProposalsMutation();
   const [
     isDiscardConfirmOpen,
@@ -521,9 +530,19 @@ function ReviewActions({ draft, onApply, onDiscard }: ReviewActionsProps) {
   const { sendErrorToast } = useMetadataToasts();
   const selectedCount = draft.selection.size;
 
-  const handleDiscard = () => {
+  const handleDiscard = async () => {
     closeDiscardConfirm();
-    onDiscard?.();
+    const { error } = await discardProposals({
+      database_id: databaseId,
+      reject_all: true,
+    });
+    if (error) {
+      sendErrorToast(
+        getErrorMessage(error, t`Failed to discard the suggestions`),
+      );
+    } else {
+      onDiscard?.();
+    }
   };
 
   const handleApply = async () => {
@@ -546,6 +565,7 @@ function ReviewActions({ draft, onApply, onDiscard }: ReviewActionsProps) {
         <Tooltip label={t`Discard all suggestions`}>
           <ActionIcon
             aria-label={t`Discard all suggestions`}
+            loading={isDiscarding}
             onClick={openDiscardConfirm}
           >
             <Icon name="trash" />
@@ -555,7 +575,7 @@ function ReviewActions({ draft, onApply, onDiscard }: ReviewActionsProps) {
       <ConfirmModal
         opened={isDiscardConfirmOpen}
         title={t`Discard all suggestions?`}
-        message={t`This sets aside every suggestion until the next run, including the ones you selected or edited.`}
+        message={t`This discards every suggestion of this database, including the ones you selected or edited. A later run can suggest them again.`}
         confirmButtonText={t`Discard`}
         onConfirm={handleDiscard}
         onClose={closeDiscardConfirm}

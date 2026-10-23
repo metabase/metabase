@@ -42,9 +42,6 @@ function GenerateMetadataButtonContent({
     useState<MetadataGenerationRunId | null>(null);
   const dispatch = useDispatch();
   const [hasActiveRun, setHasActiveRun] = useState(false);
-  // The latest run when the person dismissed the review. The button offers to generate again until a newer run.
-  const [dismissedRunId, setDismissedRunId] =
-    useState<MetadataGenerationRunId | null>(null);
   const { data: runs } = useListMetadataGenerationRunsQuery(
     { database_id: databaseId },
     // The list keeps polling while the run continues in the background, so the
@@ -70,8 +67,7 @@ function GenerateMetadataButtonContent({
   }, [dispatch, isActive]);
 
   const modalRunId = startedRunId ?? activeRun?.id ?? null;
-  const isDismissed = (latestRun?.id ?? null) === dismissedRunId;
-  const hasPending = (proposalTables?.length ?? 0) > 0 && !isDismissed;
+  const hasPending = (proposalTables?.length ?? 0) > 0;
   const state = getButtonState(activeRun, hasPending);
 
   const handleModalClose = () => {
@@ -91,14 +87,8 @@ function GenerateMetadataButtonContent({
     openModal();
   };
 
-  const handleReviewDone = () => {
-    setDismissedRunId(latestRun?.id ?? null);
-    closeReview();
-  };
-
-  // Discarding sets the run aside and returns to the generate form.
+  // The server has rejected every suggestion: return to the generate form.
   const handleDiscard = () => {
-    setDismissedRunId(latestRun?.id ?? null);
     closeReview();
     setStartedRunId(null);
     openModal();
@@ -128,7 +118,7 @@ function GenerateMetadataButtonContent({
         opened={isReviewOpen}
         onClose={closeReview}
         onRegenerate={handleRegenerate}
-        onDone={handleReviewDone}
+        onDone={closeReview}
         onDiscard={handleDiscard}
       />
     </>

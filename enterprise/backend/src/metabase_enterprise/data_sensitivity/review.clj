@@ -1,14 +1,13 @@
 (ns metabase-enterprise.data-sensitivity.review
-  "Review of the pending AI proposals of a database, its tables or its fields: counts per table, the proposals, and
-  apply. The review UI keeps the selection and the edits until apply, which takes the accepted and rejected proposals
-  and the edited values in one request. Apply writes the accepted proposals as AI values (decision
-  `ghy-4721-metadata-layer-precedence`) and deletes their rows, and marks the rejected ones `rejected` (decision
+  "Review of the pending AI proposals of a database or its tables: counts per table, the proposals, and apply. The
+  review UI keeps the selection and the edits until apply, which takes the accepted proposals and the edited values
+  in one request. Apply writes the accepted proposals as AI values (decision `ghy-4721-metadata-layer-precedence`) and
+  deletes their rows. Apply with `reject_all` marks every pending proposal of a database `rejected` (decision
   `ghy-4721-ai-proposal-model`). A rejected proposal is hidden until the next run that covers its field.
 
   `source` and `current_value` are computed when a proposal is read or applied, from the value readers see now. A
-  proposal with source `human` would replace a value a person set. Apply of `all` leaves those proposals out unless
-  the request sets `include_human_set`; a proposal accepted by id or by an edit is always included. Apply of such a
-  proposal clears the person's value.
+  proposal with source `human` would replace a value a person set; apply of such a proposal clears the person's
+  value.
 
   An edited value replaces the proposed value of a proposal at apply. Apply writes it as the person's value, not as
   an AI value (decision `ghy-4721-edited-suggestion-layer`).
@@ -162,23 +161,15 @@
 ;;; Apply
 
 (mr/def ::apply-request
-  "Give `accept` (ids) or `all`, or neither when the request only rejects. `all` accepts every pending proposal of the
-  fields in `field_ids`, the tables in `table_ids` or the database `database_id` (in `schema` when given), except
-  those in `except` or `reject`, and except those over a value a person set unless `include_human_set`. `edits` maps
-  a proposal id to the value that replaces its proposed value; an edit also accepts its proposal. `proposed_values`
-  maps a proposal id to the proposed value that the client saw."
+  "Give `accept` (ids) and `edits`, or `reject_all` with `database_id`. `edits` maps a proposal id to the value that
+  replaces its proposed value; an edit also accepts its proposal. `proposed_values` maps a proposal id to the
+  proposed value that the client saw. `reject_all` rejects every pending proposal of the database `database_id`."
   [:map {:closed true}
-   [:accept            {:optional true} [:maybe [:sequential ms/PositiveInt]]]
-   [:all               {:optional true} [:maybe :boolean]]
-   [:except            {:optional true} [:maybe [:sequential ms/PositiveInt]]]
-   [:database_id       {:optional true} [:maybe ms/PositiveInt]]
-   [:schema            {:optional true} [:maybe :string]]
-   [:table_ids         {:optional true} [:maybe [:sequential {:min 1} ms/PositiveInt]]]
-   [:field_ids         {:optional true} [:maybe [:sequential {:min 1} ms/PositiveInt]]]
-   [:include_human_set {:optional true} [:maybe :boolean]]
-   [:reject            {:optional true} [:maybe [:sequential ms/PositiveInt]]]
-   [:edits             {:optional true} [:maybe [:map-of ms/PositiveInt :string]]]
-   [:proposed_values   {:optional true} [:maybe [:map-of ms/PositiveInt :string]]]])
+   [:accept          {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+   [:edits           {:optional true} [:maybe [:map-of ms/PositiveInt :string]]]
+   [:proposed_values {:optional true} [:maybe [:map-of ms/PositiveInt :string]]]
+   [:reject_all      {:optional true} [:maybe :boolean]]
+   [:database_id     {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::failure-reason
   [:enum :changed :field_not_found :not_writable :key_field :type_mismatch :error])
@@ -298,35 +289,22 @@
       (table-result outcomes))
     (table-result (map #(assoc % ::outcome :error) proposals))))
 
-(defn- check-request [{:keys [accept all except database_id schema table_ids field_ids include_human_set reject edits]}]
-  (when (and (seq accept) all)
-    (throw (bad-request (tru "Give accept or all, not both."))))
-  (when (and (not all) (or (seq except) database_id schema (seq table_ids) (seq field_ids) include_human_set))
-    (throw (bad-request (tru "except, database_id, schema, table_ids, field_ids and include_human_set need all."))))
-  (when (and all (not (or database_id (seq table_ids) (seq field_ids))))
-    (throw (bad-request (tru "all needs database_id, table_ids or field_ids."))))
-  (when (and schema (not database_id))
-    (throw (bad-request (tru "schema needs database_id."))))
-  (let [rejected (set reject)]
-    (when (some rejected (concat accept (keys edits)))
-      (throw (bad-request (tru "A proposal cannot be both accepted and rejected."))))
-    (when (some (set except) (keys edits))
-      (throw (bad-request (tru "An edited proposal cannot be in except."))))))
+(defn- check-request [{:keys [accept edits reject_all database_id]}]
+  (when (and reject_all (not database_id))
+    (throw (bad-request (tru "reject_all needs database_id."))))
+  (when (and database_id (not reject_all))
+    (throw (bad-request (tru "database_id needs reject_all."))))
+  (when (and reject_all (or (seq accept) (seq edits)))
+    (throw (bad-request (tru "Give accept and edits, or reject_all, not both.")))))
 
-(defn- in-scope
-  "The pending proposals that `all` accepts: those in the scope of the request, minus `left-out`, and minus those over
-  a value a person set unless `include_human_set`."
-  [{:keys [database_id schema table_ids field_ids include_human_set]} left-out]
-  (let [ps       (remove #(left-out (:id %))
-                         (db/pending-proposals (m/assoc-some {}
-                                                             :database_id database_id
-                                                             :schema      schema
-                                                             :table_ids   (not-empty table_ids)
-                                                             :field_ids   (not-empty field_ids))))
-        settings (when-not include_human_set
-                   (db/user-settings-by-field (vec (distinct (map :field_id ps)))))]
-    (cond->> ps
-      (not include_human_set) (remove #(human-set? settings %)))))
+(defn- reject-all!
+  "Mark every pending proposal of active fields of the database `database-id` `rejected`, decided by `user-id`."
+  [database-id user-id]
+  (let [ids (mapv :id (db/pending-proposal-keys {:database_id database-id}))]
+    {:written  0
+     :rejected (db/set-proposal-status! ids :rejected user-id)
+     :failed   0
+     :failures []}))
 
 (defn- check-edits!
   "Throw a 400 when an edited value of `proposals` is one a person cannot set; return `proposals` with each edited
@@ -341,34 +319,32 @@
 
 (mu/defn apply! :- ::apply-result
   "Apply the review that `request` gives, as `user-id`: write the accepted proposals, the edited ones as the person's
-  values and the others as AI values, and delete their rows, and mark the rejected ones `rejected`. Ids that name no
-  proposal are ignored, unless `proposed_values` has them: then they are listed in `failures` as `changed`, as is a
-  proposal whose value is not the one in `proposed_values`, and a proposal in `accept` that is not pending. An edit of
-  a proposal that is not pending is applied. An invalid edit is a 400 and nothing is written. Each table is one
-  transaction. A proposal that cannot be written keeps its status and is listed in `failures`."
+  values and the others as AI values, and delete their rows; or, with `reject_all`, mark every pending proposal of
+  the database `rejected`. Ids that name no proposal are ignored, unless `proposed_values` has them: then they are
+  listed in `failures` as `changed`, as is a proposal whose value is not the one in `proposed_values`, and a proposal
+  in `accept` that is not pending. An edit of a proposal that is not pending is applied. An invalid edit is a 400 and
+  nothing is written. Each table is one transaction. A proposal that cannot be written keeps its status and is listed
+  in `failures`."
   [request :- ::apply-request
    user-id :- ms/PositiveInt]
   (check-request request)
-  (let [{:keys [accept all except reject edits proposed_values]} request
-        seen      (or proposed_values {})
-        ids       (vec (distinct (concat accept (keys edits) reject)))
-        by-id     (m/index-by :id (db/proposals-by-id ids))
-        gone      (for [id ids :when (and (contains? seen id) (not (by-id id)))] {:id id})
-        changed?  (fn [{:keys [id proposed_value]}] (and (contains? seen id) (not= (seen id) proposed_value)))
-        decided   (filter #(and (not (contains? edits (:id %))) (not= :pending (:status %))) (keep by-id accept))
-        candidate (concat (keep by-id (concat accept (keys edits)))
-                          (when all (in-scope request (into (set except) reject))))
-        rejecting (keep by-id (distinct reject))
-        changed   (m/distinct-by :id (concat decided (filter changed? (concat candidate rejecting))))
-        skip      (into #{} (map :id) changed)
-        accepted  (->> (remove #(skip (:id %)) candidate)
-                       (m/distinct-by :id)
-                       (map #(assoc % :edited_value (get edits (:id %))))
-                       check-edits!)
-        rejected  (remove #(skip (:id %)) rejecting)
-        failures  (mapv #(failure % :changed) (sort-by :id (concat gone changed)))]
-    (db/set-proposal-status! (mapv :id rejected) :rejected user-id)
-    (transduce (map (fn [[table-id ps]] (apply-table! table-id ps user-id)))
-               (completing (fn [acc r] (merge-with #(if (number? %1) (+ %1 %2) (into %1 %2)) acc r)))
-               {:written 0 :rejected (count rejected) :failed (count failures) :failures failures}
-               (sort-by key (group-by :table_id (sort-by :id accepted))))))
+  (if (:reject_all request)
+    (reject-all! (:database_id request) user-id)
+    (let [{:keys [accept edits proposed_values]} request
+          seen      (or proposed_values {})
+          ids       (vec (distinct (concat accept (keys edits))))
+          by-id     (m/index-by :id (db/proposals-by-id ids))
+          gone      (for [id ids :when (and (contains? seen id) (not (by-id id)))] {:id id})
+          changed?  (fn [{:keys [id proposed_value]}] (and (contains? seen id) (not= (seen id) proposed_value)))
+          decided   (filter #(and (not (contains? edits (:id %))) (not= :pending (:status %))) (keep by-id accept))
+          candidate (keep by-id ids)
+          changed   (m/distinct-by :id (concat decided (filter changed? candidate)))
+          skip      (into #{} (map :id) changed)
+          accepted  (->> (remove #(skip (:id %)) candidate)
+                         (map #(assoc % :edited_value (get edits (:id %))))
+                         check-edits!)
+          failures  (mapv #(failure % :changed) (sort-by :id (concat gone changed)))]
+      (transduce (map (fn [[table-id ps]] (apply-table! table-id ps user-id)))
+                 (completing (fn [acc r] (merge-with #(if (number? %1) (+ %1 %2) (into %1 %2)) acc r)))
+                 {:written 0 :rejected 0 :failed (count failures) :failures failures}
+                 (sort-by key (group-by :table_id (sort-by :id accepted)))))))
