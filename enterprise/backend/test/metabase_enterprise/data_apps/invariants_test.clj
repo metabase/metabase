@@ -268,6 +268,41 @@
                                      (save! (lib/query (mt/metadata-provider)
                                                        (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))))))))))))
 
+(deftest card-in-apps-collection-reads-only-published-tables-through-nested-macros-test
+  (testing "segments and measures used in the definitions of other segments and measures count as reads too"
+    (do-with-app-collection
+     (fn [collection-id]
+       (data-apps.tu/with-published-tables! [(mt/id :venues)]
+         (let [venues   (fn [] (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues))))
+               category (some #(when (= (mt/id :categories :name) (:id %)) %) (lib/filterable-columns (venues)))
+               save!    (fn [query]
+                          (mt/with-temp [:model/Card _ {:name "Saved" :collection_id collection-id :dataset_query query}]))]
+           (mt/with-temp [:model/Segment {bars-id :id} {:name       "Bars"
+                                                        :table_id   (mt/id :venues)
+                                                        :definition (lib/filter (venues) (lib/= category "Bar"))}
+                          :model/Measure {categories-id :id} {:name       "Categories"
+                                                              :table_id   (mt/id :venues)
+                                                              :definition (lib/aggregate (venues) (lib/distinct category))}]
+             (mt/with-temp [:model/Segment {bars-again-id :id} {:name       "Bars again"
+                                                                :table_id   (mt/id :venues)
+                                                                :definition (lib/filter (venues) (lib.metadata/segment (mt/metadata-provider) bars-id))}
+                            :model/Measure {bar-count-id :id} {:name       "Bar count"
+                                                               :table_id   (mt/id :venues)
+                                                               :definition (lib/aggregate (venues) (lib/count-where (lib.metadata/segment (mt/metadata-provider) bars-id)))}
+                            :model/Measure {categories-again-id :id} {:name       "Categories again"
+                                                                      :table_id   (mt/id :venues)
+                                                                      :definition (lib/aggregate (venues) (lib.metadata/measure (mt/metadata-provider) categories-id))}]
+               (let [mp (mt/metadata-provider)]
+                 (testing "a segment that uses a segment on an unpublished table"
+                   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not CATEGORIES"
+                                         (save! (lib/filter (venues) (lib.metadata/segment mp bars-again-id))))))
+                 (testing "a measure that counts where such a segment holds"
+                   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not CATEGORIES"
+                                         (save! (lib/aggregate (venues) (lib.metadata/measure mp bar-count-id))))))
+                 (testing "a measure that aggregates such a measure"
+                   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not CATEGORIES"
+                                         (save! (lib/aggregate (venues) (lib.metadata/measure mp categories-again-id)))))))))))))))
+
 (deftest card-in-apps-collection-stays-editable-after-its-table-is-unpublished-test
   (testing "a later change that leaves the query alone keeps working; one that changes it is checked again"
     (do-with-app-collection
