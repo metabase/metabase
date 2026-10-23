@@ -31,26 +31,37 @@
   (when-let [value (cond-> value (keyword? value) name)]
     (format " %s: %s" field-name value)))
 
-(mu/defn default-query->remark
-  "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
-   can access the default value."
+(mu/defn query->remark-data
+  "Returns the data for a query remark as a map. Drivers can format this data as their database requires."
   [{{:keys [executed-by query-hash card-id dashboard-id pulse-id context], :as _info} :info
     database-id :database
     :as query} :- ::qp.schema/any-query]
-  (let [query-type (if (:lib/type query)
-                     (case (keyword (:lib/type (lib/query-stage query -1)))
-                       :mbql.stage/mbql   "MBQL"
-                       :mbql.stage/native "native")
-                     (case (keyword (:type query))
-                       :query  "MBQL"
-                       :native "native"))]
-    (str "Metabase" (when executed-by
-                      (assert (bytes? query-hash) "If info includes executed-by it should also include query-hash")
-                      (format ":: userID: %s queryType: %s queryHash: %s"
-                              executed-by
-                              query-type
-                              (codecs/bytes->hex query-hash)))
-         (remark-field "accountID" (system/site-uuid))
+  {:user-id      executed-by
+   :query-type   (if (:lib/type query)
+                   (case (keyword (:lib/type (lib/query-stage query -1)))
+                     :mbql.stage/mbql   "MBQL"
+                     :mbql.stage/native "native")
+                   (case (keyword (:type query))
+                     :query  "MBQL"
+                     :native "native"))
+   :query-hash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
+   :account-id   (system/site-uuid)
+   :dashboard-id dashboard-id
+   :card-id      card-id
+   :pulse-id     pulse-id
+   :context      context
+   :database-id  database-id})
+
+(mu/defn default-query->remark
+  "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
+   can access the default value."
+  [query :- ::qp.schema/any-query]
+  (let [{:keys [user-id query-type query-hash account-id dashboard-id card-id pulse-id context database-id]}
+        (query->remark-data query)]
+    (str "Metabase" (when user-id
+                      (assert query-hash "If info includes executed-by it should also include query-hash")
+                      (format ":: userID: %s queryType: %s queryHash: %s" user-id query-type query-hash))
+         (remark-field "accountID" account-id)
          (remark-field "dashboardID" dashboard-id)
          (remark-field "cardID" card-id)
          (remark-field "pulseID" pulse-id)
