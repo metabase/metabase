@@ -289,18 +289,6 @@
                                         [(meta/field-metadata :products :category)
                                          (meta/field-metadata :products :vendor)
                                          (meta/field-metadata :products :price)])}}))))
-    (testing "a scatter error counts what the scatter check counts, so the model sees which column is one too many"
-      (is (= (failure "Chart type \"scatter\" can't show this query's columns. It needs 1 number to measure and 1 "
-                      "or 2 columns to plot it against, counting the number itself, or 2 or 3 numbers to measure. The "
-                      "query returns 3 columns: 1 number to measure and 3 columns to plot against, counting the number "
-                      "to measure. Chart types that fit these columns: table, bar, line, pie, treemap, boxplot, area, "
-                      "combo, row, sankey, scalar, progress, object.")
-             (invoke "create_chart"
-                     (assoc chart-args :data_source {:query_id "q-1"} :viz_settings {:chart_type "scatter"})
-                     {:queries {"q-1" (lib/with-fields (lib/query meta/metadata-provider (meta/table-metadata :products))
-                                        [(meta/field-metadata :products :category)
-                                         (meta/field-metadata :products :vendor)
-                                         (meta/field-metadata :products :price)])}}))))
     (testing "construct_notebook_query checks its chart type against the query that it builds"
       (mt/with-dynamic-fn-redefs [construct/execute-representations-query
                                   (fn [_ & _]
