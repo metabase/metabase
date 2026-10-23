@@ -6,6 +6,12 @@ function checkFavicon(url) {
     .should("include", url);
 }
 
+function checkLogo() {
+  cy.readFile("e2e/support/assets/logo.jpeg", "base64").then((logo_data) => {
+    cy.get(`img[src="data:image/jpeg;base64,${logo_data}"]`).should("exist");
+  });
+}
+
 function illustrationUrlPattern(settingKey) {
   return new RegExp(`api/session/illustration/${settingKey}\\?v=[0-9a-f]{16}`);
 }
@@ -44,7 +50,37 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     );
   });
 
+  it("should show the application name in the main app (metabase#17043)", () => {
+    const NEW_COMPANY_NAME = "New Test Co";
+    H.updateSetting("application-name", NEW_COMPANY_NAME);
+
+    cy.signInAsNormalUser();
+    cy.visit("/");
+    H.getProfileLink().click();
+    H.popover().findByText("Help").click();
+    H.getHelpSubmenu().findByText(`About ${NEW_COMPANY_NAME}`).click();
+    H.modal()
+      .findByText(`Thanks for using ${NEW_COMPANY_NAME}!`)
+      .should("be.visible");
+  });
+
   describe("image uploads", () => {
+    describe("company logo", () => {
+      it("should show the logo while signed out", () => {
+        cy.readFile("e2e/support/assets/logo.jpeg", "base64").then(
+          (logo_data) => {
+            H.updateSetting(
+              "application-logo-url",
+              `data:image/jpeg;base64,${logo_data}`,
+            );
+          },
+        );
+        cy.signOut();
+        cy.visit("/");
+        checkLogo();
+      });
+    });
+
     describe("favicon", () => {
       it("should show up in user's HTML, including a favicon URL set before we changed the input to a file input", () => {
         cy.visit("/admin/settings/whitelabel");
@@ -186,4 +222,59 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
       );
     });
   });
+
+  describe("Help link", () => {
+    it("should validate the custom URL on the server and link to metabase help when the whitelabel feature is disabled (eg OSS)", () => {
+      cy.intercept("PUT", "/api/setting/help-link-custom-destination").as(
+        "putHelpLinkUrl",
+      );
+      cy.visit("/admin/settings/whitelabel/conceal-metabase");
+      cy.findByTestId("help-link-setting")
+        .findByText("Go to a custom destination...")
+        .click();
+
+      getHelpLinkCustomDestinationInput().clear().type("https://").blur();
+      cy.wait("@putHelpLinkUrl");
+      cy.findByTestId("help-link-setting")
+        .findByText("Please make sure this is a valid URL")
+        .should("be.visible");
+
+      getHelpLinkCustomDestinationInput().type("example").blur();
+      cy.wait("@putHelpLinkUrl");
+      cy.findByTestId("help-link-setting")
+        .findByText("Please make sure this is a valid URL")
+        .should("not.exist");
+
+      cy.log(
+        "should link to metabase help when the whitelabel feature is disabled (eg OSS)",
+      );
+      // Point the help link at the custom destination first, so only the
+      // whitelabel feature gating can bring back the default Metabase help link
+      H.updateSetting("help-link", "custom");
+      H.deleteToken();
+
+      cy.signInAsNormalUser();
+      cy.visit("/");
+      H.getProfileLink().click();
+      H.popover().findByText("Help").click();
+      H.getHelpSubmenu()
+        .findByRole("menuitem", { name: "Get help" })
+        .should("have.attr", "href")
+        .and("include", "https://www.metabase.com/help?");
+    });
+  });
+
+  describe("Landing Page (now moved to general tab metabase#38699)", () => {
+    it("should go to the custom landing page from the main app", () => {
+      H.updateSetting("landing-page", "/test-1");
+      cy.visit("/admin/settings/general");
+      H.goToMainApp();
+      cy.url().should("include", "/test-1");
+    });
+  });
 });
+
+const getHelpLinkCustomDestinationInput = () =>
+  cy
+    .findByTestId("help-link-setting")
+    .findByPlaceholderText("Enter a URL it should go to");
