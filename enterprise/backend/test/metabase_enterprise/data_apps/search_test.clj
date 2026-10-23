@@ -4,8 +4,8 @@
    [metabase-enterprise.data-apps.config :as data-apps.config]
    [metabase.api.common :as api]
    [metabase.permissions.core :as perms]
+   [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
-   [metabase.search.engine :as search.engine]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
@@ -169,21 +169,31 @@
             (testing (str user " is not offered data apps")
               (is (not (offers-data-app-type? user))))))))))
 
+(defn- without-app-db-index
+  "Run `thunk` as on an app DB that cannot hold the search index, such as MySQL and MariaDB."
+  [thunk]
+  (search.tu/with-legacy-search
+    (mt/with-dynamic-fn-redefs [search.index/active-table (constantly nil)]
+      (thunk))))
+
 (deftest semantic-type-filter-offers-data-apps-only-to-users-who-can-read-one-test
-  ;; The semantic engine lists types from the app DB index, which MySQL and MariaDB cannot hold.
-  (when (search.engine/supported-engine? :search.engine/appdb)
-    (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"
-                                                  :bundle_path "s.js"}
-                     :model/PermissionsGroup {group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
-                     :model/DataAppGroupAssignment _ {:data_app_id app-id :permission_group_id group-id}]
-        (testing "an admin is offered data apps"
-          (is (semantic-engine-offers-data-app-type? :crowberto)))
-        (testing "a user in an assigned group is offered data apps"
-          (is (semantic-engine-offers-data-app-type? :rasta)))
-        (testing "a user in no assigned group is not offered data apps"
-          (is (not (semantic-engine-offers-data-app-type? :lucky))))))))
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"
+                                                :bundle_path "s.js"}
+                   :model/PermissionsGroup {group-id :id} {}
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
+                   :model/DataAppGroupAssignment _ {:data_app_id app-id :permission_group_id group-id}]
+      (doseq [[app-db with-app-db] [["this app DB" (fn [thunk] (thunk))]
+                                    ["an app DB without the search index" without-app-db-index]]]
+        (with-app-db
+          (fn []
+            (testing app-db
+              (testing "an admin is offered data apps"
+                (is (semantic-engine-offers-data-app-type? :crowberto)))
+              (testing "a user in an assigned group is offered data apps"
+                (is (semantic-engine-offers-data-app-type? :rasta)))
+              (testing "a user in no assigned group is not offered data apps"
+                (is (not (semantic-engine-offers-data-app-type? :lucky)))))))))))
 
 (deftest search-by-ids-finds-the-requested-data-app-test
   (mt/with-premium-features #{:data-apps}

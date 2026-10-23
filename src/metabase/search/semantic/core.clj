@@ -75,9 +75,11 @@
 
 (defmethod search.engine/model-set :search.engine/semantic
   [search-ctx]
-  ;; The app DB index applies the permission filters. A semantic match does not need the search terms, so they must
-  ;; not narrow the types.
-  (search.engine/model-set (assoc search-ctx :search-engine :search.engine/appdb :search-string nil)))
+  ;; The fallback engine applies the permission filters: the app DB index, or in-place search on app DBs that cannot
+  ;; hold the index. A semantic match does not need the search terms, so they must not narrow the types.
+  (search.engine/model-set (assoc search-ctx
+                                  :search-engine (search.engine/fallback-engine :search.engine/semantic)
+                                  :search-string nil)))
 
 (defmethod search.engine/diagnose :search.engine/semantic
   [search-ctx expected-model expected-id]
