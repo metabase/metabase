@@ -24,7 +24,9 @@
    [metabase.metabot.self.openrouter :as openrouter]
    [metabase.metabot.settings :as metabot.settings]
    [metabase.metabot.test-util :as mut]
+   [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.search :as metabot-search]
+   [metabase.metabot.util :as metabot.u]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.test :as mt]
@@ -97,6 +99,23 @@
     (testing "a usage part without a finish reason (older adapters) is not truncation"
       (is (= :stop (#'agent/finish-reason 0 20 #{} [{:type :text} {:type :usage}]))))))
 
+(deftest terminal-tools-are-converted-test
+  (testing "a terminal tool ends the turn on a call without an `:error`, so it can't be a legacy tool, which returns
+           its failures as results"
+    (is (empty? (for [[_profile-id profile] @@#'profiles/*profiles
+                      tool (:tools profile)
+                      :when (and (contains? (:terminal-tools profile) (:name (tools.legacy/declaration-of tool)))
+                                 (tools.legacy/legacy-tool? tool))]
+                  tool)))))
+
+(deftest create-terminal-without-structured-output-test
+  (let [parts [{:type :tool-input :id "create" :function "create_sql_query"}
+               {:type :tool-output :id "create" :result {:output "Created SQL"}}]]
+    (is (#'agent/terminal-tool-call? #{"create_sql_query"} parts))
+    (is (not (#'agent/terminal-tool-call? #{"create_sql_query"}
+                                          (assoc-in parts [1 :result :error]
+                                                    {:class :recoverable :code :test/syntax-error}))))))
+
 (deftest terminal-tool-call-test
   (let [terminal #{"edit_sql_query" "create_sql_query" "replace_sql_query"}
         success  [{:type :tool-input :id "a" :function "edit_sql_query"}
@@ -120,17 +139,15 @@
       (is (not (#'agent/terminal-tool-call? terminal read))))
     (testing "terminality is per-profile: an empty terminal set never ends the turn"
       (is (not (#'agent/terminal-tool-call? #{} success))))
-    (testing (str "an unconverted tool's returned failure does not end the turn either. Every "
-                  "terminal tool catches its own exceptions and returns `{:output \"Query 3 not "
-                  "found\"}`, so there is no `:error` for the adapter to find — ending the turn on "
-                  "the absence of one would deliver that sentence to the user as the answer. The "
-                  "`:structured-output` it does not attach is what tells them apart until they are "
-                  "converted.")
-      (let [legacy-failure [{:type :tool-input :id "d" :function "edit_sql_query"}
-                            {:type :tool-output :id "d" :result {:output "Query 3 not found"}}]]
-        (is (not (#'agent/terminal-tool-call? terminal legacy-failure)))
-        (is (#'agent/should-continue? 0 20 terminal legacy-failure)
-            "the model gets another turn to fix the id")))
+    (testing "converted terminal tools can answer without structured output"
+      (doseq [tool-name ["edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"
+                         "document_construct_sql_chart" "document_construct_model_chart"]]
+        (let [parts [{:type :tool-input :id "e" :function tool-name}
+                     {:type :tool-output :id "e" :result {:output "Done"}}]]
+          (is (#'agent/terminal-tool-call? #{tool-name} parts))
+          (is (not (#'agent/should-continue? 0 20 #{tool-name} parts)))
+          (is (not (#'agent/terminal-tool-call? #{tool-name}
+                                                (assoc-in parts [1 :result :error] {:class :recoverable :code :test/failure})))))))
     (testing "finish-reason reports :terminal-tool"
       (is (= :terminal-tool (#'agent/finish-reason 0 20 terminal success))))))
 
@@ -274,9 +291,14 @@
          (-> (#'agent/summarize-tool-ios [(unrecoverable-part "a" nil)])
              :tool-results first :error))))
 
+(def ^:private sql-editor-viewing
+  [{:type    "code_editor"
+    :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}])
+
 (defn- run-sql-denial-turn!
-  "Run one turn whose first LLM response calls `create_sql_query` against `database-id`."
-  [profile-id database-id]
+  "Run one turn whose first LLM response calls `create_sql_query` against `database-id` while the user views
+  `viewing`, by default a SQL editor."
+  [profile-id database-id & {:keys [viewing] :or {viewing sql-editor-viewing}}]
   (let [call-count (atom 0)]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
@@ -296,9 +318,19 @@
                                :state      {}
                                :profile-id profile-id
                                :context    {:capabilities    ["permission:write_sql_queries"]
-                                            :user_is_viewing [{:type    "code_editor"
-                                                               :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}}))]
+                                            :user_is_viewing viewing}}))]
           {:llm-calls @call-count :parts parts})))))
+
+(deftest missing-sql-editor-ends-a-forced-tool-call-turn-test
+  (testing "the SQL profile ends the turn when no SQL editor is open, and tells the user why"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql db-id :viewing [])]
+          (is (= 1 llm-calls))
+          (is (= :terminal-error (:finish-reason (last parts))))
+          (is (some #(and (= :text (:type %))
+                          (str/includes? (:text %) "No active SQL editor was found"))
+                    parts)))))))
 
 (deftest permission-denial-ends-a-forced-tool-call-turn-test
   (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}
@@ -347,6 +379,46 @@
         (testing "a database the user can query natively is not denied"
           (let [{:keys [parts]} (run-sql-denial-turn! :sql native-db)]
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
+
+(deftest blank-replacement-after-edit-test
+  (mt/as-admin
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-temporary-setting-values [llm-providers llm.tu/default-connections
+                                         llm-metabot-provider test-provider]
+        (doseq [profile [:internal :sql]]
+          (let [context {:capabilities ["permission:write_sql_queries"]
+                         :user_is_viewing [{:type "code_editor"
+                                            :buffers [{:id "sql-buffer"
+                                                       :source {:language "sql" :database_id db-id}
+                                                       :cursor {:line 0 :column 0}}]}]}
+                call (fn [id name args]
+                       [{:type :tool-input :id id :function name
+                         :arguments (merge {:query_id "q1" :checklist "Checked" :title "Results"} args)}])
+                run-turn (fn [state responses]
+                           (let [calls (atom 0)]
+                             (mt/with-dynamic-fn-redefs
+                               [openrouter/openrouter
+                                (fn [_]
+                                  (mut/mock-llm-response
+                                   (get responses (dec (swap! calls inc)) [{:type :text :text "Done."}])))]
+                               (into [] (run-agent-loop {:messages [{:role :user :content "Update the SQL"}]
+                                                         :state state :profile-id profile :context context})))))
+                edited (run-turn {:queries {"q1" {:database db-id :type :native :native {:query "SELECT 1"}}}}
+                                 [(call "edit" "edit_sql_query" {:edits [{:old_string "1" :new_string "2"}]})])
+                state (some #(when (= "state" (:data-type %)) (:data %)) edited)
+                replaced (run-turn state [(call "blank" "replace_sql_query" {:new_query ""})
+                                          (call "retry" "replace_sql_query" {:new_query "SELECT 3"})])
+                blank-result (some #(when (and (= :tool-output (:type %)) (= "blank" (:id %)))
+                                      (:result %)) replaced)
+                final-state (some #(when (= "state" (:data-type %)) (:data %)) replaced)]
+            (testing (str profile " can retry a blank replacement after an edit stores the query as MBQL 5")
+              (is (= :mbql/query (keyword (get-in state [:queries "q1" :lib/type]))))
+              (is (= "SELECT 2" (metabot.u/extract-sql-content (get-in state [:queries "q1"]))))
+              (is (= :recoverable (get-in blank-result [:error :class])))
+              (is (str/includes? (:output blank-result) "would contain no SQL"))
+              (is (nil? (:structured-output blank-result)))
+              (is (= "SELECT 3" (metabot.u/extract-sql-content (get-in final-state [:queries "q1"]))))
+              (is (= (if (= profile :sql) :terminal-tool :stop) (:finish-reason (last replaced)))))))))))
 
 (deftest run-agent-loop-with-mock-test
   (mt/as-admin

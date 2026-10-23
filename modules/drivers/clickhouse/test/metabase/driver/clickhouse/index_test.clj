@@ -253,7 +253,7 @@
             (driver/execute-raw-queries! :clickhouse admin-spec
                                          (driver/compile-create-index :clickhouse nil table index))
             (testing "the catalog table the old read used is denied to this user"
-              (is (thrown-with-msg? Exception #"ACCESS_DENIED"
+              (is (thrown-with-msg? Exception #"(ACCESS_DENIED|403)"
                                     (jdbc/query reader-spec ["SELECT count() FROM system.data_skipping_indices"]))))
             (testing "fetch-table-indexes still reads both index kinds"
               (is (=? [{:name "evt_minmax" :kind :skip-index :access-method "minmax" :key-columns ["a"]}

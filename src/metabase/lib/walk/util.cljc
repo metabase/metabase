@@ -73,7 +73,9 @@
                 (assoc template-tag :lib.walk/template-tag-name template-tag-name)))
          (all-template-tags-map query))))
 
-(defn- all-metric-ids [query]
+(mu/defn all-metric-ids :- [:maybe [:set {:min 1} ::lib.schema.id/metric]]
+  "Return a set of all metric IDs referenced by `:metric` clauses anywhere in the query."
+  [query :- ::lib.schema/query]
   (let [metric-ids (volatile! (transient #{}))]
     (lib.walk/walk-clauses
      query

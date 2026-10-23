@@ -38,6 +38,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.request.core :as request]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
@@ -647,7 +648,10 @@
   (testing "make sure GTAP queries still include ID of user who ran them in the remark"
     (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" 50}}
-      (is (= (format "Metabase:: userID: %d queryType: MBQL queryHash: <hash>" (mt/user->id :rasta))
+      (is (= (format "Metabase:: userID: %d queryType: MBQL queryHash: <hash> accountID: %s context: ad-hoc databaseID: %d"
+                     (mt/user->id :rasta)
+                     (system/site-uuid)
+                     (mt/id))
              (run-query-returning-remark!
               (fn []
                 (mt/user-http-request :rasta :post "dataset" (mt/mbql-query venues {:aggregation [[:count]]})))))))))

@@ -9,9 +9,8 @@
   `metabase://` URIs, portable FKs, `portable_entity_id` — and `tools.core/with-pipeline-errors`
   converts a pipeline exception into the matching declaration.
 
-  The pipeline's own message is authored text (it is built with `tru` and already reaches the model
-  today), so it is the one foreign message a payload here may carry. Everything else about the
-  exception stays in the logs.
+  The pipeline's own message, flattened validation paths, and entity references are the foreign
+  text a payload here may carry. Everything else about the exception stays in the logs.
 
   A code with no declaration is not converted and becomes unrecoverable, which is why
   `metabase.metabot.tools.recoverable.pipeline-test` scans the pipeline sources and fails when a
@@ -28,12 +27,18 @@
 (mr/def ::payload
   "The payload every pipeline-error declaration takes.
 
-  `:message` is the pipeline's own sentence. `:entity-type` and `:entity-id` are present only for
-  the codes whose recovery depends on what was referenced (see [[uri-in-source-table!]])."
+  `:message` is the pipeline's own sentence. `:paths` is the flattened structural validation text
+  the model reads. `:entity-type` and `:entity-id` are present only for the codes whose recovery
+  depends on what was referenced (see [[uri-in-source-table!]]).
+  `:source-card` and `:source-card-type` are the numeric ID and type of the stage's `source-card:`,
+  present only for the codes a `source-card:` stage raises (see [[column-not-returned!]])."
   [:map {:closed true}
-   [:message     :string]
-   [:entity-type {:optional true} [:maybe :string]]
-   [:entity-id   {:optional true} [:maybe [:or :string :int]]]])
+   [:message          :string]
+   [:paths            {:optional true} :string]
+   [:entity-type      {:optional true} [:maybe :string]]
+   [:entity-id        {:optional true} [:maybe [:or :string :int]]]
+   [:source-card      {:optional true} [:maybe :int]]
+   [:source-card-type {:optional true} [:maybe [:enum "model" "question"]]]])
 
 ;;; ------------------------------------------- Shared recovery steps ----------------------------------------------
 
@@ -90,6 +95,20 @@
    :text (str "`source-table:` takes a portable FK `[<db-name>, <schema>, <table>]`; `source-card:` takes an "
               "entity_id string.")})
 
+(def ^:private cross-database-step
+  {:uses #{}
+   :text (str "A query can only reference saved questions, models, metrics, measures and segments "
+              "from its own database. Use one from that database, or change the source to a table "
+              "in the referenced item's database.")})
+
+(defn- card-fields-step
+  "Return a recovery step listing `what` from the source card, or nil when `payload` names no card."
+  [{:keys [source-card source-card-type]} what]
+  (when (and source-card source-card-type)
+    {:uses #{"read_resource"}
+     :text (str "Call `read_resource` with `metabase://" source-card-type "/" source-card "/fields` to list the "
+                what " this " source-card-type " returns.")}))
+
 ;;; ------------------------------------------- Declarations -------------------------------------------------------
 
 (defmacro ^:private defpipeline-error
@@ -138,7 +157,8 @@
 
 (defpipeline-error ambiguous-database-name!
   "The database name in a portable FK matched more than one database."
-  [database-name-step])
+  [{:uses #{}
+    :text "Ask the user to rename one of the databases."}])
 
 ;;; Field resolution
 
@@ -152,7 +172,9 @@
 
 (defpipeline-error ambiguous-field!
   "A field reference matched more than one column."
-  [list-fields-step])
+  [{:uses #{}
+    :text (str "The field name matches more than one column in this table, so it cannot be referenced by name. "
+               "Tell the user about the ambiguous column name.")}])
 
 (defpipeline-error invalid-field-fk!
   "A field's portable FK was not a well-formed `[db, schema, table, field]` path."
@@ -172,11 +194,28 @@
   ;; are its breakouts and aggregations, not a table's fields.
   [])
 
+(defrecoverable column-not-returned!
+  "A field on a `source-card:` stage is on a table the card reads but is not a column the card returns."
+  {:payload ::payload}
+  [payload]
+  {:message  (:message payload)
+   :recovery (filterv some? [(card-fields-step payload "columns")])})
+
 ;;; Joins
 
-(defpipeline-error ambiguous-fk!
+(defrecoverable ambiguous-fk!
   "More than one foreign key connects the two tables, so the join path is ambiguous."
-  [list-fks-step])
+  {:payload ::payload}
+  [payload]
+  {:message  (:message payload)
+   :recovery [(or (card-fields-step payload "foreign-key columns") list-fks-step)]})
+
+(defrecoverable unexportable-fk!
+  "The only foreign key that reaches a field's table could not be resolved, so the field cannot be reached implicitly."
+  {:payload ::payload}
+  [payload]
+  {:message  (:message payload)
+   :recovery (filterv some? [(card-fields-step payload "columns")])})
 
 (defpipeline-error ambiguous-fk-via-join!
   "More than one foreign key connects the joined tables, so the join path is ambiguous."
@@ -185,6 +224,10 @@
 (defpipeline-error no-fk-path!
   "No foreign key connects the two tables, so they cannot be joined implicitly."
   [metric-dimensions-step])
+
+(defpipeline-error wrong-source-field!
+  "A field reference's `source-field` is not a foreign key to the table its column is on."
+  [list-fks-step])
 
 ;;; Saved entities
 
@@ -197,14 +240,13 @@
   [card-entity-id-step])
 
 (defpipeline-error missing-card-entity-id!
-  "A card reference carried no entity_id."
-  [card-entity-id-step])
+  "The referenced card has no stored `entity_id`, so the query cannot be exported."
+  ;; The stored card has no portable ID for `read_resource` to return.
+  [])
 
 (defpipeline-error cross-database-card!
   "The referenced card belongs to a different database than the query."
-  ;; No step: the fix is to pick a different source entirely, and which one depends on the question
-  ;; the agent is answering, not on anything it can look up.
-  [])
+  [cross-database-step])
 
 (defpipeline-error unknown-measure!
   "A measure entity_id matched no measure."
@@ -215,12 +257,13 @@
   [measure-entity-id-step])
 
 (defpipeline-error missing-measure-entity-id!
-  "A measure reference carried no entity_id."
-  [measure-entity-id-step])
+  "The referenced measure has no stored `entity_id`, so the query cannot be exported."
+  ;; The stored measure has no portable ID for `read_resource` to return.
+  [])
 
 (defpipeline-error cross-database-measure!
   "The referenced measure belongs to a different database than the query."
-  [])
+  [cross-database-step])
 
 (defpipeline-error unknown-segment!
   "A segment entity_id matched no segment."
@@ -231,11 +274,17 @@
   [segment-entity-id-step])
 
 (defpipeline-error missing-segment-entity-id!
-  "A segment reference carried no entity_id."
-  [segment-entity-id-step])
+  "The referenced segment has no stored `entity_id`, so the query cannot be exported."
+  ;; The stored segment has no portable ID for `read_resource` to return.
+  [])
 
 (defpipeline-error cross-database-segment!
   "The referenced segment belongs to a different database than the query."
+  [cross-database-step])
+
+(defpipeline-error incompatible-metric!
+  "A metric was used with an incompatible stage source."
+  ;; No step: the message names the source each metric needs, or says it has none.
   [])
 
 ;;; Query shape
@@ -248,9 +297,17 @@
   "A stage carried a key the representations format does not define."
   [])
 
-(defpipeline-error invalid-representations-query!
+(defn- structural-recovery
+  [{:keys [paths]}]
+  (if (seq paths)
+    [{:uses #{} :text (str "Invalid at " paths ". Fix the named paths.")}]
+    []))
+
+(defrecoverable invalid-representations-query!
   "The query did not parse as a representations query."
-  [])
+  {:payload ::payload}
+  [payload]
+  {:message (:message payload), :recovery (structural-recovery payload)})
 
 (defpipeline-error invalid-external-query!
   "A query supplied from outside the pipeline was not a valid MBQL query."
@@ -331,9 +388,10 @@
                 "metric"
                 {:uses #{"read_resource"}
                  :text (str "Metrics are aggregations, not sources. To use metric " entity-id
-                            ", put its base table into `source-table:` — combine the `database_name` and "
-                            "`base_table_fully_qualified_name` attributes from its search result or "
-                            "`read_resource metabase://metric/" entity-id "` — and reference the metric as "
+                            ", build the stage on the source specified by its `<metric>` tag (in its search result or "
+                            "`read_resource metabase://metric/" entity-id "`): `base_table_fully_qualified_name` "
+                            "with `database_name` as `source-table:`, or `source_card_portable_entity_id` as "
+                            "`source-card:`. Then reference the metric as "
                             "`aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")}
 
                 ("question" "model" "card")

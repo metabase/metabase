@@ -1568,7 +1568,8 @@
               util
               util.config
               warehouse-schema-overlay
-              warehouses}
+              warehouses
+              xrays}
    :model-exports #{:model/AiUsageLog
                     :model/Metabot
                     :model/MetabotConversation
@@ -2218,6 +2219,7 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
+                    :model/Table
                     :model/Timeline
                     :model/User}}
 
@@ -2828,7 +2830,7 @@
   {:team "Cloud"
    :api  #{metabase.store-api.core
            metabase.store-api.init}
-   :uses #{settings util util.config}}
+   :uses #{settings util.config}}
 
   sync
   {:team "Graphy"
@@ -3823,40 +3825,30 @@
 
   enterprise/data-apps
   {:team "Embedding"
-   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.core metabase-enterprise.data-apps.init}
+   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{actions
            api
            api-scope
-           audit-app
            collections
            events
            lib
-           lib.be
            lib.schema
            lib.types
-           metabot
-           metrics
            models
            permissions
            premium-features
-           queries
            remote-sync
            request
            settings
-           system
            users
            util
            util.graph
            warehouse-schema-overlay
-           enterprise/dependencies
-           enterprise/serialization}
+           enterprise/dependencies}
    :model-imports #{:model/Action
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Database
-                    :model/Field
-                    :model/Measure
                     :model/Permissions
                     :model/Table}
    :model-exports #{:model/DataApp}}
@@ -4300,7 +4292,6 @@
            task.history
            util
            warehouse-schema-overlay
-           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}
@@ -4577,6 +4568,8 @@
            lib.schema
            models
            premium-features
+           query-processor
+           request
            revisions
            run-tracking
            sql-tools

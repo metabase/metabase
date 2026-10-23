@@ -9,10 +9,12 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.recovery-hints :as v2-hints]
+   [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.tools.error :as tools.error]
-   ;; loaded for its declarations; the codes are read out of the catalog, not off the vars
-   [metabase.metabot.tools.recoverable.pipeline]
+   [metabase.metabot.tools.legacy :as tools.legacy]
+   [metabase.metabot.tools.recoverable.pipeline :as pipeline]
    [metabase.metabot.tools.recovery-hints :as v1-hints]))
 
 (set! *warn-on-reflection* true)
@@ -80,6 +82,116 @@
     (is (< 20 (count (pipeline-codes))))
     (is (contains? (pipeline-codes) :unknown-table))))
 
+(def ^:private pipeline-payloads
+  "Payloads that reach every branch of the v1 recovery text.
+
+  [[metabase.metabot.tools.recoverable.pipeline/uri-in-source-table!]] and the Agent API's hint for the same code
+  pick their sentence by `:entity-type`. The card hints need `:source-card` and `:source-card-type`, and the
+  structural hint reads `:paths` in Metabot and `:humanized` in the Agent API."
+  (concat
+   (for [entity-type [nil "metric" "question" "model" "card" "table"]]
+     (cond-> {:message "Query failed."}
+       entity-type (assoc :entity-type entity-type :entity-id 1)))
+   (for [card-type ["model" "question"]]
+     {:message "Query failed." :source-card 12 :source-card-type card-type})
+   [{:message "Invalid query."
+     :paths "stages[0].filters[0]: invalid type"
+     :humanized {"stages" [{"filters" ["invalid type"]}]}}]))
+
+(defn- v1-recovery-steps
+  "Each Metabot recovery step paired with its pipeline error code."
+  []
+  (for [[code {:keys [build-fn]}] (tools.error/recoverables)
+        :when   (= declaration-ns (namespace code))
+        payload pipeline-payloads
+        step    (:recovery (build-fn payload))]
+    [code step]))
+
+(defn- v1-recovery-texts
+  "Every recovery sentence that Metabot or the Agent API can send for a pipeline error.
+
+  Metabot's are the steps that its pipeline declarations build, and the Agent API's are the hints that it appends."
+  []
+  (concat
+   (map (comp :text second) (v1-recovery-steps))
+   (for [code    (pipeline-codes)
+         payload pipeline-payloads
+         :let    [hint (v1-hints/recovery-hint (assoc payload :error code))]
+         :when   hint]
+     hint)))
+
+(defn- mcp-vocabulary
+  "The part of `text` that only MCP v2's recovery text uses, or nil.
+
+  That is the `browse_data` or `get_content` tool, or a sentence that mentions a numeric id with `source-table:` or
+  `source-card:`. A `<numeric id>` placeholder inside a `metabase://` resource URI only names the resource to read,
+  so it doesn't count."
+  [text]
+  (or (re-find #"browse_data|get_content" text)
+      (some #(when (and (re-find #"(?i)\bnumeric\b" %) (re-find #"source-(table|card)" %)) %)
+            (str/split (str/replace text #"metabase://[^\s`]*<numeric id>" "") #"(?<=\.)\s+"))))
+
+(deftest ^:parallel v1-recovery-text-keeps-to-v1-vocabulary-test
+  (testing "Metabot and the Agent API write portable FKs and entity_ids, so a recovery sentence that names
+           `browse_data` or `get_content` or asks for a numeric id would send their agent the wrong way"
+    (doseq [text (v1-recovery-texts)]
+      (is (nil? (mcp-vocabulary text)) text))))
+
+(deftest ^:parallel v1-recovery-steps-use-v1-tools-test
+  (let [tool-names (into #{}
+                         (map (comp :name tools.legacy/declaration-of))
+                         (mapcat :tools (vals @@#'profiles/*profiles)))]
+    (is (seq tool-names))
+    (doseq [[code {:keys [uses]}] (distinct (v1-recovery-steps))]
+      (is (set/subset? uses tool-names)
+          (str code " uses tools unavailable to Metabot: " (pr-str (set/difference uses tool-names)))))))
+
+(deftest ^:parallel payload-dependent-recovery-text-is-checked-test
+  (testing "the payloads reach the card and structural branches on both surfaces, so the vocabulary check
+           above reads their text"
+    (doseq [[code fragments] {:column-not-returned           ["metabase://model/12" "metabase://question/12"]
+                              :unexportable-fk               ["metabase://model/12" "metabase://question/12"]
+                              :ambiguous-fk                  ["metabase://model/12" "metabase://question/12"]
+                              :invalid-representations-query ["stages[0].filters"]}
+            :let [{:keys [build-fn]} (get (tools.error/recoverables) (keyword declaration-ns (name code)))
+                  metabot   (for [payload pipeline-payloads, step (:recovery (build-fn payload))] (:text step))
+                  agent-api (keep #(v1-hints/recovery-hint (assoc % :error code)) pipeline-payloads)]
+            [surface texts] {"Metabot" metabot, "the Agent API" agent-api}
+            fragment fragments]
+      (is (some #(str/includes? % fragment) texts)
+          (str surface "'s text for " code " never mentions " fragment)))))
+
+(deftest ^:parallel the-vocabulary-check-finds-only-mcp-advice-test
+  (testing "MCP v2's own hints trip it, so the test above can't pass vacuously"
+    (doseq [data (concat [{:error :ambiguous-fk} {:error :missing-source-in-first-stage}]
+                         (for [code [:column-not-returned :unexportable-fk :ambiguous-fk]
+                               card-type ["model" "question"]]
+                           {:error code :source-card 12 :source-card-type card-type}))]
+      (is (some? (mcp-vocabulary (message/render (v2-hints/recovery-hint data))))
+          (pr-str data))))
+  (testing "a numeric id placeholder outside a resource URI trips it"
+    (doseq [text ["Put `<numeric id>` into `source-card:`."
+                  "Use `<numeric id>` as `source-table:`."]]
+      (is (some? (mcp-vocabulary text)) text)))
+  (testing "a placeholder inside a resource URI and a call to `search` don't"
+    (doseq [text ["Read `metabase://table/<numeric id>` and copy its portable FK into `source-table:`."
+                  "Read `metabase://question/<numeric id>` and copy its entity_id into `source-card:`."
+                  "Call `search` to find the portable FK for `source-table:`."]]
+      (is (nil? (mcp-vocabulary text)) text))))
+
+(deftest ^:parallel structural-paths-payload-test
+  (doseq [[paths expected-class] [["stages[0].filters: invalid type" :recoverable]
+                                  [nil :unrecoverable]
+                                  [42 :unrecoverable]
+                                  [{"stages" [{"filters" "invalid type"}]} :unrecoverable]]]
+    (testing (pr-str paths)
+      (let [error (try
+                    (tools.error/throw-recoverable! ::pipeline/invalid-representations-query
+                                                    {:message "Invalid query." :paths paths})
+                    (catch Throwable e
+                      (tools.error/classify e)))]
+        (is (= expected-class (:class error)))))))
+
 ;;; ===== Can one declaration serve both surfaces? =====
 
 ;; The pipeline is shared by Metabot (portable FKs, `read_resource`) and MCP v2 (numeric ids,
@@ -137,18 +249,50 @@
     (is (str/includes? (text-for! #{"browse_data"}) "portable FK")
         "the dialect-specific, tool-free step reaches the numeric-id surface")))
 
-(deftest ^:parallel the-two-hint-tables-cover-the-same-codes-test
-  (testing "the per-surface hint tables answer the same set of codes, which is why one declaration
-           per code is the right shape for them. A code one table answers and the other does not
-           would mean the surfaces disagree about what is recoverable."
+(deftest ^:parallel shared-recovery-codes-have-hints-on-both-surfaces-test
+  (testing "Metabot and MCP have hints for the shared recovery codes, which are also declared in the catalog"
     (let [codes [:uri-in-source-table :unknown-table :unknown-table-id :ambiguous-table
-                 :unknown-field :unknown-field-id :ambiguous-fk :no-fk-path
+                 :unknown-field :unknown-field-id :ambiguous-field :ambiguous-fk :no-fk-path
                  :unknown-card :unknown-card-id :unknown-measure :unknown-measure-id
-                 :unknown-segment :unknown-segment-id :unknown-database
+                 :unknown-segment :unknown-segment-id :unknown-database :ambiguous-database-name
+                 :cross-database-card :cross-database-measure :cross-database-segment
                  :missing-source-in-first-stage]]
       (doseq [code codes]
         (testing code
           (is (some? (v1-hints/recovery-hint {:error code :entity-type "table" :entity-id 1})))
           (is (some? (v2-hints/recovery-hint {:error code :entity-type "table" :entity-id 1})))))
+      (testing "and so do the codes only a `source-card:` stage raises, given the card"
+        (doseq [code [:column-not-returned :unexportable-fk]]
+          (testing code
+            (let [data {:error code :source-card 12 :source-card-type "model"}]
+              (is (some? (v1-hints/recovery-hint data)))
+              (is (some? (v2-hints/recovery-hint data)))))))
       (testing "and every one of them is declared here"
         (is (= #{} (set/difference (set codes) (declared-codes))))))))
+
+(defn- pipeline-error-text!
+  [error]
+  (let [code (keyword declaration-ns (name error))
+        e    (try
+               (tools.error/throw-recoverable! code {:message "Query failed."})
+               (catch clojure.lang.ExceptionInfo e e))]
+    (tools.error/recoverable-text (tools.error/classify e) #{})))
+
+(deftest ^:parallel ambiguous-field-recovery-test
+  (is (= (str "Query failed.\n"
+              "The field name matches more than one column in this table, so it cannot be referenced by name. "
+              "Tell the user about the ambiguous column name.")
+         (pipeline-error-text! :ambiguous-field))))
+
+(deftest ^:parallel cross-database-recovery-test
+  (doseq [error [:cross-database-card :cross-database-measure :cross-database-segment]]
+    (testing error
+      (is (= (str "Query failed.\n"
+                  "A query can only reference saved questions, models, metrics, measures and segments "
+                  "from its own database. Use one from that database, or change the source to a table "
+                  "in the referenced item's database.")
+             (pipeline-error-text! error))))))
+
+(deftest ^:parallel ambiguous-database-name-recovery-test
+  (is (= "Query failed.\nAsk the user to rename one of the databases."
+         (pipeline-error-text! :ambiguous-database-name))))

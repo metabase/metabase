@@ -4,6 +4,8 @@ import "@testing-library/jest-dom";
 import * as testingLibrary from "@testing-library/react";
 import fetchMockModule from "fetch-mock";
 
+import { resetRouterForTests } from "metabase/router/navigator";
+
 // Imports compile to lazy requires (see jest.base.conf.js). Resolve these at
 // the top level, so a spec that calls jest.resetModules() cannot make the
 // hooks below load a fresh copy once the run has started.
@@ -94,6 +96,10 @@ beforeEach(() => {
 afterEach(async () => {
   // Cleanup React components FIRST to trigger any unmount effects
   cleanup();
+
+  // Clear the router shim's module-level holders so one test's navigation
+  // state cannot leak into the next.
+  resetRouterForTests();
 
   delete window.MetabaseBootstrap;
   // Wait for any pending fetch requests to complete

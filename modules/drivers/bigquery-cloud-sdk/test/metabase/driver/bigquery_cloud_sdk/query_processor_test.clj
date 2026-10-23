@@ -23,6 +23,7 @@
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync.core :as sync]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.data.impl :as data.impl]
@@ -257,7 +258,9 @@
                   " `v4_test_data.venues`.`price` AS `price` "
                   "FROM `v4_test_data.venues` "
                   "LIMIT 1"
-                  "\n\n-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304"))
+                  (format "\n\n-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304 accountID: %s databaseID: %d"
+                          (system/site-uuid)
+                          (mt/id))))
            (query->native
             {:database (mt/id)
              :type     :query
@@ -1268,8 +1271,8 @@
 
 (deftest ^:parallel cast-timestamp-to-datetime-if-needed-for-temporal-arithmetic-test
   (testing "cast timestamps to datetimes so we can use DATETIME_ADD() if needed for units like month (#21969)"
-    (is (= ["DATETIME_ADD(CAST(? AS datetime), INTERVAL 3 month)"
-            #t "2022-04-22T18:27-08:00"]
+    (is (= ["TIMESTAMP(DATETIME_ADD(?, INTERVAL 3 month))"
+            #t "2022-04-22T18:27"]
            (let [t         #t "2022-04-22T18:27:00-08:00"
                  hsql-form (sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk t 3 :month)]
              (sql.qp/format-honeysql :bigquery-cloud-sdk hsql-form))))))
