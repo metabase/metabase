@@ -1203,7 +1203,11 @@
 
   mage-namespaces
   {:linters
-   {:discouraged-java-method
+   {;; mage runs under babashka, which bundles cheshire; metabase.util.json is not on its classpath.
+    :discouraged-namespace
+    {cheshire.core {:level :off}}
+
+    :discouraged-java-method
     {java.lang.System {exit
                        {:level :error
                         :message "Don't use System/exit directly. Instead use mage.util/exit and let mage handle exiting the process"}}}}}}}
