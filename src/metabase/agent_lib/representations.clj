@@ -236,6 +236,7 @@
     (throw (ex-info (tru "Representations query has an invalid structure.")
                     {:status-code   400
                      :error         :invalid-representations-query
+                     :error-code    :invalid-representations-query
                      :humanized     (mu.humanize/humanize error)
                      :details       (pr-str (mu.humanize/humanize error))
                      :schema        ::query

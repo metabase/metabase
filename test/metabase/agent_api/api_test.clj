@@ -440,8 +440,26 @@
                              (update (orders-query) :stages conj [["count" {}]])})
             endpoint      ["agent/v2/construct-query" "agent/v2/query"]]
       (testing (str endpoint ", " label)
-        (is (=? {:error "invalid-representations-query"}
-                (mt/user-http-request :rasta :post 400 endpoint {:query query})))))))
+        (let [response (mt/user-http-request :rasta :post 400 endpoint {:query query})]
+          (is (=? {:error "invalid-representations-query"
+                   :error-code "invalid-representations-query"
+                   :message #"(?s)Representations query has an invalid structure\..*"}
+                  response))
+          (is (= #{:error :error-code :message :humanized :details} (set (keys response)))))))))
+
+(deftest construct-query-post-aggregation-errors-test
+  (doseq [[error query] [["post-agg-filter-with-trailing-clauses"
+                          (orders-query :aggregation [["count" {}]]
+                                        :filters [[">" {} ["aggregation" {} 0] 1]]
+                                        :limit 5)]
+                         ["post-agg-filter-needs-multi-stage"
+                          (orders-query :aggregation [["count" {}] ["count" {}]]
+                                        :filters [[">" {} ["aggregation" {} 0] 1]])]]
+          endpoint ["agent/v2/construct-query" "agent/v2/query"]]
+    (testing (str endpoint ", " error)
+      (let [response (mt/user-http-request :rasta :post 400 endpoint {:query query})]
+        (is (=? {:error error :error-code error :message #".*MBQL 5 requires.*"} response))
+        (is (= #{:error :error-code :message} (set (keys response))))))))
 
 (deftest construct-query-ignores-legacy-envelope-test
   (testing (str "Legacy `source_entity` / `referenced_entities` envelope from the pre-repr program API "
