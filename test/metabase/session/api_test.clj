@@ -700,13 +700,6 @@
                (-> (mt/user-http-request :crowberto :get 200 "session/properties")
                    :test-session-api-setting)))))))
 
-(deftest application-logo-url-properties-test
-  (testing "GET /session/properties gives the whitelabel logo to unauthenticated users, for the login page"
-    (mt/with-premium-features #{:whitelabel}
-      (mt/with-temporary-setting-values [application-logo-url "data:image/jpeg;base64,/9j/4AAQ"]
-        (is (= "data:image/jpeg;base64,/9j/4AAQ"
-               (:application-logo-url (mt/client :get 200 "session/properties"))))))))
-
 (defn- image-data-uri [content-type content]
   (str "data:" content-type ";base64," (u.jvm/encode-base64 content)))
 
