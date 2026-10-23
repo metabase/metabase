@@ -673,6 +673,7 @@
           queryable-tables (metabot.perms/queryable-table-ids (into #{} (keep :table-id) fields))
           fields          (->> fields
                                (filter #(contains? queryable-tables (:table-id %)))
+                               (filter #(visible-field metadata-provider (:id %)))
                                entity-details/permission-filter-columns
                                (filter #(= table-id (foreign-key-target-table-id metadata-provider %))))]
       (when (seq fields)

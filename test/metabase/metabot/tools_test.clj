@@ -462,11 +462,7 @@
         (is (seq (mt/rows (qp/process-query (get-in (query user-id) [:structured-output :query])))))))))
 
 (deftest construct-notebook-query-hidden-parent-key-hint-test
-  (let [db     (t2/select-one-fn :name :model/Database (mt/id))
-        build! #(construct-checkins-query
-                 db [{:aggregation [["count" {}]]
-                      :breakout [["field" {:source-field [db "PUBLIC" "CHECKINS" "VENUE_ID"]}
-                                  [db "PUBLIC" "CATEGORIES" "NAME"]]]}])]
+  (let [db (t2/select-one-fn :name :model/Database (mt/id))]
     (mt/with-temp [:model/Field parent {:table_id (mt/id :venues)
                                         :name "HIDDEN_PAYLOAD"
                                         :base_type :type/JSON
@@ -475,10 +471,19 @@
                                         :active true}]
       (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:parent_id (:id parent)}
         (mt/with-current-user (mt/user->id :rasta)
-          (assert-source-field-qp-failure! build!)
-          (let [error (try (build!) (catch clojure.lang.ExceptionInfo e e))]
-            (is (= :wrong-source-field (:error (ex-data error))))
-            (is (not (re-find #"HIDDEN_PAYLOAD|CATEGORY_ID" (str (ex-message error) (ex-data error)))))))))))
+          (doseq [[table key] [["CHECKINS" "VENUE_ID"] ["VENUES" "ID"]]]
+            (testing table
+              (let [build! #(construct/execute-representations-query
+                             {:lib/type "mbql/query"
+                              :stages [{:lib/type "mbql.stage/mbql"
+                                        :source-table [db "PUBLIC" table]
+                                        :aggregation [["count" {}]]
+                                        :breakout [["field" {:source-field [db "PUBLIC" table key]}
+                                                    [db "PUBLIC" "CATEGORIES" "NAME"]]]}]})
+                    error (try (build!) (catch clojure.lang.ExceptionInfo e e))]
+                (assert-source-field-qp-failure! build!)
+                (is (= :wrong-source-field (:error (ex-data error))))
+                (is (not (re-find #"HIDDEN_PAYLOAD|CATEGORY_ID" (str (ex-message error) (ex-data error)))))))))))))
 
 (defn- follow-source-field-hint! [db stage message explicit-joins]
   (let [target (get-in stage [:breakout 0 2])]
