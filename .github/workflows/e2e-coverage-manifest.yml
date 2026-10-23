@@ -38,6 +38,8 @@ jobs:
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
+      - name: Cache translation catalogs
+        uses: ./.github/actions/cache-translations
       # build.clj forwards INSTRUMENT_COVERAGE to the rspack build, so only the
       # bundled FE is instrumented; everything else builds normally.
       - name: Build instrumented uberjar

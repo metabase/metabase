@@ -182,6 +182,10 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
 
+      - name: Cache translation catalogs
+        if: ${{ inputs.build_jar }}
+        uses: ./.github/actions/cache-translations
+
       - name: Build Metabase ${{ inputs.mb_edition }} uberjar from this branch
         if: ${{ inputs.build_jar }}
         run: ./bin/build.sh

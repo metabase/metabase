@@ -290,6 +290,10 @@ jobs:
           output-name: "metabase.jar"
         continue-on-error: true # do not break the whole job if this step doesn't succeed
 
+      - name: Cache translation catalogs
+        if: steps.download-uberjar.outcome != 'success'
+        uses: ./.github/actions/cache-translations
+
       # Build the uberjar from the previous commit only if we couldn't fetch it.
       # `step.foo.OUTCOME` is important because it looks at the step status *before* continue-on-error is applied.
       # Do not confuse it with the `step.foo.conclusion`.

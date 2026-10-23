@@ -120,6 +120,8 @@ jobs:
         run: xgettext --version
       - name: Check i18n tags/make sure template can be built
         run: ./bin/i18n/update-translation-template
+      - name: Cache translation catalogs
+        uses: ./.github/actions/cache-translations
       - name: Verify i18n translations (.po files)
         run: ./bin/i18n/build-translation-resources
 
