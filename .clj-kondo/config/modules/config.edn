@@ -2803,6 +2803,7 @@
            request
            request.schema
            session.login-history
+           settings
            users
            util}
    :model-exports #{:model/AuthIdentity}
@@ -3217,7 +3218,6 @@
    :uses #{analytics
            api
            batch-processing
-           channel
            events
            lib.schema
            models
