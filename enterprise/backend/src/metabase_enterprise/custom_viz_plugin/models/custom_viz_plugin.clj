@@ -152,11 +152,8 @@
                                                                    (serdes/extract-order-columns model-name opts)))))
 
 (defn- bundle-columns
-  "Columns derived from validating the imported `bundle` bytes against the imported `identifier`: the `:active` state
-  plus manifest-derived metadata when the bundle is valid and named for this plugin, or the `:error` state with the
-  reason when it is not. The bytes and their hash are stored either way, so an error row is consistent, and an error
-  row is named by its identifier; a bundle over the upload limit is the exception, it is not stored at all. The same
-  checks guard a bundle upload."
+  "Validates the imported bundle against its identifier using upload checks. Returns `:active` with manifest metadata,
+  or `:error` with the reason and identifier as display name. Stores bytes and hash in either case, unless oversized."
   [{:keys [identifier ^bytes bundle]}]
   (try
     (->> (cache/validate-bundle! bundle)
