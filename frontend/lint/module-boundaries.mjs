@@ -339,13 +339,13 @@ const elements = [
   createElement({
     type: "feature",
     name: "data-app-sandbox",
-    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/sandbox/**",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data-apps/sandbox/**",
     mode: "full",
   }),
   createElement({
     type: "app",
     name: "data-app-runtime",
-    pattern: "enterprise/frontend/src/metabase-enterprise/data_apps/runtime/**",
+    pattern: "enterprise/frontend/src/metabase-enterprise/data-apps/runtime/**",
     mode: "full",
   }),
   createElement({

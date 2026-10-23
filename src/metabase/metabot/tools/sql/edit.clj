@@ -161,8 +161,7 @@
                     " No edits were saved. "
                     (when earlier-edits? "The SQL below includes earlier unsaved edits in this call. ")
                     "SQL for this edit: ")
-        ;; Include every recovery alternative plus newline separators in this budget. Profiles can only remove steps.
-        budget (- tools.runtime/max-output-length (count prefix) (reduce + (map (comp inc count :text) recovery)))]
+        budget (tools.runtime/output-budget prefix recovery)]
     {:message (str prefix (quoted-sql-context sql spans budget))
      :recovery recovery}))
 

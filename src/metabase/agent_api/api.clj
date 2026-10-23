@@ -27,6 +27,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.core :as metabot]
+   [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.tools.construct :as metabot-construct]
    [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
@@ -42,12 +43,15 @@
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
+   [metabase.util.api-error :as api-error]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (org.eclipse.jetty.io EofException)))
 
 ;;; --------------------------------------------------- Defaults ------------------------------------------------------
 
@@ -1819,31 +1823,71 @@
   "Wrap routes so they may only be accessed when the Agent API is enabled."
   agent-api.validation/+agent-api-enabled)
 
-;;; ---------------------------------------------------- Routes ------------------------------------------------------
+(defn- exception-response
+  "The response to an exception raised while handling an Agent API request, never with a stack trace.
+  A 4xx exception without a database cause keeps its message and client-facing ex-data. Any other exception goes to the
+  server log, as a database failure when [[metabot-construct/database-error?]] says it is one, and the caller gets a
+  generic 500 whatever `hide-stacktraces` says."
+  [e]
+  (let [{:keys [status-code] :as data} (ex-data e)
+        client-data                     (api-error/response-data data)
+        database-error?                 (metabot-construct/database-error? e {:ignore-status? true})]
+    (if (and (not database-error?) status-code (<= 400 status-code 499))
+      {:status status-code
+       :body   (if (empty? client-data)
+                 (ex-message e)
+                 (merge {:message (ex-message e)} client-data))}
+      (do
+        (if database-error?
+          (log/error e "Database failure in Agent API")
+          (log/error e "Unhandled error in Agent API request"))
+        (when (nil? status-code)
+          (analytics/inc! :metabase-api/unhandled-errors))
+        {:status 500
+         :body   {:message (tru "Something went wrong")}}))))
 
-(defn- wrap-database-errors
-  "Return a generic 500 for unhandled database failures, logging the original exception."
+(defn- query-failure-body
+  "The body for an error that a streamed query run writes.
+  A failure that [[query-execution/caller-facing-failure?]] accepts keeps its status, error and error type. Any other
+  failure goes to the server log without the query, and the caller gets a generic message."
+  [error]
+  (if (query-execution/caller-facing-failure? error)
+    (merge {:status :failed} (select-keys error [:error :error_type]))
+    (do
+      (log/errorf "Agent API query run failed: %s" (u/pprint-to-str (dissoc error :json_query :preprocessed :native)))
+      {:status :failed
+       :error  (tru "Something went wrong")})))
+
+(defn- wrap-error-responses
+  "Middleware that keeps internal detail out of Agent API error responses, since an agent passes them to its LLM.
+  A raised exception gets [[exception-response]], and an error that a streamed query run writes gets
+  [[query-failure-body]]. When the client went away before its response was written, the default exception handling
+  logs a canceled request, as on any other route."
   [handler]
   (fn [request respond raise]
-    (let [raised? (volatile! false)
-          raise (fn [e]
-                  (vreset! raised? true)
-                  (if (metabot-construct/database-error? e)
-                    (do
-                      (when (nil? (:status-code (ex-data e)))
-                        (analytics/inc! :metabase-api/unhandled-errors))
-                      (log/error e "Database failure in Agent API")
-                      (respond {:status 500 :body {:message (tru "Something went wrong")}}))
-                    (raise e)))]
+    (let [callback-called? (volatile! false)
+          respond' (fn [response]
+                     (let [response (streaming-response/with-error-response-fn response query-failure-body)]
+                       (vreset! callback-called? true)
+                       (respond response)))
+          raise'   (fn [e]
+                     (when @callback-called?
+                       (throw e))
+                     (vreset! callback-called? true)
+                     (if (instance? EofException e)
+                       (raise e)
+                       (respond' (exception-response e))))]
       (try
-        (handler request respond raise)
+        (handler request respond' raise')
         (catch Throwable e
-          (if @raised?
+          (if @callback-called?
             (throw e)
-            (raise e)))))))
+            (raise' e)))))))
+
+;;; ---------------------------------------------------- Routes ------------------------------------------------------
 
 (def ^:private base-routes
-  (api.macros/ns-handler *ns* +auth wrap-database-errors))
+  (api.macros/ns-handler *ns* +auth wrap-error-responses))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/agent/` routes."
