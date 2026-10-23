@@ -2,9 +2,9 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.entity-retrieval.core :as cs.core]
    [metabase.metabot.tools.entity-retrieval :as entity-retrieval]
    [metabase.metabot.tools.search :as tools.search]
+   [metabase.search.entity-retrieval.core :as cs.core]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)

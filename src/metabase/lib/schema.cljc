@@ -102,7 +102,8 @@
     [:map-of [:ref ::lib.schema.metadata/desired-column-alias] [:ref ::lib.schema.metadata/desired-column-alias]]]
    [:metabase.query-processor.util.add-alias-info/join-alias->escaped
     {:optional true}
-    [:map-of [:ref ::join/alias] :string]]])
+    [:map-of [:ref ::join/alias] :string]]
+   [:metabase.driver.sql.query-processor/cte-level {:optional true} nat-int?]])
 
 (mr/def ::stage.native
   [:and
@@ -734,6 +735,7 @@
    [:qp/compiled-inline {:optional true} [:ref ::compiled-native-query]]
    [:qp/source-card-id {:optional true} [:ref ::id/card]]
    [:qp/skip-result-metadata-persistence {:optional true} :boolean]
+   [:qp/non-default-parameterized?       {:optional true} :boolean]
    [:qp.pivot/unremapped-breakout-combination {:optional true} [:sequential [:int {:min 0}]]]
    [:qp.pivot/remapped-breakout-combination   {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
    [:qp.pivot/num-remapped-cols               {:optional true} [:int {:min 0}]]

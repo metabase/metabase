@@ -950,7 +950,8 @@
     (->> (t2/query query)
          (map #(update-vals % (comp keyword lower-case-en)))
          (remove (fn [{:keys [table_name]}]
-                   (or (#{:databasechangelog :databasechangeloglock} table_name)
+                   ;; databasechangelog_first_run copies the changelog's dateexecuted, so it keeps the same type
+                   (or (#{:databasechangelog :databasechangeloglock :databasechangelog_first_run} table_name)
                        ;; excludes views
                        (str/starts-with? (name table_name) "v_"))))
          (map #(update % :is_nullable (fn [x] (= :yes x))))
@@ -2268,7 +2269,7 @@
 ;;; challenge that names the v2 scopes, so the client re-authorizes; that re-authorization only validates if
 ;;; the client's registered scope snapshot includes the v2 scopes.
 ;;;
-;;; The scope strings are literals rather than a read of `metabase.mcp.paths/v2-surface-scopes`: a
+;;; The scope strings are literals rather than a read of `metabase.mcp.scope/v2-surface-scopes`: a
 ;;; migration's behaviour must be frozen against later edits to that vector.
 
 (def ^:private ^:no-doc mcp-v2-scopes

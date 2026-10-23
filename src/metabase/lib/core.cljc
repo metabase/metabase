@@ -1582,6 +1582,7 @@
   metadata-provider?
   metadata-providerable?]
  [metabase.lib.metadata.result-metadata
+  match-returned-columns
   normalize-result-metadata-column]
  [lib.native
   add-parameters-for-template-tags
@@ -1743,6 +1744,7 @@
   all-implicitly-joined-field-ids
   all-implicitly-joined-table-ids
   all-measure-ids
+  all-metric-ids
   all-segment-ids
   all-source-card-ids
   all-source-card-ids-recursive

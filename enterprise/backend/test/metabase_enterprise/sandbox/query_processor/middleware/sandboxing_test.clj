@@ -23,9 +23,11 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.pivot.test-util :as qp.pivot.test-util]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -36,6 +38,7 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.request.core :as request]
+   [metabase.system.core :as system]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
@@ -297,6 +300,30 @@
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
 
+(deftest native-sandbox-metadata-query-keeps-outer-query-cancelable-test
+  (testing "The query that fetches a native sandbox's metadata leaves the outer query cancelable"
+    (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
+      (let [canceled-chan (a/promise-chan)
+            execute       qp.pipeline/*execute*
+            calls         (atom 0)
+            driver-saw    (atom nil)]
+        (binding [qp.pipeline/*canceled-chan* canceled-chan
+                  qp.pipeline/*execute*       (fn [driver query respond]
+                                                (if (= 1 (swap! calls inc))
+                                                  (execute driver query respond)
+                                                  ;; The outer query: cancel the request, and see whether its driver hears it.
+                                                  (do
+                                                    (a/>!! canceled-chan ::canceled)
+                                                    (reset! driver-saw (a/poll! qp.pipeline/*canceled-chan*))
+                                                    nil)))]
+          ;; The canceled outer query returns no rows, which the row helpers reject.
+          (try
+            (run-venues-count-query)
+            (catch Exception _)))
+        (testing "the metadata query runs first, then the outer query, which hears the cancel"
+          (is (= 2 @calls))
+          (is (= ::canceled @driver-saw)))))))
+
 (deftest metric-on-natively-sandboxed-table-test
   (testing "A :metric reference on a natively-sandboxed table should succeed (#76044)"
     (met/with-gtaps! {:gtaps {:venues (venues-category-native-sandbox-def)}, :attributes {"cat" 50}}
@@ -323,6 +350,17 @@
         (is (= [[10]]
                (run-venues-count-query)))
         (fails-without-token (run-venues-count-query))))))
+
+(deftest sandbox-on-sensitive-field-test
+  (testing "a sandbox can filter on a :sensitive column even though the sandboxed user can't reference it"
+    (tu/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type :sensitive}
+      (met/with-gtaps! {:gtaps {:venues (venues-price-mbql-gtap-def)}, :attributes {"price" 1}}
+        (is (= [[22]]
+               (run-venues-count-query)))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"not available for querying"
+             (qp/process-query (mt/mbql-query venues {:fields [$price]}))))))))
 
 (deftest e2e-api-key-user-attributes-ignored-test
   (testing (str "login_attributes stored on an API-key pseudo-user are not used for sandboxing (UXW-4240); the "
@@ -610,7 +648,10 @@
   (testing "make sure GTAP queries still include ID of user who ran them in the remark"
     (met/with-gtaps! {:gtaps {:venues (venues-category-mbql-gtap-def)}
                       :attributes {"cat" 50}}
-      (is (= (format "Metabase:: userID: %d queryType: MBQL queryHash: <hash>" (mt/user->id :rasta))
+      (is (= (format "Metabase:: userID: %d queryType: MBQL queryHash: <hash> accountID: %s context: ad-hoc databaseID: %d"
+                     (mt/user->id :rasta)
+                     (system/site-uuid)
+                     (mt/id))
              (run-query-returning-remark!
               (fn []
                 (mt/user-http-request :rasta :post "dataset" (mt/mbql-query venues {:aggregation [[:count]]})))))))))
@@ -1154,7 +1195,8 @@
                       qp/process-query))
         metadata (get-in results [:data :results_metadata :columns])]
     (is (seq metadata))
-    (t2/update! :model/Card card-id {:result_metadata metadata})))
+    (mt/with-test-user :crowberto
+      (t2/update! :model/Card card-id {:result_metadata metadata}))))
 
 (deftest native-fk-remapping-test
   (testing "FK remapping should still work for questions with native sandboxes (EE #520)"
@@ -1343,9 +1385,13 @@
                              :source-table (str "card__" (:id model))})
                     regular-result (mt/with-test-user :crowberto
                                      (qp/process-query query))
-                    sandboxed-result (met/with-user-attributes! :rasta {"category" "Gizmo"}
+                    [sandboxed-result
+                     sandboxed-sql]  (met/with-user-attributes! :rasta {"category" "Gizmo"}
                                        (mt/with-test-user :rasta
-                                         (qp/process-query query)))]
+                                         ;; results don't include `:native_form` for a sandboxed user, so compile
+                                         ;; the query separately to see which table it uses
+                                         [(qp/process-query query)
+                                          (:query (qp.compile/compile query))]))]
                 (testing "Unsandboxed"
                   (testing "Sees full result set"
                     (is (= 200 (-> regular-result mt/rows ffirst))
@@ -1359,8 +1405,7 @@
                     (is (= 51 (-> sandboxed-result mt/rows ffirst))
                         "Sandboxed user got whole results instead of filtered"))
                   (testing "Does not use the cache table"
-                    (is (not (str/includes? (-> sandboxed-result :data :native_form :query)
-                                            (:table_name persisted-info)))
+                    (is (not (str/includes? sandboxed-sql (:table_name persisted-info)))
                         "Erroneously used the persisted model cache")))))))))))
 
 (deftest persistence-disabled-for-native-card-template-tag-when-sandboxed-test
@@ -1390,15 +1435,19 @@
                     "Model failed to persist")
                 ;; a sandboxed user has no native-query permissions, but only needs to be able to *read* a saved
                 ;; native Card that references the persisted Model to hit this code path.
-                #_{:clj-kondo/ignore [:discouraged-var]}
                 (mt/with-temp [:model/Card card {:dataset_query
                                                  (lib/native-query (mt/metadata-provider)
                                                                    (format "SELECT count(*) FROM {{#%d}} AS m"
                                                                            (:id model)))}]
                   (let [run-card         #(mt/user-http-request % :post 202 (format "card/%d/query" (:id card)))
                         regular-result   (run-card :crowberto)
-                        sandboxed-result (met/with-user-attributes! :rasta {"category" "Gizmo"}
-                                           (run-card :rasta))]
+                        [sandboxed-result
+                         sandboxed-sql]  (met/with-user-attributes! :rasta {"category" "Gizmo"}
+                                           ;; results don't include `:native_form` for a sandboxed user, so compile
+                                           ;; the Card's query separately to see which table it uses
+                                           [(run-card :rasta)
+                                            (mt/with-test-user :rasta
+                                              (:query (qp.compile/compile (:dataset_query card))))])]
                     (testing "Unsandboxed"
                       (testing "Sees full result set"
                         (is (= 200 (-> regular-result mt/rows ffirst))))
@@ -1411,8 +1460,7 @@
                         (is (= 51 (-> sandboxed-result mt/rows ffirst))
                             "Sandboxed user got whole results instead of filtered"))
                       (testing "Does not use the cache table"
-                        (is (not (str/includes? (-> sandboxed-result :data :native_form :query)
-                                                (:table_name persisted-info)))
+                        (is (not (str/includes? sandboxed-sql (:table_name persisted-info)))
                             "Erroneously used the persisted model cache")))))))))))))
 
 (deftest model-metadata-overrides-preserved-for-sandboxed-users-test

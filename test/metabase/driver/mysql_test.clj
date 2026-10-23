@@ -49,6 +49,7 @@
    [toucan2.core :as t2])
   (:import
    (java.io File)
+   (java.sql Connection SQLException SQLTransientConnectionException)
    (java.util Properties)
    (org.mariadb.jdbc UrlParser)))
 
@@ -494,6 +495,14 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"dangerous"
              (driver/validate-db-details! :mysql {:additional-options opt}))))))
+  (testing "...and so is the same property sent as a detail key, which the spec passes to the client too"
+    (doseq [details [{:host "h" :autoDeserialize true}
+                     {:host "h" :allowLoadLocalInfile true}
+                     {:host "h" :socketFactory "evil.SocketFactory"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (driver/validate-db-details! :mysql details))))))
   (testing "benign additional options are still allowed"
     (doseq [opt [nil "tinyInt1isBit=false" "useSSL=true&trustServerCertificate=true"]]
       (is (nil? (driver/validate-db-details! :mysql {:additional-options opt}))))))
@@ -786,6 +795,24 @@
                         driver/*driver*
                         database
                         (t2/select-one :model/Table :db_id (mt/id) :name "json_table"))))))))))))
+
+(deftest json-unfolding-ignores-table-differing-only-in-case-test
+  (testing "JSON unfolding lists only the synced table's columns, not a table's differing only in case (#83790)"
+    (mt/test-driver :mysql
+      (when-not (mysql/mariadb? (mt/db))
+        (tx/drop-if-exists-and-create-db! driver/*driver* "json_case_test")
+        (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name "json_case_test"})
+              spec    (sql-jdbc.conn/connection-details->spec driver/*driver* details)]
+          (doseq [statement ["CREATE TABLE `orders` (`id` INT PRIMARY KEY, `data` JSON);"
+                             "CREATE TABLE `Orders` (`id` INT PRIMARY KEY, `payload` JSON);"
+                             "INSERT INTO `orders` VALUES (1, '{\"a\": 1}');"]]
+            (jdbc/execute! spec [statement]))
+          (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
+            (sync/sync-database! database {:scan :schema})
+            (is (= #{"id" "data" "data → a"}
+                   (t2/select-fn-set :name :model/Field
+                                     :table_id (t2/select-one-pk :model/Table :db_id (:id database) :name "orders")
+                                     :active true)))))))))
 
 (deftest json-alias-test
   (mt/test-driver :mysql
@@ -1368,3 +1395,74 @@
         (is (= [["CREATE INDEX `by_cat` ON `t` (`category`)"]] stmts))
         (is (not (str/includes? (ffirst stmts) "PREPARE")))
         (is (not (str/includes? (ffirst stmts) "UNHEX")))))))
+
+(deftest error-while-reading-rows-is-invalid-query-test
+  (mt/test-driver :mysql
+    (testing "An error in the query that the database raises after the first fetch of rows is an invalid query"
+      ;; MariaDB raises this with SQLState HY000, which its JDBC driver throws as SQLTransientConnectionException
+      (is (=? {:status     :failed
+               :error_type :invalid-query
+               :error      #"(?s).*JSON_TABLE.*"}
+              (qp/process-query
+               (qp/userland-query
+                (lib/native-query
+                 (mt/metadata-provider)
+                 (str "WITH RECURSIVE seq (n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM seq WHERE n < 601) "
+                      "SELECT seq.n, jt.a FROM seq STRAIGHT_JOIN JSON_TABLE(IF(seq.n < 601, '{\"a\": 1}', '{}'), '$' "
+                      "COLUMNS (a INT PATH '$.a' ERROR ON EMPTY)) AS jt")))))))))
+
+(deftest lock-timeout-while-reading-rows-is-qp-error-test
+  (mt/test-driver :mysql
+    (let [db             (mt/db)
+          connection     (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection)
+          row-thunk      (mt/original-fn #'sql-jdbc.execute/row-thunk)
+          delivered      (atom 0)
+          failure        (atom nil)]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver* db {:write? true}
+       (fn [^Connection conn]
+         (.setAutoCommit conn false)
+         (with-open [stmt (.createStatement conn)]
+           (.execute stmt "UPDATE venues SET name = name WHERE id = 100"))
+         (try
+           (mt/with-temporary-setting-values [sql-jdbc-fetch-size 20]
+             (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection
+                                         (fn [driver db options f]
+                                           (connection driver db options
+                                                       (fn [^Connection c]
+                                                         (let [read-timeout #(-> (jdbc/query {:connection c}
+                                                                                             ["SELECT @@session.innodb_lock_wait_timeout AS timeout"])
+                                                                                 first :timeout)
+                                                               timeout (read-timeout)]
+                                                           (try
+                                                             (jdbc/execute! {:connection c} ["SET SESSION innodb_lock_wait_timeout = 1"])
+                                                             (f c)
+                                                             (finally
+                                                               (jdbc/execute! {:connection c}
+                                                                              [(str "SET SESSION innodb_lock_wait_timeout = " timeout)])
+                                                               (is (= timeout (read-timeout)))))))))
+                                         sql-jdbc.execute/row-thunk
+                                         (fn [& args]
+                                           (let [next-row (apply row-thunk args)]
+                                             #(try
+                                                (let [row (next-row)]
+                                                  (when row (swap! delivered inc))
+                                                  row)
+                                                (catch SQLException e
+                                                  (reset! failure e)
+                                                  (throw e)))))]
+               (is (=? {:status :failed :error_type :qp}
+                       (qp/process-query
+                        (qp/userland-query
+                         (lib/native-query (mt/metadata-provider)
+                                           "SELECT id FROM venues ORDER BY id LOCK IN SHARE MODE")))))))
+           (is (pos? @delivered) "The timeout happens during row reads, after the first fetch")
+           (is (= "HY000" (some-> ^SQLException @failure .getSQLState)))
+           (is (= 1205 (some-> ^SQLException @failure .getErrorCode)))
+           (finally (.rollback conn))))))))
+
+(deftest ^:parallel query-error-evidence-test
+  (mt/test-driver :mysql
+    (doseq [[state code expected] [["HY000" 4176 true] ["HY000" 1205 false] [nil 4176 false]]]
+      (is (= expected (sql-jdbc.execute/impl-error-in-query?
+                       :mysql (SQLTransientConnectionException. "Row read failed" state code)))))))

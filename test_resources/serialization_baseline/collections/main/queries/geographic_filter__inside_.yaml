@@ -1,6 +1,5 @@
 name: Geographic Filter (Inside)
 entity_id: bK64P6yr9_Nx-A8S3PqOZ
-created_at: '2026-04-02T02:59:02.778668Z'
 creator_id: admin@example.com
 display: map
 collection_id: cOlQuErIeS0ExAmPlE2x1
@@ -428,8 +427,7 @@ result_metadata:
   lib/source: source/table-defaults
   lib/source-column-alias: CREATED_AT
   qp/implicit-field?: true
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
 - model: Card

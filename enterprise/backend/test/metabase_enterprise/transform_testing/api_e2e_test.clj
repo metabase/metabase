@@ -72,7 +72,7 @@
                            :name         "End to end"}
                           created)))
                 (testing "GET returns what POST created"
-                  (is (= created (mt/user-http-request :crowberto :get 200 path))))
+                  (is (= (assoc created :last_run nil) (mt/user-http-request :crowberto :get 200 path))))
                 (testing "running a passing test"
                   (let [result (mt/user-http-request :crowberto :post 200 (str path "/run"))]
                     (is (= #{:status :expectations :tables} (set (keys result))))

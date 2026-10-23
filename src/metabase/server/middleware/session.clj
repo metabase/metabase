@@ -104,25 +104,28 @@
 (mu/defn- current-user-info-for-session :- [:maybe [:merge
                                                     ::request.schema/current-user-info
                                                     [:map {:closed true}
-                                                     [:session-key-hash :string]]]]
+                                                     [:metabase/authed-session-key-hash :string]]]]
   "Return User ID and superuser status for Session with `session-key` if it is valid and not expired, plus
-  `:session-key-hash`, the `key_hashed` value the row was matched on."
+  `:metabase/authed-session-key-hash`, the `key_hashed` value the row was matched on."
   [session-key     :- [:maybe :string]
    anti-csrf-token :- [:maybe :string]]
   (when (and session-key (valid-session-key? session-key) (init-status/complete?))
     (let [session-key-hash (session/hash-session-key session-key)]
-      (some-> (server.db/session-user-info session-key-hash
-                                           anti-csrf-token
-                                           (config/config-int :max-session-age)
-                                           (premium-features/enable-advanced-permissions?)
-                                           (and (premium-features/enable-tenants?)
-                                                (setting/get :use-tenants))
-                                           (request/enabled-session-timeout-seconds)
-                                           (session/mfa-required?))
-              ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
-              (update :is-group-manager? boolean)
-              ;; so that whatever refers to this session later can do so by the hash without handling the key again
-              (assoc :session-key-hash session-key-hash)))))
+      (when-let [{:keys [auth-provider] :as user-info}
+                 (server.db/session-user-info session-key-hash
+                                              anti-csrf-token
+                                              (config/config-int :max-session-age)
+                                              (premium-features/enable-advanced-permissions?)
+                                              (and (premium-features/enable-tenants?)
+                                                   (setting/get :use-tenants))
+                                              (request/enabled-session-timeout-seconds)
+                                              (session/mfa-required?))]
+        (-> user-info
+            (dissoc :auth-provider)
+            ;; is-group-manager? could return `nil, convert it to boolean so it's guaranteed to be only true/false
+            (update :is-group-manager? boolean)
+            (assoc :metabase/authed-session-key-hash session-key-hash
+                   :embedding/auth-method            (or auth-provider "session")))))))
 
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
 (def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
@@ -166,15 +169,26 @@
                           (m/update-existing :is-group-manager? boolean))]
         (when (matching-api-key? user-info api-key)
           (-> user-info
-              (dissoc :api-key)))))))
+              (dissoc :api-key)
+              (assoc :embedding/auth-method "api-key")))))))
 
 (mr/def ::oauth-bearer
-  "Fns that authenticate a request by its OAuth bearer token, and the scope that grants full access."
+  "Fns that authenticate a request by its OAuth bearer token, the scope that grants full access, and the request
+  paths where a bearer token is the only credential accepted."
   [:map
    {:closed true}
    [:extract-token     ifn?]
    [:resolve-token     ifn?]
-   [:full-access-scope ms/NonBlankString]])
+   [:full-access-scope ms/NonBlankString]
+   [:bearer-only-paths [:set [:re #"^/"]]]])
+
+(defn- bearer-only-path?
+  "Whether request `path` is one of `bearer-only-paths` or below one. Compares paths, never a host, and follows segment
+  boundaries, so `/api/mcpfoo` is not below `/api/mcp`."
+  [bearer-only-paths path]
+  (boolean (and path
+                (some #(or (= path %) (str/starts-with? path (str % "/")))
+                      bearer-only-paths))))
 
 (mr/def ::mcp-ui-credentials
   "Fns that authenticate a request by the credential an MCP App UI carries."
@@ -193,8 +207,9 @@
 
 (defn- oauth-token->token-scopes
   "Map the OAuth scopes granted to a bearer access token onto the `:token-scopes` value the API
-   scope middleware understands. A token carrying the full-access scope (`mb:full`) becomes the
-   unrestricted sentinel — reachable across the whole REST API as the user. Any narrower scope
+   scope middleware understands. A token carrying the full-access scope (`mb:full`) gets the
+   unrestricted sentinel — reachable across the whole REST API as the user — next to the other
+   scopes it was granted, which MCP gates on because it ignores the sentinel. Any narrower scope
    set is passed through verbatim, so the token can reach only the agent endpoints that opt into
    those scopes and is rejected elsewhere by `ensure-scopes-checked`.
 
@@ -203,7 +218,7 @@
    security invariant can't silently regress."
   [full-access-scope granted-scopes]
   (if (contains? granted-scopes full-access-scope)
-    full-access-token-scopes
+    (into full-access-token-scopes (disj granted-scopes full-access-scope))
     granted-scopes))
 
 (mu/defn- current-user-info-for-oauth-token :- [:maybe ::request.schema/current-user-info]
@@ -222,7 +237,8 @@
           (some-> (server.db/oauth-user-info user-id (premium-features/enable-advanced-permissions?))
                   (m/update-existing :is-group-manager? boolean)
                   (assoc :token-scopes             (oauth-token->token-scopes full-access-scope scopes)
-                         :authenticated-via-oauth? true)))))))
+                         :authenticated-via-oauth? true
+                         :embedding/auth-method "oauth")))))))
 
 (defn- current-user-info-for-mcp-ui-credential
   "Resolve the short-lived credential from an MCP App tool result.
@@ -257,51 +273,37 @@
               (assoc :token-scopes #{::scope/mcp-ui}
                      :token-scopes-checked (scope-satisfied? (:request-method request) (:uri request) claims)
                      :mcp-ui-session-id sid
-                     :mcp-ui-credential claims)))))
+                     :mcp-ui-credential claims
+                     :embedding/auth-method "mcp-ui")))))
 
-(defn- auth-method
-  [session-info api-key-info oauth-info mcp-ui-info embedding-route]
-  (or ({"guest-embed" "guest"} embedding-route embedding-route)
-      (cond session-info (or (:auth-provider session-info) "session")
-            api-key-info "api-key"
-            oauth-info   "oauth"
-            mcp-ui-info  "mcp-ui")))
+(defn- credentials
+  "The user info from the first credential on `request` that authenticates: session, then API key, then OAuth bearer
+  token, then MCP UI credential."
+  [{:keys [oauth-bearer mcp-ui-credentials]}
+   {:keys [metabase-session-key anti-csrf-token], {:strs [x-api-key]} :headers, :as request}]
+  (or (current-user-info-for-session metabase-session-key anti-csrf-token)
+      (current-user-info-for-api-key x-api-key)
+      ;; bearer tokens below also carry `:token-scopes`
+      (current-user-info-for-oauth-token oauth-bearer request)
+      (current-user-info-for-mcp-ui-credential mcp-ui-credentials request)))
 
 (defn- merge-current-user-info
-  [{:keys [oauth-bearer mcp-ui-credentials]}
-   {:keys [metabase-session-key anti-csrf-token], {:strs [x-metabase-locale x-api-key]} :headers, :as request}]
-  (let [session-info (current-user-info-for-session metabase-session-key anti-csrf-token)
-        api-key-info (when-not session-info (current-user-info-for-api-key x-api-key))
-        ;; Bearer and MCP UI credentials are consulted only when no normal session/API key authenticated.
-        oauth-info   (when-not (or session-info api-key-info)
-                       (current-user-info-for-oauth-token oauth-bearer request))
-        mcp-ui-info  (when-not (or session-info api-key-info oauth-info)
-                       (current-user-info-for-mcp-ui-credential mcp-ui-credentials request))
-        embedding-route (analytics/get-route)
-        auth-method (auth-method session-info api-key-info oauth-info mcp-ui-info embedding-route)]
-    (merge
-     request
-     ;; oauth-info carries `:token-scopes` in addition to the standard current-user-info keys, so
-     ;; merging it whole both authenticates the request and records the granted scopes.
-     (dissoc (or session-info api-key-info oauth-info mcp-ui-info) :auth-provider :session-key-hash)
-     ;; `:metabase-session-key` is attached by [[wrap-session-key]] from an unvalidated cookie or header, so its
-     ;; presence says nothing about whether the session is the credential that authenticated this request.
-     ;; `:metabase/authed-session-key-hash` identifies the session that did, and being namespaced it cannot arrive
-     ;; from anywhere a request has been: Ring keys are unqualified, so only this function can set it. It carries the
-     ;; `key_hashed` value rather than the key itself, since that is all anything downstream needs and the key is
-     ;; the credential.
-     (when session-info {:metabase/authed-session-key-hash (:session-key-hash session-info)})
-     (when auth-method {:embedding/auth-method auth-method})
-     (when x-metabase-locale
-       (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
-       {:user-locale (i18n/normalized-locale-string x-metabase-locale)}))))
+  [{:keys [oauth-bearer] :as options} {:keys [uri], {:strs [x-metabase-locale]} :headers, :as request}]
+  (merge
+   request
+   (if (bearer-only-path? (:bearer-only-paths oauth-bearer) uri)
+     (current-user-info-for-oauth-token oauth-bearer request)
+     (credentials options request))
+   (when x-metabase-locale
+     (log/tracef "Found X-Metabase-Locale header: using %s as user locale" (pr-str x-metabase-locale))
+     {:user-locale (i18n/normalized-locale-string x-metabase-locale)})))
 
 (defn wrap-current-user-info
   "Add `:metabase-user-id`, `:is-superuser?`, `:is-group-manager?` and `:user-locale` to the request if a valid session
   token, API key, OAuth bearer access token, OR MCP UI credential was passed. A bearer token additionally sets
   `:token-scopes` (the access it was granted); precedence is session > API key > bearer > MCP UI credential.
   Bearer tokens and MCP UI credentials authenticate only when `options` supplies their `:oauth-bearer` and
-  `:mcp-ui-credentials` fns.
+  `:mcp-ui-credentials` fns. On a path in `:bearer-only-paths`, or below one, only a bearer token authenticates.
 
   `:metabase/authed-session-key-hash` is set only when it was the session that authenticated the request, and carries
   the `key_hashed` value of the one that did."

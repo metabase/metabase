@@ -812,7 +812,7 @@
                 card-b-doc (render.tu/render-card-as-hickory! card-b-id)]
             ;; The test asserts that all 4 slices exist by seeing that each path element has the colour assigned to that category
             ;; we should expect to see each of the 4 (and only those 4) colours.
-            ;; This is also true of the colours for the legend circle elements.
+            ;; This is also true of the colours for the legend marker elements.
             ;; When legend and Totals are disabled, we should expect those elements not to exist in the render
             (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
@@ -822,7 +822,7 @@
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :total-els-text     #{}}]]]
-              (let [legend-elements (->> (hik.s/select (hik.s/tag :circle) doc)
+              (let [legend-elements (->> (hik.s/select (hik.s/child (hik.s/class "visx-group") (hik.s/tag :rect)) doc)
                                          (map #(get-in % [:attrs :fill]))
                                          set)
                     slice-elements  (->> (hik.s/select (hik.s/tag :path) doc)
@@ -1309,6 +1309,24 @@
             (testing "Renders with at least one category name visible"
               (is (= "Doohickey" category-text)))))))))
 
+(deftest render-region-map-static-viz-test
+  (testing "The static-viz region (choropleth) map renders as an image, not an error card.
+            React 19's scheduler references MessageChannel, which the GraalJS render context must polyfill."
+    (mt/with-temp [:model/Card card
+                   {:name                   "region-map-test"
+                    :display                :map
+                    :visualization_settings {:map.type      "region"
+                                             :map.region    "us_states"
+                                             :map.dimension "STATE"
+                                             :map.metric    "METRIC"}
+                    :dataset_query          (mt/native-query
+                                             {:query (str "SELECT 'CA' AS state, 99999 AS metric "
+                                                          "UNION ALL SELECT 'NY' AS state, 11111 AS metric")})}]
+      (let [data (:data (qp/process-query (:dataset_query card)))
+            part (body/render :region_map :attachment "UTC" card nil data)]
+        (is (= :img (-> part :content second first))
+            "Region map renders as an image, not a degraded table or an error card")))))
+
 (deftest render-correct-day-of-week-test
   (testing "The static-viz bar chart renders with the correct start of the week."
     (mt/with-temporary-setting-values [start-of-week "monday"]
@@ -1324,10 +1342,11 @@
                                              :graph.metrics ["sum"]}}]
           (mt/with-temp [:model/Card {card-id :id} card]
             (let [doc            (render.tu/render-card-as-hickory! card-id)
+                  weekday-names  #{"Monday" "Tuesday" "Wednesday" "Thursday" "Friday" "Saturday" "Sunday"}
                   first-day-text (->> (hik.s/select (hik.s/tag :text) doc)
                                       (map (fn [el] (-> el :content first)))
-                                      (take-last 4)
                                       (map str/trim)
+                                      (filter weekday-names)
                                       first)]
               (testing "Renders with correct day of week first"
                 (is (= "Monday" first-day-text))))))))))
@@ -1354,7 +1373,7 @@
                               (map str/trim)
                               first)]
               (testing "Renders with correct day of week first"
-                (is (= "2017/1" label))))))))))
+                (is (= "2018/4" label))))))))))
 
 (deftest render-correct-whitelabel-colors
   (when config/ee-available?

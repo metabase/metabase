@@ -308,6 +308,18 @@
         (testing "admin can create dashboard in root collection"
           (is (true? (mi/can-create? :model/Dashboard {}))))))))
 
+(deftest content-of-a-data-apps-collection-is-admin-only-test
+  (testing "Only administrators write what takes its permissions from a collection of the data apps namespace"
+    (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-apps"}]
+      (doseq [model [:model/Dashboard :model/Timeline]
+              :let  [instance (t2/instance model {:collection_id collection-id})]]
+        (testing model
+          (mt/with-test-user :crowberto
+            (is (true? (mi/can-write? instance))))
+          (mt/with-test-user :rasta
+            (is (false? (mi/can-write? instance)))
+            (is (false? (mi/can-read? instance)))))))))
+
 (deftest ^:parallel can-read-via-parent-collection?-test
   (testing "read perm is true iff the current user has read on the parent collection"
     (binding [api/*current-user-permissions-set* (atom #{"/"})]

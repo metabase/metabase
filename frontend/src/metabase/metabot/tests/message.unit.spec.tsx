@@ -23,7 +23,7 @@ describe("metabot > message", () => {
   it("should properly send chat messages", async () => {
     setup();
 
-    const { sendResponse } = mockAgentEndpoint({
+    const agentSpy = mockAgentEndpoint({
       events: whoIsYourFavoriteResponse,
       waitForResponse: true,
     });
@@ -36,7 +36,9 @@ describe("metabot > message", () => {
       await screen.findByTestId("metabot-chain-of-thought"),
     ).toBeInTheDocument();
 
-    sendResponse();
+    agentSpy.sendResponse();
+
+    expect(await lastReqBody(agentSpy)).not.toHaveProperty("metabot_id");
 
     expect(
       await screen.findByText("You, but don't tell anyone."),
@@ -51,7 +53,7 @@ describe("metabot > message", () => {
 
     await enterChatMessage("Who is your favorite?", false);
     expect(await input()).toHaveTextContent("Who is your favorite?");
-    (await sendMessageButton()).click();
+    await userEvent.click(await sendMessageButton());
 
     expect(
       await screen.findByText("You, but don't tell anyone."),

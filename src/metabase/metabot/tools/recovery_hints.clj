@@ -12,6 +12,7 @@
    which is the intended failure mode: a missing hint reads as terse, a wrong one sends the
    agent at a tool it does not have."
   (:require
+   [metabase.agent-lib.representations :as repr]
    [metabase.util.i18n :refer [tru]]))
 
 (set! *warn-on-reflection* true)
@@ -20,14 +21,12 @@
   "The `source-table:`-took-a-URI sentence, which varies by what the URI pointed at."
   [entity-type entity-id]
   (case entity-type
-    ;; The `{}` options slot has to sit outside the format string — MessageFormat reads a brace
-    ;; as a placeholder, and `tru` rejects the escaped form as a skipped argument index.
     "metric"
-    ;; `{0}` and `{1}` are both the entity id: `tru` rejects a repeated index, because
-    ;; MessageFormat counts placeholder occurrences and distinct indices separately.
-    (str (tru "Metrics are aggregations, not sources. To use metric {0}, put its base table into `source-table:` — combine the `database_name` and `base_table_fully_qualified_name` attributes from its search result or `read_resource metabase://metric/{1}` — and reference the metric as:"
-              (str entity-id) (str entity-id))
-         " `aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
+    (str "Metrics are aggregations, not sources. To use metric " entity-id ", build the stage on the source specified by its "
+         "`<metric>` tag (in its search result or `read_resource metabase://metric/" entity-id "`): "
+         "`base_table_fully_qualified_name` with `database_name` as `source-table:`, or "
+         "`source_card_portable_entity_id` as `source-card:`. Then reference the metric as "
+         "`aggregation: [[metric, {}, \"<portable_entity_id>\"]]`.")
 
     ("question" "model" "card")
     (tru "To reference a saved question or model as a query source, put its `portable_entity_id` (the 21-char string from its search result or `read_resource`) into `source-card:` — not a URI.")
@@ -38,10 +37,27 @@
 
     (tru "`source-table:` accepts a portable FK `[<db-name>, <schema>, <table-name>]` or, via `source-card:`, a saved-card `portable_entity_id`.")))
 
+(defn- card-fields-hint
+  "Return guidance for listing `what` from the source card, or nil when `data` names no card."
+  [{:keys [source-card source-card-type]} what]
+  (when (and source-card source-card-type)
+    (str "Call `read_resource` with `metabase://" source-card-type "/" source-card "/fields` to list the " what
+         " this " source-card-type " returns.")))
+
+(defn- structural-validation-hint
+  "Describe the failing paths in a humanized structural explanation, or nil when it has no errors."
+  [humanized]
+  (let [paths (repr/humanized->paths humanized)]
+    (when (seq paths)
+      (tru "Invalid at {0}. Fix the named paths." paths))))
+
 (defn recovery-hint
   "The v1 recovery sentence for an agent error's `ex-data`, or nil when it has none."
-  [{:keys [error entity-type entity-id]}]
+  [{:keys [error entity-type entity-id humanized] :as data}]
   (case error
+    :invalid-representations-query
+    (structural-validation-hint humanized)
+
     :uri-in-source-table
     (uri-hint entity-type entity-id)
 
@@ -61,7 +77,11 @@
     (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` to list this table''s columns.")
 
     :ambiguous-fk
-    (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns.")
+    (or (card-fields-hint data "foreign-key columns")
+        (tru "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source table to list the available foreign-key columns."))
+
+    (:column-not-returned :unexportable-fk)
+    (card-fields-hint data "columns")
 
     :no-fk-path
     (tru "If a metric relates to that table, read its dimensions resource `metabase://metric/<metric_id>/dimensions`, which lists the exact `joins:` clause to paste and the columns it unlocks.")

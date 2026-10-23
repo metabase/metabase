@@ -1,6 +1,5 @@
 (ns metabase-enterprise.data-apps.models.data-app
   (:require
-   [metabase-enterprise.data-apps.access :as data-app.access]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
@@ -11,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.users.models.user :as user]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -40,8 +40,7 @@
 (t2/deftransforms :model/DataApp
   {:bundle        transform-bundle
    ;; JSON array of origins the sandboxed bundle may fetch/XHR (see config.clj).
-   :allowed_hosts mi/transform-json
-   :table_ids     mi/transform-json})
+   :allowed_hosts mi/transform-json})
 
 (doto :model/DataApp
   (derive :metabase/model)
@@ -73,11 +72,29 @@
        (mu/validate-throw schema)
        with-bundle-hash))
 
+(defn- check-resource-collection
+  "Throws unless the Collection with `collection-id` can be the resource collection of the data app `app-id`: a
+  top-level collection of data apps, not archived, official, typed or the sample, that no other app has; remote sync may
+  sync it."
+  [collection-id app-id]
+  (let [collection (data-apps.db/resource-collection collection-id)]
+    (when-not (and collection
+                   (= "data-apps" (some-> (:namespace collection) name))
+                   (= "/" (:location collection))
+                   (not-any? collection [:personal_owner_id :authority_level :type :archive_operation_id])
+                   (not-any? collection [:archived :is_sample]))
+      (throw (ex-info (tru "A data app''s collection must be a top-level collection of data apps that isn''t archived or official. Give the app a collection of its own.")
+                      {:status-code 400, :collection-id collection-id})))
+    (when (data-apps.db/other-app-has-collection? collection-id app-id)
+      (throw (ex-info (tru "This collection already belongs to another data app. Give the app a collection of its own.")
+                      {:status-code 400, :collection-id collection-id})))))
+
 (t2/define-before-insert :model/DataApp
   [data-app]
   ;; Every app owns a resource collection from its first moment: one it is given (an import names the collection
   ;; its manifest references) or one created here, so the column is never null.
   (let [row (prepare ::data-apps.schema/data-app.insert data-app)]
+    (some-> (:resource_collection_id row) (check-resource-collection nil))
     (cond-> row
       (nil? (:resource_collection_id row))
       (assoc :resource_collection_id (:id (data-app.resources/create-resource-collection! row))))))
@@ -91,6 +108,7 @@
                (some? (:resource_collection_id (t2/original data-app))))
       (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
                       {:status-code 400, :data-app-id (:id data-app)})))
+    (some-> (:resource_collection_id changes) (check-resource-collection (:id data-app)))
     (merge data-app (some->> changes (prepare ::data-apps.schema/data-app.update)))))
 
 ;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
@@ -100,13 +118,21 @@
 (t2/define-after-select :model/DataApp
   [app]
   (cond-> app
-    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))
-    (contains? app :table_ids)     (update :table_ids #(or % []))))
+    (contains? app :allowed_hosts) (update :allowed_hosts #(or % []))))
 
 (defmethod mi/can-read? :model/DataApp
-  ([app] (mi/can-read? :model/DataApp (:id app)))
+  ([app]
+   (or api/*is-superuser?*
+       (boolean
+        (and (:enabled app)
+             api/*current-user-id*
+             (nil? (:tenant_id @api/*current-user*))
+             (let [group-ids (user/group-ids api/*current-user-id*)]
+               (some (comp group-ids :permission_group_id)
+                     (data-apps.db/app-assignments [(:id app)])))))))
   ([_model pk]
-   (data-app.access/can-read? {:user-id api/*current-user-id* :superuser? api/*is-superuser?*} pk)))
+   (or api/*is-superuser?*
+       (boolean (some-> (data-apps.db/data-app pk) mi/can-read?)))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)
@@ -152,11 +178,8 @@
    :skip      [;; admin-owned state of this instance
                :enabled
                ;; set by the import itself
-               :bundle_hash
-               ;; server-managed resources, recreated on import
-               :table_ids]
-   :transform {:created_at   (serdes/date)
-               ;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
+               :bundle_hash]
+   :transform {;; the app's resource collection, a collection in the `data-apps` namespace that loads before the app
                :resource_collection_id (assoc (serdes/fk :model/Collection) :as :collection)
                :name         {:as :slug :export identity :import identity}
                :display_name {:as :name :export identity :import identity}
@@ -172,7 +195,7 @@
                                                         (or (get files path)
                                                             (throw (ex-info (tru "Bundle file \"{0}\" not found." path)
                                                                             {:status-code 400}))))))}}
-   :defaults  {:description nil :version 1 :allowed_hosts []}})
+   :defaults  {:description nil :allowed_hosts []}})
 
 (defmethod serdes/extract-query "DataApp"
   [model-name {:keys [filter-column filter-ids] :as opts}]
@@ -218,7 +241,8 @@
   (data-apps.db/resource-collection-ids))
 
 (defenterprise data-app-collection?
-  "Whether the Collection with `collection-id` is a data app's resource collection."
+  "Whether the Collection with `collection-id` is in the data-apps namespace, which holds only data apps' collections;
+  asked of the namespace, not of the apps, since a load may write a collection's content before the app that owns it."
   :feature :none
   [collection-id]
-  (data-apps.db/resource-collection? collection-id))
+  (data-apps.db/data-apps-namespace-collection? collection-id))

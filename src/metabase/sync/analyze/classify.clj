@@ -19,6 +19,7 @@
   (:require
    [clojure.data :as data]
    [metabase.analyze.core :as analyze]
+   [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.metadata.fingerprint :as lib.schema.metadata.fingerprint]
    [metabase.models.interface :as mi]
@@ -118,16 +119,17 @@
       (when-let [fields (fields-to-classify table)]
         (let [existing-name-field (sync.db/name-field-count-for-table table-id)
               {:keys [fields-failed]}
-              (reduce (fn [state field]
-                        (let [result (classify! field state)]
-                          (cond-> state
-                            (instance? Exception result)
-                            (update :fields-failed inc)
+              (dependencies.hooks/with-batched-marks
+                (reduce (fn [state field]
+                          (let [result (classify! field state)]
+                            (cond-> state
+                              (instance? Exception result)
+                              (update :fields-failed inc)
 
-                            (= :type/Name (:semantic_type result))
-                            (assoc :exists-name true))))
-                      {:fields-failed 0 :exists-name (pos? existing-name-field)}
-                      fields)]
+                              (= :type/Name (:semantic_type result))
+                              (assoc :exists-name true))))
+                        {:fields-failed 0 :exists-name (pos? existing-name-field)}
+                        fields))]
           {:fields-classified (count fields)
            :fields-failed fields-failed})))))
 

@@ -33,7 +33,8 @@
       (qp.metadata/legacy-result-metadata query api/*current-user-id*)
       (catch Throwable e
         (log/errorf "Error calculating result metadata for Card: %s" (ex-message e))
-        []))))
+        ;; sentinel: callers distinguish this from "the query produced no columns"
+        ::recompute-failed))))
 
 (def ^:private metadata-sync-wait-ms
   "Duration in milliseconds to wait for the metadata before saving the card without the metadata. That metadata will be
@@ -72,24 +73,35 @@ saved later when it is ready."
                         ;; existing usage, don't use this going forward
                         #_{:clj-kondo/ignore [:deprecated-var]}
                         (qp.util/combine-metadata metadata')))]
-    (if (= result ::timed-out)
+    (cond
+      (= result ::timed-out)
       {:metadata-future (future
                           (try
-                            (combiner @futur)
+                            (let [awaited @futur]
+                              (if (= awaited ::recompute-failed)
+                                metadata'
+                                (combiner awaited)))
                             (catch Throwable e
                               (future-cancel futur)
                               (log/errorf "Error blending model metadata: %s" (ex-message e))
                               metadata')))}
+
+      (= result ::recompute-failed)
+      {:metadata metadata'}
+
+      :else
       {:metadata (combiner result)})))
 
 (mu/defn- maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
-  [query :- ::lib-be.schema/maybe-legacy-or-empty-query]
+  [query             :- ::lib-be.schema/maybe-legacy-or-empty-query
+   original-metadata :- [:maybe analyze/ResultsMetadata]]
   (log/debug "Querying for metadata")
-  (let [futur (legacy-result-metadata-future query)
+  (let [futur  (legacy-result-metadata-future query)
         result (deref futur metadata-sync-wait-ms ::timed-out)]
-    (if (= result ::timed-out)
-      {:metadata-future futur}
-      {:metadata result})))
+    (cond
+      (= result ::timed-out)      {:metadata-future futur}
+      (= result ::recompute-failed) {:metadata original-metadata}
+      :else                       {:metadata result})))
 
 (defn normalize-dataset-query
   "Normalize the query `dataset-query` received via an HTTP call.
@@ -151,7 +163,7 @@ saved later when it is ready."
       (maybe-async-model-result-metadata (assoc options :valid-metadata? valid-metadata?))
 
       :else
-      (maybe-async-recomputed-metadata query))))
+      (maybe-async-recomputed-metadata query original-metadata))))
 
 (def ^:private metadata-async-timeout-ms
   "Duration in milliseconds to wait for the metadata before abandoning the asynchronous metadata saving. Default is 15
@@ -173,6 +185,9 @@ saved later when it is ready."
               (log/infof "Metadata not ready in %s, abandoning" (u/format-milliseconds metadata-async-timeout-ms))
               (future-cancel result-metadata-future))
 
+            (= metadata ::recompute-failed)
+            (log/infof "Not updating metadata asynchronously for card %s because the recompute failed" id)
+
             (not (seq metadata))
             (log/infof "Not updating metadata asynchronously for card %s because no metadata" (u/the-id card))
 
@@ -187,17 +202,11 @@ saved later when it is ready."
           (log/errorf "Error updating metadata for Card %d asynchronously: %s" id (ex-message e)))))))
 
 (defn infer-metadata
-  "Infer the default result_metadata to store for MBQL cards.
-
-  Ignores any that might be present already."
+  "Infer the default result_metadata to store for MBQL cards, as no user, ignoring any already present."
   [query]
   (not-empty (request/with-current-user nil
                (u/ignore-exceptions
-                 (qp.preprocess/query->expected-cols
-                  ;; 1. This function is called when storing metadata.
-                  ;; 2. The metadata for storage shouldn't have remaps.
-                  ;; 3. Setting this keyword will keep the remapped fields out of the metadata.
-                  (assoc-in query [:middleware :disable-remaps?] true))))))
+                 (qp.preprocess/query->expected-cols query)))))
 
 (defn infer-metadata-with-model-overrides
   "Does a fresh [[infer-metadata]] for the provided query.

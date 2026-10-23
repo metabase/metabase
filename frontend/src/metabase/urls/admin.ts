@@ -4,6 +4,7 @@ import type {
   CustomVizPluginId,
   DatabaseId,
   FieldId,
+  GroupId,
   SchemaName,
   SegmentId,
   TableId,
@@ -54,6 +55,10 @@ export function unsubscribeUser(user: Pick<BaseUser, "id" | "tenant_id">) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/unsubscribe`
     : `${getTenantsBasePath()}/people/${user.id}/unsubscribe`;
+}
+
+export function adminGroup(groupId: GroupId) {
+  return `/admin/people/groups/${groupId}`;
 }
 
 // TODO: move to EE urls
@@ -144,8 +149,11 @@ export function dataModelSegmentRevisions(segmentId: SegmentId) {
   return `${dataModelSegment(segmentId)}/revisions`;
 }
 
+/** Default `/admin/settings` page. The index route redirects here. */
+export const SETTINGS_INDEX_SLUG = "general";
+
 export function generalSettings() {
-  return "/admin/settings/general";
+  return `/admin/settings/${SETTINGS_INDEX_SLUG}`;
 }
 
 export function domainsSettings() {

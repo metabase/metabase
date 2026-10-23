@@ -13,7 +13,7 @@ describe("QuestionMoreActionsMenu > Enterprise", () => {
         isEnterprise: true,
       });
       await openMenu();
-      expect(screen.getByText("Create an alert")).toBeInTheDocument();
+      expect(await screen.findByText("Create an alert")).toBeInTheDocument();
     });
 
     describe("alerts permission disabled", () => {
@@ -25,6 +25,9 @@ describe("QuestionMoreActionsMenu > Enterprise", () => {
           isEnterprise: true,
         });
         await openMenu();
+
+        await screen.findByRole("menu");
+
         expect(screen.queryByText("Create an alert")).not.toBeInTheDocument();
       });
     });
@@ -39,7 +42,9 @@ describe("QuestionMoreActionsMenu > Enterprise", () => {
         isEnterprise: true,
       });
       await openMenu();
-      expect(screen.getByText("Verify this question")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Verify this question"),
+      ).toBeInTheDocument();
     });
 
     it('should show "Remove verification" for admin users on verified questions', async () => {
@@ -53,7 +58,9 @@ describe("QuestionMoreActionsMenu > Enterprise", () => {
         ],
       });
       await openMenu();
-      expect(screen.getByText("Remove verification")).toBeInTheDocument();
+      expect(
+        await screen.findByText("Remove verification"),
+      ).toBeInTheDocument();
     });
 
     it('should not show "Verify this question" for non-admin users', async () => {
@@ -64,6 +71,9 @@ describe("QuestionMoreActionsMenu > Enterprise", () => {
         isEnterprise: true,
       });
       await openMenu();
+
+      await screen.findByRole("menu");
+
       expect(
         screen.queryByText("Verify this question"),
       ).not.toBeInTheDocument();

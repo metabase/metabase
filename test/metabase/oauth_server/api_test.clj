@@ -1,13 +1,19 @@
-(ns metabase.oauth-server.api-test
+(ns ^:synchronized metabase.oauth-server.api-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing use-fixtures]]
+   [metabase.api-keys.core :as api-key]
+   [metabase.app-db.core :as mdb]
+   [metabase.auth-identity.core :as auth-identity]
    [metabase.config.core :as config]
    [metabase.mcp.core :as mcp]
    [metabase.oauth-server.api.oauth :as api.oauth]
    [metabase.oauth-server.core :as oauth-server]
+   [metabase.oauth-server.test-util :as oauth-server.tu]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
+   [metabase.util.secret :as u.secret]
+   [oidc-provider.store :as oidc.store]
    [oidc-provider.util :as oidc-util]
    [toucan2.core :as t2])
   (:import
@@ -18,9 +24,13 @@
 ;; reset-provider! is safe here — it resets a local atom, no global side effects.
 (use-fixtures :each (fn [thunk]
                       (oauth-server/reset-provider!)
-                      (binding [client/*url-prefix* ""]
-                        (thunk))
-                      (oauth-server/reset-provider!)))
+                      (oauth-server.tu/reset-token-throttlers!)
+                      (try
+                        (binding [client/*url-prefix* ""]
+                          (thunk))
+                        (finally
+                          (oauth-server.tu/reset-token-throttlers!)
+                          (oauth-server/reset-provider!)))))
 
 (deftest discovery-endpoint-test
   (testing "Discovery endpoint returns valid OAuth metadata"
@@ -51,12 +61,13 @@
                      :scopes_supported         sequential?}
                     response))))))))
 
-(deftest protected-resource-metadata-advertises-the-baseline-test
-  (testing "GHY-4543: every protected-resource endpoint, including the bare one, advertises only the baseline. Claude
-            Code and the Claude connectors take their first-login scope from `scopes_supported` here; every tool is
-            still listed, and a call needing more is answered with a 403 `insufficient_scope` step-up. The baseline
-            must be accepted by the `:resource` the document names, or the first login is narrowed away; asserted
-            against that `:resource` rather than the URL requested, so the two cannot drift."
+(deftest protected-resource-metadata-advertises-every-v2-scope-test
+  (testing "ENG-11089: every protected-resource endpoint, including the bare one, advertises every v2 scope. Claude
+            Code and the Claude connectors take their first-login scope from `scopes_supported` here, and a manual
+            reconnect from the connector settings asks for exactly this list, so a scope left out is one that client
+            can never be granted. Every advertised scope must be accepted by the `:resource` the document names, or
+            the first login is narrowed away; asserted against that `:resource` rather than the URL requested, so the
+            two cannot drift."
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (doseq [url [".well-known/oauth-protected-resource"
                    ".well-known/oauth-protected-resource/api/metabase-mcp"
@@ -64,7 +75,8 @@
         (testing url
           (let [response      (mt/user-http-request :crowberto :get 200 url)
                 resource-path (str/replace (:resource response) "http://localhost:3000" "")]
-            (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+            (is (= #{"agent:content:read" "agent:content:write" "agent:query:run"
+                     "agent:sql:run" "agent:delivery:write"}
                    (set (:scopes_supported response))))
             (is (empty? (remove (set (oauth-server/mcp-resource-scopes resource-path))
                                 (:scopes_supported response))))))))))
@@ -77,7 +89,7 @@
       (let [advertised (set (:scopes_supported (mt/user-http-request :crowberto :get 200
                                                                      ".well-known/oauth-authorization-server")))]
         (doseq [scope ["agent:content:read" "agent:content:write" "agent:query:run"
-                       "agent:sql:run" "agent:delivery:write" "agent:resource:read"]]
+                       "agent:sql:run" "agent:delivery:write"]]
           (testing scope
             (is (contains? advertised scope))))
         (is (= (set (oauth-server/supported-scopes)) advertised))))))
@@ -91,9 +103,10 @@
                  :authorization_servers    ["http://localhost:3000"]
                  :bearer_methods_supported ["header"]}
                 response))
-        (testing "the bare path is the one clients probe, so it advertises the same baseline as the canonical
+        (testing "the bare path is the one clients probe, so it advertises the same scopes as the canonical
                   path it names, and none of the retired per-entity agent-API scopes"
-          (is (= #{"agent:content:read" "agent:query:run" "agent:resource:read"}
+          (is (= #{"agent:content:read" "agent:content:write" "agent:query:run"
+                   "agent:sql:run" "agent:delivery:write"}
                  (set (:scopes_supported response))))
           (is (not (contains? (set (:scopes_supported response)) "agent:question:create"))))))))
 
@@ -878,13 +891,15 @@
 
 (defn- token-request!
   "POST to /oauth/token with form-encoded params."
-  [params & {:keys [expected-status authorization]
+  [params & {:keys [expected-status authorization ip-address full-response?]
              :or   {expected-status 200}}]
   (let [request-options (cond-> {:headers {"content-type" "application/x-www-form-urlencoded"}}
-                          authorization (assoc-in [:headers "authorization"] authorization))]
-    (client/client :post expected-status "oauth/token"
-                   {:request-options request-options}
-                   params)))
+                          authorization (assoc-in [:headers "authorization"] authorization)
+                          ip-address    (assoc-in [:headers "x-forwarded-for"] ip-address))
+        request         (if full-response? client/client-full-response client/client)]
+    (request :post expected-status "oauth/token"
+             {:request-options request-options}
+             params)))
 
 (set! *warn-on-reflection* true)
 
@@ -929,6 +944,235 @@
                              :expected-status 400
                              :authorization (basic-auth-header client-id client-secret))]
           (is (=? {:error "invalid_grant"} response)))))))
+
+(deftest token-refusals-throttled-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)
+            params        {:grant_type   "authorization_code"
+                           :code         "bogus-code"
+                           :redirect_uri "https://example.com/callback"}
+            authorization (basic-auth-header client-id client-secret)]
+        (dotimes [_ 10]
+          (is (= "invalid_grant"
+                 (:error (token-request! params :expected-status 400 :authorization authorization)))))
+        (let [response (token-request! params :expected-status 429 :authorization authorization :full-response? true)]
+          (is (= "too_many_requests" (get-in response [:body :error])))
+          (is (= (str "Too many attempts! You must wait " (get-in response [:headers "Retry-After"])
+                      " seconds before trying again.")
+                 (get-in response [:body :error_description])))
+          (is (some-> (get-in response [:headers "Retry-After"]) parse-long pos-int?))
+          (is (= 10 (count @(:attempts @#'api.oauth/token-ip-throttler)))))))))
+
+(deftest token-ip-refusals-throttled-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (dotimes [_ 50]
+      (is (= "invalid_request" (:error (token-request! {:grant_type "authorization_code"
+                                                        :client_id  (str (random-uuid))
+                                                        :code       "bogus-code"}
+                                                       :expected-status 400)))))
+    (is (= "too_many_requests"
+           (:error (token-request! {:grant_type "authorization_code"
+                                    :client_id  (str (random-uuid))
+                                    :code       "bogus-code"}
+                                   :expected-status 429))))))
+
+(deftest token-rotating-unknown-client-ids-get-only-the-ip-limit-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (dotimes [i 100]
+      (is (= (if (< i 50) "invalid_request" "too_many_requests")
+             (:error (token-request! {:grant_type "authorization_code"
+                                      :client_id  (str (random-uuid))
+                                      :code       "bogus-code"}
+                                     :expected-status (if (< i 50) 400 429))))))
+    (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))))
+
+(deftest token-ip-throttles-do-not-extend-client-lockout-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (doseq [client-attempt-count [0 8 9]]
+        (testing (str client-attempt-count " previous client refusals")
+          (oauth-server.tu/reset-token-throttlers!)
+          (mt/user-http-request :crowberto :get 200 "api/user/current")
+          (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)
+                ip-address       "198.51.100.6"
+                authorization    (basic-auth-header client-id client-secret)
+                params           {:grant_type   "authorization_code"
+                                  :code         (authorize-and-get-code! client-id)
+                                  :redirect_uri "https://example.com/callback"}
+                client-throttler @#'api.oauth/token-client-throttler
+                ip-throttler     @#'api.oauth/token-ip-throttler
+                now              (System/currentTimeMillis)]
+            (reset! (:attempts client-throttler)
+                    (repeat client-attempt-count [client-id (- now (* 10 60 1000))]))
+            (reset! (:attempts ip-throttler) (repeat 50 [ip-address (- now (* 59 60 1000))]))
+            (let [responses (repeatedly 10 #(token-request! params :authorization authorization :ip-address ip-address
+                                                            :expected-status 429 :full-response? true))]
+              (is (= (repeat 10 "too_many_requests") (map #(get-in % [:body :error]) responses)))
+              (is (every? #(some-> (get-in % [:headers "Retry-After"]) parse-long (<= 60)) responses)))
+            (is (= client-attempt-count (count @(:attempts client-throttler))))
+            (swap! (:attempts ip-throttler)
+                   (fn [attempts]
+                     (doall (for [[throttle-key timestamp] attempts]
+                              [throttle-key (- timestamp (* 60 1000))]))))
+            (is (string? (:access_token (token-request! params :authorization authorization
+                                                        :ip-address ip-address))))))))))
+
+(deftest token-overlong-body-client-id-rejected-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (let [response (token-request! {:grant_type "authorization_code"
+                                    :client_id  (apply str (repeat 256 "a"))
+                                    :code       "bogus-code"}
+                                   :expected-status 400 :full-response? true)]
+      (is (some? (get-in response [:body :errors :client_id])))
+      (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
+      (is (empty? @(:attempts @#'api.oauth/token-ip-throttler))))))
+
+(deftest token-requests-that-name-no-client-use-only-ip-throttle-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    ;; Revalidated before the transaction, as a session created inside it would be rolled back but stay cached
+    (mt/user-http-request :crowberto :get 200 "api/user/current")
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)
+            ip-address "198.51.100.1"
+            long-name  (apply str (repeat 256 "a"))]
+        (doseq [[description params authorization]
+                [["no client ID"               {}                            nil]
+                 ["an empty client ID"         {:client_id ""}               nil]
+                 ["an unknown client ID"       {:client_id "no-such-client"} nil]
+                 ;; A Basic username, even an empty one, names the client ahead of the body's `client_id`
+                 ["an empty Basic username"    {:client_id client-id}        (basic-auth-header "" "secret")]
+                 ["an overlong Basic username" {:client_id client-id}        (basic-auth-header long-name "secret")]]]
+          (testing description
+            (oauth-server.tu/reset-token-throttlers!)
+            (dotimes [_ 11]
+              (is (= "invalid_request"
+                     (:error (token-request! (merge {:grant_type "authorization_code" :code "bogus-code"} params)
+                                             :authorization authorization :ip-address ip-address
+                                             :expected-status 400)))))
+            (is (empty? @(:attempts @#'api.oauth/token-client-throttler)))
+            (is (= 11 (count @(:attempts @#'api.oauth/token-ip-throttler))))
+            (is (string? (:access_token
+                          (token-request! {:grant_type   "authorization_code"
+                                           :code         (authorize-and-get-code! client-id)
+                                           :redirect_uri "https://example.com/callback"}
+                                          :ip-address ip-address
+                                          :authorization (basic-auth-header client-id client-secret)))))))))))
+
+(deftest token-client-throttle-is-shared-across-ips-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (mt/user-http-request :crowberto :get 200 "api/user/current")
+      (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)]
+        (dotimes [i 10]
+          (is (= "invalid_request"
+                 (:error (token-request! {:grant_type    "refresh_token"
+                                          :client_id     client-id
+                                          :refresh_token "bogus-token"}
+                                         :ip-address (str "198.51.100." (+ 10 i)) :expected-status 400)))))
+        (is (= "too_many_requests"
+               (:error (token-request! {:grant_type   "authorization_code"
+                                        :client_id    client-id
+                                        :code         (authorize-and-get-code! client-id)
+                                        :redirect_uri "https://example.com/callback"}
+                                       :ip-address "198.51.100.3"
+                                       :authorization (basic-auth-header client-id client-secret)
+                                       :expected-status 429))))))))
+
+(deftest token-client-throttle-keys-on-the-stored-client-id-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (create-test-client! {:client_id "mixed-case-client"})
+      ;; MySQL and MariaDB match these spellings to the client, while H2 and Postgres match none
+      (let [spellings ["MIXED-CASE-CLIENT" "míxed-case-client" "mixed-case-client "
+                       (str "mixed-case-client" (apply str (repeat 250 " ")))]]
+        (dotimes [i 10]
+          (is (= "invalid_request"
+                 (:error (token-request! {:grant_type "refresh_token" :refresh_token "bogus-token"}
+                                         :authorization (basic-auth-header (nth spellings (mod i (count spellings)))
+                                                                           "wrong-secret")
+                                         :ip-address (str "198.51.100." (+ 20 i)) :expected-status 400)))))
+        (is (= (if (= :mysql (mdb/db-type)) {"mixed-case-client" 10} {})
+               (frequencies (map first @(:attempts @#'api.oauth/token-client-throttler)))))))))
+
+(deftest token-basic-auth-determines-client-throttle-key-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [{client-id :client_id} (create-test-client!)
+            authorization (basic-auth-header client-id "wrong-secret")
+            params        (fn [] {:grant_type "authorization_code"
+                                  :client_id  (str (random-uuid))
+                                  :code       "bogus-code"})]
+        (dotimes [_ 10]
+          (is (= "invalid_request"
+                 (:error (token-request! (params) :authorization authorization :expected-status 400)))))
+        (is (= "too_many_requests"
+               (:error (token-request! (params) :authorization authorization :expected-status 429))))))))
+
+(deftest token-retry-after-covers-the-blocking-windows-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (doseq [[client-age-minutes ip-age-minutes expected-wait]
+              [[40 nil 1200] [nil 40 1200] [40 20 2400] [20 40 2400]]]
+        (testing (str "client attempts aged " client-age-minutes ", IP attempts aged " ip-age-minutes)
+          (mt/user-http-request :crowberto :get 200 "api/user/current")
+          (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)
+                ip-address "198.51.100.4"
+                params     {:grant_type   "authorization_code"
+                            :code         (authorize-and-get-code! client-id)
+                            :redirect_uri "https://example.com/callback"}
+                authorization (basic-auth-header client-id client-secret)
+                client-throttler @#'api.oauth/token-client-throttler
+                ip-throttler     @#'api.oauth/token-ip-throttler
+                now              (System/currentTimeMillis)
+                attempts         (fn [throttler throttle-key age-minutes]
+                                   (when age-minutes
+                                     (concat (repeat (- (:attempts-threshold throttler) 2)
+                                                     [throttle-key (- now (* 10 60 1000))])
+                                             (repeat 4 [throttle-key (- now (* age-minutes 60 1000))]))))]
+            (reset! (:attempts client-throttler)
+                    (attempts client-throttler client-id client-age-minutes))
+            (reset! (:attempts ip-throttler) (attempts ip-throttler ip-address ip-age-minutes))
+            (let [response (token-request! params :authorization authorization :ip-address ip-address
+                                           :expected-status 429 :full-response? true)
+                  wait     (some-> (get-in response [:headers "Retry-After"]) parse-long)]
+              (is (pos-int? wait))
+              (when (pos-int? wait)
+                (is (= (str "Too many attempts! You must wait " wait " seconds before trying again.")
+                       (get-in response [:body :error_description])))
+                (is (<= (- expected-wait 60) wait expected-wait))
+                (let [second-response (token-request! params :authorization authorization :ip-address ip-address
+                                                      :expected-status 429 :full-response? true)
+                      second-wait     (some-> (get-in second-response [:headers "Retry-After"]) parse-long)]
+                  (is (pos-int? second-wait))
+                  (when (pos-int? second-wait)
+                    (is (= (str "Too many attempts! You must wait " second-wait " seconds before trying again.")
+                           (get-in second-response [:body :error_description])))
+                    (doseq [throttler [client-throttler ip-throttler]]
+                      (swap! (:attempts throttler)
+                             (fn [recorded]
+                               (doall (for [[throttle-key timestamp] recorded]
+                                        [throttle-key (- timestamp (* 1000 second-wait))])))))
+                    (is (string? (:access_token (token-request! params :authorization authorization
+                                                                :ip-address ip-address))))))))))))))
+
+(deftest successful-token-requests-do-not-count-toward-throttle-test
+  (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+    (t2/with-transaction [_conn nil {:rollback-only true}]
+      (let [{client-id :client_id, client-secret :client_secret} (create-test-client!)
+            authorization (basic-auth-header client-id client-secret)
+            code          (authorize-and-get-code! client-id)
+            tokens        (token-request! {:grant_type   "authorization_code"
+                                           :code         code
+                                           :redirect_uri "https://example.com/callback"}
+                                          :authorization authorization)]
+        (loop [refresh-token (:refresh_token tokens), remaining 51]
+          (when (pos? remaining)
+            (let [response (token-request! {:grant_type    "refresh_token"
+                                            :refresh_token refresh-token}
+                                           :authorization authorization)]
+              (is (string? (:access_token response)))
+              (recur (:refresh_token response) (dec remaining)))))))))
 
 (deftest token-auth-code-wrong-client-test
   (testing "GHY-4491: Authorization code grant -- a code issued to another client is an invalid grant"
@@ -1489,9 +1733,9 @@
                 "pre-v2 per-entity agent scopes, and `validate-scope` rejects any requested scope absent from that "
                 "snapshot, so a user forced to re-authorize is answered with a 400 `invalid_scope` JSON body "
                 "rendered raw in their browser tab and has no in-product recovery path. "
-                "`WidenDynamicOAuthClientScopesForMcpV2` unions the six v2 scopes into every dynamically registered "
+                "`WidenDynamicOAuthClientScopesForMcpV2` unions the v2 scopes into every dynamically registered "
                 "client's snapshot so the request validates and reaches consent.")
-    ;; GHY-4543: reading a dynamic client now adds the six v2 scopes whatever the registration setting says, so the
+    ;; GHY-4543: reading a dynamic client now adds the five v2 scopes whatever the registration setting says, so the
     ;; request reaches consent with or without the migration applied. Registration is disabled so only that MCP part
     ;; of the ceiling applies. A static client carrying the same legacy snapshot is the control: it is never widened,
     ;; so it shows what the stored snapshot alone decides.
@@ -1500,7 +1744,7 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [legacy-scopes ["agent:question:create" "agent:sql:construct" "agent:viz:mcp-ui:query"]
               v2-scopes     ["agent:content:read" "agent:content:write" "agent:query:run"
-                             "agent:sql:run" "agent:delivery:write" "agent:resource:read"]
+                             "agent:sql:run" "agent:delivery:write"]
               authorize!    (fn [client-id expected-status]
                               (mt/user-http-request-full-response
                                :crowberto :get expected-status "oauth/authorize"
@@ -1513,11 +1757,11 @@
                               (is (str/includes? (get-in response [:headers "Content-Type"]) "text/html")
                                   "the user sees a consent page, not a JSON error body rendered in their browser tab")
                               (is (str/includes? (:body response) "agent:content:read")
-                                  "and the six v2 scopes are what they are consenting to"))
+                                  "and the five v2 scopes are what they are consenting to"))
               static-id     (:client_id (create-test-client! {:scopes legacy-scopes}))
               dynamic-id    (:client_id (create-test-client! {:scopes            legacy-scopes
                                                               :registration_type "dynamic"}))]
-          (testing "control: the six v2 scopes are refused against the legacy snapshot alone"
+          (testing "control: the five v2 scopes are refused against the legacy snapshot alone"
             (is (= {:error             "invalid_scope"
                     :error_description invalid-request-description}
                    (:body (authorize! static-id 400)))))
@@ -1575,10 +1819,8 @@
         (refused? (authorize "dynamic" false not-mcp))))))
 
 (deftest grant-ceiling-widening-respects-mcp-kill-switch-test
-  (testing (str "GHY-4543: the MCP-scope widening stops when an admin turns MCP off. `agent:resource:read` is an MCP "
-                "surface scope and also the declared scope of `POST /api/agent/v1/read-resource`, which a separate "
-                "lever (`agent-api-enabled`) gates — so widening onto it with MCP off hands a dynamic client a scope "
-                "its registration never included, and with the agent API on, a live endpoint to spend it at.")
+  (testing (str "GHY-4543: the MCP-scope widening stops when an admin turns MCP off, so a dynamic client gets no scope "
+                "its registration never included for a surface that no longer serves.")
     (let [authorize (fn [mcp-on?]
                       (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                                          mcp-enabled?                              mcp-on?
@@ -1596,7 +1838,7 @@
                              :client_id     client-id
                              :redirect_uri  "https://example.com/callback"
                              :response_type "code"
-                             :scope         "agent:resource:read"
+                             :scope         "agent:query:run"
                              :state         "test-state")))))]
       (testing "with MCP enabled a dynamic client is widened onto the MCP scopes and reaches consent"
         (let [response (authorize true)]
@@ -1951,7 +2193,7 @@
 
 (def ^:private v2-scope-set
   #{"agent:content:read" "agent:content:write" "agent:query:run"
-    "agent:sql:run" "agent:delivery:write" "agent:resource:read"})
+    "agent:sql:run" "agent:delivery:write"})
 
 (defn- mcp-resource-uri []
   (str "http://localhost:3000" (mcp/mcp-canonical-path)))
@@ -2032,7 +2274,7 @@
   (some-> (:scope token-response) (str/split #" ") set))
 
 (def ^:private v2-baseline-scope-set
-  #{"agent:content:read" "agent:query:run" "agent:resource:read"})
+  #{"agent:content:read" "agent:query:run"})
 
 (deftest registration-scope-does-not-narrow-step-up-test
   (testing (str "GHY-4543: Claude Code registers with the scope it read from the protected-resource metadata, then "
@@ -2043,7 +2285,7 @@
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [{:keys [authorize token]} (register-then-authorize-mcp!
-                                         {:scope "agent:content:read agent:query:run agent:resource:read"}
+                                         {:scope "agent:content:read agent:query:run"}
                                          (str/join " " (sort v2-scope-set)))]
           (testing "the step-up request reaches the consent page"
             (is (= 200 (:status authorize)) (pr-str (:body authorize)))
@@ -2080,7 +2322,7 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (let [not-mcp                   (first (remove v2-scope-set (oauth-server/default-grant-scopes)))
               {:keys [authorize token]} (register-then-authorize-mcp!
-                                         {:scope "agent:content:read agent:query:run agent:resource:read"}
+                                         {:scope "agent:content:read agent:query:run"}
                                          (str/join " " (conj (sort v2-scope-set) not-mcp)))]
           (is (some? not-mcp) "the default ceiling holds a scope the MCP resource does not accept")
           (is (= 200 (:status authorize)) (pr-str (:body authorize)))
@@ -2111,13 +2353,13 @@
       (t2/with-transaction [_conn nil {:rollback-only true}]
         (testing "control: the same flow reaches consent for a scope inside the default ceiling"
           (let [response (register-then-authorize-without-resource!
-                          {:scope "agent:content:read agent:query:run agent:resource:read"}
+                          {:scope "agent:content:read agent:query:run"}
                           "agent:content:write")]
             (is (= 200 (:status response)) (pr-str (:body response)))))
         (doseq [scope [oauth-server/full-access-scope "*" "agent:*" "bogus:nonsense"]]
           (testing scope
             (let [response (register-then-authorize-without-resource!
-                            {:scope "agent:content:read agent:query:run agent:resource:read"}
+                            {:scope "agent:content:read agent:query:run"}
                             scope)]
               (is (= 400 (:status response)))
               (is (= "invalid_scope" (get-in response [:body :error]))))))))))
@@ -2139,7 +2381,7 @@
   (str/join " " (sort v2-scope-set)))
 
 (deftest decision-mints-only-chosen-scopes-test
-  (testing (str "GHY-4555: a client requests all six v2 scopes and the user ticks only `agent:content:write`. The "
+  (testing (str "GHY-4555: a client requests all five v2 scopes and the user ticks only `agent:content:write`. The "
                 "token carries that plus the always-granted baseline, and neither the token response nor the stored "
                 "token holds the scopes the user left unticked.")
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
@@ -2148,7 +2390,7 @@
         (let [client       (register-mcp-client! {})
               consent-resp (get-mcp-consent-page! (:client_id client) all-v2-scopes)
               expected     (conj v2-baseline-scope-set "agent:content:write")]
-          (is (= v2-scope-set (set (offered-scopes consent-resp))) "the page offers all six")
+          (is (= v2-scope-set (set (offered-scopes consent-resp))) "the page offers all five")
           (let [token  (exchange-code! client (post-mcp-decision! (:client_id client) consent-resp
                                                                   ["agent:content:write"] 302))
                 stored (:scopes (oauth-server/resolve-access-token (:access_token token)))]
@@ -2168,7 +2410,7 @@
         (let [client       (register-mcp-client! {})
               consent-resp (get-mcp-consent-page!
                             (:client_id client)
-                            "agent:content:read agent:query:run agent:resource:read agent:content:write")]
+                            "agent:content:read agent:query:run agent:content:write")]
           (doseq [granted [["agent:sql:run"]
                            ["agent:content:write" "agent:delivery:write"]
                            [oauth-server/full-access-scope]
@@ -2221,7 +2463,7 @@
     (mt/with-temporary-setting-values [site-url                                  "http://localhost:3000"
                                        oauth-server-dynamic-registration-enabled true]
       (t2/with-transaction [_conn nil {:rollback-only true}]
-        (testing "all six offered, nothing chosen: the token carries the baseline"
+        (testing "all five offered, nothing chosen: the token carries the baseline"
           (let [client       (register-mcp-client! {})
                 consent-resp (get-mcp-consent-page! (:client_id client) all-v2-scopes)
                 token        (exchange-code! client (post-mcp-decision! (:client_id client) consent-resp nil 302))]
@@ -2258,14 +2500,14 @@
      :disabled? (boolean (re-find #"\sdisabled[\s=/>]" tag))}))
 
 (deftest consent-page-scope-order-test
-  (testing (str "GHY-4555: the six v2 scopes are listed least to most harmful whatever order they were requested in, "
+  (testing (str "GHY-4555: the five v2 scopes are listed least to most harmful whatever order they were requested in, "
                 "and any other requested scope follows in request order")
     (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
       (t2/with-transaction [_conn nil {:rollback-only true}]
         ;; a registered non-v2 scope: GHY-4542 drops unregistered scopes before the page is rendered
         (let [not-v2    (first-non-mcp-default-scope)
               requested [not-v2 "agent:delivery:write" "agent:sql:run" oauth-server/full-access-scope
-                         "agent:content:write" "agent:query:run" "agent:content:read" "agent:resource:read"]
+                         "agent:content:write" "agent:query:run" "agent:content:read"]
               client-id (:client_id (create-test-client! {:scopes requested}))
               body      (:body (mt/user-http-request-full-response
                                 :crowberto :get 200 "oauth/authorize"
@@ -2274,13 +2516,12 @@
                                 :response_type "code"
                                 :scope         (str/join " " requested)
                                 :state         "test-state"))]
-          (is (= ["agent:resource:read" "agent:content:read" "agent:query:run"
+          (is (= ["agent:content:read" "agent:query:run"
                   "agent:content:write" "agent:sql:run" "agent:delivery:write"
                   not-v2 oauth-server/full-access-scope]
                  (map :scope (consent-checkboxes body))))
           (testing "the baseline is ticked and locked; everything else, `mb:full` included, starts ticked (GHY-4826)"
-            (is (= {"agent:resource:read"          [true true]
-                    "agent:content:read"           [true true]
+            (is (= {"agent:content:read"           [true true]
                     "agent:query:run"              [true true]
                     "agent:content:write"          [true false]
                     "agent:sql:run"                [true false]
@@ -2288,11 +2529,6 @@
                     not-v2                         [true false]
                     oauth-server/full-access-scope [true false]}
                    (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes body))))))))))
-
-(deftest consent-scope-order-covers-v2-scopes-test
-  (testing "GHY-4555: the consent order ranks exactly the v2 scopes, so a new v2 scope is not silently listed last"
-    (is (= (set (mcp/v2-scopes)) (set @#'api.oauth/consent-scope-order)))
-    (is (= (count (mcp/v2-scopes)) (count @#'api.oauth/consent-scope-order)))))
 
 (deftest consent-page-opts-into-script-nonce-test
   (testing (str "GHY-4568: the consent page's inline script needs a `script-src` nonce. Dev mode allows "
@@ -2360,8 +2596,7 @@
   (into {} (map (juxt :scope (juxt :checked? :disabled?))) (consent-checkboxes (:body response))))
 
 (def ^:private baseline-locked
-  {"agent:resource:read" [true true]
-   "agent:content:read"  [true true]
+  {"agent:content:read"  [true true]
    "agent:query:run"     [true true]})
 
 (deftest consent-page-ignores-held-scopes-test
@@ -2499,7 +2734,7 @@
         (let [mcp-uri   (str "http://localhost:3000" (mcp/mcp-canonical-path))
               not-mcp   (first-non-mcp-default-scope)
               ;; what `POST /oauth/register` stores for a client that registered with the baseline `scope`
-              client-id (:client_id (create-test-client! {:scopes            (vec (mcp/v2-baseline-scopes))
+              client-id (:client_id (create-test-client! {:scopes            (filterv mcp/v2-baseline-scope? (mcp/v2-scopes))
                                                           :registration_type "dynamic"}))
               authorize (fn [scope & resource]
                           (apply mt/user-http-request-full-response
@@ -2511,7 +2746,7 @@
                                  :state         "test-state"
                                  resource))]
           (is (some? not-mcp) "the default ceiling holds a scope the MCP surface does not accept")
-          (testing "the client reaches consent for all six v2 scopes against the MCP resource"
+          (testing "the client reaches consent for all five v2 scopes against the MCP resource"
             (let [response (authorize (str/join " " (sort v2-scope-set)) :resource mcp-uri)]
               (is (= 200 (:status response)) (pr-str (:body response)))
               (is (= v2-scope-set (some-> (extract-hidden-field "scope" (:body response)) (str/split #" ") set)))))
@@ -2520,3 +2755,162 @@
             (let [response (authorize not-mcp)]
               (is (= 400 (:status response)))
               (is (= "invalid_scope" (get-in response [:body :error]))))))))))
+
+;;; ------------------------------------------ Who may consent -----------------------------------------------------
+
+(def ^:private consent-request-params
+  {:redirect_uri  "https://example.com/callback"
+   :response_type "code"
+   :scope         "agent:content:read"
+   :state         "test-state"})
+
+(defn- consent-get!
+  "GET /oauth/authorize for `client-id`, sending only `headers` (no test-user session), expecting `expected-status`.
+   Returns the full response."
+  [headers expected-status client-id]
+  (apply client/client-full-response :get expected-status "oauth/authorize"
+         {:request-options {:headers headers}}
+         (mapcat identity (assoc consent-request-params :client_id client-id))))
+
+(defn- consent-approve!
+  "POST an approval of `client-id`'s consent form to /oauth/authorize/decision, sending only `headers` plus the CSRF
+   cookie and `extra-cookies`. The form is signed exactly as the consent page signs it, so a refusal can only come
+   from who is asking. Returns the full response."
+  [headers extra-cookies expected-status client-id]
+  (let [csrf-token "0123456789abcdef0123456789abcdef"
+        params     (assoc consent-request-params :client_id client-id)]
+    (client/client-full-response
+     :post expected-status "oauth/authorize/decision"
+     {:request-options {:headers (merge headers
+                                        {"content-type" "application/x-www-form-urlencoded"
+                                         "cookie"       (str/join "; " (cons (str "metabase.OAUTH_CSRF=" csrf-token)
+                                                                             extra-cookies))})}}
+     (assoc params
+            :approved      "true"
+            :granted_scope "agent:content:read"
+            :csrf_token    csrf-token
+            :params_sig    (sign-decision-params csrf-token params)))))
+
+(defn- authorization-code-user-ids
+  "The user ids of the authorization codes issued to `client-id`."
+  [client-id]
+  (t2/select-fn-vec :user_id :model/OAuthAuthorizationCode :client_id client-id))
+
+(defn- session-cookie [session-key]
+  (str "metabase.SESSION=" session-key))
+
+(defn- refused-like-anonymous!
+  "Assert that the consent endpoints treat a request sending `headers` exactly as an anonymous one: the consent page
+   redirects to login, and an approval is refused without issuing a code."
+  [headers client-id]
+  (testing "GET /oauth/authorize redirects to login instead of rendering the consent page"
+    (let [response (consent-get! headers 302 client-id)]
+      (is (str/starts-with? (get-in response [:headers "Location"])
+                            "http://localhost:3000/auth/login?redirect="))
+      (is (not (str/includes? (str (:body response)) "/oauth/authorize/decision")))))
+  (testing "POST /oauth/authorize/decision is refused and issues no code"
+    (let [response (consent-approve! headers nil 401 client-id)]
+      (is (= {:error "unauthorized"} (:body response)))
+      (is (nil? (get-in response [:headers "Location"])))
+      (is (empty? (authorization-code-user-ids client-id))))))
+
+(deftest api-key-cannot-consent-test
+  (testing "GHY-4960: an API key must never mint an OAuth token, so the consent endpoints treat it exactly like an
+            anonymous request. These keys are bound to personal users, an admin and a non-admin, so the refusal
+            comes from the credential, not from the user type."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (doseq [[description user raw-key] [["an admin's API key" :crowberto "mb_consentadmin1"]
+                                            ["a non-admin's API key" :rasta "mb_consentuser01"]]]
+          (testing description
+            (mt/with-temp [:model/ApiKey _ {:name                  description
+                                            :user_id               (mt/user->id user)
+                                            :creator_id            (mt/user->id :crowberto)
+                                            :updated_by_id         (mt/user->id :crowberto)
+                                            ::api-key/unhashed-key (u.secret/secret raw-key)}]
+              (testing "the key really authenticates, so the refusal is about how, not whether"
+                (client/client :get 200 "api/user/current" {:request-options {:headers {"x-api-key" raw-key}}}))
+              (refused-like-anonymous! {"x-api-key" raw-key} (:client_id (create-test-client!))))))))))
+
+(deftest oauth-bearer-token-cannot-consent-test
+  (testing "GHY-4287: an OAuth bearer token, even one holding the full-access scope, cannot consent to mint another
+            token. The consent endpoints treat it exactly like an anonymous request."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [client-id (:client_id (create-test-client!))
+              token     (str (random-uuid))]
+          (oidc.store/save-access-token (:token-store (oauth-server/get-provider))
+                                        token (str (mt/user->id :crowberto)) client-id
+                                        [oauth-server/full-access-scope]
+                                        (+ (inst-ms (java.util.Date.)) 3600000) nil)
+          (testing "the token really authenticates, so the refusal is about how, not whether"
+            (client/client :get 200 "api/user/current"
+                           {:request-options {:headers {"authorization" (str "Bearer " token)}}}))
+          (refused-like-anonymous! {"authorization" (str "Bearer " token)} client-id))))))
+
+(defn- consents!
+  "Assert that a request sending `headers` and `extra-cookies` sees the consent page, and that its approval issues a
+   code for `user-id`."
+  [headers extra-cookies user-id client-id]
+  (testing "GET /oauth/authorize renders the consent page"
+    (let [headers  (cond-> headers
+                     (seq extra-cookies) (assoc "cookie" (str/join "; " extra-cookies)))
+          response (consent-get! headers 200 client-id)]
+      (is (str/includes? (:body response) "/oauth/authorize/decision"))))
+  (testing "POST /oauth/authorize/decision issues a code for the session's user"
+    (let [response (consent-approve! headers extra-cookies 302 client-id)]
+      (is (some? (extract-query-param (get-in response [:headers "Location"]) "code")))
+      (is (= [user-id] (authorization-code-user-ids client-id))))))
+
+(defn- insert-user!
+  "Insert a User with `overrides`. Not `with-temp`: the code an approval issues references the user, so only the
+   enclosing rollback-only transaction can remove it."
+  [overrides]
+  (t2/insert-returning-instance! :model/User (merge (mt/with-temp-defaults :model/User) overrides)))
+
+(defn- login-session-key!
+  "Log `user` in with a password session and return its session key."
+  [user]
+  (:key (auth-identity/create-session-with-auth-tracking! user nil :provider/password)))
+
+(deftest login-session-can-consent-test
+  (testing "GHY-4287: a login session for a personal user can consent, whether it arrives as the session cookie or as
+            the X-Metabase-Session header, and whether a password login or an SSO login minted it"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [user (insert-user! {})]
+          (t2/insert! :model/AuthIdentity {:user_id (:id user) :provider "oidc"})
+          (let [session-key (login-session-key! user)]
+            (testing "a session cookie"
+              (consents! {} [(session-cookie session-key)] (:id user) (:client_id (create-test-client!))))
+            (testing "the X-Metabase-Session header"
+              (consents! {"x-metabase-session" session-key} nil (:id user) (:client_id (create-test-client!)))))
+          (testing "an SSO-provisioned session"
+            (let [session (auth-identity/create-session-with-auth-tracking! user nil :provider/oidc)]
+              (testing "the session really is auth-identity-linked, otherwise this is a plain-session test"
+                (is (some? (:auth_identity_id session))))
+              (consents! {} [(session-cookie (:key session))] (:id user) (:client_id (create-test-client!))))))))))
+
+(deftest session-wins-over-api-key-for-consent-test
+  (testing "GHY-4287: a request carrying both a session cookie and an API key is authenticated by the session, as on
+            every other route, so consent works and the code is issued to the session's user, not the key's"
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (mt/with-temp [:model/ApiKey _ {:name                  "consent key"
+                                        :user_id               (mt/user->id :crowberto)
+                                        :creator_id            (mt/user->id :crowberto)
+                                        :updated_by_id         (mt/user->id :crowberto)
+                                        ::api-key/unhashed-key (u.secret/secret "mb_consentboth01")}]
+          (let [user (insert-user! {})]
+            (consents! {"x-api-key" "mb_consentboth01"} [(session-cookie (login-session-key! user))]
+                       (:id user) (:client_id (create-test-client!)))))))))
+
+(deftest non-personal-user-session-cannot-consent-test
+  (testing "GHY-4287: only a personal user can consent. A login session for any other kind of user is treated like an
+            anonymous request."
+    (mt/with-temporary-setting-values [site-url "http://localhost:3000"]
+      (t2/with-transaction [_conn nil {:rollback-only true}]
+        (let [session-key (login-session-key! (insert-user! {:type :api-key}))]
+          (testing "the session really authenticates, so the refusal is about who, not whether"
+            (client/client session-key :get 200 "api/user/current"))
+          (refused-like-anonymous! {"x-metabase-session" session-key} (:client_id (create-test-client!))))))))

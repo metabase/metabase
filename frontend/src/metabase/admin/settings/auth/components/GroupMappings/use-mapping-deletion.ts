@@ -99,8 +99,7 @@ export function useMappingDeletion({
     if (failureCount > 0) {
       sendToast({
         message: t`Mapping deleted, but not all of its groups could be updated`,
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "warning",
       });
       return;
     }
@@ -111,8 +110,7 @@ export function useMappingDeletion({
           `Mapping deleted, but its deleted groups could not be removed from the other mappings`,
           deletedIds.length,
         ),
-        icon: "warning",
-        toastColor: "feedback-negative",
+        variant: "warning",
       });
       return;
     }

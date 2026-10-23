@@ -2,7 +2,7 @@
 // oxfmt-ignore
 import {
   createMockStore,
-  mockFetchTableMetadata,
+  mockFetchTableMetadataAndForeignKeys,
   mockRunRtkEndpoint,
   mockSelectMetadataProviderUnfiltered,
   resetTestState,
@@ -54,10 +54,12 @@ describe("resolveDatasetQuery", () => {
       limit: 100,
     });
 
-    expect(mockFetchTableMetadata).toHaveBeenCalledWith({ id: 1 });
+    expect(mockFetchTableMetadataAndForeignKeys).toHaveBeenCalledWith({
+      id: 1,
+    });
 
     expect(store.dispatch).toHaveBeenCalledWith({
-      type: "fetchTableMetadata",
+      type: "fetchTableMetadataAndForeignKeys",
       payload: 1,
     });
 
@@ -211,7 +213,9 @@ describe("resolveDatasetQuery", () => {
       limit: 100,
     });
 
-    expect(mockFetchTableMetadata).toHaveBeenCalledWith({ id: 1 });
+    expect(mockFetchTableMetadataAndForeignKeys).toHaveBeenCalledWith({
+      id: 1,
+    });
 
     expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
       1,
@@ -360,7 +364,7 @@ describe("resolveDatasetQuery", () => {
       source: TEST_SCHEMA.questions.ordersQuestion,
     });
 
-    expect(mockFetchTableMetadata).not.toHaveBeenCalled();
+    expect(mockFetchTableMetadataAndForeignKeys).not.toHaveBeenCalled();
 
     expect(mockRunRtkEndpoint).toHaveBeenNthCalledWith(
       1,
@@ -826,11 +830,71 @@ describe("resolveDatasetQuery aggregation column names", () => {
   });
 });
 
+describe("resolveDatasetQuery time-interval filters", () => {
+  it("passes a relative date window as an amount and a unit", async () => {
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: TEST_SCHEMA.tables.orders,
+      filters: [
+        filter(TEST_SCHEMA.tables.orders.fields.createdAt, "time-interval", [
+          -24,
+          "month",
+        ]),
+      ],
+    });
+
+    expect(stagesOf(datasetQuery)[0].filters).toEqual([
+      [
+        "time-interval",
+        expect.anything(),
+        ["field", expect.anything(), 103],
+        -24,
+        "month",
+      ],
+    ]);
+  });
+});
+
 describe("resolveDatasetQuery named breakouts", () => {
   const orders = TEST_SCHEMA.tables.orders;
   const createdMonth = breakout(orders.fields.createdAt, {
     unit: "month",
     name: "created_month",
+  });
+
+  it("orders by a named breakout on a joined field through its foreign key", async () => {
+    const productName = breakout(
+      TEST_SCHEMA.metrics.revenue.dimensions.orders.product,
+      { name: "product_name" },
+    );
+
+    expect(orderBy(productName, "desc")).toEqual({
+      type: "column",
+      name: "product_name",
+      sourceFieldId: 104,
+      direction: "desc",
+    });
+
+    const datasetQuery = await resolveDatasetQueryInBundle(createMockStore())({
+      source: orders,
+      aggregations: [count()],
+      breakouts: [productName],
+      orderBys: [orderBy(productName, "desc")],
+    });
+
+    expect(stagesOf(datasetQuery)[0]["order-by"]).toEqual([
+      [
+        "desc",
+        expect.anything(),
+        [
+          "field",
+          expect.objectContaining({
+            name: "product_name",
+            "source-field": 104,
+          }),
+          202,
+        ],
+      ],
+    ]);
   });
 
   it("names a breakout's result column with breakout's name option", async () => {

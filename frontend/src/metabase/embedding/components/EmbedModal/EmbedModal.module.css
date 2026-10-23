@@ -3,3 +3,18 @@
 
   border-bottom: 1px solid var(--mb-color-border-neutral);
 }
+
+/* As tall as the viewport allows, so the header stays put and the columns below scroll on their own */
+.content {
+  display: flex;
+  flex-direction: column;
+  height: min(60rem, calc(100dvh - var(--modal-y-offset) * 2));
+  overflow: hidden;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}

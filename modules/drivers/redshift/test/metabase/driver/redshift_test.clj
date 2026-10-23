@@ -89,7 +89,7 @@
 (deftest remark-test
   (testing "if I run a Redshift query, does it get a remark added to it?"
     (mt/test-driver :redshift
-      (let [expected (for [line ["-- /* partner: \"metabase\", {\"dashboard_id\":5678,\"chart_id\":1234,\"optional_user_id\":1000,\"optional_account_id\":\"{{site-uuid}}\",\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */ Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2"
+      (let [expected (for [line ["-- /* partner: \"metabase\", {\"dashboard_id\":5678,\"chart_id\":1234,\"optional_user_id\":1000,\"optional_account_id\":\"{{site-uuid}}\",\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */ Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2 accountID: {{site-uuid}} dashboardID: 5678 cardID: 1234 context: ad-hoc databaseID: {{database-id}}"
                                  "SELECT"
                                  "  \"{{schema}}\".\"test_data_users\".\"id\" AS \"id\","
                                  "  \"{{schema}}\".\"test_data_users\".\"name\" AS \"name\","
@@ -110,6 +110,7 @@
                                  "  2000"]]
                        (-> line
                            (str/replace #"\Q{{site-uuid}}\E" (system/site-uuid))
+                           (str/replace #"\Q{{database-id}}\E" (str (mt/id)))
                            (str/replace #"\Q{{schema}}\E" (redshift.tx/unique-session-schema))))]
         (is (= expected
                (sql->lines

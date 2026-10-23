@@ -9,6 +9,7 @@
    [metabase-enterprise.serialization.v2.models :as serdes.models]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.transient-error :as transient-error]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.search.core :as search]
    [metabase.util :as u]
@@ -223,8 +224,9 @@
             (with-retries 3 200
               (fn []
                 (try
-                  (t2/with-transaction [_tx]
-                    (serdes/load-one! ingested local-or-nil))
+                  (binding [mi/*deserializing?* true]
+                    (t2/with-transaction [_tx]
+                      (serdes/load-one! ingested local-or-nil)))
                   (catch Throwable e
                     (serdes/reset-import-cache!)
                     (throw e)))))

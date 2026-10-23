@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
+import { UnarchiveCollectionButton } from "metabase/common/collections/components/UnarchiveCollectionButton";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   isCollectionData,
@@ -54,12 +54,13 @@ export const useColumnDef = ({ handleUnarchiveClick }: ColumnDefProps) => {
           }
 
           if (isCollectionData(data)) {
-            return <CollectionRowMenu collection={data} />;
+            return <UnarchiveCollectionButton collection={data} />;
           }
 
           return (
             <Tooltip label={t`Unarchive snippet`}>
               <ActionIcon
+                variant="subtle"
                 aria-label={t`Unarchive snippet`}
                 size="md"
                 onClick={async (event) => {
