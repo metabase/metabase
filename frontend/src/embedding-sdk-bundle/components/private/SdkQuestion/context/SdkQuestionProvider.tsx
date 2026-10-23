@@ -10,6 +10,7 @@ import {
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
+import { useReportComponentReady } from "embedding-sdk-bundle/analytics/component-signals";
 import { SdkError } from "embedding-sdk-bundle/components/private/PublicComponentWrapper";
 import { useSdkInternalNavigationOptional } from "embedding-sdk-bundle/components/private/SdkInternalNavigation/context";
 import { SdkQuestionAlertListModal } from "embedding-sdk-bundle/components/private/notifications/SdkQuestionAlertListModal";
@@ -94,6 +95,7 @@ export const SdkQuestionProvider = ({
   navigatedEntity,
   onVisualizationChange,
   initialVisualization,
+  sdkComponentName,
 }: SdkQuestionProviderProps) => {
   const isGuestEmbed = useSdkSelector(getIsGuestEmbed);
   const dispatch = useSdkDispatch();
@@ -375,6 +377,37 @@ export const SdkQuestionProvider = ({
       });
     }
   }, [questionId, question, navigation]);
+
+  // Derive question-level error state for the ready/error signal.
+  const questionErrorType = (() => {
+    if (isGuestEmbed && isNewQuestion) {
+      return "config_error";
+    }
+    if (tokenError || tokenFetchError) {
+      return "auth_error";
+    }
+    if (error) {
+      return error.status === 404 ? "not_found" : "sdk_error";
+    }
+    return undefined;
+  })();
+
+  const hasQuestionError = questionErrorType !== undefined;
+  const [firstResult] = queryResults ?? [];
+  const hasQueryError = !hasQuestionError && firstResult?.error != null;
+  const isQuestionReady =
+    !hasQuestionError &&
+    !hasQueryError &&
+    !isQuestionLoading &&
+    queryResults != null;
+
+  useReportComponentReady({
+    component: sdkComponentName ?? "StaticQuestion",
+    isReady: sdkComponentName != null && isQuestionReady,
+    isError: sdkComponentName != null && (hasQuestionError || hasQueryError),
+    errorType: questionErrorType ?? (hasQueryError ? "query_error" : undefined),
+  });
+  // -- end component ready/error signal block --
 
   if (isGuestEmbed && isNewQuestion) {
     return (

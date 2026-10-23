@@ -2,6 +2,7 @@
 import { Global } from "@emotion/react";
 import { type JSX, memo, useEffect, useId, useRef } from "react";
 
+import { useInitSdkReadyEvent } from "embedding-sdk-bundle/analytics/sdk-ready-event";
 import { useInitSdkTracker } from "embedding-sdk-bundle/analytics/tracker";
 import { ContentTranslationsProvider } from "embedding-sdk-bundle/components/private/ContentTranslationsProvider";
 import { SdkThemeProvider } from "embedding-sdk-bundle/components/private/SdkThemeProvider";
@@ -112,6 +113,7 @@ export const ComponentProviderInternal = (
 
   useInitPlugins(reduxStore);
   useInitSdkTracker(authConfig, reduxStore, locale != null);
+  useInitSdkReadyEvent(authConfig.metabaseInstanceUrl);
 
   useSdkCustomLoader();
 

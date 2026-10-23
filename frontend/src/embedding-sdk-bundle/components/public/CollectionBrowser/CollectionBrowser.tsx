@@ -2,6 +2,8 @@ import { type ComponentType, useEffect, useMemo } from "react";
 import { t } from "ttag";
 
 import { useTrackSdkComponentMount } from "embedding-sdk-bundle/analytics/component-events";
+import { useReportComponentReady } from "embedding-sdk-bundle/analytics/component-signals";
+import { recordPhase } from "embedding-sdk-bundle/analytics/phase-timestamps";
 import {
   CollectionNotFoundError,
   SdkError,
@@ -147,6 +149,7 @@ export const CollectionBrowserInner = ({
   className,
   style,
 }: CollectionBrowserProps) => {
+  recordPhase("component_start");
   useTrackSdkComponentMount("CollectionBrowser", null, {});
 
   // "all" is a virtual top level, not a collection, so it never reaches a URL
@@ -218,6 +221,38 @@ export const CollectionBrowserInner = ({
     collection,
     reportLocation,
   ]);
+
+  // Derive collection-level error/ready state for the signal.
+  const hasCollectionAccessError =
+    isObject(collectionLoadingError) && collectionLoadingError.status === 403;
+  const hasCollectionNotFoundError =
+    isObject(collectionLoadingError) && collectionLoadingError.status === 404;
+  const hasCollectionGenericError =
+    isObject(collectionLoadingError) &&
+    !hasCollectionAccessError &&
+    !hasCollectionNotFoundError;
+  const hasAllCollectionsError = isAtAllModeRoot && !!allCollectionsError;
+  const hasCollectionError =
+    hasCollectionAccessError ||
+    hasCollectionNotFoundError ||
+    hasCollectionGenericError ||
+    hasAllCollectionsError;
+  const isCollectionReady =
+    !hasCollectionError && !isFetchingCollection && !isLoadingAllCollections;
+
+  const collectionErrorType = hasCollectionNotFoundError
+    ? "not_found"
+    : hasCollectionError
+      ? "load_error"
+      : undefined;
+
+  useReportComponentReady({
+    component: "CollectionBrowser",
+    isReady: isCollectionReady,
+    isError: hasCollectionError,
+    errorType: collectionErrorType,
+  });
+  // -- end component ready/error signal block --
 
   if (
     isObject(collectionLoadingError) &&

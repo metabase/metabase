@@ -1,5 +1,6 @@
 import type { Dispatch } from "@reduxjs/toolkit";
 
+import { recordPhase } from "embedding-sdk-bundle/analytics/phase-timestamps";
 import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
 import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
 import { createAsyncThunk } from "metabase/redux/utils";
@@ -24,7 +25,9 @@ export const initAuth = createAsyncThunk(
     authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
     { dispatch },
   ) => {
-    return await PLUGIN_EMBEDDING_SDK_AUTH.initAuth(authConfig, { dispatch });
+    recordPhase("init_start");
+    await PLUGIN_EMBEDDING_SDK_AUTH.initAuth(authConfig, { dispatch });
+    recordPhase("init_ready");
   },
 );
 
