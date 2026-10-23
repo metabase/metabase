@@ -2,7 +2,6 @@
   "Snowflake Driver."
   (:refer-clojure :exclude [some select-keys not-empty mapv])
   (:require
-   [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -673,7 +672,7 @@
   [expr]
   (let [report-timezone (driver-api/report-timezone-id-if-supported)]
     (if (and report-timezone
-             (= (h2x/database-type expr) "timestamptz"))
+             (h2x/database-or-effective-type-isa? expr "timestamptz" :type/DateTimeWithLocalTZ))
       [:to_timestamp_ltz expr]
       expr)))
 
@@ -1233,19 +1232,19 @@
   (str sql "\n\n-- " remark))
 
 (defmethod driver-api/query->remark :snowflake
-  [_ {{:keys [context executed-by card-id pulse-id dashboard-id query-hash]} :info,
-      query-type :type,
-      database-id :database}]
-  (json/encode {:client      "Metabase"
-                :context     context
-                :queryType   query-type
-                :userId      executed-by
-                :pulseId     pulse-id
-                :cardId      card-id
-                :dashboardId dashboard-id
-                :databaseId  database-id
-                :queryHash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
-                :serverId    (driver-api/site-uuid)}))
+  [_ {query-type :type, :as query}]
+  (let [{:keys [context user-id pulse-id card-id dashboard-id database-id query-hash account-id]}
+        (driver-api/query->remark-data query)]
+    (json/encode {:client      "Metabase"
+                  :context     context
+                  :queryType   query-type
+                  :userId      user-id
+                  :pulseId     pulse-id
+                  :cardId      card-id
+                  :dashboardId dashboard-id
+                  :databaseId  database-id
+                  :queryHash   query-hash
+                  :serverId    account-id})))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

@@ -55,20 +55,20 @@ type RemappingPicker = Omit<SelectProps, "data" | "value" | "onChange"> & {
 type FkRemappingFieldSelectProps = {
   error?: boolean;
   fieldName?: string;
-  readOnly?: boolean;
+  disabled?: boolean;
 };
 
 const FkRemappingFieldSelect = ({
   error,
   fieldName,
-  readOnly,
+  disabled,
 }: FkRemappingFieldSelectProps) => (
   <Select
     data={[{ label: fieldName ?? t`Choose a field`, value: "choose-a-field" }]}
     dropdownOpened={false}
     error={error}
     placeholder={t`Choose a field`}
-    readOnly={readOnly}
+    disabled={disabled}
     value="choose-a-field"
     w="100%"
     onClick={(event) => event.preventDefault()}
@@ -79,7 +79,7 @@ export const RemappingPicker = ({
   database,
   field,
   comboboxProps,
-  readOnly,
+  disabled,
   onTrackMetadataChange,
   ...props
 }: RemappingPicker) => {
@@ -281,7 +281,7 @@ export const RemappingPicker = ({
         onDropdownOpen={() => setIsChoosingDisplayValue(true)}
         onDropdownClose={() => setIsChoosingDisplayValue(false)}
         onChange={handleDisplayValueChange}
-        readOnly={readOnly}
+        disabled={disabled}
         {...props}
       />
 
@@ -291,10 +291,10 @@ export const RemappingPicker = ({
             <SubInputIllustration />
           </Flex>
 
-          {fkTargetTable && readOnly && (
+          {fkTargetTable && disabled && (
             <FkRemappingFieldSelect
               fieldName={fkRemappingField?.display_name}
-              readOnly
+              disabled
             />
           )}
 
@@ -303,7 +303,7 @@ export const RemappingPicker = ({
            * but fkTargetTable is not. It would go to "schema" step of DataSelector
            * which does not exist in FieldDataSelector, hence this conditional render.
            */}
-          {fkTargetTable && !readOnly && (
+          {fkTargetTable && !disabled && (
             <FieldDataSelector
               databases={[database]}
               isInitiallyOpen={isChoosingInitialFkTarget}
@@ -348,7 +348,7 @@ export const RemappingPicker = ({
                 onClose={() => setIsCustomMappingOpen(false)}
               />
 
-              {!readOnly && (
+              {!disabled && (
                 <Group mt="sm">
                   <Button
                     size="compact-md"

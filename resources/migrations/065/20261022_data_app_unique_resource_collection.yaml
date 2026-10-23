@@ -1,0 +1,54 @@
+## Two data apps can't share one resource collection. A plain index on the column comes first, on every database: on
+## MySQL and MariaDB a unique index would otherwise take the place of the index behind the foreign key, and a rollback
+## could not drop it. Postgres has that index already (20261006_data_app_resource_collection). Apps that share a
+## collection keep it for the first app only; the others are left without one, which an app may be given again.
+
+databaseChangeLog:
+  - changeSet:
+      id: v65.2026-10-22T00:00:00
+      author: ranquild
+      comment: Index data apps by their resource collection, where no index exists yet
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: data_app
+                indexName: idx_data_app_resource_collection_id
+      changes:
+        - createIndex:
+            tableName: data_app
+            indexName: idx_data_app_resource_collection_id
+            columns:
+              - column:
+                  name: resource_collection_id
+      rollback: []
+
+  - changeSet:
+      id: v65.2026-10-22T00:00:01
+      author: ranquild
+      comment: Leave a resource collection that data apps share to the first of them only
+      changes:
+        # the derived table lets MySQL read the table it updates
+        - sql:
+            sql: >-
+              UPDATE data_app SET resource_collection_id = NULL
+              WHERE id IN (SELECT id FROM (SELECT later.id
+                                           FROM data_app later
+                                           JOIN data_app earlier
+                                             ON earlier.resource_collection_id = later.resource_collection_id
+                                            AND earlier.id < later.id) shared)
+      rollback: []
+
+  - changeSet:
+      id: v65.2026-10-22T00:00:02
+      author: ranquild
+      comment: Add a unique constraint on data_app.resource_collection_id
+      changes:
+        - addUniqueConstraint:
+            tableName: data_app
+            columnNames: resource_collection_id
+            constraintName: uq_data_app_resource_collection_id
+      rollback:
+        - dropUniqueConstraint:
+            tableName: data_app
+            constraintName: uq_data_app_resource_collection_id

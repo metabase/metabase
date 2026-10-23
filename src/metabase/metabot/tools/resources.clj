@@ -68,6 +68,7 @@
    [clojure.string :as str]
    [metabase.activity-feed.core :as activity-feed]
    [metabase.api.common :as api]
+   [metabase.collections.models.collection :as collection]
    [metabase.documents.core :as documents]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.metabot.agent.streaming :as streaming]
@@ -98,6 +99,40 @@
   "Maximum number of URIs that can be fetched in a single call."
   5)
 
+(def ^:private max-uri-length
+  "Maximum number of characters in a resource URI."
+  4096)
+
+(def ^:private max-uri-preview-length
+  "URI echoes occupy at most this many characters after escaping."
+  200)
+
+(def ^:private max-batch-error-length
+  "The failed resources in one call share this many characters of displayed error text."
+  2000)
+
+(def ^:private truncation-marker "...[truncated]")
+
+(defn- text-preview
+  "Return a prefix and marker that fit the rendered text budget."
+  [^String text limit length-fn]
+  (if (<= (length-fn text) limit)
+    text
+    (loop [end 0]
+      (let [next-end (.offsetByCodePoints text (int end) 1)
+            candidate (str (subs text 0 next-end) truncation-marker)]
+        (if (> (length-fn candidate) limit)
+          (str (subs text 0 end) truncation-marker)
+          (recur (long next-end)))))))
+
+(defn- uri-preview
+  "Return a URI preview of at most 200 characters after XML or string escaping."
+  [uri]
+  (text-preview uri max-uri-preview-length
+                (fn [text]
+                  (max (count (llm-shape/escape-xml text))
+                       (count (pr-str text))))))
+
 (def ^:private page-size
   "Page size for list responses."
   25)
@@ -121,7 +156,10 @@
                   "metabase://database/{id}/schemas/{schema_name}/tables"]
    "collection"  ["metabase://collection/{id}"
                   "metabase://collection/{id}/items"
-                  "metabase://collection/{id}/subcollections"]
+                  "metabase://collection/{id}/subcollections"
+                  "metabase://collection/root"
+                  "metabase://collection/root/items"
+                  "metabase://collection/root/subcollections"]
    "table"       ["metabase://table/{id}"
                   "metabase://table/{id}/fields"
                   "metabase://table/{id}/fields/{field_id}"
@@ -176,7 +214,7 @@
   "The string is not a metabase:// URI at all."
   {:payload [:map {:closed true} [:uri :string]]}
   [{:keys [uri]}]
-  {:message  (str (pr-str uri) " is not a Metabase resource URI. One starts with `metabase://` and"
+  {:message  (str (pr-str (uri-preview uri)) " is not a Metabase resource URI. One starts with `metabase://` and"
                   " has at least one path segment, for example `metabase://databases`.")
    :recovery [kinds-step search-step]})
 
@@ -188,7 +226,7 @@
              ;; itself unknown — then there is no kind to list shapes for.
              [:kind {:optional true} [:maybe :string]]]}
   [{:keys [uri kind]}]
-  {:message  (str "No resource is served at " (pr-str uri) ".")
+  {:message  (str "No resource is served at " (pr-str (uri-preview uri)) ".")
    :recovery (vec (keep identity [(templates-step kind) kinds-step search-step]))})
 
 (tools/defrecoverable non-numeric-id!
@@ -198,7 +236,7 @@
              [:kind :string]
              [:id   :string]]}
   [{:keys [kind id]}]
-  {:message  (str "Invalid id " (pr-str id) " in URI. Resource URIs use the numeric entity id, not"
+  {:message  (str "Invalid id " (pr-str (uri-preview id)) " in URI. Resource URIs use the numeric entity id, not"
                   " an entity_id, a name or a slug.")
    :recovery (vec (keep identity
                         [(templates-step kind)
@@ -215,7 +253,36 @@
   [{:keys [id type card-uri]}]
   {:message  (str "Card " id " is a " type ", not a metric.")
    :recovery [{:uses #{}
-               :text (str "Read `" card-uri "` instead.")}]})
+               :text (str "Read `" (uri-preview card-uri) "` instead.")}]})
+
+(tools/defrecoverable wrong-card-kind!
+  "Report a question or model URI that names a different kind of card."
+  {:payload [:map {:closed true}
+             [:id :int]
+             [:expected [:enum "question" "model"]]
+             [:actual [:enum "question" "model" "metric"]]
+             [:uri :string]]}
+  [{:keys [id expected actual uri]}]
+  {:message (str "Card " id " is a " actual ", not a " expected ".")
+   :recovery [{:uses #{} :text (str "Read `" (uri-preview uri) "` instead.")}]})
+
+(tools/defrecoverable inactive-table!
+  "Report a readable table that is no longer active."
+  {:payload [:map {:closed true} [:id :int] [:database-id :int]]}
+  [{:keys [id database-id]}]
+  {:message (str "Table " id " is inactive.")
+   :recovery [{:uses #{}
+               :text (str "Read `metabase://database/" database-id "/tables` to find active tables.")}]})
+
+(tools/defrecoverable missing-schema!
+  "Report a database schema with no active tables."
+  {:payload [:map {:closed true} [:database-id :int] [:schema :string]]
+   :status-code 404}
+  [{:keys [database-id schema]}]
+  {:message (str "Schema " (pr-str (uri-preview schema)) " was not found in database " database-id "."
+                 " Schema names are case-sensitive.")
+   :recovery [{:uses #{}
+               :text (str "Read `metabase://database/" database-id "/schemas` for available schema names.")}]})
 
 (tools/defrecoverable invalid-page!
   "A `?page=N` outside the list's range."
@@ -236,9 +303,9 @@
              [:available [:sequential :string]]]}
   [{:keys [id available]}]
   {:message  (if (seq available)
-               (str "No chart or query with id " (pr-str id) " exists in this conversation."
-                    " The ids that do: " (str/join ", " available) ".")
-               (str "No chart or query with id " (pr-str id) " exists in this conversation, and"
+               (str "No chart or query with id " (pr-str (uri-preview id)) " exists in this conversation."
+                    " The ids that do: " (str/join ", " (map uri-preview available)) ".")
+               (str "No chart or query with id " (pr-str (uri-preview id)) " exists in this conversation, and"
                     " none have been created in it yet."))
    :recovery [{:uses #{}
                :text (str "Charts and queries are per-conversation. If the user mentioned this one,"
@@ -314,6 +381,13 @@
                      (when k [(keyword k) (or v "")])))))
          (into {}))))
 
+(def ^:private uri-aspect-aliases
+  "Alternate aspect names accepted for each resource kind."
+  {"table"    {"columns" "fields"}
+   "model"    {"columns" "fields"}
+   "question" {"columns" "fields"}
+   "dashboard" {"cards" "items"}})
+
 (defn- parse-uri
   "Parse a metabase:// URI into a vector of path segments and a query-params map.
 
@@ -334,7 +408,9 @@
                        (mapv codec/url-decode))]
     (when (zero? (count segments))
       (malformed-uri! {:uri uri}))
-    {:segments     segments
+    {:segments     (if-let [aspect (get-in uri-aspect-aliases [(first segments) (get segments 2)])]
+                     (assoc segments 2 aspect)
+                     segments)
      :query-params (parse-query-string qs)}))
 
 ;; ----- Item presenters (list-row shapes) -----
@@ -493,9 +569,9 @@
                     [])
         items   (mapv (fn [{:keys [id name model timestamp]}]
                         (let [type (case model
-                                     "card"    "question"
-                                     "dataset" "model"
-                                     (or model "item"))]
+                                     :card    "question"
+                                     :dataset "model"
+                                     (clojure.core/name (or model :item)))]
                           {:type      type
                            :id        id
                            :name      name
@@ -543,21 +619,29 @@
 (defn- fetch-database-schema-tables [id-str schema-name query-params]
   (let [db-id  (parse-long id-str)
         _      (warehouses/get-database db-id)
-        tables (->> (metabot.db/active-tables-in-schema db-id schema-name)
+        rows   (metabot.db/active-tables-in-schema db-id schema-name)
+        _      (when-not (seq rows)
+                 (missing-schema! {:database-id db-id :schema schema-name}))
+        tables (->> rows
                     (filter mi/can-read?)
                     (mapv present-table))]
     (list-result :database-schema-tables tables query-params)))
 
 ;; ----- Collection drill-down -----
 
+(defn- readable-collection [id-str]
+  (if (= id-str "root")
+    (api/read-check (collection/root-collection-with-ui-details nil))
+    (api/read-check :model/Collection (parse-long id-str))))
+
 (defn- fetch-collection [id-str]
-  (let [coll (api/read-check :model/Collection (parse-long id-str))]
+  (let [coll (readable-collection id-str)]
     (entity-result (present-collection coll))))
 
 (defn- fetch-collection-items [id-str query-params]
   (documents/with-content-gate-cache
     (let [coll-id        (parse-long id-str)
-          coll           (api/read-check :model/Collection coll-id)
+          coll           (when-not (= id-str "root") (readable-collection id-str))
           cards          (->> (metabot.db/cards-in-collection coll-id)
                               (filter mi/can-read?))
           dashboards     (->> (metabot.db/dashboards-in-collection coll-id)
@@ -565,7 +649,9 @@
           ;; Exploration Summary documents are only through their exploration — so they stay out of this listing
           documents      (->> (metabot.db/documents-in-collection coll-id)
                               (filter mi/can-read?))
-          subcollections (->> (metabot.db/unarchived-collections-at-location (str (:location coll) coll-id "/"))
+          subcollections (->> (if (= id-str "root")
+                                (metabot.db/navigable-collections false)
+                                (metabot.db/unarchived-collections-at-location (collection/children-location coll)))
                               (filter mi/can-read?))
           items          (concat (map present-collection subcollections)
                                  (map present-card cards)
@@ -574,9 +660,10 @@
       (list-result :collection-items items query-params))))
 
 (defn- fetch-collection-subcollections [id-str query-params]
-  (let [coll-id (parse-long id-str)
-        coll    (api/read-check :model/Collection coll-id)
-        subs    (->> (metabot.db/unarchived-collections-at-location (str (:location coll) coll-id "/"))
+  (let [coll    (when-not (= id-str "root") (readable-collection id-str))
+        subs    (->> (if (= id-str "root")
+                       (metabot.db/navigable-collections false)
+                       (metabot.db/unarchived-collections-at-location (collection/children-location coll)))
                      (filter mi/can-read?)
                      (mapv present-collection))]
     (list-result :collection-subcollections subs query-params)))
@@ -592,12 +679,13 @@
     (warehouses/get-database db-id)))
 
 (defn check-table-resource-database
-  "Require that `table-id`'s backing database is addressable as a Metabot resource (see
-  [[check-resource-database]]). Exported for [[metabase.metabot.tools.metadata]], which needs the
-  same guard for the `get_field_values` tool."
+  "Require that `table-id`'s backing database is addressable as a Metabot resource and return the table.
+
+  See [[check-resource-database]]. Also used by [[metabase.metabot.tools.metadata]]."
   [table-id]
   (when-let [table (api/read-check :model/Table table-id)]
-    (check-resource-database (:db_id table))))
+    (check-resource-database (:db_id table))
+    table))
 
 (defn check-card-resource-database
   "Require that `card-id`'s backing database is addressable as a Metabot resource, and return the card.
@@ -615,13 +703,30 @@
                         :model/Segment (metabot.db/segment-table-id id))]
     (check-table-resource-database table-id)))
 
+(defn- active-table-resource [id]
+  (let [table (check-table-resource-database id)]
+    (when-not (:active table)
+      (inactive-table! {:id id :database-id (:db_id table)}))
+    table))
+
+(defn- check-card-kind [id expected & path-segments]
+  (let [{actual :type :as card} (check-card-resource-database id)]
+    (when-not (= actual expected)
+      (let [path-segments (if (= actual :metric)
+                            (when (= (first path-segments) "fields")
+                              (cons "dimensions" (rest path-segments)))
+                            path-segments)]
+        (wrong-card-kind! {:id id :expected (name expected) :actual (name actual)
+                           :uri (apply llm-shape/metabase-uri actual id path-segments)})))
+    card))
+
 (defn- table-details
   "Shared `entity-details/get-table-details` call for both /table/{id} and /table/{id}/fields.
    `entity-type` is :table, :model, or :question."
   [entity-type id with-fields?]
   (case entity-type
-    :table (check-table-resource-database id)
-    (:model :question) (check-card-resource-database id))
+    :table (active-table-resource id)
+    (:model :question) (apply check-card-kind id entity-type (when with-fields? ["fields"])))
   (entity-details/get-table-details {:entity-type          entity-type
                                      :entity-id            id
                                      :with-fields?         with-fields?
@@ -636,19 +741,27 @@
 (defn- fetch-table-fields [id-str]
   (table-details :table (parse-long id-str) true))
 
+(defn- field-values
+  [{:keys [field-id] :as args}]
+  (let [entity {:kind :field :id field-id}]
+    (tools/with-entity entity
+      (let [result (field-stats/field-values args)]
+        (when-not (:structured-output result)
+          (recoverable.common/not-found! entity))
+        result))))
+
 (defn- fetch-table-field [id-str field-id]
   (let [table-id (parse-long id-str)]
-    (check-table-resource-database table-id)
-    (field-stats/field-values {:entity-type "table"
-                               :entity-id   table-id
-                               :field-id    field-id
-                               :limit       30})))
+    (active-table-resource table-id)
+    (field-values {:entity-type "table"
+                   :entity-id   table-id
+                   :field-id    field-id
+                   :limit       30})))
 
 (defn- fetch-table-derived [id-str query-params]
   (let [table-id   (parse-long id-str)
-        table      (api/read-check :model/Table table-id)
+        table      (active-table-resource table-id)
         db-id      (:db_id table)
-        _          (check-resource-database db-id)
         cards      (->> (metabot.db/cards-for-table table-id)
                         (filter mi/can-read?)
                         (mapv present-card))
@@ -675,15 +788,14 @@
 
 (defn- fetch-card-field [type-str id-str field-id]
   (let [card-id (parse-long id-str)]
-    (check-card-resource-database card-id)
-    (field-stats/field-values {:entity-type type-str
-                               :entity-id   card-id
-                               :field-id    field-id
-                               :limit       30})))
+    (check-card-kind card-id (keyword type-str) "fields" field-id)
+    (field-values {:entity-type type-str
+                   :entity-id   card-id
+                   :field-id    field-id
+                   :limit       30})))
 
-(defn- fetch-card-sources [id-str query-params]
-  (let [card (api/read-check :model/Card (parse-long id-str))]
-    (check-resource-database (:database_id card))
+(defn- fetch-card-sources [type-str id-str query-params]
+  (let [card (check-card-kind (parse-long id-str) (keyword type-str) "sources")]
     (list-result :card-sources (card-sources-items card) query-params)))
 
 ;; ----- Metric -----
@@ -716,10 +828,10 @@
 (defn- fetch-metric-dimension [id-str dim-id]
   (let [metric-id (parse-long id-str)]
     (check-metric-resource metric-id "fields" dim-id)
-    (field-stats/field-values {:entity-type "metric"
-                               :entity-id   metric-id
-                               :field-id    dim-id
-                               :limit       30})))
+    (field-values {:entity-type "metric"
+                   :entity-id   metric-id
+                   :field-id    dim-id
+                   :limit       30})))
 
 ;; ----- Measure / Segment -----
 
@@ -868,7 +980,7 @@
   "Present a document as an indexed outline of its top-level blocks. The indices are the
   `position` values the `save_entity` tool accepts when inserting a chart into the document."
   [id-str]
-  (let [document (documents/get-document (parse-long id-str))
+  (let [document (documents/get-document (parse-long id-str) :log-view? false)
         blocks   (get-in document [:document :content])]
     (entity-result
      {:type        "document"
@@ -943,7 +1055,7 @@
 (def ^:private numeric-id-uri-types
   "URI entity-type segments whose next segment must be a numeric id (see `dispatch`)."
   #{"database" "collection" "table" "model" "question" "metric"
-    "measure" "segment" "transform" "dashboard"})
+    "measure" "segment" "transform" "dashboard" "document"})
 
 (defn- check-numeric-id-segment!
   "Entity URIs take numeric ids only. The common miss is the LLM pasting a 21-char entity id
@@ -953,6 +1065,7 @@
   [uri [type-seg id-seg]]
   (when (and (numeric-id-uri-types type-seg)
              (some? id-seg)
+             (not (and (= type-seg "collection") (= id-seg "root")))
              (nil? (parse-long id-seg)))
     (non-numeric-id! {:uri uri :kind type-seg :id id-seg})))
 
@@ -983,7 +1096,8 @@
   [[type-seg id-seg]]
   (if-let [kind (get uri-entity-kinds type-seg)]
     (cond-> {:kind kind}
-      (some-> id-seg parse-long) (assoc :id (parse-long id-seg)))
+      (some-> id-seg parse-long) (assoc :id (parse-long id-seg))
+      (and (= type-seg "collection") (= id-seg "root")) (assoc :id "root"))
     {}))
 
 (defn- dispatch
@@ -1029,7 +1143,7 @@
              [(t :guard #{"model" "question"}) id]            (fetch-card t id)
              [(t :guard #{"model" "question"}) id "fields"]   (fetch-card-fields t id)
              [(t :guard #{"model" "question"}) id "fields" & rst] (fetch-card-field t id (str/join "/" rst))
-             [(t :guard #{"model" "question"}) id "sources"]  (fetch-card-sources id query-params)
+             [(t :guard #{"model" "question"}) id "sources"]  (fetch-card-sources t id query-params)
 
              ;; Metric
              ["metric" id]                                    (fetch-metric id)
@@ -1144,10 +1258,7 @@
        "<instructions>\n" instruction-text "\n</instructions>"))
 
 (defn- format-content
-  "One read's structured output as the LLM-ready string, by `:result-type`.
-
-  Every handler returns a `:structured-output`; a miss or a refusal is thrown rather than returned,
-  so there is no error branch here and no result shape that renders as an empty `<resource>`."
+  "Render a successful read's structured output as text by `:result-type`."
   [structured]
   (case (:result-type structured)
     ;; NOTE: keep in sync with agent/tools/metadata.clj/format-field-metadata-output
@@ -1161,72 +1272,66 @@
     (llm-shape/entity->xml structured)))
 
 (defn- resource-element
-  "One `<resource>` element, for either outcome.
-
-  `uri` goes through `pr-str` because it reaches the model inside an attribute and is the agent's
-  own text — an unescaped `\"` would close the attribute early and the rest of the URI would read as
-  markup."
+  "Wrap a resource body in XML, escaping its URI attribute."
   [uri body]
-  (str "<resource uri=" (pr-str uri) ">\n" body "\n</resource>"))
+  (str "<resource uri=\"" (llm-shape/escape-xml (uri-preview uri)) "\">\n" body "\n</resource>"))
 
 (def ^:private uri-arg
   "The one thing a read takes. Both declarations below build their `:args` from this, so the single
   and batched forms cannot drift."
-  [:string {:min 1 :description "A metabase:// resource URI"}])
+  [:string {:min 1
+            :max max-uri-length
+            :description "A metabase:// resource URI"
+            :error/message (str "must be a non-empty URI string of at most " max-uri-length " characters")}])
+
+(def ^:private conversation-kinds
+  "URI kinds that read charts and queries from the conversation's state."
+  #{"chart" "query"})
+
+(defn- description
+  "What a caller is told `read_resource` is. Without `agent-loop?`, the chart and query URIs and the
+  `save_entity` note are left out, since they need the agent loop's conversation state and tools."
+  [agent-loop?]
+  (str "Read detailed information about Metabase resources. Copy URIs from `search` or navigation results.\n"
+       "Entity IDs are numeric. Use `collection/root` for the root collection. Schema names are case-sensitive\n"
+       "and URI path segments must be URL-encoded.\n\n"
+       "Shortened URI echoes and error text end with ...[truncated]. Reuse the original URI for another read.\n\n"
+       "SUPPORTED URI FORMS:\n"
+       (str/join "\n" (for [[kind templates] (sort-by key uri-templates)
+                            :when (or agent-loop? (not (conversation-kinds kind)))
+                            uri templates]
+                        (str "- " uri)))
+       "\n\nALIASES (the same trailing segments are accepted):\n"
+       (str/join "\n" (for [[kind aliases] (sort-by key uri-aspect-aliases)
+                            [alias canonical] (sort-by key aliases)]
+                        (str "- metabase://" kind "/{id}/" alias " is an alias for /" canonical)))
+       "\n\nDocuments return a name and an indexed outline of top-level blocks."
+       (when agent-loop?
+         (str " The indices are valid\n"
+              "`position` values for `save_entity` document destinations.\n\n"
+              "Chart and query IDs come from this conversation's state. Chart URIs return the chart type\n"
+              "and its query; query URIs return a query from this conversation."))))
 
 (def ^:private tool-description
   "What the model is told `read_resource` is.
 
   A value rather than a docstring: the batched form has to add its own per-call limits to it, and a
   docstring cannot be computed."
-  (str
-   "Read detailed information about Metabase resources via URI patterns. Use this to navigate\n"
-   "the instance and drill into specific entities. URIs returned by `search` can be fed directly\n"
-   "back here. Only numeric IDs accepted, never alphanumeric entity-id's.\n"
-   "\n"
-   "NAVIGATION (top-level lists):\n"
-   "- metabase://databases - all databases\n"
-   "- metabase://collections - root collections\n"
-   "- metabase://collections?tree=true - flat list of all collections (use :location for hierarchy)\n"
-   "- metabase://user/recent-items - your recently-viewed items\n"
-   "\n"
-   "DATABASE DRILL-DOWN:\n"
-   "- metabase://database/{id}\n"
-   "- metabase://database/{id}/tables\n"
-   "- metabase://database/{id}/models\n"
-   "- metabase://database/{id}/schemas\n"
-   "- metabase://database/{id}/schemas/{schemaName}/tables\n"
-   "\n"
-   "COLLECTION DRILL-DOWN:\n"
-   "- metabase://collection/{id}\n"
-   "- metabase://collection/{id}/items - subcollections + leaves\n"
-   "- metabase://collection/{id}/subcollections\n"
-   "\n"
-   "ENTITY DRILL-DOWN:\n"
-   "- metabase://table/{id}[/fields[/{field_id}]] [/derived]\n"
-   "- metabase://model/{id}[/fields[/{field_id}]] [/sources]\n"
-   "- metabase://question/{id}[/fields[/{field_id}]] [/sources]\n"
-   "- metabase://metric/{id}[/dimensions[/{dim_id}]]\n"
-   "- metabase://measure/{id}\n"
-   "- metabase://segment/{id}\n"
-   "- metabase://transform/{id}[/sources|/target]\n"
-   "- metabase://dashboard/{id}[/items]\n"
-   "- metabase://document/{id} - name + indexed outline of the document's top-level blocks\n"
-   "  (the indices are valid `position` values for `save_entity` document destinations)\n"
-   "\n"
-   "CONVERSATION STATE (charts and queries generated in or pasted into this conversation,\n"
-   "e.g. referenced in a user message as [name](metabase://chart/{id})):\n"
-   "- metabase://chart/{chart_id} - the chart's type and its query\n"
-   "- metabase://query/{query_id} - a query from this conversation's state"))
+  (description true))
 
 (def ^:private batch-note
   "What the batched form adds to [[tool-description]]: the limits that exist only because one call
   can carry several URIs."
   (str "\n\n"
-       "Up to " max-concurrent-uris " URIs may be requested in one call. List responses are capped\n"
+       "Up to " max-concurrent-uris " URIs may be requested in one call.\n"
+       "List responses are capped\n"
        "at " page-size " items per page; when a list is truncated its structured output carries a\n"
        "ready-to-fetch `next-page-uri` — request that rather than building a `page=N` query param\n"
        "by hand. The response also includes `page` (current, 1-indexed) and `pages` (total)."))
+
+(def agent-api-description
+  "The batched description for callers outside the agent loop, such as the Agent API."
+  (str (description false) batch-note))
 
 (defrecord ReadResourceTool []
   tools/Tool
@@ -1239,12 +1344,7 @@
   (handle [_ {:keys [uri]} _ctx]
     (let [structured (:structured-output (dispatch uri))]
       (when-not structured
-        ;; Two handlers still report a miss by returning `{:output … :status-code 404}` rather than
-        ;; throwing — `entity-details/get-measure-details` and `get-segment-details`, whose other
-        ;; callers depend on that shape. Their text is dropped rather than forwarded: it was not
-        ;; written for a model, and `not-found!` already names the entity and says what to do next.
-        ;; This also closes the case where a result carrying only `:output` rendered as an empty
-        ;; `<resource>`, because the formatter read a `:formatted` key nothing ever set.
+        ;; Table, card, metric, measure and segment helpers return failures as text.
         (recoverable.common/not-found! (uri-entity (:segments (parse-uri uri)))))
       {:output            (format-content structured)
        :structured-output structured}))
@@ -1260,8 +1360,11 @@
            :args [:map {:closed true}
                   [:uris [:sequential {:min 1
                                        :max max-concurrent-uris
-                                       :error/message (str "must be an array of 1 to "
-                                                           max-concurrent-uris " URI strings")}
+                                       :description (str "A non-empty array of at most " max-concurrent-uris
+                                                         " URIs, each at most " max-uri-length " characters. "
+                                                         "Request fewer URIs or shorten them to fit these limits.")
+                                       :error/message (str "must be a non-empty array of at most "
+                                                           max-concurrent-uris " URIs. Request fewer URIs per call")}
                           uri-arg]]]))
 
   (batched-args [_ {:keys [uris]}]
@@ -1269,7 +1372,7 @@
     ;; so there is no shared query to issue up front — what they do share is the permission cache,
     ;; which `tools/call` holds across the whole call. `pmap` over the fetches is worth measuring,
     ;; but it needs the request bindings carried onto the threads.
-    (mapv (fn [uri] {:uri uri}) uris))
+    (mapv (fn [uri] {:uri (str/replace uri "&amp;" "&")}) uris))
 
   (compose [_ entries _ctx]
     ;; Every entry is wrapped here rather than in `handle`, which is what puts a failed URI inside
@@ -1280,13 +1383,14 @@
                              (keep (fn [{:keys [item structured-output]}]
                                      (uri-label (:uri item) structured-output)))
                              (distinct))
-                       entries)]
+                       entries)
+          error-length (quot max-batch-error-length (max 1 (count (filter :failed? entries))))]
       (cond-> {:output (str "<resources>\n"
                             (str/join "\n"
                                       (for [{:keys [item output failed?]} entries]
                                         (resource-element (:uri item)
                                                           (if failed?
-                                                            (str "**Error:** " output)
+                                                            (str "**Error:** " (text-preview output error-length count))
                                                             output))))
                             "\n</resources>")}
         (some :structured-output entries)

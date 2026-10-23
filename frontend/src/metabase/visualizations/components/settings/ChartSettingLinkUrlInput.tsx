@@ -8,7 +8,7 @@ interface ChartSettingLinkUrlInputProps {
   onChange: (value: string) => void;
   id?: string;
   options?: string[];
-  readOnly?: boolean;
+  disabled?: boolean;
   onChangeSettings?: (settings: Partial<VisualizationSettings>) => void;
 }
 
@@ -32,7 +32,7 @@ const ChartSettingLinkUrlInput = ({
   onChange,
   options,
   id,
-  readOnly,
+  disabled,
   onChangeSettings,
 }: ChartSettingLinkUrlInputProps) => {
   const valueOrDefault = value ?? "";
@@ -68,7 +68,7 @@ const ChartSettingLinkUrlInput = ({
       data-testid={id}
       onChangeSettings={onChangeSettings}
       options={options}
-      readOnly={readOnly}
+      disabled={disabled}
       onChange={setFocusedValue}
       value={isFocused ? focusedValue : valueOrDefault}
       onFocus={handleFocus}
