@@ -8,6 +8,8 @@ import * as Urls from "metabase/urls";
 import { useRemoveDataAppGroupMutation } from "metabase-enterprise/api";
 import type { DataApp, DataAppGroup } from "metabase-types/api";
 
+import { trackDataAppGroupRemoved } from "../../../../analytics";
+
 type DataAppGroupMenuProps = {
   app: DataApp;
   group: DataAppGroup;
@@ -31,6 +33,8 @@ export function DataAppGroupMenu({ app, group }: DataAppGroupMenuProps) {
         });
         if (error) {
           sendErrorToast(t`Failed to remove ${groupName}`);
+        } else {
+          trackDataAppGroupRemoved(app.id);
         }
       },
     });

@@ -406,6 +406,28 @@
           (testing "source-field is populated with ORDERS.PRODUCT_ID (102)"
             (is (= 102 (:source-field field-opts)))))))))
 
+(deftest ambiguous-field-recovery-hint-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [ambiguous-mp (lib.tu/mock-metadata-provider
+                          {:database (lib.metadata/database mp)
+                           :tables   [(lib.metadata/table mp 10)]
+                           :fields   (conj (vec (lib.metadata/fields mp 10))
+                                           (assoc (lib.metadata/field mp 101) :id 103))})]
+        (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (constantly ambiguous-mp)]
+          (let [e (try
+                    (construct/execute-representations-query
+                     (query-data {"lib/type" "mbql/query"
+                                  "stages" [{"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                             "fields" [["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]}]})
+                     {:recovery-hint v1-hints/recovery-hint})
+                    (catch clojure.lang.ExceptionInfo e e))]
+            (is (=? {:error :ambiguous-field :agent-error? true} (ex-data e)))
+            (is (str/ends-with? (ex-message e)
+                                (str "The field name matches more than one column in this table, "
+                                     "so it cannot be referenced by name. "
+                                     "Tell the user about the ambiguous column name.")))))))))
+
 (deftest implicit-join-ambiguous-surfaces-agent-error-test
   (with-ambiguous-mp-and-stubs!
     (fn []
@@ -2250,7 +2272,7 @@
                   (is (= :temporal-unit-on-non-temporal-column (:error d))))))))
         (testing "the message names a custom column as such"
           (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo #"`Label` is a Text custom column"
+               clojure.lang.ExceptionInfo #"\"Label\" is a Text custom column"
                (construct/execute-representations-query
                 (query-data {"lib/type" "mbql/query"
                              "database" "Sample"
@@ -2261,7 +2283,7 @@
                                           "aggregation"  [["count" {}]]}]}))))
           (is (thrown-with-msg?
                ;; Text, not the `Integer` the extraction bucket stamped on `effective-type`
-               clojure.lang.ExceptionInfo #"`Label` is a Text custom column"
+               clojure.lang.ExceptionInfo #"\"Label\" is a Text custom column"
                (construct/execute-representations-query
                 (query-data {"lib/type" "mbql/query"
                              "database" "Sample"
@@ -2272,7 +2294,7 @@
                                                                          "effective-type" "type/Integer"} "Label"]]
                                           "aggregation"  [["count" {}]]}]}))))
           (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo #"`Status` is a Text column"
+               clojure.lang.ExceptionInfo #"\"Status\" is a Text column"
                (construct/execute-representations-query
                 (query-data {"lib/type" "mbql/query"
                              "database" "Sample"
@@ -2689,12 +2711,16 @@
   (let [mp (mt/metadata-provider)]
     (lib/query mp (lib.metadata/table mp (mt/id table-key)))))
 
+(defn- card-query
+  "A Lib query on the card with `card-id`."
+  [card-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/card mp card-id))))
+
 (defn- card-count-query
   "A count query on the card with `card-id`."
   [card-id]
-  (let [mp (mt/metadata-provider)]
-    (-> (lib/query mp (lib.metadata/card mp card-id))
-        (lib/aggregate (lib/count)))))
+  (lib/aggregate (card-query card-id) (lib/count)))
 
 (defn- field-col
   [table-key field-key]
@@ -2730,6 +2756,53 @@
                            (metric-query-data {"source-card" model-eid} metric-eid))
                           (get-in [:structured-output :query]))]
             (is (= [[18760]] (mt/rows (qp/process-query query))))))))))
+
+(deftest metric-source-check-follows-a-source-card-that-changed-table-test
+  (testing "After C1 moves from ORDERS to PRODUCTS, the check follows it as the query processor does"
+    (mt/with-temp [:model/Card {c1-id :id}
+                   {:name "C1" :type :question :dataset_query (table-query :orders)}
+                   :model/Card {c2-id :id, c2-eid :entity_id}
+                   {:name "C2" :type :question :dataset_query (card-query c1-id)}
+                   :model/Card {products-metric-eid :entity_id}
+                   {:name "Product count" :type :metric
+                    :dataset_query (lib/aggregate (table-query :products) (lib/count))}
+                   :model/Card {orders-metric-id :id, orders-metric-eid :entity_id}
+                   {:name "Order count" :type :metric
+                    :dataset_query (lib/aggregate (table-query :orders) (lib/count))}
+                   :model/Card {two-stage-id :id, two-stage-eid :entity_id}
+                   {:name "Two-stage count" :type :metric
+                    :dataset_query (-> (card-query c1-id) lib/append-stage (lib/aggregate (lib/count)))}]
+      (t2/update! :model/Card c1-id {:dataset_query (table-query :products)})
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [mp      (mt/metadata-provider)
+              rows    (fn [source metric-eid]
+                        (-> (construct/execute-representations-query (metric-query-data source metric-eid))
+                            (get-in [:structured-output :query])
+                            qp/process-query
+                            mt/rows))
+              check   (fn [source metric-eid]
+                        (try
+                          (construct/execute-representations-query (metric-query-data source metric-eid))
+                          :accepted
+                          (catch clojure.lang.ExceptionInfo e
+                            (:error (ex-data e)))))]
+          (testing "precondition: C2 and the two-stage metric still store the table C1 had when they were saved"
+            (is (= [(mt/id :orders) (mt/id :orders)]
+                   (map #(:table-id (lib.metadata/card mp %)) [c2-id two-stage-id]))))
+          (testing "on C2, a metric on PRODUCTS is accepted and runs"
+            (is (= [[200]] (rows {"source-card" c2-eid} products-metric-eid))))
+          (testing "on C2, a metric on ORDERS is refused, as the query processor refuses it"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Incompatible metric"
+                                  (qp/process-query (lib/aggregate (card-query c2-id)
+                                                                   (lib.metadata/metric mp orders-metric-id)))))
+            (is (= :incompatible-metric (check {"source-card" c2-eid} orders-metric-eid))))
+          (testing "a two-stage metric on C1 is accepted on PRODUCTS and runs"
+            (is (= [[200]] (rows {"source-table" (products-source-table-fk)} two-stage-eid))))
+          (testing "a two-stage metric on C1 is refused on ORDERS, as the query processor refuses it"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Incompatible metric"
+                                  (qp/process-query (lib/aggregate (table-query :orders)
+                                                                   (lib.metadata/metric mp two-stage-id)))))
+            (is (= :incompatible-metric (check {"source-table" (orders-source-table-fk)} two-stage-eid)))))))))
 
 (deftest metric-with-unreadable-definition-is-rejected-on-any-source-test
   (testing "A metric with a blank definition has no usable source"
@@ -3154,6 +3227,29 @@
                                                           "breakout"    [["field" {} (column "PRODUCTS" "ID")]]
                                                           "aggregation" [["count" {}]])))))))))))))))
 
+(deftest ^:parallel metric-compatibility-uses-caller-metadata-test
+  (let [orders-query   (lib/query mp (lib.metadata/table mp 10))
+        products-query (lib/query mp (lib.metadata/table mp 20))
+        source-card    {:id 901, :name "Orders source", :type :question, :database-id 1
+                        :dataset-query orders-query}
+        provider       (lib.tu/merged-mock-metadata-provider mp {:cards [source-card]})
+        definition     (-> (lib/query provider (lib.metadata/card provider 901))
+                           lib/append-stage
+                           (lib/aggregate (lib/count)))
+        provider       (lib.tu/merged-mock-metadata-provider
+                        provider
+                        {:cards [{:id 902, :name "Orders metric", :type :metric, :database-id 1
+                                  :dataset-query definition}]})
+        other-provider (lib.tu/merged-mock-metadata-provider
+                        mp {:cards [(assoc source-card :dataset-query products-query)]})]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (constantly other-provider)]
+      (doseq [[table-id expected] [[10 nil]
+                                   [20 {902 {:kind :table, :table-id 10, :bare-table-only? true}}]]]
+        (testing (str "Compatibility with table " table-id " uses the caller's source card")
+          (let [query (-> (lib/query provider (lib.metadata/table provider table-id))
+                          (lib/aggregate (lib.metadata/metric provider 902)))]
+            (is (= expected (#'construct/incompatible-metrics provider query)))))))))
+
 (deftest gate-checks-only-the-first-stage-test
   (testing "Metric compatibility is checked only in the first stage"
     (mt/with-temp [:model/Card {question-id :id}
@@ -3406,3 +3502,74 @@
                       (catch clojure.lang.ExceptionInfo e e))]
           (is (= (str "Representations query has an invalid structure.\n" hint)
                  (tools.error/recoverable-text (tools.error/classify error) #{}))))))))
+
+(deftest error-locations-after-stage-split-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [[stage-kvs error-code expected]
+              [[{"filters" {"op" ">"}}
+                :invalid-representations-query
+                "Invalid at stages[2].filters: invalid type. Fix the named paths."]
+               [{"breakout" [{"op" "field"}]}
+                :invalid-representations-query
+                (str "Invalid at stages[2].breakout[0]: should be a vector, "
+                     "clause must be [operator-string, options-map, …args]. Fix the named paths.")]
+               [{"expressions" {"Previous" ["offset" {} ["field" {} "count"] -1]}}
+                :query-not-runnable
+                "Failing paths: stages[2].expressions[0]:"]]]
+        (let [query (query-data
+                     {"lib/type" "mbql/query"
+                      "stages" [{"lib/type" "mbql.stage/mbql"
+                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]}
+                                {"lib/type" "mbql.stage/mbql"
+                                 "aggregation" [["count" {}]]
+                                 "filters" [[">" {} ["aggregation" {} 0] 10]]}
+                                (merge {"lib/type" "mbql.stage/mbql"} stage-kvs)]})
+              error (try
+                      (tools/with-pipeline-errors (construct/execute-representations-query query))
+                      (catch clojure.lang.ExceptionInfo e e))
+              classified (tools.error/classify error)]
+          (is (= :recoverable (:class classified)))
+          (is (= (keyword "metabase.metabot.tools.recoverable.pipeline" (name error-code))
+                 (:code classified)))
+          (when (contains? stage-kvs "breakout")
+            (is (vector? (get-in (ex-data (ex-cause error)) [:humanized "stages" 2 "breakout"]))))
+          (is (str/includes? (tools.error/recoverable-text classified #{}) expected)))))))
+
+(deftest diagnostic-stage-numbers-after-split-test
+  (with-mp-and-stubs!
+    (fn []
+      (doseq [split? [false true]
+              [stage-kvs error-code expected]
+              [[{"aggregation" [["field" {} "count"]]}
+                :aggregation-entry-not-aggregation
+                "Stage 1 aggregation entry 0 is a `field` clause"]
+               [{"filters" [[">" {} ["offset" {} ["field" {} "count"] -1] 1]]}
+                :expression-editor-rejection
+                "rejects a `filters:` clause in stage 1: OFFSET is not supported in custom filters"]
+               [{"joins" [{"alias" "P"
+                           "strategy" "left-join"
+                           "stages" [{"lib/type" "mbql.stage/mbql"
+                                      "source-table" ["Sample" "PUBLIC" "PRODUCTS"]}]
+                           "conditions" [["=" {} ["field" {} "PRODUCT_ID"]
+                                          ["field" {"join-alias" "P"} ["Sample" "PUBLIC" "PRODUCTS" "ID"]]]]}]
+                 "breakout" [["field" {"join-alias" "P"} "NOPE"]]}
+                :unresolved-join-alias-field
+                "stage 1, join \"P\" doesn't return \"NOPE\""]]]
+        (testing (str error-code ", split: " split?)
+          (let [query (query-data
+                       {"lib/type" "mbql/query"
+                        "stages" [(cond-> {"lib/type" "mbql.stage/mbql"
+                                           "source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                           "aggregation" [["count" {}]]
+                                           "breakout" [["field" {} ["Sample" "PUBLIC" "ORDERS" "PRODUCT_ID"]]]}
+                                    split? (assoc "filters" [[">" {} ["aggregation" {} 0] 10]]))
+                                  (merge {"lib/type" "mbql.stage/mbql"} stage-kvs)]})
+                error (try
+                        (tools/with-pipeline-errors (construct/execute-representations-query query))
+                        (catch clojure.lang.ExceptionInfo e e))
+                classified (tools.error/classify error)]
+            (is (= :recoverable (:class classified)))
+            (is (= (keyword "metabase.metabot.tools.recoverable.pipeline" (name error-code))
+                   (:code classified)))
+            (is (str/includes? (tools.error/recoverable-text classified #{}) expected))))))))

@@ -30,6 +30,7 @@
   (:require
    [clojure.string :as str]
    [clojure.walk :as walk]
+   [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
@@ -43,10 +44,10 @@
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match]
+   [metabase.util.quoting :as quoting]))
 
 (set! *warn-on-reflection* true)
 
@@ -69,16 +70,16 @@
 (defn- clause-like?
   "Heuristic: a real clause vector (not an FK path) whose head is a non-blank operator string."
   [v]
-  (and (match/matches? v [(_ :guard non-blank-string?) & _])
+  (and (match/matches? v [#'non-blank-string? & _])
        (not (looks-like-fk-path? v))))
 
 (defn- ensure-clause-options*
   "Fix a clause-like vector missing options map at position 2 in nested clause-like vectors."
   [form]
   (match/replace-all form
-    (:and [op] (_ :guard clause-like?)) [op {}]
-    (:and [op nil & _] (_ :guard clause-like?)) (assoc &match 1 {})
-    (:and [op (non-map :guard (not (map? non-map))) & args] (_ :guard clause-like?)) (into [op {} non-map] args)))
+    (:and [op] #'clause-like?) [op {}]
+    (:and [op nil & _] #'clause-like?) (assoc &match 1 {})
+    (:and [op (non-map :guard (not (map? non-map))) & args] #'clause-like?) (into [op {} non-map] args)))
 
 ;;; ============================================================
 ;;; Pass 1.7 -- unwrap nested `[field opts [field inner-opts target]]` clauses.
@@ -210,7 +211,7 @@
                      (let [lower (u/lower-case-en op)]
                        (and (contains? operator-name-aliases lower)
                             (not= op (operator-name-aliases lower))))))
-     (_ :guard map?) & _]
+     #'map? & _]
     (assoc &match 0 (operator-name-aliases (u/lower-case-en op)))))
 
 ;;; ============================================================
@@ -239,7 +240,7 @@
 (defn- rewrite-temporal-bucket-aliases*
   [form]
   (match/replace-all form
-    [(op :guard (and (string? op) (temporal-bucket-extraction-aliases op))) (_ :guard map?) & _]
+    [(op :guard (and (string? op) (temporal-bucket-extraction-aliases op))) #'map? & _]
     (assoc &match 0 (temporal-bucket-extraction-aliases (u/lower-case-en op)))))
 
 ;;; ============================================================
@@ -269,10 +270,8 @@
 (defn- drop-unsupported-day-of-week-mode*
   [form]
   (match/replace form
-    ["get-day-of-week"
-     (_ :guard map?)
-     _
-     (mode :guard  (and (string? mode) (not= "iso" (u/lower-case-en (str/trim mode)))))]
+    ["get-day-of-week" #'map? _
+     (mode :guard (and (string? mode) (not= "iso" (u/lower-case-en (str/trim mode)))))]
     (subvec &match 0 3)))
 
 ;;; ============================================================
@@ -311,7 +310,7 @@
 (defn- rewrite-direction-aliases*
   [form]
   (match/replace-all form
-    [(head :guard direction-clause-head?) (_ :guard map?) _]
+    [(head :guard direction-clause-head?) #'map? _]
     (assoc &match 0 (get direction-aliases (u/lower-case-en head)))))
 
 ;;; ============================================================
@@ -427,8 +426,7 @@
 (defn- merge-trailing-options*
   [form]
   (match/replace-all form
-    (_ :guard needs-trailing-options-merge?)
-    (merge-trailing-options &match)))
+    #'needs-trailing-options-merge? (merge-trailing-options &match)))
 
 ;;; ============================================================
 ;;; Pass 1.89 -- merge a trailing options-map into position-1 on N-ary string-search filters
@@ -447,9 +445,6 @@
 ;;; misplaced options. We merge it into position-1 (trailing keys win) and drop it. Left
 ;;; unrepaired, `lib.normalize` cannot normalise the clause and the query explodes downstream
 ;;; with a missing-`lib/uuid` "Invalid output" error.
-;;;
-;;; Runs after [[ensure-clause-options*]] so position 1 is already a map. Idempotent: the
-;;; repaired clause's last element is a string arg, so the predicate fails on a second pass.
 ;;; ============================================================
 
 (def ^:private string-search-filter-heads
@@ -457,21 +452,13 @@
   position-1 options map. See `metabase.lib.schema.filter`."
   #{"contains" "does-not-contain" "starts-with" "ends-with"})
 
-(defn- needs-string-filter-options-merge?
-  "True when `node` is an N-ary string-search filter whose last element is a misplaced trailing
-  options map (the args before it are string values, never maps). See the pass docstring above."
-  [node]
-  (and (clause-like? node)
-       (contains? string-search-filter-heads (nth node 0))
-       ;; head + opts + field + >=1 value + trailing options-map
-       (>= (count node) 5)
-       (map? (nth node 1))
-       (map? (peek node))))
-
 (defn- merge-string-filter-trailing-options*
   [form]
   (match/replace form
-    (_ :guard needs-string-filter-options-merge?)
+    ;; head + opts + field + >=1 value + trailing options-map
+    (:and [(op :guard (contains? string-search-filter-heads op)) #'map?
+           & (args :guard (and (map? (peek args)) (>= (count args) 3)))]
+          #'clause-like?)
     (&recur (merge-trailing-options &match))))
 
 ;;; ============================================================
@@ -684,10 +671,10 @@
   clause and corrupt it by inserting `{}` between the two scalars."
   [form]
   (match/replace-all form
-    (_ :guard in-not-in-values-list-clause)
+    #'in-not-in-values-list-clause
     (let [[head opts lhs values] (in-not-in-values-list-clause &match)]
       (splat-in-values-clause head opts lhs values))
-    (_ :guard eq-values-list-clause)
+    #'eq-values-list-clause
     (let [[head opts lhs values] (eq-values-list-clause &match)]
       (splat-in-values-clause (=->in-head head) opts lhs values))))
 
@@ -708,32 +695,17 @@
 ;;; legitimate uses of the head.
 ;;; ============================================================
 
-(defn- boolean-wrapper-clause?
-  "True when `node` is `[\"true\" {} x]` or `[\"false\" {} x]` - exactly one arg."
-  [node]
-  (and (vector? node)
-       (= 3 (count node))
-       (string? (nth node 0))
-       (map? (nth node 1))
-       (let [head (u/lower-case-en (nth node 0))]
-         (or (= head "true")
-             (= head "false")))))
-
-(defn- unwrap-boolean-wrapper [node]
-  (let [head (u/lower-case-en (nth node 0))
-        x    (nth node 2)]
-    (case head
+(defn- unwrap-boolean-wrappers*
+  [form]
+  (match/replace-all form
+    [(head :guard (and (string? head) (#{"true" "false"} (u/lower-case-en head)))) #'map? x]
+    (case (u/lower-case-en head)
       ;; Always emit a vector so we don't expose a bare scalar (`["true" {} x]` -> `x`) that a
       ;; sole-element parent would turn into an un-optioned clause `[x]`, which a later `repair`
       ;; pass would then "fix" to `[x {}]` - breaking idempotency. A wrapped clause is returned
       ;; as-is; a wrapped scalar becomes a clause with an empty options map.
       "true"  (if (vector? x) x [x {}])
       "false" ["not" {} x])))
-
-(defn- unwrap-boolean-wrappers*
-  [form]
-  (match/replace-all form
-    (_ :guard boolean-wrapper-clause?) (unwrap-boolean-wrapper &match)))
 
 ;;; ============================================================
 ;;; Pass 1.87 -- swap out-of-order literal bounds in `between` clauses.
@@ -757,22 +729,14 @@
 ;;; ported - the prompt is explicit about between's three-arg shape).
 ;;; ============================================================
 
-(defn- absolute-datetime-clause? [v]
-  (and (vector? v)
-       (>= (count v) 3)
-       (= "absolute-datetime" (nth v 0))
-       (map? (nth v 1))
-       (string? (nth v 2))))
-
 (defn- between-bound-comparable
   "Extract a comparable value from `bound` if it's a literal we can order. Returns the
   value (a Number or String) or `nil` if the bound is not directly comparable."
   [bound]
-  (cond
-    (number? bound)                    bound
-    (string? bound)                    bound
-    (absolute-datetime-clause? bound)  (nth bound 2)
-    :else                              nil))
+  (match/match-one bound
+    (:or #'number? #'string?) &match
+    ["absolute-datetime" #'map? (dt :guard string?) & _] dt
+    _ nil))
 
 (defn- bounds-comparable-and-swappable?
   "True when both bounds are extractable comparables of the same kind (both numbers, both
@@ -791,15 +755,12 @@
        (= "between" (nth v 0))
        (map? (nth v 1))))
 
-(defn- swappable-between-clause? [node]
-  (and (between-clause? node)
-       (bounds-comparable-and-swappable? (nth node 3) (nth node 4))))
-
 (defn- swap-between-bounds*
   [form]
   (match/replace-all form
-    (_ :guard swappable-between-clause?)
-    (-> &match (assoc 3 (nth &match 4)) (assoc 4 (nth &match 3)))))
+    (:and ["between" #'map? _ lower upper]
+          (_ :guard (bounds-comparable-and-swappable? lower upper)))
+    (-> &match (assoc 3 upper) (assoc 4 lower))))
 
 ;;; ============================================================
 ;;; Temporal-literal helpers, shared by the passes below.
@@ -1474,7 +1435,7 @@
   [form]
   (match/replace-all form
     {"fields" (:and single-clause
-                    [(_ :guard string?) (_ :guard map?) & _])}
+                    [#'string? #'map? & _])}
     (assoc &match "fields" [single-clause])))
 
 (defn- normalise-aggregation-clauses*
@@ -1663,7 +1624,7 @@
 
 (defn- ensure-lib-types* [form]
   (match/replace-all form
-    (_ :guard needs-lib-type-marker?)
+    #'needs-lib-type-marker?
     (assoc &match "lib/type" (cond (top-level-query-map? &match) "mbql/query"
                                    (join-like-map? &match) "mbql/join"
                                    (stage-like-map? &match) "mbql.stage/mbql"))))
@@ -1703,7 +1664,7 @@
   non-clause vectors are left alone."
   [form]
   (match/replace-all form
-    (:and (_ :guard clause-like?) [op (_ :guard map?) & args])
+    (:and [op #'map? & args] #'clause-like?)
     (into [op] args)))
 
 (defn- ensure-aggregation-uuid
@@ -1889,8 +1850,8 @@
                                  (and inferred-type (not (contains? opts "effective-type")))
                                  (assoc "effective-type" inferred-type))]
              ["aggregation" new-opts uuid])
-           (throw (ex-info (tru "Aggregation index {0} out of range; stage has {1} aggregation(s): {2}"
-                                idx (count index->uuid) (agg-heads-summary aggs-for-error))
+           (throw (ex-info (format "Aggregation index %s out of range; stage has %s aggregation(s): %s"
+                                   idx (count index->uuid) (agg-heads-summary aggs-for-error))
                            {:agent-error? true
                             :error        :aggregation-ref-out-of-range
                             :index        idx
@@ -1905,7 +1866,7 @@
   and no `aggregation:` block, it's a perfectly valid stage)."
   [stage]
   (some? (match/match-one (dissoc stage "aggregation")
-           (_ :guard integer-index-agg-ref?) true)))
+           #'integer-index-agg-ref? true)))
 
 (defn- resolve-integer-agg-refs-in-stage
   "Resolve all integer-index aggregation refs in a single stage to canonical UUID form.
@@ -1922,7 +1883,7 @@
 
       ;; Integer ref(s) present but stage has no aggregation vector - agent-error.
       (not (and (vector? aggs) (seq aggs)))
-      (throw (ex-info (tru "Found an integer-indexed aggregation reference but this stage has no `aggregation:` clause")
+      (throw (ex-info "Found an integer-indexed aggregation reference but this stage has no `aggregation:` clause"
                       {:agent-error? true
                        :error        :aggregation-ref-no-aggregations}))
 
@@ -2139,7 +2100,7 @@
                     (some? clause)))
                 (map stage ["order-by" "limit" "fields"]))
           (throw (ex-info
-                  (tru "Detected a post-aggregation filter alongside `order-by:`, `limit:`, or `fields:` in the same stage. MBQL 5 requires the filter in a separate stage, but those trailing clauses cannot be safely relocated — they may reference pre-aggregation columns that don''t survive the split. Please author this as two stages explicitly: stage 0 with `source-table`, `aggregation`, `breakout`, and any pre-aggregation `filters`; stage 1 with the post-aggregation `filters`, plus `order-by` / `limit` / `fields` that reference the aggregation''s output via cross-stage `[\"field\", (empty opts), \"<column-name>\"]` refs.")
+                  "Detected a post-aggregation filter alongside `order-by:`, `limit:`, or `fields:` in the same stage. MBQL 5 requires the filter in a separate stage, but those trailing clauses cannot be safely relocated — they may reference pre-aggregation columns that don't survive the split. Please author this as two stages explicitly: stage 0 with `source-table`, `aggregation`, `breakout`, and any pre-aggregation `filters`; stage 1 with the post-aggregation `filters`, plus `order-by` / `limit` / `fields` that reference the aggregation's output via cross-stage `[\"field\", (empty opts), \"<column-name>\"]` refs."
                   {:agent-error? true
                    :status-code  400
                    :error-code   :post-agg-filter-with-trailing-clauses
@@ -2158,7 +2119,7 @@
                                  "filters"  moved-filters}]
               [s0 s1])
             (throw (ex-info
-                    (tru "Detected a post-aggregation filter (a filter referencing an aggregation from the same stage). MBQL 5 requires this in a separate stage. Auto-fix is unsafe here — either an aggregation''s output column name cannot be derived (e.g. a `metric` reference or unknown head), or two aggregations in this stage would produce the same column name (e.g. two `sum` aggregations on different fields, which lib disambiguates as `sum` / `sum_2` based on field order). Please refactor to multi-stage manually: put the aggregations in stage 0, and the filter in stage 1 referencing the column via a cross-stage `[\"field\", (empty opts), \"<column-name>\"]` clause. Use an explicit aggregation with a `name` opts override (e.g. `[\"sum\", (opts with key \"name\" → \"sum_total\"), …]`) if you need stable cross-stage names.")
+                    "Detected a post-aggregation filter (a filter referencing an aggregation from the same stage). MBQL 5 requires this in a separate stage. Auto-fix is unsafe here — either an aggregation's output column name cannot be derived (e.g. a `metric` reference or unknown head), or two aggregations in this stage would produce the same column name (e.g. two `sum` aggregations on different fields, which lib disambiguates as `sum` / `sum_2` based on field order). Please refactor to multi-stage manually: put the aggregations in stage 0, and the filter in stage 1 referencing the column via a cross-stage `[\"field\", (empty opts), \"<column-name>\"]` clause. Use an explicit aggregation with a `name` opts override (e.g. `[\"sum\", (opts with key \"name\" → \"sum_total\"), …]`) if you need stable cross-stage names."
                     {:agent-error? true
                      :status-code  400
                      :error-code   :post-agg-filter-needs-multi-stage
@@ -2166,14 +2127,22 @@
                      :stage        stage}))))))))
 
 (defn- split-post-agg-filters*
-  "Top-level pass: walk every stage in the query, expanding any post-agg-filter stage
-  in-place to `[stage0 stage1]`. Re-runs are no-ops (idempotent: split stages no longer
-  match the trigger). Split failures carry the unsplit query as `:query` in their ex-data."
+  "Split query stages that filter aggregation results.
+
+  Repeated calls leave already split stages unchanged. The `::repr/original-stage-indexes` metadata
+  maps each resulting stage to its index in the original input. Split failures carry the unsplit query as `:query`."
   [query]
   (if-not (and (map? query) (vector? (get query "stages")))
     query
     (try
-      (update query "stages" #(into [] (mapcat split-post-agg-filter-stage) %))
+      (let [stages           (get query "stages")
+            original-indexes (or (::repr/original-stage-indexes (meta query)) (range (count stages)))
+            stage-groups     (mapv split-post-agg-filter-stage stages)
+            stage-indexes    (into [] (mapcat (fn [idx group] (repeat (count group) idx))
+                                              original-indexes stage-groups))]
+        (-> query
+            (assoc "stages" (into [] cat stage-groups))
+            (vary-meta assoc ::repr/original-stage-indexes stage-indexes)))
       (catch clojure.lang.ExceptionInfo e
         (throw (ex-info (ex-message e) (assoc (ex-data e) :query query) e))))))
 
@@ -2635,10 +2604,10 @@
               ;; so listing them in the diagnostic is fine. The FK column portables are NOT
               ;; surfaced here — see the rationale on `:ambiguous-fk` above.
               (let [aliases (mapv :alias cands)]
-                (throw (ex-info (tru "Field {0} is reachable from {1} explicit joins via aliases {2}. Specify the `source-field-join-alias` option on the field clause to pick which join''s foreign key to use."
-                                     (display-portable fk)
-                                     (count cands)
-                                     (str/join ", " (map pr-str aliases)))
+                (throw (ex-info (format "Field %s is reachable from %s explicit joins via aliases %s. Specify the `source-field-join-alias` option on the field clause to pick which join's foreign key to use."
+                                        (display-portable fk)
+                                        (count cands)
+                                        (str/join ", " (map pr-str aliases)))
                                 {:status-code  400
                                  :error        :ambiguous-fk-via-join
                                  :agent-error? true
@@ -2721,9 +2690,10 @@
   "True if `v` is a string-named field ref to a previous-stage column of a stage whose joins are
   aliased `join-aliases`. A ref through one of those aliases names a join's column instead."
   [join-aliases v]
-  (and (not (map-entry? v))
-       (match/matches? v (:and ["field" (_ :guard map?) (_ :guard non-blank-string?)]))
-       (not (contains? join-aliases (get (nth v 1) "join-alias")))))
+  (match/matches? v ["field"
+                     (opts :guard (and (map? opts)
+                                       (not (contains? join-aliases (get opts "join-alias")))))
+                     #'non-blank-string?]))
 
 (defn- types-from-column
   "Pull `\"base-type\"` (and optionally `\"effective-type\"`) off a `lib/returned-columns`
@@ -3033,7 +3003,7 @@
      :problems (vec (for [{:keys [alias cols named-refs path-refs]} checks
                           :let  [bad (bad-join-alias-refs mp cols named-refs path-refs import-resolver)]
                           :when (seq bad)]
-                      {:stage      idx
+                      {:stage      (repr/original-stage-index query idx)
                        :join-alias alias
                        :clauses    (vec bad)
                        :columns    (vec (distinct (map #(field-target-name mp (nth % 2)) bad)))
@@ -3042,13 +3012,13 @@
 (defn- unresolved-join-alias-fields-error
   [problems]
   (ex-info
-   (tru "Some join column references name a column their join doesn''t return: {0}. Reference a join column by its machine name (e.g. an aggregation is `min`, `count`, `sum` - never its display label like `Min of X`), and only columns the join returns: a grouped join returns just its breakouts and aggregations."
-        (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
-                         (tru "stage {0}, join {1} doesn''t return {2} (available: {3})"
-                              stage
-                              (pr-str join-alias)
-                              (str/join ", " (map pr-str columns))
-                              (str/join ", " available)))))
+   (format "Some join column references name a column their join doesn't return: %s. Reference a join column by its machine name (e.g. an aggregation is `min`, `count`, `sum` - never its display label like `Min of X`), and only columns the join returns: a grouped join returns just its breakouts and aggregations."
+           (str/join "; " (for [{:keys [stage join-alias columns available]} problems]
+                            (format "stage %s, join %s doesn't return %s (available: %s)"
+                                    stage
+                                    (quoting/quoted join-alias)
+                                    (str/join ", " (map quoting/quoted columns))
+                                    (str/join ", " (map quoting/quoted available))))))
    {:agent-error? true
     :error        :unresolved-join-alias-field
     :problems     problems}))
@@ -3149,9 +3119,9 @@
                         (pos? idx)                (mini-resolved-columns mp query idx content-store))]
         (when-let [bad (first-unresolved-cross-stage-ref stage cols)]
           (throw (ex-info
-                  (tru "No column named {0} is available to reference in this stage. Reference a column by its machine name (e.g. an aggregation is `max`, `count`, `sum` - never its display label like `Max of X`), not a UI label. Available column names: {1}."
-                       (pr-str (nth bad 2))
-                       (str/join ", " (map :name cols)))
+                  (format "No column named %s is available to reference in this stage. Reference a column by its machine name (e.g. an aggregation is `max`, `count`, `sum` - never its display label like `Max of X`), not a UI label. Available column names: %s."
+                          (quoting/quoted (nth bad 2))
+                          (str/join ", " (map (comp quoting/quoted :name) cols)))
                   {:agent-error? true
                    :error        :unresolved-cross-stage-field
                    :stage        idx
@@ -3198,8 +3168,8 @@
                    (>= (count entry) 1)
                    (= "field" (nth entry 0)))
           (throw (ex-info
-                  (tru "Stage {0} aggregation entry {1} is a `field` clause, not an aggregation. The `aggregation:` block expects aggregation functions like `count`, `sum`, `avg`, `metric`, etc. - or wrap the field in one (e.g. `[sum, <opts>, <field>]`). If you wanted to group by this column, use `breakout:` instead."
-                       stage-idx entry-idx)
+                  (format "Stage %s aggregation entry %s is a `field` clause, not an aggregation. The `aggregation:` block expects aggregation functions like `count`, `sum`, `avg`, `metric`, etc. - or wrap the field in one (e.g. `[sum, <opts>, <field>]`). If you wanted to group by this column, use `breakout:` instead."
+                          stage-idx entry-idx)
                   {:agent-error? true
                    :error        :aggregation-entry-not-aggregation
                    :stage-index  stage-idx
@@ -3224,7 +3194,7 @@
   (match/match-one form
     [#{"case" "if"} {"default" _} & _]
     (throw (ex-info
-            (tru "`case` (and `if`) uses its third positional argument as the fallback value, not a `default` key in the options map. Move the value out of the options map and append it as the third arg of the clause: `[case, <opts>, <branch-pairs>, <default>]`. Omit the third arg entirely if you have no fallback (the result will be null on miss).")
+            "`case` (and `if`) uses its third positional argument as the fallback value, not a `default` key in the options map. Move the value out of the options map and append it as the third arg of the clause: `[case, <opts>, <branch-pairs>, <default>]`. Omit the third arg entirely if you have no fallback (the result will be null on miss)."
             {:agent-error? true
              :error        :case-default-in-opts
              :clause       &match}))))
@@ -3255,8 +3225,8 @@
   (match/match-one form
     [(head :guard sexp-legacy-top-level-ops) & _]
     (throw (ex-info
-            (tru "`{0}` is not a clause in repr; it was a top-level operation in the older sexp pipeline. {1}"
-                 head (get sexp-legacy-top-level-ops head))
+            (format "`%s` is not a clause in repr; it was a top-level operation in the older sexp pipeline. %s"
+                    head (get sexp-legacy-top-level-ops head))
             {:agent-error? true
              :error        :sexp-legacy-op-as-clause
              :head         head
@@ -3274,9 +3244,9 @@
   `validate/operators.clj/validate-operator-specific!` `expression-ref` branch."
   [form]
   (match/match-one form
-    ["expression" (_ :guard map?) (name-slot :guard (or (not (string? name-slot)) (str/blank? name-slot)))]
+    ["expression" #'map? (name-slot :guard (or (not (string? name-slot)) (str/blank? name-slot)))]
     (throw (ex-info
-            (tru "`[expression, <opts>, <name>]` reference requires a non-blank string identifier in the third slot, matching an entry in some stage''s `expressions:` block.")
+            "`[expression, <opts>, <name>]` reference requires a non-blank string identifier in the third slot, matching an entry in some stage's `expressions:` block."
             {:agent-error? true
              :error        :blank-expression-ref
              :clause       &match}))))
@@ -3297,9 +3267,9 @@
   [form]
   (when-not resolve/*numeric-ids-allowed?*
     (match/match-one form
-      ["field" (_ :guard map?) (_ :guard integer?)]
+      ["field" #'map? #'integer?]
       (throw (ex-info
-              (tru "`field` clause needs a portable FK in its third slot, not a numeric id. Use a vector `[<database>, <schema>, <table>, <column>]` (resolved against the metadata provider) or a string column-name (for cross-stage references).")
+              "`field` clause needs a portable FK in its third slot, not a numeric id. Use a vector `[<database>, <schema>, <table>, <column>]` (resolved against the metadata provider) or a string column-name (for cross-stage references)."
               {:agent-error? true
                :error        :numeric-field-id
                :clause       &match})))))
@@ -3371,8 +3341,8 @@
                                            (some? (get (nth node 1) "unit")))
                   false))
        (throw (ex-info
-               (tru "Move the temporal unit in `{0}` off the literal. Write a range with `>=` the first day of the period and `<` the first day after the period, both as plain date strings (not `between`, which drops everything after midnight on its last day). To exclude `2025-01-31`, use an `or` of `< \"2025-01-31\"` and `>= \"2025-02-01\"` on the column. These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count. Join `conditions:` cannot hold an `or`, so a date exclusion cannot be written there; tell the user that it cannot be added to the join. You can instead put the unit on the column with `temporal-unit` in `filters:` and `expressions:`, then compare the column to the first day of the period as a plain date string. Do not put the unit on the column in `aggregation:` or join `conditions:`, where the query engine does not turn it into a range. Use the range for `year` on an `expression` reference, which the query engine reads as a number."
-                    (pr-str node))
+               (format "Move the temporal unit in `%s` off the literal. Write a range with `>=` the first day of the period and `<` the first day after the period, both as plain date strings (not `between`, which drops everything after midnight on its last day). To exclude `2025-01-31`, use an `or` of `< \"2025-01-31\"` and `>= \"2025-02-01\"` on the column. These comparisons drop rows with no date; add `is-null` on the column to the `or` if they should count. Join `conditions:` cannot hold an `or`, so a date exclusion cannot be written there; tell the user that it cannot be added to the join. You can instead put the unit on the column with `temporal-unit` in `filters:` and `expressions:`, then compare the column to the first day of the period as a plain date string. Do not put the unit on the column in `aggregation:` or join `conditions:`, where the query engine does not turn it into a range. Use the range for `year` on an `expression` reference, which the query engine reads as a number."
+                       (pr-str node))
                {:agent-error? true
                 :error        :unencodable-temporal-clause
                 :clause       node})))
@@ -3388,7 +3358,7 @@
   (when (and (map? query) (vector? (get query "stages")))
     (doseq [[idx stage] (map-indexed vector (get query "stages"))]
       (when (map? stage)
-        (aggregation-entry-not-aggregation-error! stage idx)))
+        (aggregation-entry-not-aggregation-error! stage (repr/original-stage-index query idx))))
     (case-default-in-opts-error! query)
     (sexp-legacy-op-as-clause-error! query)
     (blank-expression-ref-error! query)
@@ -3436,6 +3406,8 @@
 
 (defn repair
   "Run the repair pipeline on a parsed (string-keyed, portable) representations query.
+
+  The `::repr/original-stage-indexes` metadata maps each returned stage to its index in the original input.
 
   Passes:
     1. ensure every clause vector has an options map at position 2;
@@ -3549,41 +3521,40 @@
 ;;; ============================================================
 
 (defn assert-editor-accepts-expressions!
-  "Run the FE expression editor's own validation, [[metabase.lib.expression/diagnose-expression]],
-  over every custom column, aggregation, and filter of the resolved `pmbql-query`, throwing a
-  retryable `:agent-error?` on the first clause it rejects. Returns `pmbql-query`.
+  "Validate resolved query expressions with the query builder's expression editor.
 
-  Catches shapes that are schema-legal yet broken in the editor: `offset` in a filter, window
-  functions nested inside aggregation functions, cyclic expression references, type-incompatible
-  arguments, standalone constants without `:expression-literals` support.
+  Check custom columns, aggregations and filters with [[metabase.lib.expression/diagnose-expression]],
+  and throw a retryable `:agent-error?` for the first rejected clause. Return `pmbql-query` if every
+  clause passes.
 
-  Unlike the rest of this namespace this runs after resolve. Call it only on a query that already
-  passed the suppressed-type-check `::lib.schema/query` validation - `diagnose-expression`
-  validates its query argument against that same schema, and its raw validation error would
-  otherwise preempt the friendly message."
-  [pmbql-query]
-  (doseq [stage-idx      (range (lib/stage-count pmbql-query))
-          [mode clauses] [[:expression  (lib/expressions  pmbql-query stage-idx)]
-                          [:aggregation (lib/aggregations pmbql-query stage-idx)]
-                          [:filter      (lib/filters      pmbql-query stage-idx)]]
-          [pos clause]   (map-indexed vector clauses)]
-    (when-let [{:keys [message]} (lib.expression/diagnose-expression
-                                  pmbql-query stage-idx mode clause
-                                  (when (#{:expression :aggregation} mode) pos))]
-      (let [where (case mode
-                    :expression  "custom column (`expressions:`)"
-                    :aggregation "`aggregation:`"
-                    :filter      "`filters:`")]
-        (throw (ex-info
-                (tru "The query builder''s expression editor rejects a {0} clause in stage {1}: {2}. The query would build but could not be visualized or saved - rewrite the offending clause."
-                     where stage-idx (str/replace message #"\.$" ""))
-                {:agent-error? true
-                 :error        :expression-editor-rejection
-                 :status-code  400
-                 :stage        stage-idx
-                 :mode         mode
-                 :clause       clause})))))
-  pmbql-query)
+  `pmbql-query` must already pass `::lib.schema/query` validation with expression type checks
+  suppressed. Otherwise, schema errors can hide the clause's error message.
+  `repaired-query` supplies the original stage indexes for diagnostics and defaults to `pmbql-query`."
+  ([pmbql-query] (assert-editor-accepts-expressions! pmbql-query pmbql-query))
+  ([pmbql-query repaired-query]
+   (doseq [stage-idx      (range (lib/stage-count pmbql-query))
+           [mode clauses] [[:expression  (lib/expressions  pmbql-query stage-idx)]
+                           [:aggregation (lib/aggregations pmbql-query stage-idx)]
+                           [:filter      (lib/filters      pmbql-query stage-idx)]]
+           [pos clause]   (map-indexed vector clauses)]
+     (when-let [{:keys [message]} (lib.expression/diagnose-expression
+                                   pmbql-query stage-idx mode clause
+                                   (when (#{:expression :aggregation} mode) pos))]
+       (let [original-idx (repr/original-stage-index repaired-query stage-idx)
+             where (case mode
+                     :expression  "custom column (`expressions:`)"
+                     :aggregation "`aggregation:`"
+                     :filter      "`filters:`")]
+         (throw (ex-info
+                 (format "The query builder's expression editor rejects a %s clause in stage %s: %s. The query would build but could not be visualized or saved - rewrite the offending clause."
+                         where original-idx (str/replace message #"\.$" ""))
+                 {:agent-error? true
+                  :error        :expression-editor-rejection
+                  :status-code  400
+                  :stage        original-idx
+                  :mode         mode
+                  :clause       clause})))))
+   pmbql-query))
 
 (defn- unbucketed-ref
   "`clause` with its `temporal-unit`, and the type the bucket stamped on it, taken off.
@@ -3629,14 +3600,14 @@
     (when (and column-type
                (not= column-type :type/*)
                (not (isa? column-type :type/Temporal)))
-      (let [column-name (lib/display-name query stage-number bare-ref)
+      (let [column-name (quoting/quoted (lib/display-name query stage-number bare-ref))
             type-name   (name column-type)
             unit-name   (name temporal-unit)]
         (throw (ex-info (if (= :expression (nth clause 0))
-                          (tru "`{0}` is a {1} custom column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
-                               column-name type-name unit-name)
-                          (tru "`{0}` is a {1} column, so it cannot be bucketed by {2}. Compare it to a plain value, or bucket a date / datetime column instead."
-                               column-name type-name unit-name))
+                          (format "%s is a %s custom column, so it cannot be bucketed by %s. Compare it to a plain value, or bucket a date / datetime column instead."
+                                  column-name type-name unit-name)
+                          (format "%s is a %s column, so it cannot be bucketed by %s. Compare it to a plain value, or bucket a date / datetime column instead."
+                                  column-name type-name unit-name))
                         {:agent-error?  true
                          :error         :temporal-unit-on-non-temporal-column
                          :status-code   400

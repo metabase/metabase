@@ -137,7 +137,11 @@ function TransformTestRuns({
               }}
               onFilterOptionsChange={handleFilterOptionsChange}
             />
-            <TransformTestRunButton test={test} readOnly={readOnly} />
+            <TransformTestRunButton
+              test={test}
+              readOnly={readOnly}
+              triggeredFrom="test_runs"
+            />
           </Group>
           {data == null || isLoading || error != null ? (
             <LoadingAndErrorWrapper loading={isLoading} error={error} />

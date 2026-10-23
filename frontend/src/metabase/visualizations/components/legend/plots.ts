@@ -2,6 +2,7 @@ import {
   type BaseCartesianChartModel,
   type ChartLayoutInput,
   type ComputedVisualizationSettings,
+  type Padding,
   type RenderingContext,
   getChartLayout,
   getChartModelAtHeight,
@@ -17,6 +18,7 @@ export interface Plot extends ChartSize {
   hasXAxisLabels: boolean;
   // the left axes' width minus the right axes'
   indent: number;
+  internalInset: Pick<Padding, "left" | "right">;
 }
 
 /** One value for each option Auto weighs: no legend, a row, or a column. */
@@ -61,7 +63,7 @@ export const getLegendPlots = (
   chartSizes: LegendCandidates<ChartSize>,
 ): LegendCandidates<Plot> =>
   mapLegendCandidates(chartSizes, ({ width, height }) => {
-    const { padding, axisEnabledSetting } = getChartLayout(
+    const { padding, axisEnabledSetting, internalInset } = getChartLayout(
       getLayoutInputAtHeight(chart, height),
       chart.settings,
       chart.hasTimelineEvents,
@@ -74,6 +76,7 @@ export const getLegendPlots = (
       height: height - padding.top - padding.bottom,
       hasXAxisLabels: axisEnabledSetting !== false,
       indent: padding.left - padding.right,
+      internalInset,
     };
   });
 
@@ -84,4 +87,5 @@ export const getPlotsWithoutAxes = (
     ...size,
     hasXAxisLabels: true,
     indent: 0,
+    internalInset: { left: 0, right: 0 },
   }));

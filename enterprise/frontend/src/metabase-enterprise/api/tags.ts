@@ -14,6 +14,7 @@ import {
   type CardDependencyNode,
   DEPENDENCY_TYPES,
   type DashboardDependencyNode,
+  type DataAppDependencyNode,
   type DependencyGraph,
   type DependencyNode,
   type DocumentDependencyNode,
@@ -210,6 +211,13 @@ function provideActionDependencyNodeTags(
   ];
 }
 
+function provideDataAppDependencyNodeTags(
+  node: DataAppDependencyNode,
+): TagDescription<EnterpriseTagType>[] {
+  // the data app endpoints tag apps by their slug, not their id
+  return [idTag("data-app", node.data.name)];
+}
+
 export function provideDependencyNodeTags(
   node: DependencyNode,
 ): TagDescription<EnterpriseTagType>[] {
@@ -234,6 +242,8 @@ export function provideDependencyNodeTags(
       return provideMeasureDependencyNodeTags(node);
     case "action":
       return provideActionDependencyNodeTags(node);
+    case "data-app":
+      return provideDataAppDependencyNodeTags(node);
   }
 }
 

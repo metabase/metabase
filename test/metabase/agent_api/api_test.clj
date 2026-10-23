@@ -11,13 +11,16 @@
    [metabase.ai-tracing.log :as ait.log]
    [metabase.ai-tracing.settings :as ai-tracing.settings]
    [metabase.api.macros :as api.macros]
+   [metabase.api.macros.defendpoint.tools-manifest :as tools-manifest]
    [metabase.api.macros.scope :as api.scope]
    [metabase.collections.models.collection :as collection]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib-be.db :as lib-be.db]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.normalize :as lib.normalize]
+   [metabase.lib.test-util :as lib.tu]
    [metabase.mcp.core :as mcp]
    [metabase.metabot.agent.profiles :as metabot.profiles]
    [metabase.metabot.scope :as metabot.scope]
@@ -325,6 +328,19 @@
                                          {:query (orders-query
                                                   :aggregation [(orders-field-ref "ID")])})]
       (is (=? {:error "aggregation-entry-not-aggregation"} response)))))
+
+(deftest construct-query-ambiguous-field-recovery-test
+  (let [mp           (mt/metadata-provider)
+        ambiguous-mp (lib.tu/merged-mock-metadata-provider
+                      mp {:fields [(assoc (lib.metadata/field mp (mt/id :orders :total)) :id Integer/MAX_VALUE)]})]
+    (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (constantly ambiguous-mp)]
+      (let [response (mt/user-http-request :rasta :post 400 "agent/v2/construct-query"
+                                           {:query (orders-query :fields [(orders-field-ref "TOTAL")])})]
+        (is (= "ambiguous-field" (:error response)))
+        (is (str/includes? (:message response)
+                           (str "The field name matches more than one column in this table, "
+                                "so it cannot be referenced by name. "
+                                "Tell the user about the ambiguous column name.")))))))
 
 (deftest construct-query-metadata-lookup-failure-test
   (mt/with-prometheus-system! [_ system]
@@ -2022,6 +2038,28 @@
 
 ;;; ------------------------------------------------- Read Resource Tests -----------------------------------------
 
+(deftest read-resource-uri-preview-test
+  (doseq [[uri success?] [[(str "metabase://databases?ignored=" (apply str (repeat 4000 "x"))) true]
+                          [(apply str (repeat 4096 "\"")) false]
+                          [(apply str (repeat 4096 "\u08FF")) false]]]
+    (let [response (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource" {:uris [uri]})
+          resource (first (:resources response))
+          attribute (second (re-find #"<resource uri=\"([^\"]*)\">" (:output response)))]
+      (is (= success? (contains? resource :content)))
+      (is (= uri (:uri resource)))
+      (is (<= (count attribute) 200))
+      (is (str/ends-with? attribute "...[truncated]")))))
+
+(deftest ^:parallel read-resource-tool-description-test
+  (let [endpoint    (some (fn [[_ endpoint]]
+                            (when (= "read_resource" (get-in endpoint [:form :metadata :tool :name]))
+                              endpoint))
+                          (api.macros/ns-routes 'metabase.agent-api.api))
+        description (:description (tools-manifest/endpoint->tool-definition "/api/agent" endpoint))]
+    (is (str/includes? description "metabase://collection/root/items"))
+    (doseq [text ["metabase://chart/" "metabase://query/" "conversation" "save_entity"]]
+      (is (not (str/includes? description text)) text))))
+
 (deftest read-resource-test
   (testing "Dispatches a top-level URI through the shared resolver"
     (let [resp (mt/user-http-request :crowberto :post 200 "agent/v1/read-resource"
@@ -2038,13 +2076,12 @@
                                      {:uris [(str "metabase://table/" (mt/id :orders))]})]
       (is (= 1 (count (:resources resp))))
       (is (some? (-> resp :resources first :content)))))
-  (testing "Returns 400 when too many URIs"
-    (let [uris (vec (repeat 10 "metabase://databases"))]
-      (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource"
-                            {:uris uris})))
-  (testing "this endpoint publishes the tool's own argument schema, so its limits cannot drift from
-           the ones the agent loop enforces. The hand-written copy this replaced had already lost
-           the 5-URI cap."
+  (testing "Rejects batches above the five-URI limit"
+    (let [uris (conj (vec (repeat 5 "metabase://databases")) "metabase://collections")
+          resp (mt/user-http-request :crowberto :post 400 "agent/v1/read-resource" {:uris uris})]
+      (is (str/includes? (pr-str (:errors resp)) "at most 5 URIs"))
+      (is (str/includes? (pr-str (:errors resp)) "Request fewer URIs"))))
+  (testing "This endpoint publishes the tool's argument schema"
     ;; Compared on the `:uris` entry: `mr/def` stamps its own docstring onto the map's properties,
     ;; so the outer form differs by a `:description` the endpoint never publishes.
     (is (= (nth (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)) 2)

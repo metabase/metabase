@@ -144,22 +144,20 @@
 (defn- table-fk?
   "Portable table FK: [db-name, schema-or-null, table-name]."
   [x]
-  (match/matches? x
-                  [(_ :guard non-blank-string?) (s :guard (or (nil? s) (string? s))) (_ :guard non-blank-string?)]))
+  (match/matches? x [#'non-blank-string? (s :guard (or (nil? s) (string? s))) #'non-blank-string?]))
 
 (defn- field-fk?
   "Portable field FK: [db-name, schema-or-null, table-name, field-name, ...json-path-segments]."
   [x]
   (match/matches? x
-                  [(_ :guard non-blank-string?)
+                  [#'non-blank-string?
                    (s :guard (or (nil? s) (string? s)))
-                   (_ :guard non-blank-string?)
+                   #'non-blank-string?
                    & (args :guard (every? non-blank-string? args))]))
 
 (defn- clause-shape?
   [x]
-  (match/matches? x
-                  [(_ :guard non-blank-string?) (_ :guard map?) & _]))
+  (match/matches? x [#'non-blank-string? #'map? & _]))
 
 (defn- numeric-id-when-allowed?
   "A numeric id in a source slot, valid only on a surface that accepts numeric ids (checked at
@@ -226,22 +224,40 @@
   "Malli schema for a single MBQL stage in the portable representations form."
   [:schema {:registry registry} [:ref ::stage]])
 
-(defn validate-query
-  "Validate a string-keyed portable representations query against [[query-schema]] and return it
-  unchanged.
+(defn original-stage-index
+  "Return the original index of a repaired stage, or `stage-idx` if repair metadata is missing."
+  [query stage-idx]
+  (get (::original-stage-indexes (meta query)) stage-idx stage-idx))
 
-  Used as a sanity check between the repair and resolve passes."
-  [parsed]
-  (when-let [error (mr/explain query-schema parsed)]
-    (throw (ex-info (tru "Representations query has an invalid structure.")
-                    {:status-code   400
-                     :error         :invalid-representations-query
-                     :error-code    :invalid-representations-query
-                     :humanized     (mu.humanize/humanize error)
-                     :details       (pr-str (mu.humanize/humanize error))
-                     :schema        ::query
-                     :response/keys #{:humanized :details}})))
-  parsed)
+(defn original-query-path
+  "Translate a repaired query path to the stage indexes in the original input."
+  [query path]
+  (let [[stage-key stage-idx] path]
+    (cond-> path
+      (and (#{:stages "stages"} stage-key) (integer? stage-idx))
+      (assoc 1 (original-stage-index query stage-idx)))))
+
+(defn validate-query
+  "Validate a portable representations query against [[query-schema]] and return it unchanged.
+
+  `parsed` must have string keys. Error paths use the original stage indexes from `repaired-query`,
+  which defaults to `parsed`."
+  ([parsed] (validate-query parsed parsed))
+  ([parsed repaired-query]
+   (when-let [error (mr/explain query-schema parsed)]
+     (let [humanized (mu.humanize/humanize
+                      (update error :errors (fn [errors]
+                                              (mapv #(update % :in (partial original-query-path repaired-query))
+                                                    errors))))]
+       (throw (ex-info (tru "Representations query has an invalid structure.")
+                       {:status-code   400
+                        :error         :invalid-representations-query
+                        :error-code    :invalid-representations-query
+                        :humanized     humanized
+                        :details       (pr-str humanized)
+                        :schema        ::query
+                        :response/keys #{:humanized :details}}))))
+   parsed))
 
 (defn query-path
   "Format a query location as a dotted path with bracketed indices, or `(root)` for an empty path."
