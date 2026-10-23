@@ -225,8 +225,6 @@ function getColumnLayout(
   };
 }
 
-export const MIN_CHART_SIDE_MARGIN = 12;
-
 const NO_MARGINS: Padding = { top: 0, right: 0, bottom: 0, left: 0 };
 
 /**
@@ -247,7 +245,7 @@ export const getLegendMargins = (
   if (placement === "left" || placement === "right") {
     margins[chartSide] = Math.max(
       margins[chartSide] - internalInset[placement],
-      MIN_CHART_SIDE_MARGIN,
+      0,
     );
   }
   return margins;

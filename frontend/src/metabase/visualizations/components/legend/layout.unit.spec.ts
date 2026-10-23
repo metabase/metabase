@@ -3,7 +3,6 @@ import type { LegendPosition } from "metabase-types/api";
 import type { LegendItemData } from "./LegendItem";
 import { LEGEND_PADDING } from "./constants";
 import {
-  MIN_CHART_SIDE_MARGIN,
   MIN_LEGEND_CARD_WIDTH,
   getLegendLayout,
   getLegendMargins,
@@ -631,15 +630,15 @@ describe("getLegendMargins", () => {
     },
   );
 
-  it("should keep the minimum margin when the inset exceeds the content margin", () => {
+  it("should drop the margin to zero when the inset covers the content margin", () => {
     const gap = LEGEND_SIZES.smallCard.contentMargin.rightLegend.left;
 
     expect(
       getLegendMargins("smallCard", "right", { left: 0, right: gap }).left,
-    ).toBe(MIN_CHART_SIDE_MARGIN);
+    ).toBe(0);
     expect(
       getLegendMargins("smallCard", "right", { left: 0, right: gap * 3 }).left,
-    ).toBe(MIN_CHART_SIDE_MARGIN);
+    ).toBe(0);
   });
 
   it("should apply a row's margins as configured, with zero on the sides it does not set", () => {

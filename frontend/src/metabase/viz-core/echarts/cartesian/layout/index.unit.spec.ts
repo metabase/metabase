@@ -287,30 +287,28 @@ describe("getChartLayout", () => {
     });
   });
 
-  it("does not reserve x-axis room for a time series label the tick grid never draws", () => {
+  it("leaves a drawn x-axis label's overhang out of the internal inset", () => {
     const utc = (value: string) => dayjs.utc(value);
-    const first = "2019-03-01";
     const getTimeSeriesInput = (last: string): ChartLayoutInput => ({
       ...input,
       xAxisModel: {
         axisType: "time",
-        interval: { unit: "day", count: 1 },
-        intervalsCount: utc(last).diff(utc(first), "day"),
-        range: [utc(first), utc(last)],
-        formatter: (value) => utc(String(value)).format("MMM D, YYYY"),
+        interval: { unit: "month", count: 1 },
+        intervalsCount: utc(last).diff(utc("2025-02-01"), "month"),
+        range: [utc("2025-02-01"), utc(last)],
+        formatter: (value) => utc(String(value)).format("MMMM YYYY"),
         toEChartsAxisValue: (value) =>
           utc(String(value)).format("YYYY-MM-DDTHH:mm:ss[Z]"),
         fromEChartsAxisValue: (value) => dayjs.utc(value),
       },
       transformedDataset: [
-        { [X_AXIS_DATA_KEY]: first, price: 1200 },
+        { [X_AXIS_DATA_KEY]: "2025-02-01", price: 1200 },
         { [X_AXIS_DATA_KEY]: last, price: 1800 },
       ],
     });
     const chartContext: RenderingContext = {
       ...getChartContext(),
-      // Every date label is 90px wide, so a 400px chart fits three ticks.
-      measureText: (text) => (/\d{4}/.test(text) ? 90 : 20),
+      measureText: (text) => (/\d{4}/.test(text) ? 80 : 20),
     };
     const timeSeriesSettings = createMockVisualizationSettings({
       ...settings,
@@ -322,19 +320,21 @@ describe("getChartLayout", () => {
         getTimeSeriesInput(last),
         timeSeriesSettings,
         false,
-        400,
+        480,
         300,
         chartContext,
       );
 
-    // Yearly ticks end at January 2021, months before the data does, so the
-    // last data point gets no label and its label width takes no room.
-    expect(getLayout("2021-06-15").padding.right).toBe(CHART_STYLE.padding.x);
+    // The data ends on the January 2029 tick, so its label is drawn half a
+    // month from the plot's right edge and reaches into the reserved padding.
+    const drawn = getLayout("2029-01-01");
+    expect(drawn.internalInset.right).toBeGreaterThan(0);
+    expect(drawn.internalInset.right).toBeLessThan(CHART_STYLE.padding.x);
 
-    // The room stays when the last tick does sit at the axis end.
-    expect(getLayout("2021-01-01").padding.right).toBeGreaterThan(
-      CHART_STYLE.padding.x,
-    );
+    // The data ends in June, so the January label sits well inside the plot
+    // and the padding stays empty.
+    const inside = getLayout("2029-06-01");
+    expect(inside.internalInset.right).toBe(inside.padding.right);
   });
 
   const getSmallestCardLayout = ({

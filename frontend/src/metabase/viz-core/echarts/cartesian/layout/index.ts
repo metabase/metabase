@@ -17,7 +17,6 @@ import type {
   ChartDataset,
   NumericAxisScaleTransforms,
   StackModel,
-  TimeSeriesXAxisModel,
   XAxisModel,
   YAxisModel,
 } from "../model/types";
@@ -581,55 +580,6 @@ const TICK_OVERFLOW_BUFFER = 4;
 // don't allow overflow greater than 12.5% of the chart width
 const MAX_OVERFLOW_PERCENTAGE = 0.125;
 
-/** A horizontal x-axis label, centered `inset` pixels inside the boundary edge it is closest to. */
-interface EdgeLabel {
-  width: number;
-  inset: number;
-}
-
-/**
- * The outermost labels of a time series axis, which labels its tick grid only
- * (see getTicksOptions), so they can sit well inside the boundary, or be absent.
- */
-const getTimeSeriesEdgeLabels = (
-  xAxisModel: TimeSeriesXAxisModel,
-  ticksDimensions: TicksDimensions,
-  chartWidth: number,
-  padding: Padding,
-  boundaryWidth: number,
-): { first: EdgeLabel; last: EdgeLabel } | null => {
-  const { customValues, xDomainPadded, formatter } = getTicksOptions(
-    xAxisModel,
-    { outerWidth: chartWidth, padding, ticksDimensions },
-  );
-  if (customValues == null) {
-    // ECharts spaces the ticks itself, so the labels can be anywhere
-    return null;
-  }
-
-  const [axisMin, axisMax] = xDomainPadded;
-  const getEdgeLabel = (
-    value: number | undefined,
-    axisEdge: number,
-  ): EdgeLabel => {
-    if (value == null) {
-      return { width: 0, inset: 0 };
-    }
-    const label = formatter(
-      xAxisModel.fromEChartsAxisValue(value).format("YYYY-MM-DDTHH:mm:ss[Z]"),
-    );
-    return {
-      width: ticksDimensions.getXTickWidth(label),
-      inset: (Math.abs(axisEdge - value) / (axisMax - axisMin)) * boundaryWidth,
-    };
-  };
-
-  return {
-    first: getEdgeLabel(customValues[0], axisMin),
-    last: getEdgeLabel(customValues[customValues.length - 1], axisMax),
-  };
-};
-
 const getTicksOverflow = (
   input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
@@ -707,34 +657,27 @@ const getTicksOverflow = (
     };
   }
 
-  const getDataEdgeLabel = (width: number): EdgeLabel => ({
-    width,
-    inset: dimensionWidth / 2,
-  });
-  const edgeLabels =
-    axisEnabledSetting && isTimeSeriesAxis(xAxisModel)
-      ? getTimeSeriesEdgeLabels(
-          xAxisModel,
-          ticksDimensions,
-          chartWidth,
-          padding,
-          currentBoundaryWidth,
-        )
-      : null;
-  const first =
-    edgeLabels?.first ?? getDataEdgeLabel(ticksDimensions.firstXTickWidth);
-  const last =
-    edgeLabels?.last ?? getDataEdgeLabel(ticksDimensions.lastXTickWidth);
-
-  const getOverflow = ({ width, inset }: EdgeLabel, paddingSide: number) =>
-    Math.min(
-      Math.max(width / 2 - inset - paddingSide + TICK_OVERFLOW_BUFFER, 0),
-      maxOverflow,
-    );
-  return {
-    firstTickOverflow: getOverflow(first, padding.left),
-    lastTickOverflow: getOverflow(last, padding.right),
-  };
+  const firstTickOverflow = Math.min(
+    Math.max(
+      ticksDimensions.firstXTickWidth / 2 -
+        dimensionWidth / 2 -
+        padding.left +
+        TICK_OVERFLOW_BUFFER,
+      0,
+    ),
+    maxOverflow,
+  );
+  const lastTickOverflow = Math.min(
+    Math.max(
+      ticksDimensions.lastXTickWidth / 2 -
+        dimensionWidth / 2 -
+        padding.right +
+        TICK_OVERFLOW_BUFFER,
+      0,
+    ),
+    maxOverflow,
+  );
+  return { firstTickOverflow, lastTickOverflow };
 };
 
 export const getCartesianChartPadding = (
@@ -804,13 +747,71 @@ export const getCartesianChartPadding = (
   return padding;
 };
 
+/**
+ * How far the outermost drawn x-axis labels reach past the plot's edges. A
+ * time series axis labels its tick grid, so its outermost labels can sit well
+ * inside the plot; other axes label their first and last values.
+ */
+const getDrawnXLabelsOverhang = (
+  input: ChartLayoutInput,
+  ticksDimensions: TicksDimensions,
+  axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
+  chartWidth: number,
+  padding: Padding,
+): Pick<Padding, "left" | "right"> => {
+  const { xAxisModel } = input;
+  const plotWidth = chartWidth - padding.left - padding.right;
+  if (!axisEnabledSetting || plotWidth <= 0) {
+    return { left: 0, right: 0 };
+  }
+  if (isTimeSeriesAxis(xAxisModel)) {
+    const { customValues, xDomainPadded, formatter } = getTicksOptions(
+      xAxisModel,
+      { outerWidth: chartWidth, padding, ticksDimensions },
+    );
+    if (customValues != null && customValues.length > 0) {
+      const [axisMin, axisMax] = xDomainPadded;
+      const getX = (value: number) =>
+        ((value - axisMin) / (axisMax - axisMin)) * plotWidth;
+      const getHalfWidth = (value: number) => {
+        const label = formatter(
+          xAxisModel
+            .fromEChartsAxisValue(value)
+            .format("YYYY-MM-DDTHH:mm:ss[Z]"),
+        );
+        return ticksDimensions.getXTickWidth(getPaddedAxisLabel(label)) / 2;
+      };
+      const first = customValues[0];
+      const last = customValues[customValues.length - 1];
+      return {
+        left: Math.max(getHalfWidth(first) - getX(first), 0),
+        right: Math.max(getX(last) + getHalfWidth(last) - plotWidth, 0),
+      };
+    }
+  }
+  if (
+    axisEnabledSetting === "rotate-45" ||
+    axisEnabledSetting === "rotate-90"
+  ) {
+    return { left: 0, right: 0 };
+  }
+  const dimensionWidth = getDimensionWidth(input, plotWidth);
+  return {
+    left: Math.max(ticksDimensions.firstXTickWidth / 2 - dimensionWidth / 2, 0),
+    right: Math.max(ticksDimensions.lastXTickWidth / 2 - dimensionWidth / 2, 0),
+  };
+};
+
 export const getInternalInset = (
-  { leftAxisModel, rightAxisModel }: ChartLayoutInput,
+  input: ChartLayoutInput,
   settings: ComputedVisualizationSettings,
   ticksDimensions: TicksDimensions,
+  axisEnabledSetting: ComputedVisualizationSettings["graph.x_axis.axis_enabled"],
+  chartWidth: number,
   padding: Padding,
   renderingContext: RenderingContext,
 ): ChartLayout["internalInset"] => {
+  const { leftAxisModel, rightAxisModel } = input;
   const { fontSize, marginY } = renderingContext.theme.cartesian.axisTitle;
   const hasTicks = !!settings["graph.y_axis.axis_enabled"];
   const getAxisWidth = (
@@ -818,13 +819,30 @@ export const getInternalInset = (
     ticksWidth: number,
   ) =>
     (hasTicks ? ticksWidth : 0) + (axisModel?.label ? fontSize + marginY : 0);
+  const overhang = getDrawnXLabelsOverhang(
+    input,
+    ticksDimensions,
+    axisEnabledSetting,
+    chartWidth,
+    padding,
+  );
   return {
-    left:
+    left: Math.max(
       padding.left -
-      getAxisWidth(leftAxisModel, ticksDimensions.yTicksWidthLeft),
-    right:
+        Math.max(
+          getAxisWidth(leftAxisModel, ticksDimensions.yTicksWidthLeft),
+          overhang.left,
+        ),
+      0,
+    ),
+    right: Math.max(
       padding.right -
-      getAxisWidth(rightAxisModel, ticksDimensions.yTicksWidthRight),
+        Math.max(
+          getAxisWidth(rightAxisModel, ticksDimensions.yTicksWidthRight),
+          overhang.right,
+        ),
+      0,
+    ),
   };
 };
 
@@ -1042,6 +1060,8 @@ export const getChartLayout = (
       input,
       settings,
       ticksDimensions,
+      axisEnabledSetting,
+      width,
       padding,
       renderingContext,
     ),
@@ -1139,6 +1159,8 @@ const computeSplitPanelLayout = (
       singleAxisInput,
       settings,
       ticksDimensions,
+      axisEnabledSetting,
+      width,
       padding,
       renderingContext,
     ),
