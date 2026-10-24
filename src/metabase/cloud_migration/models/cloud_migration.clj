@@ -4,6 +4,7 @@
    [clj-http.client :as http]
    [clojure.java.io :as io]
    [clojure.set :as set]
+   [clojure.string :as str]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.quartz :as app-db.quartz]
    [metabase.cloud-migration.db :as cloud-migration.db]
@@ -16,6 +17,7 @@
    [metabase.store-api.core :as store-api]
    [metabase.task.core :as task]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -45,6 +47,8 @@
                 :model/CloudMigration :all :model/Setting :all
                 ;; Users need to login, make queries, and we need need to audit them.
                 :model/User :all :model/LoginHistory :all
+                ;; The timestamped model hook adds updated_at when login touches last_used_at.
+                :model/AuthIdentity #{:last_used_at :updated_at}
                 :model/UserParameterValue :all
                 :model/AuditLog :all :model/ViewLog :all
                 ;; Cards need to able to update their last used at timestamp, but we don't want to create
@@ -54,24 +58,106 @@
                ;; and write toucan2 functions that interact with table directly.
                t2/table-name))
 
-(defn- update-exempted?
-  [table-name {:keys [changes]}]
-  (or (=  (read-only-mode-exceptions table-name) :all)
-      (set/subset? (read-only-mode-exceptions table-name)
-                   (->> changes keys (into #{})))))
+(defn- identifier-name
+  "Normalize a HoneySQL identifier to an unqualified name for the exception lookup."
+  [identifier]
+  (some-> (cond
+            (h2x/identifier? identifier) (last (h2x/identifier->components identifier))
+            (or (keyword? identifier) (symbol? identifier) (string? identifier))
+            (last (str/split (name identifier) #"\.")))
+          u/lower-case-en
+          (str/replace "-" "_")
+          keyword))
 
-;; Block write calls to most tables in read-only mode.
-(methodical/defmethod t2.pipeline/build :before [#_query-type     :toucan.statement-type/DML
-                                                 #_model          :default
-                                                 #_resolved-query :default]
-  [_query-type model parsed-args resolved-query]
-  (let [table-name (t2/table-name model)]
-    (when (and (cloud-migration.settings/read-only-mode)
-               (read-only-mode-inclusions table-name)
-               (not (update-exempted? table-name parsed-args)))
-      (throw (ex-info (tru "Metabase is in read-only-mode mode!")
-                      {:status-code 403}))))
-  resolved-query)
+(defn- target-table
+  "Unwrap a table/alias, table/columns, or INSERT ... SELECT specifier."
+  [target]
+  (if (and (sequential? target) (not (h2x/identifier? target)))
+    ;; INSERT may begin with an options map (e.g. OVERRIDING SYSTEM VALUE).
+    (recur (first (drop-while map? target)))
+    (identifier-name target)))
+
+(def ^:private write-clauses
+  #{:update :insert-into :replace-into :delete-from :delete :truncate
+    :alter-table :drop-table :create-table :create-table-as :refresh-materialized-view
+    :create-materialized-view :drop-materialized-view :select-into})
+
+(defn- query-writes
+  "Write clauses in a HoneySQL query, including explicitly marked subqueries/CTEs.
+  honeysql-guard rejects unmarked subqueries. Do not interpret bound JSON/row values as SQL."
+  [query]
+  (for [form (tree-seq #(and (coll? %)
+                             (not (and (sequential? %)
+                                       (#{:lift :inline :param :auto/param} (first %)))))
+                       seq query)
+        :when (and (map? form) (or (identical? form query) (:allow-subquery (meta form))))
+        op write-clauses
+        :when (contains? form op)]
+    [op form]))
+
+(defn- source-tables
+  "Table specifiers in FROM and JOIN clauses, used to resolve MySQL DELETE aliases."
+  [query]
+  (concat (:from query) (:using query) (:cross-join query)
+          (mapcat #(take-nth 2 (get query %)) [:join :left-join :right-join :inner-join :full-join])))
+
+(defn- write-targets
+  [op query]
+  (let [target (get query op)]
+    (case op
+      :delete
+      (let [aliases (into {} (keep (fn [source]
+                                     (when (and (sequential? source) (not (h2x/identifier? source)))
+                                       [(identifier-name (second source)) (target-table source)])))
+                          (source-tables query))]
+        (map #(get aliases (identifier-name %) (target-table %))
+             (if (sequential? target) target [target])))
+
+      :truncate
+      (if (and (sequential? target) (sequential? (first target))
+               (not (h2x/identifier? (first target))))
+        (map target-table (first target))
+        [(target-table target)])
+
+      :drop-table
+      (map target-table (remove #{:if-exists :cascade :restrict}
+                                (if (sequential? target) target [target])))
+
+      :update
+      ;; MySQL can update joined tables too. Conservatively check every joined table; a column
+      ;; exception only applies to the UPDATE target itself.
+      (cons (target-table target) (map target-table (source-tables (dissoc query :from))))
+
+      [(target-table target)])))
+
+(defn- write-exempted?
+  [table op query]
+  (let [exception (read-only-mode-exceptions table)
+        columns   (when (map? (:set query)) (into #{} (map identifier-name) (keys (:set query))))]
+    (or (= exception :all)
+        (and (= op :update)
+             (= table (target-table (:update query)))
+             (set? exception)
+             (seq columns)
+             (set/subset? columns exception)))))
+
+;; Compile sees the actual target and SET columns after model hooks have run, and includes
+;; ordinary t2/query, query-one and reducible-query calls (whose query type is not DML).
+;; Use a map-specific dispatch so this coexists with honeysql-guard's :before :default hook.
+;; SQL strings and direct JDBC are outside this HoneySQL guard.
+(methodical/defmethod t2.pipeline/compile :before [:default :default clojure.lang.IPersistentMap]
+  [_query-type _model query]
+  ;; Check for writes before reading the setting: a cold setting cache itself issues SELECTs.
+  (when-let [writes (seq (query-writes query))]
+    (when (cloud-migration.settings/read-only-mode)
+      (doseq [[op form] writes
+              table (write-targets op form)
+              :when (or (nil? table)
+                        (and (read-only-mode-inclusions table)
+                             (not (write-exempted? table op form))))]
+        (throw (ex-info (tru "Metabase is in read-only-mode mode!")
+                        {:status-code 403 :table table :op op})))))
+  query)
 
 ;; Helpers
 

@@ -602,6 +602,7 @@
            util
            util.config}
    :model-imports #{:model/AuditLog
+                    :model/AuthIdentity
                     :model/Card
                     :model/LoginHistory
                     :model/Setting
