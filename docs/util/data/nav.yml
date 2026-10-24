@@ -136,6 +136,8 @@ categories:
             url: "ai/research"
           - name: "Metabot in Slack"
             url: "ai/metabot-slack"
+          - name: "Metabot context"
+            url: "ai/configure-metabot-context"
           - name: "Settings"
             url: "ai/settings"
           - name: "MCP server"

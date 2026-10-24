@@ -159,7 +159,7 @@ _Internal tab._
 
 Select a collection (including its subcollections) to limit which collections Metabot searches during [AI exploration](../ai/metabot.md#ai-exploration). Click **Pick a different collection** to change the selection.
 
-This setting only affects conversations started from **+ New > AI exploration**.
+This setting affects conversations started from **+ New > AI exploration**, and the models and metrics **Ask Metabot** uses in [documents](../documents/introduction.md).
 
 People can still @-mention items outside of this collection when prompting in AI exploration. Metabot can also see the person's current context (for example, Metabot will know about the dashboard they're currently viewing, even if the dashboard is outside the selected collection).
 
@@ -191,37 +191,9 @@ For more granular options, check out [AI usage controls](./usage-controls.md).
 
 ## Tips for making the most of Metabot
 
-The best thing you can do to improve Metabot's performance is to prep your data like you would for onboarding a new (human) hire to your data. In practice, this means you should:
+The best thing you can do to improve Metabot's answers is to prep your data like you would for a new (human) hire: describe your tables, columns, models, and metrics, define company terms in the glossary, and mark foreign keys.
 
-- [Add descriptions for your data and content](#add-descriptions-for-your-data-and-content)
-- [Make sure the semantic types for each field are correct](#make-sure-the-semantic-types-for-each-field-are-correct)
-- [Define domain-specific terms in the glossary](#define-domain-specific-terms-in-the-glossary)
-
-### Add descriptions for your data and content
-
-Add descriptions to your [models](../data-modeling/models/models.md#add-metadata-to-columns-in-a-model), [metrics](../data-modeling/semantic-layer/metrics.md), [dashboards](../dashboards/introduction.md), and [questions](../questions/introduction.md). Write descriptions to provide context, define terms, and explain business logic.
-
-Admins can also curate [table metadata](../data-modeling/metadata/metadata-editing.md) by adding descriptions for tables and their fields.
-
-For example, here's a decent description for an ID field that provides additional context for the data:
-
-```txt
-This is a unique ID for the product. It is also called the "Invoice number" or "Confirmation number" in customer facing emails and screens.
-```
-
-You can even ask Metabot to write descriptions for you. But Metabot will only have access to the data in the database. It can't know things like "this ID is called the 'Invoice number' in the web app", which is the kind of contextual information worth documenting.
-
-### Make sure the semantic types for each field are correct
-
-Make sure the semantic types for each field accurately describe the field's "meaning". For example, if you have a field like `created_at`, you'd want the column type to be Creation date.
-
-Metabase will try to set semantic types automatically, but you should confirm that each field has the relevant semantic type. See [Data types and semantic types](../data-modeling/metadata/semantic-types.md). You can also set semantic types for [models](../data-modeling/models/models.md#add-metadata-to-columns-in-a-model).
-
-### Define domain-specific terms in the glossary
-
-Add your organization's terminology, acronyms, and business-specific terms to the [glossary](../data-modeling/semantic-layer/glossary.md). Metabot can look up terms in the glossary to better understand your request.
-
-For example, if you define "MRR" as "Monthly Recurring Revenue" in your glossary, Metabot will know what you mean when you ask "What's our MRR for Q4?" This is especially helpful for industry-specific jargon, internal product names, or abbreviations unique to your organization.
+For what to change and how each change affects Metabot, see [Configure Metabot context](./configure-metabot-context.md).
 
 ## Metabot permissions are Metabase permissions
 
@@ -242,6 +214,7 @@ On Metabase Pro/Enterprise, you also get access to detailed [AI usage auditing](
 ## Further reading
 
 - [Using Metabot](metabot.md)
+- [Configure Metabot context](configure-metabot-context.md)
 - [Supported AI providers](providers.md)
 - [MCP server](mcp.md)
 - [AI privacy](privacy.md)
