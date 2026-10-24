@@ -45,6 +45,8 @@
                 :model/CloudMigration :all :model/Setting :all
                 ;; Users need to login, make queries, and we need need to audit them.
                 :model/User :all :model/LoginHistory :all
+                ;; The timestamped model hook adds updated_at when login touches last_used_at.
+                :model/AuthIdentity #{:last_used_at :updated_at}
                 :model/UserParameterValue :all
                 :model/AuditLog :all :model/ViewLog :all
                 ;; Cards need to able to update their last used at timestamp, but we don't want to create
