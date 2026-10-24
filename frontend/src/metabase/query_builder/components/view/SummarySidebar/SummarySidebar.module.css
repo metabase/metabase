@@ -1,0 +1,568 @@
+.fieldList {
+  flex: 1 1 45%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem var(--summary-gutter) 0;
+}
+
+.fieldListScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-bottom: 0.75rem;
+}
+
+.fieldGroupName {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--mb-color-text-secondary);
+}
+
+.fieldItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.5rem;
+  border-radius: 6px;
+  cursor: grab;
+  color: var(--mb-color-text-primary);
+  touch-action: none;
+  user-select: none;
+
+  &:hover {
+    background-color: var(--mb-color-background_surface-hover);
+  }
+
+  &:hover .grabber {
+    visibility: visible;
+  }
+}
+
+.grabber {
+  margin-left: auto;
+  visibility: hidden;
+  color: var(--mb-color-text-secondary);
+}
+
+.fieldActions {
+  display: flex;
+  margin-left: auto;
+  visibility: hidden;
+
+  .fieldItem:hover &,
+  .fieldItem:focus-within & {
+    visibility: visible;
+  }
+
+  & + .grabber {
+    margin-left: 0;
+  }
+}
+
+.isDragging {
+  opacity: 0.4;
+}
+
+/* the design tokens every variant shares, so their frames, cues, and motion stay alike */
+.summarySidebar {
+  --summary-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --summary-frame-radius: 8px;
+  --summary-cue-inset: 3px;
+  --summary-gutter: 1rem;
+}
+
+.wells {
+  flex: 0 1 auto;
+  max-height: 60%;
+  overflow-y: auto;
+  padding: 0.75rem var(--summary-gutter);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+/* the wells sit under the columns they're dragged down from */
+.wellsAtBottom {
+  flex-shrink: 0;
+  border-top: 1px solid var(--mb-color-border-neutral);
+  border-bottom: none;
+}
+
+/* takes what the wells leave, and scrolls */
+.fieldListOnTop {
+  flex: 1 1 0;
+}
+
+.frame {
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: var(--summary-frame-radius);
+  overflow: hidden;
+}
+
+/* one well per line; a collapsed well draws its own divider, so it leaves none behind */
+.frameList {
+  display: flex;
+  flex-direction: column;
+
+  & > * + *:not(.collapse) {
+    border-top: 1px solid var(--mb-color-border-neutral);
+  }
+
+  & > .formulaRow {
+    border-bottom: none;
+  }
+}
+
+.frameListDivided {
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
+/* opens from nothing, e.g. Columns when pivoting; a 0fr track animates to the content's height */
+.collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 220ms var(--summary-ease-out);
+}
+
+.collapseIsOpen {
+  grid-template-rows: 1fr;
+}
+
+.collapseContent {
+  min-height: 0;
+  overflow: hidden;
+  opacity: 0;
+
+  /* hidden once collapsed, so its input can't be tabbed into */
+  visibility: hidden;
+  transition:
+    opacity 150ms var(--summary-ease-out),
+    visibility 0s 220ms;
+
+  .collapseIsOpen > & {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 220ms var(--summary-ease-out) 40ms,
+      visibility 0s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapse {
+    transition: none;
+  }
+}
+
+/* variant A: laid out like the pivot table itself, Columns across the top, Rows down the side, Values in the body */
+.pivotHeaderCells,
+.pivotBody {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+}
+
+.pivotCorner,
+.pivotColumns,
+.pivotRows {
+  background-color: var(--mb-color-background_page-secondary);
+}
+
+.pivotCorner {
+  border-right: 1px solid var(--mb-color-border-neutral);
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.pivotColumns {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.pivotRows {
+  border-right: 1px solid var(--mb-color-border-neutral);
+}
+
+/* the formula editor of a well, full width under it, since wells are too narrow to type in */
+.formulaRow {
+  padding: 0.5rem 0.625rem;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+  background-color: var(--mb-color-background_page-primary);
+
+  &:last-child {
+    border-top: 1px solid var(--mb-color-border-neutral);
+    border-bottom: none;
+  }
+}
+
+.well {
+  position: relative;
+  isolation: isolate;
+  min-width: 0;
+  min-height: 3.5rem;
+  padding: 0.5rem 0.625rem;
+  cursor: text;
+  transition: opacity 150ms var(--summary-ease-out);
+}
+
+/*
+ * drop and formula cues are drawn inset from the cell, with corners concentric to the frame's,
+ * so they never collide with the frame's border or double up on the dividers between cells
+ */
+.well::before,
+.well::after {
+  content: "";
+  position: absolute;
+  inset: var(--summary-cue-inset);
+  border-radius: calc(var(--summary-frame-radius) - var(--summary-cue-inset));
+  pointer-events: none;
+  opacity: 0;
+  transition:
+    opacity 150ms var(--summary-ease-out),
+    box-shadow 150ms var(--summary-ease-out);
+}
+
+.well::before {
+  z-index: -1;
+  background-color: var(--mb-color-core-summarize);
+}
+
+.well::after {
+  box-shadow: inset 0 0 0 1px var(--mb-color-core-summarize);
+}
+
+.wellCaption {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mb-color-text-secondary);
+}
+
+.wellItems {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.wellInput {
+  flex: 1 0 4.5rem;
+  min-width: 0;
+
+  /* the unstyled variant still draws a box; the well is the box */
+  input[data-variant] {
+    height: 1.5rem;
+    min-height: 1.5rem;
+    padding: 0;
+    border: none;
+    font-size: 0.8125rem;
+    background-color: transparent;
+  }
+}
+
+.wellAcceptsDrop::after {
+  opacity: 0.45;
+}
+
+.wellIsOver::before {
+  opacity: 0.1;
+}
+
+.wellIsOver::after {
+  opacity: 1;
+  box-shadow: inset 0 0 0 2px var(--mb-color-core-summarize);
+}
+
+.wellRejectsDrop {
+  opacity: 0.5;
+}
+
+.wellIsFormulaTarget::after {
+  opacity: 1;
+  box-shadow: inset 0 0 0 2px var(--mb-color-core-brand);
+}
+
+/* variant B: one clause of "Show … by … split by …" per line, the leading word in a column of its own */
+.sentenceClause {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  align-items: center;
+  min-height: 3rem;
+}
+
+.sentenceWord {
+  font-size: 0.8125rem;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+}
+
+.wellsHint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--mb-color-text-secondary);
+}
+
+.helperColumnsEmpty {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.625rem;
+  border: 1px dashed var(--mb-color-border-neutral);
+  border-radius: 6px;
+  color: var(--mb-color-text-primary);
+  transition: border-color 150ms var(--summary-ease-out);
+
+  &:hover {
+    border-color: var(--mb-color-core-brand);
+  }
+
+  svg {
+    margin-top: 0.25rem;
+    color: var(--mb-color-core-brand);
+  }
+}
+
+/* prototype-only: dashed and tinted so it doesn't read as part of the feature */
+.variantSwitcher {
+  margin: 0.5rem var(--summary-gutter);
+  padding: 0.25rem 0.25rem 0.25rem 0.625rem;
+  border: 1px dashed var(--mb-color-feedback-warning);
+  border-radius: 8px;
+  background-color: var(--mb-color-background_surface-warning);
+}
+
+.variantSwitcherLabel {
+  font-size: 0.6875rem;
+  font-weight: bold;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mb-color-text-secondary);
+}
+
+.variantOptions {
+  gap: 0.125rem;
+}
+
+.variantOption {
+  min-width: 1.75rem;
+  height: 1.5rem;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-align: center;
+  color: var(--mb-color-text-secondary);
+  transition:
+    background-color 150ms var(--summary-ease-out),
+    color 150ms var(--summary-ease-out),
+    transform 160ms var(--summary-ease-out);
+
+  &:hover {
+    color: var(--mb-color-text-primary);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+.variantOptionIsActive {
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-text-primary);
+
+  &:hover {
+    color: var(--mb-color-text-primary-inverse);
+  }
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.25rem 0.25rem 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-weight: bold;
+  color: var(--mb-color-text-primary-inverse);
+  background-color: var(--mb-color-core-summarize);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: transform 160ms var(--summary-ease-out);
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+.chipLabel {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chipButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  color: inherit;
+  font-weight: inherit;
+}
+
+/* rendered in a portal, outside .wells and its variables */
+.dragPreview {
+  composes: chip;
+  cursor: grabbing;
+  box-shadow: 0 6px 16px var(--mb-color-shadow-default);
+  animation: drag-preview-lift 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+@keyframes drag-preview-lift {
+  from {
+    opacity: 0.6;
+    transform: scale(0.94);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dragPreview {
+    animation: none;
+  }
+}
+
+.chipIsEditing {
+  outline: 2px solid var(--mb-color-core-brand);
+  outline-offset: 1px;
+}
+
+.formulaBox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.25rem;
+  padding: 0 0.25rem 0 0.625rem;
+  border: 1px solid var(--mb-color-border-neutral);
+  border-radius: 8px;
+  background-color: var(--mb-color-background_page-primary);
+
+  &:hover,
+  &:focus-within {
+    border-color: var(--mb-color-core-brand);
+  }
+}
+
+.formulaBoxInvalid,
+.formulaBoxInvalid:hover,
+.formulaBoxInvalid:focus-within {
+  border-color: var(--mb-color-feedback-negative);
+}
+
+.formulaEquals {
+  font-family: var(--mb-default-monospace-font-family), monospace;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+}
+
+.formulaEditor {
+  flex: 1;
+  min-width: 0;
+  padding: 0.5rem 0;
+
+  :global(.cm-editor) {
+    background-color: transparent;
+  }
+
+  :global(.cm-editor.cm-focused) {
+    outline: none;
+  }
+
+  :global(.cm-content) {
+    padding: 0;
+    font-size: 0.875rem;
+    line-height: 1.5rem;
+  }
+
+  :global(.cm-line) {
+    padding: 0;
+  }
+
+  :global(.cm-gutters) {
+    display: none;
+  }
+
+  :global(.cm-placeholder) {
+    color: var(--mb-color-text-disabled);
+  }
+}
+
+/* base syntax highlighting renders nested spans; let the token colors win */
+.tokenFunction *,
+.tokenLiteral *,
+.tokenOperator *,
+.tokenColumn * {
+  color: inherit;
+}
+
+.tokenFunction {
+  font-weight: bold;
+  color: var(--mb-color-core-brand);
+}
+
+.tokenLiteral {
+  color: var(--mb-color-accent2);
+}
+
+.tokenOperator {
+  padding: 0 0.125rem;
+  font-weight: bold;
+  color: var(--mb-color-text-secondary);
+}
+
+.tokenColumn {
+  --token-color: var(--mb-color-accent0);
+
+  padding: 0.0625rem 0.25rem;
+  border-radius: 4px;
+  color: var(--token-color);
+  background-color: color-mix(in srgb, var(--token-color) 14%, transparent);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--token-color) 40%, transparent);
+}
+
+.tokenColumn0 {
+  composes: tokenColumn;
+}
+
+.tokenColumn1 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent1);
+}
+
+.tokenColumn2 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent3);
+}
+
+.tokenColumn3 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent4);
+}
+
+.tokenColumn4 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent5);
+}
+
+.tokenColumn5 {
+  composes: tokenColumn;
+
+  --token-color: var(--mb-color-accent7);
+}
