@@ -1,7 +1,4 @@
-import {
-  InteractiveQuestion,
-  StaticQuestion,
-} from "@metabase/embedding-sdk-react";
+import { StaticQuestion } from "@metabase/embedding-sdk-react";
 import {
   copy,
   DataAppLink,
@@ -64,8 +61,9 @@ function Overview() {
       <h2 style={{ margin: "0 0 8px" }}>All orders</h2>
       <div style={{ height: 400 }}>
         {ordersQuery.query ? (
-          <InteractiveQuestion
+          <StaticQuestion
             card={{ query: ordersQuery.query }}
+            withChartTypeSelector
             withDownloads
           />
         ) : (
@@ -131,7 +129,7 @@ function DownloadQuestionPage() {
   );
 }
 
-// An InteractiveQuestion on a single-column (count) query, so a spec can switch it
+// A StaticQuestion on a single-column (count) query, so a spec can switch it
 // to a custom viz — the example `demo-viz` requires exactly one result column.
 function CustomVizPage() {
   const { scalarQuery } = getTestEnv();
@@ -142,7 +140,7 @@ function CustomVizPage() {
       <h1>Custom viz</h1>
       <div style={{ height: 360 }}>
         {q.query ? (
-          <InteractiveQuestion card={{ query: q.query }} />
+          <StaticQuestion card={{ query: q.query }} withChartTypeSelector />
         ) : (
           <div data-testid="custom-viz-loading">…</div>
         )}

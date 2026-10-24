@@ -17,6 +17,7 @@ import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embeddin
 const TIMEOUT_MS = 40000;
 
 const CLIENT_PORT = Cypress.expose("CLIENT_PORT");
+const ORDERS_TABLE_ID = 5;
 const CLIENT_HOST = `http://localhost:${CLIENT_PORT}`;
 
 const DIAGNOSTICS_URL = `${CLIENT_HOST}${DATA_APP_DEV_DIAGNOSTICS_PATH}`;
@@ -24,7 +25,7 @@ const DIAGNOSTICS_URL = `${CLIENT_HOST}${DATA_APP_DEV_DIAGNOSTICS_PATH}`;
 describe("Embedding SDK: data-app dev diagnostics", () => {
   before(() => {
     signInAsAdminAndEnableEmbeddingSdk();
-    setUpDataAppDevServer(CLIENT_HOST);
+    setUpDataAppDevServer(CLIENT_HOST, ORDERS_TABLE_ID);
   });
 
   after(() => {

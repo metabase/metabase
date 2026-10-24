@@ -7,12 +7,13 @@ import { signInAsAdminAndEnableEmbeddingSdk } from "e2e/support/helpers/embeddin
 const TIMEOUT_MS = 40000;
 
 const CLIENT_PORT = Cypress.expose("CLIENT_PORT");
+const ORDERS_TABLE_ID = 5;
 const CLIENT_HOST = `http://localhost:${CLIENT_PORT}`;
 
 describe("Embedding SDK: data-app dev server", () => {
   before(() => {
     signInAsAdminAndEnableEmbeddingSdk();
-    setUpDataAppDevServer(CLIENT_HOST);
+    setUpDataAppDevServer(CLIENT_HOST, ORDERS_TABLE_ID);
   });
 
   after(() => {
