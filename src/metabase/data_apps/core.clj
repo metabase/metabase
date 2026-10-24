@@ -59,3 +59,9 @@
   metabase-enterprise.data-apps.checks
   [_data-app _card-id _run]
   (throw (unavailable)))
+
+(defenterprise check-field
+  "Throws a 403 unless `data-app` may read the field with `field-id` and its values."
+  metabase-enterprise.data-apps.checks
+  [_data-app _field-id]
+  (throw (unavailable)))

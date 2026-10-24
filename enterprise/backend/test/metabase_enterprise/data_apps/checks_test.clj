@@ -212,6 +212,40 @@
                                                                                     :target [:variable [:template-tag "x"]]
                                                                                     :value  "Bar"}]))))))))))
 
+(defn- get-as-data-app
+  "The response to a data app's `GET` of `path`, expecting `status`."
+  [status path]
+  (mt/user-http-request :crowberto :get status path as-data-app))
+
+(defn- table-query
+  "A query of the table named `table-name` of the test database."
+  [table-name]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-name)))))
+
+(deftest field-endpoints-test
+  (do-with-app-card!
+   (fn [_card-id _collection-id]
+     (testing "a field of the source table of the app's cards, or of a table its foreign keys point to, is read with its values"
+       (is (= (mt/id :venues :name) (:id (get-as-data-app 200 (str "field/" (mt/id :venues :name))))))
+       (is (get-as-data-app 200 (format "field/%d/values" (mt/id :venues :name))))
+       (is (get-as-data-app 200 (format "field/%d/values" (mt/id :categories :name)))))
+     (testing "a field of another table is refused, and a missing one is left to the 404"
+       (doseq [path ["field/%d" "field/%d/values"]]
+         (is (re-find #"not CHECKINS" (get-as-data-app 403 (format path (mt/id :checkins :date))))))
+       (get-as-data-app 404 "field/999999999")))))
+
+(deftest one-foreign-key-level-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (data-apps.tu/with-published-tables! [(mt/id :categories)]
+       (mt/with-temp [:model/Card _ {:name          "Categories"
+                                     :collection_id collection-id
+                                     :dataset_query (table-query :categories)}]
+         (testing "a card on a table whose foreign keys point nowhere reads only that table's fields"
+           (is (get-as-data-app 200 (str "field/" (mt/id :categories :name))))
+           (is (re-find #"not VENUES" (get-as-data-app 403 (str "field/" (mt/id :venues :name)))))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app runs nothing"
     (mt/with-premium-features #{}
