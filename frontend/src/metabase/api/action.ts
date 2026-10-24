@@ -66,6 +66,7 @@ export const actionApi = Api.injectEndpoints({
           "name",
           "parameter_mappings",
           "parameters",
+          "table_id",
           "visualization_settings",
         ]),
       }),

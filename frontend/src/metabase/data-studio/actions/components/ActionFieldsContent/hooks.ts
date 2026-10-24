@@ -12,6 +12,7 @@ import type {
   ActionFormSettings,
   FieldSettings,
   UpdateQueryActionRequest,
+  WritebackImplicitQueryAction,
   WritebackParameter,
   WritebackQueryAction,
 } from "metabase-types/api";
@@ -134,6 +135,64 @@ export function useQueryActionFields(
       ),
     });
   };
+
+  return { fields, updateField, reorderFields };
+}
+
+export function useImplicitActionFields(
+  action: WritebackImplicitQueryAction,
+): ActionFieldsResult {
+  const [updateAction] = useUpdateActionMutation();
+  const { sendErrorToast } = useMetadataToasts();
+
+  const formSettings = useMemo(
+    () => getDefaultFormSettings(action.visualization_settings),
+    [action.visualization_settings],
+  );
+
+  const fields = useMemo(
+    () =>
+      [...(action.parameters ?? [])]
+        .sort(sortActionParams(formSettings))
+        .flatMap((parameter) => {
+          const settings = formSettings.fields?.[parameter.id];
+          return settings
+            ? [
+                {
+                  parameter,
+                  settings,
+                  source: { type: "column" as const, name: parameter.id },
+                },
+              ]
+            : [];
+        }),
+    [action.parameters, formSettings],
+  );
+
+  const updateField = async (
+    fieldId: string,
+    patch: Partial<FieldSettings>,
+  ) => {
+    const field = formSettings.fields?.[fieldId];
+    if (field == null || patch.hidden == null) {
+      return;
+    }
+    const { error } = await updateAction({
+      id: action.id,
+      visualization_settings: {
+        ...formSettings,
+        fields: {
+          ...formSettings.fields,
+          [fieldId]: { ...field, hidden: patch.hidden },
+        },
+      },
+    });
+    if (error) {
+      sendErrorToast(t`Failed to update action fields`);
+    }
+  };
+
+  const reorderFields = async () => undefined;
 
   return { fields, updateField, reorderFields };
 }
