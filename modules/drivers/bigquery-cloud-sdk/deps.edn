@@ -14,6 +14,7 @@
                                                         com.fasterxml.jackson.core/jackson-core
                                                         com.fasterxml.jackson.core/jackson-databind
                                                         com.google.code.gson/gson
+                                                        com.google.guava/guava
                                                         io.opentelemetry/opentelemetry-api]}
   ;; pin arrow formats to 17 for cve about parquet files
   org.apache.arrow/arrow-format          {:mvn/version "18.3.0"}

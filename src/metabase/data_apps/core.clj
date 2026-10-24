@@ -7,3 +7,10 @@
   metabase-enterprise.data-apps.core
   [_request]
   nil)
+
+(defenterprise visible-data-app-filter-select
+  "A HoneySQL query of the ids of the data apps that the user described by `user-info` (`:user-id`, `:is-superuser?`)
+  can read, or nil, meaning none, without the data apps feature."
+  metabase-enterprise.data-apps.core
+  [_user-info]
+  nil)

@@ -276,3 +276,26 @@
                     (is (contains? result-ids visible-metric)))
                   (testing "metric in no-access subcollection is hidden"
                     (is (not (contains? result-ids hidden-metric)))))))))))))
+
+(deftest published-table-can-write-test
+  (mt/with-premium-features #{:library :advanced-permissions}
+    (testing "Table results have `can_write` from the table metadata permission"
+      (let [search-term (random-name)]
+        (mt/with-temp [:model/Collection {coll-id :id} {:type "library-data"}
+                       :model/Table      {table-id :id} {:name          (str search-term " published")
+                                                         :is_published  true
+                                                         :collection_id coll-id}]
+          (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+          (doseq [engine (test-engines)]
+            (search/reindex! {:async? false :in-place? true})
+            (let [table-result (fn [user]
+                                 (->> (mt/user-http-request user :get 200 "search"
+                                                            :q search-term :models "table" :search_engine engine)
+                                      :data
+                                      (filter #(= table-id (:id %)))))]
+              (testing engine
+                (is (=? [{:can_write true}] (table-result :crowberto)))
+                (is (=? [{:can_write false}] (table-result :rasta)))
+                (mt/with-restored-data-perms-for-group! (:id (perms/all-users-group))
+                  (data-perms/set-table-permission! (perms/all-users-group) table-id :perms/manage-table-metadata :yes)
+                  (is (=? [{:can_write true}] (table-result :rasta))))))))))))
