@@ -3851,7 +3851,6 @@
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Permissions
                     :model/Table}
    :model-exports #{:model/DataApp}}
 

@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-apps.api
-  "Data-app endpoints, mounted at `/api/ee/apps`: manage data apps and their groups, serve their bundles, and generate
-  their typed schema."
+  "Data-app endpoints, mounted at `/api/ee/apps`: manage data apps and the groups that can read their collections, serve
+  their bundles, and generate their typed schema."
   (:require
    [clojure.string :as str]
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
@@ -168,12 +168,9 @@
     (select-keys app [:id :name :display_name])))
 
 (defn- read-check-data-app
-  "Check whether the current user can access a data app. Viewing requires read access to the app's
-   resource collection, which every app has."
+  "Check whether the current user can access a data app, which requires read access to its resource collection."
   [app]
-  (api/read-check app)
-  (api/read-check :model/Collection (:resource_collection_id app))
-  app)
+  (api/read-check app))
 
 (defn- check-not-outdated
   "Refuse an app built for an older contract than this Metabase serves with a 409 carrying
@@ -259,7 +256,7 @@
   (update-app! slug {:bundle bundle}))
 
 (api.macros/defendpoint :delete ["/:slug" :slug slug-regex] :- :nil
-  "Delete a data app, its bundle, its collection, and its group assignments."
+  "Delete a data app, its bundle, and its collection with the grants on it."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (let [app (write-check-data-app slug)]
     (check-editable! app)
@@ -298,7 +295,7 @@
 
 (api.macros/defendpoint :get ["/:slug/group-permission-warnings" :slug slug-regex]
   :- [:sequential GroupPermissionWarning]
-  "Return missing table access for groups already assigned to this app."
+  "Return missing table access for the groups that can open this app."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (api/check-superuser)
   (data-app.group-access/permission-warnings (api/check-404 (data-apps.db/data-app-by-slug slug))))
@@ -310,13 +307,13 @@
    [:member_count ms/IntGreaterThanOrEqualToZero]])
 
 (api.macros/defendpoint :get ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
-  "List the groups assigned to a data app."
+  "List the groups that can open a data app: those that can read its resource collection."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (api/check-superuser)
   (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/data-app-by-slug slug))))
 
 (api.macros/defendpoint :post ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
-  "Assign a batch of internal groups atomically."
+  "Grant a batch of internal groups read access to a data app's resource collection atomically."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
    {group-ids :group_ids} :- AddGroupsRequest]
@@ -324,7 +321,7 @@
   (data-app.group-access/add-groups! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-ids))
 
 (api.macros/defendpoint :delete ["/:slug/groups/:group-id" :slug slug-regex] :- :nil
-  "Remove a group's assignment and collection access."
+  "Revoke a group's access to a data app's resource collection."
   [{:keys [slug group-id]} :- [:map {:closed true} [:slug ms/NonBlankString] [:group-id ms/PositiveInt]]]
   (api/check-superuser)
   (data-app.group-access/remove-group! (api/check-404 (data-apps.db/data-app-by-slug slug)) group-id))

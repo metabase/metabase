@@ -44,10 +44,9 @@
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
         (let [app (t2/select-one :model/DataApp :name "demo")
-              {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)
+              _ (data-app.resources/ensure-resources! app)
               permission_group_id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Finches"}))]
-          (testing "collection access alone does not assign an app"
-            (perms/grant-collection-read-permissions! (perms/all-users-group) resource_collection_id)
+          (testing "a user who cannot read the app's collection cannot open the app"
             (mt/user-http-request :rasta :get 403 "ee/apps/demo"))
           (testing "a member can open a data app"
             (group-access/add-groups! app [permission_group_id])
@@ -331,7 +330,8 @@
               (is (not (t2/exists? :model/DataApp :id (:id app))))
               (is (not (t2/exists? :model/Collection :id collection-id)))
               (is (not (t2/exists? :model/Card :id card-id)))
-              (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))
+              (is (not (t2/exists? :model/Permissions :group_id (:id group)
+                                   :object (perms/collection-read-path collection-id))))
               (is (t2/exists? :model/PermissionsGroup :id (:id group))))))))))
 
 ;;; ----------------------------------------------------- API -----------------------------------------------------

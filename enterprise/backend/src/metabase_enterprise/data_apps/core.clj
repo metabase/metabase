@@ -7,7 +7,7 @@
    [metabase.premium-features.core :refer [defenterprise]]))
 
 (defenterprise check-data-app-access!
-  "Checks that the user can read the app: a member of an assigned group while it is enabled, or a superuser."
+  "Checks that the user can read the app: one who can read its collection while it is enabled, or a superuser."
   :feature :data-apps
   [request]
   (let [app (api/check-404 (data-apps.db/data-app-by-slug (get-in request [:route-params :name])))]

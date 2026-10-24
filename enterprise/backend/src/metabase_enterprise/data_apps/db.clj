@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -122,62 +123,27 @@
   [collection-id]
   (t2/delete! :model/Collection :id collection-id))
 
-(defn permissions-for-paths-excluding-group
-  "Permission grants for `paths`, excluding `group-id`."
-  [paths group-id]
-  (t2/select [:model/Permissions :group_id :object]
-             :object [:in paths]
-             :group_id [:not= group-id]))
-
-(defn app-assignments
-  "Assignments for the requested apps."
-  [app-ids]
-  (if (seq app-ids)
-    (t2/select :model/DataAppGroupAssignment :data_app_id [:in app-ids])
-    []))
-
 (mu/defn readable-data-app-ids-select
   "A HoneySQL query of the ids of the DataApps that the User with `user-id` can read: every app for a superuser, else
-  the enabled apps assigned to one of their groups, and none for a tenant user."
+  the enabled apps whose resource collection they can read."
   [user-id    :- [:maybe ms/PositiveInt]
    superuser? :- :boolean]
-  (if superuser?
+  (cond
+    superuser?
     ^:allow-subquery {:select [:id] :from [(t2/table-name :model/DataApp)]}
-    ^:allow-subquery {:select [:assignment.data_app_id]
-                      :from   [[(t2/table-name :model/DataAppGroupAssignment) :assignment]]
-                      :join   [[(t2/table-name :model/DataApp) :app]
-                               [:= :app.id :assignment.data_app_id]
-                               [:permissions_group_membership :membership]
-                               [:= :membership.group_id :assignment.permission_group_id]
-                               [:core_user :member]
-                               [:= :member.id :membership.user_id]]
-                      ;; No `[:auto/param]` marker: this query also runs inside queries compiled outside Toucan, such
-                      ;; as the search index's, which reject it. Both compilers bind the integer id as a parameter.
+
+    user-id
+    ^:allow-subquery {:select [:id]
+                      :from   [(t2/table-name :model/DataApp)]
                       :where  [:and
-                               [:= :app.enabled true]
-                               [:= :membership.user_id user-id]
-                               [:= :member.tenant_id nil]]}))
+                               [:= :enabled true]
+                               [:in :resource_collection_id
+                                (collection/visible-collection-query
+                                 {:permission-level :read :include-archived-items :all}
+                                 {:current-user-id user-id :is-superuser? false})]]}
 
-(mu/defn readable-data-app?
-  "Whether the non-superuser User with `user-id` can read the DataApp with `app-id`."
-  [user-id :- ms/PositiveInt
-   app-id  :- ms/PositiveInt]
-  (t2/exists? :model/DataApp {:where [:and
-                                      [:= :id [:auto/param app-id]]
-                                      [:in :id (readable-data-app-ids-select user-id false)]]}))
-
-(defn insert-assignments!
-  "Assign groups to an app. The unique constraint rejects concurrent duplicates."
-  [app-id group-ids]
-  (t2/insert! :model/DataAppGroupAssignment
-              (mapv (fn [group-id] {:data_app_id app-id :permission_group_id group-id}) group-ids)))
-
-(defn delete-assignments!
-  "Remove the requested group assignments from an app."
-  [app-id group-ids]
-  (if (seq group-ids)
-    (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id [:in group-ids])
-    0))
+    :else
+    ^:allow-subquery {:select [:id] :from [(t2/table-name :model/DataApp)] :where [:= [:inline 0] [:inline 1]]}))
 
 (defn permissions-for-warnings
   "View-data permission rows for the warning tables and their databases."

@@ -84,33 +84,19 @@
       ; correct grants should not be changed after sync
       (is (= grant (t2/select-one :model/Permissions :group_id group-id :object read-path))))))
 
-(deftest ensure-resources-repairs-collection-grants-test
+(deftest ensure-resources-leaves-collection-grants-alone-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (mt/with-temp [:model/PermissionsGroup {other-group-id :id} {}]
       (let [app (create-data-app! "birds")
             {collection-id :resource_collection_id} (data-app.resources/ensure-resources! app)
             group-id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Finches"}))
             _ (group-access/add-groups! app [group-id])
-            read-path (perms/collection-read-path collection-id)
-            write-path (perms/collection-readwrite-path collection-id)]
-        ; grant incorrect permission: write access to the data app collection
-        (perms/grant-collection-readwrite-permissions! group-id collection-id)
-        ; grant incorrect permission: let other groups read the data app collection
+            grants (fn [] (t2/select-fn-set (juxt :group_id :object) :model/Permissions
+                                            :object [:in [(perms/collection-read-path collection-id)
+                                                          (perms/collection-readwrite-path collection-id)]]))]
+        (perms/revoke-collection-permissions! group-id collection-id)
         (perms/grant-collection-read-permissions! other-group-id collection-id)
-        (data-app.resources/ensure-resources! app)
-        ; the two bad grants should be removed after sync.
-        ; only the correct grants should remain.
-        (is (= [{:group_id group-id :object read-path}]
-               (t2/select [:model/Permissions :group_id :object]
-                          :object [:in [read-path write-path]])))))))
-
-(deftest ensure-resources-restores-missing-collection-grant-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [app (create-data-app! "birds")
-          {collection-id :resource_collection_id} (data-app.resources/ensure-resources! app)
-          group-id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Finches"}))
-          _ (group-access/add-groups! app [group-id])]
-      (perms/revoke-collection-permissions! group-id collection-id)
-      (data-app.resources/ensure-resources! app)
-      ; read access should be restored after sync
-      (is (t2/exists? :model/Permissions :group_id group-id :object (perms/collection-read-path collection-id))))))
+        (let [before (grants)]
+          (data-app.resources/ensure-resources! app)
+          (is (= #{[other-group-id (perms/collection-read-path collection-id)]} before))
+          (is (= before (grants))))))))
