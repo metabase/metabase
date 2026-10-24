@@ -67,3 +67,21 @@
       (when-let [outside (not-empty (set/difference (set (lib/all-source-card-ids query)) card-ids))]
         (refuse-cards! query outside))))
   nil)
+
+(defn- card-row
+  "The ID and database ID of the card whose ID or entity ID is the route param `card-id`, or nil when there is none."
+  [card-id]
+  (if (= 21 (count card-id))
+    (data-apps.db/card-by-entity-id card-id)
+    (some-> (parse-long card-id) data-apps.db/card-by-id)))
+
+(defenterprise check-card!
+  "Throws a 403 unless the card with `card-id`, an ID or an entity ID, is a card of the data app of `request`, when such
+  a card exists."
+  :feature :data-apps
+  [request card-id]
+  (let [card-ids (app-card-ids (request-app request))]
+    (when-let [{:keys [id database_id]} (card-row card-id)]
+      (when-not (contains? card-ids id)
+        (refuse-cards! (lib-be/application-database-metadata-provider database_id) #{id}))))
+  nil)

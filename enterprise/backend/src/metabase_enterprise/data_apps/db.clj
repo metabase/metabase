@@ -81,6 +81,16 @@
   [collection-id :- pos-int?]
   (or (t2/select-pks-set :model/Card :collection_id collection-id) #{}))
 
+(mu/defn card-by-id :- [:maybe [:map [:id ::lib.schema.id/card] [:database_id ::lib.schema.id/database]]]
+  "The ID and database ID of the Card with `card-id`, or nil when there is none."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one [:model/Card :id :database_id] :id card-id))
+
+(mu/defn card-by-entity-id :- [:maybe [:map [:id ::lib.schema.id/card] [:database_id ::lib.schema.id/database]]]
+  "The ID and database ID of the Card with `entity-id`, or nil when there is none."
+  [entity-id :- :string]
+  (t2/select-one [:model/Card :id :database_id] :entity_id entity-id))
+
 (mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
   "Insert the DataApp `row`, returning its ID."
   [row :- ::data-apps.schema/data-app.update]
