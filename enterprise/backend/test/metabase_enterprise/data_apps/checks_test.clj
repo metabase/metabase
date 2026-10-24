@@ -6,7 +6,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -135,7 +136,8 @@
 (deftest query-with-parameters-is-refused-test
   (do-with-app-card!
    (fn [card-id _collection-id]
-     (let [parameters [{:type   :category
+     (let [parameters [{:id     "x"
+                        :type   :category
                         :target [:dimension (lib/->legacy-MBQL
                                              (lib/ref (lib.metadata/field (mt/metadata-provider) (mt/id :venues :name))))]
                         :value  ["Bar"]}]]
@@ -161,6 +163,54 @@
           (is (re-find #"Venue count"
                        (run-query 403 (lib/aggregate (card-query card-id)
                                                      (lib.metadata/metric (mt/metadata-provider) metric-id)))))))))))
+
+(defn- form-download
+  "The response to a data app's form submission to `POST /api/card/:id/query/csv` for the card with `card-id`, with
+  `parameters` as a JSON string, expecting `status`."
+  [status card-id parameters]
+  (mt/user-http-request :crowberto :post status (format "card/%d/query/csv" card-id)
+                        (assoc-in as-data-app [:request-options :content-type] "application/x-www-form-urlencoded")
+                        {:parameters parameters}))
+
+(deftest card-endpoints-test
+  (do-with-app-card!
+   (fn [card-id _collection-id]
+     (mt/with-temp [:model/Card {other-id :id other-eid :entity_id} {:name          "Venues elsewhere"
+                                                                     :dataset_query (data-apps.tu/venues-query)}
+                    :model/Dashboard {dashboard-id :id} {:name "Venues"}]
+       (let [card-eid (t2/select-one-fn :entity_id :model/Card :id card-id)
+             request  (fn [method status path & [body]]
+                        (if body
+                          (mt/user-http-request :crowberto method status path as-data-app body)
+                          (mt/user-http-request :crowberto method status path as-data-app)))]
+         (testing "the app's question is read, by ID or entity ID, with its metadata, and run, pivoted and downloaded"
+           (is (= card-id (:id (request :get 200 (str "card/" card-id)))))
+           (is (= card-id (:id (request :get 200 (str "card/" card-eid)))))
+           (is (request :get 200 (format "card/%d/query_metadata" card-id)))
+           (is (= "completed" (:status (request :post 202 (format "card/%d/query" card-id)))))
+           (is (= "completed" (:status (request :post 202 (format "card/pivot/%d/query" card-id)))))
+           (is (form-download 200 card-id "[]")))
+         (testing "a question outside the app's collection is neither read nor run, by ID or entity ID"
+           (doseq [[method path] [[:get (str "card/" other-id)]
+                                  [:get (str "card/" other-eid)]
+                                  [:get (format "card/%d/query_metadata" other-id)]
+                                  [:post (format "card/%d/query" other-id)]
+                                  [:post (format "card/pivot/%d/query" other-id)]]]
+             (is (re-find #"Venues elsewhere" (request method 403 path)) path))
+           (is (re-find #"Venues elsewhere" (form-download 403 other-id "[]"))))
+         (testing "a card that doesn't exist is left to the endpoint's 404, by ID or entity ID"
+           (request :get 404 "card/999999999")
+           (request :get 404 "card/AbCdEfGhIjKlMnOpQrStU"))
+         (testing "the app's question isn't run with parameters, in a dashboard, as a collection preview or from a stored result"
+           (doseq [body [{:dashboard_id dashboard-id}
+                         {:collection_preview true}
+                         {:stored_result_id 1}
+                         {:parameters [{:id "x" :type :category :target [:variable [:template-tag "x"]] :value "Bar"}]}]]
+             (is (re-find #"as it is saved" (request :post 403 (format "card/%d/query" card-id) body))))
+           (is (re-find #"as it is saved" (form-download 403 card-id (json/encode [{:id     "x"
+                                                                                    :type   :category
+                                                                                    :target [:variable [:template-tag "x"]]
+                                                                                    :value  "Bar"}]))))))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app runs nothing"

@@ -69,3 +69,21 @@
       (when-let [outside (not-empty (set/difference (set (lib/all-source-card-ids query)) card-ids))]
         (refuse-cards query outside))))
   nil)
+
+(defenterprise check-card
+  "Throws a 403 unless the card with `card-id` is a card of `data-app`."
+  :feature :data-apps
+  [data-app card-id]
+  (when-not (contains? (app-card-ids data-app) card-id)
+    (refuse-cards (lib-be/application-database-metadata-provider (data-apps.db/card-database-id card-id)) #{card-id}))
+  nil)
+
+(defenterprise check-card-run
+  "Throws a 403 unless the card with `card-id` is a card of `data-app` and the `run` options of the request run it as it
+  is saved: without parameters, a dashboard, a collection preview, a stored result or a sort."
+  :feature :data-apps
+  [data-app card-id {:keys [parameters dashboard-id collection-preview stored-result-id sort]}]
+  (check-card data-app card-id)
+  (when (or (seq parameters) dashboard-id collection-preview stored-result-id sort)
+    (throw (refusal (tru "A data app can run a card only as it is saved, without parameters, a dashboard, a collection preview or a stored result."))))
+  nil)

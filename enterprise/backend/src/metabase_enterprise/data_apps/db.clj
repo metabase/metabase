@@ -81,6 +81,11 @@
   [collection-id :- pos-int?]
   (or (t2/select-pks-set :model/Card :collection_id collection-id) #{}))
 
+(mu/defn card-database-id :- [:maybe ::lib.schema.id/database]
+  "The ID of the database of the Card with `card-id`."
+  [card-id :- ::lib.schema.id/card]
+  (t2/select-one-fn :database_id :model/Card :id card-id))
+
 (mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
   "Insert the DataApp `row`, returning its ID."
   [row :- ::data-apps.schema/data-app.update]

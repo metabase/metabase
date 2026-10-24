@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -231,9 +232,13 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id [:or ms/PositiveInt ms/NanoIdString]]]
    {legacy-mbql? :legacy-mbql
-    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]]
+    :keys        []} :- [:map {:closed true} [:legacy-mbql {:optional true, :default false} [:maybe :boolean]]]
+   _body
+   request]
   (let [resolved-id (eid-translation/->id-or-404 :card id)
         card (get-card resolved-id)]
+    (when (data-apps/data-app-request? request)
+      (-> (data-apps/request-data-app request) (data-apps/check-card resolved-id)))
     (cond-> card
       legacy-mbql?
       (update :dataset_query (fn [query]
@@ -656,9 +661,15 @@
   "Get all of the required query metadata for a card."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id [:or ms/PositiveInt ms/NanoIdString]]]]
-  (let [resolved-id (eid-translation/->id-or-404 :card id)]
-    (queries/batch-fetch-card-metadata [(get-card resolved-id)])))
+                    [:id [:or ms/PositiveInt ms/NanoIdString]]]
+   _query-params
+   _body
+   request]
+  (let [resolved-id (eid-translation/->id-or-404 :card id)
+        card        (get-card resolved-id)]
+    (when (data-apps/data-app-request? request)
+      (-> (data-apps/request-data-app request) (data-apps/check-card resolved-id)))
+    (queries/batch-fetch-card-metadata [card])))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
@@ -813,9 +824,17 @@
        [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
        [:stored_result_id   {:optional true} [:maybe ms/PositiveInt]]
        [:sort               {:optional true}
-        [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]]
+        [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]
+   request]
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
         card             (api/check-404 (queries-rest.db/card resolved-card-id))]
+    (when (data-apps/data-app-request? request)
+      (-> (data-apps/request-data-app request)
+          (data-apps/check-card-run resolved-card-id {:parameters         parameters
+                                                      :dashboard-id       dashboard_id
+                                                      :collection-preview collection_preview
+                                                      :stored-result-id   stored_result_id
+                                                      :sort               sort})))
     (if stored_result_id
       (do
         (api/read-check card)
@@ -865,19 +884,23 @@
        [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]
-       [:csv_include_bom {:default false} ms/BooleanValue]]]
-  (qp.card/process-query-for-card
-   (api/check-404 (queries-rest.db/card card-id)) export-format
-   :parameters  parameters
-   :constraints nil
-   :context     (api.dataset/export-format->context export-format)
-   :middleware  {:process-viz-settings?  true
-                 :skip-results-metadata? true
-                 :ignore-cached-results? true
-                 :format-rows?           format-rows?
-                 :pivot?                 pivot-results?
-                 :csv-include-bom?        (if (some? csv-include-bom?) csv-include-bom? false)
-                 :js-int-to-string?      false}))
+       [:csv_include_bom {:default false} ms/BooleanValue]]
+   request]
+  (let [card (api/check-404 (queries-rest.db/card card-id))]
+    (when (data-apps/data-app-request? request)
+      (-> (data-apps/request-data-app request) (data-apps/check-card-run card-id {:parameters parameters})))
+    (qp.card/process-query-for-card
+     card export-format
+     :parameters  parameters
+     :constraints nil
+     :context     (api.dataset/export-format->context export-format)
+     :middleware  {:process-viz-settings?  true
+                   :skip-results-metadata? true
+                   :ignore-cached-results? true
+                   :format-rows?           format-rows?
+                   :pivot?                 pivot-results?
+                   :csv-include-bom?        (if (some? csv-include-bom?) csv-include-bom? false)
+                   :js-int-to-string?      false})))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
@@ -949,8 +972,12 @@
     :or   {ignore_cache false}} :- [:map {:closed true}
                                     [:ignore_cache {:optional true} [:maybe :boolean]]
                                     [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]
-                                    [:parameters   {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
+                                    [:parameters   {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]
+   request]
   (let [card (api/check-404 (queries-rest.db/card card-id))]
+    (when (data-apps/data-app-request? request)
+      (-> (data-apps/request-data-app request)
+          (data-apps/check-card-run card-id {:parameters parameters :dashboard-id dashboard_id})))
     (when dashboard_id
       (api/read-check :model/Dashboard dashboard_id))
     (qp.card/process-query-for-card card :api
