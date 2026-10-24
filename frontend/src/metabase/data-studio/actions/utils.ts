@@ -11,7 +11,7 @@ import * as Lib from "metabase-lib";
 import { getTemplateTagParameters } from "metabase-lib/v1/parameters/utils/template-tags";
 import type {
   ActionFormSettings,
-  CreateActionRequest,
+  CreateQueryActionRequest,
   Database,
   FieldSettings,
   FieldType,
@@ -22,12 +22,10 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
-export type QueryActionDefinition = {
-  type: "query";
-} & Required<
+export type QueryActionDefinition = Required<
   Pick<
-    CreateActionRequest,
-    "dataset_query" | "parameters" | "visualization_settings"
+    CreateQueryActionRequest,
+    "type" | "dataset_query" | "parameters" | "visualization_settings"
   >
 >;
 

@@ -11,7 +11,7 @@ import * as Lib from "metabase-lib";
 import type {
   ActionFormSettings,
   FieldSettings,
-  UpdateActionRequest,
+  UpdateQueryActionRequest,
   WritebackParameter,
   WritebackQueryAction,
 } from "metabase-types/api";
@@ -77,7 +77,7 @@ export function useQueryActionFields(
       });
   }, [query, formSettings]);
 
-  const save = async (request: Omit<UpdateActionRequest, "id">) => {
+  const save = async (request: Omit<UpdateQueryActionRequest, "id">) => {
     const { error } = await updateAction({ id: action.id, ...request });
     if (error) {
       sendErrorToast(t`Failed to update action fields`);
