@@ -221,3 +221,22 @@
     padding-inline: 1.325rem;
   }
 }
+
+/* the formula bar and the filters share one cell: an open bar lays over the filters instead of
+   pushing them down, and the cell is as tall as the taller of the two */
+.FormulaBarAndFilters {
+  display: grid;
+
+  > * {
+    grid-area: 1 / 1;
+    min-width: 0;
+  }
+}
+
+.FormulaBarSlot {
+  position: relative;
+  /* one pixel short of the filters, the bar's bottom border lands on theirs instead of doubling it */
+  top: 1px;
+  z-index: 1;
+  align-self: start;
+}

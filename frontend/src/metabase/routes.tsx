@@ -35,8 +35,10 @@ import {
 } from "metabase/plugins";
 import {
   QuestionHashRedirect,
+  loadAiExpressionsPrototype,
   loadMetabotQueryBuilder,
   loadQueryBuilder,
+  loadSummarizeSidebarPrototype,
 } from "metabase/query_builder";
 import type { State } from "metabase/redux/store";
 import { getReferenceRoutes } from "metabase/reference/routes";
@@ -101,6 +103,16 @@ const queryBuilder = () =>
 const metabotQueryBuilder = () =>
   loadMetabotQueryBuilder().then(({ MetabotQueryBuilder }) => ({
     Component: MetabotQueryBuilder,
+  }));
+
+const summarizeSidebarPrototype = () =>
+  loadSummarizeSidebarPrototype().then(({ SummarizeSidebarPrototypePage }) => ({
+    Component: SummarizeSidebarPrototypePage,
+  }));
+
+const aiExpressionsPrototype = () =>
+  loadAiExpressionsPrototype().then(({ AiExpressionsPrototypePage }) => ({
+    Component: AiExpressionsPrototypePage,
   }));
 
 /**
@@ -522,6 +534,22 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                 children: [
                   { path: ":slug", lazy: queryBuilder },
                   { path: ":tableId/detail/:rowId", lazy: tableDetailPage },
+                ],
+              },
+
+              // Throwaway design prototypes for the summarize sidebar's variants
+              {
+                path: "prototypes/summarize-sidebar",
+                children: [
+                  { index: true, lazy: summarizeSidebarPrototype },
+                  { path: ":variant", lazy: summarizeSidebarPrototype },
+                ],
+              },
+              {
+                path: "prototypes/ai-expressions",
+                children: [
+                  { index: true, lazy: aiExpressionsPrototype },
+                  { path: ":variant", lazy: aiExpressionsPrototype },
                 ],
               },
 
