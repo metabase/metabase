@@ -46,6 +46,7 @@ export const getValidationSchema = (
     is_on_demand: Yup.boolean().default(false),
     "connection-string": Yup.string().default(""),
     provider_name: Yup.string().nullable().default(null),
+    router_database_id: Yup.number().nullable(),
   });
 };
 
