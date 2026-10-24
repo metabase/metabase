@@ -649,6 +649,11 @@
   (t2/select-one (into [(deps.dependency-types/dependency-type->model entity-type)] columns)
                  :id id (entity-source entity-type)))
 
+(mu/defn implicit-action-table-ids
+  "The `:table_id` of the ImplicitActions of the Actions with `action-ids`, keyed by Action id."
+  [action-ids :- [:sequential ::lib.schema.id/action]]
+  (t2/select-fn->fn :action_id :table_id :model/ImplicitAction :action_id [:in action-ids]))
+
 (mu/defn query-action-queries
   "The `:dataset_query` of the QueryActions of the Actions with `action-ids`, keyed by Action id."
   [action-ids :- [:sequential ::lib.schema.id/action]]
