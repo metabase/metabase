@@ -18,7 +18,6 @@ import {
   isCollectionData,
   openNewCollectionModal,
 } from "metabase/data-studio/common/utils";
-import { CollectionPermissionsModal } from "metabase/permissions";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
@@ -96,7 +95,6 @@ export function ActionListPage() {
     >
       <CollectionRowModal
         modal={collectionModal}
-        PermissionsModal={CollectionPermissionsModal}
         onClose={() => setCollectionModal(undefined)}
       />
     </LibraryTreePage>

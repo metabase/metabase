@@ -12,7 +12,6 @@ import { LibraryTreePage } from "metabase/data-studio/common/components/LibraryT
 import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-handling";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { isCollectionData } from "metabase/data-studio/common/utils";
-import { CollectionPermissionsModal } from "metabase/permissions";
 import type { CollectionItemModel } from "metabase-types/api";
 
 import { LibraryEmptyState } from "../../../components/LibraryEmptyState";
@@ -106,7 +105,6 @@ export function DashboardsPage() {
       onSearchQueryChange={setSearchQuery}
     >
       <CollectionRowModal
-        PermissionsModal={CollectionPermissionsModal}
         modal={collectionModal}
         onClose={() => setCollectionModal(undefined)}
       />

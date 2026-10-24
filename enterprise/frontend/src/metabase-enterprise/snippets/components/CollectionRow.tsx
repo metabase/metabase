@@ -7,7 +7,6 @@ import {
   type CollectionRowModalState,
 } from "metabase/common/collections/components/CollectionRowModal";
 import CS from "metabase/css/core/index.css";
-import { CollectionPermissionsModal } from "metabase/permissions";
 import { Ellipsified, Icon } from "metabase/ui";
 import type { Collection, CollectionId } from "metabase-types/api";
 
@@ -58,7 +57,6 @@ export function CollectionRow({
         />
       </div>
       <CollectionRowModal
-        PermissionsModal={CollectionPermissionsModal}
         modal={collectionModal}
         onClose={() => setCollectionModal(undefined)}
       />
