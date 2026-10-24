@@ -28,6 +28,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2]))
 
 (def ^:private RequestParameters
@@ -230,6 +231,7 @@
   ([action              :- ::actions.schema/action
     request-parameters  :- RequestParameters
     opts                :- [:maybe ExecuteActionOpts]]
+   (workspaces/check-not-in-workspace-mode! "Actions")
    (let [;; if a value is supplied for a hidden parameter, it should raise an error
          field-settings         (get-in action [:visualization_settings :fields])
          hidden-param-ids       (->> (vals field-settings)

@@ -14,3 +14,8 @@
   "Whether any Sandbox exists."
   []
   (t2/exists? :model/Sandbox))
+
+(mu/defn workspace-exists?
+  "Whether any Workspace exists."
+  []
+  (t2/exists? :model/Workspace))

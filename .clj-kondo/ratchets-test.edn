@@ -15,12 +15,12 @@
 ;; exemptions must be explained in the PR.
 ;; :all is the vector-less ignore form, which suppresses every linter on the next form.
 {:ignore-counts                {:case-symbol-test                                                    1
-                                :deprecated-namespace                                                66
+                                :deprecated-namespace                                                67
                                 :deprecated-var                                                      33
                                 :equals-true                                                         1
                                 :metabase/disallow-hardcoded-driver-names-in-tests                   34
                                 :metabase/discourage-dynamic-vars                                    1
-                                :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 13
+                                :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests 14
                                 :metabase/namespace-name                                             1
                                 :metabase/prefer-with-dynamic-fn-redefs                              :unlimited
                                 :metabase/test-helpers-use-non-thread-safe-functions                 18

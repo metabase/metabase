@@ -911,10 +911,11 @@
 ;;; --------------------------------------------- PUT /api/database/:id ----------------------------------------------
 
 (def ^:private connection-marker-key->details-column
-  {:write-data-connection "write_data_details"})
+  {:write-data-connection "write_data_details"
+   :admin-connection      "admin_details"})
 
 (defn- validate-overlay-details!
-  "Common guardrails for overlay-details (write_data_details).
+  "Common guardrails for overlay-details (write_data_details, admin_details).
    Throws 400 on violation."
   [existing-database overlay-details
    {:keys [marker-key article+noun hidden-fields-fn]}]
@@ -950,6 +951,15 @@
     :article+noun     ["a" "write"]
     :hidden-fields-fn driver.u/fields-hidden-for-write-data-connection}))
 
+(defn- validate-admin-details!
+  "Validates admin_details guardrails. Throws 400 on violation."
+  [existing-database admin-details]
+  (validate-overlay-details!
+   existing-database admin-details
+   {:marker-key       :admin-connection
+    :article+noun     ["an" "admin"]
+    :hidden-fields-fn driver.u/fields-hidden-for-admin-connection}))
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -959,7 +969,7 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    _query-params
-   {:keys [name engine details write_data_details is_full_sync is_on_demand description caveats
+   {:keys [name engine details write_data_details admin_details is_full_sync is_on_demand description caveats
            points_of_interest schedules auto_run_queries refingerprint cache_ttl settings provider_name]
     :as   body}
    :- [:map {:closed true}
@@ -968,6 +978,7 @@
        [:refingerprint      {:optional true} [:maybe :boolean]]
        [:details            {:optional true} [:maybe ms/DatabaseDetails]]
        [:write_data_details {:optional true} [:maybe ms/DatabaseDetails]]
+       [:admin_details      {:optional true} [:maybe ms/DatabaseDetails]]
        [:schedules          {:optional true} [:maybe sync.schedules/ExpandedSchedulesMap]]
        [:is_full_sync       {:optional true} [:maybe ms/BooleanValue]]
        [:is_on_demand       {:optional true} [:maybe ms/BooleanValue]]
@@ -985,8 +996,13 @@
   ;; TODO - ensure that custom schedules and let-user-control-scheduling go in lockstep
   (when (some? write_data_details)
     (premium-features/assert-has-feature :writable-connection (tru "Writable Connection")))
+  (when (some? admin_details)
+    (premium-features/assert-has-feature :workspaces (tru "Admin Connection")))
   (when (:write-data-connection details)
     (throw (ex-info (tru "write-data-connection must not be set in details")
+                    {:status-code 400})))
+  (when (:admin-connection details)
+    (throw (ex-info (tru "admin-connection must not be set in details")
                     {:status-code 400})))
   (let [existing-database               (api/write-check (warehouses-rest.db/database id))
         ;; e2e tests run against the H2 sample database and need to toggle its settings (actions,
@@ -997,16 +1013,22 @@
                                                           {:status-code 400})))
         _                               (when write_data_details
                                           (validate-write-data-details! existing-database write_data_details))
+        _                               (when admin_details
+                                          (validate-admin-details! existing-database admin_details))
         incoming-details                details
         incoming-write-data-details     write_data_details
+        incoming-admin-details          admin_details
         engine-changed?                 (some-> engine keyword (not= (:engine existing-database)))
         details-with-secrets            (when incoming-details
                                           (upsert-sensitive-fields existing-database incoming-details :details engine-changed?))
         write-data-details-with-secrets (when  write_data_details
                                           (upsert-sensitive-fields existing-database write_data_details :write_data_details engine-changed?))
+        admin-details-with-secrets      (when admin_details
+                                          (upsert-sensitive-fields existing-database admin_details :admin_details engine-changed?))
         ;; verify that we can connect to the database if details OR `:engine` have changed.
         details-changed?                (some-> details-with-secrets (not= (:details existing-database)))
         write-details-changed?          (some-> write-data-details-with-secrets (not= (:write_data_details existing-database)))
+        admin-details-changed?          (some-> admin-details-with-secrets (not= (:admin_details existing-database)))
         main-conn-error                 (when (or details-changed? engine-changed?)
                                           (warehouses/test-database-connection (or engine (:engine existing-database))
                                                                                (or details-with-secrets (driver.conn/default-details existing-database))))
@@ -1017,9 +1039,16 @@
                                             (driver.conn/with-write-connection
                                               (warehouses/test-database-connection (or engine (:engine would-be-database))
                                                                                    (driver.conn/effective-details would-be-database)))))
+        admin-conn-error                (when (or admin-details-changed? engine-changed?)
+                                          (let [would-be-database (cond-> existing-database
+                                                                    details-with-secrets       (assoc :details details-with-secrets)
+                                                                    admin-details-with-secrets (assoc :admin_details admin-details-with-secrets))]
+                                            (driver.conn/with-admin-connection
+                                              (warehouses/test-database-connection (or engine (:engine would-be-database))
+                                                                                   (driver.conn/effective-details would-be-database)))))
         full-sync?                      (some-> is_full_sync boolean)
         on-demand?                      (boolean is_on_demand)]
-    (if-let [conn-error (or main-conn-error write-conn-error)]
+    (if-let [conn-error (or main-conn-error write-conn-error admin-conn-error)]
       ;; failed to connect, return error
       {:status 400
        :body   conn-error}
@@ -1057,6 +1086,8 @@
                                  {:provider_name provider_name})
                                (when (contains? body :write_data_details)
                                  {:write_data_details write-data-details-with-secrets})
+                               (when (contains? body :admin_details)
+                                 {:admin_details admin-details-with-secrets})
                                (when schedules
                                  (sync.schedules/schedule-map->cron-strings schedules)))
             pending-db        (merge existing-database updates)]
@@ -1095,7 +1126,8 @@
               add-expanded-schedules
               ;; return the DB with the passed in details in place
               (m/update-existing :details #(merge incoming-details %))
-              (m/update-existing :write_data_details #(merge incoming-write-data-details %))))))))
+              (m/update-existing :write_data_details #(merge incoming-write-data-details %))
+              (m/update-existing :admin_details #(merge incoming-admin-details %))))))))
 
 ;;; -------------------------------------------- DELETE /api/database/:id --------------------------------------------
 

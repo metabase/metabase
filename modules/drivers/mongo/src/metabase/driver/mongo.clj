@@ -537,7 +537,8 @@
                               :standard-deviation-aggregations      true
                               :test/create-table-without-data       false
                               :test/jvm-timezone-setting            false
-                              :transforms/python                    true}]
+                              :transforms/python                    true
+                              :workspace                            false}]
   (defmethod driver/database-supports? [:mongo feature] [_driver _feature _db] supported?))
 
 (defn- dbms-version [database]

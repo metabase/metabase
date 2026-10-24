@@ -35,6 +35,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.warehouse-schema.humanization :as warehouse-schema.humanization]
    [metabase.warehouse-schema.models.table :as table]
+   [metabase.workspaces.core :as workspaces]
    [toucan2.core :as t2])
   (:import
    (com.ibm.icu.text Transliterator)
@@ -601,6 +602,9 @@
                          :file-extension extension
                          :mime-type      mime-type}))))))
 
+(defn- check-workspace-mode! []
+  (workspaces/check-not-in-workspace-mode! "CSV upload"))
+
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
 
@@ -631,6 +635,7 @@
        [:db-id ms/PositiveInt]
        [:schema-name {:optional true} [:maybe :string]]
        [:table-prefix {:optional true} [:maybe :string]]]]
+  (check-workspace-mode!)
   (let [database (or (upload.db/database db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
@@ -987,6 +992,7 @@
        [:filename :string]
        [:file (ms/InstanceOfClass File)]
        [:action update-action-schema]]]
+  (check-workspace-mode!)
   (let [table    (api/check-404 (upload.db/table table-id))
         database (table/database table)
         replace? (= :metabase.upload/replace action)]
