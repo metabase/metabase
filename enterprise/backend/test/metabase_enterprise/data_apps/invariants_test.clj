@@ -4,21 +4,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase-enterprise.data-apps.test-util :as data-apps.tu]
+   [metabase-enterprise.data-apps.test-util :as data-apps.tu :refer [do-with-app-collection]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
-
-(defn- do-with-app-collection
-  "Call `f` with the id of a data app's resource collection; deleting the app afterwards deletes what it holds."
-  [f]
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp {collection-id :resource_collection_id}
-                   {:name "birds" :display_name "Birds" :bundle_path "birds.js"}]
-      (f collection-id))))
 
 (defn- reading-card
   "A native query of the action kind that reads the card with `card-id` through a card template tag."
