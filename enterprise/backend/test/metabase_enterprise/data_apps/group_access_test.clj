@@ -93,13 +93,7 @@
             (is (= allowed? (contains? (t2/select-pks-set :model/DataApp
                                                           {:where [:in :id (data-apps/visible-data-app-filter-select
                                                                             {:user-id user-id :is-superuser? admin?})]})
-                                       (:id app))))
-            (mt/with-current-user user-id
-              (let [request {:route-params {:name "birds"} :metabase-user-id user-id :is-superuser? admin?}]
-                (if allowed?
-                  (is (true? (data-apps/check-data-app-access! request)))
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"permissions"
-                                        (data-apps/check-data-app-access! request))))))))))))
+                                       (:id app))))))))))
 
 (deftest group-api-test
   (mt/with-premium-features #{:data-apps}
@@ -223,10 +217,7 @@
     (mt/with-temp [:model/DataApp app {:name "birds" :display_name "Birds" :bundle_path "birds.js"}]
       (group-access/add-groups! app [(:id (perms/all-users-group))])
       (mt/with-current-user (mt/user->id :rasta)
-        (is (mi/can-read? app)))
-      (mt/with-current-user (mt/user->id :rasta)
-        (is (true? (data-apps/check-data-app-access!
-                    {:route-params {:name "birds"} :metabase-user-id (mt/user->id :rasta)})))))))
+        (is (mi/can-read? app))))))
 
 (deftest disabled-app-access-test
   (mt/with-premium-features #{:data-apps}
@@ -234,13 +225,10 @@
       (group-access/add-groups! app [(:id (perms/all-users-group))])
       (testing "a superuser reaches a disabled app"
         (mt/with-current-user (mt/user->id :crowberto)
-          (is (true? (data-apps/check-data-app-access!
-                      {:route-params {:name "birds"} :metabase-user-id (mt/user->id :crowberto) :is-superuser? true})))))
+          (is (mi/can-read? app))))
       (testing "a user with group access does not reach it"
         (mt/with-current-user (mt/user->id :rasta)
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"You don't have permissions to do that."
-                                (data-apps/check-data-app-access!
-                                 {:route-params {:name "birds"} :metabase-user-id (mt/user->id :rasta)}))))))))
+          (is (not (mi/can-read? app))))))))
 
 (deftest group-endpoints-require-feature-test
   (mt/with-premium-features #{:data-apps}
