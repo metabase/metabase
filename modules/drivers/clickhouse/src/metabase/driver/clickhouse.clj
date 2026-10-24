@@ -69,7 +69,7 @@
                               :index/fetch                      true
                               :index/inline-create              true
                               :index/standalone-create          true
-                              :left-join                        (not driver-api/is-test?)
+                              :left-join                        true
                               :metadata/key-constraints         false
                               :native-pivot-tables              true
                               :now                              true
@@ -184,6 +184,8 @@
          :ignore_unknown_config_key      true
          :max_open_connections           (or max-open-connections 100)
          :custom_http_params             (cond-> "select_sequential_consistency=1"
+                                           (not (some->> clickhouse-settings (re-find #"(?:^|,)\s*join_use_nulls\s*=")))
+                                           (str ",join_use_nulls=1")
                                            (not (str/blank? clickhouse-settings))
                                            (str "," clickhouse-settings))
          :jdbc_metadata_use_show_statements false}

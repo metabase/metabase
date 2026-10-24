@@ -582,6 +582,9 @@ export function getNodeSourceReplacementEntry(
     case "table":
       return { id: node.id, type: node.type };
     case "card":
+      if (isInDataAppCollection(node.data.collection)) {
+        return null;
+      }
       if (node.data.type === "question" || node.data.type === "model") {
         return { id: node.id, type: node.type };
       }
