@@ -62,6 +62,17 @@ describe("AccountHeader", () => {
     ).toBeInTheDocument();
   });
 
+  it.each(["ldap", "google"] as const)(
+    "login history tab should be available with sso_source %s (metabase#15558)",
+    (ssoSource) => {
+      setup({ user: getUser({ sso_source: ssoSource }) });
+
+      expect(
+        screen.getByRole("tab", { name: "Login History" }),
+      ).toBeInTheDocument();
+    },
+  );
+
   it("should change location when a tab is selected", () => {
     const { onChangeLocation } = setup();
 
