@@ -13,12 +13,17 @@ import {
   PLUGIN_EMBEDDING_SDK,
 } from "metabase/plugins";
 import { queryToSearch, useSearchParams } from "metabase/router";
-import { useAdminSetting, useSetting } from "metabase/settings";
+import {
+  useAdminSetting,
+  useSetting,
+  useSettingSwitch,
+} from "metabase/settings";
 import {
   SettingsPageWrapper,
   SettingsSection,
+  SwitchSettingsSection,
 } from "metabase/settings-components";
-import { Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
+import { Box, Divider, Flex, Stack, Switch, Tabs } from "metabase/ui";
 
 import { AIModelSettingsSection } from "./AIModelSettingsSection";
 import { AIProviderSettingsSection } from "./AIProviderSettingsSection";
@@ -33,6 +38,7 @@ type MetabotTabEntityId =
 const SETUP_SECTION_ID = "setup";
 const MODELS_SECTION_ID = "models";
 const METABOT_SECTION_ID = "metabot";
+const METABOT_QUERY_EXECUTION_SECTION_ID = "metabot-query-execution";
 const MCP_SECTION_ID = "mcp";
 const AGENT_API_SECTION_ID = "agent-api";
 const AI_FEATURES_ENABLED_SECTION_ID = "ai-features-enabled";
@@ -79,6 +85,9 @@ export function AISettingsPage() {
               hasEmbedding={hasEmbedding}
               id={METABOT_SECTION_ID}
               selectedMetabotEntityId={selectedMetabotEntityId}
+            />
+            <MetabotQueryExecutionSettingsSection
+              id={METABOT_QUERY_EXECUTION_SECTION_ID}
             />
           </DisabledSection>
           <Divider />
@@ -147,6 +156,25 @@ function AgentApiSettingsSection({ disabled }: { disabled: boolean }) {
       onChange={handleAgentApiChange}
       title={t`Agent API`}
     />
+  );
+}
+
+function MetabotQueryExecutionSettingsSection({ id }: { id: string }) {
+  const { checked, envName, isBusy, onChange } = useSettingSwitch(
+    "metabot-query-execution-enabled?",
+  );
+
+  return (
+    <Box id={id}>
+      <SwitchSettingsSection
+        checked={checked}
+        description={t`Metabot can run queries and read their results to answer questions, using the permissions of the person asking. The result rows are sent to your AI provider. This doesn't apply to Metabot in Slack or in embedded apps.`}
+        lockedEnvName={envName}
+        onChange={onChange}
+        switchDisabled={isBusy}
+        title={t`Let Metabot read query results`}
+      />
+    </Box>
   );
 }
 
