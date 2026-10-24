@@ -22,6 +22,7 @@ import { Route, useLocation, useParams } from "metabase/router";
 import { parseSearchQuery } from "metabase/utils/browser";
 import type {
   CollectionItem,
+  Database,
   RecentItem,
   SearchResult,
   Settings,
@@ -139,6 +140,7 @@ export interface CommonSetupProps {
   searchItems?: (CollectionItem | SearchResult)[];
   isEE?: boolean;
   isAdmin?: boolean;
+  databases?: Database[];
 }
 
 export const commonSetup = ({
@@ -148,8 +150,9 @@ export const commonSetup = ({
   searchItems = [model_1, model_2, dashboard],
   isEE,
   isAdmin = false,
+  databases = [DATABASE],
 }: CommonSetupProps = {}) => {
-  setupDatabasesEndpoints([DATABASE]);
+  setupDatabasesEndpoints(databases);
   setupSearchEndpoints(searchItems);
   setupRecentViewsEndpoints(recents);
   setupCollectionByIdEndpoint({

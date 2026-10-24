@@ -203,15 +203,27 @@
       (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
       (is (false? (t2/select-one-fn :archived :model/Card :id (u/the-id card)))))))
 
-(deftest archive-actions-test
-  (testing "archiving a Collection archives its Actions and keeps their dashboard buttons, and unarchiving restores
-            only the Actions archived along with it"
+(deftest archive-default-collection-deletes-actions-test
+  (testing "archiving a Collection in the default namespace deletes the Actions of its models and their dashboard buttons"
     (mt/with-temp [:model/Collection    collection {}
                    :model/Card          model      {:type :model :collection_id (u/the-id collection)}
                    :model/Action        action     {:type :query :name "Rename" :model_id (u/the-id model)}
-                   :model/Action        old-action {:type :query :name "Old" :model_id (u/the-id model)
+                   :model/Dashboard     dashboard  {}
+                   :model/DashboardCard dashcard   {:dashboard_id (u/the-id dashboard) :action_id (u/the-id action)}]
+      (archive-collection! collection)
+      (is (not (t2/exists? :model/Action :id (u/the-id action))))
+      (is (not (t2/exists? :model/DashboardCard :id (u/the-id dashcard)))))))
+
+(deftest archive-data-actions-collection-archives-actions-test
+  (testing "archiving a data actions Collection archives its Actions and keeps their dashboard buttons, and unarchiving
+            restores only the Actions archived along with it"
+    (mt/with-temp [:model/Collection    collection {:namespace "data-actions"}
+                   :model/Action        action     {:type :query :name "Rename" :model_id nil
+                                                    :collection_id (u/the-id collection)}
+                   :model/Action        old-action {:type :query :name "Old" :model_id nil
+                                                    :collection_id (u/the-id collection)
                                                     :archived true :archived_directly true}
-                   :model/Dashboard     dashboard  {:collection_id (u/the-id collection)}
+                   :model/Dashboard     dashboard  {}
                    :model/DashboardCard dashcard   {:dashboard_id (u/the-id dashboard) :action_id (u/the-id action)}]
       (archive-collection! collection)
       (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id action))))
@@ -219,17 +231,6 @@
       (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
       (is (false? (t2/select-one-fn :archived :model/Action :id (u/the-id action))))
       (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id old-action)))))))
-
-(deftest unarchive-collection-keeps-actions-of-archived-models-test
-  (testing "restoring a Collection does not restore the Actions of a model that is still in the trash"
-    (mt/with-temp [:model/Collection collection {}
-                   :model/Card       model      {:type :model :collection_id (u/the-id collection)}
-                   :model/Action     action     {:type :query :name "Rename" :model_id (u/the-id model)}]
-      (t2/update! :model/Card (u/the-id model) {:archived true :archived_directly true})
-      (archive-collection! collection)
-      (unarchive-collection! (t2/select-one :model/Collection :id (u/the-id collection)))
-      (is (true? (t2/select-one-fn :archived :model/Card :id (u/the-id model))))
-      (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id action)))))))
 
 (deftest delete-collection-deletes-actions-test
   (testing "deleting a Collection deletes the Actions in it, including the ones without a model"

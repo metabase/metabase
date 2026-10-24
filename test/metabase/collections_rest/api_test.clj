@@ -1253,6 +1253,16 @@
               (is (= ["table"] (:available_models response)))
               (is (= ["table"] (mapv :model (:data response)))))))))))
 
+(deftest collection-items-tables-can-write-test
+  (testing "GET /api/collection/:id/items includes whether the current user can write each published table"
+    (mt/with-premium-features #{:library}
+      (mt/with-temp [:model/Collection collection    {:type "library-data"}
+                     :model/Table      {table-id :id} {:collection_id (u/the-id collection)
+                                                       :is_published  true}]
+        (is (=? [{:id table-id, :model "table", :can_write true}]
+                (:data (mt/user-http-request :crowberto :get 200
+                                             (str "collection/" (u/the-id collection) "/items")))))))))
+
 (deftest collection-items-available-models-permissions-test
   (testing "GET /api/collection/:id/items"
     (mt/with-non-admin-groups-no-root-collection-perms
