@@ -41,9 +41,8 @@ export function CollectionRowMenu({
   const hasPermissionsModal = match(collection.namespace)
     .with("data-actions", () => true)
     .with("transforms", () => false)
-    .otherwise(
-      () => PLUGIN_LIBRARY.isEnabled || PLUGIN_SNIPPET_FOLDERS.isEnabled,
-    );
+    .with("snippets", () => PLUGIN_SNIPPET_FOLDERS.isEnabled)
+    .otherwise(() => PLUGIN_LIBRARY.isEnabled);
   const showPermissionsOption = isAdmin && hasPermissionsModal;
 
   const isRoot = isRootCollection(collection);
