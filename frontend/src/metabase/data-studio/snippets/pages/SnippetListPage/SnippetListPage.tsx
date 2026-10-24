@@ -16,7 +16,6 @@ import {
   isCollectionData,
   openNewCollectionModal,
 } from "metabase/data-studio/common/utils";
-import { CollectionPermissionsModal } from "metabase/permissions";
 import { PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
@@ -81,7 +80,6 @@ export function SnippetListPage() {
     >
       <CollectionRowModal
         modal={collectionModal}
-        PermissionsModal={CollectionPermissionsModal}
         onClose={() => setCollectionModal(undefined)}
       />
     </LibraryTreePage>
