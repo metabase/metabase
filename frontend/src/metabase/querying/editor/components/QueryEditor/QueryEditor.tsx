@@ -9,6 +9,7 @@ import type * as Lib from "metabase-lib";
 import type { DatasetQuery } from "metabase-types/api";
 
 import { useQueryEditor } from "../../hooks/use-query-editor";
+import { useToggleRunHotkey } from "../../hooks/use-toggle-run-hotkey";
 import type {
   QueryEditorUiOptions,
   QueryEditorUiState,
@@ -91,6 +92,14 @@ export function QueryEditor({
   });
 
   const { ref, height: availableHeight } = useElementSize();
+
+  useToggleRunHotkey({
+    isEnabled: Boolean(uiOptions?.canRunViaHotkey && !uiOptions?.readOnly),
+    isRunning,
+    isRunnable,
+    run: runQuery,
+    cancel: cancelQuery,
+  });
 
   if (isLoading || error != null) {
     return (

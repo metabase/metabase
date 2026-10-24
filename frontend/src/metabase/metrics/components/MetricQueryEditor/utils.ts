@@ -13,5 +13,6 @@ export function getEditorOptions(
     cardVizSettings: settings,
     readOnly,
     canConvertToNative: false,
+    canRunViaHotkey: true,
   };
 }

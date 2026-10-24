@@ -13,6 +13,7 @@ import { defaultClickActionMode } from "metabase/querying/click-actions/lib/mode
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
+import { useToggleRunHotkey } from "metabase/querying/editor/hooks/use-toggle-run-hotkey";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
@@ -214,6 +215,14 @@ export const NativeQueryModal = ({
       setCurrentQueryPromise(null);
     }
   }, [currentQueryPromise]);
+
+  useToggleRunHotkey({
+    isEnabled: true,
+    isRunning: isQueryRunning,
+    isRunnable: true,
+    run: handleRunQuery,
+    cancel: handleCancelQuery,
+  });
 
   const handleSave = useCallback(() => {
     if (!modifiedQuestion) {
