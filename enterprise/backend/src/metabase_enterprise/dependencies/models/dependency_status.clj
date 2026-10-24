@@ -29,11 +29,15 @@
   (t2/hydrate entities [:dashcards :series]))
 
 (defmethod hydrate-for-deps :action [_ entities]
-  (let [queries (when (seq entities)
-                  (dependencies.db/query-action-queries (mapv :id entities)))]
+  (let [action-ids (mapv :id entities)
+        queries    (when (seq action-ids)
+                     (dependencies.db/query-action-queries action-ids))
+        table-ids  (when (seq action-ids)
+                     (dependencies.db/implicit-action-table-ids action-ids))]
     (mapv (fn [{:keys [id] :as action}]
             (cond-> action
-              (contains? queries id) (assoc :dataset_query (queries id))))
+              (contains? queries id)   (assoc :dataset_query (queries id))
+              (contains? table-ids id) (assoc :table_id (table-ids id))))
           entities)))
 
 (mu/defn take-pending-statuses! :- [:sequential ::dependencies.schema/pending-status]

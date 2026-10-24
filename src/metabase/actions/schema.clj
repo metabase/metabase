@@ -132,7 +132,9 @@
   ;;
   ;; `not-null-in-app-db` = this is `NOT NULL` in the app DB, and will always come back when you `SELECT` something,
   ;; but its value is populated automatically on `INSERT` or `UPDATE`.
-  (let [required-for-insert (case schema-type
+  (let [query-entries       (cond->> query-action-entries
+                              request? (remove (comp #{:database_id} first)))
+        required-for-insert (case schema-type
                               (:select :update) {:optional true}
                               :insert           {})
         common              (into
@@ -153,11 +155,11 @@
                                [:archived_directly      {:optional true}    :boolean]
                                [:description            {:optional true}    [:maybe :string]]
                                [:parameters             {:optional true}    [:maybe [:sequential ::action.parameter]]]
-                               [:database_id            {:optional true}    [:maybe ::lib.schema.id/database]]
                                [:parameter_mappings     {:optional true}    [:maybe ::parameters.schema/parameter-mappings]]
                                [:visualization_settings {:optional true}    [:maybe ms/VisualizationSettings]]]
                               (when-not request?
-                                [[:created_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
+                                [[:database_id        {:optional true} [:maybe ::lib.schema.id/database]]
+                                 [:created_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
                                  [:updated_at         {:optional true} (ms/InstanceOfClass java.time.temporal.Temporal)]
                                  [:public_uuid        {:optional true} [:maybe ms/UUIDString]]
                                  [:public_uuid_prefix {:optional true} [:maybe :string]]
@@ -169,10 +171,10 @@
      (into [:map {:closed true}] common)
      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
               :dispatch         (comp #{:implicit :query} keyword :type)}
-      [:implicit (into [:map {:closed true} [:model_id required-for-insert ::lib.schema.id/card]] implicit-action-entries)]
-      [:query    (into [:map {:closed true}] query-action-entries)]
+      [:implicit (into [:map {:closed true}] implicit-action-entries)]
+      [:query    (into [:map {:closed true}] query-entries)]
       ;; a partial update need not repeat `:type`; accept every type's keys rather than dropping them
-      [nil       (into [:map {:closed true}] cat [implicit-action-entries query-action-entries])]]]))
+      [nil       (into [:map {:closed true}] cat [implicit-action-entries query-entries])]]]))
 
 (mr/def ::action
   "An Action as it should appear when we `SELECT` it from the app DB."
