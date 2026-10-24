@@ -134,6 +134,13 @@
    :type :hidden
    :default false})
 
+(def same-server-destination-option
+  "Map representing the 'is this a destination database on its router's server' option. Fields hidden by this marker
+  identify the server, and are copied from the router rather than set on the destination."
+  {:name    "same-server-destination"
+   :type    :hidden
+   :default false})
+
 (def write-data-connection-option
   "Map representing the 'is this a writable connection' option"
   {:name    "write-data-connection"
@@ -296,6 +303,7 @@
 (def default-advanced-options
   "Vector containing the most common options present in the advanced option section of the DB connection form."
   [destination-database-option
+   same-server-destination-option
    write-data-connection-option
    admin-connection-option
    auto-run-queries

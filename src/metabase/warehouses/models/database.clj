@@ -460,6 +460,17 @@
     (throw (ex-info (tru "Cannot change router_database_id; a destination database is established at creation, not by updating an existing database.")
                     {:status-code 400}))))
 
+(defenterprise router-shared-details
+  "OSS implementation. Returns the `details` of a destination of the router with `router-database-id` unchanged."
+  metabase-enterprise.database-routing.models
+  [_router-database-id details]
+  details)
+
+(defenterprise sync-destination-details!
+  "OSS implementation. Does nothing."
+  metabase-enterprise.database-routing.models
+  [_database])
+
 (def ^:private details-keys
   "Every place a Database stores a set of connection details."
   [:details :write_data_details :admin_details])
@@ -487,87 +498,100 @@
           (when (driver.impl/registered? engine)
             (driver.u/validate-connection-parameters! engine details)))))))
 
+(defn- with-router-shared-details
+  "Copies the server details of a destination database's router onto the details it is writing; see
+  [[router-shared-details]]."
+  [database]
+  (cond-> database
+    (and (:router_database_id database) (:details (t2/changes database)))
+    (update :details #(router-shared-details (:router_database_id database) %))))
+
 (t2/define-before-update :model/Database
   [database]
   (assert-router-database-id-not-mutated! database)
-  (let [changes  (t2/changes database)
-        original (t2/original database)]
-    ;; An engine change can make existing detail keys acquire new meaning, so validate every details map under the new
-    ;; driver. Otherwise validate only the ones being written, so an unrelated update to a grandfathered database does
-    ;; not start failing. Either way the candidate is the merge, since an overlay is resolved against the `:details`
-    ;; it accompanies rather than on its own.
-    (validate-connection-details! (or (:engine changes) (:engine original))
-                                  (merge original changes)
-                                  (if (contains? changes :engine)
-                                    details-keys
-                                    (filterv #(contains? changes %) details-keys))))
-  ;; Note: the "sample database may not be edited" policy is enforced at the API layer
-  ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
-  ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.
-  (let [changes                       (t2/changes database)
-        {new-engine        :engine
-         new-settings      :settings} changes
-        {existing-settings :settings
-         existing-engine   :engine}   (t2/original database)
-        new-engine                    (some-> new-engine keyword)]
-    (u/prog1 (cond-> database
-               ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
-               (and (some? (:details changes))
-                    (not (driver.u/supports? (or new-engine existing-engine) :nested-field-columns database)))
-               (update :details dissoc :json_unfolding)
+  (let [database (with-router-shared-details database)]
+    (let [changes  (t2/changes database)
+          original (t2/original database)]
+      ;; An engine change can make existing detail keys acquire new meaning, so validate every details map under the new
+      ;; driver. Otherwise validate only the ones being written, so an unrelated update to a grandfathered database does
+      ;; not start failing. Either way the candidate is the merge, since an overlay is resolved against the `:details`
+      ;; it accompanies rather than on its own.
+      (validate-connection-details! (or (:engine changes) (:engine original))
+                                    (merge original changes)
+                                    (if (contains? changes :engine)
+                                      details-keys
+                                      (filterv #(contains? changes %) details-keys))))
+    ;; Note: the "sample database may not be edited" policy is enforced at the API layer
+    ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
+    ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.
+    (let [changes                       (t2/changes database)
+          {new-engine        :engine
+           new-settings      :settings} changes
+          {existing-settings :settings
+           existing-engine   :engine}   (t2/original database)
+          new-engine                    (some-> new-engine keyword)]
+      (u/prog1 (cond-> database
+                 ;; If the engine doesn't support nested field columns, `json_unfolding` must be nil
+                 (and (some? (:details changes))
+                      (not (driver.u/supports? (or new-engine existing-engine) :nested-field-columns database)))
+                 (update :details dissoc :json_unfolding)
 
-               (or
-                ;if there is any changes in user control setting
-                (some? (get-in changes [:details :let-user-control-scheduling]))
-                ;; if the let user control scheduling is already on, we should always try to re-infer it
-                (get-in database [:details :let-user-control-scheduling])
-                ;; if there is a changes in schedules, make sure it respects the settings
-                (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
-               infer-db-schedules
+                 (or
+                  ;if there is any changes in user control setting
+                  (some? (get-in changes [:details :let-user-control-scheduling]))
+                  ;; if the let user control scheduling is already on, we should always try to re-infer it
+                  (get-in database [:details :let-user-control-scheduling])
+                  ;; if there is a changes in schedules, make sure it respects the settings
+                  (some some? [(:cache_field_values_schedule changes) (:metadata_sync_schedule changes)]))
+                 infer-db-schedules
 
-               (or (some? (:details changes))
-                   (some? (:write_data_details changes))
-                   (some? (:admin_details changes)))
-               secret/handle-incoming-client-secrets!
+                 (or (some? (:details changes))
+                     (some? (:write_data_details changes))
+                     (some? (:admin_details changes)))
+                 secret/handle-incoming-client-secrets!
 
-               (:uploads_enabled changes)
-               maybe-disable-uploads-for-all-dbs!)
-      ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
-      ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
-      (when (and (:database-enable-actions (or new-settings existing-settings))
-                 (not (driver.u/supports? (or new-engine existing-engine) :actions database)))
-        (throw (ex-info (trs "The database does not support actions.")
-                        {:status-code     400
-                         :existing-engine existing-engine
-                         :new-engine      new-engine})))
-      ;; This maintains a constraint that if a driver doesn't support data editing, it can never be enabled
-      ;; If we drop support for a driver, we'd need to add a migration to disable it for all databases
-      (when (and (:database-enable-table-editing (or new-settings existing-settings))
-                 (not (driver.u/supports? (or new-engine existing-engine) :actions/data-editing database)))
-        (throw (ex-info (trs "The database does not support table editing.")
-                        {:status-code     400
-                         :existing-engine existing-engine
-                         :new-engine      new-engine}))))))
+                 (:uploads_enabled changes)
+                 maybe-disable-uploads-for-all-dbs!)
+        ;; This maintains a constraint that if a driver doesn't support actions, it can never be enabled
+        ;; If we drop support for actions for a driver, we'd need to add a migration to disable actions for all databases
+        (when (and (:database-enable-actions (or new-settings existing-settings))
+                   (not (driver.u/supports? (or new-engine existing-engine) :actions database)))
+          (throw (ex-info (trs "The database does not support actions.")
+                          {:status-code     400
+                           :existing-engine existing-engine
+                           :new-engine      new-engine})))
+        ;; This maintains a constraint that if a driver doesn't support data editing, it can never be enabled
+        ;; If we drop support for a driver, we'd need to add a migration to disable it for all databases
+        (when (and (:database-enable-table-editing (or new-settings existing-settings))
+                   (not (driver.u/supports? (or new-engine existing-engine) :actions/data-editing database)))
+          (throw (ex-info (trs "The database does not support table editing.")
+                          {:status-code     400
+                           :existing-engine existing-engine
+                           :new-engine      new-engine})))))))
 
 (t2/define-after-update :model/Database
   [database]
   ;; This will not do anything when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
   ;; scheduler will not be up yet. Thus, we call [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]]
   ;; from [[metabase.core/init!]] to self-heal.
-  (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
+  (check-and-schedule-tasks-for-db! (t2.realize/realize database))
+  (sync-destination-details! database))
 
 (t2/define-before-insert :model/Database
-  [{:keys [details initial_sync_status engine], :as database}]
-  (validate-connection-details! engine database details-keys)
-  (-> (merge {:is_full_sync true
-              :is_on_demand false}
-             database)
-      (cond->
-       (not details)             (assoc :details {})
-       (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
-      secret/handle-incoming-client-secrets!
-      maybe-disable-uploads-for-all-dbs!
-      infer-db-schedules))
+  [{router-database-id :router_database_id, :as database}]
+  (let [{:keys [details initial_sync_status engine], :as database}
+        (cond-> database
+          router-database-id (update :details #(router-shared-details router-database-id (or % {}))))]
+    (validate-connection-details! engine database details-keys)
+    (-> (merge {:is_full_sync true
+                :is_on_demand false}
+               database)
+        (cond->
+         (not details)             (assoc :details {})
+         (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
+        secret/handle-incoming-client-secrets!
+        maybe-disable-uploads-for-all-dbs!
+        infer-db-schedules)))
 
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]
@@ -796,3 +820,15 @@
   "Batch hydrate `Tables` for the given `Database`."
   [_model k databases]
   (hydrate-router-user-attribute k databases))
+
+(defenterprise hydrate-router-mode
+  "OSS implementation. Hydrates the database routing mode on the databases."
+  metabase-enterprise.database-routing.models
+  [_k databases]
+  (for [database databases]
+    (assoc database :router_mode nil)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :router_mode]
+  "Batch hydrate the database routing mode of the given Databases."
+  [_model k databases]
+  (hydrate-router-mode k databases))

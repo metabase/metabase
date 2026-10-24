@@ -1235,7 +1235,7 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
+        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :router_mode :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
                                 (disj :details :write_data_details :admin_details :initial_sync_error))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]

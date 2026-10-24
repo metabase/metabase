@@ -174,9 +174,11 @@
   (->>
    [{:type :group
      :container-style ["grid" "3fr 1fr"]
-     :fields [driver.common/default-host-details
-              (assoc driver.common/default-port-details :placeholder 5432)]}
-    driver.common/default-dbname-details
+     :fields [(assoc driver.common/default-host-details :visible-if {"same-server-destination" false})
+              (assoc driver.common/default-port-details
+                     :placeholder 5432
+                     :visible-if {"same-server-destination" false})]}
+    (assoc driver.common/default-dbname-details :visible-if {"same-server-destination" false})
     driver.common/default-user-details
     (driver.common/auth-provider-options)
     (assoc driver.common/default-password-details

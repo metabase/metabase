@@ -2,6 +2,7 @@
   (:require
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.util :as u]
@@ -23,6 +24,50 @@
    (fn [] (database-routing.db/router-user-attributes-by-database (map :id databases)))
    :id
    {:default nil}))
+
+(defenterprise hydrate-router-mode
+  "Enterprise implementation. Hydrates the database routing mode on the databases."
+  :feature :database-routing
+  [k databases]
+  (mi/instances-with-hydrated-data
+   databases k
+   (fn [] (database-routing.db/router-modes-by-database (map :id databases)))
+   :id
+   {:default nil}))
+
+(defn shared-detail-keys
+  "The detail keys that a same-server destination database takes from its router, for `engine`. Empty when the engine
+  declares none, in which case its destinations keep their full connection details."
+  [engine]
+  (into #{} (map keyword) (driver.u/fields-hidden-for-same-server-destination (keyword engine))))
+
+(defn- with-shared-details
+  "`details` of a destination of the same-server `router`, with the router's server details copied over."
+  [router details]
+  (-> details
+      (merge (select-keys (:details router) (shared-detail-keys (:engine router))))
+      (assoc :same-server-destination true)))
+
+(defenterprise router-shared-details
+  "Enterprise implementation. Returns the `details` of a destination of the router with `router-database-id` as they
+  should be stored: with the router's server details copied over when the router is in `internal` mode."
+  :feature :database-routing
+  [router-database-id details]
+  (if (= "internal" (database-routing.db/router-mode router-database-id))
+    (with-shared-details (database-routing.db/database router-database-id) details)
+    (dissoc details :same-server-destination)))
+
+(defenterprise sync-destination-details!
+  "Enterprise implementation. Copies the server details of `database`, when it is an `internal` router, onto those of
+  its destination databases that don't match them yet."
+  :feature :database-routing
+  [database]
+  (when (and (not (:router_database_id database))
+             (= "internal" (database-routing.db/router-mode (u/the-id database))))
+    (doseq [{:keys [id details]} (database-routing.db/destination-databases (u/the-id database))
+            :let                 [synced (with-shared-details database details)]
+            :when                (not= synced details)]
+      (database-routing.db/update-database-details! id synced))))
 
 (defenterprise hash-input-for-database-routing
   "Enterprise version. Returns a hash input that will be used for fields subject to database routing.
