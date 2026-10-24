@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.test-util :as search.tu]
@@ -134,15 +135,17 @@
     (mt/with-premium-features #{:transforms-basic :database-routing :hosting}
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
-          (mt/with-temp [:model/Database _destination {:engine driver/*driver*
-                                                       :router_database_id (mt/id)
-                                                       :details {:destination_database true}}
-                         :model/DatabaseRouter _ {:database_id (mt/id)
-                                                  :user_attribute "db_name"}
-                         :model/Transform transform (query-transform-payload table-name)]
-            (is (= "Transforms are not supported on databases with DB routing enabled."
-                   (mt/user-http-request :crowberto :put 400 (format "transform/%s" (:id transform))
-                                         (assoc transform :name "Gadget Products 2"))))))))))
+          (binding [mi/*deserializing?* true]
+            (mt/with-temp [:model/Database _destination {:engine driver/*driver*
+                                                         :router_database_id (mt/id)
+                                                         :details {:destination_database true}}
+                           :model/DatabaseRouter _ {:database_id (mt/id)
+                                                    :user_attribute "db_name"}
+                           :model/Transform transform (query-transform-payload table-name)]
+              (binding [mi/*deserializing?* false]
+                (is (= "Transforms are not supported on databases with DB routing enabled."
+                       (mt/user-http-request :crowberto :put 400 (format "transform/%s" (:id transform))
+                                             (assoc-in transform [:target :name] "gadget_products_2"))))))))))))
 
 (deftest search-filters-transform-source-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

@@ -451,34 +451,36 @@
                  (with-transform-cleanup! [target0 {:type "table"
                                                     :schema (:schema table)
                                                     :name "t0"}]
-                   (mt/with-temp [:model/Database _destination {:engine driver/*driver*
-                                                                :router_database_id (mt/id)
-                                                                :details {:destination_database true}}
-                                  :model/DatabaseRouter _ {:database_id (mt/id)
-                                                           :user_attribute "db_name"}
-                                  :model/TransformTag tag {:name "test-tag"}
-                                  :model/TransformJob job {:name "test-job"
-                                                           :schedule "0 0 * * * ? *"}
-                                  :model/TransformJobTransformTag _ {:job_id (:id job)
-                                                                     :tag_id (:id tag)
-                                                                     :position 0}
-                                  ;; independent transform
-                                  :model/Transform t0 {:name "transform0"
-                                                       :source {:type :query
-                                                                :query (lib/native-query mp sql)}
-                                                       :creator_id (mt/user->id :crowberto)
-                                                       :target target0}
-                                  :model/TransformTransformTag _tag0 {:transform_id (:id t0)
-                                                                      :tag_id (:id tag)
-                                                                      :position 0}]
-                     ;; NOTE: No `with-current-user` wrapper - this simulates running the transform
-                     ;; without a user context (e.g., from a cron job or background task).
-                     ;; previously this could produce the wrong error message from the QP routing middleware.
-                     (try
-                       (jobs/run-job! (:id job) {:run-method :cron})
-                       (catch Exception _))
-                     (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
-                     (is (mt/received-email-body? :crowberto #"transform0")))))))))))))
+                   (binding [mi/*deserializing?* true]
+                     (mt/with-temp [:model/Database _destination {:engine driver/*driver*
+                                                                  :router_database_id (mt/id)
+                                                                  :details {:destination_database true}}
+                                    :model/DatabaseRouter _ {:database_id (mt/id)
+                                                             :user_attribute "db_name"}
+                                    :model/TransformTag tag {:name "test-tag"}
+                                    :model/TransformJob job {:name "test-job"
+                                                             :schedule "0 0 * * * ? *"}
+                                    :model/TransformJobTransformTag _ {:job_id (:id job)
+                                                                       :tag_id (:id tag)
+                                                                       :position 0}
+                                    ;; independent transform
+                                    :model/Transform t0 {:name "transform0"
+                                                         :source {:type :query
+                                                                  :query (lib/native-query mp sql)}
+                                                         :creator_id (mt/user->id :crowberto)
+                                                         :target target0}
+                                    :model/TransformTransformTag _tag0 {:transform_id (:id t0)
+                                                                        :tag_id (:id tag)
+                                                                        :position 0}]
+                       (binding [mi/*deserializing?* false]
+                         ;; NOTE: No `with-current-user` wrapper - this simulates running the transform
+                         ;; without a user context (e.g., from a cron job or background task).
+                         ;; previously this could produce the wrong error message from the QP routing middleware.
+                         (try
+                           (jobs/run-job! (:id job) {:run-method :cron})
+                           (catch Exception _))
+                         (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
+                         (is (mt/received-email-body? :crowberto #"transform0")))))))))))))))
 
 (deftest get-plan-ignores-unrelated-routing-enabled-transforms-test
   (when config/ee-available?

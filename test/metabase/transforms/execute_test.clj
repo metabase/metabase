@@ -8,6 +8,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
@@ -258,20 +259,22 @@
         (let [mp (mt/metadata-provider)
               products (lib.metadata/table mp (mt/id :products))
               query (lib/query mp products)]
-          (mt/with-temp [:model/Database _destination {:engine driver/*driver*
-                                                       :router_database_id (mt/id)
-                                                       :details {:destination_database true}}
-                         :model/DatabaseRouter _ {:database_id (mt/id)
-                                                  :user_attribute "db_name"}
-                         :model/Transform transform {:name   "Test transform"
-                                                     :source {:type  :query
-                                                              :query query}
-                                                     :target target-table}]
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"Failed to run the transform \(Test transform\) because the database \(.+\) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
-                 (mt/with-current-user (mt/user->id :crowberto)
-                   (transforms.execute/execute! transform {:run-method :manual}))))))))))
+          (binding [mi/*deserializing?* true]
+            (mt/with-temp [:model/Database _destination {:engine driver/*driver*
+                                                         :router_database_id (mt/id)
+                                                         :details {:destination_database true}}
+                           :model/DatabaseRouter _ {:database_id (mt/id)
+                                                    :user_attribute "db_name"}
+                           :model/Transform transform {:name   "Test transform"
+                                                       :source {:type  :query
+                                                                :query query}
+                                                       :target target-table}]
+              (binding [mi/*deserializing?* false]
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"Failed to run the transform \(Test transform\) because the database \(.+\) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
+                     (mt/with-current-user (mt/user->id :crowberto)
+                       (transforms.execute/execute! transform {:run-method :manual}))))))))))))
 
 (doseq [driver [:postgres :mysql :clickhouse :snowflake :bigquery-cloud-sdk]]
   (defmethod driver/database-supports? [driver ::sleep-query]
@@ -417,22 +420,24 @@
         (let [mp (mt/metadata-provider)
               products (lib.metadata/table mp (mt/id :products))
               query (lib/query mp products)]
-          (mt/with-temp [:model/Database _destination {:engine driver/*driver*
-                                                       :router_database_id (mt/id)
-                                                       :details {:destination_database true}}
-                         :model/DatabaseRouter _ {:database_id (mt/id)
-                                                  :user_attribute "db_name"}
-                         :model/Transform transform {:name   "Test transform"
-                                                     :source {:type  :query
-                                                              :query query}
-                                                     :target target-table}]
-            ;; NOTE: No `with-current-user` wrapper - this simulates running the transform
-            ;; without a user context (e.g., from a cron job or background task).
-            ;; previously this could produce the wrong error message from the QP routing middleware.
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"Failed to run the transform \(Test transform\) because the database \(.+\) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
-                 (transforms.execute/execute! transform {:run-method :cron})))))))))
+          (binding [mi/*deserializing?* true]
+            (mt/with-temp [:model/Database _destination {:engine driver/*driver*
+                                                         :router_database_id (mt/id)
+                                                         :details {:destination_database true}}
+                           :model/DatabaseRouter _ {:database_id (mt/id)
+                                                    :user_attribute "db_name"}
+                           :model/Transform transform {:name   "Test transform"
+                                                       :source {:type  :query
+                                                                :query query}
+                                                       :target target-table}]
+              (binding [mi/*deserializing?* false]
+                ;; NOTE: No `with-current-user` wrapper - this simulates running the transform
+                ;; without a user context (e.g., from a cron job or background task).
+                ;; previously this could produce the wrong error message from the QP routing middleware.
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"Failed to run the transform \(Test transform\) because the database \(.+\) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
+                     (transforms.execute/execute! transform {:run-method :cron})))))))))))
 
 ;; TODO(Timothy, 02-16-26):
 ;; Like no-create-schema-permissions-test, this would be improved by being driver agnostic
