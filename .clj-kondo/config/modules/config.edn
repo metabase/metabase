@@ -3833,6 +3833,8 @@
            collections
            events
            lib
+           lib.be
+           lib.metadata
            lib.schema
            lib.types
            models
@@ -3850,6 +3852,7 @@
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
+                    :model/Database
                     :model/Permissions
                     :model/Table}
    :model-exports #{:model/DataApp}}

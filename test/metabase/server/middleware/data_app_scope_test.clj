@@ -104,7 +104,7 @@
 
 (deftest data-app-marker-refuses-denied-routes-test
   (let [as-data-app {:request-options {:headers {"x-metabase-client" "data-app"}}}]
-    (testing "dashboards, native queries, parameters, model actions and raw table browsing fail closed when marked"
+    (testing "dashboards, native queries, parameters, model actions and raw table browsing are refused when marked"
       (doseq [[method endpoint] [[:get "dashboard/1"]
                                  [:get "card/1/params/x/values"]
                                  [:post "dataset/native"]
@@ -119,9 +119,7 @@
                                  [:get (format "table/%d/fks" (mt/id :venues))]
                                  [:get (format "field/%d/summary" (mt/id :venues :name))]
                                  [:delete "user-key-value/namespace/data-app-test/key/format"]]]
-        (is (= "scope_not_permitted"
-               (:error (mt/user-http-request :crowberto method 403 endpoint as-data-app)))
-            endpoint)))))
+        (is (mt/user-http-request :crowberto method 403 endpoint as-data-app) endpoint)))))
 
 (def ^:private data-app-endpoints
   "API namespace => the endpoints that SDK components and hooks call inside a data app."

@@ -1,0 +1,69 @@
+(ns metabase-enterprise.data-apps.guards
+  "The rules a data app's requests are held to: it uses only the resources of its own app, the cards in the
+  app's collection."
+  (:require
+   [clojure.set :as set]
+   [clojure.string :as str]
+   [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]))
+
+(set! *warn-on-reflection* true)
+
+(defn- refusal
+  "A 403 error refusing a data app's request, with `message` and, when given, the `cause` of the refusal."
+  ([message]
+   (ex-info message {:status-code 403}))
+  ([message cause]
+   (ex-info message {:status-code 403} cause)))
+
+(defn- request-app
+  "The data app that `request` names in its `X-Metabase-Client-Identifier` header; throws a 403 when it names none."
+  [request]
+  (or (some-> (get-in request [:headers "x-metabase-client-identifier"]) not-empty data-apps.db/data-app-by-slug)
+      (throw (refusal (tru "A data app request must name a data app on this instance.")))))
+
+(defn- app-card-ids
+  "The IDs of the cards in the collection of `app`."
+  [app]
+  (if-let [collection-id (:resource_collection_id app)]
+    (data-apps.db/app-card-ids collection-id)
+    #{}))
+
+(defn- refuse-cards!
+  "Throws a 403 naming the cards with `card-ids`, which a data app may not use."
+  [metadata-providerable card-ids]
+  (throw (refusal (tru "A data app can use only the cards of its own app, not {0}."
+                       (str/join ", " (for [{card-name :name, card-id :id}
+                                            (sort-by :id (lib.metadata/bulk-metadata metadata-providerable :metadata/card
+                                                                                     card-ids))]
+                                        (format "\"%s\" (%d)" card-name card-id)))))))
+
+(defenterprise check-query!
+  "Throws a 403 unless `query`, a legacy or MBQL 5 query map that the data app of `request` runs, is an MBQL query
+  without parameters whose sources and joins are the cards of that app."
+  :feature :data-apps
+  [request query]
+  (let [card-ids (app-card-ids (request-app request))]
+    (when-not (and (map? query)
+                   (pos-int? (:database query))
+                   (data-apps.db/database-exists? (:database query)))
+      (throw (refusal (tru "A data app can run only queries on a database."))))
+    (let [query (try
+                  (lib/query (lib-be/application-database-metadata-provider (:database query)) query)
+                  (catch Exception e
+                    (throw (refusal (tru "A data app can run only valid queries.") e))))]
+      (when (or (seq (:parameters query)) (some (comp seq :parameters) (:stages query)))
+        (throw (refusal (tru "A data app can run only queries without parameters."))))
+      (when (lib/any-native-stage? query)
+        (throw (refusal (tru "A data app can run only queries built with the query builder, not SQL."))))
+      (when (or (seq (lib/all-source-table-ids query))
+                (seq (lib/all-segment-ids query))
+                (seq (lib/all-measure-ids query)))
+        (throw (refusal (tru "A data app can query only the cards of its own app, not tables, segments or measures."))))
+      (when-let [outside (not-empty (set/difference (set (lib/all-source-card-ids query)) card-ids))]
+        (refuse-cards! query outside))))
+  nil)

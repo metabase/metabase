@@ -730,7 +730,7 @@
     :route (:route-params request)
     :query (some-> (:query-params request) (update-keys keyword))))
 
-(mu/defn- request-body :- [:maybe ms/RingRequestBody]
+(mu/defn request-body :- [:maybe ms/RingRequestBody]
   "The body params of `request`: the parts of a multipart request, the form params of a form request, or the parsed
   JSON body. An unparsed body (an `InputStream`) is not a param map."
   [request :- ::request]
