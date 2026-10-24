@@ -77,8 +77,8 @@
   (t2/delete! :model/MetabotConversation {:where [:in :id conversation-ids]}))
 
 (mu/defn insert-metabot-conversation!
-  "Insert the MetabotConversation `row`."
-  [row :- ::metabot.schema/metabot-conversation.update]
+  "Insert the MetabotConversation `row`. A conversation carries its own id: the app DB does not mint one."
+  [row :- ::metabot.schema/metabot-conversation]
   (t2/insert! :model/MetabotConversation row))
 
 (mu/defn insert-metabot-message!
@@ -96,6 +96,16 @@
   [user-id   :- ::lib.schema.id/user
    tenant-id :- ms/PositiveInt]
   (t2/update! :model/User user-id {:tenant_id tenant-id}))
+
+(mu/defn metabot-conversation-exists?
+  "Whether a MetabotConversation with `conversation-id` exists."
+  [conversation-id :- :string]
+  (t2/exists? :model/MetabotConversation :id conversation-id))
+
+(mu/defn delete-metabot-messages-for-conversations!
+  "Delete the MetabotMessages of `conversation-ids`, returning the number deleted."
+  [conversation-ids :- [:sequential :string]]
+  (t2/delete! :model/MetabotMessage {:where [:in :conversation_id conversation-ids]}))
 
 (mu/defn delete-ai-usage-logs-for-user-and-source!
   "Delete the AiUsageLog rows of the User with `user-id` from `source`, returning the number deleted."

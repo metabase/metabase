@@ -575,35 +575,60 @@
      {:inserted (count e2e-usage-auditing-conversation-ids)
       :date     (str (t/local-date today))})))
 
+(defn- seed-ai-usage-conversation-id
+  "The id of the conversation that holds the user messages the `seed-ai-usage` endpoint inserts for `user-id`.
+  Fixed per user, so the DELETE finds it."
+  [user-id]
+  (str (java.util.UUID/nameUUIDFromBytes (.getBytes (str "e2e-seed-ai-usage-" user-id) "UTF-8"))))
+
 (api.macros/defendpoint :post "/metabot/seed-ai-usage"
   :- [:map [:inserted :int]]
-  "Insert `count` rows into `ai_usage_log` for the given `user_id`, then clear the metabot limit
-  cache so limit checks re-evaluate immediately.  Intended only for E2E tests."
+  "Insert `count` units of AI usage for the given `user_id`: one `ai_usage_log` row and one `metabot_message` user row
+  each, so the seed counts under both limit units (tokens and messages). Then clear the metabot limit cache so limit
+  checks re-evaluate immediately. Intended only for E2E tests."
   [_route-params
    _query-params
    {:keys [user_id count]} :- [:map {:closed true}
                                [:user_id ms/PositiveInt]
                                [:count   ms/PositiveInt]]]
-  (dotimes [_ count]
-    (testing-api.db/insert-ai-usage-log!
-     {:source            e2e-usage-source
-      :model             "test/model"
-      :prompt_tokens     0
-      :completion_tokens 0
-      :total_tokens      0
-      :user_id           user_id}))
+  (let [conversation-id (seed-ai-usage-conversation-id user_id)]
+    (when-not (testing-api.db/metabot-conversation-exists? conversation-id)
+      (testing-api.db/insert-metabot-conversation!
+       {:id      conversation-id
+        :user_id user_id
+        :title   "E2E seeded AI usage"}))
+    (dotimes [_ count]
+      (testing-api.db/insert-ai-usage-log!
+       {:source            e2e-usage-source
+        :model             "test/model"
+        :conversation_id   conversation-id
+        :prompt_tokens     0
+        :completion_tokens 0
+        :total_tokens      0
+        :user_id           user_id})
+      (testing-api.db/insert-metabot-message!
+       {:conversation_id conversation-id
+        :user_id         user_id
+        :role            "user"
+        :profile_id      "internal"
+        :data            []
+        :data_version    2
+        :total_tokens    0})))
   (clear-metabot-limit-cache!)
   {:inserted count})
 
 (api.macros/defendpoint :delete "/metabot/seed-ai-usage"
   :- [:map [:deleted :int]]
-  "Delete all `ai_usage_log` rows inserted by the seeding endpoint for the given `user_id`, then
-  clear the metabot limit cache.  Intended only for E2E tests."
+  "Delete the `ai_usage_log` rows and the seeded conversation inserted by the seeding endpoint for the given
+  `user_id`, then clear the metabot limit cache. Intended only for E2E tests."
   [_route-params
    _query-params
    {:keys [user_id]} :- [:map {:closed true}
                          [:user_id ms/PositiveInt]]]
-  (let [deleted (testing-api.db/delete-ai-usage-logs-for-user-and-source! user_id e2e-usage-source)]
+  (let [conversation-id (seed-ai-usage-conversation-id user_id)
+        deleted         (testing-api.db/delete-ai-usage-logs-for-user-and-source! user_id e2e-usage-source)]
+    (testing-api.db/delete-metabot-messages-for-conversations! [conversation-id])
+    (testing-api.db/delete-metabot-conversations! [conversation-id])
     (clear-metabot-limit-cache!)
     {:deleted deleted}))
 

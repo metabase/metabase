@@ -54,6 +54,13 @@
   (when-let [conversation (metabot.db/conversation conversation-id)]
     (api/check-403 (mi/can-read? conversation))))
 
+(defn- check-new-message-limits!
+  "Throw a 402 carrying the quota message when one more user message would exceed an AI usage limit. Runs before
+  [[metabot.persistence/start-turn!]], so a rejected message is neither persisted nor counted."
+  []
+  (when-let [limit-msg (metabot.usage/check-new-message-limits!)]
+    (throw (ex-info limit-msg {:status-code 402 :error-code "ai_usage_limit_reached"}))))
+
 (defn- make-out-of-sync-fn
   [conversation-id parent-message-id retry-message-id]
   (fn [reason & [cause]]
@@ -331,15 +338,18 @@
                   {:keys [action message-ids]} (check-turn! messages parent_message_id retry_message_id out-of-sync!)
                   turn     (try
                              (if (= action :retry)
+                               ;; a retry reuses its user message, which the limit already counts
                                (metabot.persistence/retry-turn! conversation_id profile-id retry_message_id
                                                                 :assistant-external-id assistant_message_id
                                                                 :delete-message-ids message-ids)
-                               (metabot.persistence/start-turn! conversation_id profile-id message
-                                                                :hostname hostname
-                                                                :pii-info pii-info
-                                                                :delete-message-ids message-ids
-                                                                :user-external-id user_message_id
-                                                                :assistant-external-id assistant_message_id))
+                               (do
+                                 (check-new-message-limits!)
+                                 (metabot.persistence/start-turn! conversation_id profile-id message
+                                                                  :hostname hostname
+                                                                  :pii-info pii-info
+                                                                  :delete-message-ids message-ids
+                                                                  :user-external-id user_message_id
+                                                                  :assistant-external-id assistant_message_id)))
                              (catch Exception e
                                (if (external-id-conflict? e)
                                  (out-of-sync! :external-id-taken e)

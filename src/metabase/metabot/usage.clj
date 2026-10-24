@@ -47,8 +47,17 @@
   profile-id)
 
 (defenterprise check-usage-limits!
-  "Check all usage limits for the current user. Returns nil if all limits are within bounds,
+  "Check all usage limits for an LLM call by the current user. Returns nil if all limits are within bounds,
   or a user-friendly error message string if any limit is exceeded.
+
+  In OSS, always returns nil (no limits enforced)."
+  metabase-enterprise.metabot.usage
+  []
+  nil)
+
+(defenterprise check-new-message-limits!
+  "Check all usage limits for one more user message from the current user, before a turn persists it. Returns nil
+  when the message fits, or a user-friendly error message string when a message limit is reached.
 
   In OSS, always returns nil (no limits enforced)."
   metabase-enterprise.metabot.usage
