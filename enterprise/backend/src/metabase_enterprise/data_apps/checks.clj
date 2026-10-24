@@ -114,3 +114,12 @@
       (throw (refusal (tru "A data app can read only the tables its own cards use, not {0}."
                            (get (data-apps.db/table-names #{table-id}) table-id))))))
   nil)
+
+(defenterprise check-action
+  "Throws a 403 unless the action with `action-id` is in the collection of `data-app`."
+  :feature :data-apps
+  [data-app action-id]
+  (let [collection-id (:resource_collection_id data-app)]
+    (when-not (and collection-id (= collection-id (data-apps.db/action-collection-id action-id)))
+      (throw (refusal (tru "A data app can execute only the actions in the collection of its own app.")))))
+  nil)

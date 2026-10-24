@@ -65,3 +65,16 @@
   metabase-enterprise.data-apps.checks
   [_data-app _field-id]
   (throw (unavailable)))
+
+(defenterprise check-action
+  "Throws a 403 unless `data-app` may execute the action with `action-id`."
+  metabase-enterprise.data-apps.checks
+  [_data-app _action-id]
+  (throw (unavailable)))
+
+(defn check-user-key-value
+  "Throws a 403 unless a data app may read and write the user key-value pair with `nmspace` and `k`: only the download
+  format preference that `StaticQuestion` downloads use."
+  [nmspace k]
+  (when-not (and (= "last_download_format" nmspace) (= "download_format_preference" k))
+    (throw (ex-info (tru "A data app can use only the download format preference.") {:status-code 403}))))

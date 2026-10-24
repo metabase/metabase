@@ -84,7 +84,8 @@
       ;;
       ;; 204 (not scope_not_permitted) proves the marked request reached the handler; the key is unset.
       (is (nil? (mt/user-http-request :crowberto :get 204
-                                      "user-key-value/namespace/data-app-test/key/format" as-data-app))))
+                                      "user-key-value/namespace/last_download_format/key/download_format_preference"
+                                      as-data-app))))
     (testing "alerts and subscriptions are not part of the data-app surface"
       ;; Scheduled email delivered out of band is not something a data app renders, so neither
       ;; the probe the SDK buttons gate on nor the CRUD behind them is reachable. The buttons are
