@@ -990,10 +990,10 @@
     (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
 
 (defn throw-if-db-routing-enabled!
-  "Throws if the database has routing to destinations on other servers enabled. Call before any driver operations to
-   get a clear error message rather than a confusing driver-level failure."
+  "Throws if the database is a routing destination, or a router whose destinations are on other servers. Call before
+   any driver operations to get a clear error message rather than a confusing driver-level failure."
   [transform database]
-  (when (database-routing/external-db-routing? database)
+  (when (or (:router_database_id database) (database-routing/external-db-routing? database))
     (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
                               (:name transform)
                               (:name database))

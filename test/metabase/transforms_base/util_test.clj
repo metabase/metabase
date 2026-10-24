@@ -86,7 +86,24 @@
                #".*database routing turned on"
                (transforms-base.u/throw-if-db-routing-enabled!
                 {:name "Routing transform"}
-                (mt/db)))))))))
+                (mt/db))))))
+      (testing "a router whose destinations share its server runs transforms, but its destinations don't"
+        (mt/with-premium-features #{:database-routing}
+          (mt/with-temp [:model/DatabaseRouter _ {:database_id    (mt/id)
+                                                  :user_attribute "db_name"
+                                                  :mode           "internal"}
+                         :model/Database destination {:engine             :h2
+                                                      :router_database_id (mt/id)
+                                                      :details            (:details (mt/db))}]
+            (is (nil? (transforms-base.u/throw-if-db-routing-enabled!
+                       {:name "Same-server transform"}
+                       (mt/db))))
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #".*database routing turned on"
+                 (transforms-base.u/throw-if-db-routing-enabled!
+                  {:name "Destination transform"}
+                  destination)))))))))
 
 (deftest activate-table-syncs-despite-disable-auto-sync-test
   (testing "disable-auto-sync gates *automatic* syncs only; a transform finalizing its"
