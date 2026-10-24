@@ -18,7 +18,6 @@ export type ImplicitActionKind = "row/create" | "row/update" | "row/delete";
 
 export interface CreateActionRequest {
   collection_id?: CollectionId | null;
-  database_id?: DatabaseId;
   dataset_query?: NativeDatasetQuery | OpaqueDatasetQuery;
   description?: string | null;
   kind?: ImplicitActionKind;
@@ -35,7 +34,6 @@ export interface UpdateActionRequest {
   id: WritebackActionId;
   archived?: boolean;
   collection_id?: CollectionId | null;
-  database_id?: DatabaseId;
   dataset_query?: NativeDatasetQuery | OpaqueDatasetQuery;
   description?: string | null;
   kind?: ImplicitActionKind;

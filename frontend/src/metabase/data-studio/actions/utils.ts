@@ -27,7 +27,7 @@ export type QueryActionDefinition = {
 } & Required<
   Pick<
     CreateActionRequest,
-    "database_id" | "dataset_query" | "parameters" | "visualization_settings"
+    "dataset_query" | "parameters" | "visualization_settings"
   >
 >;
 
@@ -135,13 +135,11 @@ export function getQueryActionDefinition(
   query: Lib.Query,
   formSettings: ActionFormSettings,
 ): QueryActionDefinition | null {
-  const databaseId = Lib.databaseID(query);
-  if (databaseId == null) {
+  if (Lib.databaseID(query) == null) {
     return null;
   }
   return {
     type: "query",
-    database_id: databaseId,
     dataset_query: Lib.toJsQuery(query),
     parameters: getQueryParameters(query),
     visualization_settings: getFieldSettingsFromQuery(query, formSettings),
