@@ -46,7 +46,11 @@ import { isEngineKey } from "metabase-types/guards";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
-import { getDisabledFeatureMessage, getSelectErrorMessage } from "./utils";
+import {
+  getDisabledFeatureMessage,
+  getExternalModeDisabledMessage,
+  getSelectErrorMessage,
+} from "./utils";
 
 export const DatabaseRoutingSection = ({
   database,
@@ -106,7 +110,8 @@ export const DatabaseRoutingSection = ({
   const transforms = transformsQuery.data ?? [];
   const hasTransforms = transforms.length > 0;
 
-  const disabledFeatMsg = getDisabledFeatureMessage(database, {
+  const disabledFeatMsg = getDisabledFeatureMessage(database);
+  const externalModeDisabledMsg = getExternalModeDisabledMessage(database, {
     hasTransforms,
   });
   const errMsg = getSelectErrorMessage({
@@ -117,7 +122,12 @@ export const DatabaseRoutingSection = ({
   });
 
   const handleUserAttributeChange = async (attribute: string) => {
-    await updateRouterDatabase({ id: database.id, user_attribute: attribute });
+    await updateRouterDatabase({
+      id: database.id,
+      user_attribute: attribute,
+      ...(!hasDbRoutingEnabled(database) &&
+        externalModeDisabledMsg != null && { mode: "internal" }),
+    });
 
     if (!hasDbRoutingEnabled(database)) {
       sendToast({ message: t`Database routing enabled` });
@@ -249,11 +259,20 @@ export const DatabaseRoutingSection = ({
               }
               data={[
                 { value: "internal", label: t`Same server` },
-                { value: "external", label: t`Different servers` },
+                {
+                  value: "external",
+                  label: t`Different servers`,
+                  disabled: externalModeDisabledMsg != null,
+                },
               ]}
               onChange={handleModeChange}
             />
           </Flex>
+          {externalModeDisabledMsg != null && (
+            <Text c="text-secondary" mt="-md" mb="xl">
+              {externalModeDisabledMsg}
+            </Text>
+          )}
           <ConfirmModal
             opened={isModeModalOpen}
             title={t`Delete all destination databases?`}

@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { hasExternalDbRoutingEnabled } from "metabase/common/utils/database";
 import { hasFeature } from "metabase/databases";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import * as Lib from "metabase-lib";
@@ -89,7 +90,7 @@ export function validateDatabase(database: Database): DatabaseValidationResult {
       message: t`Transforms can't be enabled on the Usage Analytics database.`,
     };
   }
-  if (database.router_user_attribute || database.router_database_id) {
+  if (database.router_database_id || hasExternalDbRoutingEnabled(database)) {
     return {
       isValid: false,
       message: t`Transforms can't be enabled when database routing is enabled.`,

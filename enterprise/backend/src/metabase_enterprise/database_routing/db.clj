@@ -30,6 +30,11 @@
    database-name      :- :string]
   (t2/select-one-pk :model/Database :router_database_id router-database-id :name database-name))
 
+(mu/defn destination-database-exists?
+  "Whether the router with `router-database-id` has a destination Database."
+  [router-database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Database :router_database_id router-database-id))
+
 (mu/defn destination-name-exists?
   "Whether the router with `router-database-id` already has a destination Database named one of `names`."
   [router-database-id :- ::lib.schema.id/database

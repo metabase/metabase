@@ -98,7 +98,8 @@
      :settings              {}
      :features              (map u/qualified-name (driver.u/features driver db))
      :initial_sync_status   "complete"
-     :router_user_attribute nil})))
+     :router_user_attribute nil
+     :router_mode           nil})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
@@ -906,7 +907,7 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute :router_mode)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))

@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.set :refer [ordered-set]]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -28,9 +29,10 @@
   "Compute table dependencies for a query transform.
   This is the base implementation - callers may wrap with additional error handling."
   [{:keys [source]}]
-  (let [query (-> (:query source)
-                  transforms-base.u/massage-sql-query
-                  qp.preprocess/preprocess)
+  (let [query (database-routing/with-database-routing-off
+                (-> (:query source)
+                    transforms-base.u/massage-sql-query
+                    qp.preprocess/preprocess))
         driver (-> query
                    lib.metadata/database
                    :engine)]

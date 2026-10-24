@@ -311,3 +311,52 @@
                    (mt/user-http-request :rasta :delete 403 (str "database/" dest)))))
           (is (t2/exists? :model/Database :id regular-db-id))
           (is (t2/exists? :model/Database :id dest)))))))
+
+(def ^:private router-details
+  {:host "pg.example.com" :port 5432 :dbname "shared" :user "admin"})
+
+(deftest same-server-destinations-take-the-router-server-details-test
+  (mt/with-temp [:model/Database {router-id :id} {:engine :postgres :details router-details}
+                 :model/DatabaseRouter _ {:database_id router-id :user_attribute "tenant" :mode "internal"}]
+    (mt/with-model-cleanup [:model/Database]
+      (let [[{dest-id :id}] (mt/user-http-request :crowberto :post 200 "ee/database-routing/destination-database"
+                                                  {:router_database_id router-id
+                                                   :destinations       [{:name    "tenant_a"
+                                                                         :details {:host "other.example.com"
+                                                                                   :user "tenant_a"}}]})
+            details         #(t2/select-one-fn :details :model/Database dest-id)]
+        (testing "the router's server details replace the destination's"
+          (is (= {:host "pg.example.com" :port 5432 :dbname "shared" :user "tenant_a" :same-server-destination true}
+                 (details))))
+        (testing "a destination can't point itself at another server"
+          (t2/update! :model/Database dest-id {:details {:host "other.example.com" :user "tenant_a"}})
+          (is (= "pg.example.com" (:host (details)))))
+        (testing "a change to the router's server reaches its destinations"
+          (t2/update! :model/Database router-id {:details (assoc router-details :host "pg2.example.com")})
+          (is (= "pg2.example.com" (:host (details)))))))))
+
+(deftest changing-the-router-mode-deletes-its-destinations-test
+  (mt/with-temp [:model/Database {router-id :id} {:engine :postgres :details router-details}
+                 :model/DatabaseRouter _ {:database_id router-id :user_attribute "tenant"}
+                 :model/Database _ {:engine :postgres :router_database_id router-id :details router-details}]
+    (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" router-id)
+                          {:user_attribute "tenant" :mode "internal"})
+    (is (= "internal" (t2/select-one-fn :mode :model/DatabaseRouter :database_id router-id)))
+    (is (not (t2/exists? :model/Database :router_database_id router-id)))))
+
+(deftest only-external-routing-refuses-a-write-connection-test
+  (mt/with-temp [:model/Database {db-id :id} {:engine             :postgres
+                                              :details            router-details
+                                              :write_data_details {:user "writer"}}]
+    (mt/with-model-cleanup [:model/DatabaseRouter]
+      (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute "tenant"})
+      (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                            {:user_attribute "tenant" :mode "internal"})
+      (testing "switching to external is refused while the write connection exists"
+        (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                              {:user_attribute "tenant" :mode "external"}))
+      (testing "turning routing off is always allowed"
+        (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                              {:user_attribute nil})
+        (is (not (t2/exists? :model/DatabaseRouter :database_id db-id)))))))

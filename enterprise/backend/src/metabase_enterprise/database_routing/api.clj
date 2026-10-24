@@ -101,7 +101,6 @@
                                                              :routing_mode mode}})
     (if router
       (t2/with-transaction [_conn]
-        ;; a destination's stored details only fit the mode it was created under
         (when (not= mode (:mode router))
           (database-routing.db/delete-destination-databases! db-id))
         (database-routing.db/update-router! db-id {:user_attribute user-attribute :mode mode}))
@@ -122,16 +121,21 @@
    {:keys [user_attribute mode]} :- [:map {:closed true}
                                      [:user_attribute {:optional true} [:maybe ms/NonBlankString]]
                                      [:mode           {:optional true} [:maybe ::database-routing.schema/mode]]]]
-  (let [db (database-routing.db/database id)]
-    (api/check-404 db)
+  (let [db        (api/check-404 (database-routing.db/database id))
+        mode      (or mode (:mode (database-routing.db/router-for-database id)) "external")
+        external? (= mode "external")]
     (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
-    (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")
-    (api/check-400 (not (:write_data_details db)) "Cannot enable database routing for a database with a write connection configured")
-    (api/check-400 (not (:admin_details db)) "Cannot enable database routing for a database with an admin connection configured")
-    (api/check-400 (not (database-routing.db/transform-exists-for-source-database? id)) "Cannot enable database routing for a database with transforms")
-    (setting/with-database db
-      (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
-      (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled")))
+    (when (some? user_attribute)
+      (when external?
+        (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")
+        (api/check-400 (not (:write_data_details db)) "Cannot enable database routing for a database with a write connection configured")
+        (api/check-400 (not (:admin_details db)) "Cannot enable database routing for a database with an admin connection configured")
+        (api/check-400 (not (database-routing.db/transform-exists-for-source-database? id)) "Cannot enable database routing for a database with transforms"))
+      (setting/with-database db
+        (when external?
+          (api/check-400 (not (setting/get :database-enable-table-editing)) "Cannot enable database routing for a database with table editing enabled"))
+        (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
+        (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled"))))
   (if (nil? user_attribute)
     ;; delete the DatabaseRouter
     (delete-router! id)
