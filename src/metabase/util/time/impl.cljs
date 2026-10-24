@@ -63,6 +63,8 @@
 (dayjs/extend objectSupport)
 (dayjs/extend quarterOfYear)
 (dayjs/extend utc)
+;; TODO (Chris 2026-10-02) -- the date formatters' locale `wo` week pattern is this plugin's only CLJS use, and
+;; nothing reaches it now that labels number weeks like queries. Drop both unless the frontend relies on the plugin.
 (dayjs/extend weekOfYear)
 
 (defn- now [] (dayjs))
@@ -131,6 +133,14 @@
   (let [days-since-start (mod (- (.day value) (start-of-week-index time-config)) 7)
         ^dayjs shifted   (.subtract value days-since-start "day")]
     (.startOf shifted "day")))
+
+;; Numbers weeks the way the query processor buckets `:week-of-year`: by the day of year the week starts on.
+;; A week that starts in late December keeps that year's number, even when it holds Jan 1.
+;; Keep in step with the copy in impl.clj and with `sql.qp/date [:sql :week-of-year]`.
+;; The rules test, `week-of-year-rules-test`, holds both copies to the same rules, and
+;; `week-of-year-label-matches-query-test` checks labels against what each driver returns.
+(defn- week-of-year [time-config ^dayjs value]
+  (-> (.dayOfYear (truncate-to-week time-config value)) (+ 6) (quot 7)))
 
 ;;; ------------------------------------------------ to-range --------------------------------------------------------
 (defn- apply-offset
@@ -239,8 +249,9 @@
   ;; We force the initial date to be in a leap year (2016).
   (-> (magic-base-date) (.dayOfYear value) (.startOf "day")))
 
-(defmethod common/number->timestamp :week-of-year [value _]
-  (-> (now) (.week value) (.startOf "week")))
+(defmethod common/number->timestamp :week-of-year [value options]
+  ;; The first week start on or after Jan 1 plus `value - 1` weeks, like the JVM's `:next-or-same-day-of-week`.
+  (truncate-to-week options (-> (now) (.startOf "year") (.add (dec value) "week") (.add 6 "day"))))
 
 (defmethod common/number->timestamp :month-of-year [value _]
   ;; Day.js uses 0-based months, so we need to subtract 1
@@ -378,16 +389,16 @@
    :hour-of-day-24     "h"
    :day-of-month       "D"
    :day-of-year        nil ;; handled specially with dayOfYear() method
-   :week-of-year       "w"
    :quarter-of-year    "[Q]Q"})
 
 (defn ^:private format-extraction-unit
   "Formats a date-time value given the temporal extraction unit.
   If unit is not supported, returns nil."
-  [^dayjs t unit {:keys [locale]}]
+  [time-config ^dayjs t unit {:keys [locale]}]
   (case unit
     ;; DDD produces zero-padded output, so use the plugin method instead.
     :day-of-year  (str (.dayOfYear t))
+    :week-of-year (str (week-of-year time-config t))
     (when-some [format (get unit-formats unit)]
       (if locale
         (-> t
@@ -436,7 +447,7 @@
                (or date? date-time?) (coerce-local-date-time input))]
        (if (and t (.isValid t))
          (or
-          (format-extraction-unit t unit format-options)
+          (format-extraction-unit time-config t unit format-options)
           ;; no locale for default formats
           (cond
             time? (.format t "h:mm A")
@@ -449,14 +460,16 @@
        :hour-of-day  (str (cond (zero? input) "12" (<= input 12) input :else (- input 12))
                           " "
                           (if (<= input 11) "AM" "PM"))
+       :week-of-year (str input)
        (or
-        (format-extraction-unit (common/number->timestamp input (assoc time-config :unit unit))
+        (format-extraction-unit time-config
+                                (common/number->timestamp input (assoc time-config :unit unit))
                                 unit
                                 format-options)
         (str input)))
 
      (dayjs/isDayjs input)
-     (or (format-extraction-unit input unit format-options)
+     (or (format-extraction-unit time-config input unit format-options)
          ;; no locale for default formats
          (cond
            ;; no hour, minute, or seconds, must be date
@@ -502,6 +515,10 @@
    (case unit
      (:day-of-week :day-of-week-abbrev)
      (parse-day-abbrev input)
+
+     ;; A week number stands for itself, since `format-unit` numbers weeks by `:start-of-week`, not the locale.
+     :week-of-year
+     (parse-long input)
 
      (:month-of-year :month-of-year-full)
      (parse-month-abbrev input)
@@ -747,7 +764,8 @@
       (.format d "YYYY-MM-DD"))))
 
 (defn extract
-  "Extract a field such as `:minute-of-hour` from a temporal value `t`."
+  "Extract a field such as `:minute-of-hour` from a temporal value `t`.
+  Week-of-year numbers match how queries group `:week-of-year`, whatever the locale."
   [time-config ^dayjs t unit]
   (let [time-config (common/require-time-config time-config)]
     (case unit
@@ -758,7 +776,7 @@
       :day-of-week-iso  (.isoWeekday t)
       :day-of-month     (.date t)
       :day-of-year      (.dayOfYear t)
-      :week-of-year     (.week t)
+      :week-of-year     (week-of-year time-config t)
       :month-of-year    (inc (.month t)) ;; `month` is 0-11
       :quarter-of-year  (.quarter t)
       :year             (.year t))))
