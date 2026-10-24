@@ -233,7 +233,7 @@
    "/embedding-sdk"        (+auth metabase.embedding-rest.api/sdk-routes)
    "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
    "/exploration"          (+auth metabase.explorations.api/routes)
-   "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
+   "/field"                (+auth (data-apps/field-guard metabase.warehouse-schema-rest.api/field-routes))
    "/frontend-errors"      metabase.frontend-errors.api/routes
    "/geojson"              'metabase.geojson.api
    "/glossary"             (+auth 'metabase.glossary.api)

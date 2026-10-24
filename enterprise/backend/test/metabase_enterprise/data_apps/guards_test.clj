@@ -242,6 +242,23 @@
            (is (get-as-data-app 200 (format "table/%d/query_metadata" (mt/id :categories))))
            (is (re-find #"not VENUES" (get-as-data-app 403 (format "table/%d/query_metadata" (mt/id :venues)))))))))))
 
+(deftest field-endpoints-test
+  (do-with-app-card!
+   (fn [_card-id _collection-id]
+     (testing "a field of a table the app may read is read, with its values"
+       (is (= (mt/id :venues :name) (:id (get-as-data-app 200 (str "field/" (mt/id :venues :name))))))
+       (is (get-as-data-app 200 (format "field/%d/values" (mt/id :venues :name))))
+       (is (get-as-data-app 200 (format "field/%d/values" (mt/id :categories :name)))))
+     (testing "a field of another table is refused, also as the other field of a search or remapping"
+       (doseq [path [(str "field/" (mt/id :checkins :date))
+                     (format "field/%d/values" (mt/id :checkins :date))
+                     (format "field/%d/search/%d" (mt/id :venues :name) (mt/id :checkins :date))
+                     (format "field/%d/remapping/%d" (mt/id :venues :id) (mt/id :checkins :venue_id))]]
+         (testing path
+           (is (re-find #"not CHECKINS" (get-as-data-app 403 path))))))
+     (testing "a missing field is left to the 404"
+       (get-as-data-app 404 "field/999999999")))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app runs nothing"
     (mt/with-premium-features #{}

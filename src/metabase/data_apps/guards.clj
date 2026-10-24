@@ -29,3 +29,9 @@
   metabase-enterprise.data-apps.guards
   [_request _table-id]
   (throw (unavailable)))
+
+(defenterprise check-field!
+  "Throws a 403 unless the data app of `request` may read the metadata of the field with `field-id`."
+  metabase-enterprise.data-apps.guards
+  [_request _field-id]
+  (throw (unavailable)))

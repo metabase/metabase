@@ -118,3 +118,13 @@
                (seq (data-apps.db/table-names #{table-id})))
       (refuse-tables! #{table-id})))
   nil)
+
+(defenterprise check-field!
+  "Throws a 403 unless the field with `field-id`, a route param, is in a table that the data app of `request` may read, as
+  [[check-table!]] has it, when such a field exists."
+  :feature :data-apps
+  [request field-id]
+  (when-let [table-id (some->> (parse-long field-id) hash-set data-apps.db/field-table-ids vals first)]
+    (when-not (contains? (app-table-ids request) table-id)
+      (refuse-tables! #{table-id})))
+  nil)
