@@ -8,16 +8,16 @@ import {
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
-import { CollectionPermissionsHelp } from "metabase/permissions";
-import { PermissionsSidebar } from "metabase/permissions";
 import {
+  CollectionPermissionsHelp,
+  type PermissionEditorEntity,
+  PermissionsSidebar,
+  assertNumericId,
   initializeTenantCollectionPermissions,
   loadTenantCollectionPermissions,
   saveTenantCollectionPermissions,
   updateTenantCollectionPermission,
 } from "metabase/permissions";
-import type { PermissionEditorEntity } from "metabase/permissions";
-import { assertNumericId } from "metabase/permissions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate, useParams } from "metabase/router";
 import type { CollectionId } from "metabase-types/api";

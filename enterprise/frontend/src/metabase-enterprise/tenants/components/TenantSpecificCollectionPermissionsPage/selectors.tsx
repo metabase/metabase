@@ -14,15 +14,13 @@ import {
 } from "metabase/common/utils/groups";
 import {
   COLLECTION_OPTIONS,
+  type CollectionIdProps,
+  type CollectionSidebarType,
   Messages,
+  type PermissionEditorType,
   getPermissionWarningModal,
   selectGroupList,
 } from "metabase/permissions";
-import type {
-  CollectionIdProps,
-  CollectionSidebarType,
-} from "metabase/permissions";
-import type { PermissionEditorType } from "metabase/permissions";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ExpandedCollection, State } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";

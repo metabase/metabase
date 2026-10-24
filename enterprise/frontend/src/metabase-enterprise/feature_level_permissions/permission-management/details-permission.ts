@@ -3,12 +3,10 @@ import { t } from "ttag";
 
 import {
   Messages,
+  type PermissionOption,
+  type PermissionSectionConfig,
   getPermissionWarning,
   getPermissionWarningModal,
-} from "metabase/permissions";
-import type {
-  PermissionOption,
-  PermissionSectionConfig,
 } from "metabase/permissions";
 import {
   DataPermission,

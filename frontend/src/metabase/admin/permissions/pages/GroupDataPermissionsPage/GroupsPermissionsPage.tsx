@@ -6,7 +6,12 @@ import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/perm
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import {
+  type PermissionAction,
+  type PermissionEditorBreadcrumb,
+  type PermissionEditorEntity,
+  type PermissionSectionConfig,
   PermissionsSidebar,
+  type RawGroupRouteParams,
   getDatabasesPermissionEditor,
   getGroupFocusPermissionsUrl,
   getGroupsBasePath,
@@ -16,13 +21,6 @@ import {
   loadDataPermissionsForGroup,
   parseGroupRouteParams,
   updateDataPermission,
-} from "metabase/permissions";
-import type {
-  PermissionAction,
-  PermissionEditorBreadcrumb,
-  PermissionEditorEntity,
-  PermissionSectionConfig,
-  RawGroupRouteParams,
 } from "metabase/permissions";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";

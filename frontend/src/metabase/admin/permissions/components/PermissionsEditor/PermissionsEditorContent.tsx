@@ -5,11 +5,9 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { Subhead } from "metabase/common/components/type/Subhead";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import CS from "metabase/css/core/index.css";
-import type {
-  PermissionEditorBreadcrumb,
-  PermissionEditorType,
-} from "metabase/permissions";
 import {
+  type PermissionEditorBreadcrumb,
+  type PermissionEditorType,
   PermissionsTable,
   type PermissionsTableProps,
 } from "metabase/permissions";

@@ -3,9 +3,11 @@ import { t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { EditBar } from "metabase/common/components/EditBar";
-import type { PermissionsGraphDiff } from "metabase/permissions";
-import { isEmbeddingHubPermissions } from "metabase/permissions";
-import { PermissionsConfirm } from "metabase/permissions";
+import {
+  PermissionsConfirm,
+  type PermissionsGraphDiff,
+  isEmbeddingHubPermissions,
+} from "metabase/permissions";
 import { Button } from "metabase/ui";
 
 import S from "./PermissionsEditBar.module.css";

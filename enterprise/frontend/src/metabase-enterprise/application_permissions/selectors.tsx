@@ -8,9 +8,12 @@ import {
   isAdminGroup,
 } from "metabase/common/utils/groups";
 import { getUser } from "metabase/current-user";
-import { Messages } from "metabase/permissions";
-import { getDefaultGroupHasHigherAccessText } from "metabase/permissions";
-import { getDefaultGroup, getOrderedGroups } from "metabase/permissions";
+import {
+  Messages,
+  getDefaultGroup,
+  getDefaultGroupHasHigherAccessText,
+  getOrderedGroups,
+} from "metabase/permissions";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import type { Group } from "metabase-types/api";

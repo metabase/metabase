@@ -5,8 +5,9 @@ import {
   LOAD_DATA_PERMISSIONS,
   SAVE_DATA_PERMISSIONS,
   UPDATE_DATA_PERMISSION,
+  getDatabasesBasePath,
+  getGroupsBasePath,
 } from "metabase/permissions";
-import { getDatabasesBasePath, getGroupsBasePath } from "metabase/permissions";
 import { navigate } from "metabase/router";
 import {
   DataPermission,

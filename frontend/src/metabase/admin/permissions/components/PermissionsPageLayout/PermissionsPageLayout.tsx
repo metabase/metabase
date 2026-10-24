@@ -8,16 +8,16 @@ import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmM
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import CS from "metabase/css/core/index.css";
 import { CONTENT_PADDING_X } from "metabase/nav/components/AreaLayout";
-import { getIsHelpReferenceOpen } from "metabase/permissions";
-import type { PermissionsGraphDiff } from "metabase/permissions";
-import { isEmbeddingHubPermissions } from "metabase/permissions";
 import {
+  LegacyPermissionsModal,
+  type PermissionsGraphDiff,
+  ToolbarButton,
   clearSaveError as clearPermissionsSaveError,
+  getIsHelpReferenceOpen,
+  isEmbeddingHubPermissions,
+  showRevisionChangedModal,
   toggleHelpReference,
 } from "metabase/permissions";
-import { showRevisionChangedModal } from "metabase/permissions";
-import { LegacyPermissionsModal } from "metabase/permissions";
-import { ToolbarButton } from "metabase/permissions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";

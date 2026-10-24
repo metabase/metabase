@@ -3,23 +3,21 @@ import { t } from "ttag";
 
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
-import { CollectionPermissionsHelp } from "metabase/permissions";
-import { PermissionsSidebar } from "metabase/permissions";
 import {
-  initializeCollectionPermissions,
-  loadCollectionPermissions,
-  saveCollectionPermissions,
-  updateCollectionPermission,
-} from "metabase/permissions";
-import {
+  CollectionPermissionsHelp,
+  type PermissionEditorEntity,
+  PermissionsSidebar,
+  assertNumericId,
   collectionsQuery,
   getCollectionEntity,
   getCollectionsPermissionEditor,
   getCollectionsSidebar,
   getIsCollectionPermissionsDirty,
+  initializeCollectionPermissions,
+  loadCollectionPermissions,
+  saveCollectionPermissions,
+  updateCollectionPermission,
 } from "metabase/permissions";
-import type { PermissionEditorEntity } from "metabase/permissions";
-import { assertNumericId } from "metabase/permissions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate, useParams } from "metabase/router";
 import type { CollectionId } from "metabase-types/api";

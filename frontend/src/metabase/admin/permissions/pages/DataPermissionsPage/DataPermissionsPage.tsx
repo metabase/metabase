@@ -7,14 +7,15 @@ import {
   useListPermissionsGroupsQuery,
 } from "metabase/api";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
-import { DataPermissionsHelp } from "metabase/permissions";
 import {
+  DATABASE_TABLES_QUERY,
+  DataPermissionsHelp,
+  getDiff,
+  getIsDataPermissionsDirty,
   loadDataPermissionsForGroup,
   restoreLoadedPermissions,
   saveDataPermissions,
 } from "metabase/permissions";
-import { DATABASE_TABLES_QUERY } from "metabase/permissions";
-import { getDiff, getIsDataPermissionsDirty } from "metabase/permissions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
 import { Center, Loader } from "metabase/ui";

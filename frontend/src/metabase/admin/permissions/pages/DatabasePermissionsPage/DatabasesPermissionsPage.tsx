@@ -7,7 +7,12 @@ import { getPermissionsBasePath } from "metabase/common/components/PermissionsBa
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import {
   type DataTreeNodeItem,
+  type PermissionAction,
+  type PermissionEditorBreadcrumb,
+  type PermissionEditorEntity,
+  type PermissionSectionConfig,
   PermissionsSidebar,
+  type RawDataRouteParams,
   assertNumericId,
   getDataFocusSidebar,
   getDatabaseFocusPermissionsUrl,
@@ -18,13 +23,6 @@ import {
   loadDataPermissionsForDb,
   parseDataRouteParams,
   updateDataPermission,
-} from "metabase/permissions";
-import type {
-  PermissionAction,
-  PermissionEditorBreadcrumb,
-  PermissionEditorEntity,
-  PermissionSectionConfig,
-  RawDataRouteParams,
 } from "metabase/permissions";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
