@@ -7,6 +7,7 @@
                                                ;; the plain artifact below that other drivers also use
                                                com.github.luben/zstd-jni
                                                ;; pinned in and resolved from /deps.edn
+                                               com.google.guava/guava
                                                org.apache.httpcomponents.client5/httpclient5
                                                org.apache.httpcomponents.core5/httpcore5
                                                org.apache.httpcomponents.core5/httpcore5-h2]}
