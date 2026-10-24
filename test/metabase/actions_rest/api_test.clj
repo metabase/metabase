@@ -358,7 +358,7 @@
                                           {:dataset_query (write-query query-db-id)}))))))))))
 
 (deftest action-update-cannot-repoint-a-query-action-with-a-blanked-query-test
-  (testing "PUT /api/action/:id checks actions-enabled on a database_id that no query overrides"
+  (testing "PUT /api/action/:id can't repoint a query action whose query has no database"
     (do-with-actions-enabled-on-model-db-only!
      (fn [model-db-id other-db-id]
        (mt/with-model-cleanup [:model/Action]
@@ -369,9 +369,9 @@
              (testing "blanking the query leaves the action on the database it was created against"
                (is (=? {:database_id model-db-id}
                        (mt/user-http-request :crowberto :put 200 url {:dataset_query {}}))))
-             (testing "the database_id that would now be written through is checked"
-               (is (= "Actions are not enabled."
-                      (mt/user-http-request :crowberto :put 400 url {:database_id other-db-id}))))
+             (testing "a database_id in the body is dropped"
+               (is (=? {:database_id model-db-id}
+                       (mt/user-http-request :crowberto :put 200 url {:database_id other-db-id}))))
              (is (=? {:database_id model-db-id}
                      (mt/user-http-request :crowberto :get 200 url))))))))))
 
