@@ -13,13 +13,18 @@ import { createMockDashboard } from "metabase-types/api/mocks";
 type SetupDashboardEndpointsOpts = {
   /** What PUT responds with. By default it echoes the request body back. */
   updatedDashboard?: Dashboard;
+  /** What GET responds with. A function can hold the response back. */
+  dashboardResponse?: () => Promise<Dashboard>;
 };
 
 export function setupDashboardEndpoints(
   dashboard: Dashboard,
-  { updatedDashboard }: SetupDashboardEndpointsOpts = {},
+  { updatedDashboard, dashboardResponse }: SetupDashboardEndpointsOpts = {},
 ) {
-  fetchMock.get(`path:/api/dashboard/${dashboard.id}`, dashboard);
+  fetchMock.get(
+    `path:/api/dashboard/${dashboard.id}`,
+    dashboardResponse ?? dashboard,
+  );
   fetchMock.put(`path:/api/dashboard/${dashboard.id}`, async (call) => {
     if (updatedDashboard != null) {
       return updatedDashboard;
