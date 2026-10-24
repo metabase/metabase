@@ -116,6 +116,8 @@ jobs:
         uses: ./.github/actions/prepare-backend
         with:
           java-version: "${{ needs.setup.outputs.java_version || 25 }}"
+      - name: Cache translation catalogs
+        uses: ./.github/actions/cache-translations
       - name: Build
         run: ./bin/build.sh
       - name: Upload bundle stats

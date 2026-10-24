@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
+
+commit=$(i18n_commit "${1:-}")
+destination="$I18N_CACHE/$commit"
+
+if [ ! -d "$destination" ]; then
+  mkdir -p "$I18N_CACHE"
+  workspace=$(mktemp -d "$I18N_CACHE/fetch.XXXXXX")
+  trap 'rm -rf "$workspace"' EXIT
+  i18n_clone "$commit" "$workspace/repo"
+  chmod a-w "$workspace/repo/locales/"*.po
+  for snapshot in "$I18N_CACHE"/*; do
+    if [[ "$(basename "$snapshot")" =~ ^[0-9a-f]{40}$ ]]; then
+      rm -rf "$snapshot"
+    fi
+  done
+  mv "$workspace/repo/locales" "$destination"
+fi
+printf '%s\n' "$destination"

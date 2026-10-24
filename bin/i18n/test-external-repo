@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+scripts=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+temp=$(mktemp -d "${TMPDIR:-/tmp}/i18n-test.XXXXXX")
+trap 'chmod -R u+w "$temp"; rm -rf "$temp"' EXIT
+
+export GIT_AUTHOR_NAME=Test GIT_AUTHOR_EMAIL=test@example.com
+export GIT_COMMITTER_NAME=Test GIT_COMMITTER_EMAIL=test@example.com
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+
+commit_remote() {
+  git -C "$remote" add .
+  git -C "$remote" commit --quiet -m "$1"
+  git -C "$remote" rev-parse HEAD
+}
+
+setup() {
+  root="$temp/$1"
+  project="$root/metabase"
+  remote="$root/remote"
+  pin="$project/locales/metabase-i18n.commit"
+  export METABASE_I18N_REPOSITORY="file://$remote"
+  mkdir -p "$project/locales" "$project/bin" "$remote/locales"
+  cp -R "$scripts" "$project/bin/i18n"
+  git init --quiet "$remote"
+  for name in metabase fr; do
+    echo original > "$remote/locales/$name.po"
+  done
+  first=$(commit_remote first)
+  echo newer > "$remote/locales/fr.po"
+  second=$(commit_remote second)
+  echo "$first" > "$pin"
+  cd "$project"
+}
+
+test_exact_pin_and_offline_reuse() {
+  setup offline
+  catalog=$(bin/i18n/fetch-translations)
+  [ "$catalog" = "$project/locales/metabase-i18n/$first" ] || fail "unexpected catalog $catalog"
+  [ "$(cat "$catalog/fr.po")" = original ] || fail "wrong snapshot"
+  METABASE_I18N_REPOSITORY="$root/unavailable" bin/i18n/fetch-translations > /dev/null || fail "cache not reused"
+}
+
+test_pin_change_replaces_snapshot() {
+  setup snapshots
+  first_catalog=$(bin/i18n/fetch-translations)
+  echo "$second" > "$pin"
+  second_catalog=$(bin/i18n/fetch-translations)
+  [ ! -e "$first_catalog" ] || fail "old snapshot kept"
+  [ "$(cat "$second_catalog/fr.po")" = newer ] || fail "second snapshot wrong"
+}
+
+test_invalid_and_missing_commits_fail() {
+  setup invalid
+  for bad in ../escape 0000000000000000000000000000000000000000; do
+    echo "$bad" > "$pin"
+    ! bin/i18n/fetch-translations > /dev/null 2>&1 || fail "accepted $bad"
+  done
+  [ ! -e "locales/metabase-i18n/0000000000000000000000000000000000000000" ] || fail "cached a missing commit"
+}
+
+test_publish_advances_pin() {
+  setup publish
+  snapshot=$(bin/i18n/fetch-translations)
+  checkout=$(bin/i18n/prepare-translation-update)
+  echo updated > "$checkout/locales/fr.po"
+  echo temporary > "$checkout/locales/temporary.pot"
+  bin/i18n/publish-translations "$checkout" > /dev/null 2>&1
+  published=$(cat "$pin")
+  [ "$published" != "$first" ] || fail "pin not advanced"
+  [ "$(git -C "$remote" show "$published:locales/fr.po")" = updated ] || fail "change not published"
+  git -C "$remote" rev-parse --verify --quiet "refs/heads/metabase-$published" > /dev/null || fail "branch missing"
+  ! git -C "$remote" ls-tree -r --name-only "$published" | grep -q temporary.pot || fail "published .pot"
+  [ "$(cat "$snapshot/fr.po")" = original ] || fail "snapshot changed"
+}
+
+test_failed_push_keeps_pin() {
+  setup failed-push
+  checkout=$(bin/i18n/prepare-translation-update)
+  echo updated > "$checkout/locales/fr.po"
+  git -C "$checkout" remote set-url --push origin "$root/unavailable"
+  ! bin/i18n/publish-translations "$checkout" > /dev/null 2>&1 || fail "publish succeeded"
+  [ "$(cat "$pin")" = "$first" ] || fail "pin advanced"
+}
+
+test_no_changes_do_not_push() {
+  setup unchanged
+  checkout=$(bin/i18n/prepare-translation-update)
+  git -C "$checkout" remote set-url --push origin "$root/unavailable"
+  bin/i18n/publish-translations "$checkout" > /dev/null 2>&1 || fail "publish failed"
+  [ "$(cat "$pin")" = "$first" ] || fail "pin changed"
+}
+
+test_stale_update_is_rejected() {
+  setup stale
+  checkout=$(bin/i18n/prepare-translation-update)
+  echo updated > "$checkout/locales/fr.po"
+  echo "$second" > "$pin"
+  ! bin/i18n/publish-translations "$checkout" > /dev/null 2>&1 || fail "stale update published"
+  [ "$(cat "$pin")" = "$second" ] || fail "pin changed"
+}
+
+test_resources_always_rebuild_with_cached_catalogs() {
+  setup resources
+  mkdir stubs
+  printf 'check_clojure_cli() { :; }\n' > bin/check-clojure-cli.sh
+  printf '#!/usr/bin/env bash\necho build >> target/builds\nmkdir -p resources/i18n\ntouch resources/i18n/en-ZZ.edn\n' > stubs/clojure
+  chmod +x stubs/clojure
+  mkdir target
+  PATH="$project/stubs:$PATH" bin/i18n/build-translation-resources
+  METABASE_I18N_REPOSITORY="$root/unavailable" PATH="$project/stubs:$PATH" bin/i18n/build-translation-resources
+  [ "$(wc -l < target/builds)" -eq 2 ] || fail "resources were not rebuilt"
+}
+
+for test in $(declare -F | awk '$3 ~ /^test_/ { print $3 }'); do
+  ( "$test" ) || exit 1
+  echo "ok $test"
+done
