@@ -18,7 +18,7 @@
  *   bun .claude/skills/e2e-to-unit/verify.ts [--base master]
  *     [--test "<spec>::<it title>"]... [--unit-spec <path>]...
  *     [--run <nightly run id>] [--boot-threshold 0.2] [--per-function 4]
- *     [--mutate-ceiling 0.1] [--max-mutants 300] [--wrappers 4] [--exclude <path prefix>]...
+ *     [--max-mutants 300] [--wrappers 4] [--exclude <path prefix>]...
  *     [--pass-timeout 40] [--no-siblings] [--no-prune]
  *     [--scope-only] [--no-confirm] [--out <report.md>] [--json <open-rows.json>]
  */
@@ -67,7 +67,6 @@ import {
   functionAtLine,
   mutantsForFunction,
   parseSource,
-  splitByShare,
   writeSchemata,
 } from "./verify/mutants";
 import {
@@ -86,7 +85,6 @@ interface Options {
   unitSpecs: string[];
   runId?: string;
   bootThreshold: number;
-  mutateCeiling: number;
   perFunction: number;
   maxMutants: number;
   wrappers: number;
@@ -107,7 +105,6 @@ function parseArgs(argv: string[]): Options {
     tests: [],
     unitSpecs: [],
     bootThreshold: 0.2,
-    mutateCeiling: 0.1,
     perFunction: 4,
     maxMutants: 300,
     wrappers: 8,
@@ -163,9 +160,6 @@ function parseArgs(argv: string[]): Options {
         break;
       case "--scope-only":
         options.scopeOnly = true;
-        break;
-      case "--mutate-ceiling":
-        options.mutateCeiling = Number(next(index++, flag));
         break;
       case "--pass-timeout":
         options.passTimeoutMs = Number(next(index++, flag)) * 60 * 1000;
@@ -336,20 +330,9 @@ function planMutants(
       a.nightlyLine - b.nightlyLine,
   );
 
-  const { mutate, shared } = splitByShare(
-    rarestFirst.filter(
-      (scoped) => scoped.status === "pending" && scoped.node !== null,
-    ),
-    options.mutateCeiling,
-  );
-  for (const scoped of shared) {
-    scoped.status = "shared with other tests";
-    scoped.detail = `${(scoped.e2eShare * 100).toFixed(1)}% of e2e tests fire it, at or above --mutate-ceiling`;
-  }
-
   const planned: [ScopedFunction, MutantPlan[]][] = [];
-  for (const scoped of mutate) {
-    if (!scoped.node) {
+  for (const scoped of rarestFirst) {
+    if (scoped.status !== "pending" || !scoped.node) {
       continue;
     }
     let source = sources.get(scoped.file);

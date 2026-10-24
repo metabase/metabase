@@ -39,7 +39,6 @@ import {
   functionAtLine,
   mutantsForFunction,
   parseSource,
-  splitByShare,
 } from "./verify/mutants";
 import { type VerifyReport, renderMarkdown } from "./verify/report";
 
@@ -261,27 +260,6 @@ export function Navbar({ currentPath }) {
   });
 });
 
-describe("the mutation ceiling", () => {
-  it("keeps what is specific to the deleted test and sets aside shared code", () => {
-    const { mutate, shared } = splitByShare(
-      [
-        { name: "advisory", e2eShare: 0.002 },
-        { name: "navItem", e2eShare: 0.063 },
-        { name: "navbar", e2eShare: 0.182 },
-      ],
-      0.1,
-    );
-    expect(mutate.map((fn) => fn.name)).toEqual(["advisory", "navItem"]);
-    expect(shared.map((fn) => fn.name)).toEqual(["navbar"]);
-  });
-
-  it("sets aside a function exactly at the ceiling", () => {
-    const { mutate, shared } = splitByShare([{ e2eShare: 0.1 }], 0.1);
-    expect(mutate).toEqual([]);
-    expect(shared).toHaveLength(1);
-  });
-});
-
 describe("dealing mutants within the budget", () => {
   const plansFor = (count: number): MutantPlan[] =>
     Array.from({ length: count }, (_, index) => ({
@@ -326,6 +304,28 @@ describe("dealing mutants within the budget", () => {
     expect(dealt.flatMap(([, mutants]) => mutants.map((m) => m.id))).toEqual([
       1, 3, 2,
     ]);
+  });
+
+  it("reaches a shared function in the first round, rarest first", () => {
+    const advisory = "advisory at 0.2%";
+    const navbar = "navbar at 11.3%";
+    const dealt = dealMutants(
+      [
+        [advisory, plansFor(4)],
+        [navbar, plansFor(4)],
+      ],
+      4,
+      3,
+    );
+    expect(dealt.map(([key, mutants]) => [key, mutants.length])).toEqual([
+      [advisory, 2],
+      [navbar, 1],
+    ]);
+  });
+
+  it("numbers from a given starting id", () => {
+    const dealt = dealMutants([["a", plansFor(2)]], 2, 10, 7);
+    expect(dealt[0][1].map((m) => m.id)).toEqual([7, 8]);
   });
 
   it("leaves out a function once the budget is gone", () => {

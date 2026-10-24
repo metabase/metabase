@@ -451,24 +451,29 @@ export function writeSchemata(
 /**
  * Deals planned mutants one round at a time, so every function gets its first
  * mutant before any function gets a second, and assigns the ids of the ones
- * that fit the budget. Spending the budget four at a time measures fewer
+ * that fit the budget. The entries arrive rarest first, so a round serves the
+ * functions specific to the deleted test before the shared ones.
+ *
+ * Every executed function getting one mutant is what makes a single-shape gap
+ * visible. The admin navbar is fired by about 11% of the e2e suite and is also
+ * where a deleted test's nav item lived, so a rule that drops shared code
+ * drops the row that matters most. Spending the budget four at a time measures fewer
  * functions than one each: with 209 functions and 300 mutants it leaves two
  * thirds of them unmeasured.
- *
- * The entries arrive rarest first, so within a round the functions that are
- * most specific to the deleted test are served first.
  */
 export function dealMutants<T>(
   planned: [T, MutantPlan[]][],
   perFunction: number,
   maxMutants: number,
+  startId = 1,
 ): [T, Mutant[]][] {
   const dealt = new Map<T, Mutant[]>(planned.map(([key]) => [key, []]));
-  let nextId = 1;
+  let nextId = startId;
+  const last = startId + maxMutants - 1;
   for (let round = 0; round < perFunction; round++) {
     for (const [key, plans] of planned) {
       const plan = plans[round];
-      if (!plan || nextId > maxMutants) {
+      if (!plan || nextId > last) {
         continue;
       }
       dealt.get(key)?.push({ ...plan, id: nextId++ });
@@ -486,14 +491,15 @@ export function dealMutants<T>(
  * spends the budget on code this branch is not responsible for, and breaking
  * it makes its own spec fail for reasons the report then has to explain.
  */
-export function splitByShare<T extends { e2eShare: number }>(
-  functions: T[],
-  ceiling: number,
-): { mutate: T[]; shared: T[] } {
-  const mutate: T[] = [];
-  const shared: T[] = [];
-  for (const fn of functions) {
-    (fn.e2eShare < ceiling ? mutate : shared).push(fn);
-  }
-  return { mutate, shared };
-}
+/**
+ * Deals the budget to the functions specific to the deleted test first, and
+ * only then to the shared ones.
+ *
+ * The boot threshold drops what nearly every e2e test fires. What is left
+ * still holds shared screen furniture, such as the admin navbar at about 11%
+ * of the suite, and mutating that early spends the budget on code the branch
+ * is not responsible for. Setting it aside altogether is worse: the navbar is
+ * where a deleted test's nav item lived, so the rows that matter most can sit
+ * just above any threshold. Shared code is therefore mutated last rather than
+ * never, and reports `over --max-mutants` when the budget does not reach it.
+ */
