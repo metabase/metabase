@@ -22,7 +22,9 @@ import type {
   WritebackParameter,
 } from "metabase-types/api";
 
-export type ActionDefinition = Required<
+export type QueryActionDefinition = {
+  type: "query";
+} & Required<
   Pick<
     CreateActionRequest,
     "database_id" | "dataset_query" | "parameters" | "visualization_settings"
@@ -129,15 +131,16 @@ export function setTemplateTagFieldType(
   return Lib.withTemplateTags(query, tags);
 }
 
-export function getActionDefinition(
+export function getQueryActionDefinition(
   query: Lib.Query,
   formSettings: ActionFormSettings,
-): ActionDefinition | null {
+): QueryActionDefinition | null {
   const databaseId = Lib.databaseID(query);
   if (databaseId == null) {
     return null;
   }
   return {
+    type: "query",
     database_id: databaseId,
     dataset_query: Lib.toJsQuery(query),
     parameters: getQueryParameters(query),

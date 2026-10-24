@@ -21,12 +21,16 @@ import {
   getQueryParameters,
   setTemplateTagFieldType,
 } from "../../utils";
-import { useActionQuery } from "../ActionEditor/hooks";
+import { useActionQuery } from "../QueryActionEditor/hooks";
+
+export type ActionFieldSource =
+  | { type: "variable"; name: string }
+  | { type: "column"; name: string };
 
 export type ActionField = {
   parameter: WritebackParameter;
   settings: FieldSettings;
-  variableName: string;
+  source: ActionFieldSource;
 };
 
 type ActionFieldsResult = {
@@ -38,7 +42,7 @@ type ActionFieldsResult = {
   reorderFields: (fieldIds: string[]) => Promise<void>;
 };
 
-export function useActionFields(
+export function useQueryActionFields(
   action: WritebackQueryAction,
 ): ActionFieldsResult {
   const query = useActionQuery(action.dataset_query);
@@ -62,7 +66,13 @@ export function useActionFields(
         const settings = formSettings.fields?.[parameter.id];
         const tag = tags.find((tag) => tag.id === parameter.id);
         return settings && tag
-          ? [{ parameter, settings, variableName: tag.name }]
+          ? [
+              {
+                parameter,
+                settings,
+                source: { type: "variable" as const, name: tag.name },
+              },
+            ]
           : [];
       });
   }, [query, formSettings]);

@@ -20,11 +20,11 @@ import * as Urls from "metabase/urls";
 import Question from "metabase-lib/v1/Question";
 import type { Database, WritebackAction } from "metabase-types/api";
 
-import { ActionEditor } from "../../components/ActionEditor";
-import { ActionEditorPane } from "../../components/ActionEditorPane";
+import { QueryActionEditor } from "../../components/QueryActionEditor";
+import { QueryActionEditorPane } from "../../components/QueryActionEditorPane";
 import { ACTION_NAME_MAX_LENGTH } from "../../constants";
 import { useActionDatabases } from "../../hooks/use-action-databases";
-import { useActionDraft } from "../../hooks/use-action-draft";
+import { useQueryActionDraft } from "../../hooks/use-query-action-draft";
 
 import { CreateActionModal } from "./CreateActionModal";
 
@@ -69,7 +69,7 @@ function NewActionPageBody({ databases }: NewActionPageBodyProps) {
       }).datasetQuery(),
     [databases],
   );
-  const draft = useActionDraft({ initialDatasetQuery });
+  const draft = useQueryActionDraft({ initialDatasetQuery });
   const [name, setName] = useState("");
   const [uiState, setUiState] = useState(getInitialUiState);
   const [isModalOpened, { open: openModal, close: closeModal }] =
@@ -117,15 +117,15 @@ function NewActionPageBody({ databases }: NewActionPageBodyProps) {
             </DataStudioBreadcrumbs>
           }
         />
-        <ActionEditorPane>
-          <ActionEditor
+        <QueryActionEditorPane>
+          <QueryActionEditor
             datasetQuery={draft.datasetQuery}
             uiState={uiState}
             databases={databases}
             onChangeDatasetQuery={draft.setDatasetQuery}
             onChangeUiState={setUiState}
           />
-        </ActionEditorPane>
+        </QueryActionEditorPane>
       </PageContainer>
       {isModalOpened && draft.definition != null && (
         <CreateActionModal

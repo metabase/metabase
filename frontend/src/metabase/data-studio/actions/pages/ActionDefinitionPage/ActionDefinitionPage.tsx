@@ -16,36 +16,49 @@ import * as Urls from "metabase/urls";
 import type { Database, WritebackQueryAction } from "metabase-types/api";
 
 import { trackDataActionQueryUpdated } from "../../analytics";
-import { ActionDefinitionContent } from "../../components/ActionDefinitionContent";
-import { ActionEditor } from "../../components/ActionEditor";
-import { ActionEditorPane } from "../../components/ActionEditorPane";
 import { ActionHeader } from "../../components/ActionHeader";
+import { QueryActionDefinitionContent } from "../../components/QueryActionDefinitionContent";
+import { QueryActionEditor } from "../../components/QueryActionEditor";
+import { QueryActionEditorPane } from "../../components/QueryActionEditorPane";
 import { useActionDatabases } from "../../hooks/use-action-databases";
-import { useActionDraft } from "../../hooks/use-action-draft";
+import { useQueryActionDraft } from "../../hooks/use-query-action-draft";
 import { useRouteAction } from "../../hooks/use-route-action";
 import { canEditActionQuery } from "../../utils";
 
-export function ActionQueryPage() {
+export function ActionDefinitionPage() {
+  const { action, isLoading, error } = useRouteAction();
+
+  if (isLoading || error != null || action == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
+  }
+
+  return action.type === "query" ? (
+    <QueryActionDefinitionPage key={action.id} action={action} />
+  ) : (
+    <Center h="100%">
+      <LoadingAndErrorWrapper error={t`Action not found.`} />
+    </Center>
+  );
+}
+
+type QueryActionDefinitionPageProps = {
+  action: WritebackQueryAction;
+};
+
+function QueryActionDefinitionPage({ action }: QueryActionDefinitionPageProps) {
   const { pathname } = useLocation();
   const isEditRoute = pathname.endsWith("/edit");
-  const {
-    action,
-    isLoading: isLoadingAction,
-    error: actionError,
-  } = useRouteAction();
-  const {
-    databases,
-    isLoading: isLoadingDatabases,
-    error: databasesError,
-  } = useActionDatabases();
+  const { databases, isLoading, error } = useActionDatabases();
   const editableDatabases = useMemo(
     () => databases.filter(hasNativeWritePermissions),
     [databases],
   );
-  const isLoading = isLoadingAction || isLoadingDatabases;
-  const error = actionError ?? databasesError;
 
-  if (isLoading || error != null || action == null) {
+  if (isLoading || error != null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -56,13 +69,13 @@ export function ActionQueryPage() {
   const canEditQuery = canEditActionQuery(action, databases);
 
   return isEditRoute && canEditQuery ? (
-    <ActionEditPage
+    <QueryActionEditPage
       key={action.id}
       action={action}
       databases={editableDatabases}
     />
   ) : (
-    <ActionDefinitionPage
+    <QueryActionViewPage
       action={action}
       databases={editableDatabases}
       canEditQuery={canEditQuery}
@@ -70,24 +83,24 @@ export function ActionQueryPage() {
   );
 }
 
-type ActionPageProps = {
+type QueryActionEditPageProps = {
   action: WritebackQueryAction;
   databases: Database[];
 };
 
-type ActionDefinitionPageProps = ActionPageProps & {
+type QueryActionViewPageProps = QueryActionEditPageProps & {
   canEditQuery: boolean;
 };
 
-function ActionDefinitionPage({
+function QueryActionViewPage({
   action,
   databases,
   canEditQuery,
-}: ActionDefinitionPageProps) {
+}: QueryActionViewPageProps) {
   return (
     <PageContainer data-testid="action-definition">
       <ActionHeader action={action} />
-      <ActionDefinitionContent
+      <QueryActionDefinitionContent
         action={action}
         databases={databases}
         canEdit={canEditQuery}
@@ -97,8 +110,8 @@ function ActionDefinitionPage({
   );
 }
 
-function ActionEditPage({ action, databases }: ActionPageProps) {
-  const draft = useActionDraft({
+function QueryActionEditPage({ action, databases }: QueryActionEditPageProps) {
+  const draft = useQueryActionDraft({
     initialDatasetQuery: action.dataset_query,
     formSettings: action.visualization_settings,
   });
@@ -152,15 +165,15 @@ function ActionEditPage({ action, databases }: ActionPageProps) {
             />
           }
         />
-        <ActionEditorPane>
-          <ActionEditor
+        <QueryActionEditorPane>
+          <QueryActionEditor
             datasetQuery={draft.datasetQuery}
             uiState={uiState}
             databases={databases}
             onChangeDatasetQuery={draft.setDatasetQuery}
             onChangeUiState={setUiState}
           />
-        </ActionEditorPane>
+        </QueryActionEditorPane>
       </PageContainer>
       <LeaveRouteConfirmModal
         isEnabled={draft.isDirty}

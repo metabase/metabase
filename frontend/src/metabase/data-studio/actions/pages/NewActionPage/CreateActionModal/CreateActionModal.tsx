@@ -22,7 +22,7 @@ import {
   ACTION_COLLECTION_PICKER_OPTIONS,
   ACTION_NAME_MAX_LENGTH,
 } from "../../../constants";
-import type { ActionDefinition } from "../../../utils";
+import type { QueryActionDefinition } from "../../../utils";
 
 const getValidationSchema = () =>
   Yup.object({
@@ -36,7 +36,7 @@ const getValidationSchema = () =>
 type NewActionValues = Yup.InferType<ReturnType<typeof getValidationSchema>>;
 
 type CreateActionModalProps = {
-  definition: ActionDefinition;
+  definition: QueryActionDefinition;
   defaultName: string;
   defaultCollectionId: NewActionValues["collection_id"];
   onCreate: (action: WritebackAction) => void;
@@ -65,7 +65,6 @@ export function CreateActionModal({
   }: NewActionValues) => {
     const action = await createAction({
       ...definition,
-      type: "query",
       name,
       description: description || null,
       collection_id,
