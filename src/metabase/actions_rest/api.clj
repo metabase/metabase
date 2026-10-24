@@ -77,12 +77,12 @@
   "Create a new action."
   [_route-params
    _query-params
-   {:keys [parameters database_id]
+   {:keys [parameters dataset_query]
     action-type :type
     :as action} :- ::actions.schema/action.create-request]
-  (when (and (nil? database_id)
+  (when (and (nil? (:database dataset_query))
              (= action-type :query))
-    (throw (ex-info (tru "Must provide a database_id for query actions")
+    (throw (ex-info (tru "Must provide a dataset_query for query actions")
                     {:type        action-type
                      :status-code 400})))
   (api/create-check :model/Action action)

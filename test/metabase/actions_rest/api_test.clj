@@ -465,7 +465,6 @@
   {:name          "Rename Category"
    :type          "query"
    :collection_id collection-id
-   :database_id   (mt/id)
    :dataset_query {:database (mt/id)
                    :type     "native"
                    :native   {:query         "UPDATE categories SET name = {{name}} WHERE id = {{id}}"
@@ -499,6 +498,24 @@
                    (-> (mt/run-mbql-query categories {:fields [$name] :filter [:= $id 1]})
                        mt/rows
                        ffirst)))))))))
+
+(deftest query-action-database-is-its-query-database-test
+  (testing "a query action's database is always its query's: a database_id in a create or update body is dropped"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (mt/with-temp [:model/Database {other-db-id :id} {}]
+          (let [created (mt/user-http-request :crowberto :post 200 "action"
+                                              (assoc (model-less-query-action nil) :database_id other-db-id))
+                path    (str "action/" (:id created))]
+            (is (=? {:database_id (mt/id)} created))
+            (is (=? {:database_id (mt/id)}
+                    (mt/user-http-request :crowberto :put 200 path {:database_id other-db-id})))
+            (is (= (mt/id) (t2/select-one-fn :database_id :model/QueryAction :action_id (:id created)))))))))
+  (testing "a query action needs a query"
+    (mt/with-actions-test-data-and-actions-enabled
+      (is (= "Must provide a dataset_query for query actions"
+             (mt/user-http-request :crowberto :post 400 "action"
+                                   (dissoc (model-less-query-action nil) :dataset_query)))))))
 
 (defn- table-query
   "A query of the test Table `table-key`."

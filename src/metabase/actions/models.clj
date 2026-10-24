@@ -241,7 +241,8 @@
           (check-data-app-action-table (:collection_id <>) (actions.db/implicit-action-table-id (:id <>))))))))
 
 (defn- set-query-database
-  "`query-action` with the `:database_id` of its query, when it has one."
+  "`query-action` with the `:database_id` of its query, when it has one, as a row copied whole may hold its query
+  undecoded."
   [{query :dataset_query, :as query-action}]
   (if-let [database-id (when (map? query) (:database query))]
     (assoc query-action :database_id database-id)
@@ -306,13 +307,13 @@
 
 (defn- action-database-ids
   "The ids of the Databases `action` runs against: its query's, or for an implicit action its model's or its table's."
-  [{model-id :model_id, action-id :id, table-id :table_id, query :dataset_query, :keys [database_id], :as action}]
+  [{model-id :model_id, action-id :id, table-id :table_id, query :dataset_query, :as action}]
   (case (keyword (:type action))
     :implicit [(if model-id
                  (:database_id (actions.db/card-scope-columns model-id))
                  (some-> (or table-id (some-> action-id actions.db/implicit-action-table-id))
                          actions.db/table-database-id))]
-    :query    [(or (:database query) database_id)]
+    :query    [(:database query)]
     []))
 
 (defn check-action-databases-enabled
