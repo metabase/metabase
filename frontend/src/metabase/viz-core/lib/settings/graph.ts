@@ -388,18 +388,33 @@ export const SPLIT_PANELS_SETTINGS: VisualizationSettingsDefinitions = {
       marginBottom: "1rem",
     }),
     getHidden: (series, settings) => {
+      // Already a chart per value of a column.
+      if (settings["small_multiples.column"] != null) {
+        return true;
+      }
       const displays = series.map(
         (single) => settings.series?.(single).display,
       );
       const visibleDisplays = displays.filter((display) => display != null);
       return visibleDisplays.length <= 1;
     },
-    readDependencies: ["graph.metrics", "graph.dimensions", "series"],
+    readDependencies: [
+      "graph.metrics",
+      "graph.dimensions",
+      "series",
+      "small_multiples.column",
+    ],
     onUpdate: (value) => {
       if (value === true) {
         trackStackedSeriesEnabled();
       }
     },
+  },
+  // Split panels as a chart per breakout value, scrolling, rather than
+  // panels in one chart. Set by product analytics; has no widget.
+  "graph.split_panels_small_multiples": {
+    hidden: true,
+    getDefault: () => false,
   },
 };
 

@@ -3,14 +3,16 @@ import { dateTimeLit, num } from "../compile/dialect";
 import { grainLabel } from "../compile/grain";
 import type { DrillPoint, QueryPlan } from "../compose";
 
+import { type BaseBlock, pointString, scopedEvents, startOf } from "./base";
 import {
-  type BaseBlock,
-  pointString,
-  scopedEvents,
-  splitCols,
-  splitGroup,
-  startOf,
-} from "./base";
+  BREAKOUT_COLUMN,
+  breakoutDeps,
+  breakoutDrillCondition,
+  breakoutGroupBy,
+  breakoutOrderBy,
+  breakoutSelect,
+  withBreakout,
+} from "./breakout";
 import { IN_RANGE_FLAG, MONTHLY_ACTIVE_PERIODS } from "./lookback";
 
 const ADD_PERIODS: Record<HabitSpec["subPeriod"], string> = {
@@ -26,7 +28,11 @@ export const activeColumn = (subPeriod: HabitSpec["subPeriod"]): string =>
  * Actives per sub-period over actives in the trailing month: 30 days, or 4
  * weeks. The month reaches back before the date range, through the lookback.
  */
-const planRatio = (habit: HabitSpec, base: BaseBlock): QueryPlan => {
+const planRatio = (
+  spec: AnalysisSpec,
+  habit: HabitSpec,
+  base: BaseBlock,
+): QueryPlan => {
   const unit = habit.subPeriod;
   const windowPeriods = MONTHLY_ACTIVE_PERIODS[unit];
   const active = activeColumn(unit);
@@ -37,12 +43,11 @@ const planRatio = (habit: HabitSpec, base: BaseBlock): QueryPlan => {
     deps: ["scoped_events"],
     body: [
       "SELECT",
-      ...splitCols(base),
       `  ${startOf(unit)} AS active_period,`,
       "  actor,",
       `  max(${IN_RANGE_FLAG}) AS in_range`,
       "FROM scoped_events",
-      `GROUP BY ${splitGroup(base)}active_period, actor`,
+      "GROUP BY active_period, actor",
     ].join("\n"),
   };
   // Each active period counts toward the month ending with it and the months
@@ -51,16 +56,16 @@ const planRatio = (habit: HabitSpec, base: BaseBlock): QueryPlan => {
   const periodActives = {
     name: "period_actives",
     note: `actives per ${unit}, and over the ${windowPeriods} ${unit}s up to it`,
-    deps: ["actor_periods"],
+    deps: ["actor_periods", ...breakoutDeps(spec)],
     body: [
       "SELECT",
-      ...splitCols(base),
+      ...breakoutSelect(spec),
       `  active_period + ${ADD_PERIODS[unit]}(periods_later) AS ${unit},`,
       `  uniqExactIf(actor, periods_later = 0 AND in_range = 1) AS ${active},`,
       "  uniqExact(actor) AS mau",
-      "FROM actor_periods",
+      `FROM ${withBreakout(spec, "actor_periods")}`,
       `ARRAY JOIN range(${windowPeriods}) AS periods_later`,
-      `GROUP BY ${splitGroup(base)}${unit}`,
+      `GROUP BY ${breakoutGroupBy(spec)}${unit}`,
       `HAVING ${active} > 0`,
     ].join("\n"),
   };
@@ -72,7 +77,7 @@ const planRatio = (habit: HabitSpec, base: BaseBlock): QueryPlan => {
       : [
           "SELECT DISTINCT actor FROM scoped_events",
           `WHERE ${startOf(unit)} = ${dateTimeLit(period)}`,
-          `  AND ${IN_RANGE_FLAG} = 1`,
+          `  AND ${IN_RANGE_FLAG} = 1${breakoutDrillCondition(spec, point[BREAKOUT_COLUMN])}`,
         ].join("\n");
   };
 
@@ -81,13 +86,13 @@ const planRatio = (habit: HabitSpec, base: BaseBlock): QueryPlan => {
     ctes: [...base.ctes, actorPeriods, periodActives],
     select: [
       "SELECT",
-      ...splitCols(base),
+      ...breakoutSelect(spec),
       `  ${unit},`,
       `  ${active},`,
       "  mau,",
       `  round(${active} / mau, 4) AS ratio`,
       "FROM period_actives",
-      `ORDER BY ${splitGroup(base)}${unit}`,
+      `ORDER BY ${[...breakoutOrderBy(spec), unit].join(", ")}`,
     ].join("\n"),
     warnings: base.warnings,
   };
@@ -101,7 +106,7 @@ export const planHabit = (spec: AnalysisSpec): QueryPlan => {
 
   const base = scopedEvents(spec, habit.active);
   if (habit.measure === "ratio") {
-    return planRatio(habit, base);
+    return planRatio(spec, habit, base);
   }
 
   const people = grainLabel(spec.grain);
@@ -112,10 +117,9 @@ export const planHabit = (spec: AnalysisSpec): QueryPlan => {
     body: [
       "SELECT",
       "  actor,",
-      ...splitCols(base),
       `  uniqExact(${startOf(habit.subPeriod)}) AS periods`,
       "FROM scoped_events",
-      `GROUP BY ${splitGroup(base)}actor`,
+      "GROUP BY actor",
     ].join("\n"),
   };
 
@@ -123,20 +127,26 @@ export const planHabit = (spec: AnalysisSpec): QueryPlan => {
     const periods = pointString(point.periods);
     return periods === null
       ? null
-      : `SELECT actor FROM active_periods\nWHERE periods = ${num(periods)}`;
+      : `SELECT actor FROM active_periods\nWHERE periods = ${num(periods)}${breakoutDrillCondition(spec, point[BREAKOUT_COLUMN])}`;
   };
+
+  // Shares are of each group's people, so groups of different sizes compare.
+  const groupWindow =
+    spec.breakout !== undefined ? `PARTITION BY ${BREAKOUT_COLUMN}` : "";
 
   return {
     members: histogramMembers,
     ctes: [...base.ctes, counts],
     select: [
       "SELECT",
-      ...splitCols(base),
+      ...breakoutSelect(spec),
       "  periods,",
-      `  count() AS ${people}`,
-      "FROM active_periods",
-      `GROUP BY ${splitGroup(base)}periods`,
-      "ORDER BY periods",
+      habit.percent
+        ? `  round(count() / sum(count()) OVER (${groupWindow}), 4) AS ${people}`
+        : `  count() AS ${people}`,
+      `FROM ${withBreakout(spec, "active_periods")}`,
+      `GROUP BY ${breakoutGroupBy(spec)}periods`,
+      `ORDER BY ${[...breakoutOrderBy(spec), "periods"].join(", ")}`,
     ].join("\n"),
     warnings: base.warnings,
   };

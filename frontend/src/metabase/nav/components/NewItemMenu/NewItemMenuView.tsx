@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { ForwardRefLink } from "metabase/common/components/Link";
@@ -30,7 +30,7 @@ const ANALYSIS_KIND_ITEMS: AnalysisKindItem[] = [
   { kind: "paths", icon: "sankey", getName: () => t`Paths` },
   { kind: "habit", icon: "history", getName: () => t`Habit` },
   { kind: "lifecycle", icon: "refresh", getName: () => t`Lifecycle` },
-  { kind: "cohorts", icon: "grid", getName: () => t`Cohorts` },
+  { kind: "cohorts", icon: "grid", getName: () => t`Cohort retention` },
 ];
 export interface NewItemMenuProps {
   className?: string;
@@ -52,8 +52,17 @@ export const NewItemMenuView = ({
   hasDatabaseWithJsonEngine,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
-  // Picking "Event analysis" swaps the menu for the kinds of analysis.
+  // Picking "Product analysis" swaps the menu for the kinds of analysis.
   const [isPickingAnalysisKind, setIsPickingAnalysisKind] = useState(false);
+  // The swap unmounts the focused "Product analysis" item, which leaves focus on
+  // the page, where a modifier key like Cmd (to open an item in a new tab)
+  // closes the menu. Focusing the menu keeps it open.
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isPickingAnalysisKind) {
+      dropdownRef.current?.focus();
+    }
+  }, [isPickingAnalysisKind]);
 
   const lastUsedDatabaseId = useSelector((state) =>
     getSetting(state, "last-used-native-database-id"),
@@ -82,12 +91,12 @@ export const NewItemMenuView = ({
     if (hasDataAccess) {
       items.push(
         <Menu.Item
-          key="event-analysis"
+          key="product-analysis"
           closeMenuOnClick={false}
           onClick={() => setIsPickingAnalysisKind(true)}
           leftSection={<Icon name="funnel" />}
         >
-          {t`Event analysis`}
+          {t`Product analysis`}
         </Menu.Item>,
       );
     }
@@ -177,7 +186,7 @@ export const NewItemMenuView = ({
       <Menu.Target>
         <Box>{trigger}</Box>
       </Menu.Target>
-      <Menu.Dropdown>
+      <Menu.Dropdown ref={dropdownRef}>
         {isPickingAnalysisKind
           ? ANALYSIS_KIND_ITEMS.map(({ kind, icon, getName }) => (
               <Menu.Item

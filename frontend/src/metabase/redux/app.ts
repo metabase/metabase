@@ -65,7 +65,7 @@ const errorPage = handleActions(
 // Word boundaries are added so partial matches don't collapse the navbar
 // e.g. /model shouldn't match /browse/models, /question shouldn't match /reference/.../questions
 const PATH_WITH_COLLAPSED_NAVBAR =
-  /\/(model\b|question\b|dashboard|metabot|document|explore|event-analysis\b).*/;
+  /\/(model\b|question\b|dashboard|metabot|document|explore|product-analysis\b).*/;
 
 export function isNavbarOpenForPathname(pathname: string, prevState: boolean) {
   return (

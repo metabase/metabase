@@ -44,6 +44,9 @@ export const AnalysisTitle = ({
         fz="h3"
         lh="h3"
         m={EDITABLE_TEXT_INSET}
+        // Only as wide as the name, so the hover border hugs the text rather
+        // than stretching across the header.
+        style={{ alignSelf: "flex-start" }}
         onChange={onRename}
         data-testid="analysis-title"
       />

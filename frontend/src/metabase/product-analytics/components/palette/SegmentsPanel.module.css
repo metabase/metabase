@@ -1,7 +1,31 @@
-/* Fills the column the setup panel gives it. */
 .root {
-  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  height: 100%;
   min-height: 0;
+  transition: border-color 120ms ease;
+}
+
+/* While the toolbar button that hides this panel is hovered. */
+.root[data-hinted="true"] {
+  border-color: var(--mb-color-border-strong);
+}
+
+/* Grabbing the edge darkens it. */
+.root:has(.handle:is(:hover, :active)) {
+  border-right-color: var(--mb-color-border-strong);
+}
+
+.handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  z-index: 1;
+  width: 8px;
+  height: 100%;
+  touch-action: none;
 }
 
 .tabs {

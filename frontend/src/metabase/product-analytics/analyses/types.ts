@@ -23,6 +23,8 @@ import type {
 } from "../spec/types";
 import type { DrillPoint } from "../sql/compose";
 
+import type { Breakout, BreakoutView } from "./breakout";
+
 /** The table the person column links to, with its metadata loaded. */
 export type UsersTable = {
   link: UsersTableLink;
@@ -36,6 +38,11 @@ export type AnalysisContext = {
   usersTable: UsersTable | undefined;
   /** The table's pageviews, when its schema is one we recognize. */
   detectedPageviews?: EventDefinition;
+  /**
+   * Colors picked in the display panel, so setup widgets can show the same
+   * colors as the chart. Not settings: they don't change the query.
+   */
+  displayColors?: DisplayColors;
 };
 
 export type ColumnRoleSettings = {
@@ -49,6 +56,10 @@ export type CommonSettings = ColumnRoleSettings & {
   /** A serialized date filter, e.g. "past90days". See `date-range.ts`. */
   date_range: string;
   granularity: Granularity;
+  /** Null: no breakout. Only analyses that opt in read it. */
+  breakout: Breakout | null;
+  /** Broken out, a chart or a pivot table. Only analyses that opt in read it. */
+  breakout_view: BreakoutView;
   filters: AnalysisFilters;
 };
 
@@ -75,9 +86,14 @@ export type PathsSettings = CommonSettings & {
   "paths.edge_metric": NonNullable<OutputSpec["pathsEdgeMetric"]>;
 };
 
+/** Whether a chart shows counts or each count's share of a total. */
+export type ValuesDisplay = "counts" | "percent";
+
 export type HabitSettings = CommonSettings & {
   "habit.active": EventDefinition | null;
   "habit.measure": HabitSpec["measure"];
+  /** The histogram's people as counts, or as a share of their group. */
+  "habit.values": ValuesDisplay;
 };
 
 export type LifecycleSettings = CommonSettings & {
@@ -87,16 +103,16 @@ export type LifecycleSettings = CommonSettings & {
 };
 
 export type CohortsSettings = CommonSettings & {
-  "cohorts.by": CohortsSpec["by"];
-  /** An event table column; the earliest value per actor starts their clock. */
-  "cohorts.start_column": string | null;
-  /** A users table column when there is a users table, else an event table column. */
-  "cohorts.attribute": string | null;
+  /** The first time an actor does it in the date range starts their clock. Null: any event. */
+  "cohorts.start": EventDefinition | null;
   "cohorts.return": EventDefinition | null;
   "cohorts.return_rule": CohortsSpec["returnRule"];
-  /** How many periods after their start to follow each cohort: the columns. */
-  "cohorts.horizon": number;
+  /** A table with a row per cohort, or retention curves on a line chart. */
+  "cohorts.view": "table" | "curves";
   "cohorts.display": NonNullable<OutputSpec["cohortsDisplay"]>;
+  "cohorts.lines": NonNullable<OutputSpec["cohortsLines"]>;
+  /** The line chart's x-axis: periods since each cohort started, or the calendar. */
+  "cohorts.x_axis": "sinceStart" | "date";
 };
 
 export type AnalysisSettingsByKind = {
@@ -123,6 +139,17 @@ export type SpecResult =
   | { status: "ready"; spec: AnalysisSpec }
   | { status: "incomplete"; missing: MissingSetting[] };
 
+/** Colors picked in the display panel, by `ColorSlot` key. */
+export type DisplayColors = Partial<Record<string, string>>;
+
+/** A color the display panel offers a picker for. */
+export type ColorSlot = {
+  key: string;
+  label: string;
+  /** The picked color, or the chart's default. */
+  color: string;
+};
+
 export type AnalysisConfig<K extends AnalysisKind> = {
   kind: K;
   readonly name: string;
@@ -141,7 +168,23 @@ export type AnalysisConfig<K extends AnalysisKind> = {
   getDisplay: (settings: AnalysisSettingsByKind[K]) => CardDisplayType;
   getVizSettings: (
     settings: AnalysisSettingsByKind[K],
+    colors: DisplayColors,
   ) => VisualizationSettings;
+  /** The colors the display panel offers, in the order it shows them. */
+  getColorSlots?: (
+    settings: AnalysisSettingsByKind[K],
+    colors: DisplayColors,
+  ) => ColorSlot[];
+  /** The chart's title when it depends on the settings, in place of `question`. */
+  getQuestion?: (settings: AnalysisSettingsByKind[K]) => string;
+  /**
+   * More changes that follow from a user's change, applied with it. Setting
+   * widgets only write their own key; this keeps related ones in step.
+   */
+  getFollowingChanges?: (
+    changes: Partial<AnalysisSettingsByKind[K]>,
+    settings: AnalysisSettingsByKind[K],
+  ) => Partial<AnalysisSettingsByKind[K]>;
   /**
    * Names the actors in a clicked point, e.g. "Reached step 2: Signed up".
    * `null`, or omitted, when the chart's clicks can't be traced to actors.

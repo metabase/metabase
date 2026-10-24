@@ -126,3 +126,14 @@ Window functions and equi-joins exist everywhere, so the proposal above is also 
 ### More generally
 
 Other prototype analyses lean on ClickHouse in the same ways: per-person `groupArray` (paths), `ARRAY JOIN` row multiplication (funnel steps, time buckets), and a `countIf` per flag (insights). Before choosing each analysis's MBQL shape, benchmark it against a heavy-tailed dataset, meaning a few people with very many events, not only typical volumes.
+
+## Draft segments
+
+Drafts are segments made in the segments panel and not saved to the table yet. The prototype keeps them in `sessionStorage` (`segments/use-segment-drafts.ts`), so they survive a reload in the same tab and nowhere else: a new tab, another browser or a teammate doesn't see them.
+
+So that a saved analysis still works elsewhere, an analysis that uses a draft copies its conditions: event slots, people filters and cohort breakouts all do. The copy is on its own from then on:
+
+- **Edits don't carry through.** Changing the draft, or saving it as a segment, doesn't change the analyses that copied it. A saved segment is kept by id instead, so edits to it do.
+- **Nothing ties the copy to its draft.** Only the label is kept, so an analysis can't offer to switch to the segment once the draft is saved.
+
+After the prototype, drafts need a home on the server, per person, whether that's a draft state on the segment model or something of their own. An analysis could then keep a draft by id like a saved segment, and follow it when it's saved.

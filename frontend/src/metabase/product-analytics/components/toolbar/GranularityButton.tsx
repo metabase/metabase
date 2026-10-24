@@ -17,7 +17,7 @@ export const GranularityButton = ({
   onChange,
   units = [],
 }: GranularityButtonProps) => {
-  const [opened, { open, close }] = useDisclosure();
+  const [opened, { close, toggle }] = useDisclosure();
   const items = units.map((unit) => ({
     value: unit,
     label: Lib.describeTemporalUnit(unit),
@@ -26,11 +26,16 @@ export const GranularityButton = ({
   return (
     <Popover
       opened={opened}
-      onChange={(isOpened) => (isOpened ? open() : close())}
+      // Controlled, so the target doesn't toggle it; the button does.
+      onChange={(isOpened) => {
+        if (!isOpened) {
+          close();
+        }
+      }}
       position="bottom-end"
     >
       <Popover.Target>
-        <Button variant="default">
+        <Button variant="default" onClick={toggle}>
           {t`by ${Lib.describeTemporalUnit(value).toLowerCase()}`}
         </Button>
       </Popover.Target>

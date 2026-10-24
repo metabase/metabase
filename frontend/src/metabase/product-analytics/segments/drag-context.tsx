@@ -21,6 +21,8 @@ export type DragItem =
 type SegmentDragState = {
   /** Whether the palette is showing, so slots can say to drag from it. */
   isPaletteOpen: boolean;
+  /** Shows the palette if it's hidden, and hides it if it's showing. */
+  onTogglePalette: () => void;
   dragging: DragItem | null;
   /** The palette item under the pointer, so targets can hint before a drag. */
   hovering: PaletteSegment | null;
@@ -37,6 +39,7 @@ type SegmentDragState = {
 
 const SegmentDragContext = createContext<SegmentDragState>({
   isPaletteOpen: false,
+  onTogglePalette: () => undefined,
   dragging: null,
   hovering: null,
   startDrag: () => undefined,
@@ -50,6 +53,7 @@ const DATA_TYPE = "application/x-metabase-segment";
 
 type SegmentDragProviderProps = {
   isPaletteOpen: boolean;
+  onTogglePalette: () => void;
   onPeopleSegment: (segment: PaletteSegment) => void;
   children: ReactNode;
 };
@@ -61,6 +65,7 @@ type SegmentDragProviderProps = {
  */
 export const SegmentDragProvider = ({
   isPaletteOpen,
+  onTogglePalette,
   onPeopleSegment,
   children,
 }: SegmentDragProviderProps) => {
@@ -91,6 +96,7 @@ export const SegmentDragProvider = ({
   const value = useMemo(
     () => ({
       isPaletteOpen,
+      onTogglePalette,
       dragging,
       hovering,
       startDrag,
@@ -101,6 +107,7 @@ export const SegmentDragProvider = ({
     }),
     [
       isPaletteOpen,
+      onTogglePalette,
       dragging,
       hovering,
       startDrag,

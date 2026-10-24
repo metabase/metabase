@@ -7,10 +7,14 @@ import { SaveQuestionModal } from "metabase/common/components/SaveQuestionModal"
 import { DND_IGNORE_CLASS_NAME } from "metabase/common/components/dnd";
 import { useNavigate } from "metabase/router";
 import { Group, Stack } from "metabase/ui";
-import type { Card, ConcreteTableId } from "metabase-types/api";
+import type {
+  Card,
+  ConcreteTableId,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import { pickSettingsForKind } from "../analyses/config";
-import type { AnalysisSettingsByKind } from "../analyses/types";
+import type { AnalysisSettingsByKind, DisplayColors } from "../analyses/types";
 import { buildAnalysisCard } from "../analysis-card";
 import { useDrillActions } from "../drills/use-drill-actions";
 import { useDrillQueries } from "../drills/use-drill-queries";
@@ -21,41 +25,35 @@ import type { StoredSettings } from "../settings/types";
 import type { AnalysisKind } from "../spec/types";
 import { grainLabel } from "../sql/compile/grain";
 import type { DrillPoint } from "../sql/compose";
-import { useSupportingAnalyses } from "../supporting/use-supporting-analyses";
 import { useAddToDashboardToast } from "../use-add-to-dashboard-toast";
 import { useAnalysis } from "../use-analysis";
-import { type HintedPanel, useAnalysisState } from "../use-analysis-state";
+import { useAnalysisState } from "../use-analysis-state";
 import { useSaveAnalysis } from "../use-save-analysis";
 
-import { AnalysisResult } from "./AnalysisResult";
+import { AnalysisResult, getAnalysisRawSeries } from "./AnalysisResult";
 import { AnalysisTitle, getNewAnalysisTitle } from "./AnalysisTitle";
 import { AnalysisToolbar } from "./AnalysisToolbar";
+import { DisplayPanel } from "./DisplayPanel";
 import { FilterPills, useFilterCount } from "./FilterPills";
 import { SetupPanel } from "./SetupPanel";
-import { CreateSegmentModal } from "./drills/CreateSegmentModal";
-import { MembersModal } from "./drills/MembersModal";
 import { SegmentsPanel } from "./palette/SegmentsPanel";
-import { InsightsPanel } from "./supporting/InsightsPanel";
-import { InsightsToggleContext } from "./supporting/InsightsToggle";
-import { SupportingAnalyses } from "./supporting/SupportingAnalyses";
+import { ToolbarSetting } from "./toolbar/ToolbarSetting";
 
 type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   kind: K;
   tableId: ConcreteTableId | undefined;
   savedCard?: Card;
   savedSettings?: StoredSettings;
-  /** For a new analysis, where the setup panel picks the table. */
+  /** For a new analysis, where the toolbar's picker picks the table. */
   onTableChange?: (tableId: ConcreteTableId) => void;
 };
 
 /**
  * The event analysis page: the title and toolbar across the top, then the
- * setup panel (with the segments attached to its right) and the result side
- * by side. A new analysis shows only the setup panel's table picker until a
- * table is picked. The result's column scrolls, with the kind's supporting
- * analyses below the primary chart. Each chart's insights button opens the
- * insights in a side panel on the right. A saved analysis opens on its
- * result, with the side panels collapsed.
+ * segments panel, the setup panel, the result and the display panel side by
+ * side. A new analysis opens the toolbar's table picker and shows nothing
+ * below until a table is picked. The result fills the rest of the page. A
+ * saved analysis opens on its result, with the setup panel collapsed.
  */
 export const AnalysisWorkspace = <K extends AnalysisKind>({
   kind,
@@ -66,14 +64,30 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
 }: AnalysisWorkspaceProps<K>) => {
   const navigate = useNavigate();
   const [isSegmentsOpen, setIsSegmentsOpen] = useState(false);
-  // The panel whose toolbar button is hovered lights up its border.
-  const [hintedPanel, setHintedPanel] = useState<HintedPanel | null>(null);
-  const [isInsightsOpen, setIsInsightsOpen] = useState(false);
-  const openInsights = useCallback(() => setIsInsightsOpen(true), []);
-  // Like the query builder: a new analysis shows its filters, a saved one
-  // starts with them collapsed behind the Filter button's badge.
-  const [areFiltersExpanded, setAreFiltersExpanded] = useState(
-    savedCard === undefined,
+  const handleToggleSegments = useCallback(
+    () => setIsSegmentsOpen((isOpen) => !isOpen),
+    [],
+  );
+  // The setup button's hover lights up the setup panel's border.
+  const [isSetupHinted, setIsSetupHinted] = useState(false);
+  // Likewise the segments button's hover and the segments panel.
+  const [isSegmentsHinted, setIsSegmentsHinted] = useState(false);
+  // People segments have their own panel and button, after Break out.
+  const [isPeopleSegmentsOpen, setIsPeopleSegmentsOpen] = useState(false);
+  const [isPeopleSegmentsHinted, setIsPeopleSegmentsHinted] = useState(false);
+  // Collapsed behind the Filters button until it's clicked; showing an empty
+  // row opens its column picker, which a page load shouldn't do on its own.
+  const [areFiltersExpanded, setAreFiltersExpanded] = useState(false);
+  const [isDisplayOpen, setIsDisplayOpen] = useState(false);
+  // PROTOTYPE: display changes live in this page's state, not the URL. Saving
+  // keeps them on the card, but a saved analysis reopens without them.
+  const [displayOverrides, setDisplayOverrides] =
+    useState<VisualizationSettings>({});
+  const [displayColors, setDisplayColors] = useState<DisplayColors>({});
+  const handleChangeColor = useCallback(
+    (key: string, color: string) =>
+      setDisplayColors((colors) => ({ ...colors, [key]: color })),
+    [],
   );
   const {
     stored,
@@ -83,37 +97,40 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     onChangeSettings,
     onSaved,
   } = useAnalysisState<AnalysisSettingsByKind[K]>(savedSettings);
-  // Without a table, the setup panel is where it gets picked.
-  const isSetupOpen = panel !== null || tableId === undefined;
+  const isSetupOpen = panel !== null && tableId !== undefined;
+  const isSegmentsShowing = isSegmentsOpen && tableId !== undefined;
+  const isPeopleSegmentsShowing = isPeopleSegmentsOpen && tableId !== undefined;
   const {
     config,
     table,
     usersTable,
-    context,
     computed,
-    base,
     spec,
     widgets,
     missing,
     display,
+    question,
     vizSettings,
+    colorSlots,
     query,
   } = useAnalysis({
     kind,
     tableId,
     stored,
     onChangeSettings,
+    colors: displayColors,
   });
+  // Only while "Show as" is offered: a view without it keeps the stored value.
+  const breakoutViewWidget = widgets.find(
+    (widget) => widget.id === "breakout_view",
+  );
+  const isPivot =
+    breakoutViewWidget !== undefined &&
+    !breakoutViewWidget.hidden &&
+    computed.breakout_view === "pivot";
+  const chartSettings = { ...vizSettings, ...displayOverrides };
+  const isDisplayShowing = isDisplayOpen && tableId !== undefined;
   const filterCount = useFilterCount(computed.filters, table);
-  const supporting = useSupportingAnalyses({
-    spec,
-    tableId,
-    base,
-    context,
-    query,
-    onShowInsights: openInsights,
-  });
-  const insights = supporting.insights;
   const drillQueries = useDrillQueries({
     spec,
     compiledBase: query.compiledBase,
@@ -126,13 +143,9 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     [config, computed],
   );
   const drillActions = useDrillActions({
-    tableId,
-    stored,
-    settings: computed,
     countColumn: grainLabel(computed.counting),
     describePoint,
     queries: drillQueries,
-    getExtraActions: supporting.getClickActions,
   });
 
   const tableName = table?.display_name ?? t`this table`;
@@ -148,7 +161,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           tableId,
           stored: pickSettingsForKind(kind, stored),
           display,
-          vizSettings,
+          vizSettings: chartSettings,
           datasetQuery: query.datasetQuery,
         })
       : undefined;
@@ -178,7 +191,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
 
   return (
     <SegmentDragProvider
-      isPaletteOpen={isSetupOpen && isSegmentsOpen}
+      isPaletteOpen={isSegmentsShowing}
+      onTogglePalette={handleToggleSegments}
       onPeopleSegment={handleAddPeopleFilter}
     >
       {/* Keeps the app-wide react-dnd backend out of the palette's native drags. */}
@@ -206,24 +220,39 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           />
           <AnalysisToolbar
             widgets={widgets}
+            tableId={tableId}
+            tableName={table?.display_name}
+            onTableChange={onTableChange}
+            isSegmentsOpen={isSegmentsOpen}
+            onToggleSegments={handleToggleSegments}
+            onHintSegments={setIsSegmentsHinted}
+            isPeopleSegmentsOpen={isPeopleSegmentsOpen}
+            onTogglePeopleSegments={() =>
+              setIsPeopleSegmentsOpen((isOpen) => !isOpen)
+            }
+            onHintPeopleSegments={setIsPeopleSegmentsHinted}
             setupLabel={config.setupLabel}
             sql={query.sql}
             canSave={canSave}
             isSaveDisabled={isSaveDisabled}
             isSetupOpen={isSetupOpen}
             onToggleSetup={() => setPanel(isSetupOpen ? null : "setup")}
-            onHintPanel={setHintedPanel}
+            onHintSetup={setIsSetupHinted}
             onSave={handleSave}
             filterCount={filterCount}
             areFiltersExpanded={areFiltersExpanded}
             onToggleFilters={() => setAreFiltersExpanded((isOpen) => !isOpen)}
           />
-          {areFiltersExpanded && (
+          {areFiltersExpanded && tableId !== undefined && (
             <FilterPills
               value={computed.filters}
               table={table}
               onChange={handleFiltersChange}
-            />
+            >
+              <ToolbarSetting
+                setting={widgets.find((widget) => widget.id === "filters")}
+              />
+            </FilterPills>
           )}
         </Stack>
         <Group
@@ -235,80 +264,82 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           align="stretch"
           mih={0}
         >
+          {isSegmentsShowing && (
+            <SegmentsPanel
+              source="event"
+              table={table}
+              usersTable={usersTable}
+              onSelectPeopleSegment={handleAddPeopleFilter}
+              isHinted={isSegmentsHinted}
+              onClose={() => setIsSegmentsOpen(false)}
+            />
+          )}
+          {isPeopleSegmentsShowing && (
+            <SegmentsPanel
+              source="people"
+              table={table}
+              usersTable={usersTable}
+              onSelectPeopleSegment={handleAddPeopleFilter}
+              isHinted={isPeopleSegmentsHinted}
+              onClose={() => setIsPeopleSegmentsOpen(false)}
+            />
+          )}
           {isSetupOpen && (
             <SetupPanel
               key={kind}
-              tableId={tableId}
-              table={table}
-              onTableChange={
-                onTableChange &&
-                ((id) => {
-                  // Picking the first table keeps the setup showing, even if
-                  // its toolbar button was toggled off while there was none.
-                  if (tableId === undefined && panel === null) {
-                    setPanel("setup");
-                  }
-                  onTableChange(id);
-                })
-              }
               tab={panel ?? "setup"}
               onTabChange={setPanel}
               setupLabel={config.setupLabel}
               widgets={widgets}
-              isSegmentsOpen={isSegmentsOpen}
-              onToggleSegments={() => setIsSegmentsOpen((isOpen) => !isOpen)}
-              segments={
-                <SegmentsPanel
-                  table={table}
-                  usersTable={usersTable}
-                  onSelectPeopleSegment={handleAddPeopleFilter}
-                />
-              }
-              isHinted={hintedPanel === "setup"}
+              isHinted={isSetupHinted}
+              onClose={() => setPanel(null)}
             />
           )}
           {tableId !== undefined && (
-            <InsightsToggleContext.Provider
-              value={{
-                isOpen: isInsightsOpen,
-                onToggle: () => setIsInsightsOpen((isOpen) => !isOpen),
-                onHint: (isHinted) =>
-                  setHintedPanel(isHinted ? "insights" : null),
-              }}
+            <Stack
+              flex={1}
+              miw={0}
+              pr={isDisplayShowing ? 0 : "lg"}
+              style={{ overflowY: "auto" }}
             >
-              <Stack
-                flex={1}
-                miw={0}
-                gap="lg"
-                pr={isInsightsOpen ? 0 : "lg"}
-                style={{ overflowY: "auto" }}
-              >
-                <AnalysisResult
-                  title={config.question}
-                  display={display}
-                  vizSettings={vizSettings}
-                  dataset={query.dataset}
-                  datasetQuery={query.datasetQuery}
-                  isLoading={query.isLoading}
-                  error={query.error}
-                  missing={missing}
-                  setupLabel={config.setupLabel}
-                  onOpenSetup={
-                    panel !== "setup" ? () => setPanel("setup") : undefined
-                  }
-                  clickActionsMode={drillActions.mode}
-                />
-                <SupportingAnalyses supporting={supporting} />
-              </Stack>
-            </InsightsToggleContext.Provider>
+              <AnalysisResult
+                title={question}
+                display={display}
+                vizSettings={chartSettings}
+                dataset={query.dataset}
+                datasetQuery={query.datasetQuery}
+                isLoading={query.isLoading}
+                error={query.error}
+                missing={missing}
+                setupLabel={config.setupLabel}
+                onOpenSetup={
+                  panel !== "setup" ? () => setPanel("setup") : undefined
+                }
+                clickActionsMode={drillActions.mode}
+                placeholder={isPivot ? getPivotPlaceholder() : undefined}
+                isDisplayOpen={isDisplayShowing}
+                onToggleDisplay={() => setIsDisplayOpen((isOpen) => !isOpen)}
+              />
+            </Stack>
           )}
-          {tableId !== undefined && isInsightsOpen && (
-            <InsightsPanel
-              insights={insights.insights}
-              focus={insights.focus}
-              idleLabel={insights.idleLabel}
-              isHinted={hintedPanel === "insights"}
-              onClose={() => setIsInsightsOpen(false)}
+          {isDisplayShowing && (
+            <DisplayPanel
+              series={
+                query.isLoading || query.error
+                  ? null
+                  : getAnalysisRawSeries({
+                      title: question,
+                      display,
+                      vizSettings: chartSettings,
+                      dataset: query.dataset,
+                      datasetQuery: query.datasetQuery,
+                    })
+              }
+              baseSettings={vizSettings}
+              onChange={setDisplayOverrides}
+              colorSlots={colorSlots}
+              onChangeColor={handleChangeColor}
+              onClose={() => setIsDisplayOpen(false)}
             />
           )}
         </Group>
@@ -331,23 +362,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           onChangeLocation={navigate}
         />
       )}
-      {drillActions.modal?.type === "members" && (
-        <MembersModal
-          drill={drillActions.modal.drill}
-          queries={drillQueries}
-          onClose={drillActions.closeModal}
-        />
-      )}
-      {drillActions.modal?.type === "segment" && (
-        <CreateSegmentModal
-          drill={drillActions.modal.drill}
-          settings={computed}
-          table={table}
-          queries={drillQueries}
-          toCohort={drillActions.toCohort}
-          onClose={drillActions.closeModal}
-        />
-      )}
       <LeaveRouteConfirmModal
         isEnabled={hasUnsavedChanges}
         isLocationAllowed={() =>
@@ -357,3 +371,6 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     </SegmentDragProvider>
   );
 };
+
+const getPivotPlaceholder = () =>
+  t`Pivot tables don't support native SQL, so they aren't available in this prototype.`;

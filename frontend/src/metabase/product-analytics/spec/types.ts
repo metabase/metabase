@@ -106,6 +106,8 @@ export interface HabitSpec {
   subPeriod: Extract<Period, "day" | "week">;
   /** "ratio": DAU/MAU, or WAU/MAU by week. */
   measure: "histogram" | "ratio";
+  /** The histogram's share of each group's people, rather than counts. */
+  percent?: boolean;
 }
 
 export type LifecycleStateName =
@@ -126,22 +128,38 @@ export interface LifecycleSpec {
   hasFirstSeen: boolean;
 }
 
+/** A group of people segment members, of the people outside one, or of everyone. */
+export interface BreakoutGroup {
+  label: string;
+  /** Undefined: everyone. */
+  segment?: { flag: string; isMember: boolean };
+}
+
+/**
+ * How each actor is placed in the result's groups: by a property, read from
+ * `BREAKOUT_PROPERTY_COLUMN` on `events_base`, or by the people segments
+ * they're in. Segment groups can overlap, so an actor can be in several.
+ */
+export type BreakoutSpec =
+  | { type: "property" }
+  | { type: "segments"; groups: BreakoutGroup[] };
+
 export interface CohortsSpec {
   /**
-   * What places an actor in a cohort: the period of their earliest start
-   * date, or the value of an attribute. Either way, period 0 is the period
-   * their clock started; see `planCohorts`.
+   * What starts an actor's clock: their first time doing it in the date
+   * range. Undefined: any event does.
    */
-  by: "startDate" | "attribute";
+  start?: FlagRef;
   /** What counts as coming back. Undefined: any event does. */
   return?: FlagRef;
   returnRule: "exactly" | "onOrAfter";
-  horizon: number;
 }
 
 export interface OutputSpec {
   funnelView?: "steps" | "overTime" | "timeToConvert";
   cohortsDisplay?: "percent" | "counts";
+  /** A row per cohort, or one row for all of them together. */
+  cohortsLines?: "each" | "average";
   lifecycleShown?: LifecycleStateName[];
   pathsEdgeMetric?: "people" | "events";
 }
@@ -152,7 +170,11 @@ export interface AnalysisSpec {
   grain: Grain;
   measure: Measure;
   bucket: Bucket;
-  split?: boolean;
+  /**
+   * Splits the result into groups, in a `breakout` column. Cohorts are the
+   * period each actor started in without one. See `planActorBreakouts`.
+   */
+  breakout?: BreakoutSpec;
   scope: ActorPredicate;
   /** Events that paths name by their `url_path` rather than their `event_name`. */
   pageview?: FlagRef;

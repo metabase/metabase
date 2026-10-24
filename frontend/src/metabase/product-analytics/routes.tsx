@@ -11,7 +11,7 @@ const savedAnalysisPage = () =>
   }));
 
 export const getRoutes = () => (
-  <Route path="event-analysis">
+  <Route path="product-analysis">
     <Route path="new" lazy={newAnalysisPage} />
     <Route path=":cardId" lazy={savedAnalysisPage} />
   </Route>

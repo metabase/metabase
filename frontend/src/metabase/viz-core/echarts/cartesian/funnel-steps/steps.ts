@@ -5,7 +5,11 @@ import { getNumberOr } from "../../../lib/settings/row-values";
 import type { ComputedVisualizationSettings } from "../../../types";
 import { X_AXIS_DATA_KEY } from "../constants/dataset";
 import { isCategoryAxis } from "../model/guards";
-import type { BaseCartesianChartModel, SeriesModel } from "../model/types";
+import type {
+  BaseCartesianChartModel,
+  DataKey,
+  SeriesModel,
+} from "../model/types";
 
 export type FunnelSteps = {
   seriesModel: SeriesModel;
@@ -16,12 +20,19 @@ export type FunnelSteps = {
   formatShare: (part: number, whole: number) => string;
 };
 
-/** Each step's name and count, and how the chart formats them. */
+/**
+ * Each step's name and count in a series, the first unless `dataKey` names
+ * another, and how the chart formats them.
+ */
 export const getFunnelSteps = (
   { seriesModels, transformedDataset, xAxisModel }: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
+  dataKey?: DataKey,
 ): FunnelSteps | undefined => {
-  const [seriesModel] = seriesModels;
+  const seriesModel =
+    dataKey === undefined
+      ? seriesModels[0]
+      : seriesModels.find((model) => model.dataKey === dataKey);
   if (!seriesModel || !isCategoryAxis(xAxisModel)) {
     return undefined;
   }

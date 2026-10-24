@@ -39,6 +39,8 @@ const getFlagParts = (event: EventDefinition) => {
     extraColumns: [],
     usersTable: undefined,
     filters: NO_FILTERS,
+    peopleSegments: [],
+    requiredPeopleSegments: [],
     lookbackDays: 0,
   });
   const [flag] = Lib.expressions(query, STAGE);
@@ -85,6 +87,8 @@ describe("buildBaseQuery", () => {
       ],
       usersTable: undefined,
       filters: NO_FILTERS,
+      peopleSegments: [],
+      requiredPeopleSegments: [],
       lookbackDays: 0,
     });
 
@@ -110,6 +114,8 @@ describe("buildBaseQuery", () => {
         primaryKey: "ID",
       },
       filters: NO_FILTERS,
+      peopleSegments: [],
+      requiredPeopleSegments: [],
       lookbackDays: 0,
     });
 
@@ -139,6 +145,8 @@ describe("buildBaseQuery", () => {
         ],
         usersTable: undefined,
         filters: NO_FILTERS,
+        peopleSegments: [],
+        requiredPeopleSegments: [],
         lookbackDays: 0,
       }),
     ).toThrow("The person column doesn't link to a users table.");
@@ -174,6 +182,8 @@ describe("createFlagAllocator", () => {
         extraColumns: [],
         usersTable: undefined,
         filters: NO_FILTERS,
+        peopleSegments: [],
+        requiredPeopleSegments: [],
         lookbackDays,
       });
 

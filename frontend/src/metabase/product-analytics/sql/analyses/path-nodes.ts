@@ -34,18 +34,11 @@ export const pathNodeKeySql = (
 ): string =>
   `concat(toString(${position}), '. ', if(${kind} = ${kindSql("step")}, ${name}, concat('(', ${kind}, ')', if(${name} = '', '', concat(' ', ${name})))))`;
 
-/** The text shown for a node. `moreLabel` names a "more" node, when there is one. */
-export const pathNodeLabelSql = (
-  kind: string,
-  name: string,
-  moreLabel?: string,
-): string =>
+/** The text shown for a node. */
+export const pathNodeLabelSql = (kind: string, name: string): string =>
   [
     "multiIf(",
     `${kind} = ${kindSql("other")}, ${lit(t`(Other)`)}, `,
     `${kind} = ${kindSql("dropped")}, ${lit(t`(Dropped off)`)}, `,
-    moreLabel !== undefined
-      ? `${kind} = ${kindSql("more")}, ${lit(moreLabel)}, `
-      : "",
     `${name})`,
   ].join("");

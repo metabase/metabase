@@ -7,20 +7,18 @@
 
 import {
   type BaseColumns,
+  type BasePeopleSegments,
   buildSql,
 } from "../../frontend/src/metabase/product-analytics/build-sql";
 import type { ProjectedColumn } from "../../frontend/src/metabase/product-analytics/columns";
 import type {
   AnalysisKind,
   AnalysisSpec,
+  BreakoutSpec,
   FunnelSpec,
   PathsSpec,
 } from "../../frontend/src/metabase/product-analytics/spec/types";
-import {
-  type FunnelPathsRange,
-  getOutcomeLabels,
-  planFunnelPaths,
-} from "../../frontend/src/metabase/product-analytics/sql/analyses/funnel-paths";
+import { BREAKOUT_PROPERTY_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/breakout";
 import { activeColumn } from "../../frontend/src/metabase/product-analytics/sql/analyses/habit";
 import { FIRST_SEEN_EXTRA_COLUMN } from "../../frontend/src/metabase/product-analytics/sql/analyses/lifecycle";
 import {
@@ -151,11 +149,9 @@ const check = (name: string, ok: boolean, detail: string) => {
 };
 
 const cohortColumns = (spec: AnalysisSpec): ProjectedColumn[] =>
-  spec.cohorts?.by === "attribute"
-    ? [{ as: "cohort_attribute", alias: "country" }]
-    : spec.cohorts !== undefined
-      ? [{ as: "cohort_start", alias: "created_at" }]
-      : [];
+  spec.breakout?.type === "property"
+    ? [{ as: BREAKOUT_PROPERTY_COLUMN, alias: "country" }]
+    : [];
 
 /**
  * The identities tables and their link to events: every identified person has
@@ -363,12 +359,21 @@ const run = async (
       values.every((value) => value >= 0 && value <= 1),
       `min ${Math.min(...values)} max ${Math.max(...values)}`,
     );
-    const cohorts = new Set(rows.map((row) => String(row.cohort)));
-    check(
-      "cohorts has several rows",
-      cohorts.size > 1,
-      [...cohorts].slice(0, 4).join(", "),
-    );
+    if (spec.output.cohortsLines === "average") {
+      const offsets = rows.map((row) => asNumber(row.offset));
+      check(
+        "average has a row per offset",
+        new Set(offsets).size === rows.length,
+        offsets.join(", "),
+      );
+    } else {
+      const cohorts = new Set(rows.map((row) => String(row.cohort)));
+      check(
+        "cohorts has several rows",
+        cohorts.size > 1,
+        [...cohorts].slice(0, 4).join(", "),
+      );
+    }
   }
 };
 
@@ -417,18 +422,291 @@ for (const [label, overrides] of pathsVariants) {
   await run("paths", truth, { ...pathsSpec, paths }, `paths (${label})`);
 }
 
+// A people segment's membership the way Metabase compiles it from the users
+// table: its key and a 0/1 column per segment.
+const PAID_PLANS = "('starter', 'pro', 'business')";
+const paidSegment = (required: string[]): BasePeopleSegments => ({
+  sql: `SELECT person_id, if(plan IN ${PAID_PLANS}, 1, 0) AS seg_1 FROM product_analytics.pa_identities_resolved`,
+  primaryKey: "person_id",
+  flags: ["seg_1"],
+  required,
+});
+const paidBreakout = (withEveryone: boolean): BreakoutSpec => ({
+  type: "segments",
+  groups: [
+    ...(withEveryone ? [{ label: "Everyone" }] : []),
+    { label: "Paid", segment: { flag: "seg_1", isMember: true } },
+    { label: "Not paid", segment: { flag: "seg_1", isMember: false } },
+  ],
+});
+
 const cohortsSpec = defaultSpec("cohorts");
 if (cohortsSpec.cohorts !== undefined) {
-  await run(
-    "cohorts",
-    truth,
-    {
-      ...cohortsSpec,
-      cohorts: { ...cohortsSpec.cohorts, by: "attribute" },
-    },
-    "cohorts (by country)",
+  const cohortsVariants: [string, AnalysisSpec][] = [
+    ["by country", { ...cohortsSpec, breakout: { type: "property" } }],
+    [
+      "average, on or after",
+      {
+        ...cohortsSpec,
+        cohorts: { ...cohortsSpec.cohorts, returnRule: "onOrAfter" },
+        output: { ...cohortsSpec.output, cohortsLines: "average" },
+      },
+    ],
+    [
+      "from signup",
+      {
+        ...cohortsSpec,
+        cohorts: { ...cohortsSpec.cohorts, start: { flag: FLAG.signup } },
+      },
+    ],
+  ];
+  for (const [label, spec] of cohortsVariants) {
+    await run("cohorts", truth, spec, `cohorts (${label})`);
+  }
+
+  // Cohorts by a people segment: the segment's members plus the people
+  // outside it are everyone, and the members are the people who match it in
+  // the identities table.
+  const segmentsSpec: AnalysisSpec = {
+    ...cohortsSpec,
+    breakout: paidBreakout(true),
+  };
+  const segmentSizes = async (required: string[]) => {
+    const rows = await chJson(
+      buildSql(segmentsSpec, eventsBaseSql(truth), {
+        ...baseColumns(segmentsSpec),
+        peopleSegments: paidSegment(required),
+      }).sql,
+    );
+    const firstOffset = rows.filter((row) => asNumber(row.offset) === 0);
+    return {
+      order: firstOffset.map((row) => String(row.cohort)),
+      sizes: new Map(
+        firstOffset.map((row) => [
+          String(row.cohort),
+          asNumber(row.cohort_size),
+        ]),
+      ),
+    };
+  };
+  const [direct] = await chJson(`
+    WITH events AS (${eventsBaseSql(truth)})
+    SELECT
+      uniqExact(e.person_id) AS everyone,
+      uniqExactIf(e.person_id, i.plan IN ${PAID_PLANS}) AS paid
+    FROM events AS e
+    LEFT JOIN product_analytics.pa_identities_resolved AS i
+      ON i.person_id = e.person_id
+  `);
+  const everyone = asNumber(direct?.everyone);
+  const paid = asNumber(direct?.paid);
+
+  console.log("\ncohorts (by a people segment)");
+  const bySegment = await segmentSizes([]);
+  const sizeOf = (cohort: string) => bySegment.sizes.get(cohort) ?? 0;
+  check(
+    "segment cohorts keep their order",
+    bySegment.order.join(", ") === "Everyone, Paid, Not paid",
+    bySegment.order.join(", "),
+  );
+  check(
+    "everyone is the segment's members plus the people outside it",
+    sizeOf("Everyone") === everyone &&
+      sizeOf("Paid") + sizeOf("Not paid") === everyone,
+    `everyone ${sizeOf("Everyone")}, paid ${sizeOf("Paid")}, not paid ${sizeOf("Not paid")}, direct ${everyone}`,
+  );
+  check(
+    "the segment's members match it in the identities table",
+    sizeOf("Paid") === paid && paid > 0,
+    `got ${sizeOf("Paid")}, direct ${paid}`,
+  );
+
+  console.log("\ncohorts (filtered to a people segment)");
+  const filtered = await segmentSizes(["seg_1"]);
+  check(
+    "a people filter keeps only the segment's members",
+    filtered.sizes.get("Everyone") === paid &&
+      filtered.sizes.get("Paid") === paid &&
+      !filtered.sizes.has("Not paid"),
+    filtered.order
+      .map((cohort) => `${cohort} ${filtered.sizes.get(cohort)}`)
+      .join(", "),
   );
 }
+
+// Breakouts by a people segment, in every analysis. Paid and Not paid split
+// everyone in two, so they add up to the analysis without a breakout, and
+// Everyone, where there is one, is that analysis exactly.
+type BreakoutCase = {
+  label: string;
+  spec: AnalysisSpec;
+  /** The columns that name a row, besides the group. */
+  keys: string[];
+  metric: string;
+  withEveryone: boolean;
+};
+
+const withView = (
+  spec: AnalysisSpec,
+  output: AnalysisSpec["output"],
+): AnalysisSpec => ({ ...spec, output: { ...spec.output, ...output } });
+
+const habitRatioSpec = defaultSpec("habit");
+const breakoutCases: BreakoutCase[] = [
+  {
+    label: "funnel steps",
+    spec: defaultSpec("funnel"),
+    keys: ["label"],
+    metric: "people",
+    withEveryone: true,
+  },
+  {
+    label: "funnel time to finish",
+    spec: withView(defaultSpec("funnel"), { funnelView: "timeToConvert" }),
+    keys: ["time_to_convert"],
+    metric: "people",
+    withEveryone: true,
+  },
+  {
+    label: "habit",
+    spec: defaultSpec("habit"),
+    keys: ["periods"],
+    metric: "people",
+    withEveryone: true,
+  },
+  {
+    label: "habit DAU",
+    spec: {
+      ...habitRatioSpec,
+      habit: habitRatioSpec.habit && {
+        ...habitRatioSpec.habit,
+        measure: "ratio",
+      },
+    },
+    keys: ["day"],
+    metric: "dau",
+    withEveryone: true,
+  },
+  {
+    label: "lifecycle",
+    spec: defaultSpec("lifecycle"),
+    keys: ["period", "state"],
+    metric: "actors",
+    withEveryone: true,
+  },
+  {
+    label: "paths",
+    spec: defaultSpec("paths"),
+    keys: ["source", "target"],
+    metric: "weight",
+    withEveryone: false,
+  },
+];
+
+const sumByKey = (
+  rows: Record<string, unknown>[],
+  { keys, metric }: Pick<BreakoutCase, "keys" | "metric">,
+): Map<string, number> => {
+  const sums = new Map<string, number>();
+  for (const row of rows) {
+    const key = keys.map((name) => String(row[name])).join(" / ");
+    sums.set(key, (sums.get(key) ?? 0) + asNumber(row[metric]));
+  }
+  return sums;
+};
+
+const diffSums = (
+  actual: Map<string, number>,
+  expected: Map<string, number>,
+): string[] =>
+  [...new Set([...actual.keys(), ...expected.keys()])]
+    .filter((key) => (actual.get(key) ?? 0) !== (expected.get(key) ?? 0))
+    .map(
+      (key) => `${key}: ${actual.get(key) ?? 0} vs ${expected.get(key) ?? 0}`,
+    );
+
+for (const breakoutCase of breakoutCases) {
+  const { label, spec, withEveryone } = breakoutCase;
+  console.log(`\n${label} (by a people segment)`);
+  const plain = await chJson(
+    buildSql(spec, eventsBaseSql(truth), baseColumns(spec)).sql,
+  );
+  const brokenOutSpec: AnalysisSpec = {
+    ...spec,
+    breakout: paidBreakout(withEveryone),
+  };
+  const brokenOut = await chJson(
+    buildSql(brokenOutSpec, eventsBaseSql(truth), {
+      ...baseColumns(brokenOutSpec),
+      peopleSegments: paidSegment([]),
+    }).sql,
+  );
+  const inGroup = (group: string) =>
+    sumByKey(
+      brokenOut.filter((row) => row.breakout === group),
+      breakoutCase,
+    );
+  const expected = sumByKey(plain, breakoutCase);
+  const split = sumByKey(
+    brokenOut.filter((row) => row.breakout !== "Everyone"),
+    breakoutCase,
+  );
+  const splitDiffs = diffSums(split, expected);
+  check(
+    "Paid and Not paid add up to the analysis without a breakout",
+    splitDiffs.length === 0 && inGroup("Paid").size > 0,
+    splitDiffs.slice(0, 3).join(", ") || `${expected.size} rows`,
+  );
+  if (withEveryone) {
+    const everyoneDiffs = diffSums(inGroup("Everyone"), expected);
+    check(
+      "Everyone is the analysis without a breakout",
+      everyoneDiffs.length === 0,
+      everyoneDiffs.slice(0, 3).join(", ") || `${expected.size} rows`,
+    );
+  }
+}
+
+// Shares instead of counts: a habit group's shares add up to 100%.
+const sharesSum = (
+  rows: Record<string, unknown>[],
+  keys: string[],
+  include: (row: Record<string, unknown>) => boolean,
+  metric: string,
+): number[] =>
+  [
+    ...sumByKey(rows.filter(include), { keys, metric }).values(),
+  ].map((sum) => Math.round(sum * 100) / 100);
+
+const percentSpec = (spec: AnalysisSpec): AnalysisSpec => ({
+  ...spec,
+  breakout: paidBreakout(true),
+});
+const percentColumns = (spec: AnalysisSpec) => ({
+  ...baseColumns(spec),
+  peopleSegments: paidSegment([]),
+});
+
+console.log("\nhabit as a share of each group");
+const habitDefault = defaultSpec("habit");
+const habitPercent = percentSpec({
+  ...habitDefault,
+  habit: habitDefault.habit && { ...habitDefault.habit, percent: true },
+});
+const habitShares = sharesSum(
+  await chJson(
+    buildSql(habitPercent, eventsBaseSql(truth), percentColumns(habitPercent))
+      .sql,
+  ),
+  ["breakout"],
+  () => true,
+  "people",
+);
+check(
+  "each group's shares add up to 100%",
+  habitShares.length === 3 && habitShares.every((sum) => sum === 1),
+  habitShares.join(", "),
+);
 
 // DAU/MAU and WAU/MAU: the range starts 40 days into the data, so the month
 // before its first period comes from the lookback. Check the first period
@@ -548,82 +826,6 @@ check(
   lifecycleAt("returning") === asNumber(lifecycleDirect?.returning),
   `got ${lifecycleAt("returning")}, expected ${asNumber(lifecycleDirect?.returning)}`,
 );
-
-// Funnel paths must agree with the funnel: everyone who reached the starting
-// step starts a path, and everyone who reached the ending step converts.
-const funnelSpec = defaultSpec("funnel");
-const funnelCounts = await chJson(
-  buildSql(funnelSpec, eventsBaseSql(truth), baseColumns(funnelSpec)).sql,
-);
-const funnelCountAt = (step: number) =>
-  asNumber(
-    funnelCounts.find((row) => parseInt(String(row.label), 10) === step)
-      ?.people,
-  );
-const funnelPathsRanges: FunnelPathsRange[] = [
-  { start: 1, end: 3 },
-  { start: 2, end: 3 },
-  { start: 1, end: 2 },
-];
-for (const range of funnelPathsRanges) {
-  const rows = await chJson(
-    buildSql(
-      funnelSpec,
-      eventsBaseSql(truth),
-      baseColumns(funnelSpec),
-      planFunnelPaths(funnelSpec, { ...range, steps: 5, maxNodes: 6 }),
-    ).sql,
-  );
-  console.log(
-    `\nfunnel paths ${range.start} → ${range.end} (${rows.length} rows)`,
-  );
-  const started = rows
-    .filter((row) => asNumber(row.step) === 1)
-    .reduce((sum, row) => sum + asNumber(row.weight), 0);
-  const converted = rows
-    .filter((row) => row.target_kind === "converted")
-    .reduce((sum, row) => sum + asNumber(row.weight), 0);
-  check(
-    "funnel paths start with the starting step's people",
-    started === funnelCountAt(range.start),
-    `paths ${started}, funnel ${funnelCountAt(range.start)}`,
-  );
-  check(
-    "funnel paths convert the ending step's people",
-    converted === funnelCountAt(range.end),
-    `paths ${converted}, funnel ${funnelCountAt(range.end)}`,
-  );
-  const unlabeled = rows.filter(
-    (row) => row.source_label === "" || row.target_label === "",
-  );
-  check(
-    "every funnel paths node has a label",
-    unlabeled.length === 0,
-    unlabeled
-      .slice(0, 2)
-      .map((row) => `${row.source} → ${row.target}`)
-      .join(", ") || `${rows.length} links`,
-  );
-  const edges = rows.map((row) => [String(row.source), String(row.target)]);
-  check(
-    "funnel paths have no cycles",
-    !hasCyclicFlow(edges, 0, 1),
-    `${edges.length} links`,
-  );
-  const isConvertedLink = (row: Record<string, unknown>) =>
-    row.outcome === getOutcomeLabels().converted;
-  check(
-    "only converted links reach the ending step, only the rest drop off",
-    rows.every((row) =>
-      row.target_kind === "converted"
-        ? isConvertedLink(row)
-        : row.target_kind !== "dropped" || !isConvertedLink(row),
-    ),
-    [...new Set(rows.map((row) => String(row.target_label)))]
-      .slice(0, 6)
-      .join(", "),
-  );
-}
 
 // Funnel timing, on hand-written events: durations come from the run the
 // funnel counted, not from each step's first time ever.

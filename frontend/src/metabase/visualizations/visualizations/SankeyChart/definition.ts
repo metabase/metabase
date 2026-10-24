@@ -20,6 +20,44 @@ import { hasCyclicFlow } from "./utils/cycle-detection";
 
 const MAX_SANKEY_NODES = 150;
 
+/**
+ * The most breakout values a Sankey shows in one chart by default. Past a
+ * handful, the colors that tell them apart get hard to tell apart, more so
+ * as thin slices of a flow.
+ */
+const MAX_UNSTACKED_BREAKOUTS = 4;
+
+/**
+ * The most flows a Sankey shows in one chart by default. Each row is a flow:
+ * an edge, for a breakout value.
+ */
+const MAX_UNSTACKED_FLOWS = 50;
+
+/** How many values the breakout column has, 0 without one. */
+const getBreakoutCount = (
+  { cols, rows }: DatasetData,
+  column: string | null | undefined,
+): number => {
+  const index = cols.findIndex((col) => col.name === column);
+  return index >= 0 ? new Set(rows.map((row) => row[index])).size : 0;
+};
+
+/**
+ * Whether a broken-out Sankey is easier to read as one per breakout value:
+ * with more values than colors tell apart, or more flows than fit.
+ */
+const isBusyBreakout = (
+  data: DatasetData,
+  breakout: string | null | undefined,
+): boolean => {
+  const breakoutCount = getBreakoutCount(data, breakout);
+  return (
+    breakoutCount > 1 &&
+    (breakoutCount > MAX_UNSTACKED_BREAKOUTS ||
+      data.rows.length > MAX_UNSTACKED_FLOWS)
+  );
+};
+
 export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   ...columnSettings({ getHidden: () => true }),
   ...dimensionSetting("sankey.source", {
@@ -130,6 +168,22 @@ export const SETTINGS_DEFINITIONS: VisualizationSettingsDefinitions = {
   },
   "sankey.breakout_colors": {
     getDefault: () => ({}),
+  },
+  // A Sankey per breakout value, one above another. Unstacked, the values
+  // share each edge and only color tells them apart, which stays readable
+  // for a few values and not too many flows.
+  "sankey.split_panels": {
+    getSection: () => t`Display`,
+    get title() {
+      return t`Stack series`;
+    },
+    widget: "toggle",
+    inline: true,
+    getDefault: ([{ data }], vizSettings) =>
+      isBusyBreakout(data, vizSettings["sankey.breakout"]),
+    getHidden: ([{ data }], vizSettings) =>
+      getBreakoutCount(data, vizSettings["sankey.breakout"]) < 2,
+    readDependencies: ["sankey.breakout"],
   },
   "product_analytics.paths": {
     getDefault: () => false,

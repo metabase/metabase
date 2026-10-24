@@ -25,12 +25,6 @@ export const PLANNER_COLUMN_NAMES: Record<ColumnRole, string> = {
 };
 
 /**
- * The event table column that's true once the person has been identified, as
- * of each event, and empty before.
- */
-export const IDENTIFIED_COLUMN = "person__identified";
-
-/**
  * The event table column with when each person was first seen, on every
  * event. Lifecycle uses it to tell who's new without reading their history.
  */
