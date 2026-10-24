@@ -17,6 +17,15 @@
   pointer-events: auto;
 }
 
+.tooltip[data-entering-instantly] {
+  opacity: 1 !important; /* !important to override inline styles from Mantine */
+  transition: none !important;
+}
+
+.tooltip[data-replaced] {
+  display: none;
+}
+
 .arrow {
   /*
   * Disabling the clip-path property to prevent the arrow from being cut off
