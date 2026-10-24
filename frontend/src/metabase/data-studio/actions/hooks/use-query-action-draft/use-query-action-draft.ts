@@ -4,31 +4,34 @@ import { getDefaultFormSettings } from "metabase/actions/utils";
 import * as Lib from "metabase-lib";
 import type { ActionFormSettings, DatasetQuery } from "metabase-types/api";
 
-import { useActionQuery } from "../../components/ActionEditor/hooks";
-import { type ActionDefinition, getActionDefinition } from "../../utils";
+import { useActionQuery } from "../../components/QueryActionEditor/hooks";
+import {
+  type QueryActionDefinition,
+  getQueryActionDefinition,
+} from "../../utils";
 
-type UseActionDraftOptions = {
+type UseQueryActionDraftOptions = {
   initialDatasetQuery: DatasetQuery;
   formSettings?: ActionFormSettings;
 };
 
-type ActionDraft = {
+type QueryActionDraft = {
   datasetQuery: DatasetQuery;
-  definition: ActionDefinition | null;
+  definition: QueryActionDefinition | null;
   isDirty: boolean;
   isValid: boolean;
   setDatasetQuery: (datasetQuery: DatasetQuery) => void;
 };
 
-export function useActionDraft({
+export function useQueryActionDraft({
   initialDatasetQuery,
   formSettings,
-}: UseActionDraftOptions): ActionDraft {
+}: UseQueryActionDraftOptions): QueryActionDraft {
   const [datasetQuery, setDatasetQuery] = useState(initialDatasetQuery);
   const query = useActionQuery(datasetQuery);
 
   const definition = useMemo(
-    () => getActionDefinition(query, getDefaultFormSettings(formSettings)),
+    () => getQueryActionDefinition(query, getDefaultFormSettings(formSettings)),
     [query, formSettings],
   );
   const isDirty = !Lib.areLegacyQueriesEqual(datasetQuery, initialDatasetQuery);

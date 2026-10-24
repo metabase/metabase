@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateActionMutation } from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils";
+import { findErrorMessage, getErrorMessage } from "metabase/api/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
@@ -13,39 +13,58 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { type Location, useLocation, useNavigate } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Database, WritebackQueryAction } from "metabase-types/api";
+import type {
+  Database,
+  ImplicitActionKind,
+  TableId,
+  UpdateImplicitActionRequest,
+  WritebackImplicitQueryAction,
+  WritebackQueryAction,
+} from "metabase-types/api";
 
 import { trackDataActionQueryUpdated } from "../../analytics";
-import { ActionDefinitionContent } from "../../components/ActionDefinitionContent";
-import { ActionEditor } from "../../components/ActionEditor";
-import { ActionEditorPane } from "../../components/ActionEditorPane";
 import { ActionHeader } from "../../components/ActionHeader";
+import { ImplicitActionDefinitionContent } from "../../components/ImplicitActionDefinitionContent";
+import { QueryActionDefinitionContent } from "../../components/QueryActionDefinitionContent";
+import { QueryActionEditor } from "../../components/QueryActionEditor";
+import { QueryActionEditorPane } from "../../components/QueryActionEditorPane";
 import { useActionDatabases } from "../../hooks/use-action-databases";
-import { useActionDraft } from "../../hooks/use-action-draft";
+import { useQueryActionDraft } from "../../hooks/use-query-action-draft";
 import { useRouteAction } from "../../hooks/use-route-action";
 import { canEditActionQuery } from "../../utils";
 
-export function ActionQueryPage() {
+export function ActionDefinitionPage() {
+  const { action, isLoading, error } = useRouteAction();
+
+  if (isLoading || error != null || action == null) {
+    return (
+      <Center h="100%">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Center>
+    );
+  }
+
+  return action.type === "implicit" ? (
+    <ImplicitActionDefinitionPage key={action.id} action={action} />
+  ) : (
+    <QueryActionDefinitionPage key={action.id} action={action} />
+  );
+}
+
+type QueryActionDefinitionPageProps = {
+  action: WritebackQueryAction;
+};
+
+function QueryActionDefinitionPage({ action }: QueryActionDefinitionPageProps) {
   const { pathname } = useLocation();
   const isEditRoute = pathname.endsWith("/edit");
-  const {
-    action,
-    isLoading: isLoadingAction,
-    error: actionError,
-  } = useRouteAction();
-  const {
-    databases,
-    isLoading: isLoadingDatabases,
-    error: databasesError,
-  } = useActionDatabases();
+  const { databases, isLoading, error } = useActionDatabases();
   const editableDatabases = useMemo(
     () => databases.filter(hasNativeWritePermissions),
     [databases],
   );
-  const isLoading = isLoadingAction || isLoadingDatabases;
-  const error = actionError ?? databasesError;
 
-  if (isLoading || error != null || action == null) {
+  if (isLoading || error != null) {
     return (
       <Center h="100%">
         <LoadingAndErrorWrapper loading={isLoading} error={error} />
@@ -56,13 +75,13 @@ export function ActionQueryPage() {
   const canEditQuery = canEditActionQuery(action, databases);
 
   return isEditRoute && canEditQuery ? (
-    <ActionEditPage
+    <QueryActionEditPage
       key={action.id}
       action={action}
       databases={editableDatabases}
     />
   ) : (
-    <ActionDefinitionPage
+    <QueryActionViewPage
       action={action}
       databases={editableDatabases}
       canEditQuery={canEditQuery}
@@ -70,24 +89,24 @@ export function ActionQueryPage() {
   );
 }
 
-type ActionPageProps = {
+type QueryActionEditPageProps = {
   action: WritebackQueryAction;
   databases: Database[];
 };
 
-type ActionDefinitionPageProps = ActionPageProps & {
+type QueryActionViewPageProps = QueryActionEditPageProps & {
   canEditQuery: boolean;
 };
 
-function ActionDefinitionPage({
+function QueryActionViewPage({
   action,
   databases,
   canEditQuery,
-}: ActionDefinitionPageProps) {
+}: QueryActionViewPageProps) {
   return (
     <PageContainer data-testid="action-definition">
       <ActionHeader action={action} />
-      <ActionDefinitionContent
+      <QueryActionDefinitionContent
         action={action}
         databases={databases}
         canEdit={canEditQuery}
@@ -97,8 +116,8 @@ function ActionDefinitionPage({
   );
 }
 
-function ActionEditPage({ action, databases }: ActionPageProps) {
-  const draft = useActionDraft({
+function QueryActionEditPage({ action, databases }: QueryActionEditPageProps) {
+  const draft = useQueryActionDraft({
     initialDatasetQuery: action.dataset_query,
     formSettings: action.visualization_settings,
   });
@@ -152,20 +171,86 @@ function ActionEditPage({ action, databases }: ActionPageProps) {
             />
           }
         />
-        <ActionEditorPane>
-          <ActionEditor
+        <QueryActionEditorPane>
+          <QueryActionEditor
             datasetQuery={draft.datasetQuery}
             uiState={uiState}
             databases={databases}
             onChangeDatasetQuery={draft.setDatasetQuery}
             onChangeUiState={setUiState}
           />
-        </ActionEditorPane>
+        </QueryActionEditorPane>
       </PageContainer>
       <LeaveRouteConfirmModal
         isEnabled={draft.isDirty}
         isLocationAllowed={isLocationAllowed}
       />
     </>
+  );
+}
+
+type ImplicitActionDefinitionPageProps = {
+  action: WritebackImplicitQueryAction;
+};
+
+function ImplicitActionDefinitionPage({
+  action,
+}: ImplicitActionDefinitionPageProps) {
+  const [updateAction] = useUpdateActionMutation();
+  const { sendSuccessToast, sendErrorToast, sendUndoToast } =
+    useMetadataToasts();
+
+  const handleUpdate = async (
+    changes: Omit<UpdateImplicitActionRequest, "id">,
+    previous: Omit<UpdateImplicitActionRequest, "id">,
+    message: string,
+  ) => {
+    const { error } = await updateAction({ id: action.id, ...changes });
+    if (error) {
+      const errorMessage = findErrorMessage(error);
+      sendErrorToast(
+        errorMessage
+          ? t`Failed to update action: ${errorMessage}`
+          : t`Failed to update action`,
+      );
+      return;
+    }
+    sendSuccessToast(message, async () => {
+      const { error } = await updateAction({ id: action.id, ...previous });
+      sendUndoToast(error);
+    });
+  };
+
+  const handleTableChange = (table_id: TableId) => {
+    if (table_id !== action.table_id && action.table_id != null) {
+      handleUpdate(
+        { table_id },
+        { table_id: action.table_id },
+        t`Action table updated`,
+      );
+    }
+  };
+
+  const handleKindChange = (kind: ImplicitActionKind) => {
+    if (kind !== action.kind) {
+      handleUpdate(
+        { kind },
+        { kind: action.kind },
+        t`Action operation updated`,
+      );
+    }
+  };
+
+  return (
+    <PageContainer data-testid="action-definition">
+      <ActionHeader action={action} />
+      <ImplicitActionDefinitionContent
+        tableId={action.table_id}
+        kind={action.kind}
+        readOnly={!action.can_write}
+        onChangeTable={handleTableChange}
+        onChangeKind={handleKindChange}
+      />
+    </PageContainer>
   );
 }

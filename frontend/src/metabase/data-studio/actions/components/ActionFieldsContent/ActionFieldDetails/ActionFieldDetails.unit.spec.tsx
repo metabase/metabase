@@ -26,10 +26,11 @@ function setup({ settings, canChangeFieldType = true }: SetupOpts = {}) {
           title: "Status",
           ...settings,
         }),
-        variableName: "status",
+        source: { type: "variable", name: "status" },
       }}
-      disabled={false}
+      canChangeSettings
       canChangeFieldType={canChangeFieldType}
+      canChangeVisibility
       onChange={onChange}
     />,
   );
