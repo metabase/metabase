@@ -625,7 +625,7 @@
                                                                            :id     id
                                                                            :title  (tool-friendly-names tool-name "Thinking")
                                                                            :status status}])
-                                          (when (= status "complete")
+                                          (when (#{"complete" "error"} status)
                                             (swap! pending-text #(str "\n\n" %)))
                                           nil))))
 
@@ -634,8 +634,8 @@
                         (swap! tool-id->name assoc id tool-name)
                         (send-task-update! id tool-name "in_progress"))
 
-        on-tool-end (fn [{:keys [id]}]
-                      (send-task-update! id (get @tool-id->name id) "complete")
+        on-tool-end (fn [{:keys [id result]}]
+                      (send-task-update! id (get @tool-id->name id) (if (:error result) "error" "complete"))
                       (swap! tool-id->name dissoc id))
 
         prefetched-viz (atom {})
