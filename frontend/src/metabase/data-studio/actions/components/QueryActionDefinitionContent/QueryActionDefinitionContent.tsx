@@ -6,27 +6,27 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { Button } from "metabase/ui";
 import type { Database, WritebackQueryAction } from "metabase-types/api";
 
-import { ActionEditor } from "../ActionEditor";
-import { ActionEditorPane } from "../ActionEditorPane";
+import { QueryActionEditor } from "../QueryActionEditor";
+import { QueryActionEditorPane } from "../QueryActionEditorPane";
 
-type ActionDefinitionContentProps = {
+type QueryActionDefinitionContentProps = {
   action: WritebackQueryAction;
   databases: Database[];
   canEdit?: boolean;
   editUrl?: string;
 };
 
-export function ActionDefinitionContent({
+export function QueryActionDefinitionContent({
   action,
   databases,
   canEdit = false,
   editUrl,
-}: ActionDefinitionContentProps) {
+}: QueryActionDefinitionContentProps) {
   const [uiState, setUiState] = useState(getInitialUiState);
 
   return (
-    <ActionEditorPane>
-      <ActionEditor
+    <QueryActionEditorPane>
+      <QueryActionEditor
         datasetQuery={action.dataset_query}
         uiState={uiState}
         databases={databases}
@@ -47,6 +47,6 @@ export function ActionDefinitionContent({
         onChangeDatasetQuery={() => undefined}
         onChangeUiState={setUiState}
       />
-    </ActionEditorPane>
+    </QueryActionEditorPane>
   );
 }

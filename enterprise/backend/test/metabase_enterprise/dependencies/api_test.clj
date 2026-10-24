@@ -975,6 +975,26 @@
               (is (= #{["action" readable-id "Create venue" [(:name readable-collection) nil]]}
                      (dependents :rasta))))))))))
 
+(deftest implicit-action-table-change-moves-its-dependency-test
+  (testing "changing the table of an implicit action without a model moves its dependency to the new table"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Action {action-id :id} {:type :implicit, :name "Create venue"}
+                     :model/ImplicitAction _ {:action_id action-id, :kind "row/create", :table_id (mt/id :venues)}]
+        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+          (let [dependents (fn [table-key]
+                             (->> (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                        :id (mt/id table-key)
+                                                        :type "table"
+                                                        :dependent-types "action")
+                                  (map :id)
+                                  set))]
+            (deps.test/synchronously-run-dependency-job!)
+            (is (contains? (dependents :venues) action-id))
+            (t2/update! :model/ImplicitAction {:action_id action-id} {:table_id (mt/id :categories)})
+            (deps.test/synchronously-run-dependency-job!)
+            (is (contains? (dependents :categories) action-id))
+            (is (not (contains? (dependents :venues) action-id)))))))))
+
 (deftest graph-measure-root-test
   (testing "GET /api/ee/dependencies/graph with measure as root node"
     (mt/with-test-user :crowberto

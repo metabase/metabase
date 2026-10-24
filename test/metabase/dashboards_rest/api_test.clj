@@ -4670,6 +4670,28 @@
                 (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
                               (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
 
+(deftest dashcard-implicit-action-needs-read-access-to-the-action-test
+  (testing "running or prefilling an implicit action from a dashcard needs read access to the action, not only to the dashboard"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {dashboard-coll :id} {}
+                       :model/Collection {model-coll :id}     {}]
+          (perms/grant-collection-read-permissions! (perms-group/all-users) dashboard-coll)
+          (let [mp (mt/metadata-provider)]
+            (mt/with-actions [{model-id :id}      {:type          :model
+                                                   :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                                                   :collection_id model-coll}
+                              {:keys [action-id]} {:type :implicit :kind "row/update"}]
+              (mt/with-temp [:model/Dashboard     {dashboard-id :id} {:collection_id dashboard-coll}
+                             :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
+                                                                      :action_id    action-id
+                                                                      :card_id      model-id}]
+                (let [path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)]
+                  (mt/user-http-request :rasta :post 403 (str path "/values") {:parameters {"id" 1}})
+                  (mt/user-http-request :rasta :post 403 path {:parameters {"id" 1 "name" "Renamed"}})
+                  (is (= {:id 1 :name "African"}
+                         (mt/user-http-request :crowberto :post 200 (str path "/values") {:parameters {"id" 1}}))))))))))))
+
 (deftest dashcard-implicit-action-only-expose-unhidden-fields
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-tables #{"venues" "categories"}

@@ -2,11 +2,13 @@ import type { ReactNode } from "react";
 
 import { Box } from "metabase/ui";
 
-type ActionEditorPaneProps = {
+type QueryActionEditorPaneProps = {
   children: ReactNode;
 };
 
-export function ActionEditorPane({ children }: ActionEditorPaneProps) {
+export function QueryActionEditorPane({
+  children,
+}: QueryActionEditorPaneProps) {
   return (
     <Box
       w="100%"
