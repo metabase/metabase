@@ -37,7 +37,6 @@
    [better-cond.core :as b]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.channel.db :as channel.db]
    [metabase.channel.render.body :as body]
@@ -59,6 +58,7 @@
    [metabase.system.core :as system]
    [metabase.util.i18n :refer [tru trun]]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memo]
    [toucan2.core :as t2])
   (:import
@@ -862,27 +862,16 @@
                            (append-style header-divider-css))))
           items)))
 
-(defn- restyle-form
-  "Restyle one walked Hiccup form: the `<table>` gets [[table-css]] (fill the frame, drop its own
-  border/radius/margin); with `add-dividers?` header rows also get per-cell dividers. Everything else passes
-  through."
-  [add-dividers? form]
-  (cond
-    (and (element? form :table) (map? (second form)))
-    (append-style form table-css)
-
-    (and add-dividers? (element? form :tr) (header-row? form))
-    (add-header-dividers form)
-
-    :else form))
-
 (defn- restyle-table
   "Restyle the inner `<table>` to fill the card frame: `width:100%`, dropping its own border/radius/margin (the
   native frame and per-cell dividers remain). In the fixed-width clip box this fills the cell when the content
   is narrower (columns stretch, like the dashboard) and overflows-then-clips when it's wider. `add-dividers?`
   adds header dividers to match the body (native `:table` only -- pivots and object-detail border their cells)."
   [content add-dividers?]
-  (walk/postwalk #(restyle-form add-dividers? %) content))
+  (match/replace-all content
+    [:table #'map? & _] (append-style &match table-css)
+    (:and [:tr & _] #'header-row?) (cond-> &match
+                                     add-dividers? add-header-dividers)))
 
 (def ^:private footer-text-css
   "Font size and color shared by the card footers -- the native table's row-count footer and object-detail's

@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.prometheus :as prometheus]
@@ -12,7 +11,8 @@
    [metabase.channel.slack :as slack]
    [metabase.config.core :as config]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.match :as match]))
 
 (deftest update-slack-settings-test
   (testing "PUT /api/slack/settings"
@@ -150,11 +150,8 @@
 (defn- anonymous-blocks
   "`blocks` with the reporter link replaced by the anonymous placeholder."
   [blocks]
-  (walk/postwalk (fn [m]
-                   (if (and (map? m) (= (:type m) "link") (str/starts-with? (:url m) "mailto:"))
-                     {:type "text" :text "anonymous user"}
-                     m))
-                 blocks))
+  (match/replace-all blocks
+    {:type "link", :url (url :guard (str/starts-with? url "mailto:"))} {:type "text" :text "anonymous user"}))
 
 (defn- post-bug-report!
   "POST `body` as `user` with Slack stubbed out. Returns the response plus the message and decoded file the endpoint

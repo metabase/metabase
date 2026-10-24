@@ -3,7 +3,6 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.serialization.v2.extract :as v2.extract]
    [metabase-enterprise.serialization.v2.ingest :as v2.ingest]
@@ -13,6 +12,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.compress :as u.compress]
+   [metabase.util.match :as match]
    [metabase.util.random :as u.random]
    [metabase.util.yaml :as u.yaml]
    [toucan2.core :as t2])
@@ -87,10 +87,11 @@
       m)))
 
 (defn- extract-and-sanitize-exception-map [log]
-  (->> (re-find #"ERROR .* (\{.*\})(\n|$)" log)
-       second
-       read-string
-       (walk/postwalk #(-> % (sanitize-key :id) (sanitize-key :entity_id)))))
+  (-> (re-find #"ERROR .* (\{.*\})(\n|$)" log)
+      second
+      read-string
+      (match/replace-all
+        #'map? (reduce sanitize-key &match [:id :entity_id]))))
 
 (defmacro with-serialization-test-data!
   "Sets up standard test context: search index, snowplow, premium features, and test entities."

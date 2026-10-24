@@ -37,7 +37,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [empty? mapv get-in not-empty]]
+   [metabase.util.performance :refer [empty? mapv get-in not-empty]]
    [next.jdbc :as next.jdbc])
   (:import
    (com.microsoft.sqlserver.jdbc ISQLServerConnection)
@@ -558,14 +558,8 @@
   "Parsed xml may contain whitespace elements as `\"\n\n\t\t\"` in its contents. Leave only maps in content for
   purposes of [[zone-id->windows-zone]]."
   [parsed]
-  (perf/postwalk
-   (fn [x]
-     (if (and (map? x)
-              (contains? x :content)
-              (seq (:content x)))
-       (update x :content (partial filter map?))
-       x))
-   parsed))
+  (match/replace-all parsed
+    {:content #'seq} (update &match :content (partial filter map?))))
 
 (defonce
   ^{:private true

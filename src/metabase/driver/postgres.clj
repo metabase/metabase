@@ -34,8 +34,9 @@
    [metabase.util.i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [mapv not-empty select-keys some]]
+   [metabase.util.performance :refer [mapv not-empty select-keys some]]
    [next.jdbc :as next.jdbc]
    [taoensso.nippy :as nippy])
   (:import
@@ -849,10 +850,8 @@
         identifier
 
         :else
-        (perf/postwalk #(if (h2x/identifier? %)
-                          (sql.qp/json-query :postgres % stored-field)
-                          %)
-                       identifier))
+        (match/replace-all identifier
+          #'h2x/identifier? (sql.qp/json-query :postgres &match stored-field)))
 
       :else
       identifier)))

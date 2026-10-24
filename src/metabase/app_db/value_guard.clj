@@ -27,6 +27,7 @@
   positions bind is a decision it makes per operator, so it cannot be inferred from the query."
   (:require
    [clojure.walk :as walk]
+   [metabase.util.match :as match]
    [methodical.core :as methodical]
    [toucan2.honeysql2 :as t2.honeysql]
    [toucan2.pipeline :as t2.pipeline])
@@ -89,9 +90,8 @@
 (defn- contains-marker?
   "Whether any marker survives in `form`."
   [form]
-  (let [found (volatile! false)]
-    (walk/postwalk (fn [x] (when (marker-form? x) (vreset! found true)) x) form)
-    @found))
+  (match/match-one form
+    #'marker-form? true))
 
 (defn- param-key
   "A random key for a lifted value. Random rather than sequential so that a `[:param :k]` arriving
@@ -176,9 +176,8 @@
   identifiers, but a subquery sitting there has its own `:where` that holds values -- and its own
   `:select`, which holds identifiers again."
   [query]
-  (let [found (volatile! [])]
-    (walk/postwalk (fn [x] (when (map? x) (vswap! found conj x)) x) query)
-    @found))
+  (match/match-all query
+    #'map? &match))
 
 (defn- misplaced-marker
   "The offending entry of `clause`, if `v` puts a marker in an identifier position, else nil."

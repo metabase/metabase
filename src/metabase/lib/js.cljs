@@ -93,6 +93,7 @@
    [metabase.lib.util.unique-name-generator :as lib.util.unique-name-generator]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
    [metabase.util.performance :as perf]
    [metabase.util.time :as u.time]))
@@ -1082,29 +1083,19 @@
 ;; When rendering expressions, the FE calls [[expression-parts]], which returns a kind of AST for the expression.
 ;; This form is deliberately different from the MBQL representation.
 
-(defn- expression-parts-like?
-  "Test if [[x]] has the shape expression-parts, possible with missing :lib/type."
-  [x]
-  (and (map? x)
-       (:operator x)
-       (:args x)
-       (or
-        (and
-         (not (:lib/type x))
-         (not (:type x)))
-        (= (:lib/type x) :mbql/expression-parts)
-        (= (:type x) :mbql/expression-parts))))
-
 (defn- expression-parts-js->cljs
   "When coming from js the expression parts will have no :lib/type, so we need to add
    it back in recursively for each node down the path."
   [x]
   (as-> x parts
     (js->clj parts :keywordize-keys true)
-    (perf/postwalk
-     #(cond-> %
-        (expression-parts-like? %) (assoc :lib/type :mbql/expression-parts))
-     parts)))
+    (match/replace-all parts
+      (:and {:operator &truthy, :args &truthy}
+            (m :guard (or (and (not (:lib/type m))
+                               (not (:type m)))
+                          (= (:lib/type m) :mbql/expression-parts)
+                          (= (:type m) :mbql/expression-parts))))
+      (assoc m :lib/type :mbql/expression-parts))))
 
 (defn ^:export expression-clause
   "Returns a standalone expression clause for the given `operator`, `options`, and list of arguments."
@@ -1137,16 +1128,13 @@
   > **Code health:** Healthy"
   [a-query stage-number an-expression-clause]
   (let [parts (lib.core/expression-parts a-query stage-number an-expression-clause)]
-    (perf/postwalk
-     (fn [node]
-       (if (and (map? node) (= :mbql/expression-parts (:lib/type node)))
-         (let [{:keys [operator options args]} node]
-           #js {:operator (name operator)
-                :options (fix-namespaced-values
-                          (clj->js (select-keys options [:case-sensitive :include-current :base-type :mode]) :keyword-fn u/qualified-name))
-                :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))})
-         node))
-     parts)))
+    (match/replace-all parts
+      {:lib/type :mbql/expression-parts}
+      (let [{:keys [operator options args]} &match]
+        #js {:operator (name operator)
+             :options (fix-namespaced-values
+                       (clj->js (select-keys options [:case-sensitive :include-current :base-type :mode]) :keyword-fn u/qualified-name))
+             :args (to-array (map #(if (keyword? %) (u/qualified-name %) %) args))}))))
 
 (defn ^:export string-filter-clause
   "Creates a string filter clause based on FE-friendly filter parts. It should be possible to destructure each created

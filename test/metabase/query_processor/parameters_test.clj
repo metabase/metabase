@@ -5,7 +5,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -20,7 +19,8 @@
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]))
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.match :as match]))
 
 (defn- run-count-query [query]
   (or (ffirst
@@ -717,12 +717,8 @@
                         "Should never get here, query should throw an Exception")
                     (catch Throwable e
                       (doseq [data (keep ex-data (u/full-exception-chain e))]
-                        (walk/postwalk
-                         (fn [form]
-                           (when (string? form)
-                             (is (not (re-find #"SELECT" form))))
-                           form)
-                         data)))))
+                        (is (empty? (match/match-all data
+                                      (s :guard (and (string? s) (str/includes? s "SELECT"))) s)))))))
                 (testing (str "Permissions for Card 2's Collection are not enough to run a native query referencing"
                               " Card 2 while it references Card 1, which we still cannot read")
                   (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)

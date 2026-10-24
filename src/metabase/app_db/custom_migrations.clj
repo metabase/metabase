@@ -17,7 +17,6 @@
    [clojure.pprint :as pprint]
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.scheduler :as qs]
    [clojurewerkz.quartzite.triggers :as triggers]
@@ -823,20 +822,16 @@
                             ;; the settings tree
                             existing-fixed)
         fixed-dashcard  (update (fix-top-level dashcard) "column_settings" fix-cols)
-        final-settings  (->> (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
-                             ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
-                             ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
-                             ;; doesn't have link text
-                             (walk/postwalk (fn [form]
-                                              (if (map? form)
-                                                (into {} (for [[k v] form
-                                                               :when (if (seqable? v)
-                                                                       ;; remove keys with empty maps. must be postwalk
-                                                                       (seq v)
-                                                                       ;; remove nils
-                                                                       (some? v))]
-                                                           [k v]))
-                                                form))))]
+        final-settings  (match/replace-all (m/deep-merge fixed-card fixed-dashcard (existing-fixed dashcard))
+                          ;; remove nils and empty maps _AFTER_ deep merging so that the shapes are
+                          ;; uniform. otherwise risk not fully clobbering an underlying form if the one going on top
+                          ;; doesn't have link text
+                          #'map? (m/filter-vals #(if (seqable? %)
+                                                   ;; remove keys with empty maps. must be bottom-up (replace-all)
+                                                   (seq %)
+                                                   ;; remove nils
+                                                   (some? %))
+                                                &match))]
     (when (not= final-settings dashcard)
       {:id                     id
        :visualization_settings final-settings})))

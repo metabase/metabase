@@ -61,8 +61,11 @@
      :value pattern}
 
     (set? pattern)
-    {:type :set
-     :value pattern}
+    (if (= (count pattern) 1)
+      {:type :equality
+       :value (first pattern)}
+      {:type :set
+       :value pattern})
 
     :else
     (throw (ex-info "Invalid pattern" {:pattern pattern}))))
@@ -342,7 +345,7 @@
   [value & clauses]
   (match-one* value clauses))
 
-(defn- match-many* [value clauses]
+(defn- match-many* [value clauses all?]
   (when (odd? (count clauses))
     (throw (ex-info "match-many requires even number of clauses" {})))
   (let [pairs (partition 2 clauses)
@@ -359,20 +362,31 @@
         ;; Wrap explicit nil values.
         value (if (nil? value) `(identity nil) value)
         value-binding (when-not (or recursive? contains-&recur?) value)
+        acc (gensym "acc_")
         body (process-clauses pairs '&match value-binding)]
-    `(let [acc# (volatile! [])]
+    `(let [~acc (volatile! [])]
        ((fn ~'&recur [~'&match ~'&parents]
-          (if-some [result# ~(expand-or-some
-                              (cond-> [body]
-                                (some? default) (conj default)))]
-            ;; Important: a clause may return `nil` to stop further recursive search, yet we don't want that nil to
-            ;; wind up in results.
-            (do (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! acc# conj))
-                nil)
-            (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents)))
+          ;; When all? is true, always recur down regardless if the current level matched. Otherwise, stop at the
+          ;; first matched level.
+          ~(if all?
+             `(do (when-some [result# ~(expand-or-some
+                                        (cond-> [body]
+                                          (some? default) (conj default)))]
+                    ;; See note below. For [[match-all]] it makes less sense because we always continue the recursion
+                    ;; anyway, but we still don't want to collect nils.
+                    (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! ~acc conj)))
+                  (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents))
+             `(if-some [result# ~(expand-or-some
+                                  (cond-> [body]
+                                    (some? default) (conj default)))]
+                ;; Important: a clause may return `nil` to stop further recursive search, yet we don't want that
+                ;; nil to wind up in results.
+                (do (some->> (metabase.util.match.impl/unwrap-nil result#) (vswap! ~acc conj))
+                    nil)
+                (metabase.util.match.impl/match-one-in-collection ~'&recur ~'&match ~'&parents))))
         ~value
         ~(when contains-&parents? []))
-       (perf/not-empty @acc#))))
+       (perf/not-empty @~acc))))
 
 (defmacro match-many
   "Pattern matching macro, returns multiple things that match one of the `clauses` inside `value. See `match-one` for
@@ -393,7 +407,7 @@
     Note that returning `nil` still prevents other clauses from being checked, and causes recursion to stop."
   {:style/indent :defn}
   [value & clauses]
-  (match-many* value clauses))
+  (match-many* value clauses false))
 
 (defn- matches?* [value clause]
   (let [;; Wrap explicit nil values.
@@ -409,6 +423,11 @@
   {:style/indent :defn}
   [value clause]
   (matches?* value clause))
+
+(defmacro match-all
+  {:style/indent :defn}
+  [value & clauses]
+  (match-many* value clauses true))
 
 ;; TODO - it would be ultra handy to have a `match-all` function that could handle clauses with recursive matches,
 ;; e.g. with a query like

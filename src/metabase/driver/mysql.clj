@@ -34,8 +34,9 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.util.memoize :as memoize]
-   [metabase.util.performance :as perf :refer [get-in mapv not-empty some]]
+   [metabase.util.performance :refer [get-in mapv not-empty some]]
    [metabase.warehouses.schema :as warehouses.schema]
    [next.jdbc :as next.jdbc])
   (:import
@@ -542,10 +543,8 @@
       honeysql-expr
 
       :else
-      (perf/postwalk #(if (h2x/identifier? %)
-                        (sql.qp/json-query :mysql % stored-field)
-                        %)
-                     honeysql-expr))))
+      (match/replace-all honeysql-expr
+        #'h2x/identifier? (sql.qp/json-query :mysql &match stored-field)))))
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an

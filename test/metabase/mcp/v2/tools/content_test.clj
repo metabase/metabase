@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
@@ -16,6 +15,7 @@
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util.json :as json]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -1145,7 +1145,7 @@
    field ref under a freshly minted clause uuid each time, so the uuids differ between two reads
    that agree on everything that identifies the column."
   [pair]
-  (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid)) pair))
+  (match/replace-all pair #'map? (dissoc &match :lib/uuid)))
 
 (deftest get-content-dimensions-match-the-rest-endpoint-test
   (testing "GHY-4140: the `dimensions` include documents itself as returning the same

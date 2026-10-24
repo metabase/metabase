@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [metabase.collections.models.collection :as collection]
    [metabase.config.core :as config]
@@ -25,6 +24,7 @@
    [metabase.query-processor.core :as qp.core]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
@@ -119,7 +119,7 @@
   response's `:dataset_query`, mirroring how a real FE request body decodes (arrays →
   vectors)."
   [x]
-  (walk/postwalk (fn [v] (if (seq? v) (vec v) v)) x))
+  (match/replace-all x #'seq? (vec &match)))
 
 (defn- duid
   "Deterministic valid-uuid dimension id for a short test label, e.g. `(duid \"d1\")`.

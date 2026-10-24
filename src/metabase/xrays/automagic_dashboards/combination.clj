@@ -18,7 +18,6 @@
   (:require
    [clojure.math.combinatorics :as math.combo]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
@@ -30,6 +29,7 @@
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
+   [metabase.util.match :as match]
    [metabase.xrays.automagic-dashboards.dashboard-templates :as dashboard-templates]
    [metabase.xrays.automagic-dashboards.interesting :as interesting]
    [metabase.xrays.automagic-dashboards.schema :as ads]
@@ -131,16 +131,13 @@
 
 (defn- instantiate-metadata
   [x context available-metrics bindings]
-  (-> (walk/postwalk
-       (fn [form]
-         (if (i18n/localized-string? form)
-           (let [s     (str form)
-                 new-s (fill-templates :string context bindings s)]
-             (if (not= new-s s)
-               (capitalize-first new-s)
-               s))
-           form))
-       x)
+  (-> (match/replace-all x
+        #'i18n/localized-string?
+        (let [s     (str &match)
+              new-s (fill-templates :string context bindings s)]
+          (if (not= new-s s)
+            (capitalize-first new-s)
+            s)))
       (m/update-existing :visualization #(instantiate-visualization % bindings available-metrics))))
 
 (defn- combine-dimensions

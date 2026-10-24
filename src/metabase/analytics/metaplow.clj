@@ -12,7 +12,6 @@
    [clj-http.client :as http]
    [clj-http.conn-mgr :as conn-mgr]
    [clojure.core.async :as a]
-   [clojure.walk :as walk]
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.settings :as analytics.settings]
    [metabase.analytics.snowplow :as snowplow]
@@ -22,6 +21,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.util.retry :as retry]
    [metabase.version.core :as version]))
 
@@ -54,7 +54,8 @@
 (defn- snake-case-payload
   "Convert any keyword in a payload (keys or values, at any depth) to a snake_case string."
   [m]
-  (walk/postwalk #(if (keyword? %) (normalize-kw %) %) m))
+  (match/replace-all m
+    #'keyword? (normalize-kw &match)))
 
 (defn- event-name+data
   "Returns `[event-name event-data]` for a given Snowplow-style schema kw and payload. Schemas with an `:event`

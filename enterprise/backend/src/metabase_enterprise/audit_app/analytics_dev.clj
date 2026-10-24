@@ -11,7 +11,6 @@
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase-enterprise.audit-app.audit :as audit-ee]
    [metabase-enterprise.audit-app.db :as audit-app.db]
    [metabase-enterprise.audit-app.permissions :as audit-ee.permissions]
@@ -24,7 +23,8 @@
    [metabase.startup.core :as startup]
    [metabase.sync.core :as sync]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.match :as match])
   (:import
    (java.io File)
    (java.nio.file Files)
@@ -104,12 +104,8 @@
 
   Replaces canonical creator_id with actual user email."
   [yaml-data user-email]
-  (walk/postwalk
-   (fn [node]
-     (if (= node canonical-creator-id)
-       user-email
-       node))
-   yaml-data))
+  (match/replace-all yaml-data
+    #{canonical-creator-id} user-email))
 
 (defn- yaml->canonical
   "Transform YAML from dev format to canonical format.
@@ -117,14 +113,9 @@
   Replaces user email with canonical creator_id.
   For the Database entity, strips down to minimal required fields and sets is_audit to true."
   [file-name yaml-data user-email]
-  (let [transformed (walk/postwalk
-                     (fn [node]
-                       (if (map? node)
-                         (dissoc node :metabase_version :is_writable)
-                         (if (= node user-email)
-                           canonical-creator-id
-                           node)))
-                     yaml-data)
+  (let [transformed (match/replace-all yaml-data
+                      #'map? (dissoc &match :metabase_version :is_writable)
+                      #{user-email} canonical-creator-id)
         is-database? (or (= file-name (str canonical-db-filename ".yaml"))
                          (= file-name (str legacy-canonical-db-filename ".yaml")))]
     (if is-database?

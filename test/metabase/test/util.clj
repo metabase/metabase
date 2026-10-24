@@ -50,6 +50,7 @@
    [metabase.util.encryption :as encryption]
    [metabase.util.files :as u.files]
    [metabase.util.json :as json]
+   [metabase.util.match :as match]
    [metabase.util.random :as u.random]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -813,21 +814,11 @@
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
 
-(defn postwalk-pred
-  "Transform `form` by applying `f` to each node where `pred` returns true"
-  [pred f form]
-  (walk/postwalk (fn [node]
-                   (if (pred node)
-                     (f node)
-                     node))
-                 form))
-
 (defn round-all-decimals
-  "Uses [[postwalk-pred]] to crawl `data`, looking for any double values, will round any it finds"
+  "Uses [[metabase.util.match/replace-all]] to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
-  (postwalk-pred (some-fn double? decimal?)
-                 #(u/round-to-decimals decimal-place %)
-                 data))
+  (match/replace-all data
+    (x :guard (or (double? x) (decimal? x))) (u/round-to-decimals decimal-place x)))
 
 ;;; TODO -- we should generalize this to `let-testing` (`testing-let`?) that is a version of `let` that adds `testing`
 ;;; context

@@ -2,7 +2,6 @@
   "Tests for `/api/alert` endpoints."
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.notification.models :as models.notification]
    [metabase.notification.test-util :as notification.tu]
@@ -11,6 +10,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.cron :as u.cron]
+   [metabase.util.match :as match]
    [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :notifications))
@@ -43,18 +43,14 @@
 
 (defn- sanitize-alert
   [data]
-  (as-> data result
-    (walk/postwalk
-     (fn [x]
-       (if (map? x)
-         (-> x
-             (dissoc :id :created_at :updated_at :entity_id :pulse_id)
-             (update-vals (fn [v] (if (keyword? v)
-                                    (u/qualified-name v)
-                                    v))))
-         x))
-     result)
-    (update result :channels #(sort-by :channel_type %))))
+  (-> data
+      (match/replace-all
+        #'map? (-> &match
+                   (dissoc :id :created_at :updated_at :entity_id :pulse_id)
+                   (update-vals (fn [v] (if (keyword? v)
+                                          (u/qualified-name v)
+                                          v)))))
+      (update :channels #(sort-by :channel_type %))))
 
 (deftest wrapper-get-alert-test
   (mt/with-temp [:model/Channel {chn-id :id} notification.tu/default-can-connect-channel]

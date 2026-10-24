@@ -6,7 +6,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]))
+   [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]))
 
 (def ^:private ExploreFilterScalar
   [:maybe [:or :string number? :boolean]])
@@ -106,7 +107,7 @@
                      :status-code 400}))))
 
 (defn update-ast
-  "Update a node that matches a predicate using a post-walk.
+  "Update a node that matches a predicate using [[metabase.util.match/replace-all]].
 
   Args:
   - document - a :model/Document, this will check that content type is valid for prose mirror
@@ -118,11 +119,8 @@
   [{:keys [document] :as doc} predicate updater]
   (assert-prose-mirror doc)
   (assoc doc :document
-         (walk/postwalk (fn ast-walker
-                          [node]
-                          (cond-> node
-                            (predicate node) updater))
-                        document)))
+         (match/replace-all document
+           (_ :guard predicate) (updater &match))))
 
 (defn collect-ast
   "Collect values from the ast lazily removes nils
