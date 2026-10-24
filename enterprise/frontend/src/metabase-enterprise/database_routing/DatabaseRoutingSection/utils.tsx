@@ -13,22 +13,12 @@ import type { Database } from "metabase-types/api";
 
 export const getDisabledFeatureMessage = (database: Database) => {
   return match({
-    hasActionsEnabled: hasActionsEnabled(database),
     isPersisted: hasFeature(database, "persist-models-enabled"),
     supportsRouting: !!database.features?.includes("database-routing"),
   })
     .with(
       { supportsRouting: false },
       () => t`Database routing is not supported for this database type.`,
-    )
-    .with(
-      { hasActionsEnabled: true, isPersisted: true },
-      () =>
-        t`Database routing can't be enabled if data actions and model persistence are enabled.`,
-    )
-    .with(
-      { hasActionsEnabled: true },
-      () => t`Database routing can't be enabled if data actions are enabled.`,
     )
     .with(
       { isPersisted: true },
@@ -43,11 +33,17 @@ export const getExternalModeDisabledMessage = (
   { hasTransforms = false }: { hasTransforms?: boolean } = {},
 ) => {
   return match({
+    hasActionsEnabled: hasActionsEnabled(database),
     hasTableEditingEnabled: hasTableEditingEnabled(database),
     isUploadDb: database.uploads_enabled,
     hasWritableConnection: hasWritableConnectionDetails(database),
     hasTransforms,
   })
+    .with(
+      { hasActionsEnabled: true },
+      () =>
+        t`Destination databases on different servers aren't supported when data actions are enabled.`,
+    )
     .with(
       { isUploadDb: true },
       () =>

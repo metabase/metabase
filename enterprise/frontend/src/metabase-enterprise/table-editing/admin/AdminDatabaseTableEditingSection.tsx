@@ -126,7 +126,7 @@ export function AdminDatabaseTableEditingSection({
           icon={<Icon name="info" />}
           mb="lg"
         >
-          {t`Table editing can't be enabled when database routing is enabled.`}
+          {t`Table editing can't be enabled when database routing sends queries to different servers.`}
         </Alert>
       )}
     </DatabaseInfoSection>

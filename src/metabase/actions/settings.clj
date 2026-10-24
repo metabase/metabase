@@ -19,7 +19,7 @@
 (def ^:private db-routing-reason
   {:key     :setting/database-routing
    :type    :error
-   :message (i18n/deferred-tru "Table editing is not supported with database routing.")})
+   :message (i18n/deferred-tru "Table editing is not supported with database routing to different servers.")})
 
 (def ^:private no-writable-tables-reason
   {:key     :permissions/no-writable-table

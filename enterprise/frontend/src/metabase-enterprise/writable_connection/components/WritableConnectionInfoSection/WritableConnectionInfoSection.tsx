@@ -75,7 +75,7 @@ export function WritableConnectionInfoSection({
             icon={<Icon name="info" />}
             mb="lg"
           >
-            {t`Writable connection can't be enabled when Database Routing is enabled.`}
+            {t`Writable connection can't be enabled when database routing sends queries to different servers.`}
           </Alert>
         </>
       )}

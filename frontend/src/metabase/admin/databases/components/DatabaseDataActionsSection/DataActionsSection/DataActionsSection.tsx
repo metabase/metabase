@@ -57,7 +57,7 @@ export function DataActionsSection({
             icon={<Icon name="info" />}
             mb="lg"
           >
-            {t`Data actions can't be enabled when database routing is enabled.`}
+            {t`Data actions can't be enabled when database routing sends queries to different servers.`}
           </Alert>
         </Box>
       )}
