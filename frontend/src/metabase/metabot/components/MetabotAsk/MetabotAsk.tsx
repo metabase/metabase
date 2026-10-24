@@ -61,18 +61,24 @@ export const MetabotAsk = () => {
   ) : undefined;
 
   return (
-    <Flex direction="column" h="100%" w="100%" bg="background_page-primary">
+    <Flex
+      direction="column"
+      h="100%"
+      w="100%"
+      bg="background_page-primary"
+      pos="relative"
+    >
       {showGreeting ? (
         <>
-          {historyAction && (
-            <Flex justify="flex-end" px="lg" pt="lg">
-              {historyAction}
-            </Flex>
-          )}
           <MetabotGreeting
             conversationId={conversationId}
             suggestionModels={SUGGESTION_MODELS}
           />
+          {historyAction && (
+            <Box pos="absolute" top={0} right={0} pt="lg" pr="lg">
+              {historyAction}
+            </Box>
+          )}
         </>
       ) : (
         <Box pos="relative" h="100%" w="100%">
