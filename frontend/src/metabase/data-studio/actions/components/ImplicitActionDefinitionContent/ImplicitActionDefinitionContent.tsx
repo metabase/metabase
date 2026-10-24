@@ -1,13 +1,22 @@
+import { useDisclosure } from "@mantine/hooks";
 import { t } from "ttag";
 
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import type { OmniPickerTableItem } from "metabase/common/components/Pickers";
 import {
   TablePath,
   TablePathItem,
 } from "metabase/common/data-studio/components/TablePath";
 import { TitleSection } from "metabase/common/data-studio/components/TitleSection";
-import { Group, Loader, SegmentedControl, Stack, Text } from "metabase/ui";
+import {
+  Button,
+  Group,
+  Loader,
+  SegmentedControl,
+  Stack,
+  Text,
+} from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type { ImplicitActionKind, Table, TableId } from "metabase-types/api";
 
@@ -16,11 +25,13 @@ import {
   getImplicitActionKindOptions,
   hasSinglePrimaryKey,
 } from "../../utils";
+import { ImplicitActionTablePickerModal } from "../ImplicitActionTablePickerModal";
 
 type ImplicitActionDefinitionContentProps = {
   tableId: TableId | null;
   kind: ImplicitActionKind;
   readOnly?: boolean;
+  onChangeTable: (tableId: TableId) => void;
   onChangeKind: (kind: ImplicitActionKind) => void;
 };
 
@@ -28,8 +39,11 @@ export function ImplicitActionDefinitionContent({
   tableId,
   kind,
   readOnly = false,
+  onChangeTable,
   onChangeKind,
 }: ImplicitActionDefinitionContentProps) {
+  const [isPickerOpened, { open: openPicker, close: closePicker }] =
+    useDisclosure();
   const {
     currentData: table,
     isFetching,
@@ -48,6 +62,11 @@ export function ImplicitActionDefinitionContent({
     }
   };
 
+  const handleTableChange = (table: OmniPickerTableItem) => {
+    closePicker();
+    onChangeTable(table.id);
+  };
+
   return (
     <Stack gap="2.5rem" data-testid="implicit-action-definition">
       <TitleSection
@@ -60,6 +79,7 @@ export function ImplicitActionDefinitionContent({
             isLoading={table == null && isFetching}
             error={error}
           />
+          {!readOnly && <Button onClick={openPicker}>{t`Change table`}</Button>}
         </Group>
         {table != null && !hasSinglePrimaryKey(table) && (
           <Text c="feedback-negative" px="xl" pb="xl">
@@ -83,6 +103,13 @@ export function ImplicitActionDefinitionContent({
           </Text>
         </Stack>
       </TitleSection>
+      {isPickerOpened && (
+        <ImplicitActionTablePickerModal
+          tableId={tableId ?? undefined}
+          onChange={handleTableChange}
+          onClose={closePicker}
+        />
+      )}
     </Stack>
   );
 }

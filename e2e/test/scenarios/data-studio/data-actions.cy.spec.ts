@@ -33,7 +33,7 @@ describe(
       H.DataStudio.Actions.visitList();
       cy.findByRole("button", { name: /New/ }).click();
       H.popover()
-        .findByRole("menuitem", { name: /Action/ })
+        .findByRole("menuitem", { name: /SQL query/ })
         .click();
       H.NativeEditor.type(ACTION_QUERY);
       cy.findByRole("button", { name: "Save" }).click();

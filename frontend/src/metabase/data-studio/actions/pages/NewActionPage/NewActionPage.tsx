@@ -170,18 +170,20 @@ type NewImplicitActionPageProps = {
 };
 
 function NewImplicitActionPage({ initialTableId }: NewImplicitActionPageProps) {
+  const [tableId, setTableId] = useState(initialTableId);
   const [kind, setKind] = useState(DEFAULT_KIND);
   const [name, setName] = useState("");
-  const { currentData: table } = useGetTableQueryMetadataQuery({
-    id: initialTableId,
-  });
+  const { currentData: table } = useGetTableQueryMetadataQuery({ id: tableId });
   const [isModalOpened, { open: openModal, close: closeModal }] =
     useDisclosure();
   const navigate = useNavigate();
   const isSavedRef = useRef(false);
   const defaultName =
     table != null ? getImplicitActionName(kind, table.display_name) : "";
-  const isDirty = name.trim().length > 0 || kind !== DEFAULT_KIND;
+  const isDirty =
+    name.trim().length > 0 ||
+    kind !== DEFAULT_KIND ||
+    tableId !== initialTableId;
 
   const handleCreate = (action: WritebackAction) => {
     isSavedRef.current = true;
@@ -223,14 +225,15 @@ function NewImplicitActionPage({ initialTableId }: NewImplicitActionPageProps) {
           }
         />
         <ImplicitActionDefinitionContent
-          tableId={initialTableId}
+          tableId={tableId}
           kind={kind}
+          onChangeTable={setTableId}
           onChangeKind={setKind}
         />
       </PageContainer>
       {isModalOpened && (
         <CreateActionModal
-          definition={{ type: "implicit", kind, table_id: initialTableId }}
+          definition={{ type: "implicit", kind, table_id: tableId }}
           defaultName={name.trim() || defaultName}
           defaultCollectionId={null}
           onCreate={handleCreate}
