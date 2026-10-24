@@ -25,7 +25,8 @@
 (def ^:private Entity
   "Any dependency-tracked entity `calculate-deps` accepts. A `:dashboard` entity arrives hydrated with `:dashcards`,
   each of those in turn hydrated with `:series`; a query `:action` arrives with the `:dataset_query` of its
-  QueryAction; every other entity is a plain row of its model."
+  QueryAction and an implicit one without a model with the `:table_id` of its ImplicitAction; every other entity is a
+  plain row of its model."
   [:or
    ::queries.schema/card
    :metabase.warehouse-schema.schema/table
@@ -204,7 +205,9 @@
             table_id (conj table_id))})
 
 (defmethod calculate-deps* :action
-  [_ {action-type :type, model-id :model_id, query :dataset_query}]
+  [_ {action-type :type, model-id :model_id, table-id :table_id, query :dataset_query}]
   (case action-type
-    :implicit {:card #{model-id}}
+    :implicit (if model-id
+                {:card #{model-id}}
+                {:table (if table-id #{table-id} #{})})
     :query    (upstream-deps:query (lib-be/normalize-query query))))

@@ -112,13 +112,66 @@
                                        (t2/update! :model/Action action-id {:collection_id collection-id})))
                  (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))))))
 
-(deftest action-in-apps-collection-has-no-implicit-row-test
-  (testing "an action in an app's collection is a query action, so it gets no implicit action row"
+(defn- insert-implicit-action!
+  "Insert an implicit action of no model named `action-name` that inserts into the Table with `table-id`, in the
+  collection with `collection-id`, as a load does."
+  [collection-id action-name table-id]
+  (let [action-id (t2/insert-returning-pk! :model/Action {:name          action-name
+                                                          :type          :implicit
+                                                          :collection_id collection-id
+                                                          :creator_id    (mt/user->id :crowberto)})]
+    (t2/insert! :model/ImplicitAction {:action_id action-id :kind "row/create" :table_id table-id})
+    action-id))
+
+(deftest implicit-action-in-apps-collection-writes-to-published-table-test
+  (testing "an implicit action of no model in an app's collection writes only to a table published to the Library"
     (do-with-app-collection
      (fn [collection-id]
-       (let [action-id (insert-query-action! collection-id "Query" (lib/native-query (mt/metadata-provider) "SELECT 1"))]
-         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can't have an implicit action"
-                               (t2/insert! :model/ImplicitAction {:action_id action-id :kind "row/create"}))))))))
+       (testing "an unpublished table is refused"
+         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"published to the Library"
+                               (t2/with-transaction [_conn]
+                                 (insert-implicit-action! collection-id "Unpublished" (mt/id :venues)))))
+         (is (not (t2/exists? :model/Action :collection_id collection-id :name "Unpublished"))))
+       (data-apps.tu/with-published-tables! [(mt/id :venues)]
+         (testing "a published table goes in"
+           (let [action-id (insert-implicit-action! collection-id "Published" (mt/id :venues))]
+             (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id)))
+             (testing "and the action can't move to an unpublished table"
+               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"published to the Library"
+                                     (t2/update! :model/ImplicitAction {:action_id action-id} {:table_id (mt/id :categories)})))
+               (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id)))))))))))
+
+(deftest create-implicit-action-in-apps-collection-api-test
+  (testing "POST /api/action creates an implicit action of no model in an app's collection on a published table"
+    (mt/with-actions-enabled
+      (do-with-app-collection
+       (fn [collection-id]
+         (data-apps.tu/with-published-tables! [(mt/id :venues)]
+           (let [{action-id :id} (mt/user-http-request :crowberto :post 200 "action"
+                                                       {:name          "Add venue"
+                                                        :type          "implicit"
+                                                        :kind          "row/create"
+                                                        :table_id      (mt/id :venues)
+                                                        :collection_id collection-id})]
+             (is (=? {:type          :implicit
+                      :model_id      nil
+                      :collection_id collection-id}
+                     (t2/select-one :model/Action :id action-id)))
+             (is (= (mt/id :venues) (t2/select-one-fn :table_id :model/ImplicitAction :action_id action-id))))))))))
+
+(deftest moving-implicit-action-into-apps-collection-is-checked-test
+  (testing "an implicit action moved into an app's collection, as a pull may move one, needs a published table too"
+    (do-with-app-collection
+     (fn [collection-id]
+       (mt/with-model-cleanup [:model/Action]
+         (mt/with-temp [:model/Collection {other-id :id} {:namespace :data-actions}]
+           (let [action-id (insert-implicit-action! other-id "Elsewhere" (mt/id :venues))]
+             (is (thrown-with-msg? clojure.lang.ExceptionInfo #"published to the Library"
+                                   (t2/update! :model/Action action-id {:collection_id collection-id})))
+             (is (= other-id (t2/select-one-fn :collection_id :model/Action :id action-id)))
+             (data-apps.tu/with-published-tables! [(mt/id :venues)]
+               (t2/update! :model/Action action-id {:collection_id collection-id})
+               (is (= collection-id (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))))
 
 (deftest two-data-apps-cannot-share-collection-test
   (testing "the database refuses a second app on a collection another app already owns"

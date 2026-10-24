@@ -118,7 +118,7 @@
     (:model/DashboardCard :model/DashboardTab)    [:dashboard (:dashboard_id row)]
     :model/DashboardCardSeries                    [:dashboard (some-> (:dashboardcard_id row)
                                                                       dependencies.db/dashcard-dashboard-id)]
-    :model/QueryAction                            [:action (:action_id row)]
+    (:model/QueryAction :model/ImplicitAction)    [:action (:action_id row)]
     (:model/Field :model/TableUserSettings)       [:table (:table_id row)]
     :model/FieldUserSettings                      [:table (some-> (:field_id row) dependencies.db/field-table-id)]
     nil))
@@ -129,6 +129,7 @@
    :model/DashboardCardSeries #{:card_id :dashboardcard_id}
    :model/DashboardTab        #{}
    :model/QueryAction         #{:dataset_query}
+   :model/ImplicitAction      #{:table_id}
    :model/Field               field-columns
    :model/TableUserSettings   #{:display_name :visibility_type :data_layer :field_order}
    :model/FieldUserSettings   (conj field-columns :custom_position :nfc_path :json_unfolding)})

@@ -169,7 +169,7 @@
      (into [:map {:closed true}] common)
      [:multi {:decode/normalize lib.schema.common/normalize-map-no-kebab-case
               :dispatch         (comp #{:implicit :query} keyword :type)}
-      [:implicit (into [:map {:closed true} [:model_id required-for-insert ::lib.schema.id/card]] implicit-action-entries)]
+      [:implicit (into [:map {:closed true}] implicit-action-entries)]
       [:query    (into [:map {:closed true}] query-action-entries)]
       ;; a partial update need not repeat `:type`; accept every type's keys rather than dropping them
       [nil       (into [:map {:closed true}] cat [implicit-action-entries query-action-entries])]]]))
