@@ -1,6 +1,6 @@
 ## A group can open a data app when it can read the app's resource collection, so the collection grants alone record
-## who has access. They always mirrored the group assignments, which are dropped with nothing to move. A rollback
-## brings the table back empty.
+## who has access. No instance runs data apps in production yet, so the group assignments are dropped without moving
+## them into grants, and a rollback brings the table back empty.
 
 databaseChangeLog:
   - changeSet:
