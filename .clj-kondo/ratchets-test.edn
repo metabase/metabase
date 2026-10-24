@@ -46,6 +46,6 @@
                                 :lib.equality/find-column-indexes-for-refs         2
                                 :search.entity-retrieval.core/search-unfiltered    1
                                 :search.entity-retrieval.mirror/search-unfiltered  1
-                                :test/with-temp                                    29}
+                                :test/with-temp                                    30}
  :comment-exempt               #{:deprecated-namespace
                                  :discouraged-var}}

@@ -1709,7 +1709,8 @@
   temporal-bucket
   with-temporal-bucket]
  [lib.underlying
-  aggregation-sourced?]
+  aggregation-sourced?
+  breakout-sourced?]
  [lib.util
   clause?
   clause-of-type?
