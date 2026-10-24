@@ -1,7 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
-import { screen } from "__support__/ui";
+import { act, screen, waitFor } from "__support__/ui";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
+import { checkNotNull } from "metabase/utils/types";
 
 import {
   assertConversation,
@@ -18,6 +19,67 @@ import {
   setup,
   whoIsYourFavoriteResponse,
 } from "./utils";
+
+// At 10 ms per paced word, this reasoning takes at least 15 s to replay.
+const LONG_REASONING_WORD_COUNT = 1500;
+// Keep it at most a third of the replay time above, and below the 30 s jest timeout.
+const ANSWER_ARRIVAL_TIMEOUT_MS = 5000;
+// At 10 ms per paced word, this reasoning takes about 2 s to replay.
+const OPEN_REASONING_WORD_COUNT = 200;
+// Well under the replay time above, so paced words are still missing then.
+const OPEN_REASONING_PROBE_MS = 300;
+// Well above the replay time above, so the paced stream ends inside the test.
+const OPEN_ANSWER_ARRIVAL_TIMEOUT_MS = 8000;
+
+const ANSWER_TEXT = "Here you go.";
+
+// `setup` forces reduced motion, which skips the pacer. These tests need the
+// pacer, so they allow motion.
+const allowMotion = () => {
+  const reducedMotion = window.matchMedia;
+  window.matchMedia = (query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  });
+  return () => {
+    window.matchMedia = reducedMotion;
+  };
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const openChainAndReasoningStep = async () => {
+  const header = await screen.findByTestId("metabot-chain-of-thought-header");
+  await userEvent.click(header);
+  const stepToggle = await waitFor(() =>
+    checkNotNull(
+      screen
+        .getAllByRole("button", { name: /Thinking/ })
+        .find((button) => button !== header),
+    ),
+  );
+  await userEvent.click(stepToggle);
+  expect(stepToggle).toHaveAttribute("aria-expanded", "true");
+};
+
+// Streamed markdown splits words into separate elements, so match the chat text.
+const expectAnswerWithin = (timeout: number) =>
+  waitFor(
+    () => {
+      expect(screen.getByTestId("metabot-chat")).toHaveTextContent(ANSWER_TEXT);
+    },
+    { timeout },
+  );
+
+const renderedWordCount = () =>
+  screen.getByTestId("metabot-chain-of-thought").textContent?.match(/\bword\b/g)
+    ?.length ?? 0;
 
 describe("metabot > message", () => {
   it("should properly send chat messages", async () => {
@@ -109,6 +171,69 @@ describe("metabot > message", () => {
       ["user", "Who is your favorite?"],
       ["agent", "You, but don't tell anyone."],
     ]);
+  });
+
+  describe("reasoning pacing", () => {
+    let restoreMotion = () => {};
+
+    afterEach(() => {
+      restoreMotion();
+    });
+
+    // https://github.com/metabase/metabase/issues/84969
+    it("shows the answer soon after a stream with long collapsed reasoning", async () => {
+      setup();
+      restoreMotion = allowMotion();
+      mockAgentEndpoint({
+        events: [
+          { type: "reasoning-start", id: "r1" },
+          {
+            type: "reasoning-delta",
+            id: "r1",
+            delta: "word ".repeat(LONG_REASONING_WORD_COUNT),
+          },
+          { type: "reasoning-end", id: "r1" },
+          { type: "text-delta", id: "t1", delta: ANSWER_TEXT },
+          { type: "finish", finishReason: "stop" },
+        ],
+      });
+
+      await enterChatMessage("Question");
+
+      await expectAnswerWithin(ANSWER_ARRIVAL_TIMEOUT_MS);
+    });
+
+    it("paces reasoning while the user has it open", async () => {
+      setup();
+      restoreMotion = allowMotion();
+      const [pause] = createPauses(1);
+      mockAgentEndpoint({
+        stream: createMockSSEStream(
+          (async function* () {
+            yield { type: "reasoning-start", id: "r1" };
+            yield { type: "reasoning-delta", id: "r1", delta: "start " };
+            await pause.promise;
+            yield {
+              type: "reasoning-delta",
+              id: "r1",
+              delta: "word ".repeat(OPEN_REASONING_WORD_COUNT),
+            };
+            yield { type: "reasoning-end", id: "r1" };
+            yield { type: "text-delta", id: "t1", delta: ANSWER_TEXT };
+            yield { type: "finish", finishReason: "stop" };
+          })(),
+        ),
+      });
+
+      await enterChatMessage("Question");
+      await openChainAndReasoningStep();
+      pause.resolve();
+
+      await act(() => sleep(OPEN_REASONING_PROBE_MS));
+      expect(renderedWordCount()).toBeLessThan(OPEN_REASONING_WORD_COUNT);
+
+      await expectAnswerWithin(OPEN_ANSWER_ARRIVAL_TIMEOUT_MS);
+    });
   });
 });
 
