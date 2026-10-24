@@ -12,7 +12,8 @@
    [metabase.metabot.tools.shared :as shared]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [metabase.util.malli.registry :as mr]))
 
 (defn- decode-question-url
   "Decode a `/question#<base64>` URL into its JSON-decoded pseudo-card map."
@@ -43,10 +44,11 @@
              (links/->legacy-mbql rehydrated))))))
 
 (defn- strip-lib-keys
-  "Recursively remove all namespaced `:lib/*` keys from a query, mimicking how a
-  pMBQL query that round-trips through the frontend's viewing context comes back:
-  structurally pMBQL (`:stages`, pMBQL-order field clauses, `:effective-type`s)
-  but stripped of its internal `:lib/type`, `:lib/uuid`, and `:lib/metadata`."
+  "Recursively remove all namespaced `:lib/*` keys from a query: the shape of a query
+  a client sends without lib's internal keys, or of one in conversation state persisted
+  before the viewing context kept them (BOT-2410). Structurally MBQL 5 (`:stages`,
+  MBQL 5 field clauses, `:effective-type`s) but without `:lib/type`, `:lib/uuid`, and
+  `:lib/metadata`."
   [x]
   (cond
     (map? x)        (into {} (keep (fn [[k v]]
@@ -55,6 +57,13 @@
                           x)
     (sequential? x) (mapv strip-lib-keys x)
     :else           x))
+
+(defn- stripped-aggregated-query
+  "A venues query with `aggregations`, ordered by the first of them, stripped of its `:lib/*` keys.
+  The order-by's `[:aggregation {} <uuid>]` ref names a uuid no aggregation carries any more."
+  [& aggregations]
+  (let [q (reduce lib/aggregate (lib.tu/venues-query) aggregations)]
+    (strip-lib-keys (lib/order-by q (lib/aggregation-ref q 0) :desc))))
 
 (deftest ^:parallel ->legacy-mbql-lib-type-less-pmbql-test
   (testing "converts pMBQL stripped of :lib/* keys (frontend viewing-context round-trip) to legacy MBQL"
@@ -74,17 +83,19 @@
         (is (map? (:query legacy)))
         (is (some? (:database legacy)))))))
 
-(deftest ^:parallel ->legacy-mbql-stripped-query-with-aggregation-ref-falls-back-test
-  (testing "falls back to the raw query instead of throwing when the stripped query's positional aggregation ref can't be resolved after normalize"
-    ;; Regression: `strip-lib-keys` drops the aggregation's `:lib/uuid`, but an
-    ;; `[:aggregation {} <uuid>]` ref elsewhere in the query (e.g. an order-by on the
-    ;; query's own aggregation) still points at the old uuid. `normalize` mints a fresh
-    ;; uuid, the ref lookup misses, and conversion throws — this used to take down the
-    ;; whole agent turn instead of just producing a broken link.
-    (let [q        (-> (lib.tu/venues-query) (lib/aggregate (lib/count)))
-          q2       (lib/order-by q (lib/aggregation-ref q 0) :desc)
-          stripped (strip-lib-keys q2)]
+(deftest ^:parallel ->legacy-mbql-stripped-query-with-aggregation-ref-test
+  (testing "points the stripped query's aggregation ref at the stage's only aggregation, then converts (BOT-2410)"
+    ;; `normalize` mints a fresh `:lib/uuid` for the aggregation, so the ref in the order-by names a uuid that no
+    ;; aggregation carries. With one aggregation the ref can only mean that one.
+    (let [stripped (stripped-aggregated-query (lib/count))
+          legacy   (links/->legacy-mbql stripped)]
       (is (not (contains? stripped :lib/type)))
+      (is (= :query (:type legacy)))
+      (is (= [[:desc [:aggregation 0]]] (-> legacy :query :order-by)))))
+  (testing "falls back to the raw query instead of throwing when the ref could mean any of several aggregations"
+    ;; Conversion throws on the dangling ref. This used to take down the whole agent turn instead of just
+    ;; producing a broken link.
+    (let [stripped (stripped-aggregated-query (lib/count) (lib/sum (meta/field-metadata :venues :price)))]
       (is (= stripped (links/->legacy-mbql stripped))))))
 
 (deftest ^:parallel pseudo-card->link-keeps-mbql5-temporal-filters-test
@@ -115,12 +126,18 @@
               (is (= (strip (lib/filters query))
                      (strip (-> dataset-query lib/normalize :stages first :filters)))))))))))
 
-(deftest ^:parallel ->frontend-query-stripped-query-with-aggregation-ref-goes-out-raw-test
-  (testing "a query without :lib/* keys goes out as the raw MBQL 5 query when normalization invalidates its aggregation ref"
-    ;; Normalization assigns a new UUID to the aggregation, so the aggregation ref no longer resolves,
-    ;; and ->legacy-mbql cannot convert the query either.
-    (let [q        (-> (lib.tu/venues-query) (lib/aggregate (lib/count)))
-          stripped (strip-lib-keys (lib/order-by q (lib/aggregation-ref q 0) :desc))]
+(deftest ^:parallel ->frontend-query-stripped-query-with-aggregation-ref-test
+  (testing "a query without :lib/* keys goes out as valid MBQL 5 with its aggregation ref pointed at the stage's only aggregation (BOT-2410)"
+    (let [sent  (links/->frontend-query (stripped-aggregated-query (lib/count)))
+          stage (-> sent :stages first)]
+      (is (= :mbql/query (:lib/type sent)))
+      (is (mr/validate :metabase.lib.schema/query sent))
+      (is (= (-> stage :aggregation first second :lib/uuid)
+             (-> stage :order-by first (nth 2) (nth 2))))))
+  (testing "goes out as the raw MBQL 5 query when the ref could mean any of several aggregations"
+    ;; Normalization gives each aggregation a new uuid, the ref resolves to none of them, and ->legacy-mbql cannot
+    ;; convert the query either.
+    (let [stripped (stripped-aggregated-query (lib/count) (lib/sum (meta/field-metadata :venues :price)))]
       (is (= stripped (links/->frontend-query stripped))))))
 
 (deftest ^:parallel ->frontend-query-sends-native-queries-as-legacy-test
