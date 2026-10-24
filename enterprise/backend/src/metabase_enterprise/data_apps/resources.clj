@@ -46,7 +46,7 @@
         collection)))
 
 (defn ensure-resources!
-  "Create or restore the resource collection of `app` and return its ID."
+  "Create, rename, or restore the resource collection of `app`, and return `{:resource_collection_id id}`."
   [app]
   (let [app        (data-apps.db/data-app (:id app))
         collection (resource-collection! app)]

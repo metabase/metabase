@@ -126,13 +126,10 @@
 (mu/defn readable-data-app-ids-select
   "A HoneySQL query of the ids of the DataApps that the User with `user-id` can read: every app for a superuser, else
   the enabled apps whose resource collection they can read."
-  [user-id    :- [:maybe ms/PositiveInt]
+  [user-id    :- ms/PositiveInt
    superuser? :- :boolean]
-  (cond
-    superuser?
+  (if superuser?
     ^:allow-subquery {:select [:id] :from [(t2/table-name :model/DataApp)]}
-
-    user-id
     ^:allow-subquery {:select [:id]
                       :from   [(t2/table-name :model/DataApp)]
                       :where  [:and
@@ -140,10 +137,7 @@
                                [:in :resource_collection_id
                                 (collection/visible-collection-query
                                  {:permission-level :read :include-archived-items :all}
-                                 {:current-user-id user-id :is-superuser? false})]]}
-
-    :else
-    ^:allow-subquery {:select [:id] :from [(t2/table-name :model/DataApp)] :where [:= [:inline 0] [:inline 1]]}))
+                                 {:current-user-id user-id :is-superuser? false})]]}))
 
 (defn permissions-for-warnings
   "View-data permission rows for the warning tables and their databases."

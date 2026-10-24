@@ -17,7 +17,7 @@
     #{}))
 
 (defn assigned-groups
-  "The groups that can read the resource collection of `app`, with their member counts."
+  "The groups other than Administrators that can read the resource collection of `app`, with their member counts."
   [app]
   (let [using-tenants? (setting/get :use-tenants)]
     (mapv (fn [group]
@@ -108,9 +108,9 @@
   "Missing table access for the groups with access to `app`, including access inherited from All Users."
   [{collection-id :resource_collection_id :as app}]
   (let [assigned-ids (sort (access-group-ids app))
-        table-ids    (when (and (seq assigned-ids) collection-id)
+        table-ids    (when (seq assigned-ids)
                        (resource-table-ids collection-id))]
-    (if (and (seq assigned-ids) (seq table-ids))
+    (if (seq table-ids)
       (let [tables       (table-details table-ids)
             all-users-id (:id (perms/all-users-group))
             access       (group-table-access (conj (set assigned-ids) all-users-id) tables)]

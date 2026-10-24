@@ -35,7 +35,7 @@
 
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
 
-(deftest assigned-users-can-load-bundles-but-cannot-manage-apps-test
+(deftest users-with-access-can-load-bundles-but-cannot-manage-apps-test
   ;; global mode so the `:data-apps` premium feature is visible to the real-HTTP
   ;; `user-real-request` calls below (which run on Jetty threads that don't inherit
   ;; a thread-local `binding`).
@@ -44,7 +44,6 @@
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
         (let [app (t2/select-one :model/DataApp :name "demo")
-              _ (data-app.resources/ensure-resources! app)
               permission_group_id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Finches"}))]
           (testing "a user who cannot read the app's collection cannot open the app"
             (mt/user-http-request :rasta :get 403 "ee/apps/demo"))
@@ -66,7 +65,7 @@
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
         (let [app (t2/select-one :model/DataApp :name "demo")
-              {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)]
+              {:keys [resource_collection_id]} app]
           (is (not (some #(= resource_collection_id (:id %))
                          (mt/user-http-request :rasta :get 200 "collection")))))
         (testing "a superuser can list, read metadata, and serve the bundle"
@@ -116,7 +115,7 @@
   (mt/with-premium-features #{}
     (mt/user-http-request :crowberto :post 402 "ee/apps" {:name "demo"})))
 
-(deftest assigned-group-reaches-only-copied-actions-test
+(deftest group-with-access-reaches-only-copied-actions-test
   (testing "an action is reachable exactly when it lives in the data app collection"
     (mt/with-premium-features #{:data-apps}
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -138,7 +137,7 @@
                                :dataset_query (lib/native-query (mt/metadata-provider) "UPDATE venues SET name = 'x'")}
                     source-id (actions/insert! (assoc action :collection_id source-collection-id))
                     copied-id (actions/insert! (assoc action :collection_id resource_collection_id))]
-                (testing "the assigned group reads the action copied into the app collection"
+                (testing "the group with access reads the action copied into the app collection"
                   (is (=? {:id copied-id}
                           (mt/user-http-request :rasta :get 200 (str "action/" copied-id)))))
                 (testing "the same group cannot read the source action it was copied from"
@@ -169,7 +168,6 @@
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
           (doseq [slug ["old" "current"]
                   :let [app (t2/select-one :model/DataApp :name slug)]]
-            (data-app.resources/ensure-resources! app)
             (group-access/add-groups! app [group-id])))
         (with-redefs [data-app.config/supported-app-version 2]
           (testing "a regular user is never told about the outdated app in a list"
@@ -303,11 +301,10 @@
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id group-id}]
         (let [app (t2/select-one :model/DataApp :name "demo")]
-          (data-app.resources/ensure-resources! app)
           (group-access/add-groups! app [group-id]))
-        (testing "an assigned user can open the app"
+        (testing "a user with access can open the app"
           (mt/user-http-request :rasta :get 200 "ee/apps/demo"))
-        (testing "an assigned user cannot delete the app"
+        (testing "a user with access cannot delete the app"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 "ee/apps/demo")))
           (is (t2/exists? :model/DataApp :name "demo")))))))
@@ -316,13 +313,13 @@
   (mt/with-premium-features #{:data-apps}
     (mt/user-http-request :crowberto :delete 404 "ee/apps/missing")))
 
-(deftest delete-endpoint-preserves-assigned-groups-test
+(deftest delete-endpoint-preserves-groups-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (create-app!)
       (mt/with-temp [:model/PermissionsGroup group {}]
         (let [app (t2/select-one :model/DataApp :name "demo")
-              {collection-id :resource_collection_id} (data-app.resources/ensure-resources! app)]
+              {collection-id :resource_collection_id} app]
           (data-apps.tu/with-published-tables! [(mt/id :venues)]
             (mt/with-temp [:model/Card {card-id :id} {:collection_id collection-id :dataset_query (data-apps.tu/venues-query)}]
               (group-access/add-groups! app [(:id group)])
@@ -371,7 +368,7 @@
         (testing "PUT /:slug can disable an app"
           (is (=? {:name "demo" :enabled false}
                   (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled false}))))
-        (testing "a disabled app is not served to an assigned user"
+        (testing "a disabled app is not served to a user with access"
           (group-access/add-groups! (t2/select-one :model/DataApp :name "demo") [(:id (perms/all-users-group))])
           (mt/user-http-request :rasta :get 403 "ee/apps/demo")
           (mt/user-real-request :rasta :get 403 "ee/apps/demo/bundle"))
@@ -539,11 +536,11 @@
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo" :enabled false})]
         (group-access/add-groups! (t2/select-one :model/DataApp :id id) [(:id (perms/all-users-group))])
-        (testing "an assigned user doesn't see the disabled app"
+        (testing "a user with access doesn't see the disabled app"
           (is (not-any? #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))
         (testing "a superuser does"
           (is (some #(= "demo" (:name %)) (mt/user-http-request :crowberto :get 200 "ee/apps"))))
-        (testing "an assigned user sees it once it's enabled"
+        (testing "a user with access sees it once it's enabled"
           (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled true})
           (is (some #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))))))
 

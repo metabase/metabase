@@ -167,11 +167,6 @@
     (assoc app :outdated (data-app.config/outdated? app))
     (select-keys app [:id :name :display_name])))
 
-(defn- read-check-data-app
-  "Check whether the current user can access a data app, which requires read access to its resource collection."
-  [app]
-  (api/read-check app))
-
 (defn- check-not-outdated
   "Refuse an app built for an older contract than this Metabase serves with a 409 carrying
    `:error-code \"data-app-outdated\"`, so the client can show what to do. Applied where the
@@ -295,7 +290,7 @@
 
 (api.macros/defendpoint :get ["/:slug/group-permission-warnings" :slug slug-regex]
   :- [:sequential GroupPermissionWarning]
-  "Return missing table access for the groups that can open this app."
+  "Return missing table access for the groups listed for this app."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (api/check-superuser)
   (data-app.group-access/permission-warnings (api/check-404 (data-apps.db/data-app-by-slug slug))))
@@ -307,7 +302,7 @@
    [:member_count ms/IntGreaterThanOrEqualToZero]])
 
 (api.macros/defendpoint :get ["/:slug/groups" :slug slug-regex] :- [:sequential AssignedGroup]
-  "List the groups that can open a data app: those that can read its resource collection."
+  "List the groups other than Administrators that can read a data app's resource collection."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (api/check-superuser)
   (data-app.group-access/assigned-groups (api/check-404 (data-apps.db/data-app-by-slug slug))))
@@ -333,7 +328,7 @@
 (api.macros/defendpoint :get ["/:slug" :slug slug-regex] :- [:or DataAppResponse PublicDataAppResponse]
   "Fetch metadata for a single data app by its slug, disabled ones to superusers only."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
-  (let [app (read-check-data-app (data-apps.db/data-app-by-slug slug))]
+  (let [app (api/read-check (data-apps.db/data-app-by-slug slug))]
     (data-app-response (cond-> app (not api/*is-superuser?*) check-not-outdated))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
@@ -347,7 +342,7 @@
    respond
    raise]
   (try
-    (let [row  (check-not-outdated (read-check-data-app (data-apps.db/data-app-by-slug slug)))
+    (let [row  (check-not-outdated (api/read-check (data-apps.db/data-app-by-slug slug)))
           hash (:bundle_hash row)
           etag (some->> hash (format "\"%s\""))]
       (cond

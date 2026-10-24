@@ -71,19 +71,6 @@
                   (t2/select-one :model/Collection :id resource_collection_id)))
           (is (= resource_collection_id (t2/select-one-fn :resource_collection_id :model/DataApp :id (:id app)))))))))
 
-(deftest ensure-resources-preserves-collection-grants-test
-  (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [app (create-data-app! "birds")
-          {collection-id :resource_collection_id} (data-app.resources/ensure-resources! app)
-          group-id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Finches"}))
-          _ (group-access/add-groups! app [group-id])
-          read-path (perms/collection-read-path collection-id)
-          grant (t2/select-one :model/Permissions :group_id group-id :object read-path)]
-      (is (some? grant))
-      (data-app.resources/ensure-resources! app)
-      ; correct grants should not be changed after sync
-      (is (= grant (t2/select-one :model/Permissions :group_id group-id :object read-path))))))
-
 (deftest ensure-resources-leaves-collection-grants-alone-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
     (mt/with-temp [:model/PermissionsGroup {other-group-id :id} {}]

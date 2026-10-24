@@ -67,23 +67,23 @@
   (mt/with-premium-features #{:data-apps}
     (mt/with-temp [:model/DataApp {slug-match-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"
                                                        :bundle_path "sightings.js"}
-                   :model/DataApp {assigned-id :id} {:name "plovers" :display_name "Sandpiper counts"
-                                                     :bundle_path "counts.js"}
+                   :model/DataApp {granted-id :id} {:name "plovers" :display_name "Sandpiper counts"
+                                                    :bundle_path "counts.js"}
                    :model/PermissionsGroup {group-id :id} {}
                    :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
-      (grant-app-access! group-id assigned-id)
+      (grant-app-access! group-id granted-id)
       (with-each-engine
         (fn []
           (testing "an admin finds every app, by its slug or its display name"
-            (is (= #{slug-match-id assigned-id}
+            (is (= #{slug-match-id granted-id}
                    (set (keys (found-data-apps :crowberto :models "data-app"))))))
-          (testing "another user finds the apps assigned to one of their groups, with display name and slug"
-            (is (= {assigned-id {:name "Sandpiper counts" :data_app_slug "plovers"}}
+          (testing "another user finds the apps whose collection one of their groups can read, with display name and slug"
+            (is (= {granted-id {:name "Sandpiper counts" :data_app_slug "plovers"}}
                    (found-data-apps :rasta :models "data-app"))))
-          (testing "a user in no assigned group finds none"
+          (testing "a user in no group with access finds none"
             (is (= {} (found-data-apps :lucky :models "data-app"))))
           (testing "a search that names no models, as global search does, finds them too"
-            (is (= #{slug-match-id assigned-id}
+            (is (= #{slug-match-id granted-id}
                    (set (keys (found-data-apps :crowberto)))))))))))
 
 (deftest search-finds-disabled-and-outdated-data-apps-the-user-can-read-test
@@ -119,8 +119,8 @@
                                                       :bundle_path "counts.js"}
                      :model/DataApp {disabled-id :id} {:name "sandpiper-drafts" :display_name "Drafts"
                                                        :enabled false :bundle_path "drafts.js"}
-                     :model/DataApp {unassigned-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"
-                                                         :bundle_path "sightings.js"}
+                     :model/DataApp {ungranted-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"
+                                                        :bundle_path "sightings.js"}
                      :model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
         (grant-app-access! group-id enabled-id)
@@ -128,10 +128,10 @@
         (with-each-engine
           (fn []
             (testing "an admin finds every app"
-              (is (= #{enabled-id disabled-id unassigned-id} (set (keys (found-data-apps :crowberto))))))
-            (testing "another user finds only the enabled apps assigned to one of their groups"
+              (is (= #{enabled-id disabled-id ungranted-id} (set (keys (found-data-apps :crowberto))))))
+            (testing "another user finds only the enabled apps whose collection one of their groups can read"
               (is (= #{enabled-id} (set (keys (found-data-apps :rasta))))))
-            (testing "a user in no assigned group finds none"
+            (testing "a user in no group with access finds none"
               (is (= {} (found-data-apps :lucky))))
             (testing "a tenant user finds none"
               (is (= {} (found-data-apps (:id tenant-user)))))))))))
@@ -151,9 +151,9 @@
         (fn []
           (testing "an admin is offered data apps"
             (is (offers-data-app-type? :crowberto)))
-          (testing "a user in no assigned group is not offered data apps"
+          (testing "a user in no group with access is not offered data apps"
             (is (not (offers-data-app-type? :lucky))))
-          (testing "a user whose groups are assigned only a disabled app is not offered data apps"
+          (testing "a user whose groups can read only a disabled app's collection is not offered data apps"
             (is (not (offers-data-app-type? :rasta)))))))))
 
 (deftest type-filter-offers-no-data-apps-without-the-feature-test
@@ -190,9 +190,9 @@
             (testing app-db
               (testing "an admin is offered data apps"
                 (is (semantic-engine-offers-data-app-type? :crowberto)))
-              (testing "a user in an assigned group is offered data apps"
+              (testing "a user in a group with access is offered data apps"
                 (is (semantic-engine-offers-data-app-type? :rasta)))
-              (testing "a user in no assigned group is not offered data apps"
+              (testing "a user in no group with access is not offered data apps"
                 (is (not (semantic-engine-offers-data-app-type? :lucky)))))))))))
 
 (deftest search-by-ids-finds-the-requested-data-app-test
