@@ -48,7 +48,7 @@
                      (setting/custom-disabled-reasons!
                       [(when (database/is-destination? db) db-routing-reason)
                        (when (and (actions.db/destination-database-exists-for-router? (:id db))
-                                  (database-routing/external-db-routing? db))
+                                  (not (database-routing/internal-db-routing? db)))
                          db-routing-reason)
                        (cond
                          ;; TODO we also care about re-sync after connection details are changed

@@ -83,15 +83,24 @@
   [db-id]
   (database-routing.db/delete-router! db-id))
 
+(defn- router-id
+  [db-or-id]
+  (let [db (if (map? db-or-id) db-or-id (database-routing.db/database db-or-id))]
+    (or (:router_database_id db) (:router-database-id db) (u/the-id db))))
+
+(defenterprise internal-db-routing?
+  "Returns whether the given database is a router or destination database whose router is in `internal` mode."
+  :feature :none
+  [db-or-id]
+  (= "internal" (database-routing.db/router-mode (router-id db-or-id))))
+
 (defenterprise external-db-routing?
   "Returns whether the given database is a router or destination database whose router is not in `internal` mode. Uses
   `:feature :none` so routing configured while the `:database-routing` feature is unavailable still counts."
   :feature :none
   [db-or-id]
-  (let [db        (if (map? db-or-id) db-or-id (database-routing.db/database db-or-id))
-        router-id (or (:router_database_id db) (:router-database-id db) (u/the-id db))]
-    (and (or (some? (:router_database_id db))
-             (some? (:router-database-id db))
+  (let [router-id (router-id db-or-id)]
+    (and (or (not= router-id (u/the-id db-or-id))
              (database-routing.db/router-exists? router-id)
              (database-routing.db/destination-database-exists? router-id))
          (not= "internal" (database-routing.db/router-mode router-id)))))
