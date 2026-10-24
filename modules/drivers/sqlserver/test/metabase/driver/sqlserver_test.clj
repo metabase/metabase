@@ -368,17 +368,18 @@
   (mt/test-driver :sqlserver
     (testing (str "SQL Server doesn't let you use ORDER BY in nested SELECTs unless you also specify a TOP (their "
                   "equivalent of LIMIT). Make sure we add a max-results LIMIT to the nested query")
-      (is (= {:query ["SELECT"
+      (is (= {:query ["WITH \"__mb_stage_0\" AS ("
+                      "  SELECT"
+                      "    TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                      "  FROM"
+                      "    \"dbo\".\"venues\""
+                      "  ORDER BY"
+                      "    \"dbo\".\"venues\".\"id\" ASC"
+                      ")"
+                      "SELECT"
                       "  TOP(1048575) \"__mb_source\".\"name\" AS \"name\""
                       "FROM"
-                      "  ("
-                      "    SELECT"
-                      "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
-                      "    FROM"
-                      "      \"dbo\".\"venues\""
-                      "    ORDER BY"
-                      "      \"dbo\".\"venues\".\"id\" ASC"
-                      "  ) AS \"__mb_source\""]
+                      "  \"__mb_stage_0\" AS \"__mb_source\""]
               :params nil}
              (-> (mt/mbql-query venues
                    {:source-query {:source-table $$venues
@@ -391,17 +392,18 @@
   (mt/test-driver :sqlserver
     (testing (str "make sure when adding TOP clauses to make ORDER BY work we don't stomp over any explicit TOP "
                   "clauses that may have been set in the query")
-      (is (= {:query  ["SELECT"
+      (is (= {:query  ["WITH \"__mb_stage_0\" AS ("
+                       "  SELECT"
+                       "    TOP(20) \"dbo\".\"venues\".\"name\" AS \"name\""
+                       "  FROM"
+                       "    \"dbo\".\"venues\""
+                       "  ORDER BY"
+                       "    \"dbo\".\"venues\".\"id\" ASC"
+                       ")"
+                       "SELECT"
                        "  TOP(10) \"__mb_source\".\"name\" AS \"name\""
                        "FROM"
-                       "  ("
-                       "    SELECT"
-                       "      TOP(20) \"dbo\".\"venues\".\"name\" AS \"name\""
-                       "    FROM"
-                       "      \"dbo\".\"venues\""
-                       "    ORDER BY"
-                       "      \"dbo\".\"venues\".\"id\" ASC"
-                       "  ) AS \"__mb_source\""]
+                       "  \"__mb_stage_0\" AS \"__mb_source\""]
               :params nil}
              (-> (qp.compile/compile
                   (mt/mbql-query venues
@@ -426,17 +428,18 @@
                              qp.preprocess/preprocess
                              (lib/limit nil))]
         (mt/with-metadata-provider (mt/id)
-          (is (= {:query  ["SELECT"
+          (is (= {:query  ["WITH \"__mb_stage_0\" AS ("
+                           "  SELECT"
+                           "    TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
+                           "  FROM"
+                           "    \"dbo\".\"venues\""
+                           "  ORDER BY"
+                           "    \"dbo\".\"venues\".\"id\" ASC"
+                           ")"
+                           "SELECT"
                            "  \"__mb_source\".\"name\" AS \"name\""
                            "FROM"
-                           "  ("
-                           "    SELECT"
-                           "      TOP(1048575) \"dbo\".\"venues\".\"name\" AS \"name\""
-                           "    FROM"
-                           "      \"dbo\".\"venues\""
-                           "    ORDER BY"
-                           "      \"dbo\".\"venues\".\"id\" ASC"
-                           "  ) AS \"__mb_source\""
+                           "  \"__mb_stage_0\" AS \"__mb_source\""
                            "ORDER BY"
                            "  \"__mb_source\".\"id\" ASC"]
                   :params nil}
@@ -458,6 +461,48 @@
                                  :order-by     [[:asc $id]]
                                  :limit        5}
                   :limit        3}))))))))
+
+(defn- find-col [cols col-name]
+  (or (some #(when (= (u/lower-case-en (:name %)) col-name) %) cols)
+      (throw (ex-info "Column not found" {:name col-name}))))
+
+(defn- venue-count-by-category-query
+  "Count of venues by category, then a filter on the count."
+  [mp min-count]
+  (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                  (lib/aggregate (lib/count))
+                  (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id)))
+                  lib/append-stage)]
+    (lib/filter query (lib/> (find-col (lib/filterable-columns query) "count") min-count))))
+
+(deftest ^:parallel stage-ctes-at-top-level-test
+  (mt/test-driver :sqlserver
+    (testing "SQL Server only accepts WITH at the top of a statement, so all stage CTEs are moved there"
+      (let [mp        (qp.test-util/metadata-provider-with-cards-for-queries
+                       [(venue-count-by-category-query (mt/metadata-provider) 0)
+                        (venue-count-by-category-query (mt/metadata-provider) 1)])
+            category  (lib.metadata/field mp (mt/id :categories :id))
+            join-card (fn [query card-id]
+                        (let [card (lib.metadata/card mp card-id)]
+                          (lib/join query (lib/join-clause
+                                           card
+                                           [(lib/= category
+                                                   (find-col (lib/join-condition-rhs-columns query card nil nil)
+                                                             "category_id"))]))))
+            query     (-> (lib/query mp (lib.metadata/table mp (mt/id :categories)))
+                          (join-card 1)
+                          (join-card 2)
+                          (lib/order-by category)
+                          (lib/limit 5))
+            sql       (:query (qp.compile/compile query))]
+        (testing "one WITH clause at the top, with a unique name for the CTEs of each join"
+          (is (str/starts-with? sql "WITH "))
+          (is (= 1 (count (re-seq #"\bWITH\b" sql))))
+          (is (= 2 (count (set (re-seq #"__mb_stage_0_\d+" sql))))))
+        (testing "the results are the same as with subselects"
+          (is (= (mt/rows (binding [driver/*compile-nested-query* true]
+                            (qp/process-query query)))
+                 (mt/rows (qp/process-query query)))))))))
 
 (deftest ^:parallel page-adds-order-by-when-none-present-test
   (testing "Regression for #81988."
@@ -1304,6 +1349,12 @@
              (driver/compile-insert
               :sqlserver
               {:query        {:query "SELECT * FROM products"}
+               :output-table "PRODUCTS_COPY"}))))
+    (testing "compile-insert puts a WITH clause before INSERT INTO"
+      (is (= ["WITH cte AS (\n  SELECT\n    *\n  FROM products\n)\nINSERT INTO [PRODUCTS_COPY]\nSELECT\n  *\nFROM cte" nil]
+             (driver/compile-insert
+              :sqlserver
+              {:query        {:query "WITH cte AS (SELECT * FROM products) SELECT * FROM cte"}
                :output-table "PRODUCTS_COPY"}))))))
 
 (deftest table-privileges-test

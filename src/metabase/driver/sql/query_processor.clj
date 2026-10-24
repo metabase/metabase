@@ -2256,7 +2256,10 @@
   * as the body of another CTE, since a native first stage compiles to `WITH __mb_stage_0 AS (<native SQL>) ...` and
     that native SQL may itself start with `WITH`
   * inside a subquery, e.g. a card referenced from a native query via `{{#123}}` or a metadata probe
-  * after `CREATE TABLE ... AS` and `INSERT INTO ...`, for transforms and persisted models"
+  * after `CREATE TABLE ... AS` and `INSERT INTO ...`, for transforms and persisted models
+
+  A driver whose database only accepts `WITH` at the start of a statement can also opt in if it returns `false` from
+  [[nested-ctes?]]."
   {:added "0.65.0", :arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -2264,6 +2267,25 @@
 (defmethod use-ctes-for-stages? :sql
   [_driver]
   false)
+
+(defmulti nested-ctes?
+  "Whether the database accepts a `WITH` clause inside a subquery, a `JOIN`, or the body of another CTE. Default is
+  `true`. A driver that only accepts a `WITH` clause at the start of a statement can return `false`. Then all CTEs
+  of a compiled query are moved to one `WITH` clause at the top, and a query compiled with
+  [[metabase.driver/*compile-nested-query*]] bound to `true` uses subselects for its stages."
+  {:added "0.65.0", :arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod nested-ctes? :sql
+  [_driver]
+  true)
+
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic ^:private *last-cte-level*
+  "An atom with the last CTE nesting level used in the query being compiled. Used to give each group of stage CTEs a
+  unique level when the CTEs are moved to the top of the query."
+  nil)
 
 (defn- desired-col-alias-ident [col]
   (h2x/identifier :field (:lib/desired-column-alias col)))
@@ -2350,16 +2372,52 @@
         ctes     (mapv #(stage-cte level % (cte-body %) (stages %)) (range last-idx))]
     (update (cte-body last-idx) :with #(into ctes %))))
 
+(defn- use-ctes? [driver]
+  (and (use-ctes-for-stages? driver)
+       (or (nested-ctes? driver)
+           (not driver/*compile-nested-query*))))
+
 (defn- stages->honeysql [driver stages level]
   (let [stages (mapv #(assoc % ::cte-level level) stages)]
-    (if (and (use-ctes-for-stages? driver)
+    (if (and (use-ctes? driver)
              (> (count stages) 1))
       (stages->honeysql-ctes driver stages level)
       (stages->honeysql-subselects driver stages))))
 
 (defmethod join-source :sql
   [driver {:keys [stages]}]
-  (stages->honeysql driver stages (inc (::cte-level *inner-query* 0))))
+  (stages->honeysql driver stages (if *last-cte-level*
+                                    (swap! *last-cte-level* inc)
+                                    (inc (::cte-level *inner-query* 0)))))
+
+(defn- hoist-ctes
+  "Moves the `WITH` clauses of all subqueries in `honeysql-form` to one `WITH` clause at the top. A CTE comes after
+  the CTEs that it uses."
+  [honeysql-form]
+  (let [ctes  (volatile! [])
+        hoist (fn hoist [form]
+                (let [hoisted (cond
+                                (map? form)
+                                (do
+                                  (doseq [[cte-name body] (:with form)]
+                                    (let [body (hoist body)]
+                                      (vswap! ctes conj [cte-name body])))
+                                  (update-vals (dissoc form :with) hoist))
+
+                                (vector? form)
+                                (mapv hoist form)
+
+                                (seq? form)
+                                (doall (map hoist form))
+
+                                :else
+                                form)]
+                  (cond-> hoisted
+                    (instance? clojure.lang.IObj hoisted) (with-meta (meta form)))))
+        form  (hoist honeysql-form)]
+    (if (and (map? form) (seq @ctes))
+      (assoc form :with @ctes)
+      honeysql-form)))
 
 (defn- all-stages
   "`stages` together with the stages of every join in them"
@@ -2392,11 +2450,15 @@
    query  :- ::qp.schema/any-query]
   (if (:lib/type query)
     (binding [driver/*driver* driver]
-      (let [stages (preprocess driver query)]
-        (log/trace "Compiling MBQL query")
-        (u/prog1 (stages->honeysql driver stages (top-level-cte-level stages))
-          (log/debug "Compiled HoneySQL form")
-          (driver-api/debug> (list '🍯 <>)))))
+      (let [stages (preprocess driver query)
+            level  (top-level-cte-level stages)
+            hoist? (not (nested-ctes? driver))]
+        (binding [*last-cte-level* (when hoist? (atom level))]
+          (log/trace "Compiling MBQL query")
+          (u/prog1 (cond-> (stages->honeysql driver stages level)
+                     hoist? hoist-ctes)
+            (log/debug "Compiled HoneySQL form")
+            (driver-api/debug> (list '🍯 <>))))))
     (let [metadata-provider (driver-api/metadata-provider)
           database-id       (if (:type query)
                               (:database query)

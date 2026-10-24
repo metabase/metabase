@@ -28,6 +28,13 @@ title: Driver interface changelog
   with CTEs instead of nested subselects. Drivers should only do this if they satisfy all of the criteria
   in the docstring of this method.
 
+- `sql.qp/nested-ctes?` is a new multimethod for drivers whose database only accepts a `WITH` clause at the start of
+  a statement. Default is `true`. If it returns `false`, all CTEs of a compiled query are moved to one `WITH` clause
+  at the top, and stages are compiled to subselects when `driver/*compile-nested-query*` is `true`.
+
+- `driver/*compile-nested-query*` is a new dynamic var. It is `true` while Metabase compiles a query that it will put
+  inside another query, e.g. a card that a native query references.
+
 - `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
   delete their `defmethod`, which no longer compiles.
 
