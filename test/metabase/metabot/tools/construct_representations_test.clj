@@ -48,6 +48,7 @@
    [metabase.util.json :as json]
    [metabase.util.log.capture :as log.capture]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [toucan2.core :as t2])
   (:import
    (java.sql SQLException)))
@@ -1647,11 +1648,8 @@
                    "stages"   [{"lib/type"     "mbql.stage/mbql"
                                 "source-table" ["Sample" "PUBLIC" "ORDERS"]
                                 "aggregation"  [["count" {}]]}]})
-              strip-run-specific
-              (fn [query]
-                (walk/postwalk (fn [node]
-                                 (cond-> node (map? node) (dissoc :lib/uuid :lib/metadata)))
-                               query))
+              strip-run-specific #(match/replace-all %
+                                    #'map? (dissoc &match :lib/uuid :lib/metadata))
               v1 (get-in (construct/execute-representations-query q) [:structured-output :query])
               v2 (with-v2-surface
                    (get-in (construct/execute-representations-query q) [:structured-output :query]))]
@@ -1768,14 +1766,8 @@
                                                   -12 "month"]]}]}))
               structured (:structured-output result)
               q          (:query structured)
-              metric-refs (let [acc (volatile! [])]
-                            (walk/postwalk (fn [x]
-                                             (when (and (vector? x)
-                                                        (= :metric (first x)))
-                                               (vswap! acc conj x))
-                                             x)
-                                           (:stages q))
-                            @acc)]
+              metric-refs (match/match-all (:stages q)
+                            [:metric & _] &match)]
           (testing "the tool returns structured output rather than an expression-editor rejection"
             (is (string? (:query-id structured)))
             (is (vector? (:result-columns structured))))

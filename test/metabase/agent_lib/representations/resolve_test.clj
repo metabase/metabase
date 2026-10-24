@@ -15,7 +15,6 @@
   covered by `metabase.agent-lib.representations-test`; this suite focuses on resolution."
   (:require
    [clojure.test :refer [deftest is testing]]
-   [clojure.walk :as walk]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
@@ -24,7 +23,8 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -568,13 +568,8 @@
     (segment-by-id        [_ _] nil)))
 
 (defn- collect-clauses [q tag]
-  (let [acc (volatile! [])]
-    (walk/postwalk (fn [x]
-                     (when (and (vector? x) (= tag (nth x 0 nil)) (map? (nth x 1 nil)))
-                       (vswap! acc conj x))
-                     x)
-                   (:stages q))
-    @acc))
+  (match/match-all (:stages q)
+    [#{tag} #'map? & _] &match))
 
 (defn- yoy-growth-parsed
   "Portable query computing `(agg - offset(agg, -12)) / offset(agg, -12)` by month, where

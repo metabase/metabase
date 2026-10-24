@@ -58,7 +58,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
@@ -597,7 +596,7 @@
   "`entity` as its file stores it: `:serdes/meta` reduced to `[{:model ...}]`, and removed from nested entities."
   [entity]
   (let [model (-> entity :serdes/meta last :model)]
-    (-> (walk/postwalk #(cond-> % (map? %) (dissoc :serdes/meta)) entity)
+    (-> (match/replace-all entity {:serdes/meta _} (dissoc &match :serdes/meta))
         (assoc :serdes/meta [{:model model}]))))
 
 (defmulti resource-paths

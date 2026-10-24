@@ -3,9 +3,9 @@
    [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.util :as u]
-   [metabase.util.markdown.image :as markdown.image])
+   [metabase.util.markdown.image :as markdown.image]
+   [metabase.util.match :as match])
   (:import
    (com.vladsch.flexmark.ast AutoLink BlockQuote BulletList BulletListItem Code Emphasis FencedCodeBlock HardLineBreak
                              Heading HtmlBlock HtmlCommentBlock HtmlEntity HtmlInline HtmlInlineBase HtmlInlineComment
@@ -232,12 +232,8 @@
   instances of the tag in the content to `:default` tags. This is used to suppress rendering of nested bold and italic
   tags, which Slack doesn't support."
   [content tag]
-  (walk/postwalk
-   (fn [node]
-     (if (and (map? node) (= (:tag node) tag))
-       (assoc node :tag :default)
-       node))
-   content))
+  (match/replace-all content
+    {:tag #{tag}} (assoc &match :tag :default)))
 
 (defmulti ast->slack
   "Takes an AST representing Markdown input, and converts it to a string that will render nicely in Slack.

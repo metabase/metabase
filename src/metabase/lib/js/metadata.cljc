@@ -15,6 +15,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.performance :as perf]))
 
 ;;; metabase-lib/metadata/Metadata comes in an object like
@@ -623,12 +624,8 @@
        ;; thing at once.
        clojure.core.protocols/Datafiable
        (datafy [_this]
-         (perf/postwalk
-          (fn [form]
-            (if (delay? form)
-              (deref form)
-              form))
-          metadata))))))
+         (match/replace-all metadata
+           #'delay? (deref &match)))))))
 
 (defn metadata-provider
   "Use a `metabase-lib/metadata/Metadata` as a [[metabase.lib.metadata.protocols/MetadataProvider]]."

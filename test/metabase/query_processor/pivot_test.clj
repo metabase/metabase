@@ -4,7 +4,6 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
@@ -37,7 +36,8 @@
    [metabase.test.data :as data]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr])
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -320,12 +320,8 @@
                              (assoc-in [:query :aggregation] [[:count] [:sum (mt/$ids $orders.quantity)]])
                              (assoc-in [:query :source-table] (mt/$ids $$orders))))
               expected (for [query expected]
-                         (lib/query metadata-provider query))
-              expected (walk/postwalk
-                        (fn [x]
-                          (cond-> x
-                            (and (map? x) (:lib/uuid x)) (assoc :lib/uuid string?)))
-                        expected)
+                         (match/replace-all (lib/query metadata-provider query)
+                           {:lib/uuid _} (assoc &match :lib/uuid string?)))
               actual   (#'qp.pivot/generate-queries query {:pivot-rows [1 0] :pivot-cols [2]})]
           (is (= 6 (count actual)))
           (doseq [i (range 6)]

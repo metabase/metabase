@@ -6,7 +6,6 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
@@ -33,6 +32,7 @@
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2])
   (:import
@@ -843,12 +843,8 @@
                                      :base-type :type/Integer,
                                      :database-position 2,
                                      :nfc-path ["r" "rr"]}]}]}]
-                (walk/postwalk
-                 (fn [n]
-                   (if (set? n)
-                     (sort-by :name n)
-                     n))
-                 (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names ["records"]})))))
+                (match/replace-all (into [] (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names ["records"]}))
+                  #'set? (sort-by :name &match))))
         (is (=? [{:name "id"}
                  {:name "r"
                   :database-type "RECORD",
@@ -857,13 +853,9 @@
                                    :database-type "INTEGER",
                                    :base-type :type/Integer,
                                    :nfc-path ["r"]}]}]
-                (walk/postwalk
-                 (fn [n]
-                   (if (set? n)
-                     (sort-by :name n)
-                     n))
-                 (into [] (filter (fn [x] (= (:table-name x) "records_o"))
-                                  (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names ["records" "records_o"]}))))))))))
+                (match/replace-all (into [] (filter (fn [x] (= (:table-name x) "records_o"))
+                                                    (driver/describe-fields :bigquery-cloud-sdk (mt/db) {:table-names ["records" "records_o"]})))
+                  #'set? (sort-by :name &match))))))))
 
 (deftest ^:parallel query-nested-fields-test
   (mt/test-driver :bigquery-cloud-sdk

@@ -1,18 +1,12 @@
 (ns metabase-enterprise.serialization.dump-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
-   [metabase-enterprise.serialization.dump :as dump]))
+   [metabase-enterprise.serialization.dump :as dump]
+   [metabase.util.match :as match]))
 
 (defn datastructure-node-types
   [coll]
-  (let [types (atom #{})]
-    (walk/postwalk
-     (fn [n]
-       (swap! types conj (type n))
-       n)
-     coll)
-    (deref types)))
+  (set (match/match-all coll x (type x))))
 
 (def example-card
   {:source_card_id         "skoPT2xiuEcUV8vFkHE6S",

@@ -31,7 +31,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [metabase.util.match :as match]
-   [metabase.util.performance :as perf]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -239,15 +238,8 @@
 (defn- referenced-card-ids
   "Return the union of all the `:query-permissions/referenced-card-ids` sets anywhere in the query."
   [query]
-  (let [all-ids (atom #{})]
-    (perf/postwalk
-     (fn [form]
-       (when (map? form)
-         (when-let [ids (not-empty (:query-permissions/referenced-card-ids form))]
-           (swap! all-ids set/union ids)))
-       form)
-     query)
-    (not-empty @all-ids)))
+  (not-empty (into #{} cat (match/match-all query
+                             {:query-permissions/referenced-card-ids ids} ids))))
 
 (defn- native-query-perms
   [query]

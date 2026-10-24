@@ -7,8 +7,8 @@
   (:require #?@(:cljs [[goog.string :as gstring]]
                 :default [])
             [clojure.test :as t]
-            [clojure.walk :as walk]
-            [metabase.models.visualization-settings :as mb.viz]))
+            [metabase.models.visualization-settings :as mb.viz]
+            [metabase.util.match :as match]))
 
 (def fmt #?(:clj format :cljs gstring/format))
 
@@ -146,9 +146,7 @@
       (t/is (= vs-db (mb.viz/norm->db vs-norm))))))
 
 (defn- all-keywords [m]
-  (let [all-kws (atom #{})]
-    (walk/postwalk (fn [v] (when (keyword? v) (swap! all-kws #(conj % v)))) m)
-    @all-kws))
+  (match/match-all m #'keyword? &match))
 
 (t/deftest ^:parallel comprehensive-click-actions-test
   (t/testing "Visualization settings for card in 'EE14566 - Click Behavior visualization_settings' should be handled"
