@@ -82,8 +82,8 @@ export interface Database extends DatabaseData {
   is_audit?: boolean;
   is_attached_dwh?: boolean;
   is_stub?: boolean;
-  router_database_id?: number | null;
   router_user_attribute?: string | null;
+  router_mode?: DatabaseRouterMode | null;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;
@@ -99,6 +99,7 @@ export interface DatabaseData {
   engine: string | undefined;
   /** Hosting provider detected from the connection details, e.g. "AWS RDS" */
   provider_name?: string | null;
+  router_database_id?: DatabaseId | null;
   // If current user lacks write permission to database, `details` will be
   // missing in responses from the backend, cf. implementation of
   // [[metabase.models.interface/to-json]] for `:model/Database`:
@@ -246,6 +247,7 @@ export interface ValidateDatabaseRequest {
     details: Record<string, unknown>;
     /** Validate against an existing database, resolving details it left redacted */
     id?: DatabaseId;
+    router_database_id?: DatabaseId;
   };
 }
 
@@ -279,7 +281,10 @@ export interface CreateDestinationDatabaseRequest {
   destination_database: { name: string; details?: Record<string, unknown> };
 }
 
+export type DatabaseRouterMode = "internal" | "external";
+
 export interface UpdateDatabaseRouterRequest {
   id: DatabaseId;
   user_attribute: string | null;
+  mode?: DatabaseRouterMode;
 }

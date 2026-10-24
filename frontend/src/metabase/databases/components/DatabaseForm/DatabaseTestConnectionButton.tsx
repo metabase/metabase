@@ -58,6 +58,10 @@ const getValidateRequest = (
       details: submitValues.details ?? {},
       // lets the backend resolve details we sent back redacted
       ...(values.id != null && { id: values.id }),
+      ...(values.id == null &&
+        values.router_database_id != null && {
+          router_database_id: values.router_database_id,
+        }),
     },
   };
 };

@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import {
   hasActionsEnabled,
-  hasDbRoutingEnabled,
+  hasExternalDbRoutingEnabled,
 } from "metabase/common/utils/database";
 import { hasFeature } from "metabase/databases";
 import type { Database, DatabaseData, DatabaseId } from "metabase-types/api";
@@ -48,7 +48,7 @@ export const DatabaseDataActionsSection = ({
       <DataActionsSection
         hasDataActionsEnabled={hasActionsEnabled(database)}
         onToggleDataActionsEnabled={handleToggle}
-        disabled={hasDbRoutingEnabled(database)}
+        disabled={hasExternalDbRoutingEnabled(database)}
       />
     </DatabaseInfoSection>
   );

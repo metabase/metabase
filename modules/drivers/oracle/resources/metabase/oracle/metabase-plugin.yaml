@@ -17,16 +17,25 @@ driver:
     - group:
         container-style: ["grid", "3fr 1fr"]
         fields:
-          - host
+          - merge:
+              - host
+              - visible-if:
+                  same-server-destination: false
           - merge:
               - port
               - placeholder: 1521
+              - visible-if:
+                  same-server-destination: false
     - name: sid
       display-name: Oracle system ID (SID)
       placeholder: Usually something like ORCL or XE. Optional if using service name
+      visible-if:
+        same-server-destination: false
     - name: service-name
       display-name: Oracle service name
       placeholder: Optional TNS alias
+      visible-if:
+        same-server-destination: false
     - merge:
         - user
         - required: false

@@ -926,6 +926,12 @@
   [driver]
   (fields-hidden-by-form-marker driver "admin-connection"))
 
+(defn fields-hidden-for-same-server-destination
+  "Returns the set of field names (strings) that a same-server destination database takes from its router for the
+  given `driver`: the fields whose resolved `visible-if` includes `\"same-server-destination\" false`."
+  [driver]
+  (fields-hidden-by-form-marker driver "same-server-destination"))
+
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.
 

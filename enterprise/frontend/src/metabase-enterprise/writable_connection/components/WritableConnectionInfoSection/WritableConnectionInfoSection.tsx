@@ -9,7 +9,7 @@ import { useUpdateDatabaseMutation } from "metabase/api";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
 import {
-  hasDbRoutingEnabled,
+  hasExternalDbRoutingEnabled,
   isDbModifiable,
 } from "metabase/common/utils/database";
 import type { WritableConnectionInfoSectionProps } from "metabase/plugins/oss/writable-connection";
@@ -22,7 +22,7 @@ export function WritableConnectionInfoSection({
   const hasWritableConnection = database.write_data_details !== null;
   const [updateDatabase] = useUpdateDatabaseMutation();
   const { modalContent, show: showConfirmation } = useConfirmation();
-  const isDbRoutingEnabled = hasDbRoutingEnabled(database);
+  const isDbRoutingEnabled = hasExternalDbRoutingEnabled(database);
 
   if (!isDbModifiable(database)) {
     return null;
@@ -75,7 +75,7 @@ export function WritableConnectionInfoSection({
             icon={<Icon name="info" />}
             mb="lg"
           >
-            {t`Writable connection can't be enabled when Database Routing is enabled.`}
+            {t`Writable connection can't be enabled when database routing sends queries to different servers.`}
           </Alert>
         </>
       )}

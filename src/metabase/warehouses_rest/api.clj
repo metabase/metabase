@@ -308,7 +308,7 @@
       include-schemas?             add-schemas
       can-query?                   (#(filter mi/can-query? %))
       true                         add-can-upload-to-dbs
-      true                         (t2/hydrate :router_user_attribute)
+      true                         (t2/hydrate :router_user_attribute :router_mode)
       include-editable-data-model? filter-databases-by-data-model-perms
       exclude-uneditable-details?  (#(filter (some-fn :is_attached_dwh mi/can-write?) %))
       include-saved-questions-db?  (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?)
@@ -443,7 +443,7 @@
   "Get a single Database with `id`."
   [db {:keys [include include-editable-data-model?]}]
   (cond-> db
-    true                         (t2/hydrate :router_user_attribute)
+    true                         (t2/hydrate :router_user_attribute :router_mode)
     true                         add-expanded-schedules
     true                         (get-database-hydrate-include include)
     true                         add-can-upload
@@ -875,17 +875,23 @@
 
   Pass the `id` of an existing Database to test edited details against it: sensitive values the client left redacted
   are resolved from the stored Database, and its own engine may be tested even when creating new Databases of that
-  engine is disallowed."
+  engine is disallowed. Pass the `router_database_id` of a new destination Database to test its details the way they
+  will be stored, with the server details of a same-server router."
   ;; TODO - why do we pass the DB in under the key `details`?
   [_route-params
    _query-params
-   {{:keys [engine details id]} :details} :- [:map {:closed true}
-                                              [:details [:map {:closed true}
-                                                         [:engine  DBEngineString]
-                                                         [:details ms/DatabaseDetails]
-                                                         [:id {:optional true} [:maybe ms/PositiveInt]]]]]]
+   {{:keys [engine details id router_database_id]} :details}
+   :- [:map {:closed true}
+       [:details [:map {:closed true}
+                  [:engine             DBEngineString]
+                  [:details            ms/DatabaseDetails]
+                  [:id                 {:optional true} [:maybe ms/PositiveInt]]
+                  [:router_database_id {:optional true} [:maybe ms/PositiveInt]]]]]]
   (api/check-superuser)
   (let [database         (when id (api/write-check (warehouses-rest.db/database id)))
+        details          (if-let [router-database-id (or (:router_database_id database) router_database_id)]
+                           (database/router-shared-details router-database-id details)
+                           details)
         details-or-error (if database
                            (test-existing-database-details database engine details)
                            (warehouses/test-connection-details engine details))]
@@ -918,14 +924,9 @@
    Throws 400 on violation."
   [existing-database overlay-details
    {:keys [marker-key article+noun hidden-fields-fn]}]
-  (let [[article noun] article+noun
-        marker-name    (name marker-key)
-        column-name    (connection-marker-key->details-column marker-key)
-        article-noun   (str article " " noun)]
-    (api/check-400 (not (:router_database_id existing-database))
-                   (tru "Cannot configure {0} connection on a destination database" article-noun))
-    (api/check-400 (not (warehouses-rest.db/destination-database-exists-for-router? (:id existing-database)))
-                   (tru "Cannot configure {0} connection on a router database" article-noun))
+  (let [[_article noun] article+noun
+        marker-name     (name marker-key)
+        column-name     (connection-marker-key->details-column marker-key)]
     (when-not (get overlay-details marker-key)
       (throw (ex-info (tru "{0} must be set in {1}" marker-name column-name)
                       {:status-code 400})))
@@ -1001,7 +1002,9 @@
         incoming-write-data-details     write_data_details
         engine-changed?                 (some-> engine keyword (not= (:engine existing-database)))
         details-with-secrets            (when incoming-details
-                                          (upsert-sensitive-fields existing-database incoming-details :details engine-changed?))
+                                          (cond->> (upsert-sensitive-fields existing-database incoming-details :details engine-changed?)
+                                            (:router_database_id existing-database)
+                                            (database/router-shared-details (:router_database_id existing-database))))
         write-data-details-with-secrets (when  write_data_details
                                           (upsert-sensitive-fields existing-database write_data_details :write_data_details engine-changed?))
         ;; verify that we can connect to the database if details OR `:engine` have changed.

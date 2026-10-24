@@ -1,0 +1,18 @@
+## Database routing: whether destinations share the router's server (internal) or have their own (external)
+
+databaseChangeLog:
+  - changeSet:
+      id: cfp2t6
+      author: ranquild
+      comment: Add db_router.mode
+      changes:
+        - addColumn:
+            tableName: db_router
+            columns:
+              - column:
+                  name: mode
+                  type: varchar(16)
+                  defaultValue: external
+                  remarks: internal when destinations share the router's server and differ only in credentials, else external
+                  constraints:
+                    nullable: false

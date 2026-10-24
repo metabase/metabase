@@ -1,6 +1,7 @@
 (ns metabase.actions.settings
   (:require
    [metabase.actions.db :as actions.db]
+   [metabase.database-routing.core :as database-routing]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :as i18n]
    [metabase.warehouses.models.database :as database]))
@@ -18,7 +19,7 @@
 (def ^:private db-routing-reason
   {:key     :setting/database-routing
    :type    :error
-   :message (i18n/deferred-tru "Table editing is not supported with database routing.")})
+   :message (i18n/deferred-tru "Table editing is not supported with database routing to different servers.")})
 
 (def ^:private no-writable-tables-reason
   {:key     :permissions/no-writable-table
@@ -46,7 +47,9 @@
   :enabled-for-db? (fn [db]
                      (setting/custom-disabled-reasons!
                       [(when (database/is-destination? db) db-routing-reason)
-                       (when (actions.db/destination-database-exists-for-router? (:id db)) db-routing-reason)
+                       (when (and (actions.db/destination-database-exists-for-router? (:id db))
+                                  (not (database-routing/internal-db-routing? db)))
+                         db-routing-reason)
                        (cond
                          ;; TODO we also care about re-sync after connection details are changed
                          (= (:initial_sync_status db) "incomplete") busy-sync-reason

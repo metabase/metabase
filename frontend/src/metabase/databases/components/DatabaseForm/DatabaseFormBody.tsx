@@ -97,11 +97,13 @@ export const DatabaseFormBody = ({
           />
         </>
       )}
-      <DatabaseConnectionStringField
-        engineKey={engineKey}
-        location={location}
-        setValues={setValues}
-      />
+      {!values.details?.["same-server-destination"] && (
+        <DatabaseConnectionStringField
+          engineKey={engineKey}
+          location={location}
+          setValues={setValues}
+        />
+      )}
       {engine && nameFieldConfig?.fieldState !== "hidden" && (
         <DatabaseNameField
           engine={engine}

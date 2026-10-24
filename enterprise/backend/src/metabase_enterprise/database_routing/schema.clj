@@ -16,4 +16,10 @@
   "What an update (or insert) of a DatabaseRouter accepts: every column of `:db_router` except `id`, all optional."
   [:map {:closed true}
    [:database_id    {:optional true} [:maybe ::lib.schema.id/database]]
-   [:user_attribute {:optional true} [:maybe :string]]])
+   [:user_attribute {:optional true} [:maybe :string]]
+   [:mode           {:optional true} [:maybe ::mode]]])
+
+(mr/def ::mode
+  "Where a router's destination databases are: `internal` when they share the router's server and differ only in
+  credentials, `external` when each has its own connection details."
+  [:enum "internal" "external"])

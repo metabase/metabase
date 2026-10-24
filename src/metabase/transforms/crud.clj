@@ -5,7 +5,6 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
-   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -36,9 +35,7 @@
     (api/check-400 (not (:is_audit database))
                    (deferred-tru "Cannot run transforms on audit databases."))
     (api/check-400 (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
-                   (deferred-tru "The database does not support the requested transform features."))
-    (api/check-400 (not (database-routing/db-routing-enabled? database))
-                   (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
+                   (deferred-tru "The database does not support the requested transform features."))))
 
 (defn check-feature-enabled!
   "Check that the premium features required for this transform type are enabled."

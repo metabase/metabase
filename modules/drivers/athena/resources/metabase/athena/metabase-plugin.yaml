@@ -13,6 +13,8 @@ driver:
       display-name: Region
       placeholder: "us-east-1"
       required: true
+      visible-if:
+        same-server-destination: false
     - name: workgroup
       display-name: Workgroup
       placeholder: "primary"
@@ -41,6 +43,8 @@ driver:
       placeholder: "Optional"
       helper-text: "This is useful when Metabase is deployed on a VPC or AWS Secret Cloud."
       required: false
+      visible-if:
+        same-server-destination: false
     - name: dbname
       display-name: Specific database
       helper-text: Specify a single database to enable features like DB routing

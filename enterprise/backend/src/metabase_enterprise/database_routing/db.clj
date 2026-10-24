@@ -2,8 +2,10 @@
   "Application database queries for the database-routing module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
@@ -27,6 +29,11 @@
   [router-database-id :- ::lib.schema.id/database
    database-name      :- :string]
   (t2/select-one-pk :model/Database :router_database_id router-database-id :name database-name))
+
+(mu/defn destination-database-exists?
+  "Whether the router with `router-database-id` has a destination Database."
+  [router-database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Database :router_database_id router-database-id))
 
 (mu/defn destination-name-exists?
   "Whether the router with `router-database-id` already has a destination Database named one of `names`."
@@ -70,17 +77,45 @@
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in database-ids]))
 
-(mu/defn insert-router!
-  "Insert a DatabaseRouter for the Database with `database-id` routing on `user-attribute`."
-  [database-id    :- ::lib.schema.id/database
-   user-attribute :- :string]
-  (t2/insert! :model/DatabaseRouter {:database_id database-id :user_attribute user-attribute}))
+(mu/defn router-mode :- [:maybe ::database-routing.schema/mode]
+  "The mode of the router of the Database with `database-id`, or nil when it isn't a router."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one-fn :mode :model/DatabaseRouter :database_id database-id))
 
-(mu/defn update-router-user-attribute!
-  "Set the routing user attribute of the router of the Database with `database-id`."
-  [database-id    :- ::lib.schema.id/database
-   user-attribute :- :string]
-  (t2/update! :model/DatabaseRouter :database_id database-id {:user_attribute user-attribute}))
+(mu/defn router-modes-by-database
+  "A map of Database ID to routing mode for `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/select-fn->fn :database_id :mode :model/DatabaseRouter :database_id [:in database-ids]))
+
+(mu/defn insert-router!
+  "Insert a DatabaseRouter for the Database with `database-id`."
+  [router :- [:map {:closed true}
+              [:database_id    ::lib.schema.id/database]
+              [:user_attribute :string]
+              [:mode           {:optional true} ::database-routing.schema/mode]]]
+  (t2/insert! :model/DatabaseRouter router))
+
+(mu/defn update-router!
+  "Update the router of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database
+   changes     :- ::database-routing.schema/database-router.update]
+  (t2/update! :model/DatabaseRouter :database_id database-id changes))
+
+(mu/defn destination-databases :- [:sequential [:map [:id ::lib.schema.id/database] [:details [:maybe ms/DatabaseDetails]]]]
+  "The ID and details of every destination Database of the router with `router-database-id`."
+  [router-database-id :- ::lib.schema.id/database]
+  (t2/select [:model/Database :id :details] :router_database_id router-database-id))
+
+(mu/defn delete-destination-databases!
+  "Delete every destination Database of the router with `router-database-id`."
+  [router-database-id :- ::lib.schema.id/database]
+  (t2/delete! :model/Database :router_database_id router-database-id))
+
+(mu/defn update-database-details!
+  "Set the details of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database
+   details     :- ms/DatabaseDetails]
+  (t2/update! :model/Database database-id {:details details}))
 
 (mu/defn delete-router!
   "Delete the DatabaseRouter of the Database with `database-id`."

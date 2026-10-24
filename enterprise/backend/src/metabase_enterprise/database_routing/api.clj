@@ -1,13 +1,13 @@
 (ns metabase-enterprise.database-routing.api
   (:require
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase-enterprise.database-routing.models :as database-routing.models]
+   [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [metabase.warehouses.core :as warehouses]))
@@ -39,7 +39,9 @@
   (api/check-400 (database-routing.db/router-exists? router_database_id))
   (api/check-400 (not (database-routing.db/destination-name-exists? router_database_id (map :name destinations)))
                  "A destination database with that name already exists.")
-  (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (database-routing.db/database router_database_id)]
+  (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (database-routing.db/database router_database_id)
+        destinations (map #(update % :details (partial database-routing.models/router-shared-details router_database_id))
+                          destinations)]
     (if-let [invalid-destinations (->> destinations
                                        (keep (fn [{details :details n :name}]
                                                (try
@@ -82,18 +84,19 @@
     (database-routing.db/delete-router! db-id)))
 
 (defn- create-or-update-router!
-  [db-id user-attribute]
-  (let [db (database-routing.db/database db-id)]
-    (when-not (driver.u/supports? (:engine db) :database-routing db)
-      (throw (ex-info "This database does not support DB routing" {:status-code 400})))
+  [db-id user-attribute mode]
+  (let [db      (database-routing.db/database db-id)
+        changes (cond-> {:user_attribute user-attribute}
+                  mode (assoc :mode mode))]
+    (if (database-routing.db/router-for-database db-id)
+      (database-routing.db/update-router! db-id changes)
+      (database-routing.db/insert-router! (assoc changes :database_id db-id)))
     (events/publish-event! :event/database-update {:object db
                                                    :previous-object db
                                                    :user-id api/*current-user-id*
                                                    :details {:db_routing :enabled
-                                                             :routing_attribute user-attribute}})
-    (if (database-routing.db/router-for-database db-id)
-      (database-routing.db/update-router-user-attribute! db-id user-attribute)
-      (database-routing.db/insert-router! db-id user-attribute))))
+                                                             :routing_attribute user-attribute
+                                                             :routing_mode (database-routing.db/router-mode db-id)}})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -102,26 +105,19 @@
 (api.macros/defendpoint :put "/router-database/:id"
   "Updates an existing Database with the `user_attribute` to route on. Will either:
   - turn an existing Database into a Router database
-  - change the `user_attribute` used to route for an existing Router database, or
+  - change the `user_attribute` or `mode` of an existing Router database, or
   - turn a Router database into a regular Database
-  depending on the value of `user_attribute`"
+  depending on the value of `user_attribute`. Changing the `mode` of a router deletes its destination databases."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]
    _query-params
-   {:keys [user_attribute]} :- [:map {:closed true} [:user_attribute {:optional true} [:maybe ms/NonBlankString]]]]
-  (let [db (database-routing.db/database id)]
-    (api/check-404 db)
-    (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
-    (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")
-    (api/check-400 (not (:write_data_details db)) "Cannot enable database routing for a database with a write connection configured")
-    (api/check-400 (not (:admin_details db)) "Cannot enable database routing for a database with an admin connection configured")
-    (api/check-400 (not (database-routing.db/transform-exists-for-source-database? id)) "Cannot enable database routing for a database with transforms")
-    (setting/with-database db
-      (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
-      (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled")))
+   {:keys [user_attribute mode]} :- [:map {:closed true}
+                                     [:user_attribute {:optional true} [:maybe ms/NonBlankString]]
+                                     [:mode           {:optional true} [:maybe ::database-routing.schema/mode]]]]
+  (api/check-404 (database-routing.db/database id))
   (if (nil? user_attribute)
     ;; delete the DatabaseRouter
     (delete-router! id)
-    (create-or-update-router! id user_attribute)))
+    (create-or-update-router! id user_attribute mode)))
 
 (def ^{:arglists '([request respond raise])} routes
   "`/api/ee/database-routing` routes"

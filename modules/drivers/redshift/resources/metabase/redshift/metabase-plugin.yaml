@@ -15,13 +15,19 @@ driver:
               - host
               - placeholder: my-cluster-name.abcd1234.us-east-1.redshift.amazonaws.com
                 required: true
+              - visible-if:
+                  same-server-destination: false
           - merge:
               - port
               - placeholder: 5439
+              - visible-if:
+                  same-server-destination: false
     - merge:
         - dbname
         - name: db
           placeholder: birds_of_the_world
+        - visible-if:
+            same-server-destination: false
     - name: schema-filters
       type: schema-filters
       display-name: Schemas

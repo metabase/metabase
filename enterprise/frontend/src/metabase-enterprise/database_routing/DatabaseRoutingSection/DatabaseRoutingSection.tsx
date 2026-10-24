@@ -1,5 +1,6 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useEffect, useState } from "react";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import {
   Error,
@@ -11,11 +12,13 @@ import {
 } from "metabase/admin/databases/components/DatabaseInfoSection";
 import {
   skipToken,
+  useListDatabasesQuery,
   useListEnginesQuery,
   useListTransformsQuery,
   useListUserAttributesQuery,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
@@ -27,6 +30,7 @@ import {
   Button,
   Flex,
   Icon,
+  SegmentedControl,
   Select,
   Stack,
   Switch,
@@ -37,12 +41,16 @@ import {
 import { useUpdateRouterDatabaseMutation } from "metabase-enterprise/api";
 import { renderUserAttributesForSelect } from "metabase-enterprise/sandboxes/utils";
 import * as Urls from "metabase-enterprise/urls";
-import type { Database } from "metabase-types/api";
+import type { Database, DatabaseRouterMode } from "metabase-types/api";
 import { isEngineKey } from "metabase-types/guards";
 
 import { DestinationDatabasesList } from "../DestinationDatabasesList";
 
-import { getDisabledFeatureMessage, getSelectErrorMessage } from "./utils";
+import {
+  getDisabledFeatureMessage,
+  getExternalModeDisabledMessage,
+  getSelectErrorMessage,
+} from "./utils";
 
 export const DatabaseRoutingSection = ({
   database,
@@ -68,6 +76,10 @@ export const DatabaseRoutingSection = ({
   const [tempEnabled, setTempEnabled] = useState(false);
   const enabled = tempEnabled || hasDbRoutingEnabled(database);
 
+  const mode = database.router_mode ?? "external";
+  const otherMode = mode === "internal" ? "external" : "internal";
+  const [isModeModalOpen, modeModal] = useDisclosure(false);
+
   const [isExpanded, setIsExpanded] = useState(false);
   useEffect(
     function expandIfEnabled() {
@@ -85,13 +97,21 @@ export const DatabaseRoutingSection = ({
   const userAttributeOptions =
     userAttrsReq.data ?? (userAttribute ? [userAttribute] : []);
 
+  const destinationDbsReq = useListDatabasesQuery(
+    hasDbRoutingEnabled(database)
+      ? { router_database_id: database.id }
+      : skipToken,
+  );
+  const destinationCount = destinationDbsReq.data?.data.length ?? 0;
+
   const transformsQuery = useListTransformsQuery(
     shouldHideSection ? skipToken : { "database-id": database.id },
   );
   const transforms = transformsQuery.data ?? [];
   const hasTransforms = transforms.length > 0;
 
-  const disabledFeatMsg = getDisabledFeatureMessage(database, {
+  const disabledFeatMsg = getDisabledFeatureMessage(database);
+  const externalModeDisabledMsg = getExternalModeDisabledMessage(database, {
     hasTransforms,
   });
   const errMsg = getSelectErrorMessage({
@@ -102,13 +122,40 @@ export const DatabaseRoutingSection = ({
   });
 
   const handleUserAttributeChange = async (attribute: string) => {
-    await updateRouterDatabase({ id: database.id, user_attribute: attribute });
+    await updateRouterDatabase({
+      id: database.id,
+      user_attribute: attribute,
+      ...(!hasDbRoutingEnabled(database) &&
+        externalModeDisabledMsg != null && { mode: "internal" }),
+    });
 
     if (!hasDbRoutingEnabled(database)) {
       sendToast({ message: t`Database routing enabled` });
     } else {
       sendToast({ message: t`Database routing updated` });
     }
+  };
+
+  const updateMode = async (newMode: DatabaseRouterMode) => {
+    await updateRouterDatabase({
+      id: database.id,
+      user_attribute: userAttribute ?? null,
+      mode: newMode,
+    });
+    sendToast({ message: t`Database routing updated` });
+  };
+
+  const handleModeChange = (newMode: DatabaseRouterMode) => {
+    if (destinationCount > 0) {
+      modeModal.open();
+    } else {
+      updateMode(newMode);
+    }
+  };
+
+  const handleConfirmModeChange = async () => {
+    modeModal.close();
+    await updateMode(otherMode);
   };
 
   const handleToggle = async (enabled: boolean) => {
@@ -191,6 +238,53 @@ export const DatabaseRoutingSection = ({
               {t`In guest embeds, database queries will always be routed to the router database.`}
             </Alert>
           )}
+          <Flex justify="space-between" align="center" gap="sm" mb="xl">
+            <Box>
+              <Label htmlFor="db-routing-mode">
+                {t`Where are the destination databases?`}
+              </Label>
+              <Text c="text-secondary" mt="xxs" style={{ textWrap: "pretty" }}>
+                {mode === "internal"
+                  ? t`Every destination uses this database’s server, and only adds its own credentials.`
+                  : t`Every destination has its own full connection details, so it can live on any server.`}
+              </Text>
+            </Box>
+            <SegmentedControl<DatabaseRouterMode>
+              id="db-routing-mode"
+              data-testid="db-routing-mode"
+              flex="none"
+              value={mode}
+              disabled={
+                !isAdmin || !!disabledFeatMsg || !hasDbRoutingEnabled(database)
+              }
+              data={[
+                { value: "internal", label: t`Same server` },
+                {
+                  value: "external",
+                  label: t`Different servers`,
+                  disabled: externalModeDisabledMsg != null,
+                },
+              ]}
+              onChange={handleModeChange}
+            />
+          </Flex>
+          {externalModeDisabledMsg != null && (
+            <Text c="text-secondary" mt="-md" mb="xl">
+              {externalModeDisabledMsg}
+            </Text>
+          )}
+          <ConfirmModal
+            opened={isModeModalOpen}
+            title={t`Delete all destination databases?`}
+            message={ngettext(
+              msgid`Changing where destination databases are will delete the ${destinationCount} destination database. You'll need to add it again.`,
+              `Changing where destination databases are will delete all ${destinationCount} destination databases. You'll need to add them again.`,
+              destinationCount,
+            )}
+            confirmButtonText={t`Delete and change`}
+            onConfirm={handleConfirmModeChange}
+            onClose={modeModal.close}
+          />
           <Stack mb="xxl" gap="sm">
             <Flex justify="space-between" align="center" gap="sm">
               <Box>

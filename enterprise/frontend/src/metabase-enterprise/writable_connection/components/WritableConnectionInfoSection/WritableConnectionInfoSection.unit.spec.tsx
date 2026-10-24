@@ -40,7 +40,7 @@ describe("WritableConnectionInfoSection", () => {
 
     expect(
       screen.getByText(
-        "Writable connection can't be enabled when Database Routing is enabled.",
+        "Writable connection can't be enabled when database routing sends queries to different servers.",
       ),
     ).toBeInTheDocument();
   });
@@ -52,7 +52,7 @@ describe("WritableConnectionInfoSection", () => {
 
     expect(
       screen.queryByText(
-        "Writable connection can't be enabled when Database Routing is enabled.",
+        "Writable connection can't be enabled when database routing sends queries to different servers.",
       ),
     ).not.toBeInTheDocument();
   });

@@ -11,6 +11,8 @@ driver:
     - name: use-hostname
       type: section
       default: false
+      visible-if:
+        same-server-destination: false
     - merge:
         - host
         - visible-if:
@@ -87,6 +89,8 @@ driver:
         - name: db
           required: true
           display-name: Database name (case sensitive)
+        - visible-if:
+            same-server-destination: false
     - name: schema-filters
       type: schema-filters
       display-name: Schemas

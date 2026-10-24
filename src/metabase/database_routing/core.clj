@@ -47,3 +47,17 @@
   metabase-enterprise.database-routing.models
   [_db-or-id]
   false)
+
+(defenterprise internal-db-routing?
+  "Returns whether the given database is a router or destination database whose destinations share the router's
+  server."
+  metabase-enterprise.database-routing.models
+  [_db-or-id]
+  false)
+
+(defenterprise external-db-routing?
+  "Returns whether the given database is a router or destination database whose destinations each have their own
+  server, as opposed to sharing the router's server."
+  metabase-enterprise.database-routing.models
+  [_db-or-id]
+  false)

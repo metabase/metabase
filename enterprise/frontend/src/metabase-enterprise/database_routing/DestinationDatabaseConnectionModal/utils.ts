@@ -30,9 +30,11 @@ export function pickPrefillFieldsFromPrimaryDb(
 
   return {
     ..._.omit(primaryDatabase, FILTER_DB_KEYS),
+    router_database_id: primaryDatabase.id,
     details: {
       ..._.omit(primaryDatabase.details, filterDetailKeys),
       "destination-database": true,
+      "same-server-destination": primaryDatabase.router_mode === "internal",
     },
   };
 }

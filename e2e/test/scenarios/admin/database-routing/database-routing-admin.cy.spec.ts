@@ -284,27 +284,16 @@ describe("admin > database > database routing", () => {
         .should("not.exist");
     });
 
-    it("should not allow turning on db routing if other conflicting features are enabled", () => {
+    it("should not allow db routing with model persistence, and only same-server routing with data actions", () => {
       cy.log("setup");
       setupModelPersistence();
       visitDatabaseAdminPage(WRITABLE_DB_ID);
-
-      cy.log("should be disabled if data actions is enabled");
-      cy.findByLabelText("Data actions").should("be.checked");
-      assertDbRoutingDisabled(
-        "Database routing can't be enabled if data actions are enabled.",
-      );
-
-      cy.findByLabelText("Data actions").parent("label").click();
-
-      assertDbRoutingNotDisabled();
 
       cy.log("should be disabled if model persistence is enabled");
       cy.findByLabelText("Model persistence")
         .should("not.be.checked")
         .parent("label")
         .click();
-
       assertDbRoutingDisabled(
         "Database routing can't be enabled if model persistence is enabled.",
       );
@@ -313,44 +302,26 @@ describe("admin > database > database routing", () => {
         .should("be.checked")
         .parent("label")
         .click();
-      assertDbRoutingNotDisabled();
 
-      cy.log("should be disabled if table editing is enabled");
-      // Table editing must be the only active conflict here: the routing
-      // section shows a single message, and data actions, model persistence,
-      // and uploads all take precedence over table editing.
-      tableEditingSection()
-        .findByLabelText("Editable tables")
-        .should("not.be.checked")
-        .click({ force: true });
-      assertDbRoutingDisabled(
-        "Database routing can't be enabled when table editing is enabled.",
-      );
-      tableEditingSection()
-        .findByLabelText("Editable tables")
+      cy.log("data actions only rule out destinations on different servers");
+      cy.findByLabelText("Data actions").should("be.checked");
+      assertDbRoutingNotDisabled();
+      cy.findByLabelText("Enable database routing").click({ force: true });
+      cy.findByTestId("db-routing-user-attribute").click();
+      H.popover().findByText("attr_uid").click();
+      dbRoutingSection().within(() => {
+        cy.findByRole("radio", { name: "Same server" }).should("be.checked");
+        cy.findByRole("radio", { name: "Different servers" }).should(
+          "be.disabled",
+        );
+        cy.findByText(
+          "Destination databases on different servers aren't supported when data actions are enabled.",
+        ).should("be.visible");
+      });
+      dataActionsSection()
+        .findByLabelText("Data actions")
         .should("be.checked")
-        .click({ force: true });
-      assertDbRoutingNotDisabled();
-
-      cy.log("should be disabled if uploads are enabled for the database");
-      cy.visit("/admin/settings/uploads");
-      cy.findByLabelText("Upload Settings Form")
-        .findByPlaceholderText("Select a database")
-        .click();
-      H.popover().findByText("Writable Postgres12").click();
-      cy.findByLabelText("Upload Settings Form")
-        .findByPlaceholderText("Select a schema")
-        .click();
-
-      H.popover().findByText("public").click();
-      cy.findByLabelText("Upload Settings Form")
-        .button("Enable uploads")
-        .click();
-
-      visitDatabaseAdminPage(WRITABLE_DB_ID);
-      assertDbRoutingDisabled(
-        "Database routing can't be enabled if uploads are enabled for this database.",
-      );
+        .and("not.be.disabled");
     });
 
     it("should highlight that a dabtabase has routing enabled on the permissions pages", () => {
@@ -482,7 +453,7 @@ describe("admin > database > database routing", () => {
         dataActionsSection().within(() => {
           cy.findByLabelText("Data actions").should("be.disabled");
           cy.findByText(
-            "Data actions can't be enabled when database routing is enabled.",
+            "Data actions can't be enabled when database routing sends queries to different servers.",
           )
             .scrollIntoView()
             .should("be.visible");
@@ -494,7 +465,7 @@ describe("admin > database > database routing", () => {
         tableEditingSection().within(() => {
           cy.findByLabelText("Editable tables").should("be.disabled");
           cy.findByText(
-            "Table editing can't be enabled when database routing is enabled.",
+            "Table editing can't be enabled when database routing sends queries to different servers.",
           )
             .scrollIntoView()
             .should("be.visible");

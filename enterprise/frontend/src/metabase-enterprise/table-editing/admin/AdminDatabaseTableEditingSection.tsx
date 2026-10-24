@@ -8,7 +8,7 @@ import {
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { findErrorMessage } from "metabase/api/utils/errors";
-import { hasDbRoutingEnabled } from "metabase/common/utils/database";
+import { hasExternalDbRoutingEnabled } from "metabase/common/utils/database";
 import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
 import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
 import type {
@@ -71,7 +71,7 @@ export function AdminDatabaseTableEditingSection({
     database.engine &&
     ALLOWED_ENGINES_FOR_TABLE_EDITING.includes(database.engine);
 
-  const databaseHasRouting = hasDbRoutingEnabled(database);
+  const databaseHasRouting = hasExternalDbRoutingEnabled(database);
 
   const dataEditingSetting =
     settingsAvailable?.[DATABASE_TABLE_EDITING_SETTING];
@@ -126,7 +126,7 @@ export function AdminDatabaseTableEditingSection({
           icon={<Icon name="info" />}
           mb="lg"
         >
-          {t`Table editing can't be enabled when database routing is enabled.`}
+          {t`Table editing can't be enabled when database routing sends queries to different servers.`}
         </Alert>
       )}
     </DatabaseInfoSection>

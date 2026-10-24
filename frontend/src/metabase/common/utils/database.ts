@@ -58,6 +58,12 @@ export const hasDbRoutingEnabled = (
   return !!database.router_user_attribute;
 };
 
+export const hasExternalDbRoutingEnabled = (
+  database: Pick<Database, "router_user_attribute" | "router_mode">,
+) => {
+  return hasDbRoutingEnabled(database) && database.router_mode !== "internal";
+};
+
 /**
  * Check if a question uses a database with routing enabled
  */

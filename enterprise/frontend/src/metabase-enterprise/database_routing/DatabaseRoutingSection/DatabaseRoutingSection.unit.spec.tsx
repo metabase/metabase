@@ -150,19 +150,25 @@ describe("DatabaseRoutingSection", () => {
     expect(screen.getByRole("link", { name: /Add/ })).toBeInTheDocument();
   });
 
-  it("should show a warning when writable connection is enabled", () => {
+  it("should allow same-server routing when a writable connection is enabled", async () => {
     setup({
       database: createMockDatabase({
         engine: "postgres",
         features: ["database-routing"],
+        router_user_attribute: "cool_guy",
+        router_mode: "internal",
         write_data_details: { host: "localhost" },
       }),
     });
 
+    expect(screen.getByLabelText("Enable database routing")).toBeEnabled();
     expect(
-      screen.getByText(
-        "Database routing can't be enabled when a Writable Connection is enabled.",
+      await screen.findByText(
+        "Destination databases on different servers aren't supported when a Writable Connection is enabled.",
       ),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("radio", { name: "Different servers" }),
+    ).toBeDisabled();
   });
 });

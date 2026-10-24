@@ -50,6 +50,7 @@
     [:tables                      {:optional true} [:maybe [:sequential [:ref :metabase.warehouse-schema.schema/table]]]]
     [:native_permissions          {:optional true} [:maybe [:enum :write :none]]]
     [:router_user_attribute       {:optional true} [:maybe :string]]
+    [:router_mode                 {:optional true} [:maybe [:enum "internal" "external"]]]
     [:schedules                   {:optional true} [:maybe [:map {:closed true}
                                                             [:metadata_sync      :metabase.util.cron/ScheduleMap]
                                                             [:cache_field_values [:maybe :metabase.util.cron/ScheduleMap]]]]]

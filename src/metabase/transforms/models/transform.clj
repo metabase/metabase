@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.collections.models.collection :as collection]
+   [metabase.database-routing.core :as database-routing]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.lib-be.core :as lib-be]
@@ -25,6 +26,7 @@
    [metabase.transforms.util :as transforms.u]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
@@ -152,6 +154,15 @@
   [_]
   #{:transforms})
 
+(defn- check-database-routing!
+  "Throws when the target Database of a transform is a routing destination, or a router whose destinations are on
+  other servers."
+  [target-db-id]
+  (when-let [db (some-> target-db-id transforms.db/database)]
+    (when (or (:router_database_id db) (database-routing/external-db-routing? db))
+      (throw (ex-info (tru "Transforms are not supported on databases with DB routing enabled.")
+                      {:status-code 400})))))
+
 (t2/define-before-insert :model/Transform
   [{:keys [source collection_id source_database_id] :as transform}]
   (collection/check-collection-namespace :model/Transform collection_id)
@@ -164,6 +175,8 @@
     ;; misconfiguration. Only warn when an id is supplied but invalid.
     (when (and target-db-id (not valid-db-id?))
       (log/warnf "Invalid target database id (%s) ignored for new transform" target-db-id))
+    (when (and valid-db-id? (not mi/*deserializing?*))
+      (check-database-routing! target-db-id))
     (-> transform
         (assoc-in [:target :database] target-db-id)
         (assoc
@@ -203,6 +216,7 @@
     ;; A source or target edit may change the output columns, and we can't cheaply tell, so invalidate conservatively:
     ;; the next run re-applies the managed indexes against the new schema and fails if a column is gone.
     (when (and target-changed? (not mi/*deserializing?*))
+      (check-database-routing! target-db-id)
       (table-index/mark-for-revalidation! (:id transform)))
     (cond-> transform
       source
