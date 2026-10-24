@@ -65,9 +65,9 @@
       (let [list-apps (api.macros/find-route-fn 'metabase-enterprise.data-apps.api :get "/")]
         (mt/with-current-user (mt/user->id :rasta)
           (list-apps {} {})
-          (testing "a disabled app isn't listed to a non-superuser, available or not"
-            (doseq [query [{} {:available true}]]
-              (is (= [{:id (:id app) :name "birds" :display_name "Birds"}] (list-apps {} query))))))))))
+          (testing "a disabled app isn't listed to a non-superuser"
+            (is (= [{:id (:id app) :name "birds" :display_name "Birds" :enabled true :outdated false}]
+                   (list-apps {} {})))))))))
 
 (deftest read-access-agrees-across-entry-points-test
   (mt/with-premium-features #{:data-apps :tenants}
@@ -293,7 +293,7 @@
         (testing "a grant made on the collection is listed and admits the group's members"
           (perms/grant-collection-read-permissions! group-id collection-id)
           (is (= #{group-id} (access-group-ids app)))
-          (is (= {:id (:id app) :name "birds" :display_name "Birds"}
+          (is (= {:id (:id app) :name "birds" :display_name "Birds" :enabled true :outdated false}
                  (mt/user-http-request :rasta :get 200 "ee/apps/birds"))))))))
 
 (deftest tenant-users-cannot-inherit-app-access-test

@@ -133,15 +133,11 @@
                                  {:current-user-id user-id :is-superuser? false})]]}))
 
 (mu/defn readable-data-apps
-  "The DataApps that the User with `user-id` can read, without their bundles, ordered by display name; only the
-  enabled ones when `available?`."
+  "The DataApps that the User with `user-id` can read, without their bundles, ordered by display name."
   [user-id    :- ms/PositiveInt
-   superuser? :- :boolean
-   available? :- [:maybe :boolean]]
+   superuser? :- :boolean]
   (t2/select non-blob-model
-             {:where    [:and
-                         [:in :id (readable-data-app-ids-select user-id superuser?)]
-                         (when available? [:= :enabled true])]
+             {:where    [:in :id (readable-data-app-ids-select user-id superuser?)]
               :order-by [[:display_name :asc]]}))
 
 (defn permissions-for-warnings

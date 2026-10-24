@@ -147,15 +147,6 @@
                   (is (=? {:id source-id}
                           (mt/user-http-request :crowberto :get 200 (str "action/" source-id)))))))))))))
 
-(deftest list-available-apps-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (t2/insert! :model/DataApp :name "ready" :display_name "Ready" :bundle_path "data_apps/ready/index.js")
-      (t2/insert! :model/DataApp :name "disabled" :display_name "Disabled" :bundle_path "data_apps/disabled/index.js"
-                  :enabled false)
-      (is (=? [{:name "ready" :display_name "Ready"}]
-              (mt/user-http-request :crowberto :get 200 "ee/apps?available=true"))))))
-
 (deftest outdated-apps-are-hidden-from-users-and-badged-for-admins-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
@@ -171,16 +162,17 @@
             (group-access/add-groups! app [group-id])))
         (with-redefs [data-app.config/supported-app-version 2]
           (testing "a regular user is never told about the outdated app in a list"
-            (doseq [url ["ee/apps" "ee/apps?available=true"]]
-              (is (= [{:id (t2/select-one-pk :model/DataApp :name "current") :name "current" :display_name "Current"}]
-                     (mt/user-http-request :rasta :get 200 url)))))
+            (is (= [{:id (t2/select-one-pk :model/DataApp :name "current") :name "current" :display_name "Current"
+                     :enabled true :outdated false}]
+                   (mt/user-http-request :rasta :get 200 "ee/apps"))))
           (testing "for a regular user, opening an outdated app is a 409 that says what to do"
             (doseq [url ["ee/apps/old" "ee/apps/old/bundle"]]
               (is (=? {:error-code "data-app-outdated"
                        :message    #"This app was built for version 1 of data apps.*"}
                       (mt/user-http-request :rasta :get 409 url)))))
           (testing "the current app still opens"
-            (is (= {:id (t2/select-one-pk :model/DataApp :name "current") :name "current" :display_name "Current"}
+            (is (= {:id (t2/select-one-pk :model/DataApp :name "current") :name "current" :display_name "Current"
+                    :enabled true :outdated false}
                    (mt/user-http-request :rasta :get 200 "ee/apps/current")))
             (is (str/includes?
                  (str (mt/user-real-request :crowberto :get 200 "ee/apps/current/bundle"))
@@ -189,9 +181,6 @@
             (is (=? [{:name "current" :version 2 :outdated false}
                      {:name "old" :version 1 :outdated true}]
                     (mt/user-http-request :crowberto :get 200 "ee/apps")))
-            (is (=? [{:name "current"}]
-                    (mt/user-http-request :crowberto :get 200 "ee/apps?available=true"))
-                "but the navbar's available list leaves it out for admins too")
             (is (=? {:name "old" :version 1 :outdated true}
                     (mt/user-http-request :crowberto :get 200 "ee/apps/old"))))
           (testing "nobody gets an outdated bundle"
@@ -549,12 +538,10 @@
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})
       (testing "a user without a grant on the app's collection doesn't see the app"
-        (doseq [url ["ee/apps" "ee/apps?available=true"]]
-          (is (not-any? #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 url)))))
+        (is (not-any? #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))
       (testing "a user sees it once their group can read the collection"
         (group-access/add-groups! (t2/select-one :model/DataApp :name "demo") [(:id (perms/all-users-group))])
-        (doseq [url ["ee/apps" "ee/apps?available=true"]]
-          (is (some #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 url))))))))
+        (is (some #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps")))))))
 
 (deftest typed-schema-keys-are-the-same-on-every-instance-test
   (mt/with-premium-features #{:data-apps}

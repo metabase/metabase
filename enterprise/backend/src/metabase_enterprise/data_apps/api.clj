@@ -100,7 +100,9 @@
   [:map {:closed true}
    [:id           ms/PositiveInt]
    [:name         ms/NonBlankString]
-   [:display_name ms/NonBlankString]])
+   [:display_name ms/NonBlankString]
+   [:enabled      :boolean]
+   [:outdated     :boolean]])
 
 (def ^:private RepoStatusResponse
   [:map
@@ -162,9 +164,8 @@
   "Return full data-app metadata, with whether the app is outdated, to superusers and only
    navigational fields to other users."
   [app]
-  (if api/*is-superuser?*
-    (assoc app :outdated (data-app.config/outdated? app))
-    (select-keys app [:id :name :display_name])))
+  (cond-> (assoc app :outdated (data-app.config/outdated? app))
+    (not api/*is-superuser?*) (select-keys [:id :name :display_name :enabled :outdated])))
 
 (defn- check-not-outdated
   "Refuse an app built for an older contract than this Metabase serves with a 409 carrying
@@ -180,13 +181,11 @@
   app)
 
 (api.macros/defendpoint :get "/" :- [:sequential [:or DataAppResponse PublicDataAppResponse]]
-  "List the data apps. Pass `available=true` to return only enabled apps. Disabled and outdated apps are listed only
-  to superusers, who see them badged, and never as available."
-  [_route-params
-   {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
-  (->> (data-apps.db/readable-data-apps api/*current-user-id* (boolean api/*is-superuser?*) available)
-       (remove #(and (or available (not api/*is-superuser?*))
-                     (data-app.config/outdated? %)))
+  "List the data apps the user can read. Disabled and outdated apps are listed only to superusers, who see them
+  badged."
+  []
+  (->> (data-apps.db/readable-data-apps api/*current-user-id* (boolean api/*is-superuser?*))
+       (remove #(and (not api/*is-superuser?*) (data-app.config/outdated? %)))
        (mapv data-app-response)))
 
 (defn- with-bundle
