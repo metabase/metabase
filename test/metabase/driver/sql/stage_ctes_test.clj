@@ -2,7 +2,9 @@
   "Translation of manual tests done in the UI for CTE compilation into unit tests.
    1. A multi-stage question with many joins and aggregations
    2. A native question that selects from 1. with a filter variable
-   3. A question that joins 1. with an aggregation and filter"
+   3. A question that joins 1. with an aggregation and filter
+   4. A question on 1. that joins a table, with an aggregation and filter
+   5. A question on a native question that starts with `WITH`"
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
@@ -71,20 +73,10 @@
                                             (= (:name tag) "sum_limit") (assoc :type :number, :required true, :default "1")))
                                         (lib/template-tags query)))))
 
-(defn- query-joining-card
-  "People joined to Card 1 on source, count by birth year and creation year, then a filter on the count, ordered by
-  birth year, creation year and count, limited to 5 rows."
-  [mp]
-  (let [field #(lib.metadata/field mp (mt/id %1 %2))
-        card  (lib.metadata/card mp 1)
-        query (lib/query mp (lib.metadata/table mp (mt/id :people)))
-        query (lib/join query (lib/join-clause card [(lib/= (field :people :source)
-                                                            (col (lib/join-condition-rhs-columns query card nil nil) "source"))]))
-        query (-> query
-                  (lib/aggregate (lib/count))
-                  (lib/breakout (lib/with-temporal-bucket (field :people :birth_date) :year))
-                  (lib/breakout (lib/with-temporal-bucket (field :people :created_at) :year))
-                  lib/append-stage)]
+(defn- filter-and-order-counts
+  "Adds a stage with a filter on the count, ordered by birth year, creation year and count, limited to 5 rows."
+  [query]
+  (let [query (lib/append-stage query)]
     (-> query
         (lib/filter (lib/> (col (lib/filterable-columns query) "count") 11))
         (lib/order-by (col (lib/orderable-columns query) "birth_date"))
@@ -92,12 +84,42 @@
         (lib/order-by (col (lib/orderable-columns query) "count"))
         (lib/limit 5))))
 
+(defn- query-joining-card
+  "People joined to Card 1 on source, count by birth year and creation year, then a filter on the count."
+  [mp]
+  (let [field #(lib.metadata/field mp (mt/id %1 %2))
+        card  (lib.metadata/card mp 1)
+        query (lib/query mp (lib.metadata/table mp (mt/id :people)))
+        query (lib/join query (lib/join-clause card [(lib/= (field :people :source)
+                                                            (col (lib/join-condition-rhs-columns query card nil nil) "source"))]))]
+    (-> query
+        (lib/aggregate (lib/count))
+        (lib/breakout (lib/with-temporal-bucket (field :people :birth_date) :year))
+        (lib/breakout (lib/with-temporal-bucket (field :people :created_at) :year))
+        filter-and-order-counts)))
+
+(defn- card-joining-query
+  "Card 1 joined to People on source, count by birth year and creation year, then a filter on the count."
+  [mp]
+  (let [query  (lib/query mp (lib.metadata/card mp 1))
+        query  (lib/join query (lib/join-clause (lib.metadata/table mp (mt/id :people))
+                                                [(lib/= (col (lib/visible-columns query) "source")
+                                                        (lib.metadata/field mp (mt/id :people :source)))]))
+        people (join-alias query)
+        column #(col (lib/breakoutable-columns query) % people)]
+    (-> query
+        (lib/aggregate (lib/count))
+        (lib/breakout (lib/with-temporal-bucket (column "birth_date") :year))
+        (lib/breakout (lib/with-temporal-bucket (column "created_at") :year))
+        filter-and-order-counts)))
+
 (deftest ^:parallel multi-stage-questions-test
   (mt/test-drivers (mt/normal-driver-select {:+fns [#(and (isa? driver/hierarchy % :sql)
                                                           (sql.qp/use-ctes-for-stages? %))]
                                              :+features [:nested-queries :left-join :native-parameter-card-reference]})
     (let [mp         (qp.test-util/metadata-provider-with-cards-for-queries
-                      [(lib/limit (multi-stage-query (mt/metadata-provider)) 100)])
+                      [(lib/limit (multi-stage-query (mt/metadata-provider)) 100)
+                       (lib/native-query (mt/metadata-provider) "WITH n AS (SELECT 1 AS x) SELECT x FROM n")])
           round-sums (partial mt/formatted-rows [str #(u/round-to-decimals 2 (double %))])]
       (testing "multi-stage question with joins"
         (let [query (multi-stage-query mp)]
@@ -121,13 +143,25 @@
             (is (= [["Affiliate" 281997.3]
                     ["Twitter"   302138.79]]
                    (sort (round-sums (qp/process-query query))))))))
-      (testing "question joining the multi-stage question, with more stages after the join"
-        (let [query  (query-joining-card mp)]
+      (doseq [[message query-fn] {"question joining the multi-stage question, with more stages after the join"
+                                  query-joining-card
+                                  "question on the multi-stage question joining a table, with more stages after the join"
+                                  card-joining-query}]
+        (testing message
+          (let [query (query-fn mp)]
+            (mt/with-native-query-testing-context query
+              (is (= [["1958-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 13]
+                      ["1958-01-01T00:00:00Z" "2018-01-01T00:00:00Z" 17]
+                      ["1959-01-01T00:00:00Z" "2016-01-01T00:00:00Z" 14]
+                      ["1959-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 19]
+                      ["1959-01-01T00:00:00Z" "2018-01-01T00:00:00Z" 24]]
+                     (mt/formatted-rows [u.date/temporal-str->iso8601-str u.date/temporal-str->iso8601-str int]
+                                        (qp/process-query query))))))))
+      (testing "question on a native question that starts with WITH"
+        (let [query (lib/query mp (lib.metadata/card mp 2))]
           (mt/with-native-query-testing-context query
-            (is (= [["1958-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 13]
-                    ["1958-01-01T00:00:00Z" "2018-01-01T00:00:00Z" 17]
-                    ["1959-01-01T00:00:00Z" "2016-01-01T00:00:00Z" 14]
-                    ["1959-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 19]
-                    ["1959-01-01T00:00:00Z" "2018-01-01T00:00:00Z" 24]]
-                   (mt/formatted-rows [u.date/temporal-str->iso8601-str u.date/temporal-str->iso8601-str int]
-                                      (qp/process-query query))))))))))
+            (let [query-result (qp/process-query query)]
+              (is (= [[1]]
+                     (mt/formatted-rows [int] query-result)))
+              (is (re-find #"WITH.*__mb_stage"
+                           (-> query-result :data :native_form :query))))))))))
