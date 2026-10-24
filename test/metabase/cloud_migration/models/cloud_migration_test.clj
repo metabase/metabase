@@ -100,9 +100,11 @@
       (is (not (cloud-migration.settings/read-only-mode))))))
 
 (deftest read-only-login-test
-  (mt/with-temporary-setting-values [read-only-mode true]
-    (cloud-migration.settings/read-only-mode! true)
-    (mt/client :post 200 "session" (mt/user->credentials :rasta))))
+  (let [identity-id (t2/select-one-pk :model/AuthIdentity :user_id (mt/user->id :rasta) :provider "password")
+        before      (t2/select-one-fn :last_used_at :model/AuthIdentity identity-id)]
+    (mt/with-temporary-setting-values [read-only-mode true]
+      (mt/client :post 200 "session" (mt/user->credentials :rasta))
+      (is (not= before (t2/select-one-fn :last_used_at :model/AuthIdentity identity-id))))))
 
 (deftest ^:synchronized store-url-test
   (testing "When not dev"
