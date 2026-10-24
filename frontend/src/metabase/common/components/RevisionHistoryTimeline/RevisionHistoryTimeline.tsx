@@ -138,7 +138,7 @@ function EventIconCircle({ icon }: EventIconCircleProps) {
         bd="1px solid var(--mb-color-border-neutral)"
         bg="background_page-primary"
       >
-        <Icon name={icon} c="text-disabled" size={12} />
+        <Icon name={icon} c="text-secondary" size={12} />
       </Center>
     );
   }

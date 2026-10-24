@@ -7,11 +7,11 @@
 }
 
 .DismissIconButtonWrapper {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
 }
 
 .DismissIconButtonWrapper:hover {
-  color: var(--mb-color-text-secondary);
+  color: var(--mb-color-text-primary);
 }
 
 .Body {

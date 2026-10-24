@@ -49,7 +49,7 @@ export function ActionFieldItem({
       >
         <Group gap="sm" wrap="nowrap" align="flex-start">
           {isDraggable && (
-            <Icon className={S.grabber} name="grabber" c="text-disabled" />
+            <Icon className={S.grabber} name="grabber" c="text-secondary" />
           )}
           <Stack gap="xs" miw={0} flex={1}>
             <Group gap="sm" wrap="nowrap">

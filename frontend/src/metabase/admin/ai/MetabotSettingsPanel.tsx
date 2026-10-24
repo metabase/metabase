@@ -234,11 +234,11 @@ function CollectionInfo({ collection }: { collection: Collection }) {
   const parent = collectionInfo?.effective_ancestors?.slice(-1)?.[0];
 
   return (
-    <Flex align="center" gap="sm" c="text-disabled" mb="sm">
+    <Flex align="center" gap="sm" c="text-secondary" mb="sm">
       {parent && (
         <>
           <CollectionDisplay collection={parent} />
-          <Text c="text-disabled" fw="bold">
+          <Text c="text-secondary" fw="bold">
             /
           </Text>
         </>

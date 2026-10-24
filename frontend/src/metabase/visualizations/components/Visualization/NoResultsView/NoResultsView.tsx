@@ -11,7 +11,7 @@ interface NoResultsViewProps {
 
 function NoResultsView({ isSmall }: NoResultsViewProps) {
   return (
-    <StateView c="text-disabled">
+    <StateView c="text-secondary">
       <Tooltip label={t`No results`} disabled={!isSmall}>
         <span>
           <NoDataError data-testid="no-results-image" mb="1rem" />

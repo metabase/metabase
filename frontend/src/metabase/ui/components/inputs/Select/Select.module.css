@@ -71,7 +71,7 @@
   }
 
   [data-position="right"] {
-    color: var(--mb-color-text-disabled);
+    color: var(--mb-color-text-secondary);
   }
 
   /*
@@ -155,7 +155,7 @@
 }
 
 .SelectItemsNothingFound {
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
   padding: var(--mantine-spacing-sm);
 }
 

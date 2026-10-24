@@ -149,8 +149,8 @@ export const LegendCaption = ({
           <Box
             component="span"
             className={cx(
-              CS.textLight,
-              CS.textMediumHover,
+              CS.textSecondary,
+              CS.textDarkHover,
               CS.hoverChild,
               CS.hoverChildSmooth,
             )}

@@ -58,7 +58,7 @@ export const ModalHeader = ({
       {pathOptions?.showPath && (
         <Group gap="xxs" align="center">
           {c("Refers to: 'Events' in a collection").t`in`}
-          <Icon name="folder" c="text-disabled" />
+          <Icon name="folder" c="text-secondary" />
           {pathOptions.collectionName}
         </Group>
       )}

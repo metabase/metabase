@@ -48,14 +48,6 @@
   color: var(--mb-color-text-secondary);
 }
 
-.textSlateLight {
-  color: var(--mb-color-text-disabled);
-}
-
-.textLight {
-  color: var(--mb-color-text-disabled);
-}
-
 .textMedium,
 .textMediumHover:hover {
   color: var(--mb-color-text-secondary);
@@ -72,10 +64,6 @@
 
 .textSecondary {
   color: var(--mb-color-text-secondary);
-}
-
-.textTertiary {
-  color: var(--mb-color-text-disabled);
 }
 
 .bgBrandHover:hover {

@@ -304,7 +304,7 @@ const InfoCard = ({
   !["tenant", "system", "jwt"].includes(source ?? "") ? null : (
     <HoverCard>
       <HoverCard.Target>
-        <Icon name="info" c="text-disabled" />
+        <Icon name="info" c="text-secondary" />
       </HoverCard.Target>
       <HoverCard.Dropdown maw="20rem">
         <Text p="sm" maw="20rem">

@@ -105,7 +105,7 @@ export function PolicyTable<TRow extends PolicyTableRowBase>({
       cell: ({ row }) => (
         <Text
           size="md"
-          c={row.original.usesDefaultPolicy ? "text-disabled" : "text-primary"}
+          c={row.original.usesDefaultPolicy ? "text-secondary" : "text-primary"}
           data-uses-default-policy={row.original.usesDefaultPolicy}
         >
           {row.original.policyLabel ?? EMPTY_CELL_PLACEHOLDER}

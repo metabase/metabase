@@ -125,7 +125,7 @@
 .resultCount {
   margin-left: 0.375rem;
   font-variant-numeric: tabular-nums;
-  color: var(--mb-color-text-disabled);
+  color: var(--mb-color-text-secondary);
 }
 
 .failed {

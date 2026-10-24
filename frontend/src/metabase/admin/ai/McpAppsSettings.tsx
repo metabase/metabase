@@ -158,7 +158,7 @@ function CustomMcpOriginsSection() {
         placeholder="https://*.example.com"
       />
 
-      <Text c="text-disabled" fz="sm" mt="xxs">
+      <Text c="text-secondary" fz="sm" mt="xxs">
         {t`Changes will take effect within one minute.`}
       </Text>
     </Box>
