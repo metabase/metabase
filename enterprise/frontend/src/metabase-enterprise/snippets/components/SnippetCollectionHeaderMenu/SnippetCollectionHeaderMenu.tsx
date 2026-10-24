@@ -5,6 +5,7 @@ import {
   CollectionRowModal,
   type CollectionRowModalState,
 } from "metabase/common/collections/components/CollectionRowModal";
+import { CollectionPermissionsModal } from "metabase/permissions";
 import type { Collection } from "metabase-types/api";
 
 type SnippetCollectionHeaderMenuProps = {
@@ -24,6 +25,7 @@ export function SnippetCollectionHeaderMenu({
         onOpenModal={setCollectionModal}
       />
       <CollectionRowModal
+        PermissionsModal={CollectionPermissionsModal}
         modal={collectionModal}
         onClose={() => setCollectionModal(undefined)}
       />

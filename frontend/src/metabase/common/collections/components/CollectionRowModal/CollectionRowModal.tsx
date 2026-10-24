@@ -1,3 +1,4 @@
+import type { ComponentType } from "react";
 import { useLatest } from "react-use";
 import { match } from "ts-pattern";
 import { t } from "ttag";
@@ -6,8 +7,7 @@ import { useUpdateCollectionMutation } from "metabase/api";
 import { useInvalidateCollectionItems } from "metabase/common/collections/hooks";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { useMetadataToasts } from "metabase/common/hooks";
-import { PLUGIN_LIBRARY, PLUGIN_SNIPPET_FOLDERS } from "metabase/plugins";
-import type { Collection } from "metabase-types/api";
+import type { Collection, CollectionNamespace } from "metabase-types/api";
 
 import { EditCollectionModal } from "./EditCollectionModal";
 
@@ -32,13 +32,24 @@ export type CollectionRowModalState =
   | CollectionPermissionsModalState
   | ArchiveCollectionModalState;
 
+export type CollectionPermissionsModalProps = {
+  params: { slug: string };
+  namespace: CollectionNamespace;
+  onClose: () => void;
+};
+
+export type CollectionPermissionsModalComponent =
+  ComponentType<CollectionPermissionsModalProps>;
+
 type CollectionRowModalProps = {
   modal: CollectionRowModalState | undefined;
+  PermissionsModal?: CollectionPermissionsModalComponent;
   onClose: () => void;
 };
 
 export function CollectionRowModal({
   modal,
+  PermissionsModal,
   onClose,
 }: CollectionRowModalProps) {
   const currentModalRef = useLatest(modal);
@@ -57,9 +68,15 @@ export function CollectionRowModal({
     .with({ type: "edit" }, ({ collection }) => (
       <EditCollectionModal collection={collection} onClose={handleClose} />
     ))
-    .with({ type: "permissions" }, ({ collection }) => (
-      <PermissionsModal collection={collection} onClose={handleClose} />
-    ))
+    .with({ type: "permissions" }, ({ collection }) =>
+      PermissionsModal ? (
+        <PermissionsModal
+          params={{ slug: String(collection.id) }}
+          namespace={collection.namespace ?? null}
+          onClose={handleClose}
+        />
+      ) : null,
+    )
     .with({ type: "archive" }, ({ collection, customArchiveMessage }) => (
       <ArchiveCollectionModal
         collection={collection}
@@ -68,32 +85,6 @@ export function CollectionRowModal({
       />
     ))
     .exhaustive();
-}
-
-type PermissionsModalProps = {
-  collection: Collection;
-  onClose: () => void;
-};
-
-function PermissionsModal({ collection, onClose }: PermissionsModalProps) {
-  if (collection.namespace === "snippets") {
-    return (
-      <PLUGIN_SNIPPET_FOLDERS.CollectionPermissionsModal
-        opened
-        collectionId={collection.id}
-        onClose={onClose}
-      />
-    );
-  }
-
-  return (
-    <PLUGIN_LIBRARY.CollectionPermissionsModal
-      opened
-      collectionId={collection.id}
-      namespace={collection.namespace}
-      onClose={onClose}
-    />
-  );
 }
 
 type ArchiveCollectionModalProps = {
