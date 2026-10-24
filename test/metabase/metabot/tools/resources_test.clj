@@ -1877,7 +1877,33 @@
           (testing "Structured output contains expected fields"
             (is (=? {:fields [{:display_name "Category"}
                               {:display_name "Count"}]}
-                    structured))))))))
+                    structured)))
+          (testing "Rendered text lists the result columns the LLM must reference by name"
+            (is (str/includes? output "### Fields"))
+            (is (str/includes? output (str "<field id=\"" (mt/id :products :category) "\" name=\"CATEGORY\"")))
+            (is (str/includes? output "<field id=\"count\" name=\"count\""))))))))
+
+(deftest read-native-question-resource-test
+  (testing "/fields on a native question renders its result columns, which have no Field ids"
+    (let [query    (lib/native-query (mt/metadata-provider)
+                                     "SELECT CATEGORY AS CAT, COUNT(*) AS N FROM PRODUCTS GROUP BY CATEGORY")
+          metadata (-> query
+                       qp/process-query
+                       :data :results_metadata :columns)]
+      (mt/with-temp
+        [:model/Card {question-id :id} {:name            "Native card"
+                                        :dataset_query   query
+                                        :result_metadata metadata}]
+        (mt/with-test-user :crowberto
+          (let [read-result (read-resource/read-resource-tool
+                             {:uris [(str "metabase://question/" question-id "/fields")]})
+                output      (:output read-result)
+                structured  (get-in read-result [:resources 0 :content :structured-output])]
+            (is (=? {:fields [{:name "CAT"} {:name "N"}]}
+                    structured))
+            (is (str/includes? output "### Fields"))
+            (is (str/includes? output "<field id=\"CAT\" name=\"CAT\""))
+            (is (str/includes? output "<field id=\"N\" name=\"N\""))))))))
 
 ;; ===== Pagination =====
 

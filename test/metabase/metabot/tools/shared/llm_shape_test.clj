@@ -533,7 +533,25 @@
     (let [xml-missing (llm-shape/question->xml {:id 201 :name "Q"})
           xml-empty   (llm-shape/question->xml {:id 202 :name "Q" :query_json {}})]
       (is (not (str/includes? xml-missing "<query>")))
-      (is (not (str/includes? xml-empty "<query>"))))))
+      (is (not (str/includes? xml-empty "<query>")))))
+  (testing "renders the result columns under ### Fields when :fields is provided"
+    ;; Native aliases and aggregates have no Field row, so their ids are strings.
+    (let [xml (llm-shape/question->xml
+               {:id     203
+                :name   "Q"
+                :fields [{:field_id 7 :name "CATEGORY" :display_name "Category"
+                          :type :type/Text :database_type "VARCHAR"}
+                         {:field_id "count" :name "count" :display_name "Count"
+                          :type :type/Integer :database_type "BIGINT"}]})]
+      (is (str/includes? xml "### Fields"))
+      (is (str/includes? xml "The following fields are returned by this question"))
+      (is (str/includes? xml "<field id=\"7\" name=\"CATEGORY\" display_name=\"Category\""))
+      (is (str/includes? xml "<field id=\"count\" name=\"count\" display_name=\"Count\""))))
+  (testing "omits the fields section when :fields is missing or empty"
+    (let [xml-missing (llm-shape/question->xml {:id 204 :name "Q"})
+          xml-empty   (llm-shape/question->xml {:id 205 :name "Q" :fields []})]
+      (is (not (str/includes? xml-missing "### Fields")))
+      (is (not (str/includes? xml-empty "### Fields"))))))
 
 (deftest ^:parallel dashboard->xml-test
   (testing "formats dashboard matching Python"
