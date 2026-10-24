@@ -103,6 +103,8 @@ If the run fails on missing `metabase-lib` or cljs output, run `bun run build:cl
 
 Then invert the input the e2e test varied (flip the mocked flag, remove the mocked item, change the role) and run again. The test must fail. Restore the input. A unit test that passes both ways did not move any coverage.
 
+Inverting one input proves that test is not vacuous. It does not prove the branch kept the coverage it deleted. Run `verify.ts` for that, and read its rows by the rules in [Reading the verify report](#reading-the-verify-report).
+
 ### 5. Delete the e2e `it()`
 
 - Remove the `it()` block.
@@ -126,7 +128,24 @@ Describe the end state, in this shape:
 - which e2e `it()` blocks were removed and from which spec;
 - which layer the e2e test was actually exercising, and why that layer does not need a browser;
 - what the new unit test asserts, and which backend test covers the server half if there was one;
-- the CI seconds the removed tests cost, from `timings.json`.
+- the CI seconds the removed tests cost, from `timings.json`;
+- every open row from `verify.ts` that you did not act on, with which of the three reasons applies.
+
+## Reading the verify report
+
+`verify.ts` reports one row per product function: see [VERIFY.md](VERIFY.md). The rows are evidence, not a verdict on the branch. A green row is the one that misleads, so read them in this order.
+
+1. **A verdict is only as strong as the mutant behind it.** Read what the mutant changed before you trust `caught`. One mutant that stands for a whole contract is closed by one assertion. A function that returns six things, or renders six children, needs a mutant for each of them.
+2. **Close a `survived` row by rerunning, not by reasoning.** Write the assertions, run the verifier again, and require that row to read `caught`. A row you argue away is still open.
+3. **Record every row you do not act on.** Put it in the PR under one of three headings: covered by a named test, not introduced by this branch and still missing, or an equivalent mutant that no assertion can notice. Say which one. Never drop a row in silence.
+4. **`unmeasured` is not `caught`.** It says the run reached no verdict. Treat it as open.
+5. **Judge the run before you read the rows.** Count `over --max-mutants`, `excluded`, and the size of the confirm pass. A run that could not reach the code proves nothing about that code.
+
+### Worked example
+
+`SecurityCenterPage.unit.spec.tsx` replaces the hook `useSecurityAdvisories` with a stub, so the hook lost its coverage when the e2e tests went. A new spec asserted `data` and `lastCheckedAt`, and the row turned `caught`.
+
+The hook returns six things. Its only mutant at the time was `return undefined` for the whole object, which an assertion on any one property satisfies. `acknowledgeAdvisory` and `acknowledgeAdvisories` stayed unprotected, and a reviewer found them by reading the diff. The runner now writes one mutant per returned property. The rule outlives the fix: a coarse mutant makes a partial test look complete.
 
 ## What NOT to do
 
