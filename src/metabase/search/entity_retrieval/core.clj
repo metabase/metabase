@@ -4,7 +4,7 @@
   The library entity index is a pgvector index of every library entity's name/description plus its OSI
   `ai_context` synonyms/examples (see [[metabase.osi.models.osi-ai-context]]).
   [[search-unfiltered]] matches a natural-language request against it by vector similarity (enterprise;
-  returns [] in OSS). [[ai-context-instructions]] reads curator instructions live from the appdb.
+  returns :unavailable in OSS). [[ai-context-instructions]] reads curator instructions live from the appdb.
 
   The index is user-agnostic, so [[search-unfiltered]] hits are not permission-filtered. A caller that
   returns anything derived from them must first resolve each entity against the appdb and keep only the ones

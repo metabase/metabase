@@ -18,10 +18,12 @@
    [clojure.string :as str]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools.core :as tools]
+   [metabase.metabot.tools.error :as tools.error]
    [metabase.metabot.tools.search :as tools.search]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.search.entity-retrieval.core :as entity-retrieval]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -84,16 +86,55 @@
                [#{} []])
        second))
 
-;; The one production read of the raw index — hence the lint exemption. Every field of every hit either is
-;; dropped here or survives the hydration below, which keeps only entities the current user can read.
+(tools/defrecoverable library-search-busy!
+  "The library index is being updated."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "Library search is busy because the index is being updated."
+   :recovery [{:uses #{"retrieve_library_entities"}
+               :text (str "Retry `retrieve_library_entities` once later. If it is still busy, tell the user "
+                          "library search is being updated.")}]})
+
+(tools/defrecoverable library-search-unavailable!
+  "The library index or embedding provider cannot serve this search."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "Library search is unavailable."
+   :recovery [{:uses #{}
+               :text "Don't retry this call. Tell the user library search is unavailable."}
+              {:uses #{"search"}
+               :text "Use `search` to find data for the user's request."}]})
+
+(tools/defrecoverable no-library-matches!
+  "No readable library entities match the request."
+  {:payload [:map {:closed true}]}
+  [_]
+  {:message  "No matching library entities."
+   :recovery [{:uses #{"retrieve_library_entities"}
+               :text (str "Rephrase `user_search_prompt` and call `retrieve_library_entities` once more. "
+                          "If there are still no matches, ask the user to clarify or narrow the request.")}]})
+
 #_{:clj-kondo/ignore [:discouraged-var]}
+(defn- search-library [user-search-prompt n]
+  (let [result (try
+                 (entity-retrieval/search-unfiltered user-search-prompt n)
+                 (catch InterruptedException e
+                   (throw e))
+                 (catch Exception e
+                   (log/error e "Library search failed")
+                   (tools.error/throw-recoverable! ::library-search-unavailable {} {:cause e})))]
+    (case result
+      :busy        (library-search-busy! {})
+      :unavailable (library-search-unavailable! {})
+      result)))
+
 (defn- build-matches
   "Fetch, dedupe to distinct entities, hydrate each match's entity ref into a full search record, and
   return the top `n` the current user can read.
   Each match: `{:doc_type :matched_text :usage_instructions :score :similarity :weak? :entity hydrated-hit}`."
   [user-search-prompt n]
   (let [fetch-n  (min over-fetch-cap (* over-fetch-factor n))
-        raw      (entity-retrieval/search-unfiltered user-search-prompt fetch-n)
+        raw      (search-library user-search-prompt fetch-n)
         deduped  (dedupe-by-entity raw)
         refs     (distinct (map :entity deduped))
         ;; Hydration permission-filters (entity-refs->search-results drops entities the user can't read),
@@ -174,10 +215,6 @@
   {:message  "`user_search_prompt` is blank. Set it to a full sentence that describes the data the user wants."
    :recovery []})
 
-;; No capability gate: this tool lives only in the :nlq profile, which [[metabase.metabot.agent.profiles/
-;; get-profile]] serves (the library variant, with this tool) only when entity-retrieval-available? — otherwise it
-;; redirects to :nlq-fallback (general search). That single probe is the sole gate, so prompt and tools can't
-;; disagree about index availability.
 (defrecord RetrieveLibraryEntitiesTool []
   tools/Tool
   (declaration [_]
@@ -201,6 +238,8 @@
       (blank-search-prompt! {}))
     (let [n       (min max-limit (or limit default-limit))
           matches (build-matches user_search_prompt n)]
+      (when (empty? matches)
+        (no-library-matches! {}))
       {:output            (format-output matches)
        :structured-output {:result-type :search
                            :data        (flatten-data matches)
