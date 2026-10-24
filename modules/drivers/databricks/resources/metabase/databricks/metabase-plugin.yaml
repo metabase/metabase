@@ -16,11 +16,15 @@ driver:
           required: true
           placeholder: xxxxxxxxxx.cloud.databricks.com
           helper-text: The Databricks host URL. Could also be adb-xxxxx.azuredatabricks.net
+        - visible-if:
+            same-server-destination: false
       - name: http-path
         display-name: HTTP Path
         helper-text: Found in SQL Warehouses > Connection details
         required: true
         placeholder: /sql/1.0/endpoints/abcdef1234567890
+        visible-if:
+          same-server-destination: false
       - name: use-m2m
         display-name: Use Machine to Machine (M2M) authentication
         type: boolean
