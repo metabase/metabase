@@ -1,15 +1,12 @@
 import _ from "underscore";
 
-import {
-  isSchemaEntityId,
-  isTableEntityId,
-} from "metabase/admin/permissions/utils/data-entity-id";
+import { isSchemaEntityId, isTableEntityId } from "metabase/permissions";
 import {
   getEntityPermission,
   getSchemasPermission,
   hasPermissionValueInSubgraph,
   updateEntityPermission,
-} from "metabase/admin/permissions/utils/graph";
+} from "metabase/permissions";
 import {
   DataPermission,
   DataPermissionValue,

@@ -1,21 +1,21 @@
 import { t } from "ttag";
 
-import { Messages } from "metabase/admin/permissions/constants/messages";
-import { navigateToGranularPermissions } from "metabase/admin/permissions/permissions";
+import { Messages } from "metabase/permissions";
+import { navigateToGranularPermissions } from "metabase/permissions";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
-} from "metabase/admin/permissions/selectors/confirmations";
+} from "metabase/permissions";
 import {
   DataPermissionType,
   type PermissionOption,
   type PermissionSectionConfig,
-} from "metabase/admin/permissions/types";
+} from "metabase/permissions";
 import {
   getFieldsPermission,
   getSchemasPermission,
   getTablesPermission,
-} from "metabase/admin/permissions/utils/graph";
+} from "metabase/permissions";
 import {
   DataPermission,
   DataPermissionValue,

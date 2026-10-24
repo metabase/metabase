@@ -1,23 +1,23 @@
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
-import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 import {
   PermissionsEditor,
   PermissionsEditorEmptyState,
 } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
-import { PermissionsSidebar } from "metabase/admin/permissions/components/PermissionsSidebar";
+import { useListCollectionsTreeQuery } from "metabase/api";
+import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
+import { CollectionPermissionsHelp } from "metabase/permissions";
+import { PermissionsSidebar } from "metabase/permissions";
 import {
   initializeTenantCollectionPermissions,
   loadTenantCollectionPermissions,
   saveTenantCollectionPermissions,
   updateTenantCollectionPermission,
-} from "metabase/admin/permissions/permissions";
-import type { PermissionEditorEntity } from "metabase/admin/permissions/types";
-import { assertNumericId } from "metabase/admin/permissions/types";
-import { useListCollectionsTreeQuery } from "metabase/api";
-import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
+} from "metabase/permissions";
+import type { PermissionEditorEntity } from "metabase/permissions";
+import { assertNumericId } from "metabase/permissions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate, useParams } from "metabase/router";
 import type { CollectionId } from "metabase-types/api";

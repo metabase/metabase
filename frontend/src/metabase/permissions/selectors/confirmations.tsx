@@ -1,15 +1,6 @@
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import {
-  isSchemaEntityId,
-  isTableEntityId,
-} from "metabase/admin/permissions/utils/data-entity-id";
-import {
-  getFieldsPermission,
-  getSchemasPermission,
-  hasPermissionValueInSubgraph,
-} from "metabase/admin/permissions/utils/graph";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { Alert, Flex, Icon, Text } from "metabase/ui";
 import type {
@@ -22,6 +13,12 @@ import type {
 } from "metabase-types/api";
 
 import { DataPermission, DataPermissionValue } from "../types";
+import { isSchemaEntityId, isTableEntityId } from "../utils/data-entity-id";
+import {
+  getFieldsPermission,
+  getSchemasPermission,
+  hasPermissionValueInSubgraph,
+} from "../utils/graph";
 import { tableToTableEntityId } from "../utils/metadata";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>

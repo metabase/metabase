@@ -7,16 +7,6 @@ import {
 import { assocIn, merge } from "icepick";
 import { isBoolean } from "underscore";
 
-import {
-  inferAndUpdateEntityPermissions,
-  restrictCreateQueriesPermissionsIfNeeded,
-  revokeTransformsPermissionIfNeeded,
-  updateFieldsPermission,
-  updatePermission,
-  updateSchemasPermission,
-  updateTablesPermission,
-} from "metabase/admin/permissions/utils/graph";
-import { getGroupFocusPermissionsUrl } from "metabase/admin/permissions/utils/urls";
 import { collectionApi, databaseApi, permissionApi } from "metabase/api";
 import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
@@ -55,10 +45,20 @@ import {
 } from "./types";
 import { isSchemaEntityId, isTableEntityId } from "./utils/data-entity-id";
 import {
+  inferAndUpdateEntityPermissions,
+  restrictCreateQueriesPermissionsIfNeeded,
+  revokeTransformsPermissionIfNeeded,
+  updateFieldsPermission,
+  updatePermission,
+  updateSchemasPermission,
+  updateTablesPermission,
+} from "./utils/graph";
+import {
   getModifiedCollectionPermissionsGraphParts,
   getModifiedGroupsPermissionsGraphParts,
   mergeGroupsPermissionsUpdates,
 } from "./utils/graph/partial-updates";
+import { getGroupFocusPermissionsUrl } from "./utils/urls";
 
 function isErrorAction(action: UnknownAction) {
   return action.error === true;

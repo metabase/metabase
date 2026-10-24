@@ -1,16 +1,16 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import { Messages } from "metabase/admin/permissions/constants/messages";
+import { Messages } from "metabase/permissions";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
-} from "metabase/admin/permissions/selectors/confirmations";
+} from "metabase/permissions";
 import {
   DataPermissionType,
   type PermissionOption,
   type PermissionSectionConfig,
-} from "metabase/admin/permissions/types";
+} from "metabase/permissions";
 import {
   DataPermission,
   DataPermissionValue,

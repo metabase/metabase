@@ -1,7 +1,5 @@
 import _ from "underscore";
 
-import { getNativePermissionDisabledTooltip } from "metabase/admin/permissions/selectors/data-permissions/shared";
-import { getSchemasPermission } from "metabase/admin/permissions/utils/graph";
 import {
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
@@ -24,11 +22,14 @@ import {
 } from "../../permissions";
 import type { DataPermissionValue, PermissionSectionConfig } from "../../types";
 import { DataPermission, DataPermissionType } from "../../types";
+import { getSchemasPermission } from "../../utils/graph";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
   getViewDataPermissionsTooRestrictiveWarningModal,
 } from "../confirmations";
+
+import { getNativePermissionDisabledTooltip } from "./shared";
 
 const buildAccessPermission = (
   entityId: DatabaseEntityId,

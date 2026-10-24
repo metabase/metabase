@@ -1,8 +1,9 @@
 import { forwardRef } from "react";
 
-import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { Tree } from "metabase/common/components/tree";
 import type { TreeNodeProps } from "metabase/common/components/tree/types";
+
+import { isEmbeddingHubPermissions } from "../../utils/is-embedding-hub";
 
 import styles from "./AdminTreeNode.module.css";
 

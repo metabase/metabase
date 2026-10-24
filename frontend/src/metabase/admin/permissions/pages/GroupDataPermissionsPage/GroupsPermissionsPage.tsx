@@ -5,6 +5,30 @@ import { t } from "ttag";
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { PermissionsSidebar } from "metabase/permissions";
+import {
+  loadDataPermissionsForGroup,
+  updateDataPermission,
+} from "metabase/permissions";
+import {
+  getDatabasesPermissionEditor,
+  getGroupsSidebar,
+  getIsLoadingDatabaseTables,
+  getLoadingDatabaseTablesError,
+} from "metabase/permissions";
+import type {
+  DataPermissionValue,
+  PermissionAction,
+  PermissionEditorBreadcrumb,
+  PermissionEditorEntity,
+  PermissionSectionConfig,
+  RawGroupRouteParams,
+} from "metabase/permissions";
+import { parseGroupRouteParams } from "metabase/permissions";
+import {
+  getGroupFocusPermissionsUrl,
+  getGroupsBasePath,
+} from "metabase/permissions";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, useNavigate, useParams } from "metabase/router";
@@ -16,30 +40,6 @@ import {
   PermissionsEditorEmptyState,
 } from "../../components/PermissionsEditor";
 import { PermissionsEditorSplitPermsMessage } from "../../components/PermissionsEditor/PermissionsEditorSplitPermsMessage";
-import { PermissionsSidebar } from "../../components/PermissionsSidebar";
-import {
-  loadDataPermissionsForGroup,
-  updateDataPermission,
-} from "../../permissions";
-import {
-  getDatabasesPermissionEditor,
-  getGroupsSidebar,
-  getIsLoadingDatabaseTables,
-  getLoadingDatabaseTablesError,
-} from "../../selectors/data-permissions";
-import type {
-  DataPermissionValue,
-  PermissionAction,
-  PermissionEditorBreadcrumb,
-  PermissionEditorEntity,
-  PermissionSectionConfig,
-  RawGroupRouteParams,
-} from "../../types";
-import { parseGroupRouteParams } from "../../types";
-import {
-  getGroupFocusPermissionsUrl,
-  getGroupsBasePath,
-} from "../../utils/urls";
 
 export function GroupsPermissionsPage() {
   const dispatch = useDispatch();

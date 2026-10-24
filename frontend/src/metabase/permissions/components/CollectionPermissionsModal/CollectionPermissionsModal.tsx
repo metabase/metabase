@@ -23,7 +23,7 @@ import {
   collectionsQuery,
   getCollectionEntity,
   getCollectionsPermissionEditor,
-  getIsDirty,
+  getIsCollectionPermissionsDirty,
 } from "../../selectors/collection-permissions";
 import type { PermissionEditorEntity, PermissionEditorType } from "../../types";
 import { assertNumericId } from "../../types";
@@ -59,7 +59,7 @@ const mapStateToProps = (
       params: { collectionId },
       namespace: props.namespace,
     }),
-    isDirty: getIsDirty(state),
+    isDirty: getIsCollectionPermissionsDirty(state),
   };
 };
 

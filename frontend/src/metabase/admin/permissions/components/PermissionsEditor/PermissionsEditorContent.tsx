@@ -5,17 +5,16 @@ import { EmptyState } from "metabase/common/components/EmptyState";
 import { Subhead } from "metabase/common/components/type/Subhead";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import CS from "metabase/css/core/index.css";
-import { Box, Flex, Icon, Input, Text, TextInput } from "metabase/ui";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
-
 import type {
   PermissionEditorBreadcrumb,
   PermissionEditorType,
-} from "../../types";
+} from "metabase/permissions";
 import {
   PermissionsTable,
   type PermissionsTableProps,
-} from "../PermissionsTable";
+} from "metabase/permissions";
+import { Box, Flex, Icon, Input, Text, TextInput } from "metabase/ui";
+import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
 

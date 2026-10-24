@@ -6,8 +6,8 @@ import {
   UPDATE_DATA_PERMISSION,
   type UpdateDataPermissionPayload,
   updateDataPermission,
-} from "metabase/admin/permissions/permissions";
-import { DataPermissionType } from "metabase/admin/permissions/types";
+} from "metabase/permissions";
+import { DataPermissionType } from "metabase/permissions";
 import {
   combineReducers,
   createAction,

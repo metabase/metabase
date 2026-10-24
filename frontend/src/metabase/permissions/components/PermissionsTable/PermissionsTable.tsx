@@ -2,7 +2,6 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import cx from "classnames";
 import { memo, useCallback, useRef, useState } from "react";
 
-import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { Label } from "metabase/common/components/type/Label";
@@ -17,6 +16,7 @@ import type {
   PermissionEditorType,
   PermissionSectionConfig,
 } from "../../types";
+import { isEmbeddingHubPermissions } from "../../utils/is-embedding-hub";
 import { PermissionsSelect } from "../PermissionsSelect";
 
 import S from "./PermissionsTable.module.css";

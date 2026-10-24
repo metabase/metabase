@@ -1,9 +1,10 @@
 import cx from "classnames";
 
-import { isEmbeddingHubPermissions } from "metabase/admin/permissions/utils/is-embedding-hub";
 import CS from "metabase/css/core/index.css";
 import { Flex, Icon, Text } from "metabase/ui";
 import type { IconName } from "metabase-types/api";
+
+import { isEmbeddingHubPermissions } from "../../utils/is-embedding-hub";
 
 import S from "./ToolbarButton.module.css";
 

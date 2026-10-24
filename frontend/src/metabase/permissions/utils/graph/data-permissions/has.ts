@@ -1,10 +1,5 @@
 import _ from "underscore";
 
-import { isSchemaEntityId } from "metabase/admin/permissions/utils/data-entity-id";
-import {
-  getDatabaseSchema,
-  getDatabaseSchemas,
-} from "metabase/admin/permissions/utils/metadata";
 import type {
   ConcreteTableId,
   DataPermission,
@@ -17,6 +12,9 @@ import type {
   PermissionsDatabase,
   SchemaEntityId,
 } from "metabase-types/api";
+
+import { isSchemaEntityId } from "../../data-entity-id";
+import { getDatabaseSchema, getDatabaseSchemas } from "../../metadata";
 
 import {
   getEntityPermission,

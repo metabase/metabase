@@ -3,17 +3,14 @@ import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { Messages } from "metabase/admin/permissions/constants/messages";
-import { getDefaultGroupHasHigherAccessText } from "metabase/admin/permissions/selectors/confirmations";
-import {
-  getDefaultGroup,
-  getOrderedGroups,
-} from "metabase/admin/permissions/selectors/data-permissions/groups";
 import {
   getGroupNameLocalized,
   isAdminGroup,
 } from "metabase/common/utils/groups";
 import { getUser } from "metabase/current-user";
+import { Messages } from "metabase/permissions";
+import { getDefaultGroupHasHigherAccessText } from "metabase/permissions";
+import { getDefaultGroup, getOrderedGroups } from "metabase/permissions";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
 import type { Group } from "metabase-types/api";

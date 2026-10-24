@@ -1,6 +1,5 @@
 import { jt, t } from "ttag";
 
-import { PermissionHelpDescription } from "metabase/admin/permissions/components/PermissionHelpDescription";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
@@ -19,6 +18,7 @@ import {
 import { DataPermissionValue } from "metabase-types/api";
 
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
+import { PermissionHelpDescription } from "../PermissionHelpDescription";
 
 export const DataPermissionsHelp = () => {
   const isAdvancedPermissionsFeatureEnabled = useSelector(

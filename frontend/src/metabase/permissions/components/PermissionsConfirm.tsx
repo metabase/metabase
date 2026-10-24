@@ -1,13 +1,14 @@
 import { jt, msgid, ngettext, t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
+import { Tooltip } from "metabase/ui";
+import { DataPermissionValue } from "metabase-types/api";
+
 import type {
   DatabasePermissionsDiff,
   GroupPermissionsDiff,
   PermissionsGraphDiff,
-} from "metabase/admin/permissions/types";
-import CS from "metabase/css/core/index.css";
-import { Tooltip } from "metabase/ui";
-import { DataPermissionValue } from "metabase-types/api";
+} from "../types";
 
 const GroupName = ({ group }: { group: GroupPermissionsDiff }) => (
   <span className={CS.textBrand}>{group.name}</span>

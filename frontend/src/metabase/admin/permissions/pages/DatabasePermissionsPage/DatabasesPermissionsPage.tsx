@@ -5,6 +5,31 @@ import { t } from "ttag";
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { PermissionsSidebar } from "metabase/permissions";
+import {
+  loadDataPermissionsForDb,
+  updateDataPermission,
+} from "metabase/permissions";
+import {
+  type DataTreeNodeItem,
+  getDataFocusSidebar,
+  getGroupsDataPermissionEditor,
+  getIsLoadingDatabaseTables,
+  getLoadingDatabaseTablesError,
+} from "metabase/permissions";
+import type {
+  DataPermissionValue,
+  PermissionAction,
+  PermissionEditorBreadcrumb,
+  PermissionEditorEntity,
+  PermissionSectionConfig,
+  RawDataRouteParams,
+} from "metabase/permissions";
+import { assertNumericId, parseDataRouteParams } from "metabase/permissions";
+import {
+  getDatabaseFocusPermissionsUrl,
+  getDatabasesBasePath,
+} from "metabase/permissions";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, useNavigate, useParams } from "metabase/router";
@@ -16,31 +41,6 @@ import {
   PermissionsEditorEmptyState,
 } from "../../components/PermissionsEditor";
 import { PermissionsEditorSplitPermsMessage } from "../../components/PermissionsEditor/PermissionsEditorSplitPermsMessage";
-import { PermissionsSidebar } from "../../components/PermissionsSidebar";
-import {
-  loadDataPermissionsForDb,
-  updateDataPermission,
-} from "../../permissions";
-import {
-  type DataTreeNodeItem,
-  getDataFocusSidebar,
-  getGroupsDataPermissionEditor,
-  getIsLoadingDatabaseTables,
-  getLoadingDatabaseTablesError,
-} from "../../selectors/data-permissions";
-import type {
-  DataPermissionValue,
-  PermissionAction,
-  PermissionEditorBreadcrumb,
-  PermissionEditorEntity,
-  PermissionSectionConfig,
-  RawDataRouteParams,
-} from "../../types";
-import { assertNumericId, parseDataRouteParams } from "../../types";
-import {
-  getDatabaseFocusPermissionsUrl,
-  getDatabasesBasePath,
-} from "../../utils/urls";
 
 export function DatabasesPermissionsPage() {
   const dispatch = useDispatch();

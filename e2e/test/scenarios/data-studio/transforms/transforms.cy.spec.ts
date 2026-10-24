@@ -11,7 +11,7 @@ import {
   NORMAL_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import { createLibraryWithItems } from "e2e/support/test-library-data";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
+import { DataPermissionValue } from "metabase-types/api/permissions";
 import type {
   CardType,
   CollectionId,

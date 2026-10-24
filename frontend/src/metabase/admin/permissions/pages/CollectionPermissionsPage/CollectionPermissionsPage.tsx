@@ -1,9 +1,25 @@
 import { useCallback, useEffect } from "react";
 import { t } from "ttag";
 
-import { CollectionPermissionsHelp } from "metabase/admin/permissions/components/CollectionPermissionsHelp";
 import { useListCollectionsTreeQuery } from "metabase/api";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
+import { CollectionPermissionsHelp } from "metabase/permissions";
+import { PermissionsSidebar } from "metabase/permissions";
+import {
+  initializeCollectionPermissions,
+  loadCollectionPermissions,
+  saveCollectionPermissions,
+  updateCollectionPermission,
+} from "metabase/permissions";
+import {
+  collectionsQuery,
+  getCollectionEntity,
+  getCollectionsPermissionEditor,
+  getCollectionsSidebar,
+  getIsCollectionPermissionsDirty,
+} from "metabase/permissions";
+import type { PermissionEditorEntity } from "metabase/permissions";
+import { assertNumericId } from "metabase/permissions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate, useParams } from "metabase/router";
 import type { CollectionId } from "metabase-types/api";
@@ -13,22 +29,6 @@ import {
   PermissionsEditorEmptyState,
 } from "../../components/PermissionsEditor";
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout";
-import { PermissionsSidebar } from "../../components/PermissionsSidebar";
-import {
-  initializeCollectionPermissions,
-  loadCollectionPermissions,
-  saveCollectionPermissions,
-  updateCollectionPermission,
-} from "../../permissions";
-import {
-  collectionsQuery,
-  getCollectionEntity,
-  getCollectionsPermissionEditor,
-  getCollectionsSidebar,
-  getIsDirty,
-} from "../../selectors/collection-permissions";
-import type { PermissionEditorEntity } from "../../types";
-import { assertNumericId } from "../../types";
 
 export function CollectionPermissionsPage() {
   const dispatch = useDispatch();
@@ -48,7 +48,7 @@ export function CollectionPermissionsPage() {
   const collection = useSelector((state) =>
     getCollectionEntity(state, selectorProps),
   );
-  const isDirty = useSelector(getIsDirty);
+  const isDirty = useSelector(getIsCollectionPermissionsDirty);
 
   const originalPermissionsState = useSelector(
     ({ admin }) => admin.permissions.originalCollectionPermissions,

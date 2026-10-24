@@ -4,8 +4,9 @@ import {
   screen,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
-import { DataPermissionsHelp } from "metabase/admin/permissions/components/DataPermissionsHelp/DataPermissionsHelp";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
+
+import { DataPermissionsHelp } from "./DataPermissionsHelp";
 
 async function setup({ hasAdvancedPermissions = false } = {}) {
   const settings = mockSettings({

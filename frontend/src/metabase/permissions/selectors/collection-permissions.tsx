@@ -51,7 +51,7 @@ export const collectionsQuery = {
   "include-library": true,
 } as const;
 
-export const getIsDirty = createSelector(
+export const getIsCollectionPermissionsDirty = createSelector(
   (state: State) => state.admin.permissions.collectionPermissions,
   (state: State) => state.admin.permissions.originalCollectionPermissions,
   (
