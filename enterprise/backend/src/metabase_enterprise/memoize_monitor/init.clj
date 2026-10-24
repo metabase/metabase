@@ -1,9 +1,8 @@
 (ns metabase-enterprise.memoize-monitor.init
-  "Reports the size of a curated set of in-memory memoization caches as telemetry.
+  "Reports the size of a curated set of in-memory caches as telemetry.
 
-  Some memoization caches in the app are keyed on argument spaces that can grow large or unbounded (field IDs, table
-  IDs, decrypted-secret ciphertexts, per-request collection-visibility configs, serialization paths, ...). Rather than
-  instrument each cache at its definition site, this namespace references the vars that hold those caches directly and
+  Some caches in the app are keyed on argument spaces that can grow large or unbounded (field IDs, table IDs,
+  decrypted-secret ciphertexts, per-request collection-visibility configs, serialization paths, ...). This namespace
   reads each cache's size on a periodic basis via a Prometheus `pull-collector`. For each monitored cache we emit:
 
   - `:metabase-memoize/cache-size`             -- number of entries
@@ -12,18 +11,22 @@
   ([[metabase-enterprise.serialization.dump]]); an OSS namespace cannot depend on enterprise code. OSS-only builds get
   no memoize-cache telemetry.
 
-  Only caches built with [[clojure.core.memoize]] (`memo`, `ttl`, and
-  [[metabase.app-db.core/memoize-for-application-db]], which is built on `memo`) can be measured, because their
-  backing cache is reachable through the memoized function's metadata."
+  Two kinds of cache can be measured:
+
+  - functions built with [[clojure.core.memoize]] (`memo`, `ttl`, and
+    [[metabase.app-db.core/memoize-for-application-db]], which is built on `memo`), listed here by var; their backing
+    cache is reachable through the memoized function's metadata;
+  - caches in modules this namespace should not depend on, whose owners register a count fn
+    with [[metabase.util.memoize/register-monitored-cache!]] when their namespace loads."
   (:require
    [metabase-enterprise.serialization.dump :as serialization.dump]
    [metabase.analytics-interface.core :as analytics.interface]
    [metabase.analytics.core :as analytics]
    [metabase.audit-app.impl :as audit-app.impl]
    [metabase.collections.models.collection :as collection]
-   [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.util.log :as log]
+   [metabase.util.memoize :as u.memo]
    [metabase.warehouse-schema.models.field :as schema.field]
    [metabase.warehouses.models.database :as database])
   (:import
@@ -32,14 +35,13 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private monitored-cache-vars
-  "The vars holding the memoization caches whose sizes we export. Each must hold a [[clojure.core.memoize]]-backed
-  function (see the namespace docstring)."
+  "The vars holding the caches whose sizes we export. Each must hold a [[clojure.core.memoize]]-backed function.
+  Caches owned by modules we should not depend on register themselves instead
+  (see [[metabase.util.memoize/register-monitored-cache!]])."
   [#'schema.field/field-id->table-id
    #'database/table-id->database-id
    #'database/db-id->router-db-id
    #'audit-app.impl/memoized-select-audit-entity*
-   #'driver.u/memoized-supports?*
-   #'driver.u/memoized-features*
    #'mi/cached-encrypted-json-out
    #'collection/can-access-root-collection?
    #'serialization.dump/serialization-sorted-map])
@@ -58,16 +60,29 @@
   [cache-var]
   (try
     (when-let [cache (cache-object @cache-var)]
-      (let [entries (count cache)]
-        {:cache      (str (symbol cache-var))
-         :entries    entries}))
+      {:cache      (str (symbol cache-var))
+       :entries    (count cache)})
     (catch Exception e
       (log/warn "Error measuring memoization cache size" {:cache (str (symbol cache-var))
                                                           :error (ex-message e)}))))
 
+(defn- registered-cache-stats
+  "Stats for the caches whose owners self-registered a count fn
+  via [[metabase.util.memoize/register-monitored-cache!]]."
+  []
+  (keep (fn [[cache-name count-fn]]
+          (try
+            {:cache   cache-name
+             :entries (count-fn)}
+            (catch Exception e
+              (log/warn "Error measuring registered cache size" {:cache cache-name
+                                                                 :error (ex-message e)}))))
+        (u.memo/monitored-caches)))
+
 (defn- all-cache-stats
   []
-  (keep memoization-cache-stats monitored-cache-vars))
+  (concat (keep memoization-cache-stats monitored-cache-vars)
+          (registered-cache-stats)))
 
 (defmethod analytics/pull-collector ::memoize-cache-sizes [_]
   {:min-interval-s (* 10 60)

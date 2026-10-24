@@ -13,6 +13,11 @@
   []
   (t2/select :model/Database))
 
+(mu/defn database
+  "The Database with `database-id`, or nil."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one :model/Database :id database-id))
+
 (mu/defn table-field-names
   "The names of the Fields of the Table with `table-id`."
   [table-id :- ::lib.schema.id/table]
