@@ -25,7 +25,8 @@ type FieldSectionBaseProps = {
   parent?: Field;
   getFieldHref: (fieldId: FieldId) => string;
   onFieldValuesClick: () => void;
-  onPreviewClick: () => void;
+  /** When absent, the Preview button is not shown. */
+  onPreviewClick?: () => void;
   onTrackMetadataChange: (detail: MetadataEditEventDetail) => void;
 };
 
@@ -125,12 +126,14 @@ const FieldSectionBase = ({
           >
             {/* keep this in sync with getRequiredWidth in useResponsiveButtons */}
 
-            <ResponsiveButton
-              icon="eye"
-              showLabel={showButtonLabel}
-              onClick={onPreviewClick}
-              onRequestWidth={setPreviewButtonWidth}
-            >{t`Preview`}</ResponsiveButton>
+            {onPreviewClick != null && (
+              <ResponsiveButton
+                icon="eye"
+                showLabel={showButtonLabel}
+                onClick={onPreviewClick}
+                onRequestWidth={setPreviewButtonWidth}
+              >{t`Preview`}</ResponsiveButton>
+            )}
 
             <ResponsiveButton
               icon="gear_settings_filled"

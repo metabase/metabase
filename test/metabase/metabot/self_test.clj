@@ -476,6 +476,44 @@
       (finally
         (.stop server)))))
 
+(deftest abort-on-close-abort-frees-blocked-reader-test
+  (testing "the abort that a request passes to *on-abortable-request* ends a read that waits on a stalled stream"
+    (let [stall   (promise)
+          handler (fn [_req]
+                    (let [out (java.io.PipedOutputStream.)
+                          in  (java.io.PipedInputStream. out 65536)]
+                      (future
+                        (try
+                          (.write out (.getBytes (test-util/make-sse ["msg-0"])))
+                          (.flush out)
+                          @stall
+                          (catch Exception _)
+                          (finally
+                            (try (.close out)
+                                 (catch Exception _)))))
+                      {:status  200
+                       :headers {"Content-Type" "text/event-stream"}
+                       :body    in}))
+          server  (jetty/run-jetty handler {:port 0 :join? false :output-buffer-size 1})
+          url     (str "http://localhost:" (.. server getURI getPort))
+          opts    {:method :post :url url :as :stream}
+          abort   (atom nil)]
+      (try
+        (let [body   (binding [self.core/*on-abortable-request* #(reset! abort %)]
+                       (self.core/abort-on-close (http/request opts) opts))
+              reader (future
+                       (try
+                         (into [] (self.core/sse-reducible body))
+                         (catch Exception e
+                           e)))]
+          (is (fn? @abort))
+          (is (= ::blocked (deref reader 500 ::blocked)))
+          (@abort)
+          (is (not= ::blocked (deref reader 5000 ::blocked))))
+        (finally
+          (deliver stall true)
+          (.stop server))))))
+
 (deftest lite-aisdk-xf-test
   (testing "streams text deltas immediately instead of batching"
     (let [chunks [{:type :start :messageId "msg-1"}

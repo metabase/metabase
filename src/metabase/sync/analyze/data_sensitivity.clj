@@ -102,8 +102,8 @@
 
 (mu/defn reset-data-sensitivity! :- :int
   "REPL entry point: clear every classifier-written `data_sensitivity` in a Database or a single Table so the next
-  scan recomputes them, including fields that carry a category and would otherwise never be reselected. Labels with
-  a value in the `FieldUserSettings` mirror are human-set and untouched. Returns the number of fields cleared."
+  scan recomputes them, including fields that carry a category and would otherwise never be reselected. Human and AI
+  labels live in `FieldUserSettings` and are untouched. Returns the number of fields cleared."
   [database-or-table :- [:or i/DatabaseInstance i/TableInstance]]
   (let [n (case (t2/model database-or-table)
             :model/Table    (sync.db/reset-classifier-data-sensitivity-for-table! (u/the-id database-or-table))

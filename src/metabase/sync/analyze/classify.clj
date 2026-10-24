@@ -73,7 +73,8 @@
 (def ^:private ClassifyOpts
   [:map {:closed true}
    [:fields-failed :int]
-   [:exists-name :boolean]])
+   [:exists-name :boolean]
+   [:layered-semantic-types [:map-of :int [:maybe :keyword]]]])
 
 (mu/defn- classify!
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes.
@@ -87,15 +88,23 @@
                   (sync.db/field-fingerprint (u/the-id field)))))
 
   ([field       :- i/FieldInstance
-    {:keys [exists-name]} :- ClassifyOpts
+    {:keys [exists-name layered-semantic-types]} :- ClassifyOpts
     fingerprint :- [:maybe ::lib.schema.metadata.fingerprint/fingerprint]]
    (sync-util/with-error-handling (format "Error classifying %s" (sync-util/name-for-logging field))
      (let [classified (analyze/run-classifiers field fingerprint)
            would-be-name? (= (:semantic_type classified) :type/Name)
            ;; if it would be name and table already has a name field, don't classify as name (SEM-414)
-           updated-field (if (and would-be-name? exists-name)
-                           (assoc classified :semantic_type (:semantic_type field))
-                           classified)]
+           updated-field (cond-> (if (and would-be-name? exists-name)
+                                   (assoc classified :semantic_type (:semantic_type field))
+                                   classified)
+                           ;; `field` has sync's own semantic type, but readers see the human or AI one
+                           (contains? layered-semantic-types (u/the-id field))
+                           (assoc :preview_display
+                                  (:preview_display
+                                   (or (analyze/infer-no-preview-display
+                                        (assoc field :semantic_type (get layered-semantic-types (u/the-id field)))
+                                        fingerprint)
+                                       field))))]
        (when-not (= field updated-field)
          (save-model-updates! field updated-field))
        updated-field))))
@@ -108,7 +117,8 @@
   "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
-  (seq (sync.db/incomplete-analysis-fields-for-table (u/the-id table) i/*latest-fingerprint-version*)))
+  (seq (sync.db/incomplete-analysis-fields-for-table (u/the-id table) i/*latest-fingerprint-version*
+                                                     {:deterministic-ai-columns? true})))
 
 (mu/defn classify-fields!
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do
@@ -118,6 +128,7 @@
     (let [table-id (:id table)]
       (when-let [fields (fields-to-classify table)]
         (let [existing-name-field (sync.db/name-field-count-for-table table-id)
+              layered-types       (sync.db/layered-semantic-types-for-table table-id)
               {:keys [fields-failed]}
               (dependencies.hooks/with-batched-marks
                 (reduce (fn [state field]
@@ -128,7 +139,9 @@
 
                               (= :type/Name (:semantic_type result))
                               (assoc :exists-name true))))
-                        {:fields-failed 0 :exists-name (pos? existing-name-field)}
+                        {:fields-failed          0
+                         :exists-name            (pos? existing-name-field)
+                         :layered-semantic-types layered-types}
                         fields))]
           {:fields-classified (count fields)
            :fields-failed fields-failed})))))

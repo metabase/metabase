@@ -129,7 +129,8 @@
                       new-base-type)
            (when-not (= old-base-type :type/*)
              (field-user-settings/unset-user-settings!
-              (select-keys metabase-field [:id]) [:effective_type :coercion_strategy :semantic_type]))
+              (select-keys metabase-field [:id]) [:effective_type :coercion_strategy :semantic_type])
+             (common/clear-ai-semantic-type! (u/the-id metabase-field)))
            {:base_type           new-base-type
             :effective_type      new-base-type
             :coercion_strategy   nil
@@ -153,6 +154,8 @@
                       (common/field-metadata-name-for-logging table metabase-field)
                       old-semantic-type
                       new-semantic-type)
+           (when (#{:type/PK :type/FK} new-semantic-type)
+             (common/clear-ai-semantic-type! (u/the-id metabase-field)))
            {:semantic_type new-semantic-type})
          (when new-comment?
            (log/infof "Comment has been added for %s."

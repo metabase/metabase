@@ -309,6 +309,9 @@
                 :coercion_strategy nil
                 :semantic_type     nil
                 :semantic_type_set false}]
+              ["FieldUserSettings"
+               field-id
+               {:ai_semantic_type nil}]
               ["Field"
                field-id
                {:base_type           :type/Text
@@ -360,6 +363,31 @@
                 (is (not= (:fingerprint original-field) (:fingerprint new-field))))))
           (finally
             (t2/delete! :model/Database (mt/id))))))))
+
+(deftest base-type-change-clears-ai-semantic-type-test
+  (testing "a base type change clears the accepted AI semantic type and keeps the other AI values"
+    (mt/with-temp-test-data [["table"
+                              [{:field-name "field"
+                                :base-type  :type/Text}]
+                              [["ngoc@metabase.com"]]]]
+      (try
+        (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+        (let [field-id (mt/id :table :field)]
+          (field-user-settings/set-ai-values! {:id field-id} {:semantic_type :type/Name :description "ai"})
+          (sql-jdbc.execute/do-with-connection-with-options
+           :h2
+           (mt/db)
+           {}
+           (fn [conn]
+             (doseq [sql ["ALTER TABLE \"TABLE\" DROP COLUMN \"FIELD\";"
+                          "ALTER TABLE \"TABLE\" ADD COLUMN \"FIELD\" INTEGER;"
+                          "INSERT INTO \"TABLE\"(field) VALUES(1);"]]
+               (next.jdbc/execute! conn [sql]))))
+          (sync/sync-table! (t2/select-one :model/Table (mt/id :table)))
+          (is (=? {:ai_semantic_type nil :ai_description "ai"}
+                  (t2/select-one :model/FieldUserSettings :field_id field-id))))
+        (finally
+          (t2/delete! :model/Database (mt/id)))))))
 
 (deftest untyped-field-getting-its-base-type-keeps-user-settings-test
   (testing "A Field that never had a real base type, like one serdes synthesized for a stub database, keeps its user settings"

@@ -19,6 +19,17 @@
     (is (= (into #{:id :unique_field_helper} (mu/map-schema-keys :metabase.warehouse-schema.schema/field.update))
            warehouse-schema-overlay/field-columns))))
 
+(deftest ^:parallel field-value-source-test
+  (testing "the layer readers see, in the order of field-query"
+    (is (nil? (warehouse-schema-overlay/field-value-source nil :semantic_type nil)))
+    (is (= :deterministic (warehouse-schema-overlay/field-value-source nil :semantic_type :type/Category)))
+    (is (= :ai (warehouse-schema-overlay/field-value-source {:ai_semantic_type :type/Email} :semantic_type :type/Email)))
+    (is (= :human (warehouse-schema-overlay/field-value-source {:semantic_type_set true :ai_semantic_type :type/Email}
+                                                               :semantic_type nil)))
+    (is (= :human (warehouse-schema-overlay/field-value-source {:display_name "X"} :display_name "X")))
+    (is (= :human (warehouse-schema-overlay/field-value-source {:effective_type :type/DateTime}
+                                                               :coercion_strategy nil)))))
+
 (defn- visibility-types
   "`[table-user-visibility-type, visibility_type read through table-query]` for the Table `table-id`."
   [table-id]

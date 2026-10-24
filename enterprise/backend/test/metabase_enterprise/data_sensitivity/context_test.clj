@@ -83,15 +83,18 @@
 
 (deftest human-set-flags-test
   (mt/with-temp [:model/Field {field-id :id :as f} {:table_id (mt/id :people) :name "labeled_f" :base_type :type/Text
-                                                    :data_sensitivity :PII}]
+                                                    :data_sensitivity :PII :description "Comment from the database"}]
     (testing "a field with no user-settings row has no human-set keys"
       (let [entry (field-by-name (schema-only-packet (people-table)) "labeled_f")]
         (is (= #{} (:human_set entry)))
         (is (= {:data_sensitivity :PII :human_set false} (:current entry)))))
-    (testing "non-nil user-settings values are reported as human-set"
+    (testing "a field with no user-settings row shows the Field's description"
+      (is (= "Comment from the database" (:description (field-by-name (schema-only-packet (people-table)) "labeled_f")))))
+    (testing "non-nil user-settings values and a cleared flagged column are reported as human-set"
       (field-user-settings/upsert-user-settings f {:semantic_type :type/Email :data_sensitivity :PUBLIC :description nil})
       (let [entry (field-by-name (schema-only-packet (people-table)) "labeled_f")]
-        (is (= #{:semantic_type :data_sensitivity} (:human_set entry)))
+        (is (= #{:semantic_type :data_sensitivity :description} (:human_set entry)))
+        (is (nil? (:description entry)) "a cleared description hides the Field's description, as the overlay does")
         (is (= {:data_sensitivity :PUBLIC :human_set true} (:current entry)))
         (is (= :type/Email (:semantic_type entry))))
       (is (= :PUBLIC (t2/select-one-fn :data_sensitivity :model/FieldUserSettings :field_id field-id))))))

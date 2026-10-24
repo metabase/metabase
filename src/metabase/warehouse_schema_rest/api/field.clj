@@ -53,13 +53,20 @@
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
                       :metabase/validate-defendpoint-has-response-schema]}
 (api.macros/defendpoint :get "/:id"
-  "Get `Field` with ID."
+  "Get `Field` with ID. With `include_editable_data_model`, also `data_sensitivity_source`: `human`, `ai`,
+  `deterministic`, or null. With `preview_ai_proposals` too, a superuser on an instance with the `:data-sensitivity`
+  feature gets the Field with its pending AI proposals read as if accepted, and `ai_proposals` maps each attribute
+  with a proposal to its `value`, `reasoning`, `confidence` and `conflict` (the proposal is over a human value).
+  Other users get the read without `preview_ai_proposals`."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {include-editable-data-model? :include_editable_data_model} :- [:map {:closed true}
-                                                                   [:include_editable_data_model {:default false} ms/BooleanValue]]]
-  (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
+   {include-editable-data-model? :include_editable_data_model
+    preview-ai-proposals?        :preview_ai_proposals} :- [:map {:closed true}
+                                                            [:include_editable_data_model {:default false} ms/BooleanValue]
+                                                            [:preview_ai_proposals        {:default false} ms/BooleanValue]]]
+  (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?
+                              :preview-ai-proposals?        preview-ai-proposals?}))
 
 (api.macros/defendpoint :post "/table-ids" :- [:map
                                                [:table_ids [:sequential ms/PositiveInt]]]
@@ -102,13 +109,6 @@
        (or (nil? new-semantic-type)
            (not (isa? new-semantic-type :type/FK)))))
 
-(defn- internal-remapping-allowed? [base-type semantic-type]
-  (and (isa? base-type :type/Integer)
-       (or
-        (nil? semantic-type)
-        (isa? semantic-type :type/Category)
-        (isa? semantic-type :type/Enum))))
-
 (defn- clear-dimension-on-type-change!
   "Removes a related dimension if the field is moving to a type that
   does not support remapping"
@@ -116,8 +116,16 @@
   (doseq [{old-dim-id :id, old-dim-type :type} dimensions]
     (when (and old-dim-id
                (= :internal old-dim-type)
-               (not (internal-remapping-allowed? base-type new-semantic-type)))
+               (not (schema.field/internal-remapping-allowed? base-type new-semantic-type)))
       (warehouse-schema-rest.db/delete-dimension! old-dim-id))))
+
+(defn- updated-field-response!
+  "`field`, read again after a write, hydrated as the Field endpoints return it. Publishes its `:event/field-update`."
+  [field]
+  (u/prog1 (-> field
+               (t2/hydrate :dimensions :has_field_values :data_sensitivity_source)
+               (schema.field/hydrate-target-with-data-model-perms))
+    (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})))
 
 (defn- update-nested-fields-on-json-unfolding-change!
   "If JSON unfolding was enabled for a JSON field, it activates previously synced nested fields from the JSON field.
@@ -213,14 +221,23 @@
     ;; return updated field. note the fingerprint on this might be out of date if the task below would replace them
     ;; but that shouldn't matter for the datamodel page
     (let [updated (warehouse-schema-rest.db/field id)]
-      (u/prog1 (-> updated
-                   (t2/hydrate :dimensions :has_field_values)
-                   (schema.field/hydrate-target-with-data-model-perms))
-        (events/publish-event! :event/field-update {:object <> :user-id api/*current-user-id*})
+      (u/prog1 (updated-field-response! updated)
         (when (not= effective-type (:effective_type field))
           (analytics/track-event! :snowplow/simple_event {:event "field_effective_type_change" :target_id id})
           ;; Run with admin perms to match behavior during normal sync.
           (quick-task/submit-task! (fn [] (request/as-admin (sync/refingerprint-field! updated)))))))))
+
+(api.macros/defendpoint :post "/:id/reset-to-automatic" :- :map
+  "Drop the user values of the Field columns in `columns`, so the Field shows the accepted AI value, else the value
+  sync and the classifiers set. Returns the updated Field."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [columns]} :- [:map {:closed true}
+                         [:columns [:sequential {:min 1} [:enum "data_sensitivity"]]]]]
+  (let [field (api/write-check (warehouse-schema-rest.db/field id))]
+    (schema.field-user-settings/unset-user-settings! field (mapv keyword columns))
+    (updated-field-response! (warehouse-schema-rest.db/field id))))
 
 ;;; ------------------------------------------------- Field Metadata -------------------------------------------------
 

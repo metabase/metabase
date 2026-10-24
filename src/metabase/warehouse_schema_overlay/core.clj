@@ -1,7 +1,9 @@
 (ns metabase.warehouse-schema-overlay.core
   "Sources for queries over Fields and Tables: [[field-query]] and [[table-query]] merge each row with the values
-  in its user-settings table."
+  in its user-settings table. `metabase_field_user_settings` holds human values and, for the columns of
+  [[field-ai-columns]], accepted AI values too."
   (:require
+   [metabase.premium-features.defenterprise :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
@@ -13,11 +15,19 @@
     :custom_position})
 
 (def field-user-settings-flags
-  "The user-settable Field columns sync also writes, mapped to the flag that says the user set the column, NULL
+  "The user-settable Field columns a machine also writes, mapped to the flag that says the user set the column, NULL
   included."
   {:description        :description_set
    :semantic_type      :semantic_type_set
-   :fk_target_field_id :fk_target_field_id_set})
+   :fk_target_field_id :fk_target_field_id_set
+   :data_sensitivity   :data_sensitivity_set})
+
+(def field-ai-columns
+  "The user-settable Field columns that can have an accepted AI value, mapped to the `metabase_field_user_settings`
+  column that holds it. Users see the human value when its flag is set, else the AI value, else the Field's."
+  {:semantic_type    :ai_semantic_type
+   :description      :ai_description
+   :data_sensitivity :ai_data_sensitivity})
 
 (def field-columns
   "Every column of `metabase_field`. Spelled out rather than read from `:metabase.warehouse-schema.schema/field`,
@@ -52,36 +62,152 @@
       [:not= (u/qualified-key settings-alias :effective_type) nil])))
 
 (mu/defn- field-user-settings-column
-  "Honey SQL expression for `column` as users see it: the user value when set, else the Field's."
+  "Honey SQL expression for `column` as users see it: the user value when set, else the accepted AI value (see
+  [[field-ai-columns]]), else the Field's."
   [column         :- (into [:enum] user-settable-field-columns)
    field-alias    :- :keyword
    settings-alias :- :keyword]
   (let [field-column    (u/qualified-key field-alias column)
-        settings-column (u/qualified-key settings-alias column)]
+        settings-column (u/qualified-key settings-alias column)
+        fallback        (if-let [ai-column (field-ai-columns column)]
+                          [:coalesce (u/qualified-key settings-alias ai-column) field-column]
+                          field-column)]
     (if-let [condition (field-user-set-condition column settings-alias)]
-      [:case condition settings-column :else field-column]
+      [:case condition settings-column :else fallback]
       (if (= column :json_unfolding)
         [:case [:= [:coalesce settings-column field-column] true] true :else false]
         [:coalesce settings-column field-column]))))
 
+(mu/defn field-layered-condition
+  "Honey SQL test for whether readers see a human or accepted AI value of `column`, a key of [[field-ai-columns]],
+  over the Field's own value. `settings-alias` names the joined `metabase_field_user_settings`."
+  [column         :- (into [:enum] (keys field-ai-columns))
+   settings-alias :- :keyword]
+  [:or
+   (field-user-set-condition column settings-alias)
+   [:not= (u/qualified-key settings-alias (field-ai-columns column)) nil]])
+
+(defn field-user-set?
+  "Whether the user set `column` in `user-settings`, a `metabase_field_user_settings` row or nil. The Clojure form of
+  the test that [[field-query]] makes in SQL."
+  [user-settings column]
+  (if-let [flag (field-user-settings-flags column)]
+    (true? (get user-settings flag))
+    (some? (get user-settings (if (= column :coercion_strategy) :effective_type column)))))
+
+(defn field-ai-set?
+  "Whether readers see the accepted AI value of `column` in `user-settings`: it has one and the user did not set the
+  column."
+  [user-settings column]
+  (boolean (when-let [ai-column (field-ai-columns column)]
+             (and (some? (get user-settings ai-column))
+                  (not (field-user-set? user-settings column))))))
+
+(defn field-value-source
+  "The layer that gives readers the value of `column`, when that value is `value`: `:human`, `:ai` (see
+  [[field-ai-columns]]), `:deterministic`, or nil when no layer has a value. `user-settings` is the Field's
+  `metabase_field_user_settings` row or nil."
+  [user-settings column value]
+  (cond
+    (field-user-set? user-settings column) :human
+    (field-ai-set? user-settings column)   :ai
+    (some? value)                          :deterministic))
+
+(defenterprise field-ai-proposal
+  "Honey SQL for the pending AI proposal of `attribute`, a key of [[field-ai-columns]], for the Field aliased
+  `field-alias`, with the proposal table aliased `proposal-alias`: a map of `:join`, a `:left-join` pair that adds at
+  most one row per Field, and the `:value`, `:reasoning` and `:confidence` expressions, NULL when there is no pending
+  proposal. The proposals live in an EE table. Without the `:data-sensitivity` feature this returns nil, and
+  `{:ai-proposals? true}` reads the same as the default."
+  metabase-enterprise.data-sensitivity.overlay
+  [_field-alias _proposal-alias _attribute]
+  nil)
+
+(defn- ai-proposal-column
+  [attribute suffix]
+  (keyword (str "ai_proposal_" (name attribute) suffix)))
+
+(defn- field-ai-proposals
+  "Per attribute of [[field-ai-columns]] in `merged`, the Honey SQL of [[field-ai-proposal]] for its pending AI
+  proposal."
+  [merged]
+  (into {}
+        (keep (fn [attribute]
+                (let [proposal-alias (keyword (str "p_" (name attribute)))]
+                  (when-let [proposal (field-ai-proposal :f proposal-alias attribute)]
+                    [attribute proposal]))))
+        (sort (filter (set merged) (keys field-ai-columns)))))
+
+(defn- field-ai-proposal-select
+  "The `:select` entries of the preview read for `attribute`: the proposal, its reasoning and confidence, and whether
+  it is over a human value."
+  [attribute {:keys [value reasoning confidence]}]
+  [[value (ai-proposal-column attribute "")]
+   [reasoning (ai-proposal-column attribute "_reasoning")]
+   [confidence (ai-proposal-column attribute "_confidence")]
+   [[:case [:and [:not= value nil] (field-user-set-condition attribute :u)] true :else false]
+    (ai-proposal-column attribute "_conflict")]])
+
+(defn fold-ai-proposals
+  "Move the `ai_proposal_*` columns of a preview read (see [[field-query]]) of `field` into `:ai_proposals`, a map of
+  attribute to `{:value :reasoning :confidence :conflict}` for each attribute with a pending proposal. Returns a
+  `field` without those columns unchanged."
+  [field]
+  (let [attributes (filter #(contains? field (ai-proposal-column % "")) (keys field-ai-columns))]
+    (if (empty? attributes)
+      field
+      (reduce (fn [field attribute]
+                (let [ks        (mapv #(ai-proposal-column attribute %) ["" "_reasoning" "_confidence" "_conflict"])
+                      [value reasoning confidence conflict] (map #(get field %) ks)
+                      field     (apply dissoc field ks)]
+                  (cond-> field
+                    (some? value) (assoc-in [:ai_proposals attribute]
+                                            {:value      value
+                                             :reasoning  reasoning
+                                             :confidence (some-> confidence keyword)
+                                             :conflict   (boolean (#{true 1} conflict))}))))
+              (assoc field :ai_proposals {})
+              attributes))))
+
 (mu/defn field-query :- [:tuple :any :keyword]
-  "The source a query over Fields reads from: `metabase_field` merged with the user values. `:alias` names it for
-  joins; `{:user-settings? false}` gives sync's own values."
+  "The source a query over Fields reads from: `metabase_field` merged with the human and accepted AI values.
+  `:alias` names it for joins; `{:user-settings? false}` gives sync's own values. `{:deterministic-ai-columns? true}`
+  reads the columns of [[field-ai-columns]] from `metabase_field` and merges the rest: the view of the classifiers,
+  which write that layer under the human and AI values but must respect the other user settings, such as a coercion.
+
+  `{:ai-proposals? true}` is the preview of Data Studio: each merged column of [[field-ai-columns]] with a pending AI
+  proposal reads the proposal, also over a human value, and `ai_proposal_*` columns describe the proposals (see
+  [[fold-ai-proposals]]). Queries, Metabot and the query builder never use it."
   ([]
    (field-query nil))
 
-  ([{:keys [alias user-settings?]
+  ([{:keys [alias user-settings? deterministic-ai-columns? ai-proposals?]
      :or   {alias          (t2/table-name :model/Field)
             user-settings? true}} :- [:maybe [:map {:closed true}
-                                              [:alias          {:optional true} :keyword]
-                                              [:user-settings? {:optional true} :boolean]]]]
+                                              [:alias                     {:optional true} :keyword]
+                                              [:user-settings?            {:optional true} :boolean]
+                                              [:deterministic-ai-columns? {:optional true} :boolean]
+                                              [:ai-proposals?             {:optional true} :boolean]]]]
    [(if user-settings?
-      ^:allow-subquery
-      {:select    (into (mapv #(u/qualified-key :f %) sync-owned-field-columns)
-                        (map (fn [column] [(field-user-settings-column column :f :u) column]))
-                        (sort user-settable-field-columns))
-       :from      [[(t2/table-name :model/Field) :f]]
-       :left-join (field-user-settings-join :f :u)}
+      (let [from-field (cond-> (vec sync-owned-field-columns)
+                         deterministic-ai-columns? (into (sort (keys field-ai-columns))))
+            merged     (sort (remove (set from-field) user-settable-field-columns))
+            proposals  (when ai-proposals? (field-ai-proposals merged))
+            column     (fn [column]
+                         (let [expr (field-user-settings-column column :f :u)]
+                           [(if-let [{:keys [value]} (get proposals column)]
+                              [:case [:not= value nil] value :else expr]
+                              expr)
+                            column]))]
+        (cond-> ^:allow-subquery {:select    (into (mapv #(u/qualified-key :f %) from-field)
+                                                   (map column)
+                                                   merged)
+                                  :from      [[(t2/table-name :model/Field) :f]]
+                                  :left-join (field-user-settings-join :f :u)}
+          (seq proposals) (-> (update :select into (mapcat (fn [[attribute proposal]]
+                                                             (field-ai-proposal-select attribute proposal)))
+                                      proposals)
+                              (update :left-join into (mapcat :join) (vals proposals)))))
       (t2/table-name :model/Field))
     alias]))
 

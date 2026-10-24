@@ -12,6 +12,7 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.quick-task :as quick-task]
+   [metabase.warehouse-schema.models.field-user-settings :as field-user-settings]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
 
@@ -253,6 +254,64 @@
                   (mt/user-http-request :crowberto :put 400 (format "field/%d" field-id)
                                         {:data_sensitivity bad-value})))
           (is (nil? (:data_sensitivity (sync-field field-id)))))))))
+
+(deftest data-sensitivity-source-test
+  (mt/with-temp [:model/Field {field-id :id} {:name "Field Test"}]
+    (let [source #(:data_sensitivity_source
+                   (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)
+                                         :include_editable_data_model true))]
+      (testing "a Field with no value in any layer has no source"
+        (is (nil? (source))))
+      (testing "a value sync or a classifier wrote is deterministic"
+        (t2/update! :model/Field field-id {:data_sensitivity :PUBLIC})
+        (is (= "deterministic" (source))))
+      (testing "an accepted AI value is ai"
+        (field-user-settings/set-ai-values! {:id field-id} {:data_sensitivity :PII})
+        (is (= ["PII" "ai"]
+               ((juxt :data_sensitivity :data_sensitivity_source)
+                (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id)
+                                      :include_editable_data_model true)))))
+      (testing "a value a person set is human, and PUT returns it"
+        (is (= ["PHI" "human"]
+               ((juxt :data_sensitivity :data_sensitivity_source)
+                (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PHI"})))))
+      (testing "a value a person cleared is human"
+        (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity nil})
+        (is (= "human" (source))))
+      (testing "GET without include_editable_data_model has no source"
+        (is (not (contains? (mt/user-http-request :crowberto :get 200 (format "field/%d" field-id))
+                            :data_sensitivity_source)))))))
+
+(deftest reset-to-automatic-test
+  (testing "POST /api/field/:id/reset-to-automatic"
+    (mt/with-temp [:model/Field {field-id :id} {:name "Field Test" :data_sensitivity :PUBLIC}]
+      (field-user-settings/set-ai-values! {:id field-id} {:data_sensitivity :PII})
+      (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity nil
+                                                                              :description      "kept"})
+      (testing "drops the user value and flag, so the AI value shows"
+        (is (=? {:data_sensitivity        "PII"
+                 :data_sensitivity_source "ai"
+                 :description             "kept"}
+                (mt/user-http-request :crowberto :post 200 (format "field/%d/reset-to-automatic" field-id)
+                                      {:columns ["data_sensitivity"]})))
+        (is (=? {:data_sensitivity     nil
+                 :data_sensitivity_set false
+                 :ai_data_sensitivity  :PII
+                 :description          "kept"}
+                (t2/select-one :model/FieldUserSettings :field_id field-id))))
+      (testing "falls back to the deterministic value when there is no AI value"
+        (field-user-settings/unset-ai-values! {:id field-id} [:data_sensitivity])
+        (is (=? {:data_sensitivity "PUBLIC" :data_sensitivity_source "deterministic"}
+                (mt/user-http-request :crowberto :post 200 (format "field/%d/reset-to-automatic" field-id)
+                                      {:columns ["data_sensitivity"]}))))
+      (testing "rejects columns it cannot reset"
+        (mt/user-http-request :crowberto :post 400 (format "field/%d/reset-to-automatic" field-id)
+                              {:columns ["semantic_type"]})
+        (mt/user-http-request :crowberto :post 400 (format "field/%d/reset-to-automatic" field-id)
+                              {:columns []}))
+      (testing "requires write permissions"
+        (mt/user-http-request :rasta :post 403 (format "field/%d/reset-to-automatic" field-id)
+                              {:columns ["data_sensitivity"]})))))
 
 (deftest update-field-test-2
   (testing "PUT /api/field/:id"

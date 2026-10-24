@@ -327,20 +327,26 @@
    the table, even when Remote Sync makes the table read-only, while `false` checks that they can read the table.
    Defaults to `false`.
 
+   Passing `preview_ai_proposals=true` together with `include_editable_data_model=true` makes the fields read their
+   pending AI proposals as if accepted, with an `ai_proposals` map per field (see `GET /api/field/:id`). It applies
+   only to superusers on an instance with the `:data-sensitivity` feature; other users get the read without it.
+
    The response includes `can_write`, which is false when the user cannot edit the table's metadata right now.
 
    These options are provided for use in the data model pages."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
-   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model]}
+   {:keys [include_sensitive_fields include_hidden_fields include_editable_data_model preview_ai_proposals]}
    :- [:map {:closed true}
        [:include_sensitive_fields    {:default false} [:maybe ms/BooleanValue]]
        [:include_hidden_fields       {:default false} [:maybe ms/BooleanValue]]
-       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]]]
+       [:include_editable_data_model {:default false} [:maybe ms/BooleanValue]]
+       [:preview_ai_proposals        {:default false} [:maybe ms/BooleanValue]]]]
   (schema.table/fetch-table-query-metadata id {:include-sensitive-fields?    include_sensitive_fields
                                                :include-hidden-fields?       include_hidden_fields
-                                               :include-editable-data-model? include_editable_data_model}))
+                                               :include-editable-data-model? include_editable_data_model
+                                               :preview-ai-proposals?        preview_ai_proposals}))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
 ;;

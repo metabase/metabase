@@ -1,4 +1,9 @@
 import type { RowValue } from "./dataset";
+import type {
+  MetadataGenerationAttribute,
+  MetadataGenerationConfidence,
+  MetadataGenerationValueSource,
+} from "./metadata-generation";
 import type { DimensionReference, FieldReference } from "./query";
 import type { ConcreteTableId, Table, TableId } from "./table";
 
@@ -56,6 +61,36 @@ export type FieldValue = NotRemappedFieldValue | RemappedFieldValue;
 
 export type FieldValuesType = "list" | "search" | "none";
 
+export const FIELD_DATA_SENSITIVITY_TYPES = [
+  "SEC_KEY",
+  "SYS_TELEMETRY",
+  "PHI",
+  "BIO_GEN",
+  "PCI_FIN",
+  "SENS_PERS",
+  "PII",
+  "CORP_IP",
+  "BIZ_CONF",
+  "PUBLIC",
+] as const;
+
+export type FieldDataSensitivity =
+  (typeof FIELD_DATA_SENSITIVITY_TYPES)[number];
+
+export type FieldDataSensitivitySource = Exclude<
+  MetadataGenerationValueSource,
+  "none"
+>;
+
+/** A pending AI proposal of one attribute, as a preview read gives it. */
+export type FieldAiProposal = {
+  value: string;
+  reasoning: string | null;
+  confidence: MetadataGenerationConfidence | null;
+  /** The proposal reads over a value a person set; accepting it clears that value. */
+  conflict: boolean;
+};
+
 export type FieldDimensionType = "internal" | "external";
 
 export type FieldDimension = {
@@ -101,6 +136,11 @@ export interface Field {
   has_field_values: FieldValuesType;
   has_more_values?: boolean;
 
+  data_sensitivity?: FieldDataSensitivity | null;
+  data_sensitivity_source?: FieldDataSensitivitySource | null;
+  /** Only in a read with `preview_ai_proposals`: the pending AI proposals, which the field reads as if accepted. */
+  ai_proposals?: Partial<Record<MetadataGenerationAttribute, FieldAiProposal>>;
+
   caveats?: string | null;
   points_of_interest?: string;
 
@@ -122,6 +162,8 @@ export interface FieldFormattingSettings {
 export interface GetFieldRequest {
   id: FieldId;
   include_editable_data_model?: boolean;
+  /** Needs `include_editable_data_model`. */
+  preview_ai_proposals?: boolean;
 }
 
 export interface GetFieldTableIdsRequest {
@@ -146,6 +188,12 @@ export interface UpdateFieldRequest {
   settings?: FieldFormattingSettings;
   nfc_path?: string[] | null;
   json_unfolding?: boolean | null;
+  data_sensitivity?: FieldDataSensitivity | null;
+}
+
+export interface ResetFieldToAutomaticRequest {
+  id: FieldId;
+  columns: "data_sensitivity"[];
 }
 
 export interface GetFieldValuesResponse {

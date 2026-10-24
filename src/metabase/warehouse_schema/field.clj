@@ -8,6 +8,15 @@
    [metabase.warehouse-schema.table :as schema.table]
    [toucan2.core :as t2]))
 
+(defn internal-remapping-allowed?
+  "Whether a field of `base-type` with `semantic-type` can keep an internal remapping: an integer field with no
+  semantic type, or a category or enum. A semantic type change that breaks this deletes the internal Dimension."
+  [base-type semantic-type]
+  (and (isa? base-type :type/Integer)
+       (or (nil? semantic-type)
+           (isa? semantic-type :type/Category)
+           (isa? semantic-type :type/Enum))))
+
 (defn hydrate-target-with-data-model-perms
   "Hydrate the FK target of `field` as `:target`, or nil when `field` is not an FK or the current user cannot edit the
   data model of the target's table."
@@ -20,13 +29,18 @@
     (assoc field :target target-field)))
 
 (defn get-field
-  "Get `Field` with ID."
-  [id {:keys [include-editable-data-model?]}]
-  (let [field (-> (api/check-404 (warehouse-schema.db/field id))
-                  (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
-        field (if include-editable-data-model?
-                (hydrate-target-with-data-model-perms field)
-                (t2/hydrate field :target))]
+  "Get `Field` with ID. `preview-ai-proposals?` needs `include-editable-data-model?`: for a superuser, the Field reads
+  its pending AI proposals as if accepted, see [[warehouse-schema.db/field]]. Other users get the normal read."
+  [id {:keys [include-editable-data-model? preview-ai-proposals?]}]
+  (api/check-400 (or (not preview-ai-proposals?) include-editable-data-model?)
+                 "preview_ai_proposals requires include_editable_data_model")
+  (let [ai-proposals? (boolean (and preview-ai-proposals? api/*is-superuser?*))
+        field         (-> (api/check-404 (warehouse-schema.db/field id {:ai-proposals? ai-proposals?}))
+                          (t2/hydrate [:table :db] :has_field_values :dimensions :name_field))
+        field         (if include-editable-data-model?
+                        (-> (hydrate-target-with-data-model-perms field)
+                            (t2/hydrate :data_sensitivity_source))
+                        (t2/hydrate field :target))]
     ;; Normal read perms = normal access.
     ;;
     ;; There's also a special case where we allow you to fetch a Field even if you don't have full read permissions for

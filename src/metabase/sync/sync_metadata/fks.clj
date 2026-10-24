@@ -5,6 +5,7 @@
    [metabase.sync.db :as sync.db]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
+   [metabase.sync.sync-metadata.fields.common :as fields.common]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -12,20 +13,24 @@
    [metabase.warehouse-schema.models.table :as table]))
 
 (mu/defn- mark-fk!
-  "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
+  "Updates the `fk_target_field_id` of a Field and drops its AI `semantic_type`. Returns 1 if the Field was
+  successfully updated, 0 otherwise."
   [database :- i/DatabaseInstance
    metadata :- i/FKMetadataEntry]
-  (u/prog1 (sync.db/mark-fk! (:id database)
-                             (:fk-table-schema metadata) (:fk-table-name metadata) (:fk-column-name metadata)
-                             (:pk-table-schema metadata) (:pk-table-name metadata) (:pk-column-name metadata))
-    (when (= <> 1)
+  (if-let [field-id (sync.db/mark-fk! (:id database)
+                                      (:fk-table-schema metadata) (:fk-table-name metadata) (:fk-column-name metadata)
+                                      (:pk-table-schema metadata) (:pk-table-name metadata) (:pk-column-name metadata))]
+    (do
+      (fields.common/clear-ai-semantic-type! field-id)
       (log/info (u/format-color 'cyan "Marking foreign key from %s %s -> %s %s"
                                 (sync-util/table-name-for-logging :name (:fk-table-name metadata)
                                                                   :schema (:fk-table-schema metadata))
                                 (sync-util/field-name-for-logging :name (:fk-column-name metadata))
                                 (sync-util/table-name-for-logging :name (:fk-table-name metadata)
                                                                   :schema (:fk-table-schema metadata))
-                                (sync-util/field-name-for-logging :name (:pk-column-name metadata)))))))
+                                (sync-util/field-name-for-logging :name (:pk-column-name metadata))))
+      1)
+    0))
 
 (mu/defn sync-fks-for-table!
   "Sync the foreign keys for a specific `table`."
