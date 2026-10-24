@@ -11,7 +11,6 @@
    [metabase.metabot.search-models :as metabot.search-models]
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.core :as tools]
-   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
    [metabase.metabot.tools.util :as metabot.tools.u]
@@ -21,8 +20,7 @@
    [metabase.search.engine :as search.engine]
    [metabase.transforms.core :as transforms]
    [metabase.util :as u]
-   [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -337,7 +335,7 @@
   multi-query search is coherent. The result carries the size of the fused, deduped match set as
   `:total` metadata."
   [{:keys [term-queries semantic-queries database-id created-at last-edited-at
-           entity-types limit metabot profile-id search-native-query weights
+           entity-types limit metabot profile-id weights
            created-by archived collection-id offset filters-only?]}]
   (log/infof "[METABOT-SEARCH] Starting search with params: %s"
              {:term-query-count     (count term-queries)
@@ -347,7 +345,6 @@
               :limit                limit
               :metabot-id           (:entity_id metabot)
               :profile-id           profile-id
-              :search-native-query  search-native-query
               :weights              weights
               :created-by           created-by
               :archived             archived
@@ -389,10 +386,6 @@
                                                           :filter-items-in-personal-collection "exclude-others"
                                                           :context                             :metabot
                                                           :archived                            (boolean archived)})
-                                                  ;; Don't include search-native-query key if nil so that we don't
-                                                  ;; inadvertently filter out search models that don't support it
-                                                  search-native-query
-                                                  (assoc :search-native-query (boolean search-native-query))
                                                   use-verified?
                                                   (assoc :curated true)
                                                   weights
@@ -760,20 +753,3 @@
   (->SearchTool
    "Find NLQ-queryable data sources by topic, or find dashboards and documents as save destinations."
    nlq-search-schema ["metric" "measure" "segment" "model" "question" "table"] {:profile-id "nlq"}))
-
-(def ^:private transform-search-schema
-  [:map {:closed true}
-   [:semantic_queries {:optional true :feature :semantic-search} semantic-queries-schema]
-   [:keyword_queries {:optional true} keyword-queries-schema]
-   [:search_native_query {:optional true} [:maybe [:boolean {:description "Also match against the native SQL text of transforms, not just names and descriptions."}]]]
-   [:entity_types {:optional true} (entity-types-schema "table" "model" "transform")]
-   [:limit {:optional true} limit-schema]])
-
-(mu/defn ^{:tool-name  "search"
-           :scope      scope/agent-search
-           :title-fn   search-display}
-  transform-search-tool
-  "Find transforms, plus the tables and models around them, by topic."
-  [{:keys [search_native_query] :as args} :- transform-search-schema]
-  (do-search (sorted-set "model" "table" "transform")
-             {:search-native-query search_native_query :metabot shared/*metabot*} args))

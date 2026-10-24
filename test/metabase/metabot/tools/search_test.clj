@@ -523,29 +523,6 @@
                                                   :table_name   "ORDERS"
                                                   :table_schema "PUBLIC"}))))))
 
-(deftest search-native-query-test
-  (mt/with-test-user :rasta
-    (with-redefs [perms/impersonated-user? (fn [] false)
-                  perms/sandboxed-user? (fn [] false)
-                  api/*current-user-id* 1]
-      (testing ":search-native-query is included in context when true"
-        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
-                                                                 (is (true? (:search-native-query context)))
-                                                                 [])]
-          (search/search {:term-queries ["test"]
-                          :entity-types ["card"]
-                          :search-native-query true})))
-      (testing ":search-native-query is not included in context when nil or false"
-        (mt/with-dynamic-fn-redefs [search-core/ranked-results (fn [context]
-                                                                 (is (not (contains? context :search-native-query)))
-                                                                 [])]
-          (search/search {:term-queries ["test"]
-                          :entity-types ["card"]
-                          :search-native-query false})
-          (search/search {:term-queries ["test"]
-                          :entity-types ["card"]
-                          :search-native-query nil}))))))
-
 (deftest tool-default-entity-types-test
   (testing "tool variants restrict default entity types to their allowed set"
     (mt/with-test-user :rasta
@@ -661,8 +638,7 @@
   (testing "every search tool variant rejects a scalar the same way"
     (doseq [[tool-var extra-args] [[#'metabot.tools/search-tool {}]
                                    [#'metabot.tools/sql-search-tool {:database_id 1}]
-                                   [#'metabot.tools/nlq-search-tool {}]
-                                   [#'metabot.tools/transform-search-tool {}]]]
+                                   [#'metabot.tools/nlq-search-tool {}]]]
       (testing (str tool-var)
         (is (= "Invalid tool arguments: `keyword_queries` must be an array of strings; received a string."
                (test-util/tool-boundary-error "search" tool-var
