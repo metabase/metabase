@@ -23,3 +23,9 @@
   metabase-enterprise.data-apps.guards
   [_request _card-id]
   (throw (unavailable)))
+
+(defenterprise check-table!
+  "Throws a 403 unless the data app of `request` may read the metadata of the table with `table-id`."
+  metabase-enterprise.data-apps.guards
+  [_request _table-id]
+  (throw (unavailable)))

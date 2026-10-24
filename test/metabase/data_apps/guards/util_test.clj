@@ -7,6 +7,8 @@
    [metabase.api.macros :as api.macros]
    [metabase.data-apps.guards.card :as guards.card]
    [metabase.data-apps.guards.dataset :as guards.dataset]
+   [metabase.data-apps.guards.sandbox-table :as guards.sandbox-table]
+   [metabase.data-apps.guards.table :as guards.table]
    [metabase.data-apps.guards.util :as guards.util]
    [metabase.test :as mt]))
 
@@ -15,13 +17,14 @@
 (def ^:private guarded
   "API namespace => the path under `/api` of its guarded mount, and the checks of that mount's guard."
   {'metabase.query-processor.api {:path "dataset" :checks guards.dataset/checks}
-   'metabase.queries-rest.api.card {:path "card" :checks guards.card/checks}})
+   'metabase.queries-rest.api.card {:path "card" :checks guards.card/checks}
+   'metabase.warehouse-schema-rest.api.table {:path "table" :checks guards.table/checks}
+   'metabase-enterprise.sandbox.api.table {:path "table" :checks guards.sandbox-table/checks}})
 
 (def ^:private unguarded-namespaces
   "The namespaces with endpoints a data app reaches that no guard covers."
   #{'metabase-enterprise.content-translation.routes
     'metabase-enterprise.custom-viz-plugin.api
-    'metabase-enterprise.sandbox.api.table
     'metabase.actions-rest.api
     'metabase.collections-rest.api
     'metabase.search.api
@@ -29,7 +32,6 @@
     'metabase.user-key-value.api
     'metabase.users-rest.api
     'metabase.warehouse-schema-rest.api.field
-    'metabase.warehouse-schema-rest.api.table
     'metabase.warehouses-rest.api})
 
 (defn- data-app-endpoints

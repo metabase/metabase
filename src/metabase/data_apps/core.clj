@@ -2,6 +2,8 @@
   (:require
    [metabase.data-apps.guards.card]
    [metabase.data-apps.guards.dataset]
+   [metabase.data-apps.guards.sandbox-table]
+   [metabase.data-apps.guards.table]
    [metabase.premium-features.core :refer [defenterprise]]
    [potemkin :as p]))
 
@@ -9,7 +11,11 @@
  [metabase.data-apps.guards.card
   card-guard]
  [metabase.data-apps.guards.dataset
-  dataset-guard])
+  dataset-guard]
+ [metabase.data-apps.guards.sandbox-table
+  sandbox-table-guard]
+ [metabase.data-apps.guards.table
+  table-guard])
 
 (defenterprise check-data-app-access!
   "Authorize the data app before serving its HTML entry point."

@@ -204,6 +204,44 @@
                                                                                     :target [:variable [:template-tag "x"]]
                                                                                     :value  "Bar"}]))))))))))
 
+(defn- get-as-data-app
+  "The response to a data app's `GET` of `path`, expecting `status`."
+  [status path]
+  (mt/user-http-request :crowberto :get status path as-data-app))
+
+(defn- table-query
+  "A query of the table named `table-name` of the test database."
+  [table-name]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-name)))))
+
+(deftest table-endpoints-test
+  (do-with-app-card!
+   (fn [card-id _collection-id]
+     (testing "the source table of the app's cards and the tables its foreign keys point to are read"
+       (doseq [table-name [:venues :categories]
+               path       ["table/%d" "table/%d/query_metadata"]]
+         (is (= (mt/id table-name) (:id (get-as-data-app 200 (format path (mt/id table-name))))))))
+     (testing "another table is refused, and a missing one is left to the 404"
+       (doseq [path ["table/%d" "table/%d/query_metadata"]]
+         (is (re-find #"not CHECKINS" (get-as-data-app 403 (format path (mt/id :checkins))))))
+       (get-as-data-app 404 "table/999999999/query_metadata"))
+     (testing "the app's card has metadata as a table, and a card outside the app hasn't"
+       (is (seq (:fields (get-as-data-app 200 (format "table/card__%d/query_metadata" card-id)))))
+       (mt/with-temp [:model/Card {other-id :id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}]
+         (is (re-find #"Venues elsewhere" (get-as-data-app 403 (format "table/card__%d/query_metadata" other-id)))))))))
+
+(deftest one-foreign-key-level-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (data-apps.tu/with-published-tables! [(mt/id :categories)]
+       (mt/with-temp [:model/Card _ {:name          "Categories"
+                                     :collection_id collection-id
+                                     :dataset_query (table-query :categories)}]
+         (testing "a card on a table whose foreign keys point nowhere reads only that table"
+           (is (get-as-data-app 200 (format "table/%d/query_metadata" (mt/id :categories))))
+           (is (re-find #"not VENUES" (get-as-data-app 403 (format "table/%d/query_metadata" (mt/id :venues)))))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app runs nothing"
     (mt/with-premium-features #{}

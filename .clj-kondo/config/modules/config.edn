@@ -3853,6 +3853,7 @@
                     :model/Collection
                     :model/DataPermissions
                     :model/Database
+                    :model/Field
                     :model/Permissions
                     :model/Table}
    :model-exports #{:model/DataApp}}
@@ -4239,6 +4240,7 @@
            api-scope
            app-db
            audit-app
+           data-apps
            driver
            lib
            lib.be

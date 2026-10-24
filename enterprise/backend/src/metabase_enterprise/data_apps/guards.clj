@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-apps.guards
-  "The rules a data app's requests are held to: it uses only the resources of its own app, the cards in the
-  app's collection."
+  "The rules a data app's requests are held to: it uses only the resources of its own app, the cards in the app's
+  collection, the tables those cards name as their sources, and the tables those tables' foreign keys point to."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -84,4 +84,37 @@
     (when-let [{:keys [id database_id]} (card-row card-id)]
       (when-not (contains? card-ids id)
         (refuse-cards! (lib-be/application-database-metadata-provider database_id) #{id}))))
+  nil)
+
+(defn- app-table-ids
+  "The IDs of the tables that the cards of the data app of `request` name as their sources, in their stages and joins,
+  and of the tables those tables' foreign keys point to."
+  [request]
+  (let [source-ids (into #{}
+                         (mapcat (fn [{:keys [id database_id]}]
+                                   (let [mp (lib-be/application-database-metadata-provider database_id)]
+                                     (lib/all-source-table-ids (lib/query mp (:dataset-query (lib.metadata/card mp id)))))))
+                         (some-> (not-empty (app-card-ids (request-app request))) data-apps.db/cards-by-ids))]
+    (into source-ids
+          (some->> (not-empty source-ids)
+                   data-apps.db/fk-target-field-ids-of-tables
+                   not-empty
+                   data-apps.db/field-table-ids
+                   vals))))
+
+(defn- refuse-tables!
+  "Throws a 403 naming the tables with `table-ids`, which a data app may not read."
+  [table-ids]
+  (throw (refusal (tru "A data app can read only the tables its own cards use, not {0}."
+                       (str/join ", " (sort (vals (data-apps.db/table-names table-ids))))))))
+
+(defenterprise check-table!
+  "Throws a 403 unless the table with `table-id`, a route param, is a source of a card of the data app of `request` or a
+  table one of those sources' foreign keys points to, when such a table exists."
+  :feature :data-apps
+  [request table-id]
+  (when-let [table-id (parse-long table-id)]
+    (when (and (not (contains? (app-table-ids request) table-id))
+               (seq (data-apps.db/table-names #{table-id})))
+      (refuse-tables! #{table-id})))
   nil)
