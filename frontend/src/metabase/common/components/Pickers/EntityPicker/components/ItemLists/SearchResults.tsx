@@ -32,6 +32,8 @@ import {
 import { getDataAppsRootItem } from "../../hooks/utils";
 import { isSelectedItem, useGetEntityPickerIcon } from "../../utils";
 
+import S from "./SearchResults.module.css";
+
 export const SearchResults = ({
   searchResults,
   isLoading,
@@ -244,7 +246,7 @@ export function SearchScopeSelector() {
       : null,
     lastCollection
       ? {
-          label: truncateName(lastCollection.name, 20),
+          label: lastCollection.name,
           value: String(lastCollection.id),
         }
       : null,
@@ -266,6 +268,7 @@ export function SearchScopeSelector() {
     >
       <Text>{t`Where to search:`}</Text>
       <SegmentedControl
+        className={S.SearchScopeControl}
         value={searchScope ? String(searchScope) : "all"}
         // Unjustified type cast. FIXME
         onChange={(newValue) => setSearchScope(newValue as SearchScope)}
@@ -274,10 +277,3 @@ export function SearchScopeSelector() {
     </Flex>
   );
 }
-
-const truncateName = (name: string, maxLength: number) => {
-  if (name.length <= maxLength) {
-    return name;
-  }
-  return name.slice(0, maxLength - 1) + "…";
-};

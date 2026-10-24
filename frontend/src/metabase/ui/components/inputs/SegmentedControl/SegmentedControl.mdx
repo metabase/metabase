@@ -30,6 +30,8 @@ Each item in `data` is text only, icon + text, or icon only. The component owns 
 - Leave out `label` and pass `ariaLabel` with `icon` for an icon-only item. `ariaLabel` is required so the item has an accessible name.
 - Add `withTooltip` to an icon-only item to show its `ariaLabel` as a tooltip. It opens when the pointer is anywhere over the segment or the segment has keyboard focus, and pressing Escape closes it. Use it when the icon alone doesn't make the option clear.
 - `icon` is usually an icon name. Pass an element only when the icon can't be expressed as a name; the element is then responsible for its own size.
+- A `label` that doesn't fit is truncated with an ellipsis and shown in full as a tooltip, on hover or keyboard focus. Segments are equal width, as wide as the widest label. When the control is squeezed they shrink together, but each keeps at least its first few characters, so in a very narrow container the widths can differ.
+- To cap how wide a label can grow, set `--segmented-control-label-max-width` on the control (e.g. `20ch` in a CSS module class passed as `className`). Longer labels truncate at that width and show the tooltip.
 
 ## Examples
 
@@ -52,6 +54,10 @@ Each item in `data` is text only, icon + text, or icon only. The component owns 
 ### Full width
 
 <Canvas of={SegmentedControlStories.FullWidth} />
+
+### Long labels
+
+<Canvas of={SegmentedControlStories.LongLabels} />
 
 ### Disabled
 

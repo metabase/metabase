@@ -5,11 +5,13 @@
       var(--mantine-spacing-xxs)
   );
   background-color: var(--mb-color-background_surface-secondary);
-  display: inline-flex;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: var(--mantine-spacing-xxs);
 
   &[data-full-width] {
-    display: flex;
+    display: grid;
   }
 }
 
@@ -41,7 +43,7 @@
     color: var(--mb-color-text-primary);
   }
 
-  &:has(.SegmentedControlTooltipTarget) {
+  &:has(.SegmentedControlItemBody) {
     padding: 0;
   }
 }
@@ -50,20 +52,66 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--mantine-spacing-xs);
   min-height: 1rem;
 }
 
-.SegmentedControlTooltipTarget {
+.SegmentedControlItemBody {
   display: flex;
   flex: 1;
+  gap: var(--mantine-spacing-xs);
   align-items: center;
   justify-content: center;
   padding: var(--mantine-spacing-xxs) var(--mantine-spacing-md);
+  min-height: calc(1rem + 2 * var(--mantine-spacing-xxs));
+
+  & > :not(.SegmentedControlLabelText) {
+    flex-shrink: 0;
+  }
 }
 
 .SegmentedControlIconElement {
   display: flex;
+}
+
+.SegmentedControlLabelText {
+  --segmented-control-label-min-width: 2.5rem;
+
+  display: grid;
+  max-width: var(--segmented-control-label-max-width, none);
+}
+
+.SegmentedControlLabelTextVisible {
+  grid-area: 1 / 1;
+  width: 0;
+  min-width: 100%;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+/* The visible text has no width of its own, so the sizer sets it: ::after
+   asks for the full label, ::before keeps the first few characters when
+   squeezed. */
+.SegmentedControlLabelTextSizer {
+  grid-area: 1 / 1;
+  display: grid;
+  height: 0;
+  visibility: hidden;
+
+  &::before {
+    content: attr(data-label);
+    grid-area: 1 / 1;
+    max-width: var(--segmented-control-label-min-width);
+    white-space: nowrap;
+  }
+
+  &::after {
+    content: attr(data-label);
+    grid-area: 1 / 1;
+    white-space: normal;
+    word-break: break-all;
+  }
 }
 
 .SegmentedControlIndicator {
