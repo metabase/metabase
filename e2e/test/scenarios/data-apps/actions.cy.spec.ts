@@ -8,7 +8,7 @@ import {
 } from "e2e/support/helpers";
 import type { CollectionPermission } from "metabase-types/api";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { dataAppTestEnv, withDataAppQuestions } from "./helpers";
 
 const { H } = cy;
 
@@ -31,15 +31,17 @@ describe(
     });
 
     const setupActionsApp = (actionParams: Record<string, string | number>) =>
-      createDataAppScoreboardAction().then((action) => {
-        H.mockDataApp(APP_NAME, {
-          displayName: APP_DISPLAY_NAME,
-          testEnv: {
-            ...TEST_ENV,
+      H.mockDataApp(APP_NAME, {
+        displayName: APP_DISPLAY_NAME,
+        testEnv: withDataAppQuestions((questions) =>
+          createDataAppScoreboardAction({
+            collectionId: questions.collectionId,
+          }).then((action) => ({
+            ...dataAppTestEnv(questions),
             actionEntityId: action.entity_id,
             actionParams,
-          },
-        });
+          })),
+        ),
       });
 
     it("executes the action, exposing isExecuting and result, and resets", () => {
@@ -108,11 +110,11 @@ describe(
               (action) => {
                 H.mockDataApp(APP_NAME, {
                   displayName: APP_DISPLAY_NAME,
-                  testEnv: {
-                    ...TEST_ENV,
+                  testEnv: withDataAppQuestions((questions) => ({
+                    ...dataAppTestEnv(questions),
                     actionEntityId: action.entity_id,
                     actionParams: { team_name: "Data App FC", score: 7 },
-                  },
+                  })),
                 });
               },
             ),

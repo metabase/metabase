@@ -68,10 +68,13 @@ type MockDataAppOptions<TestEnv> = {
   /** `allowed_hosts` served in the bundle response header. */
   allowedHosts?: string[];
   /**
-   * Config a fixture reads at runtime, rather than hard-coding ids that track the
-   * Cypress snapshot.
+   * Config a fixture reads at runtime, rather than hard-coding ids. As a
+   * function, it is called with the ID of the app's collection, so it can
+   * create the app's cards and actions there first.
    */
-  testEnv?: TestEnv;
+  testEnv?:
+    | TestEnv
+    | ((collectionId: CollectionId) => TestEnv | Cypress.Chainable<TestEnv>);
   /** Delays the bundle response, so a loading assertion has a window to catch. */
   bundleDelayMs?: number;
 };
@@ -88,43 +91,14 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
 
   // Prelude runs in the sandbox realm before the bundle's factory, so the app
   // can read the injected config as a global (see MockDataAppOptions.testEnv).
-  const prelude =
-    options.testEnv !== undefined
-      ? `globalThis.__METABASE_DATA_APP_TEST_ENV__ = ${JSON.stringify(options.testEnv)};\n`
+  const prelude = (env: TestEnv | undefined) =>
+    env !== undefined
+      ? `globalThis.__METABASE_DATA_APP_TEST_ENV__ = ${JSON.stringify(env)};\n`
       : "";
 
-  return cy.task<string>("buildDataApp", { appName }).then((bundleCode) => {
-    const app = fakeDataApp({
-      name: slug,
-      display_name: displayName,
-      allowed_hosts: allowedHosts,
-    });
-
-    cy.intercept("GET", "/api/ee/apps/repo-status", {
-      configured: true,
-    });
-    cy.intercept("GET", "/api/ee/apps", [app]);
-    cy.intercept({ method: "GET", pathname: `/api/ee/apps/${slug}` }, app);
-    cy.intercept(
-      { method: "GET", pathname: `/api/ee/apps/${slug}/bundle` },
-      {
-        statusCode: 200,
-        headers: {
-          // Match the REAL bundle endpoint (`data_apps/api.clj`), which serves
-          // `application/javascript` + `nosniff`. The runtime fetch-and-evals the
-          // bundle, so the type is irrelevant there — but a stricter mock (e.g.
-          // `text/plain`) would diverge from production, so keep it aligned.
-          "content-type": "application/javascript",
-          "X-Content-Type-Options": "nosniff",
-          "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify(allowedHosts),
-        },
-        body: prelude + bundleCode,
-        ...(options.bundleDelayMs ? { delay: options.bundleDelayMs } : {}),
-      },
-    );
-
-    return cy.wrap({ slug, displayName }, { log: false });
-  });
+  return resolveTestEnv(slug, options.testEnv).then((env) =>
+    buildMockDataApp(slug, displayName, allowedHosts, prelude(env), options),
+  );
 };
 
 const registerDataApp = (
@@ -169,6 +143,65 @@ export const publishDataAppTables = (tableIds: TableId[]) =>
       }
       publishTables({ table_ids: tableIds });
     });
+
+const isTestEnvFactory = <TestEnv>(
+  testEnv: MockDataAppOptions<TestEnv>["testEnv"],
+): testEnv is (
+  collectionId: CollectionId,
+) => TestEnv | Cypress.Chainable<TestEnv> => typeof testEnv === "function";
+
+const resolveTestEnv = <TestEnv>(
+  slug: string,
+  testEnv: MockDataAppOptions<TestEnv>["testEnv"],
+): Cypress.Chainable<TestEnv | undefined> =>
+  isTestEnvFactory(testEnv)
+    ? cy.request<DataApp>("GET", `/api/ee/apps/${slug}`).then(({ body }) => {
+        const env = testEnv(body.resource_collection_id);
+        return Cypress.isCy(env)
+          ? env
+          : cy.wrap<TestEnv | undefined>(env, { log: false });
+      })
+    : cy.wrap<TestEnv | undefined>(testEnv, { log: false });
+
+const buildMockDataApp = <TestEnv>(
+  slug: string,
+  displayName: string,
+  allowedHosts: string[],
+  prelude: string,
+  options: MockDataAppOptions<TestEnv>,
+) =>
+  cy.task<string>("buildDataApp", { appName: slug }).then((bundleCode) => {
+    const app = fakeDataApp({
+      name: slug,
+      display_name: displayName,
+      allowed_hosts: allowedHosts,
+    });
+
+    cy.intercept("GET", "/api/ee/apps/repo-status", {
+      configured: true,
+    });
+    cy.intercept("GET", "/api/ee/apps", [app]);
+    cy.intercept({ method: "GET", pathname: `/api/ee/apps/${slug}` }, app);
+    cy.intercept(
+      { method: "GET", pathname: `/api/ee/apps/${slug}/bundle` },
+      {
+        statusCode: 200,
+        headers: {
+          // Match the REAL bundle endpoint (`data_apps/api.clj`), which serves
+          // `application/javascript` + `nosniff`. The runtime fetch-and-evals the
+          // bundle, so the type is irrelevant there — but a stricter mock (e.g.
+          // `text/plain`) would diverge from production, so keep it aligned.
+          "content-type": "application/javascript",
+          "X-Content-Type-Options": "nosniff",
+          "X-Metabase-Data-App-Allowed-Hosts": JSON.stringify(allowedHosts),
+        },
+        body: prelude + bundleCode,
+        ...(options.bundleDelayMs ? { delay: options.bundleDelayMs } : {}),
+      },
+    );
+
+    return cy.wrap({ slug, displayName }, { log: false });
+  });
 
 /**
  * The two rejections endpoint scope enforcement can emit. `scope_not_permitted` comes from

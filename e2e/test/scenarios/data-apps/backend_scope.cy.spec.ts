@@ -3,7 +3,7 @@ import {
   DATA_APP_NAME as APP_NAME,
 } from "e2e/support/helpers";
 
-import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
+import { dataAppTestEnv, withDataAppQuestions } from "./helpers";
 
 const { H } = cy;
 
@@ -26,7 +26,7 @@ describe("scenarios > data apps > backend scope", () => {
   it("serves the whole StaticQuestion surface without refusing a request for scope", () => {
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
-      testEnv: TEST_ENV,
+      testEnv: withDataAppQuestions(dataAppTestEnv),
     });
     H.openDataApp(APP_NAME);
 
