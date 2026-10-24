@@ -58,9 +58,11 @@
 
 (defn- update-exempted?
   [table-name {:keys [changes]}]
-  (or (=  (read-only-mode-exceptions table-name) :all)
-      (set/subset? (read-only-mode-exceptions table-name)
-                   (->> changes keys (into #{})))))
+  (let [exception (read-only-mode-exceptions table-name)]
+    (or (= exception :all)
+        (and (set? exception)
+             (seq changes)
+             (set/subset? (set (keys changes)) exception)))))
 
 ;; Block write calls to most tables in read-only mode.
 (methodical/defmethod t2.pipeline/build :before [#_query-type     :toucan.statement-type/DML
