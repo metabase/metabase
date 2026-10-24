@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useUpdateActionMutation } from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils";
+import { findErrorMessage, getErrorMessage } from "metabase/api/utils";
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
@@ -13,10 +13,18 @@ import { getInitialUiState } from "metabase/querying/editor/components/QueryEdit
 import { type Location, useLocation, useNavigate } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Database, WritebackQueryAction } from "metabase-types/api";
+import type {
+  Database,
+  ImplicitActionKind,
+  TableId,
+  UpdateImplicitActionRequest,
+  WritebackImplicitQueryAction,
+  WritebackQueryAction,
+} from "metabase-types/api";
 
 import { trackDataActionQueryUpdated } from "../../analytics";
 import { ActionHeader } from "../../components/ActionHeader";
+import { ImplicitActionDefinitionContent } from "../../components/ImplicitActionDefinitionContent";
 import { QueryActionDefinitionContent } from "../../components/QueryActionDefinitionContent";
 import { QueryActionEditor } from "../../components/QueryActionEditor";
 import { QueryActionEditorPane } from "../../components/QueryActionEditorPane";
@@ -36,12 +44,10 @@ export function ActionDefinitionPage() {
     );
   }
 
-  return action.type === "query" ? (
-    <QueryActionDefinitionPage key={action.id} action={action} />
+  return action.type === "implicit" ? (
+    <ImplicitActionDefinitionPage key={action.id} action={action} />
   ) : (
-    <Center h="100%">
-      <LoadingAndErrorWrapper error={t`Action not found.`} />
-    </Center>
+    <QueryActionDefinitionPage key={action.id} action={action} />
   );
 }
 
@@ -180,5 +186,71 @@ function QueryActionEditPage({ action, databases }: QueryActionEditPageProps) {
         isLocationAllowed={isLocationAllowed}
       />
     </>
+  );
+}
+
+type ImplicitActionDefinitionPageProps = {
+  action: WritebackImplicitQueryAction;
+};
+
+function ImplicitActionDefinitionPage({
+  action,
+}: ImplicitActionDefinitionPageProps) {
+  const [updateAction] = useUpdateActionMutation();
+  const { sendSuccessToast, sendErrorToast, sendUndoToast } =
+    useMetadataToasts();
+
+  const handleUpdate = async (
+    changes: Omit<UpdateImplicitActionRequest, "id">,
+    previous: Omit<UpdateImplicitActionRequest, "id">,
+    message: string,
+  ) => {
+    const { error } = await updateAction({ id: action.id, ...changes });
+    if (error) {
+      const errorMessage = findErrorMessage(error);
+      sendErrorToast(
+        errorMessage
+          ? t`Failed to update action: ${errorMessage}`
+          : t`Failed to update action`,
+      );
+      return;
+    }
+    sendSuccessToast(message, async () => {
+      const { error } = await updateAction({ id: action.id, ...previous });
+      sendUndoToast(error);
+    });
+  };
+
+  const handleTableChange = (table_id: TableId) => {
+    if (table_id !== action.table_id && action.table_id != null) {
+      handleUpdate(
+        { table_id },
+        { table_id: action.table_id },
+        t`Action table updated`,
+      );
+    }
+  };
+
+  const handleKindChange = (kind: ImplicitActionKind) => {
+    if (kind !== action.kind) {
+      handleUpdate(
+        { kind },
+        { kind: action.kind },
+        t`Action operation updated`,
+      );
+    }
+  };
+
+  return (
+    <PageContainer data-testid="action-definition">
+      <ActionHeader action={action} />
+      <ImplicitActionDefinitionContent
+        tableId={action.table_id}
+        kind={action.kind}
+        readOnly={!action.can_write}
+        onChangeTable={handleTableChange}
+        onChangeKind={handleKindChange}
+      />
+    </PageContainer>
   );
 }
