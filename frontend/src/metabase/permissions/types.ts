@@ -6,13 +6,13 @@ import type {
   PermissionOption,
   PostActionFunction,
 } from "metabase/plugins";
-import {
+import type {
   DataPermission,
+  DataPermissionType,
   DataPermissionValue,
-  type PermissionEntityId,
-} from "metabase-types/api/permissions";
+  PermissionEntityId,
+} from "metabase-types/api";
 
-export { DataPermission, DataPermissionValue };
 export type {
   PermissionAction,
   PermissionConfirmationProps,
@@ -60,16 +60,6 @@ export function parseDataRouteParams(raw: RawDataRouteParams): DataRouteParams {
     schemaName: raw.schemaName,
     tableId: raw.tableId != null ? parseInt(raw.tableId) : undefined,
   };
-}
-
-export enum DataPermissionType {
-  ACCESS = "access",
-  NATIVE = "native",
-  DETAILS = "details",
-  DOWNLOAD = "download",
-  DATA_MODEL = "data-model",
-  TRANSFORMS = "transforms",
-  COLLECTIONS = "collections",
 }
 
 export type DatabasePermissionsDiff = {

@@ -7,9 +7,9 @@ import { Link } from "metabase/common/components/Link";
 import { Label } from "metabase/common/components/type/Label";
 import CS from "metabase/css/core/index.css";
 import { Box, Ellipsified, Flex, Icon, Text, Tooltip } from "metabase/ui";
+import type { DataPermissionValue } from "metabase-types/api";
 
 import type {
-  DataPermissionValue,
   PermissionAction,
   PermissionConfirmationProps,
   PermissionEditorEntity,

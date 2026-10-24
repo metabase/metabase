@@ -15,15 +15,15 @@ import type {
   SpecialGroupType,
   TableEntityId,
 } from "metabase-types/api";
-
-import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
-import { Messages } from "../../constants/messages";
-import type { PermissionSectionConfig } from "../../types";
 import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
-} from "../../types";
+} from "metabase-types/api";
+
+import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
+import { Messages } from "../../constants/messages";
+import type { PermissionSectionConfig } from "../../types";
 import {
   getFieldsPermission,
   getSchemasPermission,

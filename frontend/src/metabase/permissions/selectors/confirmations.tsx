@@ -11,8 +11,8 @@ import type {
   PermissionsDatabase,
   SchemaEntityId,
 } from "metabase-types/api";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
-import { DataPermission, DataPermissionValue } from "../types";
 import { isSchemaEntityId, isTableEntityId } from "../utils/data-entity-id";
 import {
   getFieldsPermission,

@@ -4,13 +4,13 @@ import type {
   GroupsPermissions,
   PermissionsDatabase,
 } from "metabase-types/api";
+import { DataPermission } from "metabase-types/api";
 
 import type {
   DatabasePermissionsDiff,
   GroupPermissionsDiff,
   PermissionsGraphDiff,
 } from "../../types";
-import { DataPermission } from "../../types";
 
 import {
   getFieldsPermission,

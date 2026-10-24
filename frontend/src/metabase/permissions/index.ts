@@ -80,9 +80,6 @@ export {
 export { showRevisionChangedModal } from "./selectors/data-permissions/revision";
 export { getIsHelpReferenceOpen } from "./selectors/help-reference";
 export {
-  DataPermission,
-  DataPermissionType,
-  DataPermissionValue,
   assertNumericId,
   parseDataRouteParams,
   parseGroupRouteParams,

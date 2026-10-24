@@ -4,13 +4,9 @@ import { memo, useState } from "react";
 import CS from "metabase/css/core/index.css";
 import { Box, Flex, Icon, Popover, Switch, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-import type { IconName } from "metabase-types/api";
+import type { DataPermissionValue, IconName } from "metabase-types/api";
 
-import type {
-  DataPermissionValue,
-  PermissionAction,
-  PermissionSectionConfig,
-} from "../../types";
+import type { PermissionAction, PermissionSectionConfig } from "../../types";
 
 import S from "./PermissionsSelect.module.css";
 import { PermissionsSelectOption } from "./PermissionsSelectOption";

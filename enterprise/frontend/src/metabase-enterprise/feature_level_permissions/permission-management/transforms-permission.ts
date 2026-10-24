@@ -1,19 +1,19 @@
 import { getIn } from "icepick";
 import { t } from "ttag";
 
-import { Messages } from "metabase/permissions";
 import {
+  Messages,
   getPermissionWarning,
   getPermissionWarningModal,
+  getSchemasPermission,
 } from "metabase/permissions";
-import {
-  DataPermissionType,
-  type PermissionOption,
-  type PermissionSectionConfig,
+import type {
+  PermissionOption,
+  PermissionSectionConfig,
 } from "metabase/permissions";
-import { getSchemasPermission } from "metabase/permissions";
 import {
   DataPermission,
+  DataPermissionType,
   DataPermissionValue,
   type Group,
   type GroupsPermissions,

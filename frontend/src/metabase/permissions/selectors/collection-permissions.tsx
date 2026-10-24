@@ -24,23 +24,21 @@ import type {
   State,
 } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
-import type {
-  Collection,
-  CollectionId,
-  CollectionNamespace,
-  CollectionPermissions,
-  Group as GroupType,
-  SpecialGroupType,
+import {
+  type Collection,
+  type CollectionId,
+  type CollectionNamespace,
+  type CollectionPermissions,
+  DataPermission,
+  DataPermissionType,
+  type DataPermissionValue,
+  type Group as GroupType,
+  type SpecialGroupType,
 } from "metabase-types/api";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
 import { Messages } from "../constants/messages";
-import {
-  DataPermission,
-  DataPermissionType,
-  type DataPermissionValue,
-  type PermissionEditorType,
-} from "../types";
+import type { PermissionEditorType } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";
 import { selectGroupList } from "./data-permissions/groups";

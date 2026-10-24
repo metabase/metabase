@@ -20,16 +20,19 @@ import {
   createThunkAction,
 } from "metabase/redux";
 import { navigate } from "metabase/router";
-import type {
-  Collection,
-  CollectionPermissions,
-  CollectionPermissionsGraph,
-  DatabaseId,
-  GroupId,
-  GroupsPermissions,
-  PermissionEntityId,
-  PermissionsDatabase,
-  PermissionsGraph,
+import {
+  type Collection,
+  type CollectionPermissions,
+  type CollectionPermissionsGraph,
+  DataPermission,
+  DataPermissionType,
+  type DataPermissionValue,
+  type DatabaseId,
+  type GroupId,
+  type GroupsPermissions,
+  type PermissionEntityId,
+  type PermissionsDatabase,
+  type PermissionsGraph,
 } from "metabase-types/api";
 
 import {
@@ -37,12 +40,7 @@ import {
   getPermissionsDatabase,
 } from "./selectors/data-permissions/databases";
 import { selectGroupList } from "./selectors/data-permissions/groups";
-import {
-  DataPermission,
-  DataPermissionType,
-  type DataPermissionValue,
-  type PermissionSectionConfig,
-} from "./types";
+import type { PermissionSectionConfig } from "./types";
 import { isSchemaEntityId, isTableEntityId } from "./utils/data-entity-id";
 import {
   inferAndUpdateEntityPermissions,

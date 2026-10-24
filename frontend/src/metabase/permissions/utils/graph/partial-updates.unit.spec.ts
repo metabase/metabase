@@ -1,6 +1,5 @@
 import type { GroupsPermissions } from "metabase-types/api";
-
-import { DataPermission, DataPermissionValue } from "../../types";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
 import {
   getModifiedCollectionPermissionsGraphParts,

@@ -1,7 +1,7 @@
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import { DataPermissionValue } from "metabase-types/api";
 
 import { Messages } from "../../constants/messages";
-import { DataPermissionValue } from "../../types";
 import { isRestrictivePermission } from "../../utils/graph";
 
 export const getNativePermissionDisabledTooltip = (

@@ -23,6 +23,7 @@ import type {
   PermissionSubject,
   SpecialGroupType,
 } from "metabase-types/api";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
 import type {
   DataRouteParams,
@@ -30,7 +31,6 @@ import type {
   PermissionSectionConfig,
   RawGroupRouteParams,
 } from "../../types";
-import { DataPermission, DataPermissionValue } from "../../types";
 import {
   getDatabaseEntityId,
   getSchemaEntityId,

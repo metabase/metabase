@@ -5,36 +5,33 @@ import { t } from "ttag";
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
-import { PermissionsSidebar } from "metabase/permissions";
-import {
-  loadDataPermissionsForDb,
-  updateDataPermission,
-} from "metabase/permissions";
 import {
   type DataTreeNodeItem,
+  PermissionsSidebar,
+  assertNumericId,
   getDataFocusSidebar,
+  getDatabaseFocusPermissionsUrl,
+  getDatabasesBasePath,
   getGroupsDataPermissionEditor,
   getIsLoadingDatabaseTables,
   getLoadingDatabaseTablesError,
+  loadDataPermissionsForDb,
+  parseDataRouteParams,
+  updateDataPermission,
 } from "metabase/permissions";
 import type {
-  DataPermissionValue,
   PermissionAction,
   PermissionEditorBreadcrumb,
   PermissionEditorEntity,
   PermissionSectionConfig,
   RawDataRouteParams,
 } from "metabase/permissions";
-import { assertNumericId, parseDataRouteParams } from "metabase/permissions";
-import {
-  getDatabaseFocusPermissionsUrl,
-  getDatabasesBasePath,
-} from "metabase/permissions";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, useNavigate, useParams } from "metabase/router";
 import { getSetting } from "metabase/settings";
 import { Center, Loader } from "metabase/ui";
+import type { DataPermissionValue } from "metabase-types/api";
 
 import {
   PermissionsEditor,

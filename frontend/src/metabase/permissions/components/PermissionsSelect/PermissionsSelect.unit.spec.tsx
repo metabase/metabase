@@ -1,13 +1,13 @@
 import userEvent from "@testing-library/user-event";
 
 import { getIcon, render, screen } from "__support__/ui";
-
 import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
-  type PermissionOption,
-} from "../../types";
+} from "metabase-types/api";
+
+import type { PermissionOption } from "../../types";
 
 import { PermissionsSelect } from "./PermissionsSelect";
 

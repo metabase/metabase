@@ -12,19 +12,17 @@ import {
   isAdminGroup,
   isDefaultGroup,
 } from "metabase/common/utils/groups";
-import { COLLECTION_OPTIONS } from "metabase/permissions";
-import { Messages } from "metabase/permissions";
+import {
+  COLLECTION_OPTIONS,
+  Messages,
+  getPermissionWarningModal,
+  selectGroupList,
+} from "metabase/permissions";
 import type {
   CollectionIdProps,
   CollectionSidebarType,
 } from "metabase/permissions";
-import { getPermissionWarningModal } from "metabase/permissions";
-import { selectGroupList } from "metabase/permissions";
-import {
-  DataPermission,
-  DataPermissionType,
-  type PermissionEditorType,
-} from "metabase/permissions";
+import type { PermissionEditorType } from "metabase/permissions";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { ExpandedCollection, State } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
@@ -34,6 +32,7 @@ import type {
   DataPermissionValue,
   Group as GroupType,
 } from "metabase-types/api";
+import { DataPermission, DataPermissionType } from "metabase-types/api";
 
 export const tenantSpecificCollectionsQuery = {
   "exclude-other-user-collections": true,

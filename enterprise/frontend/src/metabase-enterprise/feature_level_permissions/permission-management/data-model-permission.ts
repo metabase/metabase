@@ -1,23 +1,21 @@
 import { t } from "ttag";
 
-import { Messages } from "metabase/permissions";
-import { navigateToGranularPermissions } from "metabase/permissions";
 import {
+  Messages,
+  getFieldsPermission,
   getPermissionWarning,
   getPermissionWarningModal,
-} from "metabase/permissions";
-import {
-  DataPermissionType,
-  type PermissionOption,
-  type PermissionSectionConfig,
-} from "metabase/permissions";
-import {
-  getFieldsPermission,
   getSchemasPermission,
   getTablesPermission,
+  navigateToGranularPermissions,
+} from "metabase/permissions";
+import type {
+  PermissionOption,
+  PermissionSectionConfig,
 } from "metabase/permissions";
 import {
   DataPermission,
+  DataPermissionType,
   DataPermissionValue,
   type Group,
   type GroupsPermissions,

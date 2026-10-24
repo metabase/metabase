@@ -12,16 +12,16 @@ import type {
   SchemaEntityId,
   SpecialGroupType,
 } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionType,
+  DataPermissionValue,
+} from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
 import { navigateToGranularPermissions } from "../../permissions";
 import type { PermissionSectionConfig } from "../../types";
-import {
-  DataPermission,
-  DataPermissionType,
-  DataPermissionValue,
-} from "../../types";
 import { getSchemasPermission, getTablesPermission } from "../../utils/graph";
 import {
   getBlockWarning,

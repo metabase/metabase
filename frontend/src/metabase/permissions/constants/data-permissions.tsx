@@ -1,6 +1,8 @@
 import { t } from "ttag";
 
-import { DataPermissionValue, type PermissionOption } from "../types";
+import { DataPermissionValue } from "metabase-types/api";
+
+import type { PermissionOption } from "../types";
 
 export const DATA_PERMISSION_OPTIONS: Record<string, PermissionOption> = {
   unrestricted: {

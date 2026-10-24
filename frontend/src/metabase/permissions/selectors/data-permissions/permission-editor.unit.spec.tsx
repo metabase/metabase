@@ -8,6 +8,7 @@ import {
 } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import type { GroupsPermissions } from "metabase-types/api";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockGroup,
@@ -15,8 +16,6 @@ import {
   createMockTable,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
-
-import { DataPermission, DataPermissionValue } from "../../types";
 
 import {
   getDatabasesPermissionEditor,

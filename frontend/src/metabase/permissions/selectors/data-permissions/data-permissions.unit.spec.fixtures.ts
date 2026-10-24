@@ -2,13 +2,12 @@ import { QueryStatus } from "@reduxjs/toolkit/query";
 
 import { createMockSettingsState } from "__support__/state";
 import type { Database, SchemaName, TableId } from "metabase-types/api";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockGroup,
   createMockTable,
 } from "metabase-types/api/mocks";
-
-import { DataPermission, DataPermissionValue } from "../../types";
 
 const createTables = (
   databaseId: number,
