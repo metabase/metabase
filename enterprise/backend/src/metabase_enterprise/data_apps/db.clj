@@ -71,6 +71,16 @@
   [collection-id :- pos-int?]
   (t2/exists? :model/Collection :id collection-id :namespace "data-apps"))
 
+(mu/defn database-exists? :- :boolean
+  "Whether there is a Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Database :id database-id))
+
+(mu/defn app-card-ids :- [:set ::lib.schema.id/card]
+  "The IDs of the cards in the collection with `collection-id`."
+  [collection-id :- pos-int?]
+  (or (t2/select-pks-set :model/Card :collection_id collection-id) #{}))
+
 (mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
   "Insert the DataApp `row`, returning its ID."
   [row :- ::data-apps.schema/data-app.update]
