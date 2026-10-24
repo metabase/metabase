@@ -1,13 +1,17 @@
-import { t } from "ttag";
-
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
 import { useParams } from "metabase/router";
 import { Center } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { WritebackQueryAction } from "metabase-types/api";
+import type {
+  WritebackImplicitQueryAction,
+  WritebackQueryAction,
+} from "metabase-types/api";
 
-import { QueryActionFieldsContent } from "../../components/ActionFieldsContent";
+import {
+  ImplicitActionFieldsContent,
+  QueryActionFieldsContent,
+} from "../../components/ActionFieldsContent";
 import { ActionHeader } from "../../components/ActionHeader";
 import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useRouteAction } from "../../hooks/use-route-action";
@@ -25,12 +29,10 @@ export function ActionFieldsPage() {
     );
   }
 
-  return action.type === "query" ? (
-    <QueryActionFieldsPage action={action} fieldId={fieldId} />
+  return action.type === "implicit" ? (
+    <ImplicitActionFieldsPage action={action} fieldId={fieldId} />
   ) : (
-    <Center h="100%">
-      <LoadingAndErrorWrapper error={t`Action not found.`} />
-    </Center>
+    <QueryActionFieldsPage action={action} fieldId={fieldId} />
   );
 }
 
@@ -60,6 +62,29 @@ function QueryActionFieldsPage({
         action={action}
         fieldId={fieldId}
         canChangeFieldType={canEditActionQuery(action, databases)}
+        getFieldsUrl={(fieldId) =>
+          Urls.dataStudioActionFields(action.id, fieldId)
+        }
+      />
+    </PageContainer>
+  );
+}
+
+type ImplicitActionFieldsPageProps = {
+  action: WritebackImplicitQueryAction;
+  fieldId: string | undefined;
+};
+
+function ImplicitActionFieldsPage({
+  action,
+  fieldId,
+}: ImplicitActionFieldsPageProps) {
+  return (
+    <PageContainer data-testid="action-fields" gap="lg" px={0} pb={0}>
+      <ActionHeader action={action} px="3.5rem" />
+      <ImplicitActionFieldsContent
+        action={action}
+        fieldId={fieldId}
         getFieldsUrl={(fieldId) =>
           Urls.dataStudioActionFields(action.id, fieldId)
         }
