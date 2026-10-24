@@ -427,7 +427,7 @@
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
-  (warehouses.db/delete-query-actions-for-database! id)
+  (warehouses.db/delete-actions-for-database! id)
   (->> (eduction
         (map t2.realize/realize)
         (partition-all 1000)

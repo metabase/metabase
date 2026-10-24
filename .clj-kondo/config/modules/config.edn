@@ -3339,6 +3339,7 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Field
+                    :model/ImplicitAction
                     :model/QueryAction
                     :model/Table
                     :model/User}}
@@ -3425,9 +3426,11 @@
                     :model/FieldValues
                     :model/Table
                     :model/TableUserSettings}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Database
+                    :model/ImplicitAction
                     :model/Measure
                     :model/Segment
                     :model/Transform
@@ -3946,6 +3949,7 @@
                     :model/Field
                     :model/FieldUserSettings
                     :model/FieldValues
+                    :model/ImplicitAction
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/QueryAction
