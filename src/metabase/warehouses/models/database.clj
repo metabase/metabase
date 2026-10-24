@@ -498,6 +498,54 @@
           (when (driver.impl/registered? engine)
             (driver.u/validate-connection-parameters! engine details)))))))
 
+(defenterprise router-mode
+  "OSS implementation. Database routing modes are an enterprise feature, so there is none."
+  metabase-enterprise.database-routing.models
+  [_database-id]
+  nil)
+
+(defn- routing-restriction-messages
+  [destination?]
+  (if destination?
+    {:persist (tru "Cannot enable model persistence on a destination database")
+     :write   (tru "Cannot configure a write connection on a destination database")
+     :uploads (tru "Cannot enable uploads on a destination database")
+     :actions (tru "Cannot enable data actions on a destination database")
+     :editing (tru "Cannot enable table editing on a destination database")}
+    {:persist (tru "Cannot enable model persistence on a router database")
+     :write   (tru "Cannot configure a write connection on a router database")
+     :uploads (tru "Cannot enable uploads on a router database whose destinations are on other servers")
+     :actions (tru "Cannot enable data actions on a router database whose destinations are on other servers")
+     :editing (tru "Cannot enable table editing on a router database whose destinations are on other servers")}))
+
+(defn- check-routing-restrictions!
+  "Throws when `database`'s pending update enables something database routing rules out: anything that writes, on a
+  destination, or on a router whose destinations are on other servers, and model persistence on any router."
+  [{:keys [id router_database_id] :as database}]
+  (let [changes  (t2/changes database)
+        original (t2/original database)
+        enabled  (into #{}
+                       (keep (fn [[k path]]
+                               (when (and (get-in changes path) (not (get-in original path)))
+                                 k)))
+                       {:persist [:settings :persist-models-enabled]
+                        :write   [:write_data_details]
+                        :uploads [:uploads_enabled]
+                        :actions [:settings :database-enable-actions]
+                        :editing [:settings :database-enable-table-editing]})]
+    (when (seq enabled)
+      (let [mode     (when-not router_database_id (router-mode id))
+            router?  (and (not router_database_id)
+                          (or (some? mode) (warehouses.db/destination-database-exists? id)))
+            refused  (cond
+                       router_database_id    enabled
+                       (not router?)         #{}
+                       (= mode "internal")   (filter #{:persist} enabled)
+                       :else                 enabled)]
+        (when-let [k (first refused)]
+          (throw (ex-info (get (routing-restriction-messages (some? router_database_id)) k)
+                          {:status-code 400})))))))
+
 (defn- with-router-shared-details
   "Copies the server details of a destination database's router onto the details it is writing; see
   [[router-shared-details]]."
@@ -509,6 +557,7 @@
 (t2/define-before-update :model/Database
   [database]
   (assert-router-database-id-not-mutated! database)
+  (check-routing-restrictions! database)
   (let [database (with-router-shared-details database)]
     (let [changes  (t2/changes database)
           original (t2/original database)]

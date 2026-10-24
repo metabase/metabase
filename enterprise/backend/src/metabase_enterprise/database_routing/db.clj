@@ -92,7 +92,7 @@
   [router :- [:map {:closed true}
               [:database_id    ::lib.schema.id/database]
               [:user_attribute :string]
-              [:mode           ::database-routing.schema/mode]]]
+              [:mode           {:optional true} ::database-routing.schema/mode]]]
   (t2/insert! :model/DatabaseRouter router))
 
 (mu/defn update-router!

@@ -8,6 +8,7 @@
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.models.interface :as mi]
    [metabase.notification.seed :as notification.seed]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.compile :as qp.compile]
@@ -489,22 +490,23 @@
       ;; transform — even when no job was asking to run it.
       (mt/with-premium-features #{:database-routing :transforms-basic}
         (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Database       _destination {:engine             :h2
-                                                             :router_database_id (mt/id)
-                                                             :details            {:destination_database true}}
-                         :model/DatabaseRouter _            {:database_id    (mt/id)
-                                                             :user_attribute "db_name"}
-                         ;; Zombie transform on a routing-enabled database, NOT tagged to any job.
-                         :model/Transform      _zombie      {:name       "zombie-transform"
-                                                             :source     {:type  :query
-                                                                          :query (lib/native-query mp "SELECT 1")}
-                                                             :creator_id (mt/user->id :crowberto)
-                                                             :target     {:type     "table"
-                                                                          :database (mt/id)
-                                                                          :schema   "PUBLIC"
-                                                                          :name     "zombie_out"}}]
-            (testing "get-plan with empty transform-ids must not throw on unrelated zombies"
-              (is (empty? (:order (#'jobs/get-plan #{})))))))))))
+          (binding [mi/*deserializing?* true]
+            (mt/with-temp [:model/Database       _destination {:engine             :h2
+                                                               :router_database_id (mt/id)
+                                                               :details            {:destination_database true}}
+                           :model/DatabaseRouter _            {:database_id    (mt/id)
+                                                               :user_attribute "db_name"}
+                           ;; Zombie transform on a routing-enabled database, NOT tagged to any job.
+                           :model/Transform      _zombie      {:name       "zombie-transform"
+                                                               :source     {:type  :query
+                                                                            :query (lib/native-query mp "SELECT 1")}
+                                                               :creator_id (mt/user->id :crowberto)
+                                                               :target     {:type     "table"
+                                                                            :database (mt/id)
+                                                                            :schema   "PUBLIC"
+                                                                            :name     "zombie_out"}}]
+              (testing "get-plan with empty transform-ids must not throw on unrelated zombies"
+                (is (empty? (:order (#'jobs/get-plan #{}))))))))))))
 
 (deftest run-transforms-skips-fresh-pulled-in-deps-test
   (mt/with-premium-features #{:transforms-basic}

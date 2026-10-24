@@ -7,13 +7,10 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
-   [metabase.settings.core :as setting]
    [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
-   [metabase.warehouses.core :as warehouses]
-   [toucan2.core :as t2]))
+   [metabase.warehouses.core :as warehouses]))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
 ;; of the REST API
@@ -88,23 +85,18 @@
 
 (defn- create-or-update-router!
   [db-id user-attribute mode]
-  (let [db     (database-routing.db/database db-id)
-        router (database-routing.db/router-for-database db-id)
-        mode   (or mode (:mode router) "external")]
-    (when-not (driver.u/supports? (:engine db) :database-routing db)
-      (throw (ex-info "This database does not support DB routing" {:status-code 400})))
+  (let [db      (database-routing.db/database db-id)
+        changes (cond-> {:user_attribute user-attribute}
+                  mode (assoc :mode mode))]
+    (if (database-routing.db/router-for-database db-id)
+      (database-routing.db/update-router! db-id changes)
+      (database-routing.db/insert-router! (assoc changes :database_id db-id)))
     (events/publish-event! :event/database-update {:object db
                                                    :previous-object db
                                                    :user-id api/*current-user-id*
                                                    :details {:db_routing :enabled
                                                              :routing_attribute user-attribute
-                                                             :routing_mode mode}})
-    (if router
-      (t2/with-transaction [_conn]
-        (when (not= mode (:mode router))
-          (database-routing.db/delete-destination-databases! db-id))
-        (database-routing.db/update-router! db-id {:user_attribute user-attribute :mode mode}))
-      (database-routing.db/insert-router! {:database_id db-id :user_attribute user-attribute :mode mode}))))
+                                                             :routing_mode (database-routing.db/router-mode db-id)}})))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -121,20 +113,7 @@
    {:keys [user_attribute mode]} :- [:map {:closed true}
                                      [:user_attribute {:optional true} [:maybe ms/NonBlankString]]
                                      [:mode           {:optional true} [:maybe ::database-routing.schema/mode]]]]
-  (let [db        (api/check-404 (database-routing.db/database id))
-        mode      (or mode (:mode (database-routing.db/router-for-database id)) "external")
-        external? (= mode "external")]
-    (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
-    (when (some? user_attribute)
-      (when external?
-        (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")
-        (api/check-400 (not (:write_data_details db)) "Cannot enable database routing for a database with a write connection configured")
-        (api/check-400 (not (database-routing.db/transform-exists-for-source-database? id)) "Cannot enable database routing for a database with transforms"))
-      (setting/with-database db
-        (when external?
-          (api/check-400 (not (setting/get :database-enable-table-editing)) "Cannot enable database routing for a database with table editing enabled")
-          (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled"))
-        (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled"))))
+  (api/check-404 (database-routing.db/database id))
   (if (nil? user_attribute)
     ;; delete the DatabaseRouter
     (delete-router! id)

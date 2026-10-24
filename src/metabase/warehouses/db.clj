@@ -14,6 +14,11 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one-fn :router_database_id :model/Database :id database-id))
 
+(mu/defn destination-database-exists?
+  "Whether the Database with `database-id` has routing destinations."
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Database :router_database_id database-id))
+
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- [:maybe ::lib.schema.id/database]]

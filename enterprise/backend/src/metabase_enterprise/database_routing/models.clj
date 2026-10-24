@@ -5,7 +5,9 @@
    [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -14,6 +16,48 @@
 
 (doto :model/DatabaseRouter
   (derive :metabase/model))
+
+(defn- check!
+  [ok? message]
+  (when-not ok?
+    (throw (ex-info message {:status-code 400}))))
+
+(defn- check-router!
+  "Throws unless the Database of `router` can route in the router's mode."
+  [{:keys [database_id mode]}]
+  (let [db        (database-routing.db/database database_id)
+        external? (not= mode "internal")]
+    (check! (driver.u/supports? (:engine db) :database-routing db)
+            (tru "This database does not support DB routing"))
+    (check! (not (:router_database_id db))
+            (tru "Cannot make a destination database a router database"))
+    (when external?
+      (check! (not (:uploads_enabled db))
+              (tru "Cannot enable database routing for a database with uploads enabled"))
+      (check! (not (:write_data_details db))
+              (tru "Cannot enable database routing for a database with a write connection configured"))
+      (check! (not (database-routing.db/transform-exists-for-source-database? database_id))
+              (tru "Cannot enable database routing for a database with transforms")))
+    (setting/with-database db
+      (when external?
+        (check! (not (setting/get :database-enable-table-editing))
+                (tru "Cannot enable database routing for a database with table editing enabled"))
+        (check! (not (setting/get :database-enable-actions))
+                (tru "Cannot enable database routing for a database with actions enabled")))
+      (check! (not (setting/get :persist-models-enabled))
+              (tru "Cannot enable database routing for a database with model persistence enabled")))))
+
+(t2/define-before-insert :model/DatabaseRouter
+  [router]
+  (u/prog1 (merge {:mode "external"} router)
+    (check-router! <>)))
+
+(t2/define-before-update :model/DatabaseRouter
+  [router]
+  (check-router! router)
+  (when (contains? (t2/changes router) :mode)
+    (database-routing.db/delete-destination-databases! (:database_id router)))
+  router)
 
 (defenterprise hydrate-router-user-attribute
   "Enterprise implementation. Hydrates the router user attribute on the databases"
@@ -47,6 +91,14 @@
   (-> details
       (merge (select-keys (:details router) (shared-detail-keys (:engine router))))
       (assoc :same-server-destination true)))
+
+(defenterprise router-mode
+  "Enterprise implementation. Returns the mode of the router of the Database with `database-id`, or nil when it isn't
+  a router. Uses `:feature :none` so a router keeps its restrictions while the `:database-routing` feature is
+  unavailable."
+  :feature :none
+  [database-id]
+  (database-routing.db/router-mode database-id))
 
 (defenterprise router-shared-details
   "Enterprise implementation. Returns the `details` of a destination of the router with `router-database-id` as they

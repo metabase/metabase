@@ -7,6 +7,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools.resources :as read-resource]
+   [metabase.models.interface :as mi]
    [metabase.permissions-rest.data-permissions.graph :as data-perms.graph]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -139,12 +140,13 @@
     (is (= "Cannot make a destination database a router database"
            (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                  {:user_attribute "db_name"}))))
-  (mt/with-temp [:model/Database {db-id :id} {}
-                 :model/Transform _ {:source_database_id db-id
-                                     :name "Test Transform"}]
-    (is (= "Cannot enable database routing for a database with transforms"
-           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"})))))
+  (mt/with-temp [:model/Database {db-id :id} {}]
+    (binding [mi/*deserializing?* true]
+      (mt/with-temp [:model/Transform _ {:source_database_id db-id
+                                         :name "Test Transform"}]
+        (is (= "Cannot enable database routing for a database with transforms"
+               (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                     {:user_attribute "db_name"})))))))
 
 (deftest can-delete-router-databases
   (mt/with-temp [:model/Database {db-id :id} {}
