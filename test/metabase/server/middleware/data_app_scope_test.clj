@@ -96,8 +96,8 @@
         (is (= "scope_not_permitted"
                (:error (mt/user-http-request :crowberto :get 403 endpoint as-data-app)))
             endpoint)))
-    (testing "the InteractiveQuestion.Editor data-source surface is reachable when marked"
-      (is (mt/user-http-request :crowberto :get 200 "database" as-data-app)))
+    (testing "the InteractiveQuestion.Editor data-source surface passes scope enforcement when marked"
+      (is (not= "scope_not_permitted" (:error (mt/user-http-request :crowberto :get "database" as-data-app)))))
     (testing "a pre-built-def route (table-routes, mounted by value not ns-symbol) passes scope enforcement"
       (is (not= "scope_not_permitted"
                 (:error (mt/user-http-request :crowberto :get

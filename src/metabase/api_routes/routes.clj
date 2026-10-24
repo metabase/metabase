@@ -205,11 +205,11 @@
    "/cards"                (+auth metabase.queries-rest.api/cards-routes)
    "/channel"              (+auth metabase.channel.rest.api/channel-routes)
    "/cloud-migration"      (+auth 'metabase.cloud-migration.api)
-   "/collection"           (+auth 'metabase.collections-rest.api)
+   "/collection"           (+auth (data-apps/collection-guard (api.macros/ns-handler 'metabase.collections-rest.api)))
    "/comment"              (+auth metabase.comments.api/routes)
    "/dashboard"            (+auth 'metabase.dashboards-rest.api)
    "/data-studio"          (+auth metabase.data-studio.api/routes)
-   "/database"             (+auth 'metabase.warehouses-rest.api)
+   "/database"             (+auth (data-apps/database-guard (api.macros/ns-handler 'metabase.warehouses-rest.api)))
    ;; The MCP Apps iframe credential is accepted for `/dataset`, whose endpoints declare no scope, so the
    ;; endpoint scope middleware cannot hold the `agent:sql:run` line here. The credential carries the minting
    ;; token's scopes as a signed claim, and the guard
@@ -264,7 +264,7 @@
    "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
-   "/search"               (+auth metabase.search.api/routes)
+   "/search"               (+auth (data-apps/search-guard metabase.search.api/routes))
    "/segment"              (+auth 'metabase.segments.rest.api)
    "/session"              metabase.session.api/routes
    "/setting"              (+auth 'metabase.settings-rest.api)

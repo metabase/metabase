@@ -1,9 +1,12 @@
 (ns metabase.data-apps.core
   (:require
    [metabase.data-apps.guards.card]
+   [metabase.data-apps.guards.collection]
+   [metabase.data-apps.guards.database]
    [metabase.data-apps.guards.dataset]
    [metabase.data-apps.guards.field]
    [metabase.data-apps.guards.sandbox-table]
+   [metabase.data-apps.guards.search]
    [metabase.data-apps.guards.table]
    [metabase.premium-features.core :refer [defenterprise]]
    [potemkin :as p]))
@@ -11,12 +14,18 @@
 (p/import-vars
  [metabase.data-apps.guards.card
   card-guard]
+ [metabase.data-apps.guards.collection
+  collection-guard]
+ [metabase.data-apps.guards.database
+  database-guard]
  [metabase.data-apps.guards.dataset
   dataset-guard]
  [metabase.data-apps.guards.field
   field-guard]
  [metabase.data-apps.guards.sandbox-table
   sandbox-table-guard]
+ [metabase.data-apps.guards.search
+  search-guard]
  [metabase.data-apps.guards.table
   table-guard])
 

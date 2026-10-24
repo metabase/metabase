@@ -6,6 +6,7 @@
    [metabase-enterprise.data-apps.test-util :as data-apps.tu :refer [do-with-app-collection]]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -258,6 +259,39 @@
            (is (re-find #"not CHECKINS" (get-as-data-app 403 path))))))
      (testing "a missing field is left to the 404"
        (get-as-data-app 404 "field/999999999")))))
+
+(deftest database-endpoints-test
+  (do-with-app-card!
+   (fn [_card-id _collection-id]
+     (mt/with-temp [:model/Database {other-db-id :id} {:name "Other birds" :engine :h2}]
+       (testing "the database of the app's cards is read, another is refused, a missing one is left to the 404"
+         (is (= (mt/id) (:id (get-as-data-app 200 (str "database/" (mt/id))))))
+         (is (re-find #"Other birds" (get-as-data-app 403 (str "database/" other-db-id))))
+         (get-as-data-app 404 "database/999999999"))
+       (testing "the list of databases holds the database of the app's cards and the saved questions database"
+         (let [{:keys [data total]} (mt/user-http-request :crowberto :get 200 "database" as-data-app :saved true)]
+           (is (= #{(mt/id) lib.schema.id/saved-questions-virtual-database-id} (set (map :id data))))
+           (is (= (count data) total))))))))
+
+(deftest search-and-collection-endpoints-test
+  (do-with-app-card!
+   (fn [card-id collection-id]
+     (mt/with-temp [:model/Card {other-id :id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}
+                    :model/Collection {other-collection-id :id} {:name "Elsewhere"}]
+       (testing "search finds only the app's questions"
+         (is (some #{other-id} (map :id (:data (mt/user-http-request :crowberto :get 200 "search"
+                                                                     :q "Venues" :search_engine "in-place")))))
+         (let [{:keys [data total]} (mt/user-http-request :crowberto :get 200 "search" as-data-app
+                                                          :q "Venues" :search_engine "in-place")]
+           (is (every? #{card-id} (map :id data)))
+           (is (= (count data) total))))
+       (testing "the collection tree holds only the app's collection"
+         (is (every? #{collection-id} (map :id (get-as-data-app 200 "collection/tree")))))
+       (testing "the app's collection lists only its questions, and another collection is refused"
+         (is (= [card-id] (map :id (:data (get-as-data-app 200 (format "collection/%d/items" collection-id))))))
+         (is (= [] (:data (get-as-data-app 200 "collection/root/items"))))
+         (is (re-find #"collection of its own app"
+                      (get-as-data-app 403 (format "collection/%d/items" other-collection-id)))))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app runs nothing"

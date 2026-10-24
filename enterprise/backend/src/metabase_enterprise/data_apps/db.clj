@@ -96,6 +96,11 @@
   [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
   (t2/select [:model/Card :id :database_id] :id [:in card-ids]))
 
+(mu/defn database-names :- [:map-of ::lib.schema.id/database :string]
+  "The names of the Databases with `database-ids` that exist, by database ID."
+  [database-ids :- [:set {:min 1} ::lib.schema.id/database]]
+  (or (t2/select-fn->fn :id :name [:model/Database :id :name] :id [:in database-ids]) {}))
+
 (mu/defn table-names :- [:map-of ::lib.schema.id/table :string]
   "The names of the Tables with `table-ids` that exist, by table ID."
   [table-ids :- [:set {:min 1} ::lib.schema.id/table]]

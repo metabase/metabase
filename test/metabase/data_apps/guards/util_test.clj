@@ -6,9 +6,12 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.macros :as api.macros]
    [metabase.data-apps.guards.card :as guards.card]
+   [metabase.data-apps.guards.collection :as guards.collection]
+   [metabase.data-apps.guards.database :as guards.database]
    [metabase.data-apps.guards.dataset :as guards.dataset]
    [metabase.data-apps.guards.field :as guards.field]
    [metabase.data-apps.guards.sandbox-table :as guards.sandbox-table]
+   [metabase.data-apps.guards.search :as guards.search]
    [metabase.data-apps.guards.table :as guards.table]
    [metabase.data-apps.guards.util :as guards.util]
    [metabase.test :as mt]))
@@ -21,19 +24,19 @@
    'metabase.queries-rest.api.card {:path "card" :checks guards.card/checks}
    'metabase.warehouse-schema-rest.api.table {:path "table" :checks guards.table/checks}
    'metabase-enterprise.sandbox.api.table {:path "table" :checks guards.sandbox-table/checks}
-   'metabase.warehouse-schema-rest.api.field {:path "field" :checks guards.field/checks}})
+   'metabase.warehouse-schema-rest.api.field {:path "field" :checks guards.field/checks}
+   'metabase.warehouses-rest.api {:path "database" :checks guards.database/checks}
+   'metabase.search.api {:path "search" :checks guards.search/checks}
+   'metabase.collections-rest.api {:path "collection" :checks guards.collection/checks}})
 
 (def ^:private unguarded-namespaces
   "The namespaces with endpoints a data app reaches that no guard covers."
   #{'metabase-enterprise.content-translation.routes
     'metabase-enterprise.custom-viz-plugin.api
     'metabase.actions-rest.api
-    'metabase.collections-rest.api
-    'metabase.search.api
     'metabase.session.api
     'metabase.user-key-value.api
-    'metabase.users-rest.api
-    'metabase.warehouses-rest.api})
+    'metabase.users-rest.api})
 
 (defn- data-app-endpoints
   "API namespace => the `[method route]` pairs of its endpoints tagged with the data-app scope, with their route param
@@ -147,3 +150,15 @@
                             (request :post "/" true))]
       (is (instance? Throwable result))
       (is (not= :handled result)))))
+
+(deftest check-filter-test
+  (testing "the function a check returns filters the body of a 2xx response, and only of one"
+    (doseq [[status filtered?] [[200 true] [202 true] [400 false]]]
+      (let [result (promise)]
+        ((#'guards.util/guard 'metabase.query-processor.api
+                              {[:post "/"] (fn [_request _route-params] #(assoc % :filtered true))}
+                              (fn [_request respond _raise] (respond {:status status :body {}})))
+         (request :post "/" true)
+         #(deliver result %)
+         #(deliver result %))
+        (is (= filtered? (boolean (get-in (deref result 1000 ::timed-out) [:body :filtered]))))))))

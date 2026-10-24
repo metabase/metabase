@@ -35,3 +35,39 @@
   metabase-enterprise.data-apps.guards
   [_request _field-id]
   (throw (unavailable)))
+
+(defenterprise check-database!
+  "Throws a 403 unless the data app of `request` may read the metadata of the database with `database-id`."
+  metabase-enterprise.data-apps.guards
+  [_request _database-id]
+  (throw (unavailable)))
+
+(defenterprise databases-filter
+  "The function that drops from a list of databases what the data app of `request` may not see."
+  metabase-enterprise.data-apps.guards
+  [_request]
+  (throw (unavailable)))
+
+(defenterprise search-filter
+  "The function that drops from search results what the data app of `request` may not see."
+  metabase-enterprise.data-apps.guards
+  [_request]
+  (throw (unavailable)))
+
+(defenterprise check-collection!
+  "Throws a 403 unless the data app of `request` may list the items of the collection with `collection-id`."
+  metabase-enterprise.data-apps.guards
+  [_request _collection-id]
+  (throw (unavailable)))
+
+(defenterprise collection-tree-filter
+  "The function that drops from a collection tree what the data app of `request` may not see."
+  metabase-enterprise.data-apps.guards
+  [_request]
+  (throw (unavailable)))
+
+(defenterprise collection-items-filter
+  "The function that drops from a list of collection items what the data app of `request` may not see."
+  metabase-enterprise.data-apps.guards
+  [_request]
+  (throw (unavailable)))

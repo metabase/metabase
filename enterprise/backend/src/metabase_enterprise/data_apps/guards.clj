@@ -128,3 +128,72 @@
     (when-not (contains? (app-table-ids request) table-id)
       (refuse-tables! #{table-id})))
   nil)
+
+(defn- app-database-ids
+  "The IDs of the databases of the cards of the data app of `request`."
+  [request]
+  (into #{} (map :database_id) (some-> (not-empty (app-card-ids (request-app request))) data-apps.db/cards-by-ids)))
+
+(defenterprise check-database!
+  "Throws a 403 unless the database with `database-id`, a route param, is the database of a card of the data app of
+  `request`, when such a database exists."
+  :feature :data-apps
+  [request database-id]
+  (when-let [database-id (parse-long database-id)]
+    (when-not (contains? (app-database-ids request) database-id)
+      (when-let [database-name (get (data-apps.db/database-names #{database-id}) database-id)]
+        (throw (refusal (tru "A data app can read only the databases its own cards use, not {0}." database-name))))))
+  nil)
+
+(defn- filter-data
+  "`response`, `{:data [...]}`, with only the items that satisfy `pred` in its data, and its total counting them."
+  [pred {:keys [data] :as response}]
+  (let [kept (filterv pred data)]
+    (cond-> (assoc response :data kept)
+      (contains? response :total) (assoc :total (count kept)))))
+
+(defenterprise databases-filter
+  "The function that keeps of a list of databases, `{:data [...]}`, the saved questions database and the databases of
+  the cards of the data app of `request`."
+  :feature :data-apps
+  [request]
+  (partial filter-data (some-fn :is_saved_questions (comp (app-database-ids request) :id))))
+
+(def ^:private card-models
+  "The search and collection item models of cards."
+  #{"card" "dataset" "metric"})
+
+(defn- app-card?
+  "Whether a search result or a collection item is one of the cards with `card-ids`."
+  [card-ids {:keys [model id]}]
+  (and (contains? card-models (some-> model name)) (contains? card-ids id)))
+
+(defenterprise search-filter
+  "The function that keeps of search results only the cards of the data app of `request`."
+  :feature :data-apps
+  [request]
+  (partial filter-data (partial app-card? (app-card-ids (request-app request)))))
+
+(defenterprise check-collection!
+  "Throws a 403 unless the collection with `collection-id`, a route param, is the collection of the data app of
+  `request`."
+  :feature :data-apps
+  [request collection-id]
+  (when-not (= (parse-long collection-id) (:resource_collection_id (request-app request)))
+    (throw (refusal (tru "A data app can list only the collection of its own app."))))
+  nil)
+
+(defenterprise collection-tree-filter
+  "The function that keeps of a collection tree only the collection of the data app of `request`, without children."
+  :feature :data-apps
+  [request]
+  (let [collection-id (:resource_collection_id (request-app request))]
+    (fn [tree]
+      (into [] (comp (filter (comp #{collection-id} :id)) (map #(assoc % :children [])))
+            (tree-seq map? :children {:children tree})))))
+
+(defenterprise collection-items-filter
+  "The function that keeps of a list of collection items only the cards of the data app of `request`."
+  :feature :data-apps
+  [request]
+  (partial filter-data (partial app-card? (app-card-ids (request-app request)))))
