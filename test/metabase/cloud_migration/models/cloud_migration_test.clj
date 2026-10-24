@@ -5,10 +5,16 @@
    [metabase.cloud-migration.models.cloud-migration :as cloud-migration]
    [metabase.cloud-migration.settings :as cloud-migration.settings]
    [metabase.config.core :as config]
+   [metabase.query-processor.db :as qp.db]
+   [metabase.settings.models.setting.cache :as setting.cache]
    [metabase.task.core :as task]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [toucan2.core :as t2]))
+   [metabase.util.honey-sql-2 :as h2x]
+   [toucan2.core :as t2]
+   [toucan2.pipeline :as t2.pipeline]))
+
+(set! *warn-on-reflection* true)
 
 (use-fixtures :once (fixtures/initialize :test-users))
 
@@ -106,6 +112,64 @@
       (mt/client :post 200 "session" (mt/user->credentials :rasta))
       (is (not= before (t2/select-one-fn :last_used_at :model/AuthIdentity identity-id))))))
 
+(defn- compile-query [query]
+  (t2.pipeline/compile :toucan.result-type/* nil query))
+
+(deftest read-only-honeysql-writes-test
+  (mt/with-temporary-setting-values [read-only-mode true]
+    (doseq [query [{:update :collection :set {:name "changed"}}
+                   {:update :report_card :set {:name "changed" :id 1 :last_used_at nil :updated_at nil}}
+                   {:update :report_card :set {}}
+                   {:insert-into [:report_card] :values [{:name "new"}]}
+                   {:delete-from :report_card}
+                   {:replace-into :report_card :values [{:id 1}]}
+                   {:insert-into [:report_card [:id]] :values [[1]]
+                    :on-conflict [:id] :do-update-set {:last_used_at nil}}
+                   {:insert-into [:report_card] :values [{:id 1}]
+                    :on-duplicate-key-update {:last_used_at nil}}
+                   {:truncate :report_card}
+                   {:drop-table [:if-exists :collection]}
+                   {:alter-table :collection :add-column [:test :int]}
+                   {:delete [:c] :from [[:collection :c]]}
+                   {:delete :c :from [[:collection :c]]}
+                   {:update :core_user :join [[:collection :c] [:= :c.personal_owner_id :core_user.id]]
+                    :set {:c.name "changed"}}
+                   {:with [[:deleted ^:allow-subquery {:delete-from :collection :returning [:id]}]]
+                    :select [:*] :from [:deleted]}
+                   {:with-recursive [[:deleted ^:allow-subquery {:delete-from :collection :returning [:id]}]]
+                    :select [:*] :from [:deleted]}]]
+      (testing (pr-str query)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read-only"
+                              (compile-query query)))))))
+
+(deftest read-only-qualified-targets-test
+  (mt/with-temporary-setting-values [read-only-mode true]
+    (doseq [target [:collection [:collection :c] :public.collection :public/collection
+                    "COLLECTION" [(h2x/identifier :table "PUBLIC" "COLLECTION")]]]
+      (testing (pr-str target)
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read-only"
+                              (compile-query {:update target :set {:name "changed"}})))))
+    (doseq [target [:report_card [:report_card :c] :public.report_card
+                    [(h2x/identifier :table "PUBLIC" "REPORT_CARD")]]
+            column [:last_used_at :c.last_used_at :c/last_used_at]]
+      (is (seq (compile-query {:update target :set {column nil}}))))))
+
+(deftest read-only-exceptions-test
+  (mt/with-temporary-setting-values [read-only-mode true]
+    (doseq [query [{:update :report_card :set {:last_used_at nil}}
+                   {:update :auth_identity :set {:last_used_at nil}}
+                   {:insert-into :core_session :values [{:id "session"}]}
+                   {:insert-into :login_history :values [{:user_id 1}]}
+                   {:delete-from :login_history}
+                   {:update :core_user :set {:last_login nil}}
+                   {:select [:*] :from [:collection]}]]
+      (is (seq (compile-query query))))
+    (doseq [query [{:update :auth_identity :set {:provider "changed"}}
+                   {:update :auth_identity :set {:credentials "changed" :last_used_at nil :updated_at nil}}
+                   {:insert-into :auth_identity :values [{:user_id 1}]}
+                   {:delete-from :auth_identity}]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read-only" (compile-query query))))))
+
 (deftest read-only-model-writes-test
   (mt/with-temp [:model/Collection {id :id} {:name "original"}
                  :model/Collection {archived-id :id} {:archived true}]
@@ -119,25 +183,51 @@
         (is (t2/exists? :model/Collection archived-id))
         (is (= collection-count (t2/count :model/Collection)))))))
 
+(deftest read-only-raw-writes-test
+  (mt/with-temp [:model/Collection {id :id} {:name "original"}]
+    (mt/with-temporary-setting-values [read-only-mode true]
+      (let [query {:update :collection :set {:name "changed"} :where [:= :id id]}]
+        (doseq [write! [#(t2/query query)
+                        #(t2/query :model/Collection query)
+                        ;; An exempt model argument must not override the actual target table.
+                        #(t2/query :model/User query)
+                        #(t2/query-one query)
+                        #(into [] (t2/reducible-query query))]]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read-only" (write!)))))
+      (is (= "original" (t2/select-one-fn :name :model/Collection id))))))
+
+(deftest read-only-card-last-used-at-test
+  (mt/with-temp [:model/Card {id :id} {:last_used_at #t "2025-01-01T00:00:00Z"}]
+    (mt/with-temporary-setting-values [read-only-mode true]
+      (qp.db/update-cards-last-used-at! {id (java.time.OffsetDateTime/now)})
+      (is (not= #t "2025-01-01T00:00:00Z" (t2/select-one-fn :last_used_at :model/Card id))))))
+
+(deftest read-only-disabled-test
+  (mt/with-temp [:model/Collection {id :id} {:name "original"}]
+    (mt/with-temporary-setting-values [read-only-mode false]
+      (t2/query {:update :collection :set {:name "changed"} :where [:= :id id]})
+      (is (= "changed" (t2/select-one-fn :name :model/Collection id))))))
+
+(deftest read-only-keeps-honeysql-guard-test
+  (mt/with-temporary-setting-values [read-only-mode true]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"forbidden HoneySQL"
+                          (compile-query {:select [:*] :from [[{:select [:*] :from [:collection]} :c]]})))))
+
+(deftest read-only-cold-setting-cache-test
+  (mt/with-temporary-setting-values [read-only-mode true]
+    (reset! (#'setting.cache/cache*) nil)
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read-only"
+                          (t2/query {:update :collection :set {:name "changed"} :where [:= :id -1]})))))
+
 (deftest read-only-user-creation-rolls-back-test
   (let [email (str (random-uuid) "@example.com")
         collection-count (t2/count :model/Collection)]
     (mt/with-temporary-setting-values [read-only-mode true]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"read-only"
-                            (t2/insert! :model/User {:email email :first_name "New" :last_name "User"})))
+      (is (re-find #"read-only"
+                   (mt/user-http-request :crowberto :post 403 "user"
+                                         {:email email :first_name "New" :last_name "User"})))
       (is (not (t2/exists? :model/User :email email)))
       (is (= collection-count (t2/count :model/Collection))))))
-
-(deftest read-only-column-exceptions-test
-  (testing "Every changed column must be allowed"
-    (is (#'cloud-migration/update-exempted? :report_card {:changes {:last_used_at nil}}))
-    (is (not (#'cloud-migration/update-exempted?
-              :report_card {:changes {:id 1 :last_used_at nil :updated_at nil :name "changed"}}))))
-  (testing "Column exceptions require a nonempty update"
-    (doseq [args [{} {:changes {}} {:rows [{:id 1}]}]]
-      (is (not (#'cloud-migration/update-exempted? :report_card args)))))
-  (testing "A full exception permits inserts and deletes"
-    (is (#'cloud-migration/update-exempted? :login_history {}))))
 
 (deftest ^:synchronized store-url-test
   (testing "When not dev"
