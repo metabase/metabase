@@ -412,6 +412,11 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
                       resourceType: "dashboard-tab",
                       type: "search",
                     },
+                    {
+                      name: "scrollTo",
+                      resourceType: "dashboard-card",
+                      type: "hash",
+                    },
                   ],
                 }),
               },

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { match } from "ts-pattern";
+import _ from "underscore";
 
 import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
@@ -9,14 +10,20 @@ import {
   useParams,
   useSearchParams,
 } from "metabase/router";
+import { parseHashOptions, stringifyHashOptions } from "metabase/utils/browser";
 import { isBaseEntityID } from "metabase-types/api/entity-id";
 
 import {
   type TranslateEntityIdResponse,
   useTranslateEntityIdQuery,
 } from "./api/entity-id";
-type ResourceType = "dashboard" | "collection" | "card" | "dashboard-tab";
-type ParamType = "param" | "search";
+type ResourceType =
+  | "dashboard"
+  | "collection"
+  | "card"
+  | "dashboard-tab"
+  | "dashboard-card";
+type ParamType = "param" | "search" | "hash";
 
 type ParamConfig = {
   name: string;
@@ -40,23 +47,26 @@ export const EntityIdRedirect = ({
 }: EntityIdRedirectProps) => {
   const navigate = useNavigate();
   const params = useParams();
-  const location = useLocation();
+  const { pathname, search, hash } = useLocation();
   const [searchParams] = useSearchParams();
-  const currentUrl = location.pathname + location.search;
 
   const paramsWithValues: ParamWithValue[] = useMemo(() => {
-    // add the value from the params or the query
+    // add the value from the params, the query or the hash
     return parametersToTranslate.map((config) => {
       const value = match(config.type)
         .with("param", () => params[config.name])
         .with("search", () => searchParams.get(config.name) ?? undefined)
+        .with("hash", () => {
+          const hashValue = parseHashOptions(hash)[config.name];
+          return typeof hashValue === "string" ? hashValue : undefined;
+        })
         .exhaustive();
       return {
         ...config,
         value,
       };
     });
-  }, [parametersToTranslate, params, searchParams]);
+  }, [parametersToTranslate, params, searchParams, hash]);
 
   const entityIdsToTranslate = useMemo(() => {
     // formats the entity ids in the format {resourceType: [entityId1, entityId2]}
@@ -83,7 +93,9 @@ export const EntityIdRedirect = ({
   useEffect(() => {
     if (!isLoading) {
       const { shouldRedirect, url, notFound } = handleResults({
-        currentUrl,
+        pathname,
+        search,
+        hash,
         paramsWithValues,
         entity_ids,
       });
@@ -97,7 +109,16 @@ export const EntityIdRedirect = ({
         navigate(url.replace("/entity/", "/"));
       }
     }
-  }, [currentUrl, entity_ids, isError, isLoading, paramsWithValues, navigate]);
+  }, [
+    pathname,
+    search,
+    hash,
+    entity_ids,
+    isError,
+    isLoading,
+    paramsWithValues,
+    navigate,
+  ]);
 
   if (isError) {
     throw error;
@@ -113,31 +134,54 @@ export const EntityIdRedirect = ({
 };
 
 function handleResults({
-  currentUrl,
+  pathname,
+  search,
+  hash,
   paramsWithValues,
   entity_ids,
 }: {
-  currentUrl: string;
+  pathname: string;
+  search: string;
+  hash: string;
   paramsWithValues: ParamWithValue[];
   entity_ids: TranslateEntityIdResponse | undefined;
 }) {
   let shouldRedirect = false;
-  let url = currentUrl;
   let notFound = false;
-  for (const { value } of paramsWithValues) {
-    if (isBaseEntityID(value)) {
-      const mappedEntityId = entity_ids?.[value];
-      // if the entity id is found, we replace it with the numeric id
-      if (mappedEntityId?.id) {
-        shouldRedirect = true;
-        url = url.replace(value, String(mappedEntityId.id));
-      } else {
-        // if it's not found we show a 404
-        notFound = true;
-      }
+  let nextPathname = pathname;
+  let nextSearch = search;
+  let nextHash = hash;
+
+  for (const { name, type, value } of paramsWithValues) {
+    if (!isBaseEntityID(value)) {
+      continue;
+    }
+    const id = entity_ids?.[value]?.id;
+
+    if (type === "hash") {
+      // the hash only points inside the page, so an unknown entity id is
+      // dropped instead of showing a 404 for the whole page
+      const hashOptions = parseHashOptions(nextHash);
+      const hashString = stringifyHashOptions(
+        id ? { ...hashOptions, [name]: String(id) } : _.omit(hashOptions, name),
+      );
+      nextHash = hashString ? `#${hashString}` : "";
+    } else if (!id) {
+      notFound = true;
+    } else if (type === "param") {
+      shouldRedirect = true;
+      nextPathname = nextPathname.replace(value, String(id));
+    } else {
+      shouldRedirect = true;
+      nextSearch = nextSearch.replace(value, String(id));
     }
   }
-  return { shouldRedirect, url, notFound };
+
+  return {
+    shouldRedirect,
+    url: nextPathname + nextSearch + nextHash,
+    notFound,
+  };
 }
 
 export function createEntityIdRedirect(config: {
