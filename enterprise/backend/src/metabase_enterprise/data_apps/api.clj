@@ -15,7 +15,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
-   [metabase.models.interface :as mi]
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
@@ -185,8 +184,7 @@
   to superusers, who see them badged, and never as available."
   [_route-params
    {:keys [available]} :- [:map {:closed true} [:available {:optional true} [:maybe :boolean]]]]
-  (->> (data-apps.db/data-apps available)
-       (filter mi/can-read?)
+  (->> (data-apps.db/readable-data-apps api/*current-user-id* (boolean api/*is-superuser?*) available)
        (remove #(and (or available (not api/*is-superuser?*))
                      (data-app.config/outdated? %)))
        (mapv data-app-response)))

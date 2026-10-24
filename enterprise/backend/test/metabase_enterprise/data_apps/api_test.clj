@@ -544,6 +544,18 @@
           (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled true})
           (is (some #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))))))
 
+(deftest apps-are-listed-only-to-users-who-can-read-their-collection-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})
+      (testing "a user without a grant on the app's collection doesn't see the app"
+        (doseq [url ["ee/apps" "ee/apps?available=true"]]
+          (is (not-any? #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 url)))))
+      (testing "a user sees it once their group can read the collection"
+        (group-access/add-groups! (t2/select-one :model/DataApp :name "demo") [(:id (perms/all-users-group))])
+        (doseq [url ["ee/apps" "ee/apps?available=true"]]
+          (is (some #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 url))))))))
+
 (deftest typed-schema-keys-are-the-same-on-every-instance-test
   (mt/with-premium-features #{:data-apps}
     (data-apps.tu/with-published-tables! [(mt/id :venues)]

@@ -28,13 +28,6 @@
   [slug :- :string]
   (t2/select-one non-blob-model :name slug))
 
-(mu/defn data-apps
-  "Every DataApp without its bundle, ordered by display name; only the enabled ones when `available?`."
-  [available? :- [:maybe :boolean]]
-  (t2/select non-blob-model
-             (cond-> {:order-by [[:display_name :asc]]}
-               available? (assoc :where [:= :enabled true]))))
-
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]
@@ -138,6 +131,18 @@
                                 (collection/visible-collection-query
                                  {:permission-level :read :include-archived-items :all}
                                  {:current-user-id user-id :is-superuser? false})]]}))
+
+(mu/defn readable-data-apps
+  "The DataApps that the User with `user-id` can read, without their bundles, ordered by display name; only the
+  enabled ones when `available?`."
+  [user-id    :- ms/PositiveInt
+   superuser? :- :boolean
+   available? :- [:maybe :boolean]]
+  (t2/select non-blob-model
+             {:where    [:and
+                         [:in :id (readable-data-app-ids-select user-id superuser?)]
+                         (when available? [:= :enabled true])]
+              :order-by [[:display_name :asc]]}))
 
 (defn permissions-for-warnings
   "View-data permission rows for the warning tables and their databases."
