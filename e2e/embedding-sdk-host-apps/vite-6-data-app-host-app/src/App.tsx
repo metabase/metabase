@@ -5,10 +5,11 @@ import {
 } from "@metabase/embedding-sdk-react/data-app";
 import { useEffect } from "react";
 
-const ORDERS_TABLE_ID = 5;
-
 const OrdersQuery = defineQuery({
-  source: { type: "table", id: ORDERS_TABLE_ID },
+  source: {
+    type: "card",
+    entityId: import.meta.env.VITE_ORDERS_CARD_ENTITY_ID,
+  },
 });
 
 const ALLOWED_URL = "https://allowed.data-app.test/ping";

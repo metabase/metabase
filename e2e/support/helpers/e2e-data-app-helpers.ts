@@ -1,8 +1,14 @@
 import yaml from "js-yaml";
 
-import { USERS, USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  USERS,
+  USER_GROUPS,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import * as Urls from "metabase/urls/data-apps";
 import type {
+  Card,
   Collection,
   CollectionId,
   CollectionPermission,
@@ -10,10 +16,16 @@ import type {
   DataApp,
   Group,
   GroupInfo,
+  TableId,
   WritebackAction,
 } from "metabase-types/api";
 
-import { createTestNativeQuery, updateSetting } from "./api";
+import {
+  createLibrary,
+  createTestNativeQuery,
+  publishTables,
+  updateSetting,
+} from "./api";
 import type { DataAppTestEnv } from "./data-app-test-env";
 import { getIframeBody } from "./e2e-embedding-helpers";
 import {
@@ -72,32 +84,7 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
   const displayName = options.displayName ?? appName;
   const allowedHosts = options.allowedHosts ?? [];
 
-  // the entrypoint checks for app access before serving its HTML
-  // we need to have a real app in the database - mocking the endpoint isn't enough
-  cy.request({
-    url: `/api/ee/apps/${slug}`,
-    failOnStatusCode: false,
-  }).then(({ status }) => {
-    if (status === 200) {
-      return;
-    }
-
-    expect(status).to.equal(404);
-
-    cy.log("register the data app");
-    cy.request("POST", "/api/ee/apps", {
-      name: slug,
-      display_name: displayName,
-      bundle_path: "dist/index.js",
-      allowed_hosts: allowedHosts,
-      enabled: true,
-    });
-
-    cy.log("assign the data app to all users group");
-    cy.request("POST", `/api/ee/apps/${slug}/groups`, {
-      group_ids: [USER_GROUPS.ALL_USERS_GROUP],
-    });
-  });
+  registerDataApp(slug, displayName, allowedHosts);
 
   // Prelude runs in the sandbox realm before the bundle's factory, so the app
   // can read the injected config as a global (see MockDataAppOptions.testEnv).
@@ -139,6 +126,49 @@ export const mockDataApp = <TestEnv = DataAppTestEnv>(
     return cy.wrap({ slug, displayName }, { log: false });
   });
 };
+
+const registerDataApp = (
+  slug: string,
+  displayName: string,
+  allowedHosts: string[],
+) => {
+  // the entrypoint checks for app access before serving its HTML
+  // we need to have a real app in the database - mocking the endpoint isn't enough
+  cy.request({
+    url: `/api/ee/apps/${slug}`,
+    failOnStatusCode: false,
+  }).then(({ status }) => {
+    if (status === 200) {
+      return;
+    }
+
+    expect(status).to.equal(404);
+
+    cy.log("register the data app");
+    cy.request("POST", "/api/ee/apps", {
+      name: slug,
+      display_name: displayName,
+      bundle_path: "dist/index.js",
+      allowed_hosts: allowedHosts,
+      enabled: true,
+    });
+
+    cy.log("assign the data app to all users group");
+    cy.request("POST", `/api/ee/apps/${slug}/groups`, {
+      group_ids: [USER_GROUPS.ALL_USERS_GROUP],
+    });
+  });
+};
+
+export const publishDataAppTables = (tableIds: TableId[]) =>
+  cy
+    .request<Collection | { data: null }>("GET", "/api/ee/library")
+    .then(({ body }) => {
+      if (!("id" in body)) {
+        createLibrary();
+      }
+      publishTables({ table_ids: tableIds });
+    });
 
 /**
  * The two rejections endpoint scope enforcement can emit. `scope_not_permitted` comes from
@@ -596,25 +626,62 @@ export function visitDataAppDevApp(clientHost: string) {
   }).should("exist");
 }
 
-export function setUpDataAppDevServer(clientHost: string) {
+const DATA_APP_DEV_SLUG = "vite-6-data-app-host-app";
+
+const createDataAppDevOrdersCard = (ordersTableId: TableId) =>
+  cy
+    .request<DataApp>("GET", `/api/ee/apps/${DATA_APP_DEV_SLUG}`)
+    .then(({ body: { resource_collection_id } }) =>
+      cy.request<Card>("POST", "/api/card", {
+        name: "Orders",
+        display: "table",
+        visualization_settings: {},
+        collection_id: resource_collection_id,
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: { "source-table": ordersTableId },
+        },
+      }),
+    )
+    .then(({ body }) => body);
+
+export function setUpDataAppDevServer(
+  clientHost: string,
+  ordersTableId: TableId,
+) {
   const mbUrl = Cypress.config("baseUrl");
   if (!mbUrl) {
     throw new Error("baseUrl must be set for the data-app dev-server suite");
   }
 
+  registerDataApp(DATA_APP_DEV_SLUG, "Vite 6 Data App", [
+    "https://allowed.data-app.test",
+  ]);
+  publishDataAppTables([ordersTableId]);
+
   cy.task("removeDataAppPaths", { paths: [DATA_APP_DEV_ENV_PATH] });
   waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: false });
 
-  cy.request("POST", "/api/api-key", {
-    name: `data-app-dev-e2e-${Date.now()}`,
-    group_id: USER_GROUPS.ADMIN_GROUP,
-  }).then(({ body }) => {
-    cy.task("writeDataAppFiles", {
-      files: {
-        [DATA_APP_DEV_ENV_PATH]: `DATA_APP_MB_URL=${mbUrl}\nDATA_APP_MB_API_KEY=${body.unmasked_key}\n`,
-      },
-    });
-  });
+  createDataAppDevOrdersCard(ordersTableId).then((ordersCard) =>
+    cy
+      .request("POST", "/api/api-key", {
+        name: `data-app-dev-e2e-${Date.now()}`,
+        group_id: USER_GROUPS.ADMIN_GROUP,
+      })
+      .then(({ body }) => {
+        cy.task("writeDataAppFiles", {
+          files: {
+            [DATA_APP_DEV_ENV_PATH]: [
+              `DATA_APP_MB_URL=${mbUrl}`,
+              `DATA_APP_MB_API_KEY=${body.unmasked_key}`,
+              `VITE_ORDERS_CARD_ENTITY_ID=${ordersCard.entity_id}`,
+              "",
+            ].join("\n"),
+          },
+        });
+      }),
+  );
 
   waitForDataAppDevServerEnv(clientHost, mbUrl, { expectPresent: true });
 }
