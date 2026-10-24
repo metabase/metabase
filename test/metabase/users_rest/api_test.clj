@@ -2160,3 +2160,14 @@
             (let [body (-> @mt/inbox (get email) first :body first :content)]
               (is (some? body))
               (is (re-find #"/auth/reset_password/" body)))))))))
+
+(deftest create-user-send-invitation-false-test
+  (testing "POST /api/user with `send_invitation: false` creates the user without sending the invite email (#7677)"
+    (mt/with-model-cleanup [:model/User]
+      (notification.tu/with-send-notification-sync
+        (mt/with-fake-inbox
+          (let [email (mt/random-email)]
+            (is (=? {:email email}
+                    (mt/user-http-request :crowberto :post 200 "user"
+                                          {:first_name "No" :last_name "Invite" :email email :send_invitation false})))
+            (is (empty? (get @mt/inbox email)))))))))
