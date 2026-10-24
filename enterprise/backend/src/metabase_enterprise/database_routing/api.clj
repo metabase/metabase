@@ -129,7 +129,6 @@
       (when external?
         (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")
         (api/check-400 (not (:write_data_details db)) "Cannot enable database routing for a database with a write connection configured")
-        (api/check-400 (not (:admin_details db)) "Cannot enable database routing for a database with an admin connection configured")
         (api/check-400 (not (database-routing.db/transform-exists-for-source-database? id)) "Cannot enable database routing for a database with transforms"))
       (setting/with-database db
         (when external?
