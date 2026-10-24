@@ -46,3 +46,16 @@
   metabase-enterprise.data-apps.checks
   [_data-app _query]
   (throw (unavailable)))
+
+(defenterprise check-card
+  "Throws a 403 unless `data-app` may read the card with `card-id`."
+  metabase-enterprise.data-apps.checks
+  [_data-app _card-id]
+  (throw (unavailable)))
+
+(defenterprise check-card-run
+  "Throws a 403 unless `data-app` may run the card with `card-id` with the `run` options of the request:
+  `:parameters`, `:dashboard-id`, `:collection-preview`, `:stored-result-id` and `:sort`."
+  metabase-enterprise.data-apps.checks
+  [_data-app _card-id _run]
+  (throw (unavailable)))
