@@ -1,14 +1,14 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupActionsEndpoints,
   setupCollectionByIdEndpoint,
   setupCollectionItemsEndpoint,
+  setupCollectionPermissionsGraphEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
+  setupGroupsEndpoint,
 } from "__support__/server-mocks";
-import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
@@ -22,7 +22,6 @@ import {
   createMockCollection,
   createMockDatabase,
   createMockQueryAction,
-  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -32,7 +31,6 @@ type SetupOpts = {
   databases?: Database[];
   actions?: WritebackAction[];
   isAdmin?: boolean;
-  hasLibrary?: boolean;
 };
 
 const ACTIONS_DATABASE = createMockDatabase({
@@ -44,7 +42,6 @@ function setup({
   databases = [ACTIONS_DATABASE],
   actions = [],
   isAdmin = true,
-  hasLibrary = false,
 }: SetupOpts) {
   setupDatabasesEndpoints(databases);
   setupActionsEndpoints(actions);
@@ -58,17 +55,10 @@ function setup({
     ],
   });
 
-  if (hasLibrary) {
-    setupEnterpriseOnlyPlugin("library");
-  }
-
   renderWithProviders(<Route path="/" element={<ActionListPage />} />, {
     withRouter: true,
     storeInitialState: createMockState({
       currentUser: createMockUser({ is_superuser: isAdmin }),
-      settings: mockSettings({
-        "token-features": createMockTokenFeatures({ library: hasLibrary }),
-      }),
     }),
   });
 }
@@ -158,8 +148,27 @@ describe("ActionListPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not offer changing the permissions of data actions", async () => {
-    setup({ hasLibrary: true });
+  it("opens the permissions of the data actions root from the page menu", async () => {
+    setupGroupsEndpoint([]);
+    setupCollectionPermissionsGraphEndpoint({ revision: 1, groups: {} });
+    setup({});
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Data action options" }),
+    );
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: /Change permissions/ }),
+    );
+
+    expect(
+      await within(screen.getByRole("dialog")).findByRole("heading", {
+        name: "Permissions for Root",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not offer non-admins to change the permissions of data actions", async () => {
+    setup({ isAdmin: false });
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Data action options" }),

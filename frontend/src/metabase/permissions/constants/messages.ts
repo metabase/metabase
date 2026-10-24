@@ -10,6 +10,9 @@ export const Messages = {
   get UNABLE_TO_CHANGE_DATA_ANALYST_LIBRARY_PERMISSIONS() {
     return t`Data Analysts always have full access to library collections.`;
   },
+  get ONLY_ADMINS_CAN_CURATE_DATA_ACTIONS() {
+    return t`Only administrators can create and edit data actions. Groups with View access can run them.`;
+  },
   get NATIVE_PERMISSION_REQUIRES_DATA_ACCESS() {
     return t`Groups with View data access set to "Blocked" can't create queries.`;
   },

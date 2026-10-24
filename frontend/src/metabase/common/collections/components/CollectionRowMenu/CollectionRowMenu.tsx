@@ -38,11 +38,13 @@ export function CollectionRowMenu({
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
 
-  const showPermissionsOption =
-    isAdmin &&
-    (PLUGIN_LIBRARY.isEnabled || PLUGIN_SNIPPET_FOLDERS.isEnabled) &&
-    collection.namespace !== "transforms" &&
-    collection.namespace !== "data-actions";
+  const hasPermissionsModal = match(collection.namespace)
+    .with("data-actions", () => true)
+    .with("transforms", () => false)
+    .otherwise(
+      () => PLUGIN_LIBRARY.isEnabled || PLUGIN_SNIPPET_FOLDERS.isEnabled,
+    );
+  const showPermissionsOption = isAdmin && hasPermissionsModal;
 
   const isRoot = isRootCollection(collection);
 

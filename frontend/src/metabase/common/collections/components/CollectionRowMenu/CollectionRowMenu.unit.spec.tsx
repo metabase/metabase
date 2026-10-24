@@ -148,15 +148,14 @@ describe("CollectionRowMenu", () => {
     expect(queryMenuItem(/Change permissions/)).not.toBeInTheDocument();
   });
 
-  it("does not render permissions option for data actions folders", async () => {
+  it("renders the permissions option for data actions folders", async () => {
     setup({ collection: { namespace: "data-actions" } });
 
     await userEvent.click(
       screen.getByRole("button", { name: "Folder options" }),
     );
 
-    expect(getMenuItem(/Edit folder details/)).toBeInTheDocument();
-    expect(queryMenuItem(/Change permissions/)).not.toBeInTheDocument();
+    expect(getMenuItem(/Change permissions/)).toBeInTheDocument();
   });
 
   it("archives a collection after confirmation", async () => {

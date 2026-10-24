@@ -13,6 +13,7 @@ import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-ha
 import type { LibrarySection } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import { LibraryUpsellPage } from "metabase/data-studio/upsells/pages/LibraryUpsellPage";
+import { CollectionPermissionsModal } from "metabase/permissions";
 import {
   TableModal,
   type TableModalState,
@@ -183,6 +184,7 @@ function LibraryPageContent() {
         onPublished={closePublishTableModal}
       />
       <CollectionRowModal
+        PermissionsModal={CollectionPermissionsModal}
         modal={collectionModal}
         onClose={() => setCollectionModal(undefined)}
       />
