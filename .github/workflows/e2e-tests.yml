@@ -24,7 +24,6 @@ jobs:
     if: ${{ needs.gate.outputs.run == 'true' }}
     uses: ./.github/workflows/e2e-matrix-builder.yml
     with:
-      chunks: 50
       test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
 
   e2e-snapshots:

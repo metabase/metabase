@@ -3,6 +3,7 @@
 // grouping some specific tests together, other tests are split into chunks
 
 const SPECS_PER_JOB = 5;
+const DEFAULT_MAX_JOBS = 50;
 const DEFAULT_SPEC_PATTERN = "./e2e/test/scenarios/**/*.cy.spec.*";
 
 const taggedJobs = [
@@ -15,6 +16,10 @@ const taggedJobs = [
   { name: "mongo", tags: "@mongo", specs: DEFAULT_SPEC_PATTERN },
   { name: "python", tags: "@python", specs: DEFAULT_SPEC_PATTERN },
 ];
+
+function resolveMaxJobs(value) {
+  return value ? Number(value) : DEFAULT_MAX_JOBS;
+}
 
 function buildMatrix(options, specFiles, maxJobs) {
   const { java, defaultRunner } = options;
@@ -50,4 +55,4 @@ function buildMatrix(options, specFiles, maxJobs) {
   return { config, regularChunks };
 }
 
-module.exports = { buildMatrix };
+module.exports = { buildMatrix, resolveMaxJobs };

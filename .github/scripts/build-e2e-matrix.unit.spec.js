@@ -1,4 +1,4 @@
-const { buildMatrix } = require("./build-e2e-matrix");
+const { buildMatrix, resolveMaxJobs } = require("./build-e2e-matrix");
 
 const options = { java: 25, defaultRunner: "runner" };
 const specs = (count) =>
@@ -70,5 +70,19 @@ describe("buildMatrix", () => {
     for (const job of regularJobs) {
       expect(job.specs).toBeUndefined();
     }
+  });
+});
+
+describe("resolveMaxJobs", () => {
+  it.each([undefined, ""])("should fall back to 50 when unset: %p", (value) => {
+    expect(resolveMaxJobs(value)).toBe(50);
+  });
+
+  it("should use the configured value", () => {
+    expect(resolveMaxJobs("30")).toBe(30);
+  });
+
+  it("should pass an invalid value through for buildMatrix to reject", () => {
+    expect(() => buildMatrix(options, null, resolveMaxJobs("abc"))).toThrow();
   });
 });
