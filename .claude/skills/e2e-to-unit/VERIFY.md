@@ -1,0 +1,44 @@
+# verify.ts: coverage-scoped mutants for e2e-to-unit PRs
+
+`verify.ts` checks, without an LLM, that the unit specs on a branch protect what the e2e tests it deleted protected. It writes the verify table for the PR description and a JSON file with the open rows.
+
+```bash
+bun .claude/skills/e2e-to-unit/verify.ts --out local/claude/verify.md --json local/claude/verify-open.json
+```
+
+With no other flags it reads the deleted `it()` titles from `git diff` against the merge base with `origin/master`, so a stale local `master` cannot widen the scope. The unit specs it runs are the ones the branch changed plus the spec that sits next to each product file in scope. That second half matters: a migration usually lands on specs it never touched, and a run that reads only the changed specs reports their coverage as a gap. Those extra specs are close to free, because each spec only runs the mutants in files it loaded, so `--no-siblings` is rarely worth it. Pass `--test "<spec>::<it title>"` and `--unit-spec <path>` to name both sets yourself, for example before the e2e tests are deleted.
+
+## How it works
+
+1. **Scope.** The nightly `E2E Coverage Manifest` workflow runs the e2e suite against an instrumented frontend and records, for every `it()`, which product functions fired. The builder publishes that as `spec-test-functions.json` inside the `spec-file-manifest` artifact (30-day retention). `verify.ts` downloads it once, into `local/claude/e2e-coverage/<run id>/`, and falls back to the raw `coverage-shard-*` artifacts (7-day retention) for a run that predates the file. It then drops every function that 20% or more of all e2e tests fire (`--boot-threshold`). What is left is the code that the deleted test drove beyond boot: a median of about 200 functions in about 30 files.
+2. **Map.** Each function is located by its start line at the nightly commit, shifted through `git diff -U0 <nightly sha>` onto the working tree, and matched to the function node that starts there. A function inside a changed hunk is reported as `changed since nightly`.
+3. **Execute.** One jest run with `--coverageProvider=v8` over the unit specs says which of those functions they execute at all. The rest are `not executed` rows and need no further work. The same run records, per spec, which scoped files that spec loaded. Jest merges coverage across the run before it reports, but each spec's own `v8Coverage` is on its result, already restricted to `--collectCoverageFrom`, so a reporter can read it.
+4. **Mutate.** Each executed function gets up to `--per-function` mutants (default 4), chosen in this order: a returned property becomes `undefined`, a JSX element behind a logical and renders nothing, return `undefined`, `if` never takes its branch, ternary takes its second arm, a call statement is removed, a JSX prop becomes `undefined`, a string becomes empty. The `--max-mutants` budget (default 300) is dealt one round at a time, rarest function first, so every function gets its first mutant before any function gets a second, and the functions specific to the deleted test are served first within a round. A function the budget never reaches reports `over --max-mutants`. All mutants are compiled into the file once, each behind `globalThis.__E2E_MUTANT__ === <id>`, so the file still loads and behaves as the original.
+5. **Run once.** Each spec runs only the mutants in files it loaded. A mutant is a switched expression inside its own file, so a spec that never loaded that file behaves the same with the mutant on, and the pair is pure cost: measured on a migration that lands on 140 specs and 300 mutants, 4,500 pairs instead of 42,000. `--no-prune` restores every pair. A generated wrapper spec next to each unit spec overrides `it` and registers every test once per mutant with the switch set in the test body. Product modules load once per wrapper file, and jest spreads the `--wrappers` files (default 8, mutants dealt round-robin) over its workers. Each test runs under `--test-timeout` (default 25 s) so a mutant that stalls a `waitFor` cannot hold a worker for long. Keep it above the project's Testing Library `asyncUtilTimeout` (10 s here, set in `frontend/test/jest-setup-env.js`). When the two race, jest's timeout wins and the failure reads `Exceeded timeout` rather than `Unable to find`, which the judge then counts as an error rather than an assertion and discards a real kill. Failing pairs run again in a second jest run with one wrapper file per mutant, which gives each mutant its own module registry, so a leak between variants cannot fake a result. Both passes run with a reporter that appends each spec file's results to a progress file, so a pass that is killed still has verdicts to judge.
+6. **Judge.** A mutant is caught only by a test that passes on clean code, fails because its own code noticed the mutant when it is on, and does both again in the confirmation pass. A test notices either through a failed assertion or by crashing on the value the mutant produced, which is how a mutated hook that returns `undefined` reads: the spec throws on `result.current.data` before any `expect` runs. The deepest stack frame says which happened, so a throw from inside product code stays unmeasured, and so does a jest timeout. A test that passes in the fast pass and fails its own clean rerun confirms nothing, so it voids every mutant it alone witnessed. One such test can empty a report, so the run names it on stderr and at the top of the report rather than leaving the reason in each row.
+
+Rows per function: `caught`, `survived` (executed but no test noticed any mutant), `not executed`, `unmeasured`, `no mutant`, `changed since nightly`, `unmapped`, `deleted by this branch`, `not on this branch` (the nightly instrumented it but the merge base has no such file either, so master grew it after the branch forked), `excluded` (`--exclude` prefixes, default `frontend/src/metabase/ui/`). The JSON output keeps the open rows: `survived`, `not executed`, `unmeasured`, `changed since nightly`, `unmapped`, `deleted by this branch`.
+
+## Safety
+
+The tool edits product files in the working tree while jest runs. It refuses to start when any of those files has uncommitted changes, restores them with `git checkout --` when it finishes or is interrupted, and deletes its wrapper specs (`__e2e_verify_*.unit.spec.*`). If a run is killed outright, `git status` shows the leftovers.
+
+Run nothing else in that working tree until it finishes. A jest run of your own there picks up the wrapper specs and the mutated sources, and reports a test count and failures that mean nothing. Use a separate worktree for other work.
+
+## Limits
+
+- The function manifest describes the nightly's own commit. Functions inside a hunk of `git diff <nightly sha>` are reported as `changed since nightly` rather than mapped, so run it against a recent nightly.
+- The nightly records that a function ran, not that an assertion depended on it. The mutants supply the assertion half, and an equivalent mutant can leave a false `survived` row. Read the detail column before treating a row as a gap.
+- Functions that jsdom cannot reach (layout, scrolling, real focus) show as `not executed` and are keep signals for the e2e test, not gaps in the unit test.
+- A spec can fail under mutation of its own file in ways that say nothing about this branch, and a shared one is in the run because a product file beside it is in scope. `GitSyncControls.unit.spec.tsx` wedged a pass that way. Exclude that file by path with `--exclude` rather than by how widely its code is fired: the admin navbar is fired by about 11% of the suite and is still where a deleted test's nav item lived.
+- Only the spec beside a product file is found by name. A spec that covers a file from elsewhere, such as one that drives a plugin slot, needs `--unit-spec`. Once named, pruning pairs it with the right mutants on its own, from what it loaded.
+- Pairing trusts the coverage pass. A spec that reaches a file only under a condition the coverage run did not take still loads it, and loading is what pruning reads, so the pair survives. If a run reports far fewer pairs than expected, `--no-prune` says whether pruning or the specs are at fault.
+- A jest pass is killed after `--pass-timeout` minutes (default 40). A mutant can wedge a spec in a way that `--test-timeout` does not catch, so a pass that hits the wall clock is killed rather than waited on. Jest writes its own JSON once, at the end, so the run reads a progress file that a reporter appends to as each spec file finishes. A killed pass is judged on those results, and the mutants whose wrapper never ran report `the pass was killed before this mutant ran`. The report says at the top that a pass was killed.
+
+## Tests
+
+```bash
+bun test ./.claude/skills/e2e-to-unit/verify.test.ts
+```
+
+The `./` is needed because bun skips dot-directories in filters. CI does not run this file.

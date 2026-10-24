@@ -171,7 +171,9 @@ jobs:
           fi
       # All files share one artifact so the per-test manifest always travels
       # with the spec manifest it was built from (backfill and PR-side
-      # resolution read them as siblings).
+      # resolution read them as siblings). The per-test function manifest
+      # feeds the e2e-to-unit verify runner, which otherwise needs the raw
+      # shard artifacts that expire after 7 days.
       - name: Upload manifests
         uses: actions/upload-artifact@v7
         with:
@@ -179,5 +181,6 @@ jobs:
           path: |
             e2e/coverage/spec-file-manifest.json
             e2e/coverage/spec-test-manifest.json
+            e2e/coverage/spec-test-functions.json
             e2e/coverage/openapi.json
           retention-days: 30
