@@ -49,6 +49,7 @@ above or the notes below, follow the skill.
 - Reviewing a TypeScript/React diff → **typescript-review**
 - Writing Cypress E2E specs → **e2e-test-create**, **typescript-write**
 - Running / debugging Cypress E2E → **e2e-test**
+- Moving a Cypress E2E test to Jest, or deciding whether it belongs in e2e → **e2e-to-unit**
 - Replacing Emotion styled-components with Mantine → **emotion-migrate**
 - Adding product analytics events → **analytics-events**
 - Restyling / implementing a `metabase/ui` component from a Figma spec → **metabase-ui-component-from-figma**
