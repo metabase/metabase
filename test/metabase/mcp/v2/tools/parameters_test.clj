@@ -778,8 +778,7 @@
 
 (deftest question-cap-is-a-floor-test
   (testing "GHY-4141: a field-backed question parameter whose column has more distinct values than the 1000-row
-            field-search cap reports has_more_values true and steers toward `query` — the underlying
-            search-values-from-field-id hardcodes has_more_values false at the cap, which would tell the agent a
+            field-search cap reports has_more_values true and steers toward `query` rather than telling the agent a
             truncated list is the whole column"
     (do-with-people-name-card!
      (fn [card-id]
