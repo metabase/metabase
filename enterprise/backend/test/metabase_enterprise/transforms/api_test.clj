@@ -115,37 +115,39 @@
             (is (= "python" (:source_type response)))))))))
 
 (deftest create-transform-with-routing-fails-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :database-routing)
     (mt/with-premium-features #{:transforms-basic :database-routing :hosting}
       (mt/dataset transforms-dataset/transforms-test
         (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
           (mt/with-data-analyst-role! (mt/user->id :lucky)
             (with-transform-cleanup! [table-name "gadget_products"]
+              (mt/with-temp-vals-in-db :model/Database (mt/id) {:uploads_enabled false}
+                (mt/with-temp [:model/Database _destination {:engine driver/*driver*
+                                                             :router_database_id (mt/id)
+                                                             :details {:destination_database true}}
+                               :model/DatabaseRouter _ {:database_id (mt/id)
+                                                        :user_attribute "db_name"}]
+                  (is (= "Transforms are not supported on databases with DB routing enabled."
+                         (mt/user-http-request :crowberto :post 400 "transform"
+                                               (query-transform-payload table-name)))))))))))))
+
+(deftest update-transform-with-routing-fails-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :database-routing)
+    (mt/with-premium-features #{:transforms-basic :database-routing :hosting}
+      (mt/dataset transforms-dataset/transforms-test
+        (with-transform-cleanup! [table-name "gadget_products"]
+          (mt/with-temp-vals-in-db :model/Database (mt/id) {:uploads_enabled false}
+            (binding [mi/*deserializing?* true]
               (mt/with-temp [:model/Database _destination {:engine driver/*driver*
                                                            :router_database_id (mt/id)
                                                            :details {:destination_database true}}
                              :model/DatabaseRouter _ {:database_id (mt/id)
-                                                      :user_attribute "db_name"}]
-                (is (= "Transforms are not supported on databases with DB routing enabled."
-                       (mt/user-http-request :crowberto :post 400 "transform"
-                                             (query-transform-payload table-name))))))))))))
-
-(deftest update-transform-with-routing-fails-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
-    (mt/with-premium-features #{:transforms-basic :database-routing :hosting}
-      (mt/dataset transforms-dataset/transforms-test
-        (with-transform-cleanup! [table-name "gadget_products"]
-          (binding [mi/*deserializing?* true]
-            (mt/with-temp [:model/Database _destination {:engine driver/*driver*
-                                                         :router_database_id (mt/id)
-                                                         :details {:destination_database true}}
-                           :model/DatabaseRouter _ {:database_id (mt/id)
-                                                    :user_attribute "db_name"}
-                           :model/Transform transform (query-transform-payload table-name)]
-              (binding [mi/*deserializing?* false]
-                (is (= "Transforms are not supported on databases with DB routing enabled."
-                       (mt/user-http-request :crowberto :put 400 (format "transform/%s" (:id transform))
-                                             (assoc-in transform [:target :name] "gadget_products_2"))))))))))))
+                                                      :user_attribute "db_name"}
+                             :model/Transform transform (query-transform-payload table-name)]
+                (binding [mi/*deserializing?* false]
+                  (is (= "Transforms are not supported on databases with DB routing enabled."
+                         (mt/user-http-request :crowberto :put 400 (format "transform/%s" (:id transform))
+                                               (assoc-in transform [:target :name] "gadget_products_2")))))))))))))
 
 (deftest search-filters-transform-source-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
