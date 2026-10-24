@@ -370,9 +370,6 @@ jobs:
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
 
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-
       # No version bump here anymore: package.template.json's version is
       # already correct on this branch (bumped by sdk-version-bump-pr.yml
       # before merge), so we build with it as-is.
