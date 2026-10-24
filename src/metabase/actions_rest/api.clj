@@ -8,6 +8,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -213,9 +214,12 @@
                     [:id [:or ::actions.schema/id ms/NanoIdString]]]
    _query-params
    {:keys [parameters], :as _body} :- [:maybe [:map {:closed true}
-                                               [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]]
+                                               [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]
+   request]
   (let [resolved-id (eid-translation/->id-or-404 :action id)
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
+    (when (data-apps/data-app-request? request)
+      (-> (data-apps/request-data-app request) (data-apps/check-action resolved-id)))
     (analytics/track-event! :snowplow/action
                             {:event     :action-executed
                              :source    :model_detail

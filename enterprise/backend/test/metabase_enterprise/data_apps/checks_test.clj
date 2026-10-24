@@ -3,6 +3,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu :refer [do-with-app-collection]]
+   [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -245,6 +246,41 @@
          (testing "a card on a table whose foreign keys point nowhere reads only that table's fields"
            (is (get-as-data-app 200 (str "field/" (mt/id :categories :name))))
            (is (re-find #"not VENUES" (get-as-data-app 403 (str "field/" (mt/id :venues :name)))))))))))
+
+(deftest action-endpoints-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (let [action (fn [collection-id]
+                    (actions/insert! {:name          "Rename venue"
+                                      :type          :query
+                                      :database_id   (mt/id)
+                                      :collection_id collection-id
+                                      :dataset_query (lib/native-query (mt/metadata-provider) "UPDATE venues SET name = {{name}}")
+                                      :parameters    [{:id "name" :slug "name" :type :string/=}]}))
+           app-id   (action collection-id)
+           other-id (action nil)]
+       (try
+         (testing "an action in the app's collection passes the guard, by ID or entity ID"
+           (doseq [id [app-id (t2/select-one-fn :entity_id :model/Action :id app-id)]]
+             (is (not (re-find #"collection of its own app"
+                               (str (mt/user-http-request :crowberto :post (format "action/%s/execute" id) as-data-app
+                                                          {:parameters {"name" "Bar"}})))))))
+         (testing "an action outside the app's collection is refused, and a missing one is left to the 404"
+           (is (re-find #"collection of its own app"
+                        (mt/user-http-request :crowberto :post 403 (format "action/%d/execute" other-id) as-data-app {})))
+           (mt/user-http-request :crowberto :post 404 "action/999999999/execute" as-data-app {}))
+         (finally
+           (t2/delete! :model/Action :id [:in [app-id other-id]])))))))
+
+(deftest user-key-value-endpoints-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (testing "a data app reads and writes only the download format preference"
+       (is (nil? (mt/user-http-request :crowberto :get 204
+                                       "user-key-value/namespace/last_download_format/key/download_format_preference"
+                                       as-data-app)))
+       (is (re-find #"download format preference"
+                    (get-as-data-app 403 "user-key-value/namespace/other/key/format")))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app runs nothing"

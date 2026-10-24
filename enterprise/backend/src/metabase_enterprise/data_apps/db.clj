@@ -114,6 +114,11 @@
                         {:from [(warehouse-schema-overlay/field-query)]})
       #{}))
 
+(mu/defn action-collection-id :- [:maybe ms/PositiveInt]
+  "The ID of the collection of the Action with `action-id`."
+  [action-id :- ms/PositiveInt]
+  (t2/select-one-fn :collection_id :model/Action :id action-id))
+
 (mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
   "Insert the DataApp `row`, returning its ID."
   [row :- ::data-apps.schema/data-app.update]
