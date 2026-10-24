@@ -86,6 +86,34 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :database_id :model/Card :id card-id))
 
+(mu/defn cards-by-ids :- [:sequential [:map [:id ::lib.schema.id/card] [:database_id ::lib.schema.id/database]]]
+  "The ID and database ID of each card with one of `card-ids`."
+  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
+  (t2/select [:model/Card :id :database_id] :id [:in card-ids]))
+
+(mu/defn table-names :- [:map-of ::lib.schema.id/table :string]
+  "The names of the Tables with `table-ids` that exist, by table ID."
+  [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
+  (or (t2/select-fn->fn :id :name [:model/Table :id :name] :id [:in table-ids]
+                        {:from [(warehouse-schema-overlay/table-query)]})
+      {}))
+
+(mu/defn field-table-ids :- [:map-of ::lib.schema.id/field ::lib.schema.id/table]
+  "The IDs of the Tables of the Fields with `field-ids`, by field ID."
+  [field-ids :- [:set {:min 1} ::lib.schema.id/field]]
+  (or (t2/select-fn->fn :id :table_id [:model/Field :id :table_id] :id [:in field-ids]
+                        {:from [(warehouse-schema-overlay/field-query)]})
+      {}))
+
+(mu/defn fk-target-field-ids-of-tables :- [:set ::lib.schema.id/field]
+  "The IDs of the Fields that the foreign keys of the Tables with `table-ids` point to."
+  [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
+  (or (t2/select-fn-set :fk_target_field_id [:model/Field :fk_target_field_id]
+                        :table_id [:in table-ids]
+                        :fk_target_field_id [:not= nil]
+                        {:from [(warehouse-schema-overlay/field-query)]})
+      #{}))
+
 (mu/defn insert-data-app-returning-pk! :- ms/PositiveInt
   "Insert the DataApp `row`, returning its ID."
   [row :- ::data-apps.schema/data-app.update]

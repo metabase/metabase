@@ -4,6 +4,7 @@
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
+   [metabase.data-apps.core :as data-apps]
    [metabase.events.core :as events]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
@@ -58,7 +59,11 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]
    {include-editable-data-model? :include_editable_data_model} :- [:map {:closed true}
-                                                                   [:include_editable_data_model {:default false} ms/BooleanValue]]]
+                                                                   [:include_editable_data_model {:default false} ms/BooleanValue]]
+   _body
+   request]
+  (when (data-apps/data-app-request? request)
+    (-> (data-apps/request-data-app request) (data-apps/check-field id)))
   (schema.field/get-field id {:include-editable-data-model? include-editable-data-model?}))
 
 (api.macros/defendpoint :post "/table-ids" :- [:map
@@ -299,7 +304,12 @@
   `:list`, checks whether we should create FieldValues for this Field; if so, creates and returns them."
   {:scope api-scope/data-app}
   [{:keys [id]} :- [:map {:closed true}
-                    [:id ms/PositiveInt]]]
+                    [:id ms/PositiveInt]]
+   _query-params
+   _body
+   request]
+  (when (data-apps/data-app-request? request)
+    (-> (data-apps/request-data-app request) (data-apps/check-field id)))
   (let [field (api/query-check (warehouse-schema-rest.db/field id))]
     (parameters.field/field->values field)))
 

@@ -87,3 +87,30 @@
   (when (or (seq parameters) dashboard-id collection-preview stored-result-id sort)
     (throw (refusal (tru "A data app can run a card only as it is saved, without parameters, a dashboard, a collection preview or a stored result."))))
   nil)
+
+(defn- app-table-ids
+  "The IDs of the tables that the cards of `data-app` name as their sources, in their stages and joins, and of the tables
+  those tables' foreign keys point to."
+  [data-app]
+  (let [source-ids (into #{}
+                         (mapcat (fn [{:keys [id database_id]}]
+                                   (let [mp (lib-be/application-database-metadata-provider database_id)]
+                                     (lib/all-source-table-ids (lib/query mp (:dataset-query (lib.metadata/card mp id)))))))
+                         (some-> (not-empty (app-card-ids data-app)) data-apps.db/cards-by-ids))]
+    (into source-ids
+          (some->> (not-empty source-ids)
+                   data-apps.db/fk-target-field-ids-of-tables
+                   not-empty
+                   data-apps.db/field-table-ids
+                   vals))))
+
+(defenterprise check-field
+  "Throws a 403 unless the field with `field-id` is in a table that a card of `data-app` names as a source, or in a table
+  one of those tables' foreign keys points to, when such a field exists."
+  :feature :data-apps
+  [data-app field-id]
+  (when-let [table-id (some->> field-id hash-set data-apps.db/field-table-ids vals first)]
+    (when-not (contains? (app-table-ids data-app) table-id)
+      (throw (refusal (tru "A data app can read only the tables its own cards use, not {0}."
+                           (get (data-apps.db/table-names #{table-id}) table-id))))))
+  nil)

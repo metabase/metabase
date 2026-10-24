@@ -94,8 +94,9 @@
         (is (= "scope_not_permitted"
                (:error (mt/user-http-request :crowberto :get 403 endpoint as-data-app)))
             endpoint)))
-    (testing "a pre-built-def route (field-routes, mounted by value not ns-symbol) enforces the tag"
-      (is (mt/user-http-request :crowberto :get 200 (format "field/%d" (mt/id :venues :name)) as-data-app)))))
+    (testing "a pre-built-def route (field-routes, mounted by value not ns-symbol) passes scope enforcement"
+      (is (not= "scope_not_permitted"
+                (:error (mt/user-http-request :crowberto :get (format "field/%d" (mt/id :venues :name)) as-data-app)))))))
 
 (deftest data-app-marker-refuses-denied-routes-test
   (let [as-data-app {:request-options {:headers {"x-metabase-client" "data-app"}}}]
