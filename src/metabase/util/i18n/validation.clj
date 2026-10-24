@@ -9,6 +9,8 @@
     - `metabase.util.i18n.validation-test` — regression guard on the built `.edn` artifacts.
 
   Kept free of jgettext and other build-only deps so all three layers can require it."
+  (:require
+   [clojure.string :as str])
   (:import
    (java.text MessageFormat)))
 
@@ -92,6 +94,29 @@
   (let [indices (regex-arg-indices s)]
     (and (seq indices)
          (not= (count indices) (inc (apply max indices))))))
+
+(defn- dayjs-quarter-pattern-error
+  "If `s` is not a valid dayjs format string containing a quarter number, returns an error message"
+  [s needs-yyyy?]
+  (let [matches (re-matches #"(.*)\[(.+)\](.*)" s)]
+    (if (nil? matches)
+      "expected `[xx]`"
+      (let [[_ before _ after] matches
+            pattern (str before after)]
+        (not-empty (str/join ", " (cond-> []
+                                    (not (str/includes? pattern "Q"))
+                                    (conj "expected `Q`")
+
+                                    (and needs-yyyy? (not (str/includes? pattern "YYYY")))
+                                    (conj "expected `YYYY`"))))))))
+
+(defn regex-message-format-error
+  "If `s` is not a valid pattern for `msgid`, returns an error message, else `nil`.
+  This is used for special cases, like dayjs format strings."
+  [msgid s]
+  (cond
+    (= msgid "[Q]Q YYYY") (dayjs-quarter-pattern-error s true)
+    (= msgid "[Q]Q") (dayjs-quarter-pattern-error s false)))
 
 ;;; -------------------------------------------------- Cross-string checks -------------------------------------------------
 
