@@ -8,6 +8,8 @@ import CS from "metabase/css/core/index.css";
 import {
   type PermissionEditorBreadcrumb,
   type PermissionEditorType,
+  type PermissionSectionBase,
+  type PermissionSectionConfig,
   PermissionsTable,
   type PermissionsTableProps,
 } from "metabase/permissions";
@@ -16,14 +18,21 @@ import { SEARCH_DEBOUNCE_DURATION } from "metabase/utils/constants";
 
 import { PermissionsEditorBreadcrumbs } from "./PermissionsEditorBreadcrumbs";
 
-export type PermissionsEditorContentProps = PermissionEditorType &
-  Pick<PermissionsTableProps, "onChange" | "onSelect" | "onAction"> & {
+export type PermissionsEditorContentProps<
+  TSection extends PermissionSectionBase = PermissionSectionConfig,
+> = PermissionEditorType<TSection> &
+  Pick<
+    PermissionsTableProps<TSection>,
+    "onChange" | "onSelect" | "onAction"
+  > & {
     onBreadcrumbsItemSelect?: (item: PermissionEditorBreadcrumb) => void;
     postHeaderContent?: React.FC;
     preHeaderContent?: React.FC;
   };
 
-export function PermissionsEditorContent({
+export function PermissionsEditorContent<
+  TSection extends PermissionSectionBase = PermissionSectionConfig,
+>({
   title,
   description,
   entities,
@@ -36,7 +45,7 @@ export function PermissionsEditorContent({
   onAction,
   postHeaderContent: PostHeaderContent = () => null,
   preHeaderContent: PreHeaderContent = () => null,
-}: PermissionsEditorContentProps) {
+}: PermissionsEditorContentProps<TSection>) {
   const [filter, setFilter] = useState("");
   //this needs to be state to trigger a rerender when it's set
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(

@@ -39,13 +39,13 @@ export {
   getPermissionWarning,
   getPermissionWarningModal,
 } from "./utils/confirmations";
+export { getDataFocusSidebar } from "./utils/data-permissions/data-sidebar";
 export {
-  getDataFocusSidebar,
   getDatabasesPermissionEditor,
   getGroupsDataPermissionEditor,
-  getGroupsSidebar,
-} from "./utils/data-permissions";
-export type { DataTreeNodeItem } from "./utils/data-permissions";
+} from "./utils/data-permissions/permission-editor";
+export { getGroupsSidebar } from "./utils/data-permissions/group-sidebar";
+export type { DataTreeNodeItem } from "./utils/data-permissions/data-sidebar";
 export {
   getDefaultGroup,
   getOrderedGroups,
@@ -56,27 +56,28 @@ export {
   parseGroupRouteParams,
 } from "./types";
 export type {
-  PermissionAction,
   PermissionEditorBreadcrumb,
   PermissionEditorEntity,
   PermissionEditorType,
-  PermissionOption,
+  PermissionSectionBase,
   PermissionSectionConfig,
   PermissionsGraphDiff,
   RawDataRouteParams,
   RawGroupRouteParams,
 } from "./types";
 export { isSchemaEntityId, isTableEntityId } from "./utils/data-entity-id";
+export { diffDataPermissions } from "./utils/graph/permissions-diff";
 export {
-  diffDataPermissions,
   getEntityPermission,
   getFieldsPermission,
   getSchemasPermission,
   getTablesPermission,
+} from "./utils/graph/data-permissions/get";
+export {
   hasPermissionValueInGraph,
   hasPermissionValueInSubgraph,
-  updateEntityPermission,
-} from "./utils/graph";
+} from "./utils/graph/data-permissions/has";
+export { updateEntityPermission } from "./utils/graph/data-permissions/update";
 export { isEmbeddingHubPermissions } from "./utils/is-embedding-hub";
 export { navigateToGranularPermissions } from "./utils/post-actions";
 export {

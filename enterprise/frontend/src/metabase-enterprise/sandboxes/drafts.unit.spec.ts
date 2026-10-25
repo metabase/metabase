@@ -1,8 +1,8 @@
 import type {
   AppliedDataPermissionUpdate,
   DataPermissionsDrafts,
-  GroupTableAccessPolicy,
-} from "metabase-types/api";
+} from "metabase/plugins";
+import type { GroupTableAccessPolicy } from "metabase-types/api";
 import {
   DataPermission,
   DataPermissionType,

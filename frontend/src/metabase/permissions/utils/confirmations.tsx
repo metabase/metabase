@@ -18,8 +18,8 @@ import { isSchemaEntityId, isTableEntityId } from "./data-entity-id";
 import {
   getFieldsPermission,
   getSchemasPermission,
-  hasPermissionValueInSubgraph,
-} from "./graph";
+} from "./graph/data-permissions/get";
+import { hasPermissionValueInSubgraph } from "./graph/data-permissions/has";
 import { tableToTableEntityId } from "./metadata";
 
 export const getDefaultGroupHasHigherAccessText = (

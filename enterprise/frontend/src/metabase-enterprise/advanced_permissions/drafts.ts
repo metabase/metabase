@@ -1,11 +1,13 @@
 import { getDatabasesBasePath, getGroupsBasePath } from "metabase/permissions";
+import type {
+  AppliedDataPermissionUpdate,
+  DataPermissionView,
+  DataPermissionsDrafts,
+} from "metabase/plugins";
 import { navigate } from "metabase/router";
 import {
-  type AppliedDataPermissionUpdate,
   DataPermission,
   DataPermissionValue,
-  type DataPermissionView,
-  type DataPermissionsDrafts,
   type GroupId,
   type Impersonation,
   type PermissionEntityId,

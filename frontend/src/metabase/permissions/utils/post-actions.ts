@@ -1,4 +1,5 @@
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import type { PostActionFunction } from "metabase/plugins";
 import { navigate } from "metabase/router";
 import {
   DataPermission,
@@ -7,8 +8,6 @@ import {
   type GroupId,
   type PermissionEntityId,
 } from "metabase-types/api";
-
-import type { PostActionFunction } from "../types";
 
 import { getGroupFocusPermissionsUrl } from "./urls";
 

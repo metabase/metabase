@@ -1,9 +1,8 @@
 import { useState } from "react";
 
+import type { PermissionOption } from "metabase/plugins";
 import { Box, Center, Flex, Icon, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
-
-import type { PermissionOption } from "../../../../types";
 
 interface PermissionsSelectOptionProps extends Omit<PermissionOption, "value"> {
   className?: string;

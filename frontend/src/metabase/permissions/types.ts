@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 
 import type {
+  DataPermissionView,
   PermissionAction,
   PermissionConfirmationProps,
   PermissionOption,
@@ -10,17 +11,9 @@ import type {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
-  DataPermissionView,
   GroupId,
   PermissionEntityId,
 } from "metabase-types/api";
-
-export type {
-  PermissionAction,
-  PermissionConfirmationProps,
-  PermissionOption,
-  PostActionFunction,
-};
 
 export type GroupRouteParams = {
   groupId?: number;
@@ -80,9 +73,7 @@ export type PermissionsGraphDiff = {
   groups: Record<number | string, GroupPermissionsDiff>;
 };
 
-export type PermissionSectionConfig = {
-  permission: DataPermission;
-  type: DataPermissionType;
+export type PermissionSectionBase = {
   value: DataPermissionValue;
   isDisabled: boolean;
   disabledTooltip: string | null;
@@ -96,12 +87,17 @@ export type PermissionSectionConfig = {
   actions?: Partial<
     Record<DataPermissionValue, PermissionAction[] | undefined>
   >;
-  postActions?: Partial<
-    Record<DataPermissionValue, PostActionFunction | null | undefined>
-  >;
   confirmations?: (
     newValue: DataPermissionValue,
   ) => (PermissionConfirmationProps | undefined)[];
+};
+
+export type PermissionSectionConfig = PermissionSectionBase & {
+  permission: DataPermission;
+  type: DataPermissionType;
+  postActions?: Partial<
+    Record<DataPermissionValue, PostActionFunction | null | undefined>
+  >;
 };
 
 // most entity ids are numbers, and many call sites expect a number, so here's a helper
@@ -112,13 +108,15 @@ export function assertNumericId(id: string | number): number {
   return id;
 }
 
-export interface PermissionEditorEntity {
+export interface PermissionEditorEntity<
+  TSection extends PermissionSectionBase = PermissionSectionConfig,
+> {
   id: number | string; //schemas have string ids
   name: string;
   icon?: ReactElement;
   hint?: ReactNode;
   entityId?: PermissionEntityId;
-  permissions?: PermissionSectionConfig[];
+  permissions?: TSection[];
   canSelect?: boolean;
   callout?: string;
 }
@@ -130,12 +128,14 @@ export type PermissionEditorBreadcrumb = {
   url?: string;
 };
 
-export type PermissionEditorType = {
+export type PermissionEditorType<
+  TSection extends PermissionSectionBase = PermissionSectionConfig,
+> = {
   title: string;
   description?: string | null;
   filterPlaceholder: string;
   columns: { name: string; hint?: string }[];
-  entities: PermissionEditorEntity[];
+  entities: PermissionEditorEntity<TSection>[];
   breadcrumbs?: PermissionEditorBreadcrumb[] | null;
   hasLegacyNoSelfServiceValueInPermissionGraph?: boolean;
 };

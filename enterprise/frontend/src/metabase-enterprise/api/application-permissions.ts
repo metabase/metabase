@@ -1,13 +1,7 @@
-import type { ApplicationPermissions } from "metabase-enterprise/application_permissions/types/permissions";
+import type { ApplicationPermissionsGraph } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-
-interface ApplicationPermissionsGraph {
-  groups: ApplicationPermissions;
-  revision: number;
-}
-
-type UpdateApplicationPermissionsGraphRequest = ApplicationPermissionsGraph;
+import { invalidateTags, listTag } from "./tags";
 
 export const applicationPermissionsApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -19,16 +13,19 @@ export const applicationPermissionsApi = EnterpriseApi.injectEndpoints({
         method: "GET",
         url: "/api/ee/advanced-permissions/application/graph",
       }),
+      providesTags: () => [listTag("application-permissions-graph")],
     }),
     updateApplicationPermissionsGraph: builder.mutation<
       ApplicationPermissionsGraph,
-      UpdateApplicationPermissionsGraphRequest
+      ApplicationPermissionsGraph
     >({
       query: (body) => ({
         method: "PUT",
         url: "/api/ee/advanced-permissions/application/graph",
         body,
       }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("application-permissions-graph")]),
     }),
   }),
 });

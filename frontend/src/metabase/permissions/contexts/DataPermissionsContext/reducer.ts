@@ -1,17 +1,19 @@
 import { merge } from "icepick";
 import _ from "underscore";
 
-import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
+import {
+  type AppliedDataPermissionUpdate,
+  type DataPermissionsDrafts,
+  PLUGIN_DATA_PERMISSIONS,
+} from "metabase/plugins";
 import type {
-  AppliedDataPermissionUpdate,
-  DataPermissionsDrafts,
   DatabaseId,
   GroupsPermissions,
   PermissionsDatabase,
   PermissionsGraph,
 } from "metabase-types/api";
 
-import { applyDataPermissionUpdate } from "../../utils/graph";
+import { applyDataPermissionUpdate } from "../../utils/graph/data-permissions/update";
 import { mergeGroupsPermissionsUpdates } from "../../utils/graph/partial-updates";
 
 export type DataPermissionsState = {
@@ -30,7 +32,7 @@ type DataPermissionsAction =
   | { type: "permissionUpdated"; update: AppliedDataPermissionUpdate }
   | {
       type: "draftsUpdated";
-      update: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts;
+      updater: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts;
     }
   | { type: "saved"; graph: PermissionsGraph; modifiedGroupIds: string[] }
   | { type: "saveFailed"; error: string }
@@ -112,7 +114,7 @@ export function dataPermissionsReducer(
         ),
       };
     case "draftsUpdated":
-      return { ...state, drafts: action.update(state.drafts) };
+      return { ...state, drafts: action.updater(state.drafts) };
     case "saved":
       return {
         ...state,

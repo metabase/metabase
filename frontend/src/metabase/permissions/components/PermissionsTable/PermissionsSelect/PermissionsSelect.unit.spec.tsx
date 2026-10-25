@@ -1,13 +1,8 @@
 import userEvent from "@testing-library/user-event";
 
 import { getIcon, render, screen } from "__support__/ui";
-import {
-  DataPermission,
-  DataPermissionType,
-  DataPermissionValue,
-} from "metabase-types/api";
-
-import type { PermissionOption } from "../../../types";
+import type { PermissionOption } from "metabase/plugins";
+import { DataPermissionValue } from "metabase-types/api";
 
 import { PermissionsSelect } from "./PermissionsSelect";
 
@@ -41,8 +36,6 @@ describe("PermissionSelect", () => {
         onChange={jest.fn()}
         isDisabled={false}
         disabledTooltip={"disabled"}
-        permission={DataPermission.VIEW_DATA}
-        type={DataPermissionType.ACCESS}
       />,
     );
     expect(screen.getByText("Allowed")).toBeInTheDocument();
@@ -56,8 +49,6 @@ describe("PermissionSelect", () => {
         onChange={jest.fn()}
         isDisabled={false}
         disabledTooltip={"disabled"}
-        permission={DataPermission.VIEW_DATA}
-        type={DataPermissionType.ACCESS}
       />,
     );
 
@@ -82,8 +73,6 @@ describe("PermissionSelect", () => {
         onChange={onChangeMock}
         isDisabled={false}
         disabledTooltip={"disabled"}
-        permission={DataPermission.VIEW_DATA}
-        type={DataPermissionType.ACCESS}
       />,
     );
 
@@ -109,8 +98,6 @@ describe("PermissionSelect", () => {
         isDisabled={true}
         onChange={jest.fn()}
         disabledTooltip={"disabled"}
-        permission={DataPermission.VIEW_DATA}
-        type={DataPermissionType.ACCESS}
       />,
     );
 
@@ -130,8 +117,6 @@ describe("PermissionSelect", () => {
         onChange={jest.fn()}
         isDisabled={false}
         disabledTooltip={"disabled"}
-        permission={DataPermission.VIEW_DATA}
-        type={DataPermissionType.ACCESS}
       />,
     );
 

@@ -1,6 +1,7 @@
 import fetchMock from "fetch-mock";
 
 import type {
+  ApplicationPermissionsGraph,
   CollectionPermissionsGraph,
   Database,
   Group,
@@ -82,4 +83,28 @@ export const setupPermissionMembershipEndpoint = (
   memberships: ListUserMembershipsResponse,
 ) => {
   fetchMock.get("path:/api/permissions/membership", memberships);
+};
+
+export const setupApplicationPermissionsGraphEndpoint = (
+  graph: ApplicationPermissionsGraph,
+) => {
+  fetchMock.get("path:/api/ee/advanced-permissions/application/graph", graph);
+};
+
+export const setupUpdateApplicationPermissionsGraphEndpoint = (
+  response: ApplicationPermissionsGraph,
+) => {
+  fetchMock.put(
+    "path:/api/ee/advanced-permissions/application/graph",
+    response,
+  );
+};
+
+export const setupUpdateApplicationPermissionsGraphEndpointError = (
+  message: string,
+) => {
+  fetchMock.put("path:/api/ee/advanced-permissions/application/graph", {
+    status: 409,
+    body: { message },
+  });
 };

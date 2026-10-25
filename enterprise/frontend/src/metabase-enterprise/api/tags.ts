@@ -34,6 +34,7 @@ import {
 
 export const ENTERPRISE_TAG_TYPES = [
   ...TAG_TYPES,
+  "application-permissions-graph",
   "custom-viz-plugin",
   "scim",
   "gsheets-status",

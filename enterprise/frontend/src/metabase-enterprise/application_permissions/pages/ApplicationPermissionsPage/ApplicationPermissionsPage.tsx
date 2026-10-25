@@ -1,80 +1,67 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useMemo } from "react";
 
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
 import { useListPermissionsGroupsQuery } from "metabase/api";
-import { ApplicationPermissionsHelp } from "metabase/permissions";
-import { connect } from "metabase/redux";
 import {
-  initializeApplicationPermissions,
-  saveApplicationPermissions,
-  updateApplicationPermission,
-} from "metabase-enterprise/application_permissions/reducer";
+  ApplicationPermissionsHelp,
+  type PermissionEditorEntity,
+  assertNumericId,
+} from "metabase/permissions";
+import type { DataPermissionValue } from "metabase-types/api";
+
+import { useApplicationPermissionsGraph } from "../../hooks/use-application-permissions-graph";
+
 import {
+  type ApplicationPermissionSection,
   getApplicationPermissionEditor,
-  getIsDirty,
-} from "metabase-enterprise/application_permissions/selectors";
-import type { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
-import type { GroupId, GroupInfo } from "metabase-types/api";
+  toApplicationPermissionValue,
+} from "./utils";
 
-const mapDispatchToProps = {
-  initialize: initializeApplicationPermissions,
-  updatePermission: updateApplicationPermission,
-  savePermissions: saveApplicationPermissions,
-};
+export function ApplicationPermissionsPage() {
+  const { data: groups } = useListPermissionsGroupsQuery({});
+  const {
+    permissions,
+    isDirty,
+    saveError,
+    updateApplicationPermission,
+    savePermissions,
+    resetPermissions,
+    clearSaveError,
+  } = useApplicationPermissionsGraph();
 
-const mapStateToProps = (
-  state: ApplicationPermissionsState,
-  { groups }: { groups: GroupInfo[] },
-) => {
-  return {
-    permissionEditor: getApplicationPermissionEditor(state, groups),
-    isDirty: getIsDirty(state),
-  };
-};
-
-type ApplicationPermissionsValue = "yes" | "no";
-
-interface ApplicationPermissionsPageProps {
-  isDirty: boolean;
-  permissionEditor: any;
-  initialize: () => void;
-  savePermissions: () => void;
-  updatePermission: any;
-}
-
-const ApplicationPermissionsPage = ({
-  permissionEditor,
-  isDirty,
-  initialize,
-  savePermissions,
-  updatePermission,
-}: ApplicationPermissionsPageProps) => {
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
+  const permissionEditor = useMemo(
+    () =>
+      permissions && groups
+        ? getApplicationPermissionEditor(permissions, groups)
+        : null,
+    [permissions, groups],
+  );
 
   const handlePermissionChange = useCallback(
     (
-      item: { id: GroupId },
-      permission: any,
-      value: ApplicationPermissionsValue,
+      item: PermissionEditorEntity<ApplicationPermissionSection>,
+      section: ApplicationPermissionSection,
+      value: DataPermissionValue,
     ) => {
-      updatePermission({
-        groupId: item.id,
-        permission,
-        value,
+      updateApplicationPermission({
+        groupId: assertNumericId(item.id),
+        permission: section.permission,
+        value: toApplicationPermissionValue(value),
       });
     },
-    [updatePermission],
+    [updateApplicationPermission],
   );
+
   return (
     <PermissionsPageLayout
       tab="application"
       isDirty={isDirty}
       helpContent={<ApplicationPermissionsHelp />}
       onSave={savePermissions}
-      onCancel={() => initialize()}
+      onCancel={resetPermissions}
+      saveError={saveError}
+      onClearSaveError={clearSaveError}
     >
       {permissionEditor && (
         <PermissionsEditor
@@ -84,19 +71,4 @@ const ApplicationPermissionsPage = ({
       )}
     </PermissionsPageLayout>
   );
-};
-
-const ConnectedApplicationPermissionsPage = connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(ApplicationPermissionsPage);
-
-const EMPTY_GROUP_LIST: GroupInfo[] = [];
-
-const ApplicationPermissionsPageWithGroups = () => {
-  const { data: groups = EMPTY_GROUP_LIST } = useListPermissionsGroupsQuery({});
-  return <ConnectedApplicationPermissionsPage groups={groups} />;
-};
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default ApplicationPermissionsPageWithGroups;
+}

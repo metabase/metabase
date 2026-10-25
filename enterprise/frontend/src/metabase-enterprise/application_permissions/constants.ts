@@ -1,11 +1,14 @@
 import { t } from "ttag";
 
+import type { PermissionOption } from "metabase/plugins";
+import { DataPermissionValue } from "metabase-types/api";
+
 export const APPLICATION_PERMISSIONS_OPTIONS = {
   yes: {
     get label() {
       return t`Yes`;
     },
-    value: "yes",
+    value: DataPermissionValue.YES,
     icon: "check",
     iconColor: "feedback-positive",
   },
@@ -13,8 +16,8 @@ export const APPLICATION_PERMISSIONS_OPTIONS = {
     get label() {
       return t`No`;
     },
-    value: "no",
+    value: DataPermissionValue.NO,
     icon: "close",
     iconColor: "feedback-negative",
   },
-};
+} satisfies Record<string, PermissionOption>;

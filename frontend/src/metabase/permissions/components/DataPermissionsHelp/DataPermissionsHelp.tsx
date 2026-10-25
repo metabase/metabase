@@ -17,7 +17,7 @@ import {
 import { DataPermissionValue } from "metabase-types/api";
 
 import { useDataPermissions } from "../../contexts/DataPermissionsContext";
-import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
+import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions/has";
 import { PermissionHelpDescription } from "../PermissionHelpDescription";
 
 export const DataPermissionsHelp = () => {

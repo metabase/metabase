@@ -6,14 +6,17 @@ import { ConfirmModal } from "metabase/common/components/ConfirmModal";
 import { Link } from "metabase/common/components/Link";
 import { Label } from "metabase/common/components/type/Label";
 import CS from "metabase/css/core/index.css";
+import type {
+  PermissionAction,
+  PermissionConfirmationProps,
+} from "metabase/plugins";
 import { Box, Ellipsified, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import type { DataPermissionValue } from "metabase-types/api";
 
 import type {
-  PermissionAction,
-  PermissionConfirmationProps,
   PermissionEditorEntity,
   PermissionEditorType,
+  PermissionSectionBase,
   PermissionSectionConfig,
 } from "../../types";
 import { isEmbeddingHubPermissions } from "../../utils/is-embedding-hub";
@@ -21,15 +24,17 @@ import { isEmbeddingHubPermissions } from "../../utils/is-embedding-hub";
 import { PermissionsSelect } from "./PermissionsSelect";
 import S from "./PermissionsTable.module.css";
 
-export type PermissionsTableProps = Pick<
-  PermissionEditorType,
-  "entities" | "columns"
-> & {
-  onSelect?: (entity: PermissionEditorEntity) => void;
-  onAction?: (action: PermissionAction, entity: PermissionEditorEntity) => void;
+export type PermissionsTableProps<
+  TSection extends PermissionSectionBase = PermissionSectionConfig,
+> = Pick<PermissionEditorType<TSection>, "entities" | "columns"> & {
+  onSelect?: (entity: PermissionEditorEntity<TSection>) => void;
+  onAction?: (
+    action: PermissionAction,
+    entity: PermissionEditorEntity<TSection>,
+  ) => void;
   onChange: (
-    entity: PermissionEditorEntity,
-    permission: PermissionSectionConfig,
+    entity: PermissionEditorEntity<TSection>,
+    permission: TSection,
     value: DataPermissionValue,
     toggleState: boolean | null,
   ) => void;
@@ -40,7 +45,9 @@ export type PermissionsTableProps = Pick<
 const ROW_HEIGHT = 40;
 const VIRTUALIZATION_THRESHOLD = 100;
 
-export function PermissionsTable({
+export function PermissionsTable<
+  TSection extends PermissionSectionBase = PermissionSectionConfig,
+>({
   entities,
   columns,
   onSelect,
@@ -48,7 +55,7 @@ export function PermissionsTable({
   onChange,
   scrollElement,
   emptyState = null,
-}: PermissionsTableProps) {
+}: PermissionsTableProps<TSection>) {
   const [confirmations, setConfirmations] = useState<
     PermissionConfirmationProps[]
   >([]);
@@ -58,9 +65,14 @@ export function PermissionsTable({
     (
       value: DataPermissionValue,
       toggleState: boolean | null,
-      entity: PermissionEditorEntity,
-      permission: PermissionSectionConfig,
+      entityId: PermissionEditorEntity["id"],
+      sectionIndex: number,
     ) => {
+      const entity = entities.find(({ id }) => id === entityId);
+      const permission = entity?.permissions?.[sectionIndex];
+      if (entity == null || permission == null) {
+        return;
+      }
       const confirmAction = () =>
         onChange(entity, permission, value, toggleState);
 
@@ -74,7 +86,27 @@ export function PermissionsTable({
         confirmAction();
       }
     },
-    [onChange],
+    [entities, onChange],
+  );
+
+  const handleSelect = useCallback(
+    (entityId: PermissionEditorEntity["id"]) => {
+      const entity = entities.find(({ id }) => id === entityId);
+      if (entity != null) {
+        onSelect?.(entity);
+      }
+    },
+    [entities, onSelect],
+  );
+
+  const handleAction = useCallback(
+    (action: PermissionAction, entityId: PermissionEditorEntity["id"]) => {
+      const entity = entities.find(({ id }) => id === entityId);
+      if (entity != null) {
+        onAction?.(action, entity);
+      }
+    },
+    [entities, onAction],
   );
 
   const handleConfirm = () => {
@@ -126,8 +158,8 @@ export function PermissionsTable({
             key={entities[virtualItem.index].id}
             entity={entities[virtualItem.index]}
             onChange={handleChange}
-            onSelect={onSelect}
-            onAction={onAction}
+            onSelect={handleSelect}
+            onAction={handleAction}
           />
         ))}
         {virtualItems.length > 0 && (
@@ -149,8 +181,8 @@ export function PermissionsTable({
             key={entity.id}
             entity={entity}
             onChange={handleChange}
-            onSelect={onSelect}
-            onAction={onAction}
+            onSelect={handleSelect}
+            onAction={handleAction}
           />
         ))}
       </tbody>
@@ -203,15 +235,18 @@ export function PermissionsTable({
 }
 
 type EntityRowProps = {
-  entity: PermissionEditorEntity;
+  entity: PermissionEditorEntity<PermissionSectionBase>;
   onChange: (
     value: DataPermissionValue,
     toggleState: boolean | null,
-    entity: PermissionEditorEntity,
-    permission: PermissionSectionConfig,
+    entityId: PermissionEditorEntity["id"],
+    sectionIndex: number,
   ) => void;
-  onSelect?: (entity: PermissionEditorEntity) => void;
-  onAction?: (action: PermissionAction, entity: PermissionEditorEntity) => void;
+  onSelect?: (entityId: PermissionEditorEntity["id"]) => void;
+  onAction?: (
+    action: PermissionAction,
+    entityId: PermissionEditorEntity["id"],
+  ) => void;
 };
 
 const EntityRow = memo(function EntityRow({
@@ -243,7 +278,7 @@ const EntityRow = memo(function EntityRow({
         {entity.canSelect ? (
           <Link
             className={S.entityNameLink}
-            onClick={() => onSelect?.(entity)}
+            onClick={() => onSelect?.(entity.id)}
             // The hub overrides the link's default admin purple with its own
             // blue, both colors the design system already owns.
             style={
@@ -265,13 +300,13 @@ const EntityRow = memo(function EntityRow({
 
       {entity.permissions?.map((permission, index) => {
         return (
-          <td key={permission.type ?? String(index)} className={S.cell}>
+          <td key={index} className={S.cell}>
             <PermissionsSelect
               {...permission}
               onChange={(value, toggleState) =>
-                onChange(value, toggleState, entity, permission)
+                onChange(value, toggleState, entity.id, index)
               }
-              onAction={(action) => onAction?.(action, entity)}
+              onAction={(action) => onAction?.(action, entity.id)}
             />
           </td>
         );

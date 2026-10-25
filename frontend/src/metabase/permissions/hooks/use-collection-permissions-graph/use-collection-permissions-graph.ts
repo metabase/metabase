@@ -41,7 +41,9 @@ export function useCollectionPermissionsGraph(namespace?: CollectionNamespace) {
 
   if (loadedGraph !== draftGraph) {
     setDraftGraph(loadedGraph);
-    setDraft(getDraft(loadedGraph));
+    if (loadedGraph?.revision !== draft?.savedGraph.revision) {
+      setDraft(getDraft(loadedGraph));
+    }
   }
 
   const isDirty =

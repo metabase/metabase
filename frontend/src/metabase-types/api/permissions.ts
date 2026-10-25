@@ -223,22 +223,24 @@ export type PermissionSubject = "schemas" | "tables" | "fields";
 
 export type SpecialGroupType = "admin" | "analyst" | "external" | null;
 
-export type DataPermissionView = "database" | "group";
+export type ApplicationPermissionKey =
+  | "subscription"
+  | "monitoring"
+  | "setting";
 
-export type DataPermissionUpdate = {
-  groupId: GroupId;
-  entityId: PermissionEntityId;
-  type: DataPermissionType;
-  permission: DataPermission;
-  value: DataPermissionValue;
-  view: DataPermissionView;
-};
+export type ApplicationPermissionValue = "yes" | "no";
 
-export type AppliedDataPermissionUpdate = DataPermissionUpdate & {
-  database: PermissionsDatabase;
-};
+export type GroupApplicationPermissions = Record<
+  ApplicationPermissionKey,
+  ApplicationPermissionValue
+>;
 
-export type DataPermissionsDrafts = {
-  sandboxes: Record<string, GroupTableAccessPolicy>;
-  impersonations: Impersonation[];
+export type ApplicationPermissions = Record<
+  GroupId,
+  GroupApplicationPermissions
+>;
+
+export type ApplicationPermissionsGraph = {
+  groups: ApplicationPermissions;
+  revision: number;
 };

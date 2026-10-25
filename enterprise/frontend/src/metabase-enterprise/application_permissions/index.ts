@@ -4,11 +4,9 @@ import { PLUGIN_APPLICATION_PERMISSIONS_SELECTORS } from "metabase/current-user"
 import {
   PLUGIN_ADMIN_ALLOWED_PATH_GETTERS,
   PLUGIN_APPLICATION_PERMISSIONS,
-  PLUGIN_REDUCERS,
 } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
-import applicationPermissionsReducer from "./reducer";
 import getRoutes, {
   registerApplicationPermissionsPagePrefetch,
 } from "./routes";
@@ -37,8 +35,6 @@ export function initializePlugin() {
       canAccessSettings;
     PLUGIN_APPLICATION_PERMISSIONS_SELECTORS.canManageSubscriptions =
       canManageSubscriptions;
-    PLUGIN_REDUCERS.applicationPermissionsPlugin =
-      applicationPermissionsReducer;
 
     registerApplicationPermissionsPagePrefetch();
   }

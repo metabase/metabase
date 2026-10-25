@@ -5,7 +5,7 @@ import {
   useGetDatabasePermissionsGraphQuery,
   useGetGroupPermissionsGraphQuery,
 } from "metabase/api";
-import { findErrorMessage } from "metabase/api/utils/errors";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import type { DatabaseId, GroupId, PermissionsGraph } from "metabase-types/api";
 
 import { useDataPermissions } from "../../contexts/DataPermissionsContext";
@@ -31,7 +31,7 @@ const useLoadedGraph = ({
 
   return {
     isLoading: isFetching && currentData == null,
-    error: findErrorMessage(error),
+    error: error != null ? getErrorMessage(error) : undefined,
   };
 };
 

@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 import {
   Messages,
-  type PermissionOption,
   type PermissionSectionConfig,
   getFieldsPermission,
   getPermissionWarning,
@@ -11,6 +10,7 @@ import {
   getTablesPermission,
   navigateToGranularPermissions,
 } from "metabase/permissions";
+import type { PermissionOption } from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionType,

@@ -2,11 +2,8 @@ import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "metabase/permissions";
-import type {
-  DataPermissionView,
-  GroupId,
-  PermissionEntityId,
-} from "metabase-types/api";
+import type { DataPermissionView } from "metabase/plugins";
+import type { GroupId, PermissionEntityId } from "metabase-types/api";
 
 import type { ImpersonationModalParams } from "./types";
 

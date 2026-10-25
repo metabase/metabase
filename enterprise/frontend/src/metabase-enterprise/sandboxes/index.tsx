@@ -7,6 +7,7 @@ import {
   isTableEntityId,
 } from "metabase/permissions";
 import {
+  type DataPermissionView,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
@@ -20,7 +21,6 @@ import {
 import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
-  DataPermissionView,
   GroupId,
   PermissionEntityId,
   TableEntityId,

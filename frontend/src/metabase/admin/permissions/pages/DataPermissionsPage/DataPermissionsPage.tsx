@@ -1,19 +1,17 @@
 import { useMemo } from "react";
 
 import { useListPermissionsGroupsQuery } from "metabase/api";
-import { findErrorMessage } from "metabase/api/utils/errors";
+import { getErrorMessage } from "metabase/api/utils/errors";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import {
   DataPermissionsHelp,
   DataPermissionsProvider,
   diffDataPermissions,
-  parseDataRouteParams,
   useDataPermissions,
   useLoadGroupDataPermissions,
-  usePermissionsDatabase,
 } from "metabase/permissions";
-import { Outlet, useParams } from "metabase/router";
+import { Outlet } from "metabase/router";
 import { Center, Loader } from "metabase/ui";
 import type { GroupInfo } from "metabase-types/api";
 
@@ -30,7 +28,6 @@ export function DataPermissionsPage() {
 }
 
 function DataPermissionsPageContent() {
-  const params = useParams<{ databaseId: string }>();
   const {
     data,
     isLoading: isLoadingGroups,
@@ -49,12 +46,11 @@ function DataPermissionsPageContent() {
     clearSaveError,
   } = useDataPermissions();
 
-  const allUsers = useLoadGroupDataPermissions(groups.find(isDefaultGroup)?.id);
-  const administrators = useLoadGroupDataPermissions(
-    groups.find(isAdminGroup)?.id,
+  const allUsersGraph = useLoadGroupDataPermissions(
+    groups.find(isDefaultGroup)?.id,
   );
-  const { isLoading: isLoadingDatabase } = usePermissionsDatabase(
-    parseDataRouteParams(params).databaseId,
+  const administratorsGraph = useLoadGroupDataPermissions(
+    groups.find(isAdminGroup)?.id,
   );
 
   const diff = useMemo(
@@ -71,12 +67,13 @@ function DataPermissionsPageContent() {
   );
 
   const error =
-    findErrorMessage(groupsError) ?? allUsers.error ?? administrators.error;
+    (groupsError != null ? getErrorMessage(groupsError) : undefined) ??
+    allUsersGraph.error ??
+    administratorsGraph.error;
   const isLoading =
     isLoadingGroups ||
-    allUsers.isLoading ||
-    administrators.isLoading ||
-    isLoadingDatabase ||
+    allUsersGraph.isLoading ||
+    administratorsGraph.isLoading ||
     permissions == null;
 
   return (

@@ -1,5 +1,5 @@
+import type { AppliedDataPermissionUpdate } from "metabase/plugins";
 import type {
-  AppliedDataPermissionUpdate,
   GroupTableAccessPolicy,
   GroupsPermissions,
 } from "metabase-types/api";
@@ -133,7 +133,7 @@ describe("dataPermissionsReducer", () => {
       }),
       {
         type: "draftsUpdated",
-        update: (drafts) => ({
+        updater: (drafts) => ({
           ...drafts,
           sandboxes: { "3:10": POLICY },
         }),
@@ -191,7 +191,7 @@ describe("dataPermissionsReducer", () => {
   it("counts drafts as unsaved changes", () => {
     const state = dataPermissionsReducer(getLoadedState(), {
       type: "draftsUpdated",
-      update: (drafts) => ({ ...drafts, sandboxes: { "3:10": POLICY } }),
+      updater: (drafts) => ({ ...drafts, sandboxes: { "3:10": POLICY } }),
     });
 
     expect(getIsDataPermissionsDirty(state)).toBe(true);

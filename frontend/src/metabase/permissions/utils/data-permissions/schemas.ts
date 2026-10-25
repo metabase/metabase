@@ -25,7 +25,7 @@ import {
   getPermissionWarningModal,
   getViewDataPermissionsTooRestrictiveWarningModal,
 } from "../confirmations";
-import { getSchemasPermission } from "../graph";
+import { getSchemasPermission } from "../graph/data-permissions/get";
 import {
   limitDatabasePermission,
   navigateToGranularPermissions,

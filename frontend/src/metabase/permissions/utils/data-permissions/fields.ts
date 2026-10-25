@@ -35,7 +35,7 @@ import {
   getFieldsPermission,
   getSchemasPermission,
   getTablesPermission,
-} from "../graph";
+} from "../graph/data-permissions/get";
 
 import { getNativePermissionDisabledTooltip } from "./shared";
 

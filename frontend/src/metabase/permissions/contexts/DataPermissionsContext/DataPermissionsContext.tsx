@@ -18,6 +18,8 @@ import { getErrorMessage } from "metabase/api/utils/errors";
 import type {
   DataPermissionUpdate,
   DataPermissionsDrafts,
+} from "metabase/plugins";
+import type {
   DatabaseId,
   GroupsPermissions,
   PermissionsDatabase,
@@ -141,7 +143,7 @@ export function DataPermissionsProvider({
 
   const updateDrafts = useCallback(
     (update: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts) =>
-      dispatch({ type: "draftsUpdated", update }),
+      dispatch({ type: "draftsUpdated", updater: update }),
     [],
   );
 

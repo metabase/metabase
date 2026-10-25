@@ -5,8 +5,8 @@ const APPLICATION_PERMISSIONS_PATH = "/admin/permissions/application";
 const applicationPermissionsPage = () =>
   import(
     /* webpackChunkName: "application-permissions" */ "./pages/ApplicationPermissionsPage"
-  ).then((module) => ({
-    Component: module.default,
+  ).then(({ ApplicationPermissionsPage }) => ({
+    Component: ApplicationPermissionsPage,
   }));
 
 /**

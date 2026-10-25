@@ -34,7 +34,7 @@ import {
   getSchemaEntityId,
   getTableEntityId,
 } from "../data-entity-id";
-import { hasPermissionValueInEntityGraphs } from "../graph";
+import { hasPermissionValueInEntityGraphs } from "../graph/data-permissions/has";
 import { getDatabaseSchema, getDatabaseSchemas } from "../metadata";
 
 import {

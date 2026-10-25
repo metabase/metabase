@@ -11,8 +11,7 @@ import {
   groups,
   initialPermissions,
 } from "./data-permissions.unit.spec.fixtures";
-
-import { getGroupsDataPermissionEditor } from ".";
+import { getGroupsDataPermissionEditor } from "./permission-editor";
 
 // adding legacy no self-service in the graph will prevent getGroupsDataPermissionEditor
 // from omitting the view data permission options in the case there's only one option

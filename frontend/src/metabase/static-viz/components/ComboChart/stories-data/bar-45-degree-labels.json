@@ -160,8 +160,12 @@
       },
       "visualization_settings": {
         "graph.x_axis.scale": "ordinal",
-        "graph.dimensions": ["LABEL"],
-        "graph.metrics": ["value"]
+        "graph.dimensions": [
+          "LABEL"
+        ],
+        "graph.metrics": [
+          "value"
+        ]
       },
       "collection": {
         "authority_level": null,
@@ -192,21 +196,66 @@
     },
     "data": {
       "rows": [
-        ["Short label 1", 1],
-        ["Really loooooooong label 2", 2],
-        ["Really loooooooong label 3", 3],
-        ["Really loooooooong label 4", 4],
-        ["Really loooooooong label 5", 5],
-        ["Really loooooooong label 6", 6],
-        ["Really loooooooong label 7", 7],
-        ["Really loooooooong label 8", 8],
-        ["Really loooooooong label 9", 9],
-        ["Really loooooooong label 10", 10],
-        ["Really loooooooong label 11", 11],
-        ["Really loooooooong label 12", 12],
-        ["Really loooooooong label 13", 13],
-        ["Really loooooooong label 14", 14],
-        ["Really loooooooong label 15", 15]
+        [
+          "Short label 1",
+          1
+        ],
+        [
+          "Really loooooooong label 2",
+          2
+        ],
+        [
+          "Really loooooooong label 3",
+          3
+        ],
+        [
+          "Really loooooooong label 4",
+          4
+        ],
+        [
+          "Really loooooooong label 5",
+          5
+        ],
+        [
+          "Really loooooooong label 6",
+          6
+        ],
+        [
+          "Really loooooooong label 7",
+          7
+        ],
+        [
+          "Really loooooooong label 8",
+          8
+        ],
+        [
+          "Really loooooooong label 9",
+          9
+        ],
+        [
+          "Really loooooooong label 10",
+          10
+        ],
+        [
+          "Really loooooooong label 11",
+          11
+        ],
+        [
+          "Really loooooooong label 12",
+          12
+        ],
+        [
+          "Really loooooooong label 13",
+          13
+        ],
+        [
+          "Really loooooooong label 14",
+          14
+        ],
+        [
+          "Really loooooooong label 15",
+          15
+        ]
       ],
       "results_timezone": "UTC",
       "download_perms": "full",

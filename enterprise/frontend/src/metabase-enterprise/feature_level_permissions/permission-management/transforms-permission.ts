@@ -3,12 +3,12 @@ import { t } from "ttag";
 
 import {
   Messages,
-  type PermissionOption,
   type PermissionSectionConfig,
   getPermissionWarning,
   getPermissionWarningModal,
   getSchemasPermission,
 } from "metabase/permissions";
+import type { PermissionOption } from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionType,

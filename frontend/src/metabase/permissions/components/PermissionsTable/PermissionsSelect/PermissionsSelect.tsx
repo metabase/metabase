@@ -2,16 +2,17 @@ import cx from "classnames";
 import { memo, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
+import type { PermissionAction } from "metabase/plugins";
 import { Box, Flex, Icon, Popover, Switch, Tooltip } from "metabase/ui";
 import type { ColorName } from "metabase/ui/colors/types";
 import type { DataPermissionValue, IconName } from "metabase-types/api";
 
-import type { PermissionAction, PermissionSectionConfig } from "../../../types";
+import type { PermissionSectionBase } from "../../../types";
 
 import S from "./PermissionsSelect.module.css";
 import { PermissionsSelectOption } from "./PermissionsSelectOption";
 
-interface PermissionSelectProps extends PermissionSectionConfig {
+interface PermissionSelectProps extends PermissionSectionBase {
   onChange: (value: DataPermissionValue, toggleState: boolean | null) => void;
   onAction?: (action: PermissionAction) => void;
 }

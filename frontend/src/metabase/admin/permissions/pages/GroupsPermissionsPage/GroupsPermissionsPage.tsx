@@ -5,7 +5,6 @@ import { useListPermissionsGroupsQuery } from "metabase/api";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import {
-  type PermissionAction,
   type PermissionEditorBreadcrumb,
   type PermissionEditorEntity,
   type PermissionSectionConfig,
@@ -21,7 +20,10 @@ import {
   usePermissionsDatabase,
   useShouldShowTransformPermissions,
 } from "metabase/permissions";
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import {
+  PLUGIN_ADVANCED_PERMISSIONS,
+  type PermissionAction,
+} from "metabase/plugins";
 import { Outlet, useNavigate, useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { Center, Loader } from "metabase/ui";

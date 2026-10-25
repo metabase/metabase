@@ -28,7 +28,10 @@ import {
   getViewDataPermissionsTooRestrictiveWarningModal,
   getWillRevokeNativeAccessWarningModal,
 } from "../confirmations";
-import { getSchemasPermission, getTablesPermission } from "../graph";
+import {
+  getSchemasPermission,
+  getTablesPermission,
+} from "../graph/data-permissions/get";
 import { navigateToGranularPermissions } from "../post-actions";
 
 import { getNativePermissionDisabledTooltip } from "./shared";

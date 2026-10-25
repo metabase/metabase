@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
+import type { PermissionOption } from "metabase/plugins";
 import { DataPermissionValue } from "metabase-types/api";
-
-import type { PermissionOption } from "../types";
 
 export const COLLECTION_OPTIONS: Record<string, PermissionOption> = {
   write: {

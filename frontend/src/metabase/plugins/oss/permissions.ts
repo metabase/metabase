@@ -2,17 +2,16 @@ import type { ReactElement, ReactNode } from "react";
 
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
-  AppliedDataPermissionUpdate,
   DataPermission,
-  DataPermissionUpdate,
-  DataPermissionView,
-  DataPermissionsDrafts,
+  DataPermissionType,
   DatabaseEntityId,
   Dataset,
   GroupId,
   GroupInfo,
+  GroupTableAccessPolicy,
   GroupsPermissions,
   IconName,
+  Impersonation,
   PermissionEntityId,
   PermissionSubject,
   PermissionsDatabase,
@@ -29,6 +28,26 @@ type DataModelQueryProps = {
 };
 
 const DEFAULT_DATA_MODEL_QUERY_PROPS: DataModelQueryProps = {};
+
+export type DataPermissionView = "database" | "group";
+
+export type DataPermissionUpdate = {
+  groupId: GroupId;
+  entityId: PermissionEntityId;
+  type: DataPermissionType;
+  permission: DataPermission;
+  value: DataPermissionValue;
+  view: DataPermissionView;
+};
+
+export type AppliedDataPermissionUpdate = DataPermissionUpdate & {
+  database: PermissionsDatabase;
+};
+
+export type DataPermissionsDrafts = {
+  sandboxes: Record<string, GroupTableAccessPolicy>;
+  impersonations: Impersonation[];
+};
 
 // These describe the entries EE plugins contribute to the permissions editor.
 // They live here (not in metabase/permissions) because the plugin registry sits

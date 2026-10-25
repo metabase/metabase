@@ -15,8 +15,8 @@ import type {
 import {
   getFieldsPermission,
   getSchemasPermission,
-  isRestrictivePermission,
-} from "./data-permissions";
+} from "./data-permissions/get";
+import { isRestrictivePermission } from "./data-permissions/utils";
 
 function deleteIfEmpty(object: any, key: string | number) {
   if (Object.keys(object[key]).length === 0) {

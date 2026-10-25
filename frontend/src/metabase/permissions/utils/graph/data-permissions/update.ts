@@ -1,9 +1,11 @@
 import { getIn, setIn } from "icepick";
 import _ from "underscore";
 
-import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import {
   type AppliedDataPermissionUpdate,
+  PLUGIN_DATA_PERMISSIONS,
+} from "metabase/plugins";
+import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
@@ -30,7 +32,7 @@ import {
 } from "./get";
 import { isRestrictivePermission } from "./utils";
 
-export function updatePermission(
+function updatePermission(
   permissions: GroupsPermissions,
   groupId: number,
   databaseId: number,
@@ -69,7 +71,7 @@ export function updatePermission(
   return setIn(permissions, fullPath, newValue);
 }
 
-export function updateFieldsPermission(
+function updateFieldsPermission(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: TableEntityId,
@@ -99,7 +101,7 @@ export function updateFieldsPermission(
   return permissions;
 }
 
-export function updateTablesPermission(
+function updateTablesPermission(
   permissions: GroupsPermissions,
   groupId: number,
   { databaseId, schemaName }: SchemaEntityId,
@@ -131,7 +133,7 @@ export function updateTablesPermission(
   return permissions;
 }
 
-export function updateSchemasPermission(
+function updateSchemasPermission(
   permissions: GroupsPermissions,
   groupId: number,
   { databaseId }: DatabaseEntityId,
@@ -196,7 +198,7 @@ export function updateEntityPermission(
   }
 }
 
-export function restrictCreateQueriesPermissionsIfNeeded(
+function restrictCreateQueriesPermissionsIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: PermissionEntityId,
@@ -276,7 +278,7 @@ const hasFullCreateQueriesAccess = (
   return createQueriesValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
 };
 
-export function revokeTransformsPermissionIfNeeded(
+function revokeTransformsPermissionIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: PermissionEntityId,
@@ -360,7 +362,7 @@ function inferEntityPermissionValueFromChildTables(
 
 // Checks the child tables of a given entityId and updates the shared table and/or schema permission values according to table permissions
 // This method was added for keeping the UI in sync when modifying child permissions
-export function inferAndUpdateEntityPermissions(
+function inferAndUpdateEntityPermissions(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: PermissionEntityId,
