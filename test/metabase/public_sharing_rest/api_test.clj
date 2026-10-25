@@ -986,15 +986,15 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (mt/with-actions-test-data-tables #{"venues" "categories"}
         (mt/with-actions-test-data-and-actions-enabled
-          (mt/with-actions [{card-id :id} {:type :model, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
+          (mt/with-actions [{card-id :id} {:type          :model
+                                           :dataset_query (let [mp (mt/metadata-provider)]
+                                                            (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
                             {:keys [action-id]} {:type :implicit
                                                  :kind "row/update"
-                                                 :visualization_settings {:fields {"id"    {:id     "id"
-                                                                                            :hidden false}
-                                                                                   "name"  {:id     "name"
-                                                                                            :hidden false}
-                                                                                   "price" {:id     "price"
-                                                                                            :hidden true}}}}]
+                                                 :visualization_settings {:fields (into {"id"   {:id "id" :hidden false}
+                                                                                         "name" {:id "name" :hidden false}}
+                                                                                        (for [id ["category_id" "latitude" "longitude" "price"]]
+                                                                                          [id {:id id :hidden true}]))}}]
             (let [dashboard-uuid (str (random-uuid))]
               (mt/with-temp [:model/Dashboard {dashboard-id :id} {:public_uuid dashboard-uuid}
                              :model/DashboardCard dashcard {:dashboard_id dashboard-id
@@ -1041,7 +1041,9 @@
       (mt/test-drivers (mt/normal-drivers-with-feature :actions)
         (mt/with-actions-test-data-tables #{"venues" "categories"}
           (mt/with-actions-test-data-and-actions-enabled
-            (mt/with-actions [{card-id :id} {:type :model, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
+            (mt/with-actions [{card-id :id} {:type          :model
+                                             :dataset_query (let [mp (mt/metadata-provider)]
+                                                              (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
                               {:keys [action-id]} {:type :implicit
                                                    :kind "row/update"}]
               (let [public-uuid (str (random-uuid))]

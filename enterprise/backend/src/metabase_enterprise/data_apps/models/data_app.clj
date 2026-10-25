@@ -11,6 +11,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.search.core :as search]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [methodical.core :as methodical]
@@ -142,6 +143,11 @@
 (t2/define-after-insert :model/DataApp
   [app]
   (merge app (data-app.resources/ensure-resources! app)))
+
+(t2/define-after-update :model/DataApp
+  [app]
+  (u/prog1 app
+    (data-app.resources/rename-resource-collection! app)))
 
 ;; The collection goes first, while the row still references it: the reference is nullable so the database can clear
 ;; it, and the collection's own hooks delete what it holds and the grants on it.

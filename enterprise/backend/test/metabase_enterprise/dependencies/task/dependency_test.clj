@@ -1091,7 +1091,7 @@
        (let [db-mp (lib-be/application-database-metadata-provider db-id)]
          (mt/with-temp [:model/Card {model-id :id} {:type          :model
                                                     :database_id   db-id
-                                                    :dataset_query (lib/native-query db-mp "SELECT * FROM venues")}
+                                                    :dataset_query (lib/query db-mp (lib.metadata/table db-mp table-id))}
                         :model/Action {implicit-id :id} {:type :implicit, :name "Create venue", :model_id model-id}
                         :model/ImplicitAction _ {:action_id implicit-id, :kind "row/create"}
                         :model/Action {query-id :id} {:type :query, :name "Delete venue", :model_id model-id}

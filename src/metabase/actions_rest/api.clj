@@ -81,7 +81,6 @@
     action-type :type
     :as action} :- ::actions.schema/action.create-request]
   (api/create-check :model/Action action)
-  (actions/check-implicit-actions-supported action)
   (actions/check-implicit-action-table-pk action)
   (actions/check-data-app-action-table action)
   (actions/check-action-databases-enabled action)

@@ -10,6 +10,8 @@
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.notification.api.notification-test :as api.notification-test]
    [metabase.notification.test-util :as notification.tu]
@@ -1900,7 +1902,10 @@
   (testing "GET /api/collection/:id/items lists the actions without a model in data actions collections only"
     (mt/with-temp [:model/Collection   {folder-id :id}  {:namespace "data-actions", :name "Data actions folder"}
                    :model/Collection   {regular-id :id} {:name "Regular collection"}
-                   :model/Card         {model-id :id}   {:type :model, :collection_id regular-id}
+                   :model/Card         {model-id :id}   {:type          :model
+                                                         :collection_id regular-id
+                                                         :dataset_query (let [mp (mt/metadata-provider)]
+                                                                          (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
                    :model/Action       {in-folder :id}  {:type :query, :name "In folder", :collection_id folder-id}
                    :model/QueryAction  _                {:action_id     in-folder
                                                          :database_id   (mt/id)

@@ -102,7 +102,7 @@
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
-(defn check-implicit-actions-supported
+(defn- check-implicit-actions-supported
   "Throws a 400 when `action` is implicit and its model's query does not support implicit actions."
   [{model-id :model_id, :as action}]
   (when (and (implicit? action)
@@ -222,7 +222,8 @@
   (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix action)
              model-id set-model-collection)
     (when (and (implicit? action) model-id)
-      (check-implicit-action-model model-id))
+      (check-implicit-action-model model-id)
+      (check-implicit-actions-supported action))
     (check-collection-content <>)
     (check-collection-not-archived <>)
     (check-data-app-action <>)))
@@ -237,7 +238,7 @@
                (not= (:collection_id action) (actions.db/card-collection-id model-id)))
       (throw (model-collection-error)))
     (u/prog1 (public-sharing/add-public-uuid-prefix-if-changed action)
-      (when (and (implicit? action) model-id (changed? :type))
+      (when (and (implicit? action) model-id (or (changed? :type) (changed? :model_id)))
         (check-implicit-action-model model-id)
         (check-implicit-actions-supported action))
       (when (contains? (t2/changes <>) :collection_id)
@@ -248,6 +249,12 @@
         (check-data-app-action <>))
       (when (contains? (t2/changes <>) :collection_id)
         (check-data-app-action-query (:collection_id <>) (:dataset_query (actions.db/query-action (:id <>))))))))
+
+(t2/define-after-update :model/Action
+  [{action-id :id, :as action}]
+  (u/prog1 action
+    (when (:archived action)
+      (actions.db/delete-dashcards-for-action! action-id))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` of its query, when it has one, as a row copied whole may hold its query
@@ -431,8 +438,6 @@
               :implicit (actions.db/update-implicit-action! id type-row)))))
       (when-let [action-row (not-empty (select-keys updates action-columns))]
         (actions.db/update-action! id action-row))
-      (when (and (:archived updates) (not (:archived existing-action)))
-        (actions.db/delete-dashcards-for-action! id))
       (collection/check-for-remote-sync-update (t2/instance :model/Action existing-action)))))
 
 (mu/defn update!

@@ -45,13 +45,18 @@
         (data-apps.db/update-data-app! (:id app) {:resource_collection_id (:id collection)})
         collection)))
 
+(defn rename-resource-collection!
+  "Name the resource collection of `app` after the app's slug."
+  [{:keys [resource_collection_id] :as app}]
+  (when resource_collection_id
+    (data-apps.db/rename-resource-collection! resource_collection_id (resource-name app))))
+
 (defn ensure-resources!
   "Create, rename, or restore the resource collection of `app`, and return `{:resource_collection_id id}`."
   [app]
   (let [app        (data-apps.db/data-app (:id app))
         collection (resource-collection! app)]
-    (data-apps.db/update-resource-collection! (:id collection)
-                                              {:name (resource-name app)})
+    (data-apps.db/rename-resource-collection! (:id collection) (resource-name app))
     (restore-trashed-collection! collection)
     {:resource_collection_id (:id collection)}))
 

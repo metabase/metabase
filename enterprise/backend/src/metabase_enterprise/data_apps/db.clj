@@ -106,10 +106,11 @@
   [collection-id]
   (t2/select-one :model/Collection :id collection-id))
 
-(defn update-resource-collection!
-  "Apply `changes` to the resource collection with `collection-id`."
-  [collection-id changes]
-  (t2/update! :model/Collection :id collection-id changes))
+(mu/defn rename-resource-collection!
+  "Name the resource collection with `collection-id` `collection-name`, unless it already has that name."
+  [collection-id   :- ms/PositiveInt
+   collection-name :- :string]
+  (t2/update! :model/Collection {:id collection-id :name [:not= collection-name]} {:name collection-name}))
 
 (defn delete-resource-collection!
   "Delete the resource collection with `collection-id`."

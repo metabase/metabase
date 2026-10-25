@@ -178,6 +178,17 @@
             (action/update! {:id action-id, :archived true} (action/select-action :id action-id))
             (is (zero? (t2/count :model/DashboardCard :id dashcard-id)))))))))
 
+(deftest archiving-an-action-deletes-its-dashcards-on-every-write-path-test
+  (testing "an action archived through Toucan, as a load or an archived collection archives it, loses its dashcards"
+    (mt/with-temp [:model/Collection    {collection-id :id} {:namespace "data-actions"}
+                   :model/Action        {action-id :id}     {:name "Action" :type :query :collection_id collection-id}
+                   :model/Dashboard     {dashboard-id :id}  {}
+                   :model/DashboardCard {dashcard-id :id}   {:action_id action-id :dashboard_id dashboard-id}]
+      (t2/update! :model/Action action-id {:name "Renamed"})
+      (is (= 1 (t2/count :model/DashboardCard :id dashcard-id)))
+      (t2/update! :model/Action action-id {:archived true})
+      (is (zero? (t2/count :model/DashboardCard :id dashcard-id))))))
+
 (deftest dashcard-deletion-test-2
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled
@@ -434,6 +445,26 @@
           (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for models with clauses"
                                 (action/update! {:id action-id :type :implicit :kind :row/update}
                                                 (action/select-action :id action-id)))))))))
+
+(deftest implicit-action-on-a-model-with-clauses-is-refused-test
+  (testing "an implicit action needs a model without clauses, on every write path that sets its model"
+    (let [mp     (mt/metadata-provider)
+          venues (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
+      (mt/with-temp [:model/Card {plain-id :id}   {:type :model :dataset_query venues}
+                     :model/Card {clauses-id :id} {:type :model :dataset_query (lib/limit venues 1)}]
+        (mt/with-model-cleanup [:model/Action]
+          (let [insert! #(t2/insert-returning-pk! :model/Action {:name       "Implicit"
+                                                                 :type       :implicit
+                                                                 :model_id   %
+                                                                 :creator_id (mt/user->id :crowberto)})]
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for models with clauses"
+                                  (insert! clauses-id)))
+            (testing "nor can a load move one onto such a model"
+              (let [action-id (insert! plain-id)]
+                (binding [mi/*deserializing?* true]
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for models with clauses"
+                                        (t2/update! :model/Action action-id {:model_id clauses-id}))))
+                (is (= plain-id (t2/select-one-fn :model_id :model/Action :id action-id)))))))))))
 
 (deftest query-action-needs-a-query-on-a-database-test
   (testing "a query action holds a query on a database on every write path"

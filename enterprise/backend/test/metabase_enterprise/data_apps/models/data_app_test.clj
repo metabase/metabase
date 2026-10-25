@@ -52,6 +52,15 @@
       (is (= #{} (perms/collection-read-access-group-ids resource_collection_id))
           "no group but Administrators can read the new collection"))))
 
+(deftest the-resource-collection-follows-the-slug-test
+  (testing "renaming an app, on any write path, renames its resource collection"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [app-id (insert-app!)]
+        (t2/update! :model/DataApp app-id {:name "renamed"})
+        (is (= "Data App: renamed"
+               (t2/select-one-fn :name :model/Collection
+                                 :id (t2/select-one-fn :resource_collection_id :model/DataApp :id app-id))))))))
+
 (deftest insert-publishes-the-creation-of-the-collection-test
   (testing "the collection is created the way any collection is, so what listens to collection events (remote sync,
             the activity log) sees it"
