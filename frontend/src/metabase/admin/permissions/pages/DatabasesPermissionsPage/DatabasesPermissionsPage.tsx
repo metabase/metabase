@@ -43,7 +43,7 @@ export function DatabasesPermissionsPage() {
   const {
     permissions,
     originalPermissions,
-    isFetching: isLoading,
+    isLoadingGraph: isLoading,
     updateDataPermission,
   } = useDataPermissions();
   const {

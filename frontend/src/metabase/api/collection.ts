@@ -132,6 +132,26 @@ export const collectionApi = Api.injectEndpoints({
         url: "/api/collection/graph?skip-graph=true",
         body,
       }),
+      onQueryStarted: async (
+        { namespace, groups },
+        { dispatch, queryFulfilled },
+      ) => {
+        await queryFulfilled.then(
+          ({ data }) => {
+            dispatch(
+              collectionApi.util.updateQueryData(
+                "getCollectionPermissionsGraph",
+                namespace != null ? { namespace } : undefined,
+                (graph) => {
+                  graph.revision = data.revision;
+                  Object.assign(graph.groups, groups);
+                },
+              ),
+            );
+          },
+          () => undefined,
+        );
+      },
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("collection-permissions-graph")]),
     }),

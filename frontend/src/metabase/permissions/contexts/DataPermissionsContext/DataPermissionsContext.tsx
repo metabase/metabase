@@ -53,7 +53,7 @@ type DataPermissionsContextValue = {
   drafts: DataPermissionsDrafts;
   isDirty: boolean;
   isLoading: boolean;
-  isFetching: boolean;
+  isLoadingGraph: boolean;
   error: string | undefined;
   hasRevisionChanged: boolean;
   saveError: string | null;
@@ -234,7 +234,7 @@ export function DataPermissionsProvider({
         groupsQuery.isLoading ||
         allUsersGraph.isLoading ||
         administratorsGraph.isLoading,
-      isFetching: routeGraph.isFetching,
+      isLoadingGraph: routeGraph.isFetching && routeData == null,
       error: loadError != null ? getErrorMessage(loadError) : undefined,
       hasRevisionChanged:
         isDirty && revision != null && loadedRevision > revision,
@@ -256,6 +256,7 @@ export function DataPermissionsProvider({
       allUsersGraph.isLoading,
       administratorsGraph.isLoading,
       routeGraph.isFetching,
+      routeData,
       loadError,
       revision,
       loadedRevision,

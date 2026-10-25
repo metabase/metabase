@@ -46,6 +46,51 @@ export const permissionApi = Api.injectEndpoints({
         url: "/api/permissions/graph",
         body,
       }),
+      onQueryStarted: async (_body, { dispatch, getState, queryFulfilled }) => {
+        await queryFulfilled.then(
+          ({ data }) => {
+            const state = getState();
+            permissionApi.util
+              .selectCachedArgsForQuery(state, "getGroupPermissionsGraph")
+              .forEach((groupId) =>
+                dispatch(
+                  permissionApi.util.updateQueryData(
+                    "getGroupPermissionsGraph",
+                    groupId,
+                    (graph) => {
+                      graph.revision = data.revision;
+                      if (data.groups[groupId] != null) {
+                        graph.groups[groupId] = data.groups[groupId];
+                      }
+                    },
+                  ),
+                ),
+              );
+            permissionApi.util
+              .selectCachedArgsForQuery(state, "getDatabasePermissionsGraph")
+              .forEach((databaseId) =>
+                dispatch(
+                  permissionApi.util.updateQueryData(
+                    "getDatabasePermissionsGraph",
+                    databaseId,
+                    (graph) => {
+                      graph.revision = data.revision;
+                      Object.entries(data.groups).forEach(
+                        ([groupId, group]) => {
+                          graph.groups[groupId] = {
+                            ...graph.groups[groupId],
+                            [databaseId]: group[databaseId],
+                          };
+                        },
+                      );
+                    },
+                  ),
+                ),
+              );
+          },
+          () => undefined,
+        );
+      },
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("permissions-graph")]),
     }),

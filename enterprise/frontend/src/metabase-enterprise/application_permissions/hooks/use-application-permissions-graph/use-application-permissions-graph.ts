@@ -27,7 +27,7 @@ const updateApplicationPermissions = (
 ): ApplicationPermissions => assocIn(permissions, [groupId, permission], value);
 
 export function useApplicationPermissionsGraph() {
-  const { data: graph, isFetching } = useGetApplicationPermissionsGraphQuery(
+  const { data: graph, isLoading } = useGetApplicationPermissionsGraphQuery(
     undefined,
     {
       refetchOnMountOrArgChange: true,
@@ -61,7 +61,7 @@ export function useApplicationPermissionsGraph() {
   return {
     permissions,
     isDirty,
-    isFetching,
+    isLoading,
     saveError: error ? getErrorMessage(error) : null,
     updateApplicationPermission: addEdit,
     savePermissions,

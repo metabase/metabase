@@ -68,7 +68,7 @@ export function CollectionPermissionsPageContent({
   const {
     permissions,
     isDirty,
-    isFetching,
+    isLoading,
     saveError,
     updateCollectionPermission,
     savePermissions,
@@ -134,7 +134,7 @@ export function CollectionPermissionsPageContent({
         <PermissionsEditor
           key={collection?.id}
           {...permissionEditor}
-          isLoading={isFetching}
+          isLoading={isLoading}
           onChange={handlePermissionChange}
         />
       ) : (

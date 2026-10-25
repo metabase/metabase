@@ -24,6 +24,20 @@ export const applicationPermissionsApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/advanced-permissions/application/graph",
         body,
       }),
+      onQueryStarted: async (_body, { dispatch, queryFulfilled }) => {
+        await queryFulfilled.then(
+          ({ data }) => {
+            dispatch(
+              applicationPermissionsApi.util.upsertQueryData(
+                "getApplicationPermissionsGraph",
+                undefined,
+                data,
+              ),
+            );
+          },
+          () => undefined,
+        );
+      },
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("application-permissions-graph")]),
     }),

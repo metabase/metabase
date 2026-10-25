@@ -44,7 +44,7 @@ export function GroupsPermissionsPage() {
   const {
     permissions,
     originalPermissions,
-    isFetching: isLoading,
+    isLoadingGraph: isLoading,
     updateDataPermission,
   } = useDataPermissions();
   const {
