@@ -336,14 +336,20 @@
           :when       database-id]
     (actions/check-actions-enabled-for-database (actions.db/database database-id))))
 
-(defn- effective-collection-id
-  "The id of the Collection `action` goes in, its model's when it has one; throws a 404 when either does not exist."
+(defn check-action-references
+  "Throws a 404 when the model or the Collection `action` names does not exist."
   [{model-id :model_id, collection-id :collection_id}]
   (if model-id
-    (:collection_id (api/check-404 (actions.db/card-scope-columns model-id)))
-    (u/prog1 collection-id
-      (when collection-id
-        (api/check-404 (actions.db/collection-exists? collection-id))))))
+    (api/check-404 (actions.db/card-scope-columns model-id))
+    (when collection-id
+      (api/check-404 (actions.db/collection-exists? collection-id)))))
+
+(defn- effective-collection-id
+  "The id of the Collection `action` goes in, its model's when it has one."
+  [{model-id :model_id, collection-id :collection_id}]
+  (if model-id
+    (:collection_id (actions.db/card-scope-columns model-id))
+    collection-id))
 
 (defmethod mi/perms-objects-set :model/Action
   [{model-id :model_id, collection-id :collection_id, :as action} read-or-write]

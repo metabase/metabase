@@ -16,7 +16,6 @@
    [metabase.api.macros :as api.macros]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.events.core :as events]
-   [metabase.remote-sync.core :as remote-sync]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms]
@@ -201,11 +200,6 @@
   [slug]
   (api/write-check (api/check-404 (data-apps.db/data-app-by-slug slug))))
 
-(defn- check-editable!
-  "Throws a 403 when `app` is read-only under remote sync."
-  [app]
-  (api/check-403 (remote-sync/model-editable? :model/DataApp app)))
-
 (api.macros/defendpoint :post "/" :- DataAppResponse
   "Create a data app with its resource collection and an empty bundle. It is enabled unless the request says
   otherwise."
@@ -213,7 +207,6 @@
    _query-params
    body :- CreateDataAppRequest]
   (api/create-check :model/DataApp body)
-  (check-editable! body)
   (let [row    (merge create-defaults {:display_name (:name body)} body)
         app-id (t2/with-transaction [_conn]
                  (let [collection (data-app.resources/create-resource-collection! row)]
@@ -225,10 +218,9 @@
 (defn- update-app!
   "Apply `changes` to the data app named `slug` and return the updated app."
   [slug changes]
-  (let [app            (write-check-data-app slug)
+  (let [app            (api/check-404 (data-apps.db/data-app-by-slug slug))
         synced-changes (dissoc changes :enabled)]
-    (when (seq synced-changes)
-      (check-editable! app))
+    (api/update-check app changes)
     (when (seq changes)
       (data-apps.db/update-data-app! (:id app) (with-bundle changes)))
     (let [app (data-apps.db/data-app (:id app))]
@@ -256,7 +248,6 @@
   "Delete a data app, its bundle, and its collection with the grants on it."
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]]
   (let [app (write-check-data-app slug)]
-    (check-editable! app)
     (data-apps.db/delete-data-app! (:id app))
     (events/publish-event! :event/data-app-delete {:object app :user-id api/*current-user-id*}))
   ;; a `nil` body is rendered as a 204; matches the `:- :nil` response schema

@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.search.core :as search]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
@@ -123,13 +124,25 @@
                    (some? resource_collection_id)
                    (mi/can-read? :model/Collection resource_collection_id)))))))
 
+(defn- editable?
+  "Whether `app` may be edited, which a read-only remote-sync instance refuses for the apps it syncs."
+  [app]
+  (remote-sync/model-editable? :model/DataApp app))
+
 (defmethod mi/can-write? :model/DataApp
-  ([_instance]   api/*is-superuser?*)
-  ([_model _pk]  api/*is-superuser?*))
+  ([app]        (and api/*is-superuser?* (editable? app)))
+  ([_model pk]  (and api/*is-superuser?* (editable? (data-apps.db/data-app pk)))))
 
 (defmethod mi/can-create? :model/DataApp
-  [_model _instance]
-  api/*is-superuser?*)
+  [_model app]
+  (and api/*is-superuser?* (editable? app)))
+
+;; Enabling or disabling an app is this instance's own choice, so a read-only remote-sync instance allows it.
+(defmethod mi/can-update? :model/DataApp
+  [app changes]
+  (and api/*is-superuser?*
+       (or (every? #{:enabled} (keys changes))
+           (editable? app))))
 
 (t2/define-after-insert :model/DataApp
   [app]

@@ -80,6 +80,7 @@
    {:keys [parameters]
     action-type :type
     :as action} :- ::actions.schema/action.create-request]
+  (actions/check-action-references action)
   (api/create-check :model/Action action)
   (actions/check-implicit-actions-supported action)
   (actions/check-implicit-action-table-pk action)
@@ -106,6 +107,7 @@
    action :- ::actions.schema/action.update-request]
   (let [existing-action (api/write-check :model/Action id)
         action          (api/updates-with-archived-directly existing-action action)]
+    (actions/check-action-references (merge existing-action action))
     (api/update-check existing-action action)
     (api/check-400 (not (and (:archived action) (get action :model_id (:model_id existing-action))))
                    (tru "A model''s action can''t be archived. Delete it instead."))
