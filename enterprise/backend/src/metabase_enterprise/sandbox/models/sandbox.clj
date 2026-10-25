@@ -170,9 +170,6 @@
     :card    (ex-info
               (tru "You do not have permissions to modify a question that is used for row and column level security.")
               {:status-code 403, :card-id id})
-    :snippet (ex-info
-              (tru "You do not have permissions to modify a snippet that is used for row and column level security.")
-              {:status-code 403, :snippet-id id})
     :segment (ex-info
               (tru "You do not have permissions to modify a segment that is used for row and column level security.")
               {:status-code 403, :segment-id id})
@@ -224,19 +221,11 @@
   [{card-id :id}]
   (check-non-admin-cannot-affect-sandboxing! :card card-id))
 
-(defenterprise pre-update-check-sandbox-constraints-for-snippet
-  "Refuses a non-admin's update to a snippet in the sandbox dependency set when `changes` touches `:content`, `:name`,
-  or `:archived`."
+(defenterprise sandbox-dependency-snippet?
+  "Whether a sandbox depends on the snippet with `snippet-id`."
   :feature :sandboxes
-  [{snippet-id :id} changes]
-  (when (some #(contains? changes %) [:content :name :archived])
-    (check-non-admin-cannot-affect-sandboxing! :snippet snippet-id)))
-
-(defenterprise pre-delete-check-sandbox-constraints-for-snippet
-  "Refuses a non-admin's deletion of a snippet in the sandbox dependency set."
-  :feature :sandboxes
-  [{snippet-id :id}]
-  (check-non-admin-cannot-affect-sandboxing! :snippet snippet-id))
+  [snippet-id]
+  (contains? (get (sandbox-dependency-set) :snippet) snippet-id))
 
 (defenterprise pre-update-check-sandbox-constraints-for-segment
   "Refuses a non-admin's update to a Segment in the sandbox dependency set when `changes` touches `:definition` or

@@ -7,10 +7,12 @@
    [metabase-enterprise.sandbox.test-util :as sbx.tu]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.measures.test-util :as measures.tu]
+   [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -155,7 +157,7 @@
 (def ^:private card-msg
   #"You do not have permissions to modify a question that is used for row and column level security")
 (def ^:private snippet-msg
-  #"You do not have permissions to modify a snippet that is used for row and column level security")
+  #"You don't have permissions to do that")
 (def ^:private segment-msg
   #"You do not have permissions to modify a segment that is used for row and column level security")
 (def ^:private measure-msg
@@ -258,24 +260,31 @@
 
 (deftest only-admins-can-change-a-snippet-a-sandbox-is-built-out-of-test
   (mt/with-premium-features #{:sandboxes}
+    (with-snippet-policy
+      (fn [{:keys [inner outer other]}]
+        (let [snippet #(t2/select-one :model/NativeQuerySnippet :id (:id %))]
+          (testing "a non-admin may not change, archive, or delete a snippet a sandbox depends on"
+            (mt/with-test-user :rasta
+              (doseq [[label s changes] [["content"                       outer {:content "1 = 1"}]
+                                         ["name"                          outer {:name (mt/random-name)}]
+                                         ["archive"                       outer {:archived true}]
+                                         ["content of the nested snippet" inner {:content "2 = 2"}]]]
+                (testing label
+                  (is (false? (mi/can-update? (snippet s) changes)))))
+              (testing "delete"
+                (is (false? (mi/can-write? (snippet outer)))))
+              (testing "but may describe it, and change an unrelated snippet"
+                (is (true? (mi/can-update? (snippet outer) {:description "Used by a sandbox"})))
+                (is (true? (mi/can-update? (snippet other) {:content "2 = 2"}))))))
+          (testing "an admin may"
+            (mt/with-test-user :crowberto
+              (is (true? (mi/can-update? (snippet outer) {:content "1 = 1"})))
+              (is (true? (mi/can-write? (snippet outer)))))))))
     (guarded-writes-test
      with-snippet-policy
-     (fn [{:keys [inner outer nested-card]}]
-       [["content"                       snippet-msg #(t2/update! :model/NativeQuerySnippet (:id outer)
-                                                                  {:content "1 = 1"})]
-        ["name"                          snippet-msg #(t2/update! :model/NativeQuerySnippet (:id outer)
-                                                                  {:name (mt/random-name)})]
-        ["archive"                       snippet-msg #(t2/update! :model/NativeQuerySnippet (:id outer)
-                                                                  {:archived true})]
-        ["content of the nested snippet" snippet-msg #(t2/update! :model/NativeQuerySnippet (:id inner)
-                                                                  {:content "2 = 2"})]
-        ["query of the nested Card"      card-msg    #(t2/update! :model/Card (:id nested-card)
-                                                                  {:dataset_query (mt/mbql-query venues)})]
-        ["delete"                        snippet-msg #(t2/delete! :model/NativeQuerySnippet (:id outer))]]))
-    (untouched-test
-     with-snippet-policy
-     (fn [{:keys [other]}]
-       (t2/update! :model/NativeQuerySnippet (:id other) {:content "2 = 2"})))))
+     (fn [{:keys [nested-card]}]
+       [["query of the nested Card" card-msg #(t2/update! :model/Card (:id nested-card)
+                                                          {:dataset_query (mt/mbql-query venues)})]]))))
 
 (defn- venues-query []
   (let [mp (mt/metadata-provider)]
@@ -392,7 +401,7 @@
           (letfn [(sandboxed-row-count []
                     (count (mt/rows (mt/user-http-request :rasta :post 202 "dataset" (mt/mbql-query venues)))))]
             (is (= 1 (sandboxed-row-count)))
-            (is (= "You do not have permissions to modify a snippet that is used for row and column level security."
+            (is (= "You don't have permissions to do that."
                    (mt/user-http-request editor :put 403 (str "native-query-snippet/" (:id snippet))
                                          {:content "1 = 1"})))
             (is (= "ID = 1" (t2/select-one-fn :content :model/NativeQuerySnippet :id (:id snippet))))
@@ -526,14 +535,17 @@
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) coll))
             (f colls)))))))
 
-(defn- archive-collection! [coll]
-  (collection/archive-collection! (t2/select-one :model/Collection :id (:id coll))))
+(defn- archive-collection!
+  "Archive `coll` the way a user does, through the collection update the API runs."
+  [coll]
+  (collections/update-collection! (:id coll) {:archived true}))
 
 (defn- archived? [coll]
   (t2/select-one-fn :archived :model/Collection :id (:id coll)))
 
 (deftest archiving-or-deleting-a-collection-respects-the-sandbox-dependency-set-test
-  (testing "archiving or deleting a Collection cascades to its Cards and snippets, and the guard fires per row"
+  (testing "archiving a Collection is refused unless its Cards and snippets may be archived too, and deleting one
+            holding a policy Card is refused"
     (mt/with-premium-features #{:sandboxes}
       (testing "for a non-admin"
         (with-mixed-policies!
@@ -548,11 +560,13 @@
                     (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (archive-collection! coll)))
                     (is (false? (archived? coll)))
                     (is (not-any? :archived (t2/select :model/Card :collection_id (:id coll))))
-                    (is (not-any? :archived (t2/select :model/NativeQuerySnippet :collection_id (:id coll)))))
+                    (is (not-any? :archived (t2/select :model/NativeQuerySnippet :collection_id (:id coll)))))))
+              (doseq [coll [policy chain]]
+                (testing (str "a Collection with a policy Card in it: " (:name coll))
                   (testing "deleting is refused and nothing is deleted"
                     (let [before (+ (t2/count :model/Card :collection_id (:id coll))
                                     (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))]
-                      (is (thrown-with-msg? clojure.lang.ExceptionInfo msg (t2/delete! :model/Collection (:id coll))))
+                      (is (thrown-with-msg? clojure.lang.ExceptionInfo card-msg (t2/delete! :model/Collection (:id coll))))
                       (is (t2/exists? :model/Collection :id (:id coll)))
                       (is (= before (+ (t2/count :model/Card :collection_id (:id coll))
                                        (t2/count :model/NativeQuerySnippet :collection_id (:id coll)))))))))

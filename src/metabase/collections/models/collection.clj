@@ -1758,6 +1758,32 @@
   [_seed-table-ids]
   nil)
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; | NOTE: Collection permission checks are moving into `mi/can-*` ONE MODEL AT A TIME. So far this `can-update?`     |
+;;; | only checks that the user may archive or unarchive the NativeQuerySnippets and Actions a Collection holds, since |
+;;; | archiving a Collection archives them too. Every other check on a Collection update still lives in              |
+;;; | `metabase.collections.update/update-collection!` and in the archive functions below.                           |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- archive-cascade
+  "The NativeQuerySnippets and Actions in the Collections with `collection-ids` whose `archived` flag archiving them
+  (`archived?` true) or unarchiving them would change."
+  [collection-ids archived?]
+  (concat (collections.db/native-query-snippets-in-collections collection-ids (not archived?))
+          (if archived?
+            (collections.db/unarchived-actions-in-collections collection-ids)
+            (collections.db/actions-archived-with-collections collection-ids))))
+
+(defmethod mi/can-update? :model/Collection
+  [collection changes]
+  (and (mi/can-write? collection)
+       (let [archived (get changes :archived ::unchanged)]
+         (or (= ::unchanged archived)
+             (= (boolean archived) (boolean (:archived collection)))
+             (every? #(mi/can-update? % {:archived (boolean archived)})
+                     (archive-cascade (cons (u/the-id collection) (descendant-ids collection))
+                                      (boolean archived)))))))
+
 (mu/defn archive-collection!
   "Mark a collection as archived, along with all its children."
   [collection :- CollectionWithLocationAndIDOrRoot]

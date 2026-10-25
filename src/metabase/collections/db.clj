@@ -390,6 +390,12 @@
    archived?      :- :boolean]
   (t2/update! :model/Pulse {:collection_id [:in collection-ids] :dashboard_id nil} {:archived archived?}))
 
+(mu/defn native-query-snippets-in-collections
+  "The NativeQuerySnippets in the Collections with `collection-ids` whose `archived` flag is `archived?`."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]
+   archived?      :- :boolean]
+  (t2/select :model/NativeQuerySnippet :collection_id [:in collection-ids] :archived archived?))
+
 (mu/defn set-native-query-snippet-archived-in-collections!
   "Set `archived?` on the NativeQuerySnippets in the Collections with `collection-ids`, returning the number
   updated."
@@ -402,6 +408,17 @@
   [collection-ids :- [:sequential ::lib.schema.id/collection]
    archived?      :- :boolean]
   (t2/update! :model/Timeline {:collection_id [:in collection-ids]} {:archived archived?}))
+
+(mu/defn unarchived-actions-in-collections
+  "The unarchived Actions in the Collections with `collection-ids`, which archiving them would archive."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/Action :collection_id [:in collection-ids] :archived false))
+
+(mu/defn actions-archived-with-collections
+  "The Actions in the Collections with `collection-ids` archived along with them, which unarchiving them would
+  unarchive."
+  [collection-ids :- [:sequential ::lib.schema.id/collection]]
+  (t2/select :model/Action :collection_id [:in collection-ids] :archived true :archived_directly false))
 
 (mu/defn set-action-archived-in-collections!
   "Archive the unarchived Actions in the Collections with `collection-ids` along with them, or unarchive the ones

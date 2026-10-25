@@ -106,6 +106,7 @@
    collection-updates :- UpdateCollectionArguments]
   ;; do we have perms to edit this Collection?
   (let [collection-before-update (t2/hydrate (api/write-check :model/Collection id) :parent_id)]
+    (api/update-check collection-before-update collection-updates)
     ;; tenant-specific-root-collection collections cannot be updated
     (api/check-400
      (not= (:type collection-before-update) collection/tenant-specific-root-collection-type))

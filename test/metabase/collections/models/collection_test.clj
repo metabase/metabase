@@ -232,6 +232,17 @@
       (is (false? (t2/select-one-fn :archived :model/Action :id (u/the-id action))))
       (is (true? (t2/select-one-fn :archived :model/Action :id (u/the-id old-action)))))))
 
+(deftest archiving-a-collection-needs-permission-to-archive-its-actions-test
+  (testing "a user who may write a Collection but not the Actions in it may not archive it, since that archives them"
+    (mt/with-temp [:model/Collection collection {}
+                   :model/Card       model      {:type :model :collection_id (u/the-id collection)}
+                   :model/Action     _          {:type :query :name "Rename" :model_id (u/the-id model)}]
+      (mt/with-test-user :rasta
+        (is (true? (mi/can-write? collection)))
+        (is (false? (mi/can-update? collection {:archived true}))))
+      (mt/with-test-user :crowberto
+        (is (true? (mi/can-update? collection {:archived true})))))))
+
 (deftest delete-collection-deletes-actions-test
   (testing "deleting a Collection deletes the Actions in it, including the ones without a model"
     (mt/with-temp [:model/Collection collection {:namespace "data-actions"}

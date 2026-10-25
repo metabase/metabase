@@ -109,20 +109,8 @@
   (u/prog1 (t2.realize/realize snippet)
     (events/publish-event! :event/snippet-create {:object <> :user-id api/*current-user-id*})))
 
-(defenterprise pre-update-check-sandbox-constraints-for-snippet
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
-  metabase-enterprise.sandbox.models.sandbox
-  [_ _])
-
-(defenterprise pre-delete-check-sandbox-constraints-for-snippet
-  "Checks additional sandboxing constraints for Metabase Enterprise Edition. The OSS implementation is a no-op."
-  metabase-enterprise.sandbox.models.sandbox
-  [_])
-
 (t2/define-before-update :model/NativeQuerySnippet
   [snippet]
-  ;; additional checks (Enterprise Edition only)
-  (pre-update-check-sandbox-constraints-for-snippet snippet (t2/changes snippet))
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
   (when (contains? (t2/changes snippet) :name)
     (check-name (:name snippet) (:id snippet)))
@@ -140,8 +128,6 @@
 
 (t2/define-before-delete :model/NativeQuerySnippet
   [snippet]
-  ;; additional checks (Enterprise Edition only)
-  (pre-delete-check-sandbox-constraints-for-snippet snippet)
   (u/prog1 snippet
     (events/publish-event! :event/snippet-delete {:object <> :user-id api/*current-user-id*})))
 
@@ -149,17 +135,36 @@
   [& args]
   (apply snippet.perms/can-read? args))
 
+(defenterprise sandbox-dependency-snippet?
+  "Whether a sandbox depends on the snippet with `snippet-id`, which only admins may then change. The OSS
+  implementation has no sandboxes."
+  metabase-enterprise.sandbox.models.sandbox
+  [_snippet-id]
+  false)
+
+(defn- may-change-sandboxing?
+  "Whether the current user may change the snippet with `snippet-id` in a way a sandbox depending on it would see."
+  [snippet-id]
+  (or (boolean api/*is-superuser?*)
+      (not (sandbox-dependency-snippet? snippet-id))))
+
 (defmethod mi/can-write? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-write? args))
+  ([snippet]
+   (and (snippet.perms/can-write? snippet)
+        (may-change-sandboxing? (:id snippet))))
+  ([model id]
+   (and (snippet.perms/can-write? model id)
+        (may-change-sandboxing? id))))
 
 (defmethod mi/can-create? :model/NativeQuerySnippet
   [& args]
   (apply snippet.perms/can-create? args))
 
 (defmethod mi/can-update? :model/NativeQuerySnippet
-  [& args]
-  (apply snippet.perms/can-update? args))
+  [snippet changes]
+  (and (snippet.perms/can-update? snippet changes)
+       (or (not-any? #(contains? changes %) [:content :name :archived])
+           (may-change-sandboxing? (:id snippet)))))
 
 (methodical/defmethod t2/batched-hydrate [:model/NativeQuerySnippet :can_write]
   [_model k snippets]
