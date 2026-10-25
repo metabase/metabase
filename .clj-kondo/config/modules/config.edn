@@ -3159,6 +3159,7 @@
            analytics.interface
            api
            appearance
+           database-routing
            driver
            events
            lib

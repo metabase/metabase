@@ -11,6 +11,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -437,24 +438,25 @@
             csv-col-names     (keys cols->upload-type)
             col-upload-types  (vals cols->upload-type)
             parsed-rows       (vec (parse-rows settings col-upload-types rows))]
-        (driver/create-table! driver
-                              (:id db)
-                              table-name
-                              col-definitions
-                              (when auto-pk?
-                                {:primary-key [auto-pk-column-keyword]}))
-        (try
-          (driver/insert-into! driver (:id db) table-name csv-col-names parsed-rows)
-          {:columns (zipmap column-names display-names)
-           :stats   {:num-rows          (count rows)
-                     :num-columns       (count cols->upload-type)
-                     :generated-columns (if auto-pk? 1 0)
-                     :size-mb           (file-size-mb csv-file)}}
-          (catch Throwable e
-            (driver/drop-table! driver (:id db) table-name)
-            (throw (if (:status-code (ex-data e))
-                     e
-                     (ex-info (ex-message e) {:status-code 400} e)))))))))
+        (database-routing/with-destination-database-id [db-id db]
+          (driver/create-table! driver
+                                db-id
+                                table-name
+                                col-definitions
+                                (when auto-pk?
+                                  {:primary-key [auto-pk-column-keyword]}))
+          (try
+            (driver/insert-into! driver db-id table-name csv-col-names parsed-rows)
+            {:columns (zipmap column-names display-names)
+             :stats   {:num-rows          (count rows)
+                       :num-columns       (count cols->upload-type)
+                       :generated-columns (if auto-pk? 1 0)
+                       :size-mb           (file-size-mb csv-file)}}
+            (catch Throwable e
+              (driver/drop-table! driver db-id table-name)
+              (throw (if (:status-code (ex-data e))
+                       e
+                       (ex-info (ex-message e) {:status-code 400} e))))))))))
 
 ;;;; +------------------+
 ;;;; |  Create upload
@@ -752,15 +754,17 @@
 
 (defn- add-columns! [driver database table field->type & args]
   (when (seq field->type)
-    (apply driver/add-columns! driver (:id database) (table-identifier table)
-           (field->db-type driver field->type)
-           args)))
+    (database-routing/with-destination-database-id [db-id database]
+      (apply driver/add-columns! driver db-id (table-identifier table)
+             (field->db-type driver field->type)
+             args))))
 
 (defn- alter-columns! [driver database table field->new-type & args]
   (when (seq field->new-type)
-    (apply driver/alter-table-columns! driver (:id database) (table-identifier table)
-           (field->db-type driver field->new-type)
-           args)))
+    (database-routing/with-destination-database-id [db-id database]
+      (apply driver/alter-table-columns! driver db-id (table-identifier table)
+             (field->db-type driver field->new-type)
+             args))))
 
 (defn- mbql? [model]
   (= "query" (name (:query_type model "query"))))
@@ -858,9 +862,10 @@
                                     :size-mb           (file-size-mb file)
                                     :upload-seconds    (u/since-ms timer)}]
             (try
-              (when replace-rows?
-                (driver/truncate! driver (:id database) (table-identifier table)))
-              (driver/insert-into! driver (:id database) (table-identifier table) column-names parsed-rows)
+              (database-routing/with-destination-database-id [db-id database]
+                (when replace-rows?
+                  (driver/truncate! driver db-id (table-identifier table)))
+                (driver/insert-into! driver db-id (table-identifier table) column-names parsed-rows))
               (catch Throwable e
                 (throw (ex-info (ex-message e) {:status-code 422}))))
             (when create-auto-pk?
@@ -954,7 +959,8 @@
     ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
     ;; visible to administrators, and the operation is easy to retry again later.
     (driver.conn/with-write-connection
-      (driver/drop-table! driver (:id database) table-name))
+      (database-routing/with-destination-database-id [db-id database]
+        (driver/drop-table! driver db-id table-name)))
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
     (upload.db/deactivate-table! (:id table))
     ;; Ideally we would immediately trigger any further clean-up associated with the table being deactivated, but at
