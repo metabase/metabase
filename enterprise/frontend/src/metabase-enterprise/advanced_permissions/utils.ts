@@ -2,7 +2,11 @@ import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
 } from "metabase/permissions";
-import type { GroupId, PermissionEntityId } from "metabase-types/api";
+import type {
+  DataPermissionView,
+  GroupId,
+  PermissionEntityId,
+} from "metabase-types/api";
 
 import type { ImpersonationModalParams } from "./types";
 
@@ -40,7 +44,7 @@ const getGroupViewImpersonationModalUrl = (
 export const getEditImpersonationUrl = (
   entityId: PermissionEntityId,
   groupId: GroupId,
-  view: "database" | "group",
+  view: DataPermissionView,
 ) =>
   view === "database"
     ? getDatabaseViewImpersonationModalUrl(entityId, groupId)

@@ -19,7 +19,7 @@ import {
   getGroupsDataPermissionEditor,
   parseDataRouteParams,
   useDataPermissions,
-  useDatabaseDataPermissionsGraph,
+  useLoadDatabaseDataPermissions,
   usePermissionsDatabase,
   useShouldShowTransformPermissions,
 } from "metabase/permissions";
@@ -55,7 +55,7 @@ export function DatabasesPermissionsPage() {
     isLoading: isSidebarLoading,
     error: sidebarError,
   } = usePermissionsDatabase(dataRouteParams.databaseId);
-  const { isFetching: isLoading } = useDatabaseDataPermissionsGraph(
+  const { isLoading } = useLoadDatabaseDataPermissions(
     dataRouteParams.databaseId,
   );
   const showTransformPermissions = useShouldShowTransformPermissions();

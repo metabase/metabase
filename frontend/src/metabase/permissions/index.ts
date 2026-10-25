@@ -10,25 +10,27 @@ export type { PermissionsTableProps } from "./components/PermissionsTable";
 export { ToolbarButton } from "./components/ToolbarButton";
 export { COLLECTION_OPTIONS } from "./constants/collections-permissions";
 export { Messages } from "./constants/messages";
-export { DATABASE_TABLES_QUERY } from "./constants/databases";
 export {
   DataPermissionsProvider,
   useDataPermissions,
 } from "./contexts/DataPermissionsContext";
-export type { DataPermissionsContextValue } from "./contexts/DataPermissionsContext";
 export {
-  useDatabaseDataPermissionsGraph,
-  useGroupDataPermissionsGraph,
-} from "./hooks/use-data-permissions-graph";
+  useLoadDatabaseDataPermissions,
+  useLoadGroupDataPermissions,
+} from "./hooks/use-load-data-permissions";
 export { usePermissionsDatabase } from "./hooks/use-permissions-database";
 export { useShouldShowTransformPermissions } from "./hooks/use-should-show-transform-permissions";
 export { useCollectionPermissionsGraph } from "./hooks/use-collection-permissions-graph";
 export {
   buildCollectionTree,
   collectionsQuery,
+  getCollectionPermission,
+  getCollectionWarning,
   getCollectionsPermissionEditor,
   getCollectionsSidebar,
   getPermissionsCollection,
+  getRootCollectionTreeItem,
+  getRootPermissionsCollection,
   parseCollectionIdParam,
 } from "./utils/collection-permissions/editor";
 export type { CollectionSidebarType } from "./utils/collection-permissions/editor";
@@ -39,7 +41,6 @@ export {
 } from "./utils/confirmations";
 export {
   getDataFocusSidebar,
-  getDataPermissionsDiff,
   getDatabasesPermissionEditor,
   getGroupsDataPermissionEditor,
   getGroupsSidebar,
@@ -64,10 +65,10 @@ export type {
   PermissionsGraphDiff,
   RawDataRouteParams,
   RawGroupRouteParams,
-  UpdateDataPermissionParams,
 } from "./types";
 export { isSchemaEntityId, isTableEntityId } from "./utils/data-entity-id";
 export {
+  diffDataPermissions,
   getEntityPermission,
   getFieldsPermission,
   getSchemasPermission,

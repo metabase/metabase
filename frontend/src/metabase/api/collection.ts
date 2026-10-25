@@ -120,6 +120,7 @@ export const collectionApi = Api.injectEndpoints({
         url: "/api/collection/graph",
         params: params ?? undefined,
       }),
+      providesTags: () => [listTag("collection-permissions-graph")],
     }),
     updateCollectionPermissionsGraph: builder.mutation<
       CollectionPermissionsGraph,
@@ -130,6 +131,8 @@ export const collectionApi = Api.injectEndpoints({
         url: "/api/collection/graph?skip-graph=true",
         body,
       }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("collection-permissions-graph")]),
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: (body) => ({

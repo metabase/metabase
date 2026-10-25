@@ -16,7 +16,7 @@ import {
   dataPermissionsReducer,
   getDraftGroupIds,
   getIsDataPermissionsDirty,
-} from "./utils";
+} from "./reducer";
 
 const DATABASE = createMockDatabase({
   id: 1,
@@ -112,6 +112,19 @@ describe("dataPermissionsReducer", () => {
     ).toBe(true);
   });
 
+  it("ignores a graph older than the current revision", () => {
+    const savedState = dataPermissionsReducer(getLoadedState(), {
+      type: "saved",
+      graph: { groups: ALL_USERS_PERMISSIONS, revision: 2 },
+      modifiedGroupIds: ["1"],
+    });
+
+    const state = loadGraph(savedState, ADMIN_PERMISSIONS, 1);
+
+    expect(state).toBe(savedState);
+    expect(state.hasRevisionChanged).toBe(false);
+  });
+
   it("restores the originals and drops the drafts on reset", () => {
     const editedState = dataPermissionsReducer(
       dataPermissionsReducer(getLoadedState(), {
@@ -120,7 +133,7 @@ describe("dataPermissionsReducer", () => {
       }),
       {
         type: "draftsUpdated",
-        updateDrafts: (drafts) => ({
+        update: (drafts) => ({
           ...drafts,
           sandboxes: { "3:10": POLICY },
         }),
@@ -178,7 +191,7 @@ describe("dataPermissionsReducer", () => {
   it("counts drafts as unsaved changes", () => {
     const state = dataPermissionsReducer(getLoadedState(), {
       type: "draftsUpdated",
-      updateDrafts: (drafts) => ({ ...drafts, sandboxes: { "3:10": POLICY } }),
+      update: (drafts) => ({ ...drafts, sandboxes: { "3:10": POLICY } }),
     });
 
     expect(getIsDataPermissionsDirty(state)).toBe(true);

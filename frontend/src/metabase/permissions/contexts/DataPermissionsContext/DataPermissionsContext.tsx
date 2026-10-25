@@ -33,9 +33,9 @@ import {
   dataPermissionsReducer,
   getDraftGroupIds,
   getIsDataPermissionsDirty,
-} from "./utils";
+} from "./reducer";
 
-export type DataPermissionsContextValue = {
+type DataPermissionsContextValue = {
   permissions: GroupsPermissions | null;
   originalPermissions: GroupsPermissions | null;
   databasesWithTables: Record<DatabaseId, PermissionsDatabase>;
@@ -47,9 +47,9 @@ export type DataPermissionsContextValue = {
   addLoadedDatabase: (database: PermissionsDatabase) => void;
   updateDataPermission: (params: UpdateDataPermissionParams) => Promise<void>;
   updateDrafts: (
-    updateDrafts: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts,
+    update: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts,
   ) => void;
-  savePermissions: () => Promise<void>;
+  savePermissions: () => Promise<boolean>;
   resetPermissions: () => void;
   clearSaveError: () => void;
 };
@@ -140,8 +140,8 @@ export function DataPermissionsProvider({
   );
 
   const updateDrafts = useCallback(
-    (updateDrafts: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts) =>
-      dispatch({ type: "draftsUpdated", updateDrafts }),
+    (update: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts) =>
+      dispatch({ type: "draftsUpdated", update }),
     [],
   );
 
@@ -153,7 +153,7 @@ export function DataPermissionsProvider({
       originalPermissions == null ||
       revision == null
     ) {
-      return;
+      return false;
     }
 
     const modifiedGroups = getModifiedGroupsPermissionsGraphParts(
@@ -177,9 +177,10 @@ export function DataPermissionsProvider({
         graph: savedGraph,
         modifiedGroupIds: Object.keys(modifiedGroups),
       });
-    } else {
-      dispatch({ type: "saveFailed", error: getErrorMessage(error) });
+      return true;
     }
+    dispatch({ type: "saveFailed", error: getErrorMessage(error) });
+    return false;
   }, [groups, updateGraph]);
 
   const resetPermissions = useCallback(() => dispatch({ type: "reset" }), []);
@@ -189,13 +190,20 @@ export function DataPermissionsProvider({
     [],
   );
 
+  const { permissions, originalPermissions, drafts } = state;
+  const isDirty = useMemo(
+    () =>
+      getIsDataPermissionsDirty({ permissions, originalPermissions, drafts }),
+    [permissions, originalPermissions, drafts],
+  );
+
   const value = useMemo(
     () => ({
       permissions: state.permissions,
       originalPermissions: state.originalPermissions,
       databasesWithTables: state.databasesWithTables,
       drafts: state.drafts,
-      isDirty: getIsDataPermissionsDirty(state),
+      isDirty,
       hasRevisionChanged: state.hasRevisionChanged,
       saveError: state.saveError,
       addLoadedGraph,
@@ -208,6 +216,7 @@ export function DataPermissionsProvider({
     }),
     [
       state,
+      isDirty,
       addLoadedGraph,
       addLoadedDatabase,
       updateDataPermission,

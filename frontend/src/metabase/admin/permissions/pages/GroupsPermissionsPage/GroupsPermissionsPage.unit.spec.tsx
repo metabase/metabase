@@ -5,6 +5,7 @@ import { callMockEvent } from "__support__/events";
 import {
   setupDatabaseMetadataEndpoint,
   setupDatabasesEndpoints,
+  setupGroupPermissionsGraphEndpointError,
   setupGroupsEndpoint,
   setupPermissionsGraphEndpoints,
   setupUpdatePermissionsGraphEndpoint,
@@ -44,13 +45,21 @@ const TEST_GROUPS = [
 type SetupOpts = {
   initialRoute?: string;
   saveErrorMessage?: string;
+  graphErrorMessage?: string;
 };
 
 const setup = async ({
   initialRoute = `/admin/permissions/data/group/${TEST_GROUPS[1].id}`,
   saveErrorMessage,
+  graphErrorMessage,
 }: SetupOpts = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
+  if (graphErrorMessage != null) {
+    setupGroupPermissionsGraphEndpointError(
+      TEST_GROUPS[1].id,
+      graphErrorMessage,
+    );
+  }
   setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
   setupGroupsEndpoint(TEST_GROUPS);
   if (saveErrorMessage != null) {
@@ -134,6 +143,13 @@ describe("GroupsPermissionsPage", () => {
     });
   });
 
+  it("shows the error when a permission graph fails to load", async () => {
+    await setup({ graphErrorMessage: "Graph is unavailable" });
+
+    expect(await screen.findByText("Graph is unavailable")).toBeInTheDocument();
+    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+  });
+
   describe("saving", () => {
     const saveChanges = async () => {
       await userEvent.click(screen.getByText("Save changes"));
@@ -170,6 +186,24 @@ describe("GroupsPermissionsPage", () => {
           },
         },
       });
+    });
+
+    it("does not report a revision change after its own save", async () => {
+      await setup();
+      await editDatabasePermission();
+      await saveChanges();
+      await waitFor(() =>
+        expect(screen.queryByText("Save changes")).not.toBeInTheDocument(),
+      );
+
+      await userEvent.click(await screen.findByText("Administrators"));
+      await userEvent.click(await screen.findByText("All internal users"));
+      await editDatabasePermission();
+
+      expect(await screen.findByText("Save changes")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Someone just changed permissions"),
+      ).not.toBeInTheDocument();
     });
 
     it("shows the error and keeps the changes when saving fails", async () => {

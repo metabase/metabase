@@ -25,7 +25,7 @@ import {
   getTenantCollectionsPermissionEditor,
   getTenantCollectionsSidebar,
   tenantCollectionsQuery,
-} from "./selectors";
+} from "./utils";
 
 export function TenantCollectionPermissionsPage() {
   const navigate = useNavigate();
@@ -39,7 +39,7 @@ export function TenantCollectionPermissionsPage() {
     permissions,
     isDirty,
     saveError,
-    updatePermission,
+    updateCollectionPermission,
     savePermissions,
     resetPermissions,
     clearSaveError,
@@ -81,14 +81,14 @@ export function TenantCollectionPermissionsPage() {
       if (!collection) {
         return;
       }
-      updatePermission({
+      updateCollectionPermission({
         groupId: assertNumericId(item.id),
         collection,
         value,
-        shouldPropagateToChildren: toggleState,
+        shouldPropagateToChildren: toggleState || null,
       });
     },
-    [collection, updatePermission],
+    [collection, updateCollectionPermission],
   );
 
   return (
@@ -96,7 +96,7 @@ export function TenantCollectionPermissionsPage() {
       tab="tenant-collections"
       isDirty={isDirty}
       onSave={savePermissions}
-      onLoad={resetPermissions}
+      onCancel={resetPermissions}
       saveError={saveError}
       onClearSaveError={clearSaveError}
       helpContent={<CollectionPermissionsHelp />}

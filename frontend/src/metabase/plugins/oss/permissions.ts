@@ -135,13 +135,13 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION =
   definePluginSlot(getDefaultAdminPermissionsTableFieldsPostAction);
 
 const getDefaultDataPermissions = () => ({
-  updateDrafts: [],
+  pruneDrafts: [],
   upgradeViewPermissionsIfNeeded: null,
   shouldRestrictNativeQueryPermissions: () => false,
 });
 
 export const PLUGIN_DATA_PERMISSIONS: {
-  updateDrafts: ((
+  pruneDrafts: ((
     drafts: DataPermissionsDrafts,
     update: AppliedDataPermissionUpdate,
   ) => DataPermissionsDrafts)[];

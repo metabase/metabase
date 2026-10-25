@@ -4,6 +4,7 @@ import type {
   CollectionPermissionsGraph,
   Database,
   Group,
+  GroupId,
   ListUserMembershipsResponse,
   PermissionsGraph,
 } from "metabase-types/api";
@@ -30,6 +31,16 @@ export const setupPermissionsGraphEndpoints = (
       `path:/api/permissions/graph/db/${database.id}`,
       createMockPermissionsGraph({ groups, databases: [database] }),
     );
+  });
+};
+
+export const setupGroupPermissionsGraphEndpointError = (
+  groupId: GroupId,
+  message: string,
+) => {
+  fetchMock.get(`path:/api/permissions/graph/group/${groupId}`, {
+    status: 500,
+    body: { message },
   });
 };
 

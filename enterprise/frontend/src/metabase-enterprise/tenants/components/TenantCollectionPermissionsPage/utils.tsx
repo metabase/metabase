@@ -1,9 +1,7 @@
-import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
-import { getCollectionIcon } from "metabase/common/collections/utils";
 import { findCollectionById } from "metabase/common/utils/collections";
 import {
   getGroupNameLocalized,
@@ -16,7 +14,11 @@ import {
   Messages,
   type PermissionEditorType,
   buildCollectionTree,
+  getCollectionPermission,
+  getCollectionWarning,
   getPermissionWarningModal,
+  getRootCollectionTreeItem,
+  getRootPermissionsCollection,
 } from "metabase/permissions";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import { isNotNull } from "metabase/utils/types";
@@ -35,16 +37,6 @@ export const tenantCollectionsQuery = {
   namespace: "shared-tenant-collection",
 } as const;
 
-const getTenantRootCollectionTreeItem = () => {
-  const rootCollectionIcon = getCollectionIcon(ROOT_COLLECTION);
-  return {
-    ...ROOT_COLLECTION,
-    name: t`Root shared collection`,
-    icon: rootCollectionIcon.name,
-    iconColor: rootCollectionIcon.color,
-  };
-};
-
 export const getTenantCollectionsSidebar = (
   collections: Collection[],
   selectedId: CollectionId | undefined,
@@ -52,7 +44,10 @@ export const getTenantCollectionsSidebar = (
   selectedId,
   title: t`Shared collections`,
   entityGroups: [
-    [getTenantRootCollectionTreeItem(), ...buildCollectionTree(collections)],
+    [
+      getRootCollectionTreeItem(t`Root shared collection`),
+      ...buildCollectionTree(collections),
+    ],
   ],
   filterPlaceholder: t`Search for a collection`,
 });
@@ -62,26 +57,11 @@ export const getTenantCollectionEntity = (
   collectionId: CollectionId,
 ): Collection | undefined => {
   if (collectionId === ROOT_COLLECTION.id) {
-    return {
-      ...ROOT_COLLECTION,
-      name: t`Root shared collection`,
-      description: null,
-      can_write: true,
-      can_restore: false,
-      can_delete: false,
-      namespace: null,
-      children: collections,
-    };
+    return getRootPermissionsCollection(collections, t`Root shared collection`);
   }
 
   return findCollectionById(collections, collectionId) ?? undefined;
 };
-
-const getTenantCollectionPermission = (
-  permissions: CollectionPermissions,
-  groupId: number,
-  collectionId: CollectionId,
-) => getIn(permissions, [groupId, collectionId]) || "none";
 
 type TenantCollectionsPermissionEditorOpts = {
   permissions: CollectionPermissions;
@@ -111,7 +91,7 @@ export const getTenantCollectionsPermissionEditor = ({
         return null;
       }
 
-      const defaultGroupPermission = getTenantCollectionPermission(
+      const defaultGroupPermission = getCollectionPermission(
         permissions,
         defaultGroup.id,
         collection.id,
@@ -155,16 +135,12 @@ export const getTenantCollectionsPermissionEditor = ({
             hasChildren,
             isDisabled: disabled,
             disabledTooltip: disabled ? disabledTooltip : null,
-            value: getTenantCollectionPermission(
+            value: getCollectionPermission(
               permissions,
               group.id,
               collection.id,
             ),
-            warning: getTenantCollectionWarning(
-              group.id,
-              collection,
-              permissions,
-            ),
+            warning: getCollectionWarning(group.id, collection, permissions),
             confirmations,
             options,
           },
@@ -180,41 +156,3 @@ export const getTenantCollectionsPermissionEditor = ({
     entities,
   };
 };
-
-const permissionsCollectionFilter = (collection: Collection) =>
-  !collection.is_personal;
-
-function getDescendentCollections(collection: Collection): Collection[] {
-  const subCollections =
-    collection.children?.filter(permissionsCollectionFilter) || [];
-  return subCollections.concat(...subCollections.map(getDescendentCollections));
-}
-
-function getTenantCollectionWarning(
-  groupId: number,
-  collection: Collection,
-  permissions: CollectionPermissions,
-) {
-  if (!collection) {
-    return;
-  }
-  const collectionPerm = getTenantCollectionPermission(
-    permissions,
-    groupId,
-    collection.id,
-  );
-  const descendentCollections = getDescendentCollections(collection);
-  const descendentPerms = new Set(
-    descendentCollections.map((c) =>
-      getTenantCollectionPermission(permissions, groupId, c.id),
-    ),
-  );
-  if (
-    collectionPerm === "none" &&
-    (descendentPerms.has("read") || descendentPerms.has("write"))
-  ) {
-    return t`This group has permission to view at least one subcollection of this collection.`;
-  } else if (collectionPerm === "read" && descendentPerms.has("write")) {
-    return t`This group has permission to edit at least one subcollection of this collection.`;
-  }
-}

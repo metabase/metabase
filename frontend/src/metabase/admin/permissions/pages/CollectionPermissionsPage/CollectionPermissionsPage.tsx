@@ -35,7 +35,7 @@ export function CollectionPermissionsPage() {
     permissions,
     isDirty,
     saveError,
-    updatePermission,
+    updateCollectionPermission,
     savePermissions,
     resetPermissions,
     clearSaveError,
@@ -73,14 +73,14 @@ export function CollectionPermissionsPage() {
       if (!collection) {
         return;
       }
-      updatePermission({
+      updateCollectionPermission({
         groupId: assertNumericId(item.id),
         collection,
         value,
         shouldPropagateToChildren: toggleState,
       });
     },
-    [collection, updatePermission],
+    [collection, updateCollectionPermission],
   );
 
   return (
@@ -88,7 +88,7 @@ export function CollectionPermissionsPage() {
       tab="collections"
       isDirty={isDirty}
       onSave={savePermissions}
-      onLoad={resetPermissions}
+      onCancel={resetPermissions}
       saveError={saveError}
       onClearSaveError={clearSaveError}
       helpContent={<CollectionPermissionsHelp />}

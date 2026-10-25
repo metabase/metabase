@@ -26,27 +26,18 @@ import {
 
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import S from "./PermissionsPageLayout.module.css";
-import { PermissionsTabs } from "./PermissionsTabs";
+import { type PermissionsPageTab, PermissionsTabs } from "./PermissionsTabs";
 
-export type PermissionsPageTab =
-  | "data"
-  | "collections"
-  | "application"
-  | "tenant-collections"
-  | "tenant-specific-collections";
 type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;
-  confirmBar?: ReactNode;
   diff?: PermissionsGraphDiff;
   isDirty?: boolean;
   onSave?: () => void;
-  onLoad?: () => void;
+  onCancel?: () => void;
   saveError?: string | null;
   onClearSaveError?: () => void;
   hasRevisionChanged?: boolean;
-  navigateToLocation?: (location: string) => void;
-  navigateToTab?: (tab: string) => void;
   helpContent?: ReactNode;
   canShowSplitPermsModal?: boolean;
 };
@@ -57,7 +48,7 @@ export function PermissionsPageLayout({
   diff,
   isDirty,
   onSave,
-  onLoad,
+  onCancel,
   saveError,
   onClearSaveError,
   hasRevisionChanged = false,
@@ -81,6 +72,8 @@ export function PermissionsPageLayout({
   const navigateToTab = (tab: PermissionsPageTab) =>
     navigate(`${getPermissionsBasePath()}/${tab}`);
 
+  const handleClearSaveError = () => onClearSaveError?.();
+
   const handleToggleHelpReference = useCallback(() => {
     setIsHelpReferenceOpen((isOpen) => !isOpen);
   }, []);
@@ -98,7 +91,7 @@ export function PermissionsPageLayout({
             diff={diff}
             isDirty={isDirty}
             onSave={onSave}
-            onCancel={() => onLoad?.()}
+            onCancel={() => onCancel?.()}
           />
         )}
 
@@ -106,8 +99,8 @@ export function PermissionsPageLayout({
 
         <ConfirmModal
           opened={saveError != null}
-          onClose={() => onClearSaveError?.()}
-          onConfirm={() => onClearSaveError?.()}
+          onClose={handleClearSaveError}
+          onConfirm={handleClearSaveError}
           title={t`There was an error saving`}
           message={saveError}
           confirmButtonText={t`OK`}

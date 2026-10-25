@@ -11,7 +11,7 @@ import {
   getTenantCollectionEntity,
   getTenantCollectionsPermissionEditor,
   tenantCollectionsQuery,
-} from "./selectors";
+} from "./utils";
 
 const ALL_USERS_GROUP = createMockGroup({
   id: 1,
@@ -48,7 +48,7 @@ const PARENT_COLLECTION = createMockCollection({
   children: [CHILD_COLLECTION],
 });
 
-describe("TenantCollectionPermissionsPage selectors", () => {
+describe("TenantCollectionPermissionsPage utils", () => {
   beforeEach(() => {
     mockSettings({
       "token-features": createMockTokenFeatures({ tenants: true }),

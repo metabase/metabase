@@ -1,6 +1,6 @@
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
-import { getPermissionsDatabase, getPermissionsDatabases } from "./databases";
+import { getPermissionsDatabase, getPermissionsDatabases } from "./utils";
 
 const DATABASE_ID = 2;
 

@@ -10,18 +10,16 @@ import type { DatabaseId } from "metabase-types/api";
 
 import { DATABASE_TABLES_QUERY } from "../../constants/databases";
 import { useDataPermissions } from "../../contexts/DataPermissionsContext";
-import {
-  getPermissionsDatabase,
-  getPermissionsDatabases,
-} from "../../utils/data-permissions/databases";
+
+import { getPermissionsDatabase, getPermissionsDatabases } from "./utils";
 
 export function usePermissionsDatabase(databaseId: DatabaseId | undefined) {
   const { databasesWithTables, addLoadedDatabase } = useDataPermissions();
   const { data: listedDatabases, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
   const {
-    data: databaseWithTables,
-    isLoading,
+    currentData: databaseWithTables,
+    isFetching,
     error,
   } = useGetDatabaseMetadataQuery(
     databaseId != null
@@ -58,7 +56,7 @@ export function usePermissionsDatabase(databaseId: DatabaseId | undefined) {
   return {
     databases,
     database,
-    isLoading: isLoading || isLoadingDatabases,
-    error: error != null ? findErrorMessage(error) : undefined,
+    isLoading: (isFetching && databaseWithTables == null) || isLoadingDatabases,
+    error: findErrorMessage(error),
   };
 }

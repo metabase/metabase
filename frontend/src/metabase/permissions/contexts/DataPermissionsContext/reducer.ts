@@ -24,13 +24,13 @@ export type DataPermissionsState = {
   saveError: string | null;
 };
 
-export type DataPermissionsAction =
+type DataPermissionsAction =
   | { type: "graphLoaded"; graph: PermissionsGraph }
   | { type: "databaseLoaded"; database: PermissionsDatabase }
   | { type: "permissionUpdated"; update: AppliedDataPermissionUpdate }
   | {
       type: "draftsUpdated";
-      updateDrafts: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts;
+      update: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts;
     }
   | { type: "saved"; graph: PermissionsGraph; modifiedGroupIds: string[] }
   | { type: "saveFailed"; error: string }
@@ -66,6 +66,9 @@ export function dataPermissionsReducer(
 ): DataPermissionsState {
   switch (action.type) {
     case "graphLoaded":
+      if (state.revision != null && action.graph.revision < state.revision) {
+        return state;
+      }
       return {
         ...state,
         permissions: mergeLoadedPermissions(
@@ -79,7 +82,7 @@ export function dataPermissionsReducer(
         revision: action.graph.revision,
         hasRevisionChanged:
           state.hasRevisionChanged ||
-          (state.revision != null && state.revision !== action.graph.revision),
+          (state.revision != null && action.graph.revision > state.revision),
       };
     case "databaseLoaded":
       return {
@@ -103,13 +106,13 @@ export function dataPermissionsReducer(
           ...state.databasesWithTables,
           [action.update.database.id]: action.update.database,
         },
-        drafts: PLUGIN_DATA_PERMISSIONS.updateDrafts.reduce(
-          (drafts, updateDrafts) => updateDrafts(drafts, action.update),
+        drafts: PLUGIN_DATA_PERMISSIONS.pruneDrafts.reduce(
+          (drafts, pruneDrafts) => pruneDrafts(drafts, action.update),
           state.drafts,
         ),
       };
     case "draftsUpdated":
-      return { ...state, drafts: action.updateDrafts(state.drafts) };
+      return { ...state, drafts: action.update(state.drafts) };
     case "saved":
       return {
         ...state,
@@ -142,7 +145,7 @@ export function dataPermissionsReducer(
   }
 }
 
-export const hasDraftChanges = (drafts: DataPermissionsDrafts) =>
+const hasDraftChanges = (drafts: DataPermissionsDrafts) =>
   !_.isEmpty(drafts.sandboxes) || drafts.impersonations.length > 0;
 
 export const getDraftGroupIds = (drafts: DataPermissionsDrafts) =>
@@ -151,6 +154,11 @@ export const getDraftGroupIds = (drafts: DataPermissionsDrafts) =>
     ...drafts.impersonations.map(({ group_id }) => String(group_id)),
   ]);
 
-export const getIsDataPermissionsDirty = (state: DataPermissionsState) =>
-  !_.isEqual(state.permissions, state.originalPermissions) ||
-  hasDraftChanges(state.drafts);
+export const getIsDataPermissionsDirty = ({
+  permissions,
+  originalPermissions,
+  drafts,
+}: Pick<
+  DataPermissionsState,
+  "permissions" | "originalPermissions" | "drafts"
+>) => !_.isEqual(permissions, originalPermissions) || hasDraftChanges(drafts);

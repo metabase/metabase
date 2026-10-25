@@ -1,10 +1,12 @@
-import { assocIn } from "icepick";
+import { assocIn, dissocIn } from "icepick";
 
 import type {
   Collection,
   CollectionPermissions,
   GroupId,
 } from "metabase-types/api";
+
+import { getDescendantCollections } from "../../utils/collection-permissions/editor";
 
 export type UpdateCollectionPermissionParams = {
   groupId: GroupId;
@@ -13,12 +15,17 @@ export type UpdateCollectionPermissionParams = {
   shouldPropagateToChildren: boolean | null;
 };
 
-function getDescendantCollections(collection: Collection): Collection[] {
-  const subCollections = (collection.children ?? []).filter(
-    (child) => !child.is_personal,
-  );
-  return subCollections.concat(...subCollections.map(getDescendantCollections));
-}
+const restoreCollectionPermission = (
+  permissions: CollectionPermissions,
+  originalPermissions: CollectionPermissions,
+  groupId: GroupId,
+  collection: Collection,
+) => {
+  const originalValue = originalPermissions[groupId]?.[collection.id];
+  return originalValue != null
+    ? assocIn(permissions, [groupId, collection.id], originalValue)
+    : dissocIn(permissions, [groupId, collection.id]);
+};
 
 export function updateCollectionPermissions(
   permissions: CollectionPermissions,
@@ -41,13 +48,14 @@ export function updateCollectionPermissions(
 
   return getDescendantCollections(collection).reduce(
     (result, descendant) =>
-      assocIn(
-        result,
-        [groupId, descendant.id],
-        shouldPropagateToChildren
-          ? value
-          : originalPermissions[groupId]?.[descendant.id],
-      ),
+      shouldPropagateToChildren
+        ? assocIn(result, [groupId, descendant.id], value)
+        : restoreCollectionPermission(
+            result,
+            originalPermissions,
+            groupId,
+            descendant,
+          ),
     updatedPermissions,
   );
 }

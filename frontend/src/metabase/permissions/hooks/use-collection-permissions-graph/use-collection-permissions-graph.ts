@@ -12,11 +12,12 @@ import type {
   CollectionPermissionsGraph,
 } from "metabase-types/api";
 
+import { getModifiedCollectionPermissionsGraphParts } from "../../utils/graph/partial-updates";
+
 import {
   type UpdateCollectionPermissionParams,
   updateCollectionPermissions,
-} from "../../utils/collection-permissions/update";
-import { getModifiedCollectionPermissionsGraphParts } from "../../utils/graph/partial-updates";
+} from "./utils";
 
 type CollectionPermissionsDraft = {
   savedGraph: CollectionPermissionsGraph;
@@ -46,7 +47,7 @@ export function useCollectionPermissionsGraph(namespace?: CollectionNamespace) {
   const isDirty =
     draft != null && !_.isEqual(draft.permissions, draft.savedGraph.groups);
 
-  const updatePermission = useCallback(
+  const updateCollectionPermission = useCallback(
     (params: UpdateCollectionPermissionParams) => {
       setDraft(
         (draft) =>
@@ -101,7 +102,7 @@ export function useCollectionPermissionsGraph(namespace?: CollectionNamespace) {
     permissions: draft?.permissions,
     isDirty,
     saveError,
-    updatePermission,
+    updateCollectionPermission,
     savePermissions,
     resetPermissions,
     clearSaveError,

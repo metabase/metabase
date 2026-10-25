@@ -20,6 +20,7 @@ import {
 import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 import type {
+  DataPermissionView,
   GroupId,
   PermissionEntityId,
   TableEntityId,
@@ -62,7 +63,7 @@ const getGroupViewSandboxModalUrl = (
 const getEditSegementedAccessUrl = (
   entityId: PermissionEntityId | undefined,
   groupId: GroupId,
-  view: "database" | "group",
+  view: DataPermissionView,
 ) => {
   if (entityId == null || !isTableEntityId(entityId)) {
     throw new Error("Sandboxing can only be configured for tables");
@@ -76,7 +77,7 @@ const getEditSegementedAccessUrl = (
 const getEditSegmentedAccessPostAction = (
   entityId: PermissionEntityId,
   groupId: GroupId,
-  view: "database" | "group",
+  view: DataPermissionView,
 ) => navigate(getEditSegementedAccessUrl(entityId, groupId, view));
 
 /**
@@ -109,6 +110,6 @@ export function initializePlugin() {
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[OPTION_SEGMENTED.value] =
       getEditSegmentedAccessPostAction;
 
-    PLUGIN_DATA_PERMISSIONS.updateDrafts.push(removeUnsandboxedDrafts);
+    PLUGIN_DATA_PERMISSIONS.pruneDrafts.push(removeUnsandboxedDrafts);
   }
 }

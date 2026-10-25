@@ -54,10 +54,11 @@ export const parseCollectionIdParam = (
     : parseInt(collectionId);
 };
 
-const getRootCollectionTreeItem = () => {
+export const getRootCollectionTreeItem = (name = ROOT_COLLECTION.name) => {
   const rootCollectionIcon = getCollectionIcon(ROOT_COLLECTION);
   return {
     ...ROOT_COLLECTION,
+    name,
     icon: rootCollectionIcon.name,
     iconColor: rootCollectionIcon.color,
   };
@@ -114,21 +115,27 @@ export const getCollectionsSidebar = (
   filterPlaceholder: t`Search for a collection`,
 });
 
+export const getRootPermissionsCollection = (
+  children: Collection[],
+  name = ROOT_COLLECTION.name,
+): Collection => ({
+  ...ROOT_COLLECTION,
+  name,
+  description: null,
+  can_write: true,
+  can_restore: false,
+  can_delete: false,
+  namespace: null,
+  children,
+});
+
 export const getPermissionsCollection = (
   collections: Collection[],
   collectionId: CollectionId,
 ): Collection | undefined => {
   const permissionsCollections = getCollections(collections);
   if (collectionId === ROOT_COLLECTION.id) {
-    return {
-      ...ROOT_COLLECTION,
-      description: null,
-      can_write: true,
-      can_restore: false,
-      can_delete: false,
-      namespace: null,
-      children: permissionsCollections,
-    };
+    return getRootPermissionsCollection(permissionsCollections);
   }
 
   return findCollectionById(permissionsCollections, collectionId) ?? undefined;
@@ -139,7 +146,7 @@ const FOLDER_NAMESPACES: CollectionNamespace[] = ["snippets", "data-actions"];
 export const isFolderNamespace = (namespace?: CollectionNamespace) =>
   FOLDER_NAMESPACES.includes(namespace ?? null);
 
-const getCollectionPermission = (
+export const getCollectionPermission = (
   permissions: CollectionPermissions,
   groupId: number,
   collectionId: CollectionId,
@@ -335,13 +342,11 @@ export const getCollectionsPermissionEditor = ({
   };
 };
 
-const permissionsCollectionFilter = (collection: Collection) =>
-  !collection.is_personal;
-
-function getDescendentCollections(collection: Collection): Collection[] {
-  const subCollections =
-    collection.children?.filter(permissionsCollectionFilter) || [];
-  return subCollections.concat(...subCollections.map(getDescendentCollections));
+export function getDescendantCollections(collection: Collection): Collection[] {
+  const subCollections = (collection.children ?? []).filter(
+    (child) => !child.is_personal,
+  );
+  return subCollections.concat(...subCollections.map(getDescendantCollections));
 }
 
 function getPermissionsSet(
@@ -355,7 +360,7 @@ function getPermissionsSet(
   return new Set(perms);
 }
 
-function getCollectionWarning(
+export function getCollectionWarning(
   groupId: number,
   collection: Collection,
   permissions: CollectionPermissions,
@@ -368,7 +373,7 @@ function getCollectionWarning(
     groupId,
     collection.id,
   );
-  const descendentCollections = getDescendentCollections(collection);
+  const descendentCollections = getDescendantCollections(collection);
   const descendentPerms = getPermissionsSet(
     descendentCollections,
     permissions,

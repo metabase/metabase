@@ -7,7 +7,12 @@ import {
 import { useSetting } from "metabase/settings";
 import { Box, Tabs } from "metabase/ui";
 
-import type { PermissionsPageTab } from "../PermissionsPageLayout";
+export type PermissionsPageTab =
+  | "data"
+  | "collections"
+  | "application"
+  | "tenant-collections"
+  | "tenant-specific-collections";
 
 interface PermissionsTabsProps {
   tab: PermissionsPageTab;

@@ -1,13 +1,16 @@
 import { useMemo } from "react";
 
 import { useListPermissionsGroupsQuery } from "metabase/api";
+import { findErrorMessage } from "metabase/api/utils/errors";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import {
   DataPermissionsHelp,
   DataPermissionsProvider,
-  getDataPermissionsDiff,
+  diffDataPermissions,
+  parseDataRouteParams,
   useDataPermissions,
-  useGroupDataPermissionsGraph,
+  useLoadGroupDataPermissions,
   usePermissionsDatabase,
 } from "metabase/permissions";
 import { Outlet, useParams } from "metabase/router";
@@ -28,9 +31,11 @@ export function DataPermissionsPage() {
 
 function DataPermissionsPageContent() {
   const params = useParams<{ databaseId: string }>();
-  const { data, isLoading: isLoadingGroups } = useListPermissionsGroupsQuery(
-    {},
-  );
+  const {
+    data,
+    isLoading: isLoadingGroups,
+    error: groupsError,
+  } = useListPermissionsGroupsQuery({});
   const groups = data ?? EMPTY_GROUP_LIST;
   const {
     permissions,
@@ -44,40 +49,40 @@ function DataPermissionsPageContent() {
     clearSaveError,
   } = useDataPermissions();
 
-  const { isLoading: isLoadingAllUsers } = useGroupDataPermissionsGraph(
-    groups.find(isDefaultGroup)?.id,
-  );
-  const { isLoading: isLoadingAdministrators } = useGroupDataPermissionsGraph(
+  const allUsers = useLoadGroupDataPermissions(groups.find(isDefaultGroup)?.id);
+  const administrators = useLoadGroupDataPermissions(
     groups.find(isAdminGroup)?.id,
   );
   const { isLoading: isLoadingDatabase } = usePermissionsDatabase(
-    params.databaseId != null ? Number(params.databaseId) : undefined,
+    parseDataRouteParams(params).databaseId,
   );
 
   const diff = useMemo(
     () =>
       permissions && originalPermissions
-        ? getDataPermissionsDiff({
-            groups,
+        ? diffDataPermissions(
             permissions,
             originalPermissions,
-            databasesWithTables,
-          })
+            groups,
+            Object.values(databasesWithTables),
+          )
         : undefined,
     [groups, permissions, originalPermissions, databasesWithTables],
   );
 
+  const error =
+    findErrorMessage(groupsError) ?? allUsers.error ?? administrators.error;
   const isLoading =
     isLoadingGroups ||
-    isLoadingAllUsers ||
-    isLoadingAdministrators ||
+    allUsers.isLoading ||
+    administrators.isLoading ||
     isLoadingDatabase ||
     permissions == null;
 
   return (
     <PermissionsPageLayout
       tab="data"
-      onLoad={resetPermissions}
+      onCancel={resetPermissions}
       onSave={savePermissions}
       diff={diff}
       isDirty={isDirty}
@@ -87,13 +92,13 @@ function DataPermissionsPageContent() {
       helpContent={<DataPermissionsHelp />}
       canShowSplitPermsModal={!isLoading}
     >
-      {isLoading ? (
+      {error != null && <LoadingAndErrorWrapper error={error} />}
+      {error == null && isLoading && (
         <Center h="100%" w="100%">
           <Loader size="lg" />
         </Center>
-      ) : (
-        <Outlet />
       )}
+      {error == null && !isLoading && <Outlet />}
     </PermissionsPageLayout>
   );
 }

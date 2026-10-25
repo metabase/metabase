@@ -123,7 +123,7 @@ export function initializePlugin() {
       DataPermissionValue.IMPERSONATED
     ] = getImpersonatedPostAction;
 
-    PLUGIN_DATA_PERMISSIONS.updateDrafts.push(removeChangedImpersonationDrafts);
+    PLUGIN_DATA_PERMISSIONS.pruneDrafts.push(removeChangedImpersonationDrafts);
 
     PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS[
       DataPermissionValue.IMPERSONATED

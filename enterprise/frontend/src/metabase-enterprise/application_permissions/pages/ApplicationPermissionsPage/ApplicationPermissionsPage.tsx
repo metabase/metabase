@@ -74,7 +74,7 @@ const ApplicationPermissionsPage = ({
       isDirty={isDirty}
       helpContent={<ApplicationPermissionsHelp />}
       onSave={savePermissions}
-      onLoad={() => initialize()}
+      onCancel={() => initialize()}
     >
       {permissionEditor && (
         <PermissionsEditor

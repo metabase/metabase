@@ -2,10 +2,19 @@ import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import { getStore } from "__support__/entities-store";
-import { findRequests } from "__support__/server-mocks";
-import { createMockPermissionsGraph } from "metabase-types/api/mocks";
+import {
+  findRequests,
+  setupCollectionPermissionsGraphEndpoint,
+  setupPermissionsGraphEndpoints,
+  setupUpdatePermissionsGraphEndpoint,
+} from "__support__/server-mocks";
+import {
+  createMockGroup,
+  createMockPermissionsGraph,
+} from "metabase-types/api/mocks";
 
 import { Api } from "./api";
+import { collectionApi } from "./collection";
 import { permissionApi } from "./permission";
 
 let activeStore: ReturnType<typeof getStore> | undefined;
@@ -80,5 +89,70 @@ describe("permissionApi data-permissions graph", () => {
     const [request] = await findRequests("PUT");
     expect(request.url).toContain("/api/permissions/graph");
     expect(request.body).toEqual(body);
+  });
+});
+
+describe("permission graph cache", () => {
+  afterEach(() => {
+    activeStore?.dispatch(Api.util.resetApiState());
+    activeStore = undefined;
+  });
+
+  it("refetches subscribed data permission graphs after a save", async () => {
+    const group = createMockGroup({ id: 5 });
+    setupPermissionsGraphEndpoints([group], []);
+    setupUpdatePermissionsGraphEndpoint({ ...GRAPH, revision: 2 });
+    const { store } = setup();
+    store.dispatch(
+      permissionApi.endpoints.getGroupPermissionsGraph.initiate(group.id),
+    );
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/permissions/graph/group/5"),
+      ).toHaveLength(1),
+    );
+
+    await store.dispatch(
+      permissionApi.endpoints.updatePermissionsGraph.initiate({
+        groups: {},
+        revision: 1,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/permissions/graph/group/5"),
+      ).toHaveLength(2),
+    );
+  });
+
+  it("refetches subscribed collection permission graphs after a save", async () => {
+    setupCollectionPermissionsGraphEndpoint({ groups: {}, revision: 1 });
+    const { store } = setup();
+    store.dispatch(
+      collectionApi.endpoints.getCollectionPermissionsGraph.initiate(),
+    );
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/collection/graph", {
+          method: "GET",
+        }),
+      ).toHaveLength(1),
+    );
+
+    await store.dispatch(
+      collectionApi.endpoints.updateCollectionPermissionsGraph.initiate({
+        groups: {},
+        revision: 1,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(
+        fetchMock.callHistory.calls("path:/api/collection/graph", {
+          method: "GET",
+        }),
+      ).toHaveLength(2),
+    );
   });
 });

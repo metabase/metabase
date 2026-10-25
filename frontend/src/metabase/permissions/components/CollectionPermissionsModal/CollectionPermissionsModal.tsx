@@ -86,7 +86,7 @@ const CollectionPermissionsModalBody = ({
     namespace,
   );
   const { data: groups } = useListPermissionsGroupsQuery({});
-  const { permissions, isDirty, updatePermission, savePermissions } =
+  const { permissions, isDirty, updateCollectionPermission, savePermissions } =
     useCollectionPermissionsGraph(namespace);
 
   const permissionEditor = useMemo(
@@ -128,14 +128,14 @@ const CollectionPermissionsModalBody = ({
       if (!collection) {
         return;
       }
-      updatePermission({
+      updateCollectionPermission({
         groupId: assertNumericId(item.id),
         collection,
         value,
         shouldPropagateToChildren: toggleState,
       });
     },
-    [collection, updatePermission],
+    [collection, updateCollectionPermission],
   );
 
   return (

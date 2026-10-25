@@ -28,18 +28,21 @@ export const permissionApi = Api.injectEndpoints({
         method: "GET",
         url: "/api/permissions/graph",
       }),
+      providesTags: () => [listTag("permissions-graph")],
     }),
     getGroupPermissionsGraph: builder.query<PermissionsGraph, GroupId>({
       query: (groupId) => ({
         method: "GET",
         url: `/api/permissions/graph/group/${groupId}`,
       }),
+      providesTags: () => [listTag("permissions-graph")],
     }),
     getDatabasePermissionsGraph: builder.query<PermissionsGraph, DatabaseId>({
       query: (databaseId) => ({
         method: "GET",
         url: `/api/permissions/graph/db/${databaseId}`,
       }),
+      providesTags: () => [listTag("permissions-graph")],
     }),
     updatePermissionsGraph: builder.mutation<
       PermissionsGraph,
@@ -50,6 +53,8 @@ export const permissionApi = Api.injectEndpoints({
         url: "/api/permissions/graph",
         body,
       }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("permissions-graph")]),
     }),
     listPermissionsGroups: builder.query<
       GroupListQuery[],

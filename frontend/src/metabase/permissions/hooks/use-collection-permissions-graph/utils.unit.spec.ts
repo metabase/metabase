@@ -1,7 +1,7 @@
 import type { CollectionPermissions } from "metabase-types/api";
 import { createMockCollection } from "metabase-types/api/mocks";
 
-import { updateCollectionPermissions } from "./update";
+import { updateCollectionPermissions } from "./utils";
 
 const GRANDCHILD = createMockCollection({ id: 3, name: "Grandchild" });
 const PERSONAL_CHILD = createMockCollection({
@@ -60,6 +60,25 @@ describe("updateCollectionPermissions", () => {
         shouldPropagateToChildren: false,
       }),
     ).toEqual({ 10: { 1: "write", 2: "read", 3: "none", 4: "none" } });
+  });
+
+  it("drops a descendant without a saved permission when propagation is turned off", () => {
+    const original: CollectionPermissions = { 10: { 1: "none" } };
+    const propagated = updateCollectionPermissions(original, original, {
+      groupId: 10,
+      collection: PARENT,
+      value: "write",
+      shouldPropagateToChildren: true,
+    });
+
+    expect(
+      updateCollectionPermissions(propagated, original, {
+        groupId: 10,
+        collection: PARENT,
+        value: "none",
+        shouldPropagateToChildren: false,
+      }),
+    ).toStrictEqual(original);
   });
 
   it("does not modify its input", () => {
