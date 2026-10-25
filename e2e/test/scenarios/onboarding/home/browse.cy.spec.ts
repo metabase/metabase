@@ -134,13 +134,6 @@ describe("scenarios > browse", () => {
     cy.findByRole("heading", { name: "Products" }).click();
     cy.findByRole("gridcell", { name: "Rustic Paper Wallet" });
   });
-
-  it("on an open-source instance, the Browse models page has no controls for setting filters", () => {
-    cy.visit("/");
-    H.navigationSidebar().findByLabelText("Browse models").click();
-    cy.findByRole("heading", { name: "Orders Model" }).should("be.visible");
-    verifiedFilterToggleButton().should("not.exist");
-  });
 });
 
 describe("scenarios > browse (EE)", () => {

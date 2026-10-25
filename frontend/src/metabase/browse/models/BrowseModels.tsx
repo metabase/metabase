@@ -41,13 +41,8 @@ import type { ModelFilterSettings, ModelResult } from "./types";
 import { useFetchModels } from "./use-fetch-models";
 import { getMaxRecentModelCount, isRecentModel } from "./utils";
 
-const {
-  contentVerificationEnabled,
-  ModelFilterControls,
-  getDefaultModelFilters,
-} = PLUGIN_CONTENT_VERIFICATION;
-
 export const BrowseModels = () => {
+  const { ModelFilterControls } = PLUGIN_CONTENT_VERIFICATION;
   const [modelFilters, setModelFilters] = useModelFilterSettings();
   const { isLoading, error, models, recentModels, hasVerifiedModels } =
     useFilteredModels(modelFilters);
@@ -174,11 +169,14 @@ export const BrowseModels = () => {
 };
 
 function useModelFilterSettings() {
-  const defaultModelFilters = useSelector(getDefaultModelFilters);
+  const defaultModelFilters = useSelector(
+    PLUGIN_CONTENT_VERIFICATION.getDefaultModelFilters,
+  );
   return useState(defaultModelFilters);
 }
 
 function useHasVerifiedModels() {
+  const { contentVerificationEnabled } = PLUGIN_CONTENT_VERIFICATION;
   const result = useFetchModels(
     contentVerificationEnabled
       ? {

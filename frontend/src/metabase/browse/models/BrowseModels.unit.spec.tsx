@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupPropertiesEndpoints,
   setupRecentViewsEndpoints,
@@ -9,14 +10,18 @@ import {
   setupSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockSetupState } from "__support__/state";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import { Route } from "metabase/router";
 import { settingsApi } from "metabase/settings";
+import type { TokenFeatures } from "metabase-types/api";
 import {
   createMockCollection,
   createMockSearchResult,
   createMockSettings,
+  createMockTokenFeatures,
   createMockUser,
   createMockUserPermissions,
 } from "metabase-types/api/mocks";
@@ -34,6 +39,9 @@ interface SetupOptions {
   recentModelCount?: number;
   hasDataPermissions?: boolean;
   searchError?: boolean;
+  verifiedModelIds?: number[];
+  hasEnterprisePlugins?: boolean;
+  tokenFeatures?: Partial<TokenFeatures>;
 }
 
 const setup = ({
@@ -41,9 +49,15 @@ const setup = ({
   recentModelCount = 5,
   hasDataPermissions = true,
   searchError = false,
+  verifiedModelIds = [],
+  hasEnterprisePlugins = false,
+  tokenFeatures = {},
 }: SetupOptions) => {
   const mockModelResults = mockModels.map((model) =>
-    createMockModelResult(model),
+    createMockModelResult({
+      ...model,
+      moderated_status: verifiedModelIds.includes(model.id) ? "verified" : null,
+    }),
   );
   const mockRecentModels = mockModels
     .slice(0, recentModelCount)
@@ -56,6 +70,12 @@ const setup = ({
   }
   setupSettingsEndpoints([]);
   setupRecentViewsEndpoints(mockRecentModels);
+  const settings = mockSettings({
+    "token-features": createMockTokenFeatures(tokenFeatures),
+  });
+  if (hasEnterprisePlugins) {
+    setupEnterpriseOnlyPlugin("content_verification");
+  }
   return renderWithProviders(
     <>
       <Route path="/" element={<BrowseModels />} />
@@ -75,6 +95,7 @@ const setup = ({
         setup: createMockSetupState({
           locale: { name: "English", code: "en" },
         }),
+        settings,
       },
       withRouter: true,
     },
@@ -318,6 +339,10 @@ const mockModels = [
 ];
 
 describe("BrowseModels", () => {
+  afterEach(() => {
+    reinitialize();
+  });
+
   describe("Empty state", () => {
     it("displays an explanation about how to use models when no models exist", async () => {
       setup({ modelCount: 0 });
@@ -589,6 +614,62 @@ describe("BrowseModels", () => {
       2,
     );
     expect(screen.queryByTestId("empty-state")).not.toBeInTheDocument();
+  });
+
+  it("shows the verified models filter when content verification is enabled", async () => {
+    setup({
+      modelCount: 2,
+      verifiedModelIds: [1],
+      hasEnterprisePlugins: true,
+      tokenFeatures: { content_verification: true },
+    });
+
+    const modelsTable = await screen.findByRole("table", {
+      name: /Table of models/,
+    });
+    expect(within(modelsTable).getByText("Model 1")).toBeInTheDocument();
+    expect(
+      await within(screen.getByTestId("browse-models-header")).findByRole(
+        "switch",
+        { name: /show.*verified.*models/i },
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("on an open-source instance, the Browse models page has no controls for setting filters", async () => {
+    setup({
+      modelCount: 2,
+      verifiedModelIds: [1],
+      tokenFeatures: { content_verification: true },
+    });
+
+    const modelsTable = await screen.findByRole("table", {
+      name: /Table of models/,
+    });
+    expect(within(modelsTable).getByText("Model 1")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("browse-models-header")).queryByRole("switch", {
+        name: /show.*verified.*models/i,
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("on an open-source instance, the Browse models page has no controls for setting filters (enterprise build without the token feature)", async () => {
+    setup({
+      modelCount: 2,
+      verifiedModelIds: [1],
+      hasEnterprisePlugins: true,
+    });
+
+    const modelsTable = await screen.findByRole("table", {
+      name: /Table of models/,
+    });
+    expect(within(modelsTable).getByText("Model 1")).toBeInTheDocument();
+    expect(
+      within(screen.getByTestId("browse-models-header")).queryByRole("switch", {
+        name: /show.*verified.*models/i,
+      }),
+    ).not.toBeInTheDocument();
   });
 
   describe("modifier-click on a table row", () => {

@@ -19,10 +19,13 @@ export function setupSearchEndpoints(
       const offset = Number(url.searchParams.get("offset"));
       const table_db_id = url.searchParams.get("table_db_id") || null;
       const queryText = url.searchParams.get("q")?.toLowerCase();
+      const verified = url.searchParams.get("verified") === "true";
 
       let matchedItems = items.filter(
-        ({ name }) =>
-          !queryText || name.toLowerCase().includes(queryText.toLowerCase()),
+        ({ name, moderated_status }) =>
+          (!queryText ||
+            name.toLowerCase().includes(queryText.toLowerCase())) &&
+          (!verified || moderated_status === "verified"),
       );
 
       const availableModels = [
