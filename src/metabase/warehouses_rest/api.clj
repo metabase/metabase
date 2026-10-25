@@ -918,14 +918,9 @@
    Throws 400 on violation."
   [existing-database overlay-details
    {:keys [marker-key article+noun hidden-fields-fn]}]
-  (let [[article noun] article+noun
-        marker-name    (name marker-key)
-        column-name    (connection-marker-key->details-column marker-key)
-        article-noun   (str article " " noun)]
-    (api/check-400 (not (:router_database_id existing-database))
-                   (tru "Cannot configure {0} connection on a destination database" article-noun))
-    (api/check-400 (not (warehouses-rest.db/destination-database-exists-for-router? (:id existing-database)))
-                   (tru "Cannot configure {0} connection on a router database" article-noun))
+  (let [[_article noun] article+noun
+        marker-name     (name marker-key)
+        column-name     (connection-marker-key->details-column marker-key)]
     (when-not (get overlay-details marker-key)
       (throw (ex-info (tru "{0} must be set in {1}" marker-name column-name)
                       {:status-code 400})))

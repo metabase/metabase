@@ -432,7 +432,7 @@
 (deftest run-mbql-transform-anonymous-user-routing-error-test
   (mt/when-ee-evailable
    (mt/with-premium-features #{:database-routing :transforms-basic :hosting}
-     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+     (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :database-routing)
        (mt/dataset transforms-dataset/transforms-test
          (mt/with-model-cleanup [:model/Notification]
            (mt/with-fake-inbox
@@ -450,37 +450,38 @@
                  (with-transform-cleanup! [target0 {:type "table"
                                                     :schema (:schema table)
                                                     :name "t0"}]
-                   (mt/with-temp [:model/Database _destination {:engine driver/*driver*
-                                                                :router_database_id (mt/id)
-                                                                :details {:destination_database true}}
-                                  :model/DatabaseRouter _ {:database_id (mt/id)
-                                                           :user_attribute "db_name"}
-                                  :model/TransformTag tag {:name "test-tag"}
-                                  :model/TransformJob job {:name "test-job"
-                                                           :schedule "0 0 * * * ? *"}
-                                  :model/TransformJobTransformTag _ {:job_id (:id job)
-                                                                     :tag_id (:id tag)
-                                                                     :position 0}
-                                  ;; independent transform
-                                  :model/Transform t0 {:name "transform0"
-                                                       :source {:type :query
-                                                                :query (lib/native-query mp sql)}
-                                                       :creator_id (mt/user->id :crowberto)
-                                                       :target target0}
-                                  :model/TransformTransformTag _tag0 {:transform_id (:id t0)
-                                                                      :tag_id (:id tag)
-                                                                      :position 0}]
-                     ;; NOTE: No `with-current-user` wrapper - this simulates running the transform
-                     ;; without a user context (e.g., from a cron job or background task).
-                     ;; previously this could produce the wrong error message from the QP routing middleware.
-                     (try
-                       (jobs/run-job! (:id job) {:run-method :cron})
-                       (catch Exception _))
-                     (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
-                     (is (mt/received-email-body? :crowberto #"transform0")))))))))))))
+                   (mt/with-temp-vals-in-db :model/Database (mt/id) {:uploads_enabled false}
+                     (mt/with-temp [:model/Database _destination {:engine driver/*driver*
+                                                                  :router_database_id (mt/id)
+                                                                  :details {:destination_database true}}
+                                    :model/DatabaseRouter _ {:database_id (mt/id)
+                                                             :user_attribute "db_name"}
+                                    :model/TransformTag tag {:name "test-tag"}
+                                    :model/TransformJob job {:name "test-job"
+                                                             :schedule "0 0 * * * ? *"}
+                                    :model/TransformJobTransformTag _ {:job_id (:id job)
+                                                                       :tag_id (:id tag)
+                                                                       :position 0}
+                                    ;; independent transform
+                                    :model/Transform t0 {:name "transform0"
+                                                         :source {:type :query
+                                                                  :query (lib/native-query mp sql)}
+                                                         :creator_id (mt/user->id :crowberto)
+                                                         :target target0}
+                                    :model/TransformTransformTag _tag0 {:transform_id (:id t0)
+                                                                        :tag_id (:id tag)
+                                                                        :position 0}]
+                       ;; NOTE: No `with-current-user` wrapper - this simulates running the transform
+                       ;; without a user context (e.g., from a cron job or background task).
+                       ;; previously this could produce the wrong error message from the QP routing middleware.
+                       (try
+                         (jobs/run-job! (:id job) {:run-method :cron})
+                         (catch Exception _))
+                       (is (mt/received-email-subject? :crowberto #"The job .* had failures"))
+                       (is (mt/received-email-body? :crowberto #"transform0"))))))))))))))
 
 (deftest get-plan-ignores-unrelated-routing-enabled-transforms-test
-  (when config/ee-available?
+  (when (and config/ee-available? (driver/database-supports? (:engine (mt/db)) :database-routing (mt/db)))
     (testing "get-plan must not scan unrelated transforms on routing-enabled databases"
       ;; Regression: a transform on a routing-enabled database is unrunnable (by design), but historically
       ;; `get-plan` would fetch *every* transform in the system and call `table-dependencies` on each to
@@ -489,22 +490,23 @@
       ;; transform — even when no job was asking to run it.
       (mt/with-premium-features #{:database-routing :transforms-basic}
         (let [mp (mt/metadata-provider)]
-          (mt/with-temp [:model/Database       _destination {:engine             :h2
-                                                             :router_database_id (mt/id)
-                                                             :details            {:destination_database true}}
-                         :model/DatabaseRouter _            {:database_id    (mt/id)
-                                                             :user_attribute "db_name"}
-                         ;; Zombie transform on a routing-enabled database, NOT tagged to any job.
-                         :model/Transform      _zombie      {:name       "zombie-transform"
-                                                             :source     {:type  :query
-                                                                          :query (lib/native-query mp "SELECT 1")}
-                                                             :creator_id (mt/user->id :crowberto)
-                                                             :target     {:type     "table"
-                                                                          :database (mt/id)
-                                                                          :schema   "PUBLIC"
-                                                                          :name     "zombie_out"}}]
-            (testing "get-plan with empty transform-ids must not throw on unrelated zombies"
-              (is (empty? (:order (#'jobs/get-plan #{})))))))))))
+          (mt/with-temp-vals-in-db :model/Database (mt/id) {:uploads_enabled false}
+            (mt/with-temp [:model/Database       _destination {:engine             :h2
+                                                               :router_database_id (mt/id)
+                                                               :details            {:destination_database true}}
+                           :model/DatabaseRouter _            {:database_id    (mt/id)
+                                                               :user_attribute "db_name"}
+                           ;; Zombie transform on a routing-enabled database, NOT tagged to any job.
+                           :model/Transform      _zombie      {:name       "zombie-transform"
+                                                               :source     {:type  :query
+                                                                            :query (lib/native-query mp "SELECT 1")}
+                                                               :creator_id (mt/user->id :crowberto)
+                                                               :target     {:type     "table"
+                                                                            :database (mt/id)
+                                                                            :schema   "PUBLIC"
+                                                                            :name     "zombie_out"}}]
+              (testing "get-plan with empty transform-ids must not throw on unrelated zombies"
+                (is (empty? (:order (#'jobs/get-plan #{}))))))))))))
 
 (deftest run-transforms-skips-fresh-pulled-in-deps-test
   (mt/with-premium-features #{:transforms-basic}

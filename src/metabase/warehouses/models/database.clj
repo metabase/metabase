@@ -487,9 +487,29 @@
           (when (driver.impl/registered? engine)
             (driver.u/validate-connection-parameters! engine details)))))))
 
+(defn- check-routing-restrictions
+  "Throws when `database`'s pending update enables something that writes, model persistence or an admin connection
+  on a router or destination database."
+  [{:keys [id router_database_id] :as database}]
+  (let [changes  (t2/changes database)
+        routing? (delay (or router_database_id (warehouses.db/destination-database-exists? id)))]
+    (when (and (get-in changes [:settings :persist-models-enabled]) @routing?)
+      (throw (ex-info (tru "Cannot enable model persistence on a router or destination database") {:status-code 400})))
+    (when (and (:write_data_details changes) @routing?)
+      (throw (ex-info (tru "Cannot configure a write connection on a router or destination database") {:status-code 400})))
+    (when (and (:admin_details changes) @routing?)
+      (throw (ex-info (tru "Cannot configure an admin connection on a router or destination database") {:status-code 400})))
+    (when (and (:uploads_enabled changes) @routing?)
+      (throw (ex-info (tru "Cannot enable uploads on a router or destination database") {:status-code 400})))
+    (when (and (get-in changes [:settings :database-enable-actions]) @routing?)
+      (throw (ex-info (tru "Cannot enable data actions on a router or destination database") {:status-code 400})))
+    (when (and (get-in changes [:settings :database-enable-table-editing]) @routing?)
+      (throw (ex-info (tru "Cannot enable table editing on a router or destination database") {:status-code 400})))))
+
 (t2/define-before-update :model/Database
   [database]
   (assert-router-database-id-not-mutated! database)
+  (check-routing-restrictions database)
   (let [changes  (t2/changes database)
         original (t2/original database)]
     ;; An engine change can make existing detail keys acquire new meaning, so validate every details map under the new

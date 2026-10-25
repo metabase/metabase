@@ -2,6 +2,7 @@
   "Application database queries for the database-routing module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions, hydration methods, and transactions."
   (:require
+   [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.warehouses.schema :as warehouses.schema]
@@ -71,16 +72,17 @@
   (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in database-ids]))
 
 (mu/defn insert-router!
-  "Insert a DatabaseRouter for the Database with `database-id` routing on `user-attribute`."
-  [database-id    :- ::lib.schema.id/database
-   user-attribute :- :string]
-  (t2/insert! :model/DatabaseRouter {:database_id database-id :user_attribute user-attribute}))
+  "Insert a DatabaseRouter for the Database with `database-id`."
+  [router :- [:map {:closed true}
+              [:database_id    ::lib.schema.id/database]
+              [:user_attribute :string]]]
+  (t2/insert! :model/DatabaseRouter router))
 
-(mu/defn update-router-user-attribute!
-  "Set the routing user attribute of the router of the Database with `database-id`."
-  [database-id    :- ::lib.schema.id/database
-   user-attribute :- :string]
-  (t2/update! :model/DatabaseRouter :database_id database-id {:user_attribute user-attribute}))
+(mu/defn update-router!
+  "Update the router of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database
+   changes     :- ::database-routing.schema/database-router.update]
+  (t2/update! :model/DatabaseRouter :database_id database-id changes))
 
 (mu/defn delete-router!
   "Delete the DatabaseRouter of the Database with `database-id`."

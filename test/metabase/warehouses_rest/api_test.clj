@@ -3380,10 +3380,12 @@
                        :model/Database {dest-id :id} {:engine             :h2
                                                       :details            {:host "localhost"}
                                                       :router_database_id router-id}]
-          (is (= "Cannot configure a write connection on a destination database"
-                 (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
-                                       {:write_data_details {:host                  "write-host"
-                                                             :write-data-connection true}}))))))
+          (is (= "Cannot configure a write connection on a router or destination database"
+                 (with-redefs [driver.settings/*allow-testing-h2-connections* true
+                               driver/can-connect?                          (constantly true)]
+                   (mt/user-http-request :crowberto :put 400 (format "database/%d" dest-id)
+                                         {:write_data_details {:host                  "write-host"
+                                                               :write-data-connection true}})))))))
     (testing "Cannot set write_data_details on a router database"
       (mt/with-premium-features #{:writable-connection}
         (mt/with-temp [:model/Database {router-id :id} {:engine  :h2
@@ -3391,10 +3393,12 @@
                        :model/Database {_dest-id :id} {:engine :h2
                                                        :details {:host "localhost"}
                                                        :router_database_id router-id}]
-          (is (= "Cannot configure a write connection on a router database"
-                 (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
-                                       {:write_data_details {:host "write-host"
-                                                             :write-data-connection true}}))))))))
+          (is (= "Cannot configure a write connection on a router or destination database"
+                 (with-redefs [driver.settings/*allow-testing-h2-connections* true
+                               driver/can-connect?                          (constantly true)]
+                   (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
+                                         {:write_data_details {:host "write-host"
+                                                               :write-data-connection true}})))))))))
 
 ;;; ----------------------------------------- admin_details tests -----------------------------------------
 

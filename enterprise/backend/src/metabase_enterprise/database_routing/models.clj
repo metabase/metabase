@@ -2,9 +2,12 @@
   (:require
    [metabase-enterprise.database-routing.common :refer [router-db-or-id->destination-db-id]]
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase.driver.util :as driver.u]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.settings.core :as setting]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.warehouse-schema.models.field :as field]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -13,6 +16,40 @@
 
 (doto :model/DatabaseRouter
   (derive :metabase/model))
+
+(defn- check-router
+  "Throws unless the Database of `router` can route."
+  [{:keys [database_id]}]
+  (let [db (database-routing.db/database database_id)]
+    (when-not (driver.u/supports? (:engine db) :database-routing db)
+      (throw (ex-info (tru "This database does not support DB routing") {:status-code 400})))
+    (when (:router_database_id db)
+      (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400})))
+    (when (:uploads_enabled db)
+      (throw (ex-info (tru "Cannot enable database routing for a database with uploads enabled") {:status-code 400})))
+    (when (:write_data_details db)
+      (throw (ex-info (tru "Cannot enable database routing for a database with a write connection configured") {:status-code 400})))
+    (when (:admin_details db)
+      (throw (ex-info (tru "Cannot enable database routing for a database with an admin connection configured") {:status-code 400})))
+    (when (database-routing.db/transform-exists-for-source-database? database_id)
+      (throw (ex-info (tru "Cannot enable database routing for a database with transforms") {:status-code 400})))
+    (setting/with-database db
+      (when (setting/get :database-enable-table-editing)
+        (throw (ex-info (tru "Cannot enable database routing for a database with table editing enabled") {:status-code 400})))
+      (when (setting/get :database-enable-actions)
+        (throw (ex-info (tru "Cannot enable database routing for a database with actions enabled") {:status-code 400})))
+      (when (setting/get :persist-models-enabled)
+        (throw (ex-info (tru "Cannot enable database routing for a database with model persistence enabled") {:status-code 400}))))))
+
+(t2/define-before-insert :model/DatabaseRouter
+  [router]
+  (u/prog1 router
+    (check-router <>)))
+
+(t2/define-before-update :model/DatabaseRouter
+  [router]
+  (u/prog1 router
+    (check-router <>)))
 
 (defenterprise hydrate-router-user-attribute
   "Enterprise implementation. Hydrates the router user attribute on the databases"
