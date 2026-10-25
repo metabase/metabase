@@ -16,13 +16,13 @@ import type {
 
 import { applyDataPermissionUpdate } from "../../utils/graph-updates";
 
-export type DataPermissionEdit = {
+type DataPermissionEdit = {
   database: PermissionsDatabase;
   original: DatabasePermissions | undefined;
   current: DatabasePermissions | undefined;
 };
 
-export type DataPermissionEdits = Record<
+type DataPermissionEdits = Record<
   string,
   Record<DatabaseId, DataPermissionEdit>
 >;

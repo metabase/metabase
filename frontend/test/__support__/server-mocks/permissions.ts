@@ -61,12 +61,16 @@ export const setupUpdatePermissionsGraphEndpointError = (message: string) => {
 export const setupCollectionPermissionsGraphEndpoint = (
   permissionsGraph: CollectionPermissionsGraph,
 ) => {
-  fetchMock.get("path:/api/collection/graph", permissionsGraph);
+  let graph = permissionsGraph;
+  fetchMock.get("path:/api/collection/graph", () => graph);
   fetchMock.put("path:/api/collection/graph", (call) => {
     // Unjustified type cast. FIXME
     const body = JSON.parse(call.options?.body as string);
-    body.revision += 1;
-    return body;
+    graph = {
+      revision: graph.revision + 1,
+      groups: { ...graph.groups, ...body.groups },
+    };
+    return { revision: graph.revision };
   });
 };
 

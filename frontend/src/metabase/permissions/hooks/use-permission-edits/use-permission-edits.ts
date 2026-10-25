@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import _ from "underscore";
 
 export function usePermissionEdits<Permissions, Edit>(
@@ -25,6 +25,12 @@ export function usePermissionEdits<Permissions, Edit>(
     () => !_.isEqual(permissions, savedPermissions),
     [permissions, savedPermissions],
   );
+
+  useEffect(() => {
+    if (!isDirty && edits.length > 0) {
+      setEdits([]);
+    }
+  }, [isDirty, edits.length]);
 
   const addEdit = useCallback(
     (edit: Edit) => setEdits((edits) => [...edits, edit]),

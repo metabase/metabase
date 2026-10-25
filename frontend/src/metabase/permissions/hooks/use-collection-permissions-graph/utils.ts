@@ -8,7 +8,7 @@ import type {
 
 import { getDescendantCollections } from "../../utils/collection-editor";
 
-export type UpdateCollectionPermissionParams = {
+type UpdateCollectionPermissionParams = {
   groupId: GroupId;
   collection: Collection;
   value: unknown;

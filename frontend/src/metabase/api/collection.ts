@@ -17,6 +17,7 @@ import type {
   MoveCollectionDashboardCandidatesRequest,
   MoveCollectionDashboardCandidatesResult,
   UpdateCollectionPermissionsGraphRequest,
+  UpdateCollectionPermissionsGraphResponse,
   UpdateCollectionRequest,
   getCollectionRequest,
 } from "metabase-types/api";
@@ -125,7 +126,7 @@ export const collectionApi = Api.injectEndpoints({
       providesTags: () => [listTag("collection-permissions-graph")],
     }),
     updateCollectionPermissionsGraph: builder.mutation<
-      CollectionPermissionsGraph,
+      UpdateCollectionPermissionsGraphResponse,
       UpdateCollectionPermissionsGraphRequest
     >({
       query: (body) => ({
@@ -133,6 +134,8 @@ export const collectionApi = Api.injectEndpoints({
         url: "/api/collection/graph?skip-graph=true",
         body,
       }),
+      invalidatesTags: (_, error) =>
+        invalidateTags(error, [listTag("collection-permissions-graph")]),
       async onQueryStarted(
         { namespace, groups },
         { dispatch, queryFulfilled },

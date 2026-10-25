@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { type ComponentProps, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -28,10 +28,9 @@ import type {
 import { PermissionsEditor } from "../PermissionsEditor";
 import { PermissionsEditorEmptyState } from "../PermissionsEditorEmptyState";
 import { PermissionsPageLayout } from "../PermissionsPageLayout";
-import type { PermissionsPageTab } from "../PermissionsPageLayout/PermissionsTabs";
 
 type CollectionPermissionsPageContentProps = {
-  tab: PermissionsPageTab;
+  tab: ComponentProps<typeof PermissionsPageLayout>["tab"];
   collectionsQuery: ListCollectionsTreeRequest;
   getSidebar: (
     collections: Collection[],

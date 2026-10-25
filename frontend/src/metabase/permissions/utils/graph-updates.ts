@@ -563,36 +563,6 @@ export function getModifiedGroupsPermissionsGraphParts(
   return dataPermissionsModifiedGroups;
 }
 
-export function mergeGroupsPermissionsUpdates(
-  originalDataPermissions: GroupsPermissions | null | undefined,
-  newDataPermissions: GroupsPermissions,
-  modifiedGroupIds: string[],
-) {
-  if (!originalDataPermissions) {
-    return newDataPermissions;
-  }
-
-  const modifiedGroupIdsSet = new Set(modifiedGroupIds);
-
-  const allGroupIds = _.uniq([
-    ...Object.keys(originalDataPermissions),
-    ...Object.keys(newDataPermissions),
-  ]);
-
-  const latestPermissionsEntries = allGroupIds.map((groupId) => {
-    // values can be omitted from the graph to save space or to indicate that the group has default permissions for all entities
-    // this means we need to determine the value if we need to use the value currently in memory or default to an empty object
-    // which is the FE definition of completely default permissions for all entities
-    const defaultValue = modifiedGroupIdsSet.has(groupId)
-      ? {}
-      : originalDataPermissions[groupId];
-    const permissions = newDataPermissions[groupId] ?? defaultValue;
-    return [groupId, permissions];
-  });
-
-  return Object.fromEntries(latestPermissionsEntries);
-}
-
 export function getModifiedCollectionPermissionsGraphParts(
   originalCollectionPermissions: CollectionPermissions,
   collectionPermissions: CollectionPermissions,

@@ -843,7 +843,7 @@ describe("scenarios - setup guide", () => {
       H.main().findByPlaceholderText("Pick a column").click();
       H.popover().findByText("User ID").click();
 
-      cy.intercept("PUT", "/api/permissions/graph").as(
+      cy.intercept("PUT", "/api/permissions/graph?skip-graph=true").as(
         "updatePermissionsGraph",
       );
       H.main().findByRole("button", { name: "Next" }).click();
@@ -880,7 +880,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("should create sandboxes for multiple tables via row-level security setup", () => {
-      cy.intercept("PUT", "/api/permissions/graph").as(
+      cy.intercept("PUT", "/api/permissions/graph?skip-graph=true").as(
         "updatePermissionsGraph",
       );
 
@@ -1042,7 +1042,7 @@ describe("scenarios - setup guide", () => {
     });
 
     it("should update existing sandboxes when changing column selection", () => {
-      cy.intercept("PUT", "/api/permissions/graph").as(
+      cy.intercept("PUT", "/api/permissions/graph?skip-graph=true").as(
         "updatePermissionsGraph",
       );
 
@@ -1212,7 +1212,7 @@ describe("scenarios - setup guide", () => {
       H.resetTestTable({ type: "postgres", table: "multi_schema" });
       H.resyncDatabase({ dbId: WRITABLE_DB_ID });
 
-      cy.intercept("PUT", "/api/permissions/graph").as(
+      cy.intercept("PUT", "/api/permissions/graph?skip-graph=true").as(
         "updatePermissionsGraph",
       );
 
@@ -1525,7 +1525,7 @@ describe("scenarios - setup guide", () => {
         },
       });
 
-      cy.intercept("PUT", "/api/permissions/graph").as(
+      cy.intercept("PUT", "/api/permissions/graph?skip-graph=true").as(
         "updatePermissionsGraph",
       );
       cy.intercept("GET", "/api/embedding-hub/checklist").as("getChecklist");

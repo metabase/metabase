@@ -1,10 +1,8 @@
-import type { GroupsPermissions } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
 import {
   getModifiedCollectionPermissionsGraphParts,
   getModifiedGroupsPermissionsGraphParts,
-  mergeGroupsPermissionsUpdates,
 } from "./graph-updates";
 
 describe("getModifiedGroupsPermissionsGraphParts", () => {
@@ -85,77 +83,6 @@ describe("getModifiedGroupsPermissionsGraphParts", () => {
         "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
       },
     });
-  });
-});
-
-describe("mergeGroupsPermissionsUpdates", () => {
-  // test is a product of bad typings... ideally our state should never be null
-  // but our reducers are typed such that it could be null
-  it("should take only new permissions if there's not previous state", async () => {
-    const update: GroupsPermissions = {
-      "1": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-    };
-    const modifiedGroupIds = Object.keys(update);
-
-    expect(
-      mergeGroupsPermissionsUpdates(undefined, update, modifiedGroupIds),
-    ).toBe(update);
-  });
-
-  it("should only apply updates to groups that have been modified", async () => {
-    const permissions: GroupsPermissions = {
-      "1": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-      "2": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-    };
-
-    const update: GroupsPermissions = {
-      "2": { "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.NO } },
-    };
-
-    const modifiedGroupIds = Object.keys(update);
-
-    const expectedResult = {
-      "1": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-      "2": { "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.NO } },
-    };
-
-    expect(
-      mergeGroupsPermissionsUpdates(permissions, update, modifiedGroupIds),
-    ).toEqual(expectedResult);
-  });
-
-  it("should return empty objects for modified groups that have empty values in the update object (this means they have default values for all permissions)", async () => {
-    const permissions: GroupsPermissions = {
-      "1": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-      "2": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-    };
-
-    const update: GroupsPermissions = {};
-
-    const modifiedGroupIds = ["2"];
-
-    const expectedResult = {
-      "1": {
-        "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
-      },
-      "2": {},
-    };
-
-    expect(
-      mergeGroupsPermissionsUpdates(permissions, update, modifiedGroupIds),
-    ).toEqual(expectedResult);
   });
 });
 

@@ -165,6 +165,10 @@ export type UpdateCollectionPermissionsGraphRequest = {
   groups: CollectionPermissions;
 };
 
+export type UpdateCollectionPermissionsGraphResponse = {
+  revision: number;
+};
+
 export type CollectionPermissionsGraph = {
   groups: CollectionPermissions;
   revision: number;
