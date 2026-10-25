@@ -152,9 +152,9 @@
     (mt/with-premium-features #{:data-apps}
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (t2/insert! :model/DataApp :name "old" :display_name "Old" :bundle_path "data_apps/old/index.js"
-                    :bundle (.getBytes "BUNDLE" "UTF-8") :bundle_hash "abc123" :version 1)
+                    :bundle (.getBytes "BUNDLE" "UTF-8") :version 1)
         (t2/insert! :model/DataApp :name "current" :display_name "Current" :bundle_path "data_apps/current/index.js"
-                    :bundle (.getBytes "BUNDLE" "UTF-8") :bundle_hash "def456" :version 2)
+                    :bundle (.getBytes "BUNDLE" "UTF-8") :version 2)
         (let [group-id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Data app test group"}))]
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
           (doseq [slug ["old" "current"]
@@ -198,7 +198,6 @@
                   :display_name  "Demo"
                   :bundle_path   "data_apps/demo/index.js"
                   :bundle        (.getBytes "BUNDLE" "UTF-8")
-                  :bundle_hash   "abc123"
                   :allowed_hosts ["https://api.example.com"])
       ;; publish the app so its bundle is served (crowberto, as a superuser, can read the collection)
       (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))

@@ -26,10 +26,14 @@
 
 (deftest bundle-hash-follows-the-bundle-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [id   (insert-app! :bundle_hash "stale")
+    (is (thrown? clojure.lang.ExceptionInfo (insert-app! :bundle_hash "stale"))
+        "the hash is computed from the bundle, never written")
+    (let [id   (insert-app!)
           hash #(t2/select-one-fn :bundle_hash :model/DataApp id)
           v1   (hash)]
-      (is (= 64 (count v1)) "the hash is computed from the bundle, not taken from the row")
+      (is (= 64 (count v1)))
+      (is (thrown? clojure.lang.ExceptionInfo (t2/update! :model/DataApp id {:bundle_hash "stale"})))
+      (is (= v1 (hash)) "nor written on an update")
       (t2/update! :model/DataApp id {:display_name "Renamed"})
       (is (= v1 (hash)) "a change that leaves the bundle alone keeps its hash")
       (t2/update! :model/DataApp id {:display_name "Renamed"})
