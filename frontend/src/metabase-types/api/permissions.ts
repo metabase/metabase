@@ -65,6 +65,10 @@ export type UpdatePermissionsGraphRequest = {
   impersonations?: Impersonation[];
 };
 
+export type UpdatePermissionsGraphResponse = {
+  revision: number;
+};
+
 export type GroupsPermissions = {
   [key: GroupId | string]: GroupPermissions;
 };

@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 
 import {
   skipToken,
@@ -9,12 +9,10 @@ import { findErrorMessage } from "metabase/api/utils/errors";
 import type { DatabaseId } from "metabase-types/api";
 
 import { DATABASE_TABLES_QUERY } from "../../constants/databases";
-import { useDataPermissions } from "../../contexts/DataPermissionsContext";
 
-import { getPermissionsDatabase, getPermissionsDatabases } from "./utils";
+import { getPermissionsDatabase } from "./utils";
 
 export function usePermissionsDatabase(databaseId: DatabaseId | undefined) {
-  const { databasesWithTables, addLoadedDatabase } = useDataPermissions();
   const { data: listedDatabases, isLoading: isLoadingDatabases } =
     useListDatabasesQuery();
   const {
@@ -28,34 +26,18 @@ export function usePermissionsDatabase(databaseId: DatabaseId | undefined) {
       : skipToken,
   );
 
-  useEffect(() => {
-    if (databaseWithTables != null) {
-      addLoadedDatabase(databaseWithTables);
-    }
-  }, [databaseWithTables, addLoadedDatabase]);
-
-  const databases = useMemo(
-    () => getPermissionsDatabases(listedDatabases?.data, databasesWithTables),
-    [listedDatabases, databasesWithTables],
-  );
-
   const database = useMemo(
     () =>
       getPermissionsDatabase(
         listedDatabases?.data,
-        databaseWithTables != null
-          ? {
-              ...databasesWithTables,
-              [databaseWithTables.id]: databaseWithTables,
-            }
-          : databasesWithTables,
+        databaseWithTables,
         databaseId,
       ),
-    [listedDatabases, databasesWithTables, databaseWithTables, databaseId],
+    [listedDatabases, databaseWithTables, databaseId],
   );
 
   return {
-    databases,
+    databases: listedDatabases?.data ?? [],
     database,
     isLoading: isLoading || isLoadingDatabases,
     isLoadingDatabase:

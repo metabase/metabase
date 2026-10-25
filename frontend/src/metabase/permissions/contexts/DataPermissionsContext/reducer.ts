@@ -1,4 +1,4 @@
-import { merge } from "icepick";
+import { merge, setIn } from "icepick";
 import _ from "underscore";
 
 import {
@@ -9,143 +9,119 @@ import {
 } from "metabase/plugins";
 import type {
   DatabaseId,
+  DatabasePermissions,
   GroupsPermissions,
   PermissionsGraph,
 } from "metabase-types/api";
 
-import {
-  applyDataPermissionUpdate,
-  mergeGroupsPermissionsUpdates,
-} from "../../utils/graph-updates";
+import { applyDataPermissionUpdate } from "../../utils/graph-updates";
+
+export type DataPermissionEdit = {
+  database: PermissionsDatabase;
+  original: DatabasePermissions | undefined;
+  current: DatabasePermissions | undefined;
+};
+
+export type DataPermissionEdits = Record<
+  string,
+  Record<DatabaseId, DataPermissionEdit>
+>;
 
 export type DataPermissionsState = {
-  permissions: GroupsPermissions | null;
-  originalPermissions: GroupsPermissions | null;
+  edits: DataPermissionEdits;
   revision: number | null;
-  hasRevisionChanged: boolean;
-  databasesWithTables: Record<DatabaseId, PermissionsDatabase>;
   drafts: DataPermissionsDrafts;
-  saveError: string | null;
 };
 
 type DataPermissionsAction =
-  | { type: "graphLoaded"; graph: PermissionsGraph }
-  | { type: "databaseLoaded"; database: PermissionsDatabase }
-  | { type: "permissionUpdated"; update: AppliedDataPermissionUpdate }
+  | {
+      type: "permissionUpdated";
+      update: AppliedDataPermissionUpdate;
+      loadedPermissions: GroupsPermissions;
+      revision: number;
+    }
   | {
       type: "draftsUpdated";
       updater: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts;
     }
-  | { type: "saved"; graph: PermissionsGraph; modifiedGroupIds: string[] }
-  | { type: "saveFailed"; error: string }
-  | { type: "saveErrorCleared" }
   | { type: "reset" };
 
-const EMPTY_DRAFTS: DataPermissionsDrafts = {
-  sandboxes: {},
-  impersonations: [],
-};
-
 export const INITIAL_DATA_PERMISSIONS_STATE: DataPermissionsState = {
-  permissions: null,
-  originalPermissions: null,
+  edits: {},
   revision: null,
-  hasRevisionChanged: false,
-  databasesWithTables: {},
-  drafts: EMPTY_DRAFTS,
-  saveError: null,
+  drafts: { sandboxes: {}, impersonations: [] },
 };
 
-const mergeLoadedPermissions = (
-  permissions: GroupsPermissions | null,
+const getEditedPermissions = (
+  edits: DataPermissionEdits,
+  key: "original" | "current",
+): GroupsPermissions =>
+  _.mapObject(edits, (databaseEdits) =>
+    Object.fromEntries(
+      Object.entries(databaseEdits).flatMap(([databaseId, edit]) => {
+        const permissions = edit[key];
+        return permissions != null ? [[databaseId, permissions]] : [];
+      }),
+    ),
+  );
+
+export const applyDataPermissionEdits = (
   loadedPermissions: GroupsPermissions,
-) =>
-  permissions != null
-    ? merge(loadedPermissions, permissions)
-    : loadedPermissions;
+  edits: DataPermissionEdits,
+): GroupsPermissions =>
+  merge(loadedPermissions, getEditedPermissions(edits, "current"));
+
+export const mergeLoadedGraphs = (graphs: (PermissionsGraph | undefined)[]) =>
+  graphs.reduce<GroupsPermissions>(
+    (permissions, graph) =>
+      graph != null ? merge(permissions, graph.groups) : permissions,
+    {},
+  );
+
+export const getEditedGraphs = (edits: DataPermissionEdits) => ({
+  permissions: getEditedPermissions(edits, "current"),
+  originalPermissions: getEditedPermissions(edits, "original"),
+  databases: _.uniq(
+    Object.values(edits).flatMap((databaseEdits) =>
+      Object.values(databaseEdits).map((edit) => edit.database),
+    ),
+    (database) => database.id,
+  ),
+});
 
 export function dataPermissionsReducer(
   state: DataPermissionsState,
   action: DataPermissionsAction,
 ): DataPermissionsState {
   switch (action.type) {
-    case "graphLoaded":
-      if (state.revision != null && action.graph.revision < state.revision) {
-        return state;
-      }
-      return {
-        ...state,
-        permissions: mergeLoadedPermissions(
-          state.permissions,
-          action.graph.groups,
-        ),
-        originalPermissions: mergeLoadedPermissions(
-          state.originalPermissions,
-          action.graph.groups,
-        ),
-        revision: action.graph.revision,
-        hasRevisionChanged:
-          state.hasRevisionChanged ||
-          (state.revision != null && action.graph.revision > state.revision),
+    case "permissionUpdated": {
+      const { update, loadedPermissions, revision } = action;
+      const { groupId, database } = update;
+      const permissions = applyDataPermissionEdits(
+        loadedPermissions,
+        state.edits,
+      );
+      const updatedPermissions = applyDataPermissionUpdate(permissions, update);
+      const edit: DataPermissionEdit = {
+        database,
+        original:
+          state.edits[groupId]?.[database.id]?.original ??
+          loadedPermissions[groupId]?.[database.id],
+        current: updatedPermissions[groupId]?.[database.id],
       };
-    case "databaseLoaded":
       return {
-        ...state,
-        databasesWithTables: {
-          ...state.databasesWithTables,
-          [action.database.id]: action.database,
-        },
-      };
-    case "permissionUpdated":
-      if (state.permissions == null) {
-        return state;
-      }
-      return {
-        ...state,
-        permissions: applyDataPermissionUpdate(
-          state.permissions,
-          action.update,
-        ),
-        databasesWithTables: {
-          ...state.databasesWithTables,
-          [action.update.database.id]: action.update.database,
-        },
+        edits: setIn(state.edits, [String(groupId), database.id], edit),
+        revision: state.revision ?? revision,
         drafts: PLUGIN_DATA_PERMISSIONS.pruneDrafts.reduce(
-          (drafts, pruneDrafts) => pruneDrafts(drafts, action.update),
+          (drafts, pruneDrafts) => pruneDrafts(drafts, update),
           state.drafts,
         ),
       };
+    }
     case "draftsUpdated":
       return { ...state, drafts: action.updater(state.drafts) };
-    case "saved":
-      return {
-        ...state,
-        permissions: mergeGroupsPermissionsUpdates(
-          state.permissions,
-          action.graph.groups,
-          action.modifiedGroupIds,
-        ),
-        originalPermissions: mergeGroupsPermissionsUpdates(
-          state.originalPermissions,
-          action.graph.groups,
-          action.modifiedGroupIds,
-        ),
-        revision: action.graph.revision,
-        hasRevisionChanged: false,
-        drafts: EMPTY_DRAFTS,
-        saveError: null,
-      };
-    case "saveFailed":
-      return { ...state, saveError: action.error };
-    case "saveErrorCleared":
-      return { ...state, saveError: null };
     case "reset":
-      return {
-        ...state,
-        permissions: state.originalPermissions,
-        drafts: EMPTY_DRAFTS,
-        saveError: null,
-      };
+      return INITIAL_DATA_PERMISSIONS_STATE;
   }
 }
 
@@ -159,10 +135,11 @@ export const getDraftGroupIds = (drafts: DataPermissionsDrafts) =>
   ]);
 
 export const getIsDataPermissionsDirty = ({
-  permissions,
-  originalPermissions,
+  edits,
   drafts,
-}: Pick<
-  DataPermissionsState,
-  "permissions" | "originalPermissions" | "drafts"
->) => !_.isEqual(permissions, originalPermissions) || hasDraftChanges(drafts);
+}: Pick<DataPermissionsState, "edits" | "drafts">) =>
+  Object.values(edits).some((databaseEdits) =>
+    Object.values(databaseEdits).some(
+      (edit) => !_.isEqual(edit.original, edit.current),
+    ),
+  ) || hasDraftChanges(drafts);

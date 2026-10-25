@@ -14,10 +14,6 @@ export {
   DataPermissionsProvider,
   useDataPermissions,
 } from "./contexts/DataPermissionsContext";
-export {
-  useLoadDatabaseDataPermissions,
-  useLoadGroupDataPermissions,
-} from "./hooks/use-load-data-permissions";
 export { usePermissionsDatabase } from "./hooks/use-permissions-database";
 export { useShouldShowTransformPermissions } from "./hooks/use-should-show-transform-permissions";
 export { useCollectionPermissionsGraph } from "./hooks/use-collection-permissions-graph";
@@ -64,7 +60,6 @@ export type {
   RawGroupRouteParams,
 } from "./types";
 export { isSchemaEntityId, isTableEntityId } from "./utils/entity-ids";
-export { diffDataPermissions } from "./utils/graph-diff";
 export {
   getEntityPermission,
   getFieldsPermission,

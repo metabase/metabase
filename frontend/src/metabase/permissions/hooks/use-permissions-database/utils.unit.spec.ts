@@ -1,6 +1,6 @@
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
-import { getPermissionsDatabase, getPermissionsDatabases } from "./utils";
+import { getPermissionsDatabase } from "./utils";
 
 const DATABASE_ID = 2;
 
@@ -19,18 +19,14 @@ const WITH_TABLES = createMockDatabase({
 
 describe("getPermissionsDatabase", () => {
   it("takes the routing attribute from the list and the tables from the metadata", () => {
-    const database = getPermissionsDatabase(
-      [LISTED],
-      { [DATABASE_ID]: WITH_TABLES },
-      DATABASE_ID,
-    );
+    const database = getPermissionsDatabase([LISTED], WITH_TABLES, DATABASE_ID);
 
     expect(database?.router_user_attribute).toBe("department");
     expect(database?.tables).toHaveLength(1);
   });
 
   it("keeps the routing attribute when the tables have not loaded", () => {
-    const database = getPermissionsDatabase([LISTED], {}, DATABASE_ID);
+    const database = getPermissionsDatabase([LISTED], undefined, DATABASE_ID);
 
     expect(database?.router_user_attribute).toBe("department");
     expect(database?.tables).toBeUndefined();
@@ -39,7 +35,7 @@ describe("getPermissionsDatabase", () => {
   it("keeps the tables when the list has not loaded", () => {
     const database = getPermissionsDatabase(
       undefined,
-      { [DATABASE_ID]: WITH_TABLES },
+      WITH_TABLES,
       DATABASE_ID,
     );
 
@@ -47,17 +43,8 @@ describe("getPermissionsDatabase", () => {
   });
 
   it("is undefined when neither request has landed", () => {
-    expect(getPermissionsDatabase(undefined, {}, DATABASE_ID)).toBeUndefined();
-  });
-});
-
-describe("getPermissionsDatabases", () => {
-  it("merges every listed database with its tables", () => {
-    const [database] = getPermissionsDatabases([LISTED], {
-      [DATABASE_ID]: WITH_TABLES,
-    });
-
-    expect(database.router_user_attribute).toBe("department");
-    expect(database.tables).toHaveLength(1);
+    expect(
+      getPermissionsDatabase(undefined, undefined, DATABASE_ID),
+    ).toBeUndefined();
   });
 });

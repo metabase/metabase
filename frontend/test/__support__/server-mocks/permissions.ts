@@ -7,7 +7,7 @@ import type {
   Group,
   GroupId,
   ListUserMembershipsResponse,
-  PermissionsGraph,
+  UpdatePermissionsGraphResponse,
 } from "metabase-types/api";
 import { createMockPermissionsGraph } from "metabase-types/api/mocks";
 
@@ -46,7 +46,7 @@ export const setupGroupPermissionsGraphEndpointError = (
 };
 
 export const setupUpdatePermissionsGraphEndpoint = (
-  response: PermissionsGraph,
+  response: UpdatePermissionsGraphResponse,
 ) => {
   fetchMock.put("path:/api/permissions/graph", response);
 };

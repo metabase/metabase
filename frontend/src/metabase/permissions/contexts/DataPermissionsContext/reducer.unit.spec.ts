@@ -13,9 +13,12 @@ import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 import {
   type DataPermissionsState,
   INITIAL_DATA_PERMISSIONS_STATE,
+  applyDataPermissionEdits,
   dataPermissionsReducer,
   getDraftGroupIds,
+  getEditedGraphs,
   getIsDataPermissionsDirty,
+  mergeLoadedGraphs,
 } from "./reducer";
 
 const DATABASE = createMockDatabase({
@@ -61,76 +64,69 @@ const NO_QUERIES_UPDATE: AppliedDataPermissionUpdate = {
   database: DATABASE,
 };
 
-const loadGraph = (
+const LOADED_PERMISSIONS = mergeLoadedGraphs([
+  { groups: ALL_USERS_PERMISSIONS, revision: 1 },
+  { groups: ADMIN_PERMISSIONS, revision: 1 },
+]);
+
+const editQueries = (
   state: DataPermissionsState,
-  groups: GroupsPermissions,
+  loadedPermissions = LOADED_PERMISSIONS,
   revision = 1,
 ) =>
   dataPermissionsReducer(state, {
-    type: "graphLoaded",
-    graph: { groups, revision },
+    type: "permissionUpdated",
+    update: NO_QUERIES_UPDATE,
+    loadedPermissions,
+    revision,
   });
 
-const getLoadedState = () =>
-  loadGraph(INITIAL_DATA_PERMISSIONS_STATE, ALL_USERS_PERMISSIONS);
-
-const getCreateQueries = (state: DataPermissionsState) =>
-  state.permissions?.[1]?.[1]?.[DataPermission.CREATE_QUERIES];
+const getCreateQueries = (permissions: GroupsPermissions) =>
+  permissions[1]?.[1]?.[DataPermission.CREATE_QUERIES];
 
 describe("dataPermissionsReducer", () => {
-  it("adds each loaded graph to the permissions and their originals", () => {
-    const state = loadGraph(getLoadedState(), ADMIN_PERMISSIONS);
-
-    expect(state.permissions).toEqual({
+  it("merges the loaded graphs", () => {
+    expect(LOADED_PERMISSIONS).toEqual({
       ...ALL_USERS_PERMISSIONS,
       ...ADMIN_PERMISSIONS,
     });
-    expect(state.originalPermissions).toEqual(state.permissions);
-    expect(getIsDataPermissionsDirty(state)).toBe(false);
+    expect(getIsDataPermissionsDirty(INITIAL_DATA_PERMISSIONS_STATE)).toBe(
+      false,
+    );
   });
 
-  it("keeps the edits when a graph for an edited group loads again", () => {
-    const editedState = dataPermissionsReducer(getLoadedState(), {
-      type: "permissionUpdated",
-      update: NO_QUERIES_UPDATE,
-    });
+  it("keeps an edit on top of a graph that loads again", () => {
+    const state = editQueries(INITIAL_DATA_PERMISSIONS_STATE);
 
-    const state = loadGraph(editedState, ALL_USERS_PERMISSIONS);
-
-    expect(getCreateQueries(state)).toBe(DataPermissionValue.NO);
+    expect(
+      getCreateQueries(
+        applyDataPermissionEdits(LOADED_PERMISSIONS, state.edits),
+      ),
+    ).toBe(DataPermissionValue.NO);
+    expect(getCreateQueries(applyDataPermissionEdits({}, state.edits))).toBe(
+      DataPermissionValue.NO,
+    );
     expect(getIsDataPermissionsDirty(state)).toBe(true);
   });
 
-  it("flags a revision change only after the first load", () => {
-    const loadedState = getLoadedState();
-    expect(loadedState.hasRevisionChanged).toBe(false);
-    expect(
-      loadGraph(loadedState, ADMIN_PERMISSIONS, 1).hasRevisionChanged,
-    ).toBe(false);
-    expect(
-      loadGraph(loadedState, ADMIN_PERMISSIONS, 2).hasRevisionChanged,
-    ).toBe(true);
+  it("keeps the first original and revision across edits", () => {
+    const state = editQueries(
+      editQueries(INITIAL_DATA_PERMISSIONS_STATE),
+      {},
+      2,
+    );
+    const { originalPermissions, databases } = getEditedGraphs(state.edits);
+
+    expect(getCreateQueries(originalPermissions)).toBe(
+      DataPermissionValue.QUERY_BUILDER,
+    );
+    expect(databases).toEqual([DATABASE]);
+    expect(state.revision).toBe(1);
   });
 
-  it("ignores a graph older than the current revision", () => {
-    const savedState = dataPermissionsReducer(getLoadedState(), {
-      type: "saved",
-      graph: { groups: ALL_USERS_PERMISSIONS, revision: 2 },
-      modifiedGroupIds: ["1"],
-    });
-
-    const state = loadGraph(savedState, ADMIN_PERMISSIONS, 1);
-
-    expect(state).toBe(savedState);
-    expect(state.hasRevisionChanged).toBe(false);
-  });
-
-  it("restores the originals and drops the drafts on reset", () => {
+  it("drops the edits and the drafts on reset", () => {
     const editedState = dataPermissionsReducer(
-      dataPermissionsReducer(getLoadedState(), {
-        type: "permissionUpdated",
-        update: NO_QUERIES_UPDATE,
-      }),
+      editQueries(INITIAL_DATA_PERMISSIONS_STATE),
       {
         type: "draftsUpdated",
         updater: (drafts) => ({
@@ -142,54 +138,12 @@ describe("dataPermissionsReducer", () => {
 
     const state = dataPermissionsReducer(editedState, { type: "reset" });
 
-    expect(state.permissions).toEqual(ALL_USERS_PERMISSIONS);
-    expect(state.drafts.sandboxes).toEqual({});
+    expect(state).toBe(INITIAL_DATA_PERMISSIONS_STATE);
     expect(getIsDataPermissionsDirty(state)).toBe(false);
-  });
-
-  it("takes the saved groups and revision after a save", () => {
-    const editedState = dataPermissionsReducer(getLoadedState(), {
-      type: "permissionUpdated",
-      update: NO_QUERIES_UPDATE,
-    });
-    const savedGroups: GroupsPermissions = {
-      1: {
-        1: {
-          [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED,
-          [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
-        },
-      },
-    };
-
-    const state = dataPermissionsReducer(editedState, {
-      type: "saved",
-      graph: { groups: savedGroups, revision: 2 },
-      modifiedGroupIds: ["1"],
-    });
-
-    expect(state.permissions).toEqual(savedGroups);
-    expect(state.originalPermissions).toEqual(savedGroups);
-    expect(state.revision).toBe(2);
-    expect(getIsDataPermissionsDirty(state)).toBe(false);
-  });
-
-  it("keeps the edits and reports the error when a save fails", () => {
-    const editedState = dataPermissionsReducer(getLoadedState(), {
-      type: "permissionUpdated",
-      update: NO_QUERIES_UPDATE,
-    });
-
-    const state = dataPermissionsReducer(editedState, {
-      type: "saveFailed",
-      error: "Revision is stale",
-    });
-
-    expect(state.saveError).toBe("Revision is stale");
-    expect(getCreateQueries(state)).toBe(DataPermissionValue.NO);
   });
 
   it("counts drafts as unsaved changes", () => {
-    const state = dataPermissionsReducer(getLoadedState(), {
+    const state = dataPermissionsReducer(INITIAL_DATA_PERMISSIONS_STATE, {
       type: "draftsUpdated",
       updater: (drafts) => ({ ...drafts, sandboxes: { "3:10": POLICY } }),
     });

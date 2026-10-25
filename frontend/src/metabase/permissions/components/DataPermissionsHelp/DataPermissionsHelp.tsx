@@ -24,12 +24,10 @@ export const DataPermissionsHelp = () => {
   const isAdvancedPermissionsFeatureEnabled =
     useSetting("token-features").advanced_permissions;
   const { originalPermissions } = useDataPermissions();
-  const shouldShowLegacyNoSelfServiceInfo =
-    originalPermissions != null &&
-    hasPermissionValueInGraph(
-      originalPermissions,
-      DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-    );
+  const shouldShowLegacyNoSelfServiceInfo = hasPermissionValueInGraph(
+    originalPermissions,
+    DataPermissionValue.LEGACY_NO_SELF_SERVICE,
+  );
   const { url: docsUrl } = useDocsUrl("permissions/data");
 
   return (

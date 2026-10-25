@@ -3,50 +3,60 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
   useReducer,
-  useRef,
 } from "react";
 
 import {
+  skipToken,
+  useGetDatabasePermissionsGraphQuery,
+  useGetGroupPermissionsGraphQuery,
   useLazyGetDatabaseMetadataQuery,
   useListPermissionsGroupsQuery,
   useUpdatePermissionsGraphMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
+import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import type {
   DataPermissionUpdate,
+  DataPermissionView,
   DataPermissionsDrafts,
-  PermissionsDatabase,
 } from "metabase/plugins";
 import type {
   DatabaseId,
+  GroupId,
   GroupsPermissions,
-  PermissionsGraph,
 } from "metabase-types/api";
 
 import { DATABASE_TABLES_QUERY } from "../../constants/databases";
-import type { UpdateDataPermissionParams } from "../../types";
+import type {
+  PermissionsGraphDiff,
+  UpdateDataPermissionParams,
+} from "../../types";
+import { diffDataPermissions } from "../../utils/graph-diff";
 import { getModifiedGroupsPermissionsGraphParts } from "../../utils/graph-updates";
 
 import {
   INITIAL_DATA_PERMISSIONS_STATE,
+  applyDataPermissionEdits,
   dataPermissionsReducer,
   getDraftGroupIds,
+  getEditedGraphs,
   getIsDataPermissionsDirty,
+  mergeLoadedGraphs,
 } from "./reducer";
 
 type DataPermissionsContextValue = {
-  permissions: GroupsPermissions | null;
-  originalPermissions: GroupsPermissions | null;
-  databasesWithTables: Record<DatabaseId, PermissionsDatabase>;
+  permissions: GroupsPermissions;
+  originalPermissions: GroupsPermissions;
+  diff: PermissionsGraphDiff;
   drafts: DataPermissionsDrafts;
   isDirty: boolean;
+  isLoading: boolean;
+  isFetching: boolean;
+  error: string | undefined;
   hasRevisionChanged: boolean;
   saveError: string | null;
-  addLoadedGraph: (graph: PermissionsGraph) => void;
-  addLoadedDatabase: (database: PermissionsDatabase) => void;
   updateDataPermission: (params: UpdateDataPermissionParams) => Promise<void>;
   updateDrafts: (
     updater: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts,
@@ -69,35 +79,60 @@ export function useDataPermissions() {
   return context;
 }
 
+const REFETCH_OPTIONS = { refetchOnMountOrArgChange: true };
+
 type DataPermissionsProviderProps = {
+  view?: DataPermissionView;
+  groupId?: GroupId;
+  databaseId?: DatabaseId;
   children: ReactNode;
 };
 
 export function DataPermissionsProvider({
+  view,
+  groupId,
+  databaseId,
   children,
 }: DataPermissionsProviderProps) {
   const [state, dispatch] = useReducer(
     dataPermissionsReducer,
     INITIAL_DATA_PERMISSIONS_STATE,
   );
-  const stateRef = useRef(state);
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
 
   const { data: groups } = useListPermissionsGroupsQuery({});
-  const [fetchDatabase] = useLazyGetDatabaseMetadataQuery();
-  const [updateGraph] = useUpdatePermissionsGraphMutation();
-
-  const addLoadedGraph = useCallback(
-    (graph: PermissionsGraph) => dispatch({ type: "graphLoaded", graph }),
-    [],
+  const allUsersGraph = useGetGroupPermissionsGraphQuery(
+    groups?.find(isDefaultGroup)?.id ?? skipToken,
+    REFETCH_OPTIONS,
   );
+  const administratorsGraph = useGetGroupPermissionsGraphQuery(
+    groups?.find(isAdminGroup)?.id ?? skipToken,
+    REFETCH_OPTIONS,
+  );
+  const groupGraph = useGetGroupPermissionsGraphQuery(
+    view === "group" && groupId != null ? groupId : skipToken,
+    REFETCH_OPTIONS,
+  );
+  const databaseGraph = useGetDatabasePermissionsGraphQuery(
+    view === "database" && databaseId != null ? databaseId : skipToken,
+    REFETCH_OPTIONS,
+  );
+  const routeGraph = view === "database" ? databaseGraph : groupGraph;
+  const [fetchDatabase] = useLazyGetDatabaseMetadataQuery();
+  const [updateGraph, { error: saveErrorPayload, reset: resetSave }] =
+    useUpdatePermissionsGraphMutation();
 
-  const addLoadedDatabase = useCallback(
-    (database: PermissionsDatabase) =>
-      dispatch({ type: "databaseLoaded", database }),
-    [],
+  const allUsersData = allUsersGraph.currentData;
+  const administratorsData = administratorsGraph.currentData;
+  const routeData = routeGraph.currentData;
+  const loadedPermissions = useMemo(
+    () => mergeLoadedGraphs([allUsersData, administratorsData, routeData]),
+    [allUsersData, administratorsData, routeData],
+  );
+  const loadedRevision = Math.max(
+    0,
+    ...[allUsersData, administratorsData, routeData].map(
+      (graph) => graph?.revision ?? 0,
+    ),
   );
 
   const applyUpdate = useCallback(
@@ -110,10 +145,12 @@ export function DataPermissionsProvider({
         dispatch({
           type: "permissionUpdated",
           update: { ...update, database },
+          loadedPermissions,
+          revision: loadedRevision,
         });
       }
     },
-    [fetchDatabase],
+    [fetchDatabase, loadedPermissions, loadedRevision],
   );
 
   const updateDataPermission = useCallback(
@@ -147,85 +184,94 @@ export function DataPermissionsProvider({
     [],
   );
 
-  const savePermissions = useCallback(async () => {
-    const { permissions, originalPermissions, revision, drafts } =
-      stateRef.current;
-    if (
-      permissions == null ||
-      originalPermissions == null ||
-      revision == null
-    ) {
-      return false;
-    }
+  const { edits, drafts, revision } = state;
+  const editedGraphs = useMemo(() => getEditedGraphs(edits), [edits]);
 
-    const modifiedGroups = getModifiedGroupsPermissionsGraphParts(
-      permissions,
-      originalPermissions,
-      (groups ?? []).map((group) => String(group.id)),
-      getDraftGroupIds(drafts),
-    );
+  const savePermissions = useCallback(async () => {
     const sandboxes = Object.values(drafts.sandboxes);
     const { impersonations } = drafts;
-    const { data: savedGraph, error } = await updateGraph({
-      groups: modifiedGroups,
-      revision,
+    const { data: savedGraph } = await updateGraph({
+      groups: getModifiedGroupsPermissionsGraphParts(
+        editedGraphs.permissions,
+        editedGraphs.originalPermissions,
+        (groups ?? []).map((group) => String(group.id)),
+        getDraftGroupIds(drafts),
+      ),
+      revision: revision ?? loadedRevision,
       ...(sandboxes.length > 0 && { sandboxes }),
       ...(impersonations.length > 0 && { impersonations }),
     });
-
-    if (savedGraph != null) {
-      dispatch({
-        type: "saved",
-        graph: savedGraph,
-        modifiedGroupIds: Object.keys(modifiedGroups),
-      });
-      return true;
+    if (savedGraph == null) {
+      return false;
     }
-    dispatch({ type: "saveFailed", error: getErrorMessage(error) });
-    return false;
-  }, [groups, updateGraph]);
+    dispatch({ type: "reset" });
+    return true;
+  }, [drafts, editedGraphs, groups, revision, loadedRevision, updateGraph]);
 
-  const resetPermissions = useCallback(() => dispatch({ type: "reset" }), []);
+  const resetPermissions = useCallback(() => {
+    resetSave();
+    dispatch({ type: "reset" });
+  }, [resetSave]);
 
-  const clearSaveError = useCallback(
-    () => dispatch({ type: "saveErrorCleared" }),
-    [],
+  const permissions = useMemo(
+    () => applyDataPermissionEdits(loadedPermissions, edits),
+    [loadedPermissions, edits],
   );
-
-  const { permissions, originalPermissions, drafts } = state;
-  const isDirty = useMemo(
+  const diff = useMemo(
     () =>
-      getIsDataPermissionsDirty({ permissions, originalPermissions, drafts }),
-    [permissions, originalPermissions, drafts],
+      diffDataPermissions(
+        editedGraphs.permissions,
+        editedGraphs.originalPermissions,
+        groups ?? [],
+        editedGraphs.databases,
+      ),
+    [editedGraphs, groups],
   );
+  const isDirty = useMemo(
+    () => getIsDataPermissionsDirty({ edits, drafts }),
+    [edits, drafts],
+  );
+  const graphError =
+    allUsersGraph.error ?? administratorsGraph.error ?? routeGraph.error;
 
   const value = useMemo(
     () => ({
-      permissions: state.permissions,
-      originalPermissions: state.originalPermissions,
-      databasesWithTables: state.databasesWithTables,
-      drafts: state.drafts,
+      permissions,
+      originalPermissions: loadedPermissions,
+      diff,
+      drafts,
       isDirty,
-      hasRevisionChanged: state.hasRevisionChanged,
-      saveError: state.saveError,
-      addLoadedGraph,
-      addLoadedDatabase,
+      isLoading: allUsersGraph.isLoading || administratorsGraph.isLoading,
+      isFetching: routeGraph.isFetching,
+      error: graphError != null ? getErrorMessage(graphError) : undefined,
+      hasRevisionChanged:
+        isDirty && revision != null && loadedRevision > revision,
+      saveError:
+        saveErrorPayload != null ? getErrorMessage(saveErrorPayload) : null,
       updateDataPermission,
       updateDrafts,
       savePermissions,
       resetPermissions,
-      clearSaveError,
+      clearSaveError: resetSave,
     }),
     [
-      state,
+      permissions,
+      loadedPermissions,
+      diff,
+      drafts,
       isDirty,
-      addLoadedGraph,
-      addLoadedDatabase,
+      allUsersGraph.isLoading,
+      administratorsGraph.isLoading,
+      routeGraph.isFetching,
+      graphError,
+      revision,
+      loadedRevision,
+      saveErrorPayload,
       updateDataPermission,
       updateDrafts,
       savePermissions,
       resetPermissions,
-      clearSaveError,
+      resetSave,
     ],
   );
 

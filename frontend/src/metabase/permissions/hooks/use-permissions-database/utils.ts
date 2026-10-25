@@ -1,41 +1,20 @@
 import type { PermissionsDatabase } from "metabase/plugins";
 import type { Database, DatabaseId } from "metabase-types/api";
 
-const mergeDatabase = (
-  listed: Database | undefined,
-  withTables: Database | undefined,
-): PermissionsDatabase | undefined => {
-  if (listed == null) {
-    return withTables;
-  }
-  if (withTables == null) {
-    return listed;
-  }
-  return {
-    ...withTables,
-    router_user_attribute: listed.router_user_attribute,
-  };
-};
-
 export const getPermissionsDatabase = (
   listedDatabases: Database[] | undefined,
-  databasesWithTables: Record<DatabaseId, PermissionsDatabase>,
+  databaseWithTables: Database | undefined,
   databaseId: DatabaseId | undefined,
 ): PermissionsDatabase | undefined => {
   if (databaseId == null) {
     return undefined;
   }
-  return mergeDatabase(
-    listedDatabases?.find(({ id }) => id === databaseId),
-    databasesWithTables[databaseId],
-  );
+  const listed = listedDatabases?.find(({ id }) => id === databaseId);
+  if (listed == null || databaseWithTables == null) {
+    return databaseWithTables ?? listed;
+  }
+  return {
+    ...databaseWithTables,
+    router_user_attribute: listed.router_user_attribute,
+  };
 };
-
-export const getPermissionsDatabases = (
-  listedDatabases: Database[] | undefined,
-  databasesWithTables: Record<DatabaseId, PermissionsDatabase>,
-): PermissionsDatabase[] =>
-  (listedDatabases ?? []).map(
-    (database) =>
-      mergeDatabase(database, databasesWithTables[database.id]) ?? database,
-  );

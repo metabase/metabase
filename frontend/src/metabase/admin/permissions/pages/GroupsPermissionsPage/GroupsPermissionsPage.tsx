@@ -16,7 +16,6 @@ import {
   getGroupsSidebar,
   parseGroupRouteParams,
   useDataPermissions,
-  useLoadGroupDataPermissions,
   usePermissionsDatabase,
   useShouldShowTransformPermissions,
 } from "metabase/permissions";
@@ -47,15 +46,18 @@ export function GroupsPermissionsPage() {
     [params.groupId, params.databaseId, params.schemaName],
   );
   const { data: groups } = useListPermissionsGroupsQuery({});
-  const { permissions, originalPermissions, updateDataPermission } =
-    useDataPermissions();
+  const {
+    permissions,
+    originalPermissions,
+    isFetching: isLoading,
+    updateDataPermission,
+  } = useDataPermissions();
   const {
     databases,
     database,
     isLoadingDatabase: isEditorLoading,
     error: editorError,
   } = usePermissionsDatabase(groupRouteParams.databaseId);
-  const { isLoading } = useLoadGroupDataPermissions(groupRouteParams.groupId);
   const showTransformPermissions = useShouldShowTransformPermissions();
 
   const sidebar = useMemo(
@@ -68,7 +70,7 @@ export function GroupsPermissionsPage() {
 
   const permissionEditor = useMemo(
     () =>
-      permissions && originalPermissions && groups && !isEditorLoading
+      groups && !isEditorLoading
         ? getDatabasesPermissionEditor({
             params: groupRouteParams,
             databases,
