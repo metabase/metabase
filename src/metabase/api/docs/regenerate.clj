@@ -6,10 +6,10 @@
   [[metabase.api.util.handlers]], and nothing here does."
   (:require
    [clojure.java.io :as io]
-   [clojure.walk :as walk]
    [metabase.api.open-api :as open-api]
    [metabase.util.json :as json]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -20,13 +20,9 @@
 (defn- sort-keys
   "Sort maps and sets alphabetically to reduce diff noise on openapi.json"
   [data]
-  (walk/postwalk
-   (fn [x]
-     (cond
-       (map? x) (into (sorted-map) x)
-       (set? x) (into (sorted-set) x)
-       :else    x))
-   data))
+  (match/replace-all data
+    #'map? (into (sorted-map) &match)
+    #'set? (into (sorted-set) &match)))
 
 (defn write-openapi-spec-to-file!
   "Generate and write the OpenAPI specification to a local file.

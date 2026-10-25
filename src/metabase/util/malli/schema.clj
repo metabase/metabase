@@ -4,13 +4,13 @@
   For example the PositiveInt can be defined as (mr/def ::positive-int pos-int?)"
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :as i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]
    [metabase.util.password :as u.password]
    [toucan2.core :as t2]))
 
@@ -26,7 +26,7 @@
    (stringify-keys x false))
   ([x recursive?]
    (if recursive?
-     (walk/postwalk stringify-keys x)
+     (match/replace-all x #'map? (stringify-keys &match))
      (cond-> x
        (map? x) (update-keys #(if (keyword? %) (u/qualified-name %) %))))))
 

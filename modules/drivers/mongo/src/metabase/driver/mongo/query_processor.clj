@@ -47,7 +47,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
-   [metabase.util.performance :as perf :refer [empty? get-in mapv not-empty some update-keys]])
+   [metabase.util.performance :refer [empty? get-in mapv not-empty some update-keys]])
   (:import
    (org.bson BsonBinarySubType)
    (org.bson.types Binary ObjectId)))
@@ -1852,16 +1852,13 @@ function(bin) {
                                   ;; are used match against `aggr-expr` where identifiers have the prefix.
                                   (map #(str \$ %)))
                             distinct-keys)]
-    [(perf/postwalk (fn [x]
-                      (if (and (string? x)
-                               (distinct-vals x))
-                        ;; TODO (Cam 2026-08-11) sort of icky to be generating random UUIDs like this just to make
-                        ;; Malli schema validation happy, and as Riley pointed out we construct clauses like this in a
-                        ;; bunch of places in the SQL MBQL 5 QP code as well, we should write a Lib helper function
-                        ;; for making clauses this way.
-                        [::size {:lib/uuid (str (random-uuid))} x]
-                        x))
-                    aggr-expr)
+    [(match/replace-all aggr-expr
+       (x :guard (and (string? x) (distinct-vals x)))
+       ;; TODO (Cam 2026-08-11) sort of icky to be generating random UUIDs like this just to make
+       ;; Malli schema validation happy, and as Riley pointed out we construct clauses like this in a
+       ;; bunch of places in the SQL MBQL 5 QP code as well, we should write a Lib helper function
+       ;; for making clauses this way.
+       [::size {:lib/uuid (str (random-uuid))} x])
      mappings]))
 
 (mu/defn- expand-aggregations :- ::expanded-aggregation

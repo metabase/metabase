@@ -1,11 +1,11 @@
 (ns metabase.channel.template.handlebars
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.channel.template.handlebars-helper :as handlebars-helper]
    [metabase.config.core :as config]
    [metabase.util :as u]
-   [metabase.util.log :as log])
+   [metabase.util.log :as log]
+   [metabase.util.match :as match])
   (:import
    (com.github.jknack.handlebars
     Handlebars Template Context)
@@ -44,10 +44,8 @@
 
 (defn- wrap-context
   [context]
-  (walk/postwalk
-   #(if (keyword? %)
-      (u/qualified-name %)
-      %) context))
+  (match/replace-all context
+    #'keyword? (u/qualified-name &match)))
 
 (defn- build-context
   [context]

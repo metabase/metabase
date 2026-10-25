@@ -4,7 +4,6 @@
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [metabase.dashboards.constants :as dashboards.constants]
@@ -16,6 +15,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [metabase.util.performance :as perf]
    [metabase.util.yaml :as yaml]
    [metabase.xrays.automagic-dashboards.populate :as populate]
@@ -436,15 +436,11 @@
 
 (defn- extract-localized-strings
   [[path dashboard-template]]
-  (let [strings      (atom [])
-        template     (coerce-to-dashboard-template dashboard-template)
+  (let [template     (coerce-to-dashboard-template dashboard-template)
         i18n-string? (mr/validator LocalizedString)]
-    (walk/postwalk
-     (fn [form]
-       (when (i18n-string? form)
-         (swap! strings conj (str form))))
-     template)
-    (map vector (distinct @strings) (repeat path))))
+    (map vector
+         (distinct (match/match-all template #'i18n-string? (str &match)))
+         (repeat path))))
 
 (defn- make-pot
   [strings]
