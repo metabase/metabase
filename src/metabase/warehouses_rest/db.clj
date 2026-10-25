@@ -118,11 +118,6 @@
   [database-id :- ::lib.schema.id/database]
   (t2/exists? :model/Database :id database-id :router_database_id nil))
 
-(mu/defn destination-database-exists-for-router?
-  "Whether the Database with `database-id` has routing destinations."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :router_database_id database-id))
-
 (mu/defn autocomplete-tables
   "Up to `limit` id, Database id, schema, and name rows of the active, visible Tables of the Database with
   `database-id` whose lower-cased name matches the SQL LIKE `like-pattern` (a Honey SQL LIKE right-hand side, see

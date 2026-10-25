@@ -487,9 +487,44 @@
           (when (driver.impl/registered? engine)
             (driver.u/validate-connection-parameters! engine details)))))))
 
+(defn- routing-restriction-messages
+  [destination?]
+  (if destination?
+    {:persist (tru "Cannot enable model persistence on a destination database")
+     :write   (tru "Cannot configure a write connection on a destination database")
+     :uploads (tru "Cannot enable uploads on a destination database")
+     :actions (tru "Cannot enable data actions on a destination database")
+     :editing (tru "Cannot enable table editing on a destination database")}
+    {:persist (tru "Cannot enable model persistence on a router database")
+     :write   (tru "Cannot configure a write connection on a router database")
+     :uploads (tru "Cannot enable uploads on a router database")
+     :actions (tru "Cannot enable data actions on a router database")
+     :editing (tru "Cannot enable table editing on a router database")}))
+
+(defn- check-routing-restrictions!
+  "Throws when `database`'s pending update enables something database routing rules out on a router or destination
+  database: anything that writes, and model persistence."
+  [{:keys [id router_database_id] :as database}]
+  (let [changes  (t2/changes database)
+        original (t2/original database)
+        enabled  (into #{}
+                       (keep (fn [[k path]]
+                               (when (and (get-in changes path) (not (get-in original path)))
+                                 k)))
+                       {:persist [:settings :persist-models-enabled]
+                        :write   [:write_data_details]
+                        :uploads [:uploads_enabled]
+                        :actions [:settings :database-enable-actions]
+                        :editing [:settings :database-enable-table-editing]})]
+    (when (and (seq enabled)
+               (or router_database_id (warehouses.db/destination-database-exists? id)))
+      (throw (ex-info (get (routing-restriction-messages (some? router_database_id)) (first enabled))
+                      {:status-code 400})))))
+
 (t2/define-before-update :model/Database
   [database]
   (assert-router-database-id-not-mutated! database)
+  (check-routing-restrictions! database)
   (let [changes  (t2/changes database)
         original (t2/original database)]
     ;; An engine change can make existing detail keys acquire new meaning, so validate every details map under the new
