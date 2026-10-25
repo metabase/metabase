@@ -13,7 +13,7 @@ import { useDataPermissions } from "../../contexts/DataPermissionsContext";
 import {
   getPermissionsDatabase,
   getPermissionsDatabases,
-} from "../../selectors/data-permissions/databases";
+} from "../../utils/data-permissions/databases";
 
 export function usePermissionsDatabase(databaseId: DatabaseId | undefined) {
   const { databasesWithTables, addLoadedDatabase } = useDataPermissions();

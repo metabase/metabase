@@ -1,8 +1,8 @@
 export { ApplicationPermissionsHelp } from "./components/ApplicationPermissionsHelp";
 export { CollectionPermissionsHelp } from "./components/CollectionPermissionsHelp";
-export { CollectionPermissionsModal } from "./components/CollectionPermissionsModal/CollectionPermissionsModal";
+export { CollectionPermissionsModal } from "./components/CollectionPermissionsModal";
 export { DataPermissionsHelp } from "./components/DataPermissionsHelp";
-export { LegacyPermissionsModal } from "./components/LegacyPermissionsModal/LegacyPermissionsModal";
+export { LegacyPermissionsModal } from "./components/LegacyPermissionsModal";
 export { PermissionsConfirm } from "./components/PermissionsConfirm";
 export { PermissionsSidebar } from "./components/PermissionsSidebar";
 export { PermissionsTable } from "./components/PermissionsTable";
@@ -30,25 +30,25 @@ export {
   getCollectionsSidebar,
   getPermissionsCollection,
   parseCollectionIdParam,
-} from "./selectors/collection-permissions";
-export type { CollectionSidebarType } from "./selectors/collection-permissions";
+} from "./utils/collection-permissions/editor";
+export type { CollectionSidebarType } from "./utils/collection-permissions/editor";
 export {
   getDefaultGroupHasHigherAccessText,
   getPermissionWarning,
   getPermissionWarningModal,
-} from "./selectors/confirmations";
+} from "./utils/confirmations";
 export {
   getDataFocusSidebar,
   getDataPermissionsDiff,
   getDatabasesPermissionEditor,
   getGroupsDataPermissionEditor,
   getGroupsSidebar,
-} from "./selectors/data-permissions";
-export type { DataTreeNodeItem } from "./selectors/data-permissions";
+} from "./utils/data-permissions";
+export type { DataTreeNodeItem } from "./utils/data-permissions";
 export {
   getDefaultGroup,
   getOrderedGroups,
-} from "./selectors/data-permissions/groups";
+} from "./utils/data-permissions/groups";
 export {
   assertNumericId,
   parseDataRouteParams,

@@ -1,6 +1,6 @@
 import { useSetting } from "metabase/settings";
 
-import { getShouldShowTransformPermissions } from "../../selectors/data-permissions/permission-editor";
+import { getShouldShowTransformPermissions } from "../../utils/data-permissions/permission-editor";
 
 export function useShouldShowTransformPermissions() {
   const tokenFeatures = useSetting("token-features");

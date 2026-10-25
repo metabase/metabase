@@ -21,10 +21,8 @@ import {
 import { useNavigate, useParams } from "metabase/router";
 import type { CollectionId } from "metabase-types/api";
 
-import {
-  PermissionsEditor,
-  PermissionsEditorEmptyState,
-} from "../../components/PermissionsEditor";
+import { PermissionsEditor } from "../../components/PermissionsEditor";
+import { PermissionsEditorEmptyState } from "../../components/PermissionsEditorEmptyState";
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout";
 
 export function CollectionPermissionsPage() {

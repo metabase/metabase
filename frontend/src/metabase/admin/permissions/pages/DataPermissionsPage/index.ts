@@ -1,1 +1,1 @@
-export { DataPermissionsPage } from "./DataPermissionsPage";
+export * from "./DataPermissionsPage";

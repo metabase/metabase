@@ -20,14 +20,14 @@ import type {
 } from "metabase-types/api";
 
 import { useCollectionPermissionsGraph } from "../../hooks/use-collection-permissions-graph";
+import type { PermissionEditorEntity } from "../../types";
+import { assertNumericId } from "../../types";
 import {
   collectionsQuery,
   getCollectionsPermissionEditor,
   getPermissionsCollection,
   isFolderNamespace,
-} from "../../selectors/collection-permissions";
-import type { PermissionEditorEntity } from "../../types";
-import { assertNumericId } from "../../types";
+} from "../../utils/collection-permissions/editor";
 import { PermissionsTable } from "../PermissionsTable";
 
 import S from "./CollectionPermissionsModal.module.css";

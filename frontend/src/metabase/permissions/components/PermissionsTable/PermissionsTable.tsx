@@ -17,8 +17,8 @@ import type {
   PermissionSectionConfig,
 } from "../../types";
 import { isEmbeddingHubPermissions } from "../../utils/is-embedding-hub";
-import { PermissionsSelect } from "../PermissionsSelect";
 
+import { PermissionsSelect } from "./PermissionsSelect";
 import S from "./PermissionsTable.module.css";
 
 export type PermissionsTableProps = Pick<

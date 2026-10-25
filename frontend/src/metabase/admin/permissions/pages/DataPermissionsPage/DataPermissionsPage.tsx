@@ -14,7 +14,7 @@ import { Outlet, useParams } from "metabase/router";
 import { Center, Loader } from "metabase/ui";
 import type { GroupInfo } from "metabase-types/api";
 
-import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/PermissionsPageLayout";
+import { PermissionsPageLayout } from "../../components/PermissionsPageLayout";
 
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
 

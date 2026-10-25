@@ -1,9 +1,8 @@
 import { jt, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
+import { useDocsUrl } from "metabase/common/hooks";
 import { useModalOpen } from "metabase/common/hooks/use-modal-open";
-import { useSelector } from "metabase/redux";
-import { getDocsUrl } from "metabase/selectors/settings";
 import { Button, Group, Modal, Text } from "metabase/ui";
 
 export const LegacyPermissionsModal = ({
@@ -16,8 +15,8 @@ export const LegacyPermissionsModal = ({
   //Used to animate the modal
   const { open: showModal } = useModalOpen();
 
-  const docsUrl = useSelector((state) =>
-    getDocsUrl(state, { page: "permissions/no-self-service-deprecation" }),
+  const { url: docsUrl } = useDocsUrl(
+    "permissions/no-self-service-deprecation",
   );
   return (
     <Modal

@@ -23,19 +23,19 @@ const dataPermissions = () =>
 
 const databasesPermissions = () =>
   import(
-    /* webpackChunkName: "admin-permissions" */ "./pages/DatabasePermissionsPage/DatabasesPermissionsPage"
+    /* webpackChunkName: "admin-permissions" */ "./pages/DatabasesPermissionsPage"
   ).then(({ DatabasesPermissionsPage }) => ({
     Component: DatabasesPermissionsPage,
   }));
 
 const groupsPermissions = () =>
   import(
-    /* webpackChunkName: "admin-permissions" */ "./pages/GroupDataPermissionsPage/GroupsPermissionsPage"
+    /* webpackChunkName: "admin-permissions" */ "./pages/GroupsPermissionsPage"
   ).then(({ GroupsPermissionsPage }) => ({ Component: GroupsPermissionsPage }));
 
 const collectionPermissions = () =>
   import(
-    /* webpackChunkName: "admin-permissions" */ "./pages/CollectionPermissionsPage/CollectionPermissionsPage"
+    /* webpackChunkName: "admin-permissions" */ "./pages/CollectionPermissionsPage"
   ).then(({ CollectionPermissionsPage }) => ({
     Component: CollectionPermissionsPage,
   }));

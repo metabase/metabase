@@ -1,10 +1,8 @@
 import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import {
-  PermissionsEditor,
-  PermissionsEditorEmptyState,
-} from "metabase/admin/permissions/components/PermissionsEditor";
+import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
+import { PermissionsEditorEmptyState } from "metabase/admin/permissions/components/PermissionsEditorEmptyState";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
 import {
   useListCollectionsTreeQuery,

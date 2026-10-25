@@ -15,7 +15,7 @@ import type {
 import {
   type UpdateCollectionPermissionParams,
   updateCollectionPermissions,
-} from "../../utils/collection-permissions";
+} from "../../utils/collection-permissions/update";
 import { getModifiedCollectionPermissionsGraphParts } from "../../utils/graph/partial-updates";
 
 type CollectionPermissionsDraft = {
