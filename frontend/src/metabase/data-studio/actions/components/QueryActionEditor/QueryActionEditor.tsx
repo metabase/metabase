@@ -10,7 +10,7 @@ import type { Database, DatasetQuery } from "metabase-types/api";
 
 import { useActionQuery } from "./hooks";
 
-type ActionEditorProps = {
+type QueryActionEditorProps = {
   datasetQuery: DatasetQuery;
   uiState: QueryEditorUiState;
   databases: Database[];
@@ -20,7 +20,7 @@ type ActionEditorProps = {
   onChangeUiState: (uiState: QueryEditorUiState) => void;
 };
 
-export function ActionEditor({
+export function QueryActionEditor({
   datasetQuery,
   uiState,
   databases,
@@ -28,7 +28,7 @@ export function ActionEditor({
   topBarInnerContent,
   onChangeDatasetQuery,
   onChangeUiState,
-}: ActionEditorProps) {
+}: QueryActionEditorProps) {
   const query = useActionQuery(datasetQuery);
   const uiOptions = useMemo(
     (): QueryEditorUiOptions => ({

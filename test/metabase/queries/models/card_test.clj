@@ -879,10 +879,10 @@
           (is (= coll-2 (action-collection)))
           (t2/update! :model/Card model-id {:collection_id nil})
           (is (nil? (action-collection))))
-        (testing "attaching an action to another model moves it to that model's collection"
-          (t2/update! :model/Card model-id {:collection_id coll-1})
-          (t2/update! :model/Action action-id {:model_id other-id})
-          (is (= coll-2 (action-collection))))))))
+        (testing "an action can't be attached to another model"
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"An action's model can't be changed"
+                                (t2/update! :model/Action action-id {:model_id other-id})))
+          (is (nil? (action-collection))))))))
 
 (deftest model-changes-outside-update-card-publish-no-action-events-test
   (testing "GHY-4722: a serdes load writes models with t2 directly, and must not publish action events (they would dirty the remote sync ledger during a pull)"
