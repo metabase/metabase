@@ -23,16 +23,19 @@ driver:
           - merge:
               - host
               - visible-if:
+                  same-server-destination: false
                   use-conn-uri: false
                 required: true
           - merge:
               - port
               - placeholder: 27017
                 visible-if:
+                  same-server-destination: false
                   use-conn-uri: false
     - merge:
         - dbname
         - visible-if:
+            same-server-destination: false
             use-conn-uri: false
     - merge:
         - user

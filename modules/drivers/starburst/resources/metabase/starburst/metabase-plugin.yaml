@@ -11,10 +11,15 @@ driver:
     - group:
         container-style: ["grid", "3fr 1fr"]
         fields:
-          - host
+          - merge:
+              - host
+              - visible-if:
+                  same-server-destination: false
           - merge:
               - port
               - default: 8080
+              - visible-if:
+                  same-server-destination: false
     - merge:
         - dbname
         - name: catalog

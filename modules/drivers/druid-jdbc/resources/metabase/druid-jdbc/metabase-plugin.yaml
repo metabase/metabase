@@ -15,10 +15,14 @@ driver:
               - host
               - placeholder: http://localhost
                 required: true
+              - visible-if:
+                  same-server-destination: false
           - merge:
               - port
               - display-name: Router node port
                 placeholder: 8888
+              - visible-if:
+                  same-server-destination: false
     - group:
         container-style: ["component", "backdrop"]
         fields:

@@ -11,17 +11,26 @@ driver:
     - group:
         container-style: ["grid", "3fr 1fr"]
         fields:
-          - host
+          - merge:
+              - host
+              - visible-if:
+                  same-server-destination: false
           - merge:
               - port
               - helper-text: Leave empty to use Dynamic Ports, or input specific port. Standard port is 1433.
+              - visible-if:
+                  same-server-destination: false
     - merge:
         - dbname
         - name: db
           placeholder: BirdsOfTheWorld
+        - visible-if:
+            same-server-destination: false
     - name: instance
       display-name: Database instance name
       placeholder: N/A
+      visible-if:
+        same-server-destination: false
     - name: auth-mode
       display-name: Authentication method
       type: select

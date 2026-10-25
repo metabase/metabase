@@ -965,9 +965,21 @@
              (startup/def-startup-validation! ::driver.settings/warehouse-allowed-networks))))))
 
 (deftest fields-hidden-for-same-server-destination-test
-  (testing "the fields a same-server routing destination takes from its router"
-    (doseq [[driver expected] {:postgres #{"host" "port" "dbname"}
-                               :mysql    #{"host" "port" "dbname"}
-                               :h2       #{}}]
+  (testing "the fields a same-server routing destination takes from its router, for every driver loaded in this run"
+    (doseq [[driver expected] {:postgres    #{"host" "port" "dbname"}
+                               :mysql       #{"host" "port" "dbname"}
+                               :redshift    #{"host" "port" "db"}
+                               :sqlserver   #{"host" "port" "db" "instance"}
+                               :oracle      #{"host" "port" "sid" "service-name"}
+                               :snowflake   #{"use-hostname" "host" "account" "db"}
+                               :athena      #{"region" "hostname"}
+                               :databricks  #{"host" "http-path"}
+                               :presto-jdbc #{"host" "port"}
+                               :starburst   #{"host" "port"}
+                               :mongo       #{"host" "port" "dbname"}
+                               :druid-jdbc  #{"host" "port"}
+                               :bigquery-cloud-sdk #{}
+                               :h2          #{}}
+            :when (driver.impl/registered? driver)]
       (testing driver
         (is (= expected (driver.u/fields-hidden-for-same-server-destination driver)))))))
