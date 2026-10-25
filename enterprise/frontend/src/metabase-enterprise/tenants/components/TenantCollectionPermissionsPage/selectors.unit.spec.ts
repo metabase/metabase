@@ -1,162 +1,135 @@
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { mockSettings } from "__support__/settings";
-import {
-  createMockAdminState,
-  createMockPermissionsState,
-  createMockState,
-} from "__support__/state";
-import type { State } from "metabase/redux/store";
 import type { CollectionPermissions } from "metabase-types/api";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
+import {
+  createMockCollection,
+  createMockGroup,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
 
 import {
-  getCurrentTenantCollectionId,
-  getIsTenantDirty,
+  getTenantCollectionEntity,
+  getTenantCollectionsPermissionEditor,
   tenantCollectionsQuery,
 } from "./selectors";
 
-// Note: The more complex selectors (getTenantCollectionsSidebar,
-// getTenantCollectionsPermissionEditor, getTenantCollectionEntity)
-// depend on entity framework state which requires full store setup.
-// These are better tested via integration tests.
+const ALL_USERS_GROUP = createMockGroup({
+  id: 1,
+  name: "All Users",
+  magic_group_type: "all-internal-users",
+});
+const ADMIN_GROUP = createMockGroup({
+  id: 2,
+  name: "Administrators",
+  magic_group_type: "admin",
+});
+const EXTERNAL_USERS_GROUP = createMockGroup({
+  id: 3,
+  name: "All tenant users",
+  magic_group_type: "all-external-users",
+});
+const TENANT_GROUP = createMockGroup({
+  id: 4,
+  name: "Tenant group",
+  magic_group_type: null,
+  is_tenant_group: true,
+});
+const GROUPS = [
+  ALL_USERS_GROUP,
+  ADMIN_GROUP,
+  EXTERNAL_USERS_GROUP,
+  TENANT_GROUP,
+];
 
-const ADMIN_GROUP_ID = 2;
-const ALL_USERS_GROUP_ID = 1;
-
-const createMockStateWithPermissions = ({
-  tenantCollectionPermissions = {},
-  originalTenantCollectionPermissions = {},
-}: {
-  tenantCollectionPermissions?: CollectionPermissions;
-  originalTenantCollectionPermissions?: CollectionPermissions;
-} = {}): State => {
-  const state = createMockState({
-    settings: mockSettings({
-      "token-features": createMockTokenFeatures({ tenants: true }),
-    }),
-    admin: createMockAdminState({
-      permissions: createMockPermissionsState({
-        tenantCollectionPermissions,
-        originalTenantCollectionPermissions,
-      }),
-    }),
-  });
-
-  return state;
-};
+const CHILD_COLLECTION = createMockCollection({ id: 101, name: "Child" });
+const PARENT_COLLECTION = createMockCollection({
+  id: 100,
+  name: "Parent",
+  children: [CHILD_COLLECTION],
+});
 
 describe("TenantCollectionPermissionsPage selectors", () => {
   beforeEach(() => {
+    mockSettings({
+      "token-features": createMockTokenFeatures({ tenants: true }),
+    });
     setupEnterprisePlugins();
   });
 
-  describe("tenantCollectionsQuery", () => {
-    it("should have correct query parameters", () => {
-      expect(tenantCollectionsQuery).toEqual({
-        "exclude-other-user-collections": true,
-        "exclude-archived": true,
-        namespace: "shared-tenant-collection",
-      });
+  it("should query shared tenant collections", () => {
+    expect(tenantCollectionsQuery).toEqual({
+      "exclude-other-user-collections": true,
+      "exclude-archived": true,
+      namespace: "shared-tenant-collection",
     });
   });
 
-  describe("getIsTenantDirty", () => {
-    it("should return false when permissions are unchanged", () => {
-      const permissions: CollectionPermissions = {
-        [ADMIN_GROUP_ID]: { root: "write", 100: "write" },
-        [ALL_USERS_GROUP_ID]: { root: "none", 100: "none" },
-      };
-
-      const state = createMockStateWithPermissions({
-        tenantCollectionPermissions: permissions,
-        originalTenantCollectionPermissions: permissions,
-      });
-
-      expect(getIsTenantDirty(state)).toBe(false);
+  describe("getTenantCollectionEntity", () => {
+    it("should return the root collection with the loaded collections as children", () => {
+      expect(getTenantCollectionEntity([PARENT_COLLECTION], "root")).toEqual(
+        expect.objectContaining({
+          id: "root",
+          name: "Root shared collection",
+          children: [PARENT_COLLECTION],
+        }),
+      );
     });
 
-    it("should return true when permissions are changed", () => {
-      const state = createMockStateWithPermissions({
-        tenantCollectionPermissions: {
-          [ADMIN_GROUP_ID]: { root: "write", 100: "write" },
-          [ALL_USERS_GROUP_ID]: { root: "read", 100: "read" },
-        },
-        originalTenantCollectionPermissions: {
-          [ADMIN_GROUP_ID]: { root: "write", 100: "write" },
-          [ALL_USERS_GROUP_ID]: { root: "none", 100: "none" },
-        },
-      });
-
-      expect(getIsTenantDirty(state)).toBe(true);
+    it("should find a nested collection", () => {
+      expect(getTenantCollectionEntity([PARENT_COLLECTION], 101)).toBe(
+        CHILD_COLLECTION,
+      );
     });
 
-    it("should return false when both are empty objects", () => {
-      const state = createMockStateWithPermissions({
-        tenantCollectionPermissions: {},
-        originalTenantCollectionPermissions: {},
-      });
-
-      expect(getIsTenantDirty(state)).toBe(false);
-    });
-
-    it("should detect deeply nested permission changes", () => {
-      const state = createMockStateWithPermissions({
-        tenantCollectionPermissions: {
-          [ADMIN_GROUP_ID]: { root: "write", 100: "write", 101: "read" },
-        },
-        originalTenantCollectionPermissions: {
-          [ADMIN_GROUP_ID]: { root: "write", 100: "write", 101: "none" },
-        },
-      });
-
-      expect(getIsTenantDirty(state)).toBe(true);
+    it("should return undefined for a missing collection", () => {
+      expect(getTenantCollectionEntity([PARENT_COLLECTION], 999)).toBe(
+        undefined,
+      );
     });
   });
 
-  describe("getCurrentTenantCollectionId", () => {
-    it("should return undefined when collectionId is null", () => {
-      const state = createMockStateWithPermissions();
-      // Unjustified type cast. FIXME
-      const props = { params: { collectionId: null as any } };
+  describe("getTenantCollectionsPermissionEditor", () => {
+    const getPermission = (
+      permissions: CollectionPermissions,
+      groupId: number,
+    ) => {
+      const editor = getTenantCollectionsPermissionEditor({
+        permissions,
+        collection: PARENT_COLLECTION,
+        groups: GROUPS,
+      });
+      return editor.entities.find((entity) => entity.id === groupId)
+        ?.permissions?.[0];
+    };
 
-      expect(getCurrentTenantCollectionId(state, props)).toBeUndefined();
+    it("should read the group's permission from the graph", () => {
+      const permission = getPermission({ 1: { 100: "read" } }, 1);
+      expect(permission?.value).toBe("read");
     });
 
-    it("should return undefined when collectionId is undefined", () => {
-      const state = createMockStateWithPermissions();
-      // Unjustified type cast. FIXME
-      const props = { params: { collectionId: undefined as any } };
-
-      expect(getCurrentTenantCollectionId(state, props)).toBeUndefined();
+    it("should default a missing permission to none", () => {
+      const permission = getPermission({}, 1);
+      expect(permission?.value).toBe("none");
     });
 
-    it("should return root for root collection", () => {
-      const state = createMockStateWithPermissions();
-      const props = { params: { collectionId: "root" } };
-
-      expect(getCurrentTenantCollectionId(state, props)).toBe("root");
+    it("should not offer curate access to tenant groups", () => {
+      const permission = getPermission({}, TENANT_GROUP.id);
+      expect(permission?.options?.map((option) => option.value)).toEqual([
+        "read",
+        "none",
+      ]);
     });
 
-    it("should return parsed integer for string numeric collection id", () => {
-      const state = createMockStateWithPermissions();
-      const props = { params: { collectionId: "100" } };
-
-      expect(getCurrentTenantCollectionId(state, props)).toBe(100);
+    it("should disable the administrators group", () => {
+      expect(getPermission({}, ADMIN_GROUP.id)?.isDisabled).toBe(true);
+      expect(getPermission({}, ALL_USERS_GROUP.id)?.isDisabled).toBe(false);
     });
 
-    it("should handle numeric collection id", () => {
-      const state = createMockStateWithPermissions();
-      // Unjustified type cast. FIXME
-      const props = { params: { collectionId: 100 as any } };
-
-      expect(getCurrentTenantCollectionId(state, props)).toBe(100);
-    });
-
-    it("should handle large collection ids", () => {
-      const state = createMockStateWithPermissions();
-      const props = { params: { collectionId: "999999" } };
-
-      expect(getCurrentTenantCollectionId(state, props)).toBe(999999);
+    it("should warn when a sub-collection grants more access", () => {
+      const permission = getPermission({ 1: { 100: "none", 101: "read" } }, 1);
+      expect(permission?.warning).toBe(
+        "This group has permission to view at least one subcollection of this collection.",
+      );
     });
   });
 });

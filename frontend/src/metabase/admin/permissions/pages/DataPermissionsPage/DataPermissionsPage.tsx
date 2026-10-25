@@ -10,6 +10,7 @@ import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import {
   DATABASE_TABLES_QUERY,
   DataPermissionsHelp,
+  clearSaveError,
   getDiff,
   getIsDataPermissionsDirty,
   loadDataPermissionsForGroup,
@@ -33,6 +34,7 @@ export function DataPermissionsPage() {
   );
   const groups = data ?? EMPTY_GROUP_LIST;
   const isDirty = useSelector(getIsDataPermissionsDirty);
+  const saveError = useSelector((state) => state.admin.permissions.saveError);
   const diff = useSelector((state) => getDiff(state, { groups }));
   const dispatch = useDispatch();
 
@@ -75,6 +77,8 @@ export function DataPermissionsPage() {
       onSave={savePermissions}
       diff={diff}
       isDirty={isDirty}
+      saveError={saveError}
+      onClearSaveError={() => dispatch(clearSaveError())}
       helpContent={<DataPermissionsHelp />}
       canShowSplitPermsModal={!isLoading}
     >

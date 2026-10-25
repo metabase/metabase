@@ -1,9 +1,7 @@
-import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { collectionApi } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import { getCollectionIcon } from "metabase/common/collections/utils";
 import { findCollectionById } from "metabase/common/utils/collections";
@@ -14,21 +12,20 @@ import {
 } from "metabase/common/utils/groups";
 import {
   COLLECTION_OPTIONS,
-  type CollectionIdProps,
   type CollectionSidebarType,
   Messages,
   type PermissionEditorType,
   getPermissionWarningModal,
-  selectGroupList,
 } from "metabase/permissions";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { ExpandedCollection, State } from "metabase/redux/store";
+import type { ExpandedCollection } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
 import type {
+  Collection,
   CollectionId,
   CollectionPermissions,
   DataPermissionValue,
-  Group as GroupType,
+  GroupInfo,
 } from "metabase-types/api";
 import { DataPermission, DataPermissionType } from "metabase-types/api";
 
@@ -37,30 +34,6 @@ export const tenantSpecificCollectionsQuery = {
   "exclude-archived": true,
   namespace: "tenant-specific",
 } as const;
-
-export const getIsTenantSpecificDirty = createSelector(
-  (state: State) => state.admin.permissions.tenantSpecificCollectionPermissions,
-  (state: State) =>
-    state.admin.permissions.originalTenantSpecificCollectionPermissions,
-  (
-    permissions: CollectionPermissions,
-    originalPermissions: CollectionPermissions,
-  ) => !_.isEqual(permissions, originalPermissions),
-);
-
-export const getCurrentTenantSpecificCollectionId = (
-  _state: State,
-  props: CollectionIdProps,
-) => {
-  if (props.params.collectionId == null) {
-    return undefined;
-  }
-
-  // collectionId comes from the route param and is either "root" or a numeric string
-  return props.params.collectionId === ROOT_COLLECTION.id
-    ? ROOT_COLLECTION.id
-    : parseInt(String(props.params.collectionId));
-};
 
 const getTenantSpecificRootCollectionTreeItem = () => {
   const rootCollectionIcon = getCollectionIcon(ROOT_COLLECTION);
@@ -72,58 +45,33 @@ const getTenantSpecificRootCollectionTreeItem = () => {
   };
 };
 
-const getTenantSpecificCollections = (state: State) => {
-  const queryState = collectionApi.endpoints.listCollectionsTree.select(
-    tenantSpecificCollectionsQuery,
-  )(state);
-  return queryState?.data ?? [];
-};
-
-const getTenantSpecificCollectionsTree = () => {
-  // Only show the single "Root tenant collection" in the sidebar
-  return [getTenantSpecificRootCollectionTreeItem()];
-};
-
-export const getTenantSpecificCollectionsSidebar = createSelector(
-  getTenantSpecificCollectionsTree,
-  getCurrentTenantSpecificCollectionId,
-  (collectionsTree, collectionId): CollectionSidebarType => {
-    return {
-      selectedId: collectionId,
-      title: t`Tenant collections`,
-      entityGroups: [collectionsTree || []],
-      filterPlaceholder: t`Search for a collection`,
-    };
-  },
-);
-
-const getTenantSpecificCollectionsPermissions = (state: State) =>
-  state.admin.permissions.tenantSpecificCollectionPermissions;
-
-const getTenantSpecificCollection = createSelector(
-  [getCurrentTenantSpecificCollectionId, getTenantSpecificCollections],
-  (collectionId, collections) => {
-    if (collectionId == null) {
-      return null;
-    }
-
-    if (collectionId === ROOT_COLLECTION.id) {
-      return {
-        ...ROOT_COLLECTION,
-        name: t`Root tenant collection`,
-        children: collections,
-      };
-    }
-
-    return findCollectionById(collections, collectionId);
-  },
-);
+export const getTenantSpecificCollectionsSidebar = (
+  selectedId: CollectionId | undefined,
+): CollectionSidebarType => ({
+  selectedId,
+  title: t`Tenant collections`,
+  entityGroups: [[getTenantSpecificRootCollectionTreeItem()]],
+  filterPlaceholder: t`Search for a collection`,
+});
 
 export const getTenantSpecificCollectionEntity = (
-  state: State,
-  props: CollectionIdProps,
-) => {
-  return getTenantSpecificCollection(state, props);
+  collections: Collection[],
+  collectionId: CollectionId,
+): Collection | undefined => {
+  if (collectionId === ROOT_COLLECTION.id) {
+    return {
+      ...ROOT_COLLECTION,
+      name: t`Root tenant collection`,
+      description: null,
+      can_write: true,
+      can_restore: false,
+      can_delete: false,
+      namespace: null,
+      children: collections,
+    };
+  }
+
+  return findCollectionById(collections, collectionId) ?? undefined;
 };
 
 const getTenantSpecificCollectionPermission = (
@@ -132,99 +80,100 @@ const getTenantSpecificCollectionPermission = (
   collectionId: CollectionId,
 ) => getIn(permissions, [groupId, collectionId]) || "none";
 
-export const getTenantSpecificCollectionsPermissionEditor = createSelector(
-  getTenantSpecificCollectionsPermissions,
-  getTenantSpecificCollectionEntity,
-  selectGroupList,
-  (permissions, collection, groups): PermissionEditorType | null => {
-    if (!permissions || collection == null) {
-      return null;
-    }
+type TenantSpecificCollectionsPermissionEditorOpts = {
+  permissions: CollectionPermissions;
+  collection: Collection;
+  groups: GroupInfo[];
+};
 
-    // Filter out tenant groups - they get implicit permissions based on tenant membership
-    const nonTenantGroups = groups.filter(
-      (group: GroupType) => !PLUGIN_TENANTS.isTenantGroup(group),
-    );
+export const getTenantSpecificCollectionsPermissionEditor = ({
+  permissions,
+  collection,
+  groups,
+}: TenantSpecificCollectionsPermissionEditorOpts): PermissionEditorType => {
+  // Filter out tenant groups - they get implicit permissions based on tenant membership
+  const nonTenantGroups = groups.filter(
+    (group) => !PLUGIN_TENANTS.isTenantGroup(group),
+  );
 
-    const entities = nonTenantGroups
-      .map((group: GroupType) => {
-        const isAdmin = isAdminGroup(group);
+  const entities = nonTenantGroups
+    .map((group) => {
+      const isAdmin = isAdminGroup(group);
 
-        const defaultGroup = _.find(nonTenantGroups, isDefaultGroup);
+      const defaultGroup = _.find(nonTenantGroups, isDefaultGroup);
 
-        const defaultGroupPermission = defaultGroup
-          ? getTenantSpecificCollectionPermission(
+      const defaultGroupPermission = defaultGroup
+        ? getTenantSpecificCollectionPermission(
+            permissions,
+            defaultGroup.id,
+            collection.id,
+          )
+        : "none";
+
+      if (!defaultGroup) {
+        return null;
+      }
+
+      const confirmations = (newValue: DataPermissionValue) => [
+        getPermissionWarningModal(
+          newValue,
+          defaultGroupPermission,
+          null,
+          defaultGroup,
+          group.id,
+        ),
+      ];
+
+      const options = [
+        COLLECTION_OPTIONS.write,
+        COLLECTION_OPTIONS.read,
+        COLLECTION_OPTIONS.none,
+      ];
+
+      const disabled = isAdmin;
+
+      return {
+        id: group.id,
+        name: getGroupNameLocalized(group),
+        permissions: [
+          {
+            permission: DataPermission.COLLECTIONS,
+            type: DataPermissionType.COLLECTIONS,
+            // Always show toggle as checked and disabled for tenant-specific collections
+            toggleLabel: t`Also change sub-collections`,
+            hasChildren: true,
+            toggleDisabled: true,
+            toggleDefaultValue: true,
+            isDisabled: disabled,
+            disabledTooltip: disabled
+              ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+              : null,
+            value: getTenantSpecificCollectionPermission(
               permissions,
-              defaultGroup.id,
+              group.id,
               collection.id,
-            )
-          : "none";
+            ),
+            warning: getTenantSpecificCollectionWarning(
+              group.id,
+              // Unjustified type cast. FIXME
+              collection as ExpandedCollection,
+              permissions,
+            ),
+            confirmations,
+            options,
+          },
+        ],
+      };
+    })
+    .filter(isNotNull);
 
-        if (!defaultGroup) {
-          return null;
-        }
-
-        const confirmations = (newValue: DataPermissionValue) => [
-          getPermissionWarningModal(
-            newValue,
-            defaultGroupPermission,
-            null,
-            defaultGroup,
-            group.id,
-          ),
-        ];
-
-        const options = [
-          COLLECTION_OPTIONS.write,
-          COLLECTION_OPTIONS.read,
-          COLLECTION_OPTIONS.none,
-        ];
-
-        const disabled = isAdmin;
-
-        return {
-          id: group.id,
-          name: getGroupNameLocalized(group),
-          permissions: [
-            {
-              permission: DataPermission.COLLECTIONS,
-              type: DataPermissionType.COLLECTIONS,
-              // Always show toggle as checked and disabled for tenant-specific collections
-              toggleLabel: t`Also change sub-collections`,
-              hasChildren: true,
-              toggleDisabled: true,
-              toggleDefaultValue: true,
-              isDisabled: disabled,
-              disabledTooltip: disabled
-                ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
-                : null,
-              value: getTenantSpecificCollectionPermission(
-                permissions,
-                group.id,
-                collection.id,
-              ),
-              warning: getTenantSpecificCollectionWarning(
-                group.id,
-                // Unjustified type cast. FIXME
-                collection as ExpandedCollection,
-                permissions,
-              ),
-              confirmations,
-              options,
-            },
-          ],
-        };
-      })
-      .filter(isNotNull);
-
-    return {
-      title: t`Permissions for ${collection.name}`,
-      filterPlaceholder: t`Search for a group`,
-      columns: [{ name: t`Group name` }, { name: t`Collection access` }],
-      entities,
-    };
-  },
-);
+  return {
+    title: t`Permissions for ${collection.name}`,
+    filterPlaceholder: t`Search for a group`,
+    columns: [{ name: t`Group name` }, { name: t`Collection access` }],
+    entities,
+  };
+};
 
 const permissionsCollectionFilter = (collection: ExpandedCollection) =>
   !collection.is_personal;

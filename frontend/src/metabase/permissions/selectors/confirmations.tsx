@@ -5,7 +5,8 @@ import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import { Alert, Flex, Icon, Text } from "metabase/ui";
 import type {
   DatabaseEntityId,
-  Group,
+  GroupId,
+  GroupInfo,
   GroupsPermissions,
   PermissionEntityId,
   PermissionsDatabase,
@@ -21,7 +22,9 @@ import {
 } from "../utils/graph";
 import { tableToTableEntityId } from "../utils/metadata";
 
-export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
+export const getDefaultGroupHasHigherAccessText = (
+  defaultGroup: Pick<GroupInfo, "name">,
+) =>
   t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
 
 // these are all the permission levels ordered by level of access
@@ -62,8 +65,8 @@ export function getPermissionWarning(
   value: DataPermissionValue,
   defaultGroupValue: DataPermissionValue,
   entityType: string | null,
-  defaultGroup: Group,
-  groupId: Group["id"],
+  defaultGroup: Pick<GroupInfo, "id" | "name">,
+  groupId: GroupId,
   descendingPermissions?: DataPermissionValue[],
 ) {
   if (!defaultGroup || groupId === defaultGroup.id) {
@@ -117,8 +120,8 @@ export function getPermissionWarningModal(
   value: DataPermissionValue,
   defaultGroupValue: DataPermissionValue,
   entityType: string | null,
-  defaultGroup: Group,
-  groupId: Group["id"],
+  defaultGroup: Pick<GroupInfo, "id" | "name">,
+  groupId: GroupId,
   descendingPermissions?: DataPermissionValue[],
 ) {
   const permissionWarning = getPermissionWarning(
@@ -177,7 +180,7 @@ export function getWillRevokeNativeAccessWarningModal(
 
 export function getViewDataPermissionsTooRestrictiveWarningModal(
   permissions: GroupsPermissions,
-  groupId: Group["id"],
+  groupId: GroupId,
   entityId: DatabaseEntityId | SchemaEntityId,
   database: PermissionsDatabase,
   value: DataPermissionValue,
@@ -268,7 +271,7 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
 export function getRevokingAccessToAllTablesWarningModal(
   database: PermissionsDatabase,
   permissions: GroupsPermissions,
-  groupId: Group["id"],
+  groupId: GroupId,
   entityId: PermissionEntityId,
   value: DataPermissionValue,
 ) {

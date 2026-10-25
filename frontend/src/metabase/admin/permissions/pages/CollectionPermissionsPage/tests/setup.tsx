@@ -4,6 +4,7 @@ import {
   setupCollectionsEndpoints,
   setupGroupsEndpoint,
   setupTokenStatusEndpoint,
+  setupUpdateCollectionPermissionsGraphEndpointError,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
@@ -144,6 +145,7 @@ interface SetupOptions {
   tokenFeatures?: Partial<TokenFeatures>;
   settings?: Partial<Settings>;
   enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+  saveErrorMessage?: string;
 }
 
 export function setup({
@@ -155,6 +157,7 @@ export function setup({
   tokenFeatures,
   settings = {},
   enterprisePlugins = [],
+  saveErrorMessage,
 }: Partial<SetupOptions> = {}) {
   const initialState = createMockState({
     settings: mockSettings({
@@ -175,6 +178,9 @@ export function setup({
 
   setupTokenStatusEndpoint({ valid: true });
 
+  if (saveErrorMessage != null) {
+    setupUpdateCollectionPermissionsGraphEndpointError(saveErrorMessage);
+  }
   setupCollectionPermissionsGraphEndpoint(permissionsGraph);
   setupGroupsEndpoint(permissionGroups);
 

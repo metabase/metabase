@@ -191,6 +191,88 @@ describe("Admin > CollectionPermissionsPage", () => {
       });
     });
 
+    it("discards unsaved changes on cancel", async () => {
+      await setup();
+
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Collection One/ }))[0],
+      );
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Nested One/ }))[0],
+      );
+      await userEvent.click(await screen.findByText("No access"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("View"),
+      );
+      expect(screen.queryByText("No access")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(await screen.findByText("No access")).toBeInTheDocument();
+      expect(
+        screen.queryByText("You've made changes to permissions."),
+      ).not.toBeInTheDocument();
+      expect(
+        fetchMock.callHistory.calls("path:/api/collection/graph", {
+          method: "PUT",
+        }),
+      ).toHaveLength(0);
+    });
+
+    it("shows the error when saving fails and keeps the changes", async () => {
+      await setup({ saveErrorMessage: "Revision is stale" });
+
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Collection One/ }))[0],
+      );
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Nested One/ }))[0],
+      );
+      await userEvent.click(await screen.findByText("No access"));
+      await userEvent.click(
+        within(await screen.findByRole("listbox")).getByText("View"),
+      );
+      await userEvent.click(await screen.findByText("Save changes"));
+      await userEvent.click(await screen.findByText("Yes"));
+
+      expect(
+        await screen.findByText("There was an error saving"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Revision is stale")).toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("button", { name: "OK" }));
+
+      expect(
+        screen.queryByText("There was an error saving"),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText("You've made changes to permissions."),
+      ).toBeInTheDocument();
+    });
+
+    it("keeps the help panel open when another collection is selected", async () => {
+      await setup();
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Permissions help/ }),
+      );
+      expect(
+        screen.getByRole("complementary", {
+          name: "Permissions help reference",
+        }),
+      ).toBeInTheDocument();
+
+      await userEvent.click(
+        (await screen.findAllByRole("menuitem", { name: /Collection One/ }))[0],
+      );
+
+      expect(
+        screen.getByRole("complementary", {
+          name: "Permissions help reference",
+        }),
+      ).toBeInTheDocument();
+    });
+
     it("should show toggle to change sub-collection permissions if the collection has sub-collections", async () => {
       await setup();
 

@@ -44,6 +44,15 @@ export const setupCollectionPermissionsGraphEndpoint = (
   });
 };
 
+export const setupUpdateCollectionPermissionsGraphEndpointError = (
+  message: string,
+) => {
+  fetchMock.put("path:/api/collection/graph", {
+    status: 409,
+    body: { message },
+  });
+};
+
 export const setupPermissionMembershipEndpoint = (
   memberships: ListUserMembershipsResponse,
 ) => {

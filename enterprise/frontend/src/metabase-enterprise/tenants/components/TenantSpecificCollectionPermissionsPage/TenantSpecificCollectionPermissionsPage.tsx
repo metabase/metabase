@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -6,112 +6,86 @@ import {
   PermissionsEditorEmptyState,
 } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
-import { useListCollectionsTreeQuery } from "metabase/api";
+import {
+  useListCollectionsTreeQuery,
+  useListPermissionsGroupsQuery,
+} from "metabase/api";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import {
   CollectionPermissionsHelp,
   type PermissionEditorEntity,
   PermissionsSidebar,
-  type UpdateTenantCollectionPermissionParams,
   assertNumericId,
-  initializeTenantSpecificCollectionPermissions,
-  loadTenantSpecificCollectionPermissions,
-  saveTenantSpecificCollectionPermissions,
-  updateTenantSpecificCollectionPermission,
+  parseCollectionIdParam,
+  useCollectionPermissionsGraph,
 } from "metabase/permissions";
-import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate, useParams } from "metabase/router";
-import type { Collection, CollectionId } from "metabase-types/api";
+import type { CollectionId } from "metabase-types/api";
 
 import {
-  getIsTenantSpecificDirty,
   getTenantSpecificCollectionEntity,
   getTenantSpecificCollectionsPermissionEditor,
   getTenantSpecificCollectionsSidebar,
   tenantSpecificCollectionsQuery,
 } from "./selectors";
 
-function TenantSpecificCollectionPermissionsPageView() {
-  const { collectionId } = useParams();
-  useListCollectionsTreeQuery(tenantSpecificCollectionsQuery);
-
-  const dispatch = useDispatch();
+export function TenantSpecificCollectionPermissionsPage() {
   const navigate = useNavigate();
-
-  const props = useMemo(() => ({ params: { collectionId } }), [collectionId]);
-  const sidebar = useSelector((state) =>
-    getTenantSpecificCollectionsSidebar(state, props),
+  const params = useParams<{ collectionId: string }>();
+  const collectionId = parseCollectionIdParam(params.collectionId);
+  const { data: collections } = useListCollectionsTreeQuery(
+    tenantSpecificCollectionsQuery,
   );
-  const permissionEditor = useSelector((state) =>
-    getTenantSpecificCollectionsPermissionEditor(state, props),
+  const { data: groups } = useListPermissionsGroupsQuery({});
+  const {
+    permissions,
+    isDirty,
+    saveError,
+    updatePermission,
+    savePermissions,
+    resetPermissions,
+    clearSaveError,
+  } = useCollectionPermissionsGraph(tenantSpecificCollectionsQuery.namespace);
+
+  const sidebar = useMemo(
+    () => getTenantSpecificCollectionsSidebar(collectionId),
+    [collectionId],
   );
-  const isDirty = useSelector(getIsTenantSpecificDirty);
-  const collection = useSelector((state) =>
-    getTenantSpecificCollectionEntity(state, props),
+  const collection = useMemo(
+    () =>
+      collections && collectionId != null
+        ? getTenantSpecificCollectionEntity(collections, collectionId)
+        : undefined,
+    [collections, collectionId],
   );
-
-  const initialize = useCallback(() => {
-    dispatch(initializeTenantSpecificCollectionPermissions());
-  }, [dispatch]);
-
-  const loadPermissions = useCallback(() => {
-    dispatch(loadTenantSpecificCollectionPermissions());
-  }, [dispatch]);
-
-  const savePermissions = useCallback(() => {
-    dispatch(saveTenantSpecificCollectionPermissions());
-  }, [dispatch]);
-
-  const navigateToItem = useCallback(
-    ({ id }: { id: CollectionId }) => {
-      navigate(`${getPermissionsBasePath()}/tenant-specific-collections/${id}`);
-    },
-    [navigate],
-  );
-
-  const updateCollectionPermission = useCallback(
-    ({
-      groupId,
-      collection,
-      value,
-      shouldPropagateToChildren,
-    }: UpdateTenantCollectionPermissionParams) => {
-      dispatch(
-        updateTenantSpecificCollectionPermission({
-          groupId,
-          collection,
-          value,
-          shouldPropagateToChildren,
-        }),
-      );
-    },
-    [dispatch],
+  const permissionEditor = useMemo(
+    () =>
+      permissions && collection && groups
+        ? getTenantSpecificCollectionsPermissionEditor({
+            permissions,
+            collection,
+            groups,
+          })
+        : null,
+    [permissions, collection, groups],
   );
 
-  useEffect(() => {
-    initialize();
-  }, [initialize]);
+  const navigateToItem = ({ id }: { id: CollectionId }) =>
+    navigate(`${getPermissionsBasePath()}/tenant-specific-collections/${id}`);
 
   const handlePermissionChange = useCallback(
-    (
-      item: PermissionEditorEntity,
-      _permission: unknown,
-      value: unknown,
-      _toggleState: boolean | null,
-    ) => {
+    (item: PermissionEditorEntity, _permission: unknown, value: unknown) => {
       if (!collection) {
         return;
       }
-      // Always propagate to sub-collections for tenant-specific collections
-      updateCollectionPermission({
+      updatePermission({
         groupId: assertNumericId(item.id),
-        // Unjustified type cast. FIXME
-        collection: collection as Collection,
+        collection,
         value,
         shouldPropagateToChildren: true,
       });
     },
-    [collection, updateCollectionPermission],
+    [collection, updatePermission],
   );
 
   return (
@@ -119,7 +93,9 @@ function TenantSpecificCollectionPermissionsPageView() {
       tab="tenant-specific-collections"
       isDirty={isDirty}
       onSave={savePermissions}
-      onLoad={() => loadPermissions()}
+      onLoad={resetPermissions}
+      saveError={saveError}
+      onClearSaveError={clearSaveError}
       helpContent={<CollectionPermissionsHelp />}
     >
       <PermissionsSidebar {...sidebar} onSelect={navigateToItem} />
@@ -133,6 +109,7 @@ function TenantSpecificCollectionPermissionsPageView() {
 
       {permissionEditor && (
         <PermissionsEditor
+          key={collection?.id}
           isLoading={undefined}
           error={undefined}
           {...permissionEditor}
@@ -142,6 +119,3 @@ function TenantSpecificCollectionPermissionsPageView() {
     </PermissionsPageLayout>
   );
 }
-
-export const TenantSpecificCollectionPermissionsPage =
-  TenantSpecificCollectionPermissionsPageView;

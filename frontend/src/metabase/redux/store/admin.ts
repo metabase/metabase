@@ -1,5 +1,4 @@
 import type {
-  CollectionPermissions,
   DatabaseId,
   GroupsPermissions,
   PermissionsDatabase,
@@ -36,17 +35,7 @@ export interface AdminState {
     /** Databases whose tables the permissions tree has seen, kept while the page is open. */
     databasesWithTables: Record<DatabaseId, PermissionsDatabase>;
     dataPermissionsRevision: number | null;
-    collectionPermissions: CollectionPermissions;
-    originalCollectionPermissions: CollectionPermissions;
-    collectionPermissionsRevision: number | null;
-    tenantCollectionPermissions: CollectionPermissions;
-    originalTenantCollectionPermissions: CollectionPermissions;
-    tenantCollectionPermissionsRevision: number | null;
-    tenantSpecificCollectionPermissions: CollectionPermissions;
-    originalTenantSpecificCollectionPermissions: CollectionPermissions;
-    tenantSpecificCollectionPermissionsRevision: number | null;
     saveError?: string;
-    isHelpReferenceOpen: boolean;
     hasRevisionChanged: {
       revision: number | null;
       hasChanged: boolean;

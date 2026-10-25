@@ -1,128 +1,117 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   skipToken,
   useListCollectionsQuery,
   useListCollectionsTreeQuery,
+  useListPermissionsGroupsQuery,
 } from "metabase/api";
 import { isPersonalCollectionChild } from "metabase/common/collections/utils";
 import { Link } from "metabase/common/components/Link";
 import { ModalContent } from "metabase/common/components/ModalContent";
 import CS from "metabase/css/core/index.css";
-import { connect, useSelector } from "metabase/redux";
-import type { State } from "metabase/redux/store";
 import { Button, Modal } from "metabase/ui";
 import * as Urls from "metabase/urls";
-import type { Collection, CollectionNamespace } from "metabase-types/api";
+import type {
+  Collection,
+  CollectionId,
+  CollectionNamespace,
+} from "metabase-types/api";
 
-import {
-  type UpdateCollectionPermissionParams,
-  initializeCollectionPermissions,
-  saveCollectionPermissions,
-  updateCollectionPermission,
-} from "../../permissions";
+import { useCollectionPermissionsGraph } from "../../hooks/use-collection-permissions-graph";
 import {
   collectionsQuery,
-  getCollectionEntity,
   getCollectionsPermissionEditor,
-  getIsCollectionPermissionsDirty,
+  getPermissionsCollection,
+  isFolderNamespace,
 } from "../../selectors/collection-permissions";
-import type { PermissionEditorEntity, PermissionEditorType } from "../../types";
+import type { PermissionEditorEntity } from "../../types";
 import { assertNumericId } from "../../types";
 import { PermissionsTable } from "../PermissionsTable";
 
 import S from "./CollectionPermissionsModal.module.css";
-
-const isFolderNamespace = (namespace?: CollectionNamespace) =>
-  namespace === "snippets" || namespace === "data-actions";
 
 const getDefaultTitle = (namespace?: CollectionNamespace) =>
   isFolderNamespace(namespace)
     ? t`Permissions for this folder`
     : t`Permissions for this collection`;
 
-const mapStateToProps = (
-  state: State,
-  props: { params: { slug?: string }; namespace?: CollectionNamespace },
-) => {
-  const collectionId = Urls.extractCollectionId(props.params.slug);
-  if (!collectionId) {
-    return {
-      permissionEditor: null,
-      isDirty: false,
-    };
-  }
-  return {
-    permissionEditor: getCollectionsPermissionEditor(state, {
-      namespace: props.namespace,
-      params: { collectionId },
-    }),
-    collection: getCollectionEntity(state, {
-      params: { collectionId },
-      namespace: props.namespace,
-    }),
-    isDirty: getIsCollectionPermissionsDirty(state),
-  };
-};
-
-const mapDispatchToProps = {
-  initialize: initializeCollectionPermissions,
-  updateCollectionPermission,
-  saveCollectionPermissions,
-};
-
-interface CollectionPermissionsModalBodyProps {
-  permissionEditor: PermissionEditorType | null;
-  isDirty: boolean;
-  onClose: () => void;
+type CollectionPermissionsModalBodyProps = {
+  collectionId: CollectionId | undefined;
   namespace?: CollectionNamespace;
-  collection?: Collection;
-  initialize: (namespace: CollectionNamespace) => void;
-  updateCollectionPermission: (
-    params: UpdateCollectionPermissionParams,
-  ) => void;
-  saveCollectionPermissions: (namespace: CollectionNamespace) => void;
-}
+  onClose: () => void;
+};
+
+const useModalCollection = (
+  collectionId: CollectionId | undefined,
+  namespace?: CollectionNamespace,
+) => {
+  const isFolder = isFolderNamespace(namespace);
+  const { data: collections } = useListCollectionsTreeQuery(
+    isFolder ? skipToken : collectionsQuery,
+  );
+  const { data: folders } = useListCollectionsQuery(
+    isFolder && namespace != null ? { namespace } : skipToken,
+  );
+
+  const collection = useMemo(() => {
+    if (collectionId == null) {
+      return undefined;
+    }
+    if (isFolder) {
+      return folders?.find((folder) => folder.id === collectionId);
+    }
+    return collections && getPermissionsCollection(collections, collectionId);
+  }, [collectionId, collections, folders, isFolder]);
+
+  return { collection, collections };
+};
+
+const isHiddenFromPermissions = (
+  collection: Collection,
+  collections: Collection[] | undefined,
+) =>
+  collection.archived ||
+  collection.personal_owner_id != null ||
+  (collections != null && isPersonalCollectionChild(collection, collections));
 
 const CollectionPermissionsModalBody = ({
-  permissionEditor,
-  isDirty,
-  onClose,
+  collectionId,
   namespace = null,
-  collection,
-
-  initialize,
-  updateCollectionPermission,
-  saveCollectionPermissions,
+  onClose,
 }: CollectionPermissionsModalBodyProps) => {
-  const { data: collectionsList } =
-    useListCollectionsTreeQuery(collectionsQuery);
-  useListCollectionsQuery(namespace != null ? { namespace } : skipToken);
-
-  const originalPermissionsState = useSelector(
-    ({ admin }) => admin.permissions.originalCollectionPermissions,
+  const { collection, collections } = useModalCollection(
+    collectionId,
+    namespace,
   );
-  useEffect(() => {
-    initialize(namespace);
-  }, [initialize, namespace]);
+  const { data: groups } = useListPermissionsGroupsQuery({});
+  const { permissions, isDirty, updatePermission, savePermissions } =
+    useCollectionPermissionsGraph(namespace);
+
+  const permissionEditor = useMemo(
+    () =>
+      permissions && collection && groups
+        ? getCollectionsPermissionEditor({
+            permissions,
+            collection,
+            groups,
+            namespace,
+          })
+        : null,
+    [permissions, collection, groups, namespace],
+  );
 
   useEffect(() => {
-    const isPersonalCollectionLoaded =
-      collection &&
-      Array.isArray(collectionsList) &&
-      (collection.personal_owner_id ||
-        isPersonalCollectionChild(collection, collectionsList));
-
-    if (isPersonalCollectionLoaded || collection?.archived) {
+    if (collection && isHiddenFromPermissions(collection, collections)) {
       onClose();
     }
-  }, [collectionsList, collection, onClose]);
+  }, [collections, collection, onClose]);
 
   const handleSave = async () => {
-    await saveCollectionPermissions(namespace);
-    onClose();
+    if (await savePermissions()) {
+      onClose();
+    }
   };
 
   const modalTitle = collection?.name
@@ -139,15 +128,14 @@ const CollectionPermissionsModalBody = ({
       if (!collection) {
         return;
       }
-      updateCollectionPermission({
+      updatePermission({
         groupId: assertNumericId(item.id),
         collection,
         value,
         shouldPropagateToChildren: toggleState,
-        originalPermissionsState,
       });
     },
-    [collection, updateCollectionPermission, originalPermissionsState],
+    [collection, updatePermission],
   );
 
   return (
@@ -190,10 +178,6 @@ const CollectionPermissionsModalBody = ({
   );
 };
 
-const ConnectedCollectionPermissionsModalBody = _.compose(
-  connect(mapStateToProps, mapDispatchToProps),
-)(CollectionPermissionsModalBody);
-
 type CollectionPermissionsModalProps = {
   params: { slug?: string };
   namespace?: CollectionNamespace;
@@ -213,8 +197,8 @@ export function CollectionPermissionsModal({
       padding={0}
       size="lg"
     >
-      <ConnectedCollectionPermissionsModalBody
-        params={params}
+      <CollectionPermissionsModalBody
+        collectionId={Urls.extractCollectionId(params.slug)}
         namespace={namespace}
         onClose={onClose}
       />

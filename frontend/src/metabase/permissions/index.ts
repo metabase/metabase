@@ -15,44 +15,28 @@ export {
   SAVE_DATA_PERMISSIONS,
   UPDATE_DATA_PERMISSION,
   clearSaveError,
-  initializeCollectionPermissions,
-  initializeTenantCollectionPermissions,
-  initializeTenantSpecificCollectionPermissions,
-  loadCollectionPermissions,
   loadDataPermissionsForDb,
   loadDataPermissionsForGroup,
-  loadTenantCollectionPermissions,
-  loadTenantSpecificCollectionPermissions,
   navigateToGranularPermissions,
   permissions,
   restoreLoadedPermissions,
-  saveCollectionPermissions,
   saveDataPermissions,
-  saveTenantCollectionPermissions,
-  saveTenantSpecificCollectionPermissions,
-  toggleHelpReference,
-  updateCollectionPermission,
   updateDataPermission,
-  updateTenantCollectionPermission,
-  updateTenantSpecificCollectionPermission,
 } from "./permissions";
 export type {
   UpdateDataPermissionParams,
   UpdateDataPermissionPayload,
-  UpdateTenantCollectionPermissionParams,
 } from "./permissions";
+export { useCollectionPermissionsGraph } from "./hooks/use-collection-permissions-graph";
 export {
   buildCollectionTree,
   collectionsQuery,
-  getCollectionEntity,
   getCollectionsPermissionEditor,
   getCollectionsSidebar,
-  getIsCollectionPermissionsDirty,
+  getPermissionsCollection,
+  parseCollectionIdParam,
 } from "./selectors/collection-permissions";
-export type {
-  CollectionIdProps,
-  CollectionSidebarType,
-} from "./selectors/collection-permissions";
+export type { CollectionSidebarType } from "./selectors/collection-permissions";
 export {
   getDefaultGroupHasHigherAccessText,
   getPermissionWarning,
@@ -78,7 +62,6 @@ export {
   selectGroupList,
 } from "./selectors/data-permissions/groups";
 export { showRevisionChangedModal } from "./selectors/data-permissions/revision";
-export { getIsHelpReferenceOpen } from "./selectors/help-reference";
 export {
   assertNumericId,
   parseDataRouteParams,

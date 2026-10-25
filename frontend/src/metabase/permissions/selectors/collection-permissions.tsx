@@ -1,9 +1,7 @@
-import { createSelector } from "@reduxjs/toolkit";
 import { getIn } from "icepick";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { collectionApi } from "metabase/api";
 import { ROOT_COLLECTION } from "metabase/common/collections/constants";
 import {
   getCollectionIcon,
@@ -11,6 +9,7 @@ import {
   isLibraryCollection,
   nonPersonalOrArchivedCollection,
 } from "metabase/common/collections/utils";
+import { findCollectionById } from "metabase/common/utils/collections";
 import {
   getGroupNameLocalized,
   getGroupSortOrder,
@@ -21,7 +20,6 @@ import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
 import type {
   CollectionTreeItem,
   ExpandedCollection,
-  State,
 } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
 import {
@@ -32,7 +30,7 @@ import {
   DataPermission,
   DataPermissionType,
   type DataPermissionValue,
-  type Group as GroupType,
+  type GroupInfo,
   type SpecialGroupType,
 } from "metabase-types/api";
 
@@ -41,7 +39,6 @@ import { Messages } from "../constants/messages";
 import type { PermissionEditorType } from "../types";
 
 import { getPermissionWarningModal } from "./confirmations";
-import { selectGroupList } from "./data-permissions/groups";
 
 export const collectionsQuery = {
   "exclude-other-user-collections": true,
@@ -49,32 +46,16 @@ export const collectionsQuery = {
   "include-library": true,
 } as const;
 
-export const getIsCollectionPermissionsDirty = createSelector(
-  (state: State) => state.admin.permissions.collectionPermissions,
-  (state: State) => state.admin.permissions.originalCollectionPermissions,
-  (
-    permissions: CollectionPermissions,
-    originalPermissions: CollectionPermissions,
-  ) => JSON.stringify(permissions) !== JSON.stringify(originalPermissions),
-);
-
-export type CollectionIdProps = {
-  // Either an extracted `CollectionId` or a raw route param, which is a string.
-  params: { collectionId?: CollectionId | string };
-  namespace?: CollectionNamespace;
-};
-
-export const getCurrentCollectionId = (
-  _state: State,
-  props: CollectionIdProps,
-) => {
-  if (props.params.collectionId == null) {
+export const parseCollectionIdParam = (
+  collectionId: string | undefined,
+): CollectionId | undefined => {
+  if (collectionId == null) {
     return undefined;
   }
 
-  return props.params.collectionId === ROOT_COLLECTION.id
+  return collectionId === ROOT_COLLECTION.id
     ? ROOT_COLLECTION.id
-    : parseInt(String(props.params.collectionId));
+    : parseInt(collectionId);
 };
 
 const getRootCollectionTreeItem = () => {
@@ -86,13 +67,10 @@ const getRootCollectionTreeItem = () => {
   };
 };
 
-const getCollections = (state: State) => {
-  const queryState =
-    collectionApi.endpoints.listCollectionsTree.select(collectionsQuery)(state);
-  return (queryState?.data ?? []).filter(nonPersonalOrArchivedCollection);
-};
+const getCollections = (collections: Collection[]) =>
+  collections.filter(nonPersonalOrArchivedCollection);
 
-const getCollectionsTree = createSelector([getCollections], (collections) => {
+const getCollectionsTree = (collections: Collection[]) => {
   const libraryCollections = collections.filter(isLibraryCollection);
   const nonLibraryCollections = collections.filter(
     (collection: Collection) => !isLibraryCollection(collection),
@@ -103,7 +81,7 @@ const getCollectionsTree = createSelector([getCollections], (collections) => {
     getRootCollectionTreeItem(),
     ...buildCollectionTree(nonLibraryCollections),
   ];
-});
+};
 
 export function buildCollectionTree(
   collections: Collection[] | null,
@@ -130,100 +108,46 @@ export type CollectionSidebarType = {
   filterPlaceholder: string;
 };
 
-export const getCollectionsSidebar = createSelector(
-  getCollectionsTree,
-  getCurrentCollectionId,
-  (collectionsTree, collectionId): CollectionSidebarType => {
-    return {
-      selectedId: collectionId,
-      title: t`Collections`,
-      entityGroups: [collectionsTree || []],
-      filterPlaceholder: t`Search for a collection`,
-    };
-  },
-);
+export const getCollectionsSidebar = (
+  collections: Collection[],
+  selectedId: CollectionId | undefined,
+): CollectionSidebarType => ({
+  selectedId,
+  title: t`Collections`,
+  entityGroups: [getCollectionsTree(getCollections(collections))],
+  filterPlaceholder: t`Search for a collection`,
+});
 
-const getCollectionsPermissions = (state: State) =>
-  state.admin.permissions.collectionPermissions;
-
-const findCollection = (
+export const getPermissionsCollection = (
   collections: Collection[],
   collectionId: CollectionId,
-): Collection | null => {
-  if (collections.length === 0) {
-    return null;
+): Collection | undefined => {
+  const permissionsCollections = getCollections(collections);
+  if (collectionId === ROOT_COLLECTION.id) {
+    return {
+      ...ROOT_COLLECTION,
+      description: null,
+      can_write: true,
+      can_restore: false,
+      can_delete: false,
+      namespace: null,
+      children: permissionsCollections,
+    };
   }
 
-  const collection = collections.find(
-    (collection) => collection.id === collectionId,
-  );
-
-  if (collection) {
-    return collection;
-  }
-
-  return findCollection(
-    collections.map((collection) => collection.children ?? []).flat(),
-    collectionId,
-  );
+  return findCollectionById(permissionsCollections, collectionId) ?? undefined;
 };
-
-const getCollection = createSelector(
-  [getCurrentCollectionId, getCollections],
-  (collectionId, collections): Collection | null => {
-    if (collectionId == null) {
-      return null;
-    }
-
-    if (collectionId === ROOT_COLLECTION.id) {
-      return {
-        ...ROOT_COLLECTION,
-        description: null,
-        can_write: true,
-        can_restore: false,
-        can_delete: false,
-        namespace: null,
-        children: collections,
-      };
-    }
-
-    return findCollection(collections, collectionId);
-  },
-);
 
 const FOLDER_NAMESPACES: CollectionNamespace[] = ["snippets", "data-actions"];
 
-const getFolder = (
-  state: State,
-  props: CollectionIdProps,
-  namespace: CollectionNamespace,
-) => {
-  const folderId = getCurrentCollectionId(state, props);
-  const folders = collectionApi.endpoints.listCollections.select({
-    namespace,
-  })(state).data;
-
-  return folders?.find((folder: Collection) => folder.id === folderId);
-};
-
-export const getCollectionEntity = (
-  state: State,
-  props: CollectionIdProps,
-): Collection | undefined => {
-  const namespace = props.namespace ?? null;
-  return FOLDER_NAMESPACES.includes(namespace)
-    ? getFolder(state, props, namespace)
-    : (getCollection(state, props) ?? undefined);
-};
+export const isFolderNamespace = (namespace?: CollectionNamespace) =>
+  FOLDER_NAMESPACES.includes(namespace ?? null);
 
 const getCollectionPermission = (
   permissions: CollectionPermissions,
   groupId: number,
   collectionId: CollectionId,
 ) => getIn(permissions, [groupId, collectionId]) || "none";
-
-const getNamespace = (_state: State, props: CollectionIdProps) =>
-  props.namespace;
 
 const ADMIN_ONLY_WRITE_NAMESPACE_HINTS: Partial<
   Record<NonNullable<CollectionNamespace>, () => string>
@@ -274,7 +198,7 @@ const getCollectionAccessColumn = (namespace?: CollectionNamespace) => {
 };
 
 const getToggleLabel = (namespace?: CollectionNamespace) =>
-  FOLDER_NAMESPACES.includes(namespace ?? null)
+  isFolderNamespace(namespace)
     ? t`Also change sub-folders`
     : t`Also change sub-collections`;
 
@@ -299,124 +223,126 @@ const getCollectionDisabledTooltip = (
   }
 };
 
-export const getCollectionsPermissionEditor = createSelector(
-  getCollectionsPermissions,
-  getCollectionEntity,
-  selectGroupList,
-  getNamespace,
-  (permissions, collection, groups, namespace): PermissionEditorType | null => {
-    if (!permissions || collection == null) {
-      return null;
-    }
+type CollectionsPermissionEditorOpts = {
+  permissions: CollectionPermissions;
+  collection: Collection;
+  groups: GroupInfo[];
+  namespace?: CollectionNamespace;
+};
 
-    const hasChildren = (collection.children?.length ?? 0) > 0;
-    const toggleLabel = hasChildren ? getToggleLabel(namespace) : null;
-    const isAdminOnlyWrite = isAdminOnlyWriteNamespace(namespace);
-    const isTenantCollection = PLUGIN_TENANTS.isTenantCollection(collection);
+export const getCollectionsPermissionEditor = ({
+  permissions,
+  collection,
+  groups,
+  namespace,
+}: CollectionsPermissionEditorOpts): PermissionEditorType => {
+  const hasChildren = (collection.children?.length ?? 0) > 0;
+  const toggleLabel = hasChildren ? getToggleLabel(namespace) : null;
+  const isAdminOnlyWrite = isAdminOnlyWriteNamespace(namespace);
+  const isTenantCollection = PLUGIN_TENANTS.isTenantCollection(collection);
 
-    const sortedGroups = [...groups].sort(
-      (a, b) => getGroupSortOrder(a) - getGroupSortOrder(b),
-    );
+  const sortedGroups = [...groups].sort(
+    (a, b) => getGroupSortOrder(a) - getGroupSortOrder(b),
+  );
 
-    const entities = sortedGroups
-      .map((group: GroupType) => {
-        const isExternalUsersGroup = PLUGIN_TENANTS.isExternalUsersGroup(group);
-        const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
-        const isExternal = isExternalUsersGroup || isTenantGroup;
-        const groupType = getSpecialGroupType(group, isExternal);
-        const isLibrary = isLibraryCollection(collection);
-        const defaultGroup = _.find(
-          groups,
-          isExternalUsersGroup
-            ? PLUGIN_TENANTS.isExternalUsersGroup
-            : isDefaultGroup,
-        );
+  const entities = sortedGroups
+    .map((group) => {
+      const isExternalUsersGroup = PLUGIN_TENANTS.isExternalUsersGroup(group);
+      const isTenantGroup = PLUGIN_TENANTS.isTenantGroup(group);
+      const isExternal = isExternalUsersGroup || isTenantGroup;
+      const groupType = getSpecialGroupType(group, isExternal);
+      const isLibrary = isLibraryCollection(collection);
+      const defaultGroup = _.find(
+        groups,
+        isExternalUsersGroup
+          ? PLUGIN_TENANTS.isExternalUsersGroup
+          : isDefaultGroup,
+      );
 
-        if (isTenantGroup && !isTenantCollection) {
-          return null;
-        }
+      if (isTenantGroup && !isTenantCollection) {
+        return null;
+      }
 
-        if (!defaultGroup) {
-          return null;
-        }
+      if (!defaultGroup) {
+        return null;
+      }
 
-        const defaultGroupPermission = getCollectionPermission(
-          permissions,
-          defaultGroup.id,
-          collection.id,
-        );
+      const defaultGroupPermission = getCollectionPermission(
+        permissions,
+        defaultGroup.id,
+        collection.id,
+      );
 
-        const confirmations = (newValue: DataPermissionValue) => [
-          getPermissionWarningModal(
-            newValue,
-            defaultGroupPermission,
-            null,
-            defaultGroup,
-            group.id,
-          ),
-        ];
-
-        const isIACollection = isInstanceAnalyticsCollection(collection);
-        const value = getCollectionPermission(
-          permissions,
+      const confirmations = (newValue: DataPermissionValue) => [
+        getPermissionWarningModal(
+          newValue,
+          defaultGroupPermission,
+          null,
+          defaultGroup,
           group.id,
-          collection.id,
-        );
+        ),
+      ];
 
-        const options = getCollectionOptions({
-          value,
-          isIACollection,
-          isAdminOnlyWrite,
-          isTenantCollection,
-          isExternal,
-        });
+      const isIACollection = isInstanceAnalyticsCollection(collection);
+      const value = getCollectionPermission(
+        permissions,
+        group.id,
+        collection.id,
+      );
 
-        const disabledTooltip = getCollectionDisabledTooltip(
-          groupType,
-          isLibrary,
-          isIACollection,
-        );
+      const options = getCollectionOptions({
+        value,
+        isIACollection,
+        isAdminOnlyWrite,
+        isTenantCollection,
+        isExternal,
+      });
 
-        const isDisabled =
-          (!isTenantCollection && isExternal) || disabledTooltip !== null;
+      const disabledTooltip = getCollectionDisabledTooltip(
+        groupType,
+        isLibrary,
+        isIACollection,
+      );
 
-        return {
-          id: group.id,
-          name: getGroupNameLocalized(group),
-          icon: isTenantGroup ? (
-            <PLUGIN_TENANTS.TenantGroupHintIcon />
-          ) : undefined,
-          permissions: [
-            {
-              permission: DataPermission.COLLECTIONS,
-              type: DataPermissionType.COLLECTIONS,
-              toggleLabel,
-              hasChildren,
-              isDisabled,
-              disabledTooltip,
-              value,
-              warning: getCollectionWarning(
-                group.id,
-                // Unjustified type cast. FIXME
-                collection as ExpandedCollection,
-                permissions,
-              ),
-              confirmations,
-              options,
-            },
-          ],
-        };
-      })
-      .filter(isNotNull);
+      const isDisabled =
+        (!isTenantCollection && isExternal) || disabledTooltip !== null;
 
-    return {
-      title: t`Permissions for ${collection.name}`,
-      filterPlaceholder: t`Search for a group`,
-      columns: [{ name: t`Group name` }, getCollectionAccessColumn(namespace)],
-      entities,
-    };
-  },
-);
+      return {
+        id: group.id,
+        name: getGroupNameLocalized(group),
+        icon: isTenantGroup ? (
+          <PLUGIN_TENANTS.TenantGroupHintIcon />
+        ) : undefined,
+        permissions: [
+          {
+            permission: DataPermission.COLLECTIONS,
+            type: DataPermissionType.COLLECTIONS,
+            toggleLabel,
+            hasChildren,
+            isDisabled,
+            disabledTooltip,
+            value,
+            warning: getCollectionWarning(
+              group.id,
+              // Unjustified type cast. FIXME
+              collection as ExpandedCollection,
+              permissions,
+            ),
+            confirmations,
+            options,
+          },
+        ],
+      };
+    })
+    .filter(isNotNull);
+
+  return {
+    title: t`Permissions for ${collection.name}`,
+    filterPlaceholder: t`Search for a group`,
+    columns: [{ name: t`Group name` }, getCollectionAccessColumn(namespace)],
+    entities,
+  };
+};
 
 const permissionsCollectionFilter = (collection: ExpandedCollection) =>
   !collection.is_personal;

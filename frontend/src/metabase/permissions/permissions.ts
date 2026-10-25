@@ -4,10 +4,9 @@ import {
   createReducer,
   current, // immer and icepick don't play nicely together
 } from "@reduxjs/toolkit";
-import { assocIn, merge } from "icepick";
-import { isBoolean } from "underscore";
+import { merge } from "icepick";
 
-import { collectionApi, databaseApi, permissionApi } from "metabase/api";
+import { databaseApi, permissionApi } from "metabase/api";
 import { type ErrorPayload, getErrorMessage } from "metabase/api/utils/errors";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
 import {
@@ -21,9 +20,6 @@ import {
 } from "metabase/redux";
 import { navigate } from "metabase/router";
 import {
-  type Collection,
-  type CollectionPermissions,
-  type CollectionPermissionsGraph,
   DataPermission,
   DataPermissionType,
   type DataPermissionValue,
@@ -52,7 +48,6 @@ import {
   updateTablesPermission,
 } from "./utils/graph";
 import {
-  getModifiedCollectionPermissionsGraphParts,
   getModifiedGroupsPermissionsGraphParts,
   mergeGroupsPermissionsUpdates,
 } from "./utils/graph/partial-updates";
@@ -126,37 +121,6 @@ function isLoadDataPermissionsForDbAction(
   action: UnknownAction,
 ): action is PayloadAction<PermissionsGraph> {
   return !isErrorAction(action) && action.type === LOAD_DATA_PERMISSIONS_FOR_DB;
-}
-
-const INITIALIZE_COLLECTION_PERMISSIONS =
-  "metabase/admin/permissions/INITIALIZE_COLLECTION_PERMISSIONS";
-export const initializeCollectionPermissions = createThunkAction(
-  INITIALIZE_COLLECTION_PERMISSIONS,
-  (namespace) => async (dispatch) => {
-    await Promise.all([
-      dispatch(loadCollectionPermissions(namespace)),
-      dispatch(permissionApi.endpoints.listPermissionsGroups.initiate({})),
-    ]);
-  },
-);
-
-const LOAD_COLLECTION_PERMISSIONS =
-  "metabase/admin/permissions/LOAD_COLLECTION_PERMISSIONS";
-export const loadCollectionPermissions = createThunkAction(
-  LOAD_COLLECTION_PERMISSIONS,
-  (namespace) => async (dispatch) => {
-    const params = namespace != null ? { namespace } : {};
-    return runRtkEndpoint(
-      params,
-      dispatch,
-      collectionApi.endpoints.getCollectionPermissionsGraph,
-    );
-  },
-);
-function isLoadCollectionPermissionsAction(
-  action: UnknownAction,
-): action is PayloadAction<CollectionPermissionsGraph> {
-  return !isErrorAction(action) && action.type === LOAD_COLLECTION_PERMISSIONS;
 }
 
 export const LIMIT_DATABASE_PERMISSION =
@@ -319,250 +283,6 @@ function isSaveDataPermissionsAction(
   return !isErrorAction(action) && action.type === SAVE_DATA_PERMISSIONS;
 }
 
-export type UpdateCollectionPermissionParams = {
-  groupId: GroupId;
-  collection: Collection;
-  value: unknown;
-  shouldPropagateToChildren: boolean | null;
-  originalPermissionsState?: CollectionPermissions;
-};
-const UPDATE_COLLECTION_PERMISSION =
-  "metabase/admin/permissions/UPDATE_COLLECTION_PERMISSION";
-export const updateCollectionPermission =
-  createAction<UpdateCollectionPermissionParams>(UPDATE_COLLECTION_PERMISSION);
-function isUpdateCollectionPermissionAction(
-  action: UnknownAction,
-): action is PayloadAction<UpdateCollectionPermissionParams> {
-  return !isErrorAction(action) && action.type === UPDATE_COLLECTION_PERMISSION;
-}
-
-const SAVE_COLLECTION_PERMISSIONS =
-  "metabase/admin/permissions/data/SAVE_COLLECTION_PERMISSIONS";
-export const saveCollectionPermissions = createThunkAction(
-  SAVE_COLLECTION_PERMISSIONS,
-  (namespace) => async (dispatch, getState) => {
-    const {
-      originalCollectionPermissions,
-      collectionPermissions,
-      collectionPermissionsRevision,
-    } = getState().admin.permissions;
-
-    const modifiedPermissions = getModifiedCollectionPermissionsGraphParts(
-      originalCollectionPermissions,
-      collectionPermissions,
-    );
-
-    const result = await runRtkEndpoint(
-      {
-        namespace,
-        revision: collectionPermissionsRevision,
-        groups: modifiedPermissions,
-      },
-      dispatch,
-      collectionApi.endpoints.updateCollectionPermissionsGraph,
-    );
-
-    return {
-      ...result,
-      groups: collectionPermissions,
-    };
-  },
-);
-function isSaveCollectionPermissionsAction(
-  action: UnknownAction,
-): action is PayloadAction<CollectionPermissionsGraph> {
-  return !isErrorAction(action) && action.type === SAVE_COLLECTION_PERMISSIONS;
-}
-
-// Shared Tenant Collection Permissions
-const TENANT_NAMESPACE = "shared-tenant-collection";
-
-// Tenant-Specific Collection Permissions
-const TENANT_SPECIFIC_NAMESPACE = "tenant-specific";
-
-const INITIALIZE_TENANT_COLLECTION_PERMISSIONS =
-  "metabase/admin/permissions/INITIALIZE_TENANT_COLLECTION_PERMISSIONS";
-export const initializeTenantCollectionPermissions = createThunkAction(
-  INITIALIZE_TENANT_COLLECTION_PERMISSIONS,
-  () => async (dispatch) => {
-    await Promise.all([
-      dispatch(loadTenantCollectionPermissions()),
-      dispatch(permissionApi.endpoints.listPermissionsGroups.initiate({})),
-    ]);
-  },
-);
-
-const LOAD_TENANT_COLLECTION_PERMISSIONS =
-  "metabase/admin/permissions/LOAD_TENANT_COLLECTION_PERMISSIONS";
-export const loadTenantCollectionPermissions = createThunkAction(
-  LOAD_TENANT_COLLECTION_PERMISSIONS,
-  () => async (dispatch) => {
-    return runRtkEndpoint(
-      { namespace: TENANT_NAMESPACE },
-      dispatch,
-      collectionApi.endpoints.getCollectionPermissionsGraph,
-    );
-  },
-);
-function isLoadTenantCollectionPermissionsAction(
-  action: UnknownAction,
-): action is PayloadAction<CollectionPermissionsGraph> {
-  return (
-    !isErrorAction(action) && action.type === LOAD_TENANT_COLLECTION_PERMISSIONS
-  );
-}
-
-export type UpdateTenantCollectionPermissionParams = {
-  groupId: GroupId;
-  collection: Collection;
-  value: unknown;
-  shouldPropagateToChildren: boolean;
-};
-const UPDATE_TENANT_COLLECTION_PERMISSION =
-  "metabase/admin/permissions/UPDATE_TENANT_COLLECTION_PERMISSION";
-export const updateTenantCollectionPermission =
-  createAction<UpdateTenantCollectionPermissionParams>(
-    UPDATE_TENANT_COLLECTION_PERMISSION,
-  );
-function isUpdateTenantCollectionPermissionAction(
-  action: UnknownAction,
-): action is PayloadAction<UpdateTenantCollectionPermissionParams> {
-  return (
-    !isErrorAction(action) &&
-    action.type === UPDATE_TENANT_COLLECTION_PERMISSION
-  );
-}
-
-const SAVE_TENANT_COLLECTION_PERMISSIONS =
-  "metabase/admin/permissions/data/SAVE_TENANT_COLLECTION_PERMISSIONS";
-export const saveTenantCollectionPermissions = createThunkAction(
-  SAVE_TENANT_COLLECTION_PERMISSIONS,
-  () => async (dispatch, getState) => {
-    const {
-      originalTenantCollectionPermissions,
-      tenantCollectionPermissions,
-      tenantCollectionPermissionsRevision,
-    } = getState().admin.permissions;
-
-    const modifiedPermissions = getModifiedCollectionPermissionsGraphParts(
-      originalTenantCollectionPermissions,
-      tenantCollectionPermissions,
-    );
-
-    const result = await runRtkEndpoint(
-      {
-        namespace: TENANT_NAMESPACE,
-        revision: tenantCollectionPermissionsRevision,
-        groups: modifiedPermissions,
-      },
-      dispatch,
-      collectionApi.endpoints.updateCollectionPermissionsGraph,
-    );
-
-    return {
-      ...result,
-      groups: tenantCollectionPermissions,
-    };
-  },
-);
-function isSaveTenantCollectionPermissionsAction(
-  action: UnknownAction,
-): action is PayloadAction<CollectionPermissionsGraph> {
-  return (
-    !isErrorAction(action) && action.type === SAVE_TENANT_COLLECTION_PERMISSIONS
-  );
-}
-
-// Tenant-Specific Collection Permissions Actions
-const INITIALIZE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS =
-  "metabase/admin/permissions/INITIALIZE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS";
-export const initializeTenantSpecificCollectionPermissions = createThunkAction(
-  INITIALIZE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS,
-  () => async (dispatch) => {
-    await Promise.all([
-      dispatch(loadTenantSpecificCollectionPermissions()),
-      dispatch(permissionApi.endpoints.listPermissionsGroups.initiate({})),
-    ]);
-  },
-);
-
-const LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS =
-  "metabase/admin/permissions/LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS";
-export const loadTenantSpecificCollectionPermissions = createThunkAction(
-  LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS,
-  () => async (dispatch) => {
-    return runRtkEndpoint(
-      { namespace: TENANT_SPECIFIC_NAMESPACE },
-      dispatch,
-      collectionApi.endpoints.getCollectionPermissionsGraph,
-    );
-  },
-);
-function isLoadTenantSpecificCollectionPermissionsAction(
-  action: UnknownAction,
-): action is PayloadAction<CollectionPermissionsGraph> {
-  return (
-    !isErrorAction(action) &&
-    action.type === LOAD_TENANT_SPECIFIC_COLLECTION_PERMISSIONS
-  );
-}
-
-const UPDATE_TENANT_SPECIFIC_COLLECTION_PERMISSION =
-  "metabase/admin/permissions/UPDATE_TENANT_SPECIFIC_COLLECTION_PERMISSION";
-export const updateTenantSpecificCollectionPermission =
-  createAction<UpdateTenantCollectionPermissionParams>(
-    UPDATE_TENANT_SPECIFIC_COLLECTION_PERMISSION,
-  );
-function isUpdateTenantSpecificCollectionPermissionAction(
-  action: UnknownAction,
-): action is PayloadAction<UpdateTenantCollectionPermissionParams> {
-  return (
-    !isErrorAction(action) &&
-    action.type === UPDATE_TENANT_SPECIFIC_COLLECTION_PERMISSION
-  );
-}
-
-const SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS =
-  "metabase/admin/permissions/data/SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS";
-export const saveTenantSpecificCollectionPermissions = createThunkAction(
-  SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS,
-  () => async (dispatch, getState) => {
-    const {
-      originalTenantSpecificCollectionPermissions,
-      tenantSpecificCollectionPermissions,
-      tenantSpecificCollectionPermissionsRevision,
-    } = getState().admin.permissions;
-
-    const modifiedPermissions = getModifiedCollectionPermissionsGraphParts(
-      originalTenantSpecificCollectionPermissions,
-      tenantSpecificCollectionPermissions,
-    );
-
-    const result = await runRtkEndpoint(
-      {
-        namespace: TENANT_SPECIFIC_NAMESPACE,
-        revision: tenantSpecificCollectionPermissionsRevision,
-        groups: modifiedPermissions,
-      },
-      dispatch,
-      collectionApi.endpoints.updateCollectionPermissionsGraph,
-    );
-
-    return {
-      ...result,
-      groups: tenantSpecificCollectionPermissions,
-    };
-  },
-);
-function isSaveTenantSpecificCollectionPermissionsAction(
-  action: UnknownAction,
-): action is PayloadAction<CollectionPermissionsGraph> {
-  return (
-    !isErrorAction(action) &&
-    action.type === SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS
-  );
-}
-
 const CLEAR_SAVE_ERROR = "metabase/admin/permissions/CLEAR_SAVE_ERROR";
 export const clearSaveError = createAction(CLEAR_SAVE_ERROR);
 function isClearSaveErrorAction(
@@ -574,32 +294,12 @@ function isClearSaveErrorAction(
 function isSaveErrorAction(
   action: UnknownAction,
 ): action is PayloadAction<ErrorPayload> {
-  return (
-    isErrorAction(action) &&
-    [
-      SAVE_DATA_PERMISSIONS,
-      SAVE_COLLECTION_PERMISSIONS,
-      SAVE_TENANT_COLLECTION_PERMISSIONS,
-      SAVE_TENANT_SPECIFIC_COLLECTION_PERMISSIONS,
-    ].includes(action.type)
-  );
+  return isErrorAction(action) && action.type === SAVE_DATA_PERMISSIONS;
 }
 
 const saveError = createReducer<string | null>(null, (builder) => {
   builder.addMatcher(isSaveDataPermissionsAction, () => null);
   builder.addMatcher(isLoadDataPermissionsAction, () => null);
-  builder.addMatcher(isSaveCollectionPermissionsAction, () => null);
-  builder.addMatcher(isLoadCollectionPermissionsAction, () => null);
-  builder.addMatcher(isSaveTenantCollectionPermissionsAction, () => null);
-  builder.addMatcher(isLoadTenantCollectionPermissionsAction, () => null);
-  builder.addMatcher(
-    isSaveTenantSpecificCollectionPermissionsAction,
-    () => null,
-  );
-  builder.addMatcher(
-    isLoadTenantSpecificCollectionPermissionsAction,
-    () => null,
-  );
   builder.addMatcher(isClearSaveErrorAction, () => null);
   builder.addMatcher(isSaveErrorAction, (state, { payload }) => {
     return getErrorMessage(payload);
@@ -809,208 +509,6 @@ const dataPermissionsRevision = createReducer<number | null>(
   },
 );
 
-function getDecendentCollections(collection: Collection): Collection[] {
-  if (!collection.children) {
-    return [];
-  }
-  const subCollections = collection.children.filter(
-    (collection) => !collection.is_personal,
-  );
-  return subCollections.concat(...subCollections.map(getDecendentCollections));
-}
-
-const collectionPermissions = createReducer<CollectionPermissions | null>(
-  null,
-  (builder) => {
-    builder.addMatcher(
-      isLoadCollectionPermissionsAction,
-      (state, { payload }) => payload.groups,
-    );
-    builder.addMatcher(
-      isUpdateCollectionPermissionAction,
-      (state, { payload }) => {
-        const {
-          collection,
-          groupId,
-          originalPermissionsState,
-          shouldPropagateToChildren,
-          value,
-        } = payload;
-        let newPermissionsState = assocIn(
-          state != null ? current(state) : state,
-          [groupId, collection.id],
-          value,
-        );
-
-        /**
-         * Check if shouldPropagateToChildren is explicitly set (true or false) vs unset (null or undefined).
-         * If it's a boolean, we either propagate the new value or restore the original. When not a boolean, we do nothing.
-         */
-        if (isBoolean(shouldPropagateToChildren)) {
-          for (const descendent of getDecendentCollections(collection)) {
-            newPermissionsState = assocIn(
-              newPermissionsState,
-              [groupId, descendent.id],
-              shouldPropagateToChildren
-                ? value
-                : originalPermissionsState?.[groupId]?.[descendent.id],
-            );
-          }
-        }
-
-        return newPermissionsState;
-      },
-    );
-    builder.addMatcher(
-      isSaveCollectionPermissionsAction,
-      (state, { payload }) => payload.groups,
-    );
-  },
-);
-
-const originalCollectionPermissions =
-  createReducer<CollectionPermissions | null>(null, (builder) => {
-    builder.addMatcher(
-      isLoadCollectionPermissionsAction,
-      (state, { payload }) => payload.groups,
-    );
-    builder.addMatcher(
-      isSaveCollectionPermissionsAction,
-      (state, { payload }) => payload.groups,
-    );
-  });
-
-const collectionPermissionsRevision = createReducer<number | null>(
-  null,
-  (builder) => {
-    builder.addMatcher(
-      isLoadCollectionPermissionsAction,
-      (state, { payload }) => payload.revision,
-    );
-    builder.addMatcher(
-      isSaveCollectionPermissionsAction,
-      (state, { payload }) => payload.revision,
-    );
-  },
-);
-
-function handleUpdateTenantCollectionPermission(
-  state: CollectionPermissions | null,
-  { payload }: PayloadAction<UpdateTenantCollectionPermissionParams>,
-) {
-  const { groupId, collection, value, shouldPropagateToChildren } = payload;
-  let newPermissions = assocIn(
-    state != null ? current(state) : state,
-    [groupId, collection.id],
-    value,
-  );
-
-  if (shouldPropagateToChildren) {
-    for (const descendent of getDecendentCollections(collection)) {
-      newPermissions = assocIn(newPermissions, [groupId, descendent.id], value);
-    }
-  }
-  return newPermissions;
-}
-
-const tenantCollectionPermissions = createReducer<CollectionPermissions | null>(
-  null,
-  (builder) => {
-    builder.addMatcher(
-      isLoadTenantCollectionPermissionsAction,
-      (state, { payload }) => payload.groups,
-    );
-    builder.addMatcher(
-      isUpdateTenantCollectionPermissionAction,
-      handleUpdateTenantCollectionPermission,
-    );
-    builder.addMatcher(
-      isSaveTenantCollectionPermissionsAction,
-      (state, { payload }) => payload.groups,
-    );
-  },
-);
-
-const originalTenantCollectionPermissions =
-  createReducer<CollectionPermissions | null>(null, (builder) => {
-    builder.addMatcher(
-      isLoadTenantCollectionPermissionsAction,
-      (state, { payload }) => payload.groups,
-    );
-    builder.addMatcher(
-      isSaveTenantCollectionPermissionsAction,
-      (state, { payload }) => payload.groups,
-    );
-  });
-
-const tenantCollectionPermissionsRevision = createReducer<number | null>(
-  null,
-  (builder) => {
-    builder.addMatcher(
-      isLoadTenantCollectionPermissionsAction,
-      (state, { payload }) => payload.revision,
-    );
-    builder.addMatcher(
-      isSaveTenantCollectionPermissionsAction,
-      (state, { payload }) => payload.revision,
-    );
-  },
-);
-
-const tenantSpecificCollectionPermissions =
-  createReducer<CollectionPermissions | null>(null, (builder) => {
-    builder.addMatcher(
-      isLoadTenantSpecificCollectionPermissionsAction,
-      (state, { payload }) => payload.groups,
-    );
-    builder.addMatcher(
-      isUpdateTenantSpecificCollectionPermissionAction,
-      handleUpdateTenantCollectionPermission, // same handler for tenant and tenant-specific
-    );
-    builder.addMatcher(
-      isSaveTenantSpecificCollectionPermissionsAction,
-      (state, { payload }) => payload.groups,
-    );
-  });
-
-const originalTenantSpecificCollectionPermissions =
-  createReducer<CollectionPermissions | null>(null, (builder) => {
-    builder.addMatcher(
-      isLoadTenantSpecificCollectionPermissionsAction,
-      (state, { payload }) => payload.groups,
-    );
-    builder.addMatcher(
-      isSaveTenantSpecificCollectionPermissionsAction,
-      (state, { payload }) => payload.groups,
-    );
-  });
-
-const tenantSpecificCollectionPermissionsRevision = createReducer<
-  number | null
->(null, (builder) => {
-  builder.addMatcher(
-    isLoadTenantSpecificCollectionPermissionsAction,
-    (state, { payload }) => payload.revision,
-  );
-  builder.addMatcher(
-    isSaveTenantSpecificCollectionPermissionsAction,
-    (state, { payload }) => payload.revision,
-  );
-});
-
-export const TOGGLE_HELP_REFERENCE =
-  "metabase/admin/permissions/TOGGLE_HELP_REFERENCE";
-export const toggleHelpReference = createAction(TOGGLE_HELP_REFERENCE);
-function isToggleHelpReferenceAction(
-  action: UnknownAction,
-): action is PayloadAction<void> {
-  return !isErrorAction(action) && action.type === TOGGLE_HELP_REFERENCE;
-}
-
-export const isHelpReferenceOpen = createReducer<boolean>(false, (builder) => {
-  builder.addMatcher(isToggleHelpReferenceAction, (state) => !state);
-});
-
 interface RevisionChangedState {
   revision: number | null;
   hasChanged: boolean;
@@ -1059,15 +557,5 @@ export const permissions = combineReducers({
   databasesWithTables,
   originalDataPermissions,
   dataPermissionsRevision,
-  collectionPermissions,
-  originalCollectionPermissions,
-  collectionPermissionsRevision,
-  tenantCollectionPermissions,
-  originalTenantCollectionPermissions,
-  tenantCollectionPermissionsRevision,
-  tenantSpecificCollectionPermissions,
-  originalTenantSpecificCollectionPermissions,
-  tenantSpecificCollectionPermissionsRevision,
-  isHelpReferenceOpen,
   hasRevisionChanged,
 });

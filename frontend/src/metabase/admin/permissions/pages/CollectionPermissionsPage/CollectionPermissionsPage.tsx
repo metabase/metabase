@@ -1,7 +1,10 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
-import { useListCollectionsTreeQuery } from "metabase/api";
+import {
+  useListCollectionsTreeQuery,
+  useListPermissionsGroupsQuery,
+} from "metabase/api";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import {
   CollectionPermissionsHelp,
@@ -9,16 +12,12 @@ import {
   PermissionsSidebar,
   assertNumericId,
   collectionsQuery,
-  getCollectionEntity,
   getCollectionsPermissionEditor,
   getCollectionsSidebar,
-  getIsCollectionPermissionsDirty,
-  initializeCollectionPermissions,
-  loadCollectionPermissions,
-  saveCollectionPermissions,
-  updateCollectionPermission,
+  getPermissionsCollection,
+  parseCollectionIdParam,
+  useCollectionPermissionsGraph,
 } from "metabase/permissions";
-import { useDispatch, useSelector } from "metabase/redux";
 import { useNavigate, useParams } from "metabase/router";
 import type { CollectionId } from "metabase-types/api";
 
@@ -29,33 +28,39 @@ import {
 import { PermissionsPageLayout } from "../../components/PermissionsPageLayout";
 
 export function CollectionPermissionsPage() {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-  useListCollectionsTreeQuery(collectionsQuery);
-
-  // These selectors resolve the selected collection from the route, so they
-  // take the route params rather than reading them from the store.
   const params = useParams<{ collectionId: string }>();
-  const selectorProps = { params };
-  const sidebar = useSelector((state) =>
-    getCollectionsSidebar(state, selectorProps),
-  );
-  const permissionEditor = useSelector((state) =>
-    getCollectionsPermissionEditor(state, selectorProps),
-  );
-  const collection = useSelector((state) =>
-    getCollectionEntity(state, selectorProps),
-  );
-  const isDirty = useSelector(getIsCollectionPermissionsDirty);
+  const collectionId = parseCollectionIdParam(params.collectionId);
+  const { data: collections } = useListCollectionsTreeQuery(collectionsQuery);
+  const { data: groups } = useListPermissionsGroupsQuery({});
+  const {
+    permissions,
+    isDirty,
+    saveError,
+    updatePermission,
+    savePermissions,
+    resetPermissions,
+    clearSaveError,
+  } = useCollectionPermissionsGraph();
 
-  const originalPermissionsState = useSelector(
-    ({ admin }) => admin.permissions.originalCollectionPermissions,
+  const sidebar = useMemo(
+    () => getCollectionsSidebar(collections ?? [], collectionId),
+    [collections, collectionId],
   );
-
-  // These thunks take a collection namespace; this page edits the default one.
-  useEffect(() => {
-    dispatch(initializeCollectionPermissions(undefined));
-  }, [dispatch]);
+  const collection = useMemo(
+    () =>
+      collections && collectionId != null
+        ? getPermissionsCollection(collections, collectionId)
+        : undefined,
+    [collections, collectionId],
+  );
+  const permissionEditor = useMemo(
+    () =>
+      permissions && collection && groups
+        ? getCollectionsPermissionEditor({ permissions, collection, groups })
+        : null,
+    [permissions, collection, groups],
+  );
 
   const navigateToItem = ({ id }: { id: CollectionId }) =>
     navigate(`${getPermissionsBasePath()}/collections/${id}`);
@@ -70,27 +75,25 @@ export function CollectionPermissionsPage() {
       if (!collection) {
         return;
       }
-      dispatch(
-        updateCollectionPermission({
-          groupId: assertNumericId(item.id),
-          collection,
-          value,
-          shouldPropagateToChildren: toggleState,
-          originalPermissionsState,
-        }),
-      );
+      updatePermission({
+        groupId: assertNumericId(item.id),
+        collection,
+        value,
+        shouldPropagateToChildren: toggleState,
+      });
     },
-    [collection, dispatch, originalPermissionsState],
+    [collection, updatePermission],
   );
 
   return (
     <PermissionsPageLayout
       tab="collections"
       isDirty={isDirty}
-      onSave={() => dispatch(saveCollectionPermissions(undefined))}
-      onLoad={() => dispatch(loadCollectionPermissions(undefined))}
+      onSave={savePermissions}
+      onLoad={resetPermissions}
+      saveError={saveError}
+      onClearSaveError={clearSaveError}
       helpContent={<CollectionPermissionsHelp />}
-      key={collection?.id}
     >
       <PermissionsSidebar {...sidebar} onSelect={navigateToItem} />
 
@@ -103,6 +106,7 @@ export function CollectionPermissionsPage() {
 
       {permissionEditor && (
         <PermissionsEditor
+          key={collection?.id}
           isLoading={undefined}
           error={undefined}
           {...permissionEditor}

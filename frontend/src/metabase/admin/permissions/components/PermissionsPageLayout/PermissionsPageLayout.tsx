@@ -12,13 +12,10 @@ import {
   LegacyPermissionsModal,
   type PermissionsGraphDiff,
   ToolbarButton,
-  clearSaveError as clearPermissionsSaveError,
-  getIsHelpReferenceOpen,
   isEmbeddingHubPermissions,
   showRevisionChangedModal,
-  toggleHelpReference,
 } from "metabase/permissions";
-import { useDispatch, useSelector } from "metabase/redux";
+import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";
 import {
@@ -47,8 +44,8 @@ type PermissionsPageLayoutProps = {
   isDirty?: boolean;
   onSave?: () => void;
   onLoad?: () => void;
-  saveError?: string;
-  clearSaveError?: () => void;
+  saveError?: string | null;
+  onClearSaveError?: () => void;
   navigateToLocation?: (location: string) => void;
   navigateToTab?: (tab: string) => void;
   helpContent?: ReactNode;
@@ -62,6 +59,8 @@ export function PermissionsPageLayout({
   isDirty,
   onSave,
   onLoad,
+  saveError,
+  onClearSaveError,
   helpContent,
   canShowSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
@@ -76,23 +75,17 @@ export function PermissionsPageLayout({
   const showSplitPermsModal =
     canShowSplitPermsModal && !!showModalSetting && !isSplitPermsModalDismissed;
 
-  const saveError = useSelector((state) => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);
 
-  const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
-  const dispatch = useDispatch();
+  const [isHelpReferenceOpen, setIsHelpReferenceOpen] = useState(false);
   const navigate = useNavigate();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
     navigate(`${getPermissionsBasePath()}/${tab}`);
 
-  const clearSaveError = () => {
-    dispatch(clearPermissionsSaveError());
-  };
-
   const handleToggleHelpReference = useCallback(() => {
-    dispatch(toggleHelpReference());
-  }, [dispatch]);
+    setIsHelpReferenceOpen((isOpen) => !isOpen);
+  }, []);
 
   const handleDimissSplitPermsModal = () => {
     setIsSplitPermsModalDismissed(true);
@@ -115,8 +108,8 @@ export function PermissionsPageLayout({
 
         <ConfirmModal
           opened={saveError != null}
-          onClose={clearSaveError}
-          onConfirm={clearSaveError}
+          onClose={() => onClearSaveError?.()}
+          onConfirm={() => onClearSaveError?.()}
           title={t`There was an error saving`}
           message={saveError}
           confirmButtonText={t`OK`}
