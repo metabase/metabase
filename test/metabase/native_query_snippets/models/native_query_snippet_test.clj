@@ -17,6 +17,25 @@
       (is (= (mt/user->id :lucky)
              (t2/select-one-fn :creator_id :model/NativeQuerySnippet :id snippet-id))))))
 
+(deftest snippet-names-are-unique-and-taggable-test
+  (testing "a snippet's name is unique and can be named in a {{snippet: ...}} tag, on every write path"
+    (let [taken (mt/random-name)]
+      (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id} {:name taken :content "1 = 1"}
+                     :model/NativeQuerySnippet {other-id :id}   {:content "2 = 2"}]
+        (doseq [[label snippet-name message] [["a taken name"         taken           #"already exists"]
+                                              ["a name with a brace"  "a } b"         #"cannot include"]
+                                              ["a leading space"      " leading"      #"cannot include"]]]
+          (testing label
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                  (t2/insert! :model/NativeQuerySnippet {:name       snippet-name
+                                                                         :content    "3 = 3"
+                                                                         :creator_id (mt/user->id :crowberto)})))
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo message
+                                  (t2/update! :model/NativeQuerySnippet other-id {:name snippet-name})))))
+        (testing "a snippet keeps its own name through an update"
+          (t2/update! :model/NativeQuerySnippet snippet-id {:name taken :content "4 = 4"})
+          (is (= "4 = 4" (t2/select-one-fn :content :model/NativeQuerySnippet :id snippet-id))))))))
+
 (deftest snippet-collection-test
   (testing "Should be allowed to create snippets in a Collection in the :snippets namespace"
     (mt/with-temp [:model/Collection         {collection-id :id} {:namespace "snippets"}

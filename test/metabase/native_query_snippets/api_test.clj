@@ -222,3 +222,8 @@
           (mt/with-temp [:model/NativeQuerySnippet {snippet-id :id}]
             (is (= {:errors {:collection_id "Collection does not exist."}}
                    (mt/user-http-request :rasta :put 404 (snippet-url snippet-id) {:collection_id Integer/MAX_VALUE})))))))))
+
+(deftest update-missing-snippet-test
+  (testing "PUT /api/native-query-snippet/:id on a missing snippet is a 404"
+    (is (= "Not found."
+           (mt/user-http-request :crowberto :put 404 (str "native-query-snippet/" Integer/MAX_VALUE) {:content "1 = 1"})))))

@@ -10,7 +10,6 @@
    [metabase.native-query-snippets.db :as native-query-snippets.db]
    [metabase.native-query-snippets.models.native-query-snippet :as native-query-snippet]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -56,11 +55,6 @@
                     [:id ms/PositiveInt]]]
   (get-native-query-snippet id))
 
-(defn- check-snippet-name-is-unique [snippet-name]
-  (when (native-query-snippets.db/snippet-name-exists? snippet-name)
-    (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
-                    {:status-code 400}))))
-
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;
@@ -74,7 +68,6 @@
                                                         [:description   {:optional true} [:maybe :string]]
                                                         [:name          native-query-snippet/NativeQuerySnippetName]
                                                         [:collection_id {:optional true} [:maybe ms/PositiveInt]]]]
-  (check-snippet-name-is-unique name)
   (let [snippet {:content       content
                  :creator_id    api/*current-user-id*
                  :description   description
@@ -87,15 +80,13 @@
   "Check whether current user has write permissions, then update NativeQuerySnippet with values in `body`.  Returns
   updated/hydrated NativeQuerySnippet"
   [id body]
-  (let [snippet     (native-query-snippets.db/snippet id)
+  (let [snippet     (api/check-404 (native-query-snippets.db/snippet id))
         body-fields (u/select-keys-when body
                                         :present #{:description :collection_id}
                                         :non-nil #{:archived :content :name})
         [changes]   (data/diff body-fields snippet)]
     (when (seq changes)
       (api/update-check snippet changes)
-      (when-let [new-name (:name changes)]
-        (check-snippet-name-is-unique new-name))
       (t2/with-transaction [_conn]
         (native-query-snippets.db/update-snippet! id changes)
         (collections/check-for-remote-sync-update snippet)))

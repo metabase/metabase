@@ -82,8 +82,25 @@
                                    (set-snippet-id))))
          (assoc snippet :template_tags))))
 
+(defn- valid-name?
+  "Whether `snippet-name` can be named in a `{{snippet: ...}}` tag: no `}` and no leading spaces."
+  [snippet-name]
+  (and (string? snippet-name)
+       (not (re-find #"^\s+" snippet-name))
+       (not (re-find #"}" snippet-name))))
+
+(defn- check-name
+  "Throws a 400 unless `snippet-name` is a valid name that no snippet other than the one with `snippet-id` has."
+  [snippet-name snippet-id]
+  (when-not (valid-name? snippet-name)
+    (throw (ex-info (tru "snippet names cannot include ''}'' or start with spaces") {:status-code 400})))
+  (when (native-query-snippets.db/snippet-name-taken? snippet-name snippet-id)
+    (throw (ex-info (tru "A snippet with that name already exists. Please pick a different name.")
+                    {:status-code 400}))))
+
 (t2/define-before-insert :model/NativeQuerySnippet [snippet]
   (u/prog1 (add-template-tags snippet)
+    (check-name (:name snippet) nil)
     (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id snippet))
     (collection/check-collection-namespace :model/NativeQuerySnippet (:collection_id snippet))))
 
@@ -107,6 +124,8 @@
   ;; additional checks (Enterprise Edition only)
   (pre-update-check-sandbox-constraints-for-snippet snippet (t2/changes snippet))
   (collection/check-allowed-content :model/NativeQuerySnippet (:collection_id (t2/changes snippet)))
+  (when (contains? (t2/changes snippet) :name)
+    (check-name (:name snippet) (:id snippet)))
   (u/prog1 (cond-> snippet
              (:content snippet) add-template-tags)
     ;; throw an Exception if someone tries to update creator_id
@@ -163,12 +182,7 @@
 (def NativeQuerySnippetName
   "Schema checking that snippet names do not include \"}\" or start with spaces."
   (mu/with-api-error-message
-   [:fn (fn [x]
-          ((every-pred
-            string?
-            (complement #(boolean (re-find #"^\s+" %)))
-            (complement #(boolean (re-find #"}" %))))
-           x))]
+   [:fn valid-name?]
    (deferred-tru "snippet names cannot include ''}'' or start with spaces")))
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------

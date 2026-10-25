@@ -20,10 +20,12 @@
   [id :- ::lib.schema.id/native-query-snippet]
   (t2/select-one :model/NativeQuerySnippet :id id))
 
-(mu/defn snippet-name-exists?
-  "Whether a NativeQuerySnippet named `snippet-name` exists."
-  [snippet-name :- :string]
-  (t2/exists? :model/NativeQuerySnippet :name snippet-name))
+(mu/defn snippet-name-taken?
+  "Whether a NativeQuerySnippet other than the one with `snippet-id` is named `snippet-name`; any snippet when
+  `snippet-id` is nil."
+  [snippet-name :- :string
+   snippet-id   :- [:maybe ::lib.schema.id/native-query-snippet]]
+  (t2/exists? :model/NativeQuerySnippet :name snippet-name :id [:not= snippet-id]))
 
 (mu/defn other-snippet-with-name-exists?
   "Whether a NativeQuerySnippet named `snippet-name` with an entity id other than `entity-id` exists."
