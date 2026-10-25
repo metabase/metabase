@@ -28,7 +28,8 @@
          (or (= ::not-moved collection-id)
              (= collection-id (:collection_id timeline))
              (nil? collection-id)
-             (timeline.db/unarchived-collection-exists? collection-id)))))
+             (and (timeline.db/unarchived-collection-exists? collection-id)
+                  (mi/can-write? :model/Collection collection-id))))))
 
 ;;;; transforms
 

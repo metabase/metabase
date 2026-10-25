@@ -147,7 +147,8 @@
          (or (= ::not-moved collection-id)
              (= collection-id (:collection_id document))
              (nil? collection-id)
-             (documents.db/unarchived-collection-exists? collection-id)))))
+             (and (documents.db/unarchived-collection-exists? collection-id)
+                  (mi/can-write? :model/Collection collection-id))))))
 
 (def DocumentName
   "Validations for the name of a document"
