@@ -2,33 +2,22 @@
   (:require
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [are deftest is testing]]
-   [clojure.walk :as walk]
    [malli.error :as me]
    [metabase.lib.core :as lib]
    [metabase.lib.schema]
    [metabase.lib.schema.expression :as expression]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.match :as match]))
 
 (comment metabase.lib.schema/keep-me
          #?(:cljs metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (defn- ensure-uuids [filter-expr]
-  (walk/postwalk
-   (fn [f]
-     (if (and (vector? f)
-              (keyword? (first f))
-              (not (map-entry? f)))
-       (let [[op & args] f]
-         (cond
-           (and (map? (first args)) (not (:lib/uuid (first args))))
-           (assoc-in f [1 :lib/uuid] (str (random-uuid)))
-
-           (not-any? #(and (map? %) (:lib/uuid %)) args)
-           (into [op {:lib/uuid (str (random-uuid))}] args)
-
-           :else f))
-       f))
-   filter-expr))
+  (match/replace-all filter-expr
+    [#'keyword? (opts :guard (and (map? opts) (not (:lib/uuid opts)))) & _]
+    (assoc-in &match [1 :lib/uuid] (str (random-uuid)))
+    [(op :guard keyword?) & (args :guard (not-any? #(and (map? %) (:lib/uuid %)) args))]
+    (into [op {:lib/uuid (str (random-uuid))}] args)))
 
 (defn- filter-ops
   "Return the set of filter operators in `filter-expr`."

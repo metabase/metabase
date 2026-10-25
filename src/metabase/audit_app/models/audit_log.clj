@@ -5,7 +5,6 @@
   (:require
    [clojure.data :as data]
    [clojure.set :as set]
-   [clojure.walk :as walk]
    [metabase.api.common :as api]
    [metabase.audit-app.db :as audit-app.db]
    [metabase.models.interface :as mi]
@@ -14,6 +13,7 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.util.match :as match]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -179,7 +179,8 @@
 (defn- stringify-keys
   "Recursively turns the keyword keys of maps nested inside `x` into strings, keeping their namespaces."
   [x]
-  (walk/postwalk #(cond-> % (map? %) (update-keys (fn [k] (cond-> k (keyword? k) u/qualified-name)))) x))
+  (match/replace-all x
+    #'map? (update-keys &match #(cond-> % (keyword? %) u/qualified-name))))
 
 (def ^:private AuditedInstance
   "An audited object of any model, whose keys that model owns and `model-details` (dispatching on the model) picks from."

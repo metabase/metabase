@@ -18,7 +18,8 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
-   [metabase.util.performance :as perf :refer [mapv]])
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [mapv]])
   (:import
    (java.sql ResultSet Types)
    (java.time LocalDate LocalDateTime ZonedDateTime)))
@@ -205,10 +206,8 @@
         identifier
 
         :else
-        (perf/postwalk #(if (h2x/identifier? %)
-                          (sql.qp/json-query :druid-jdbc % stored-field)
-                          %)
-                       identifier)))))
+        (match/replace-all identifier
+          #'h2x/identifier? (sql.qp/json-query :druid-jdbc &match stored-field))))))
 
 (defmethod sql-jdbc.sync/column->semantic-type :druid-jdbc
   [_driver database-type _column-name]

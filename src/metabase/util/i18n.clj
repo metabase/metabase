@@ -2,12 +2,12 @@
   "i18n functionality."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]
    [metabase.util.i18n.common :as i18n.common]
    [metabase.util.i18n.impl :as i18n.impl]
    [metabase.util.i18n.validation :as i18n.validation]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [net.cgrand.macrovich :as macros]
    [potemkin :as p]
    [potemkin.types :as p.types])
@@ -309,10 +309,8 @@
 (defn localized-strings->strings
   "Walks the datastructure `x` and converts any localized strings to regular string"
   [x]
-  (walk/postwalk (fn [node]
-                   (cond-> node
-                     (localized-string? node) str))
-                 x))
+  (match/replace-all x
+    #'localized-string? (str &match)))
 
 ;;;; Clojure/ClojureScript macros
 

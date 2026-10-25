@@ -24,7 +24,7 @@
    Remove `#d`s before committing."
   (:require
    [clojure.string :as str]
-   [clojure.walk :as walk]))
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
@@ -159,17 +159,14 @@
   "Walk `form`, replacing any `#d` expansion with the original form it
    wraps. Recognizes the expansion by the `inner-marker` sentinel."
   [form]
-  (walk/postwalk
-   (fn [x]
-     (if (and (seq? x)
-              (= 'clojure.core/let (first x))
-              (= inner-marker (some-> x second second)))
-       ;; Shape: (clojure.core/let [orig# ::inner]
-       ;;          (clojure.core/let [v# <ORIG>] (print-debug-entry! ...) v#))
-       ;; Pull out <ORIG>.
-       (some-> x (nth 2) second second)
-       x))
-   form))
+  (match/replace-all form
+    ;; Shape: (clojure.core/let [orig# ::inner]
+    ;;          (clojure.core/let [v# <ORIG>] (print-debug-entry! ...) v#))
+    ;; Pull out <ORIG>.
+    (x :guard (and (seq? x)
+                   (= 'clojure.core/let (first x))
+                   (= inner-marker (some-> x second second))))
+    (some-> x (nth 2) second second)))
 
 (defn d
   "Reader-tag fn for `#d`. Three shapes:

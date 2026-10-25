@@ -2,14 +2,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
-   [metabase.documents.markdown :as md]))
+   [metabase.documents.markdown :as md]
+   [metabase.util.match :as match]))
 
 (set! *warn-on-reflection* true)
 
 (defn- strip-ids
   [ast]
-  (walk/postwalk #(if (map? %) (dissoc % "_id") %) ast))
+  (match/replace-all ast {"_id" _} (dissoc &match "_id")))
 
 (defn- para
   [text]
@@ -18,9 +18,8 @@
 (defn- collect-type
   "Every node of `type` anywhere in `ast`."
   [ast type]
-  (let [found (atom [])]
-    (walk/postwalk (fn [n] (when (and (map? n) (= type (:type n))) (swap! found conj n)) n) ast)
-    @found))
+  (match/match-all ast
+    {:type #{type}} &match))
 
 (defn- text+marks
   [node]
