@@ -38,3 +38,17 @@
              (t2/select-one-fn :icon :model/TimelineEvent (u/the-id a))))
       (is (= "cake"
              (t2/select-one-fn :icon :model/TimelineEvent (u/the-id b)))))))
+
+(deftest event-takes-its-timelines-icon-test
+  (testing "an event inserted without an icon takes its timeline's"
+    (mt/with-temp [:model/Timeline {timeline-id :id} {:icon "warning"}]
+      (let [event-id (t2/insert-returning-pk! :model/TimelineEvent {:timeline_id  timeline-id
+                                                                    :name         "Launch"
+                                                                    :timestamp    :%now
+                                                                    :timezone     "UTC"
+                                                                    :time_matters false
+                                                                    :creator_id   (mt/user->id :rasta)})]
+        (try
+          (is (= "warning" (t2/select-one-fn :icon :model/TimelineEvent :id event-id)))
+          (finally
+            (t2/delete! :model/TimelineEvent :id event-id)))))))

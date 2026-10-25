@@ -4,7 +4,6 @@
    [metabase.analytics.core :as analytics]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
-   [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
@@ -21,7 +20,7 @@
   "Create a new [[TimelineEvent]]."
   [_route-params
    _query-params
-   {:keys [timestamp time_matters icon timeline_id source question_id] :as body}
+   {:keys [timestamp time_matters timeline_id source question_id] :as body}
    :- [:map {:closed true}
        [:name         ms/NonBlankString]
        [:description  {:optional true} [:maybe :string]]
@@ -45,9 +44,7 @@
                      (u.date/parse timestamp))
           tl-event (merge (dissoc body :source :question_id)
                           {:creator_id api/*current-user-id*
-                           :timestamp  parsed}
-                          (when-not icon
-                            {:icon (timeline.db/timeline-icon timeline_id)}))]
+                           :timestamp  parsed})]
       (analytics/track-event! :snowplow/timeline
                               (cond-> {:event         :new-event-created
                                        :time_matters  time_matters
@@ -86,17 +83,15 @@
                                       [:icon         {:optional true} [:maybe timeline-event/Icon]]
                                       [:timeline_id  {:optional true} [:maybe ms/PositiveInt]]
                                       [:archived     {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check :model/TimelineEvent id)
+  (let [existing               (api/check-404 (timeline.db/timeline-event id))
         timeline-event-updates (cond-> timeline-event-updates
-                                 (boolean timestamp) (update :timestamp u.date/parse))]
-    (collection/check-allowed-to-change-collection existing timeline-event-updates)
-    (when (api/column-will-change? (:timeline_id existing) (get timeline-event-updates :timeline_id ::api/not-provided))
-      (api/write-check :model/Timeline (:timeline_id timeline-event-updates)))
+                                 (boolean timestamp) (update :timestamp u.date/parse))
+        changes                (u/select-keys-when timeline-event-updates
+                                                   :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
+                                                   :non-nil #{:name})]
+    (api/update-check existing changes)
     ;; todo: if we accept a new timestamp, must we require a timezone? gut says yes?
-    (timeline.db/update-timeline-event! id
-                                        (u/select-keys-when timeline-event-updates
-                                                            :present #{:description :timestamp :time_matters :timezone :icon :timeline_id :archived}
-                                                            :non-nil #{:name}))
+    (timeline.db/update-timeline-event! id changes)
     (u/prog1 (timeline.db/timeline-event id)
       (events/publish-event! :event/timeline-update {:object (timeline.db/timeline (:timeline_id <>)) :user-id api/*current-user-id*}))))
 
@@ -108,7 +103,6 @@
   "Delete a [[TimelineEvent]]."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/write-check :model/TimelineEvent id)
   (let [timeline-event (api/write-check :model/TimelineEvent id)]
     (timeline.db/delete-timeline-event! id)
     (events/publish-event! :event/timeline-delete {:object (timeline.db/timeline (:timeline_id timeline-event)) :user-id api/*current-user-id*}))

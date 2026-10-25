@@ -2,6 +2,7 @@
   (:require
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.timeline.db :as timeline.db]
    [metabase.timeline.models.timeline-event :as timeline-event]
@@ -16,6 +17,18 @@
   (derive :perms/use-parent-collection-perms)
   (derive :hook/timestamped?)
   (derive :hook/entity-id))
+
+;;;; permissions
+
+(defmethod mi/can-update? :model/Timeline
+  [timeline changes]
+  (let [collection-id (get changes :collection_id ::not-moved)]
+    (and (mi/can-write? timeline)
+         (mi/can-write? (merge timeline changes))
+         (or (= ::not-moved collection-id)
+             (= collection-id (:collection_id timeline))
+             (nil? collection-id)
+             (timeline.db/unarchived-collection-exists? collection-id)))))
 
 ;;;; transforms
 
@@ -33,6 +46,12 @@
 (t2/define-before-update :model/Timeline [model]
   (collection/check-allowed-content :model/Timeline (:collection_id (t2/changes model)))
   model)
+
+(t2/define-after-update :model/Timeline
+  [{timeline-id :id, :keys [archived], :as timeline}]
+  (when archived
+    (timeline.db/archive-timeline-events! timeline-id))
+  timeline)
 
 ;;;; functions
 

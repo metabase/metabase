@@ -111,15 +111,15 @@
                                                [:icon          {:optional true} [:maybe timeline-event/Icon]]
                                                [:collection_id {:optional true} [:maybe ms/PositiveInt]]
                                                [:archived      {:optional true} [:maybe :boolean]]]]
-  (let [existing (api/write-check :model/Timeline id)
-        current-archived (:archived (timeline.db/timeline id))]
-    (collection/check-allowed-to-change-collection existing timeline-updates)
-    (timeline.db/update-timeline! id
-                                  (u/select-keys-when timeline-updates
-                                                      :present #{:description :icon :collection_id :default :archived}
-                                                      :non-nil #{:name}))
-    (when (and (some? archived) (not= current-archived archived))
-      (timeline.db/set-timeline-events-archived! id archived))
+  (let [existing         (api/check-404 (timeline.db/timeline id))
+        current-archived (:archived existing)
+        changes          (u/select-keys-when timeline-updates
+                                             :present #{:description :icon :collection_id :default :archived}
+                                             :non-nil #{:name})]
+    (api/update-check existing changes)
+    (timeline.db/update-timeline! id changes)
+    (when (and current-archived (false? archived))
+      (timeline.db/set-timeline-events-archived! id false))
     (u/prog1 (t2/hydrate (timeline.db/timeline id) :creator [:collection :can_write] :is_remote_synced)
       (events/publish-event! :event/timeline-update {:object <> :user-id api/*current-user-id*}))))
 

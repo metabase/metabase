@@ -59,10 +59,20 @@
    archived    :- :boolean]
   (t2/update! :model/TimelineEvent {:timeline_id timeline-id} {:archived archived}))
 
+(mu/defn archive-timeline-events!
+  "Archive the unarchived TimelineEvents of the Timeline with `timeline-id`, returning the number updated."
+  [timeline-id :- ms/PositiveInt]
+  (t2/update! :model/TimelineEvent {:timeline_id timeline-id :archived false} {:archived true}))
+
 (mu/defn delete-timeline!
   "Delete the Timeline with `id`, returning the number deleted."
   [id :- ms/PositiveInt]
   (t2/delete! :model/Timeline :id id))
+
+(mu/defn unarchived-collection-exists?
+  "Whether an unarchived Collection with `collection-id` exists."
+  [collection-id :- ::lib.schema.id/collection]
+  (t2/exists? :model/Collection :id collection-id :archived false))
 
 (mu/defn collection
   "The Collection with `collection-id`, or nil."

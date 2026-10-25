@@ -49,3 +49,12 @@
   (mt/with-temp [:model/Timeline      tl  {:name "tl-a"}
                  :model/TimelineEvent tle {:timeline_id (:id tl) :name "e-a"}]
     (is (= tl (:timeline (t2/hydrate tle :timeline))))))
+
+(deftest archiving-a-timeline-archives-its-events-test
+  (testing "archiving a timeline archives its events, on every write path"
+    (mt/with-temp [:model/Timeline      {timeline-id :id} {}
+                   :model/TimelineEvent {event-id :id}    {:timeline_id timeline-id}]
+      (t2/update! :model/Timeline timeline-id {:name "Renamed"})
+      (is (false? (t2/select-one-fn :archived :model/TimelineEvent :id event-id)))
+      (t2/update! :model/Timeline timeline-id {:archived true})
+      (is (true? (t2/select-one-fn :archived :model/TimelineEvent :id event-id))))))

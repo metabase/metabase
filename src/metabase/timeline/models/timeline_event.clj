@@ -43,6 +43,11 @@
   (update timeline-event :icon (fn [icon]
                                  (if (= icon "balloons") default-icon icon))))
 
+(t2/define-before-insert :model/TimelineEvent
+  [{:keys [icon timeline_id], :as event}]
+  (cond-> event
+    (nil? icon) (assoc :icon (timeline.db/timeline-icon timeline_id))))
+
 ;;;; permissions
 
 (defmethod mi/perms-objects-set :model/TimelineEvent
@@ -52,8 +57,17 @@
     (mi/perms-objects-set timeline read-or-write)))
 
 (defmethod mi/can-create? :model/TimelineEvent
-  [_ {:keys [timeline]}]
-  (mi/can-create? :model/Timeline {:collection_id (:collection_id timeline)}))
+  [_ {:keys [timeline timeline_id]}]
+  (when-let [timeline (or timeline (some-> timeline_id timeline.db/timeline))]
+    (mi/can-create? :model/Timeline {:collection_id (:collection_id timeline)})))
+
+(defmethod mi/can-update? :model/TimelineEvent
+  [event changes]
+  (let [timeline-id (get changes :timeline_id ::not-moved)]
+    (and (mi/can-write? event)
+         (or (= ::not-moved timeline-id)
+             (= timeline-id (:timeline_id event))
+             (mi/can-write? :model/Timeline timeline-id)))))
 
 ;;;; hydration
 
