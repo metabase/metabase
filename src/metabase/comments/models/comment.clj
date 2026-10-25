@@ -7,6 +7,7 @@
    [metabase.comments.models.comment-reaction :as comment-reaction]
    [metabase.comments.schema :as comments.schema]
    [metabase.models.interface :as mi]
+   [metabase.util.i18n :refer [tru]]
    [methodical.core :as methodical]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -49,6 +50,102 @@
          (comment-reaction/reactions-for-comments api/*current-user-id*))
    :id
    {:default {}}))
+
+(defn target
+  "The Document or Exploration `comment` is on, or nil."
+  [{:keys [target_type target_id]}]
+  (case target_type
+    "document"    (comments.db/document target_id)
+    "exploration" (comments.db/exploration target_id)))
+
+(defn- check-target-not-archived
+  "Throws a 400 with `message` when the target of `comment` is archived."
+  [comment message]
+  (when (:archived (target comment))
+    (throw (ex-info message {:status-code 400}))))
+
+(defn- same-thread?
+  "Whether `reply` and `parent` are on the same target and child target."
+  [reply parent]
+  (every? #(= (get reply %) (get parent %)) [:target_type :target_id :child_target_id]))
+
+(t2/define-before-insert :model/Comment
+  [comment]
+  (check-target-not-archived comment (tru "Cannot comment on archived entities"))
+  (when-let [parent-id (:parent_comment_id comment)]
+    (when-not (some->> (comments.db/comment-by-id parent-id) (same-thread? comment))
+      (throw (ex-info (tru "Parent comment doesn''t belong to the same entity") {:status-code 400}))))
+  comment)
+
+(t2/define-before-update :model/Comment
+  [comment]
+  (let [changes (t2/changes comment)]
+    (when (:deleted_at (t2/original comment))
+      (when (contains? changes :content)
+        (throw (ex-info (tru "Cannot edit content of a deleted comment") {:status-code 400})))
+      (when (contains? changes :deleted_at)
+        (throw (ex-info (tru "Comment is already deleted") {:status-code 400}))))
+    (when (seq changes)
+      (check-target-not-archived comment (if (contains? changes :deleted_at)
+                                           (tru "Cannot delete comments on archived entities")
+                                           (tru "Cannot edit comments on archived entities"))))
+    comment))
+
+(defn- check-reactable
+  "Throws a 400 unless the comment with `comment-id` can take a reaction: it is not deleted, and what it is on is not
+  archived."
+  [comment-id]
+  (let [comment (comments.db/comment-by-id comment-id)]
+    (when (:deleted_at comment)
+      (throw (ex-info (tru "Cannot react to deleted comments") {:status-code 400})))
+    (check-target-not-archived comment (tru "Cannot react to comments on archived entities"))))
+
+(t2/define-before-insert :model/CommentReaction
+  [reaction]
+  (check-reactable (:comment_id reaction))
+  reaction)
+
+(t2/define-before-delete :model/CommentReaction
+  [reaction]
+  (check-reactable (:comment_id reaction))
+  reaction)
+
+(def target-type->model
+  "The model of a comment's target, by its `target_type`."
+  {"document"    :model/Document
+   "exploration" :model/Exploration})
+
+(defn- can-read-target?
+  "Whether the current user can read the target of `comment`."
+  [{:keys [target_type target_id]}]
+  (mi/can-read? (target-type->model target_type) target_id))
+
+(defn- author-or-superuser?
+  "Whether the current user wrote `comment` or is a superuser."
+  [comment]
+  (or (= (:creator_id comment) api/*current-user-id*)
+      (boolean api/*is-superuser?*)))
+
+(defmethod mi/can-read? :model/Comment
+  ([comment]
+   (can-read-target? comment))
+  ([_model id]
+   (boolean (some-> (comments.db/comment-by-id id) can-read-target?))))
+
+(defmethod mi/can-write? :model/Comment
+  ([comment]
+   (and (author-or-superuser? comment)
+        (can-read-target? comment)))
+  ([_model id]
+   (boolean (some-> (comments.db/comment-by-id id) mi/can-write?))))
+
+(defmethod mi/can-update? :model/Comment
+  [comment changes]
+  (and (can-read-target? comment)
+       (or (not (contains? changes :content))
+           (author-or-superuser? comment))
+       (or (not (contains? changes :is_resolved))
+           (mi/can-write? (target-type->model (:target_type comment)) (:target_id comment)))))
 
 ;;;
 

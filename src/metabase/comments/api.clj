@@ -21,20 +21,11 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def ^:private type->model
-  {"document"    :model/Document
-   "exploration" :model/Exploration})
+(def ^:private type->model comment/target-type->model)
 
 (def ^:private TargetType
   "Malli enum of valid comment target types, derived from [[type->model]]."
   (into [:enum] (keys type->model)))
-
-(defn- entity-archived?
-  "Check if the target entity is archived"
-  [entity]
-  (case (t2/model entity)
-    :model/Document    (:archived entity)
-    :model/Exploration (:archived entity)))
 
 (defn- urlpath-for
   "Generate a relative URL path to an entity."
@@ -192,16 +183,9 @@
   [_route-params
    _query-params
    {:keys [target_type target_id child_target_id context parent_comment_id content]} :- CreateComment]
-  (let [entity     (-> (api/read-check (type->model target_type) target_id)
-                       (u/prog1 (api/check-400 (not (entity-archived? <>))
-                                               "Cannot comment on archived entities")))
-        ;; If this is a reply, validate the parent comment exists and belongs to same entity
+  (let [entity     (api/read-check (type->model target_type) target_id)
         parent     (when parent_comment_id
                      (-> (api/check-404 (comments.db/comment-by-id parent_comment_id))
-                         (u/prog1 (api/check-400 (and (= (:target_type <>) target_type)
-                                                      (= (:target_id <>) target_id)
-                                                      (= (:child_target_id <>) child_target_id))
-                                                 "Parent comment doesn't belong to the same entity"))
                          (t2/hydrate :creator)))
         comment    (-> (comments.db/insert-comment! {:target_type       target_type
                                                      :target_id         target_id
@@ -229,22 +213,10 @@
    _query-params
    {:keys [content is_resolved]} :- UpdateComment]
   (let [comment (api/check-404 (comments.db/comment-by-id comment-id))
-        entity  (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
-                    (u/prog1 (api/check-400 (not (entity-archived? <>))
-                                            "Cannot edit comments on archived entities")))]
-    (when content
-      ;; Cannot edit content of deleted comments
-      (api/check-400 (not (:deleted_at comment))
-                     "Cannot edit content of a deleted comment")
-      ;; Only creator or admin can edit comment content
-      (api/check-403 (or (= (:creator_id comment) api/*current-user-id*)
-                         (:is_superuser @api/*current-user*))))
-    (when (some? is_resolved)
-      ;; Anyone with write permission to target entity can resolve/unresolve
-      (api/write-check entity))
-    (when-let [updates (-> {:content content :is_resolved is_resolved}
-                           u/remove-nils
-                           not-empty)]
+        updates (-> {:content content :is_resolved is_resolved}
+                    u/remove-nils)]
+    (api/update-check comment updates)
+    (when (seq updates)
       (comments.db/update-comment! comment-id updates))
     (let [updated-comment (-> (comments.db/comment-by-id comment-id)
                               (t2/hydrate :creator :reactions))]
@@ -262,13 +234,7 @@
   [{:keys [comment-id]} :- [:map {:closed true} [:comment-id ms/PositiveInt]]
    _query-params]
   (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
-    (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
-        (u/prog1 (api/check-400 (not (entity-archived? <>))
-                                "Cannot delete comments on archived entities")))
-    ;; Only creator or admin can delete comments
-    (api/check-403 (or (= (:creator_id comment) api/*current-user-id*)
-                       (:is_superuser @api/*current-user*)))
-    (api/check-400 (not (:deleted_at comment)) "Comment is already deleted")
+    (api/write-check comment)
     ;; Soft delete the comment
     (comments.db/soft-delete-comment! comment-id)
     (events/publish-event! :event/comment-delete
@@ -287,11 +253,7 @@
    _query-params
    {:keys [emoji]} :- [:map {:closed true} [:emoji ::comments.schema/reaction-emoji]]]
   (let [comment (api/check-404 (comments.db/comment-by-id comment-id))]
-    (api/check-400 (not (:deleted_at comment))
-                   "Cannot react to deleted comments")
-    (-> (api/read-check (type->model (:target_type comment)) (:target_id comment))
-        (u/prog1 (api/check-400 (not (entity-archived? <>))
-                                "Cannot react to comments on archived entities")))
+    (api/read-check (type->model (:target_type comment)) (:target_id comment))
     (comment-reaction/toggle-reaction comment-id api/*current-user-id* emoji)))
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
