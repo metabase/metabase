@@ -110,6 +110,10 @@
    [:lhs ::table-field-endpoint]
    [:rhs ::table-field-endpoint]])
 
+(mr/def ::fk-pair
+  "An unordered FK edge: `#{lhs-field-id rhs-field-id}`."
+  [:set {:min 2 :max 2} ::lib.schema.id/field])
+
 (mr/def ::constraint
   "Schema for a constraint on a field. `:via-path`, when present, pins the sequence of FK edges that reach the
   constraint field's table from the source table — bypassing the join-graph search for those hops."
@@ -339,11 +343,14 @@
         (f database-id source-table-id other-table-id enable-reverse-joins?)))
      (meta f))))
 
-(def ^:private ^{:arglists '([db-id source-table field-ids other-table-ids enable-reverse-joins?])} find-all-joins*
+(def ^{:private true
+       :arglists '([db-id source-table field-ids fk-pairs other-table-ids enable-reverse-joins?])}
+  find-all-joins*
   (memoize/ttl
-   ^{::memoize/args-fn (fn [[_db-id source-table-id field-ids other-table-ids enable-reverse-joins?]]
-                         [(mdb/unique-identifier) source-table-id field-ids other-table-ids enable-reverse-joins?])}
-   (fn [db-id source-table-id field-ids other-table-ids enable-reverse-joins?]
+   ^{::memoize/args-fn (fn [[_db-id source-table-id field-ids fk-pairs other-table-ids enable-reverse-joins?]]
+                         [(mdb/unique-identifier) source-table-id field-ids fk-pairs
+                          other-table-ids enable-reverse-joins?])}
+   (fn [db-id source-table-id field-ids fk-pairs other-table-ids enable-reverse-joins?]
      (let [all-joins (mapcat #(find-joins db-id source-table-id % enable-reverse-joins?)
                              other-table-ids)]
        (when (seq all-joins)
@@ -352,22 +359,26 @@
                      (str/join ", " (map (partial name-for-logging :model/Table)
                                          other-table-ids))
                      (format-joins-for-logging all-joins))
-         (u/prog1 (vec (dedupe/dedupe-joins source-table-id field-ids all-joins other-table-ids))
+         (u/prog1 (vec (dedupe/dedupe-joins source-table-id field-ids fk-pairs all-joins other-table-ids))
            (when-not (= all-joins <>)
              (log/tracef "Deduplicated:\n%s" (format-joins-for-logging <>)))))))
    :ttl/threshold find-joins-cache-duration-ms))
 
 (mu/defn- find-all-joins
-  "Find the complete set of joins we need to do for `source-table-id` to join against Fields in `field-ids`."
+  "Find the complete set of joins we need to do for `source-table-id` to join against Fields in `field-ids`.
+
+  `fk-pairs` are unordered `#{lhs-field rhs-field}` pairs the caller knows the expanded query already uses — the
+  deduper prefers an exact match from this set over a bare field-id match from `field-ids`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    database-id           :- ::lib.schema.id/database
    source-table-id       :- ::lib.schema.id/table
-   field-ids             :- [:set ::lib.schema.id/field]]
+   field-ids             :- [:set ::lib.schema.id/field]
+   fk-pairs              :- [:set ::fk-pair]]
   (when-let [other-table-ids (not-empty (disj (into #{}
                                                     (map :table-id)
                                                     (lib.metadata/bulk-metadata metadata-providerable :metadata/column field-ids))
                                               source-table-id))]
-    (find-all-joins* database-id source-table-id field-ids other-table-ids *enable-reverse-joins*)))
+    (find-all-joins* database-id source-table-id field-ids fk-pairs other-table-ids *enable-reverse-joins*)))
 
 (mu/defn- add-joins :- ::lib.schema/query
   "Add joins to the MBQL `query` we're generating. The Field for which we are returning values is the \"source Field\",
@@ -456,7 +467,7 @@
   link two Tables, prefer one of `field-ids`."
   [database-id source-table-id table-id field-ids]
   (when-let [joins (not-empty (find-joins database-id source-table-id table-id))]
-    (dedupe/dedupe-joins source-table-id field-ids joins #{table-id})))
+    (dedupe/dedupe-joins source-table-id field-ids #{} joins #{table-id})))
 
 (mr/def ::one-to-many-path
   "A join path split after its first one-to-many join."
@@ -511,6 +522,7 @@
         ;; the sub-select starts at the Table the first join leads to
         joins      (dedupe/dedupe-joins rhs-table-id
                                         field-ids
+                                        #{}
                                         (into [] (comp (mapcat #(concat (rest (:prefix %)) (:suffix %)))
                                                        (distinct))
                                               paths)
@@ -594,13 +606,15 @@
 
   Pinned edges — each constraint's `:via-path` and the caller-supplied `extra-via-path` — are oriented from
   `source-table-id` and win over graph-search edges to the same `:rhs :table`. Field-ids of pinned constraints are
-  excluded from the graph search."
+  excluded from the graph search. `fk-pairs` are unordered `#{lhs rhs}` pairs the caller knows the expanded card
+  query uses; the deduper prefers an edge whose endpoints match a pair over one picked only from `field-ids`."
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    database-id           :- ::lib.schema.id/database
    source-table-id       :- ::lib.schema.id/table
    constraints           :- [:maybe ::constraints]
    field-ids             :- [:set ::lib.schema.id/field]
-   extra-via-path        :- [:maybe [:sequential ::join-info]]]
+   extra-via-path        :- [:maybe [:sequential ::join-info]]
+   fk-pairs              :- [:maybe [:set ::fk-pair]]]
   (let [orient               #(orient-via-path source-table-id %)
         pinned-edges         (into (orient extra-via-path)
                                    (mapcat #(orient (:via-path %)))
@@ -613,7 +627,8 @@
                                          (map :id))
                                    (lib.metadata/bulk-metadata metadata-providerable :metadata/column
                                                                constraint-field-ids))
-        graph-joins          (find-all-joins metadata-providerable database-id source-table-id direct-field-ids)
+        graph-joins          (find-all-joins metadata-providerable database-id source-table-id direct-field-ids
+                                             (or fk-pairs #{}))
         joins                (vec (m/distinct-by #(get-in % [:rhs :table]) (concat pinned-edges graph-joins)))]
     {:joins           joins
      :semi-join-paths (apply dissoc paths (map #(get-in % [:rhs :table]) joins))}))
@@ -625,15 +640,18 @@
    ;; return at most the lesser of `limit` (if specified) and `max-results`.
    [:limit {:optional true} [:maybe ms/PositiveInt]]
    ;; edges from the listed-field's parameter mapping to pin as joins before graph search.
-   [:via-path {:optional true} [:maybe [:sequential ::join-info]]]])
+   [:via-path {:optional true} [:maybe [:sequential ::join-info]]]
+   ;; unordered FK pairs the caller knows the expanded card query already uses; the deduper prefers an exact pair
+   ;; match over a bare field-id match from the constraint set.
+   [:fk-pairs {:optional true} [:maybe [:set ::fk-pair]]]])
 
 (def ^:private max-results 1000)
 
 (mu/defn- chain-filter-mbql-query :- ::lib.schema/query
   "Generate the MBQL query powering `chain-filter`."
-  [field-id                                   :- ::lib.schema.id/field
-   constraints                                :- [:maybe ::constraints]
-   {:keys [original-field-id limit via-path]} :- [:maybe ::options]]
+  [field-id                                            :- ::lib.schema.id/field
+   constraints                                         :- [:maybe ::constraints]
+   {:keys [original-field-id limit via-path fk-pairs]} :- [:maybe ::options]]
   (log/tracef "Chain filter %s with %d constraint(s)" (name-for-logging :model/Field field-id) (count constraints))
   ;; `field-id->database-id` is the one place we still bootstrap from a raw field-id: we need the Database before we
   ;; can build a (per-Database) metadata provider. Every other table-id/db-id below comes from `mp`.
@@ -651,7 +669,7 @@
                             reversed?       (conj field-id)
                             (not reversed?) (cond-> original-field-id (conj original-field-id)))
         {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints
-                                                          remap-field-ids via-path)
+                                                          remap-field-ids via-path fk-pairs)
         joined-table-ids  (set (map #(get-in % [:rhs :table]) joins))
         field             (cond-> (lib.metadata/field mp field-id)
                             reversed? (lib/with-join-alias (joined-table-alias field-table-id)))
@@ -820,11 +838,16 @@
     caller already knows the specific join path from the source table to the constraint — e.g. the FE's parameter
     mapping names a join alias on the card. Each edge must be oriented from the source table outward.
 
+  - `:fk-pairs` — a set of unordered `#{lhs rhs}` pairs the caller knows the expanded card query already uses.
+    The deduper prefers an exact pair match over a field-id match from the constraint set, so parallel FKs are
+    disambiguated to the one the card itself joins through even when no `:via-path` can be derived.
+
   For remapped columns (when remapping is detected or when an explicit remapping field-id is provided), this returns
   results as a sequence of `[value remapped-value]` pairs."
   [field-id    :- ::lib.schema.id/field
    constraints :- [:maybe ::constraints]
-   & options   :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt [:sequential ::join-info]]]]
+   & options   :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt
+                       [:sequential ::join-info] [:set ::fk-pair]]]]
   (assert (even? (count options)))
   (let [{:as options}         options
         relax-fk-requirement? (:relax-fk-requirement? options)
@@ -846,7 +869,8 @@
 
       ;; Cached field-values are keyed by (field-id, constraints) only — they can't distinguish between pinned paths,
       ;; so skip the cache when the caller asked for a specific `:via-path`.
-      (and (use-cached-field-values? field-id) (nil? @remapping) (empty? (:via-path options)))
+      (and (use-cached-field-values? field-id) (nil? @remapping)
+           (empty? (:via-path options)) (empty? (:fk-pairs options)))
       (do
         (check-field-value-query-permissions field-id constraints options)
         (cached-field-values field-id constraints options))
@@ -881,7 +905,7 @@
   (let [database-id      (field/field-id->database-id field-id)
         mp               (lib-be/application-database-metadata-provider database-id)
         source-table-id  (:table-id (lib.metadata/field mp field-id))
-        {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints #{} nil)
+        {:keys [joins semi-join-paths]} (constraint-joins mp database-id source-table-id constraints #{} nil nil)
         joined-table-ids (set (map #(get-in % [:rhs :table]) joins))
         field            (lib.metadata/field mp field-id)]
     (when (seq joins)
@@ -1010,7 +1034,8 @@
   [field-id     :- ::lib.schema.id/field
    constraints  :- [:maybe ::constraints]
    query-string :- [:maybe ms/NonBlankString]
-   & options    :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt [:sequential ::join-info]]]]
+   & options    :- [:* [:or :keyword :boolean ::lib.schema.id/field ms/PositiveInt
+                        [:sequential ::join-info] [:set ::fk-pair]]]]
   (assert (even? (count options)))
   (let [{:as options}         options
         v->human-readable     (delay (schema.metadata-queries/human-readable-remapping-map field-id))
@@ -1031,7 +1056,7 @@
       (human-readable-values-remapped-chain-filter-search field-id @v->human-readable constraints query-string options)
 
       (and (search-cached-field-values? field-id constraints) (nil? @the-remapped-field-id)
-           (empty? (:via-path options)))
+           (empty? (:via-path options)) (empty? (:fk-pairs options)))
       (do
         (check-field-value-query-permissions field-id constraints options)
         (cached-field-values-search field-id query-string constraints options))

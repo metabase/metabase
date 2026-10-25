@@ -2,8 +2,10 @@
   {:clj-kondo/config '{:linters {:deprecated-var {:exclude {metabase.test.data/mbql-query {:namespaces [metabase.parameters.dashboard-test]}}}}}}
   (:require
    [clojure.test :refer :all]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.lib-be.core :as lib-be]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -334,6 +336,136 @@
                         actual     (into #{} (map first)
                                          (:values (parameters.dashboard/chain-filter
                                                    dashboard "text" {"owner" uid})))]
+                    (is (= expected actual))))))))))))
+
+(deftest ^:parallel chain-filter-nested-card-join-fk-test
+  (testing "parameter mapped to a column that originated from a join inside a nested card follows that FK (#85225)"
+    (mt/dataset avian-singles
+      (let [mp       (mt/metadata-provider)
+            messages (lib.metadata/table mp (mt/id :messages))
+            users-id (mt/id :users :id)
+            text-id  (mt/id :messages :text)
+            rasta-id 1]
+        (doseq [fk-display-name ["Sender ID" "Receiver ID"]]
+          (testing (format "\ninner card joins Users on %s" fk-display-name)
+            (let [inner-q      (nb/add-join (lib/query mp messages) "Users" fk-display-name "ID")
+                  inner-users  (nb/find-col-with-spec inner-q (lib/filterable-columns inner-q) "Users" "ID")
+                  inner-text   (nb/find-col-with-spec inner-q (lib/breakoutable-columns inner-q)
+                                                      {:is-main-group true} "Text")
+                  expected     (into #{} (map first)
+                                     (mt/rows (qp/process-query
+                                               (-> inner-q
+                                                   (lib/filter (lib/= inner-users rasta-id))
+                                                   (lib/breakout inner-text)))))]
+              (mt/with-temp [:model/Card {inner-id :id} {:dataset_query inner-q}]
+                (let [mp'       (lib-be/application-database-metadata-provider (mt/id))
+                      outer-q   (lib/query mp' (lib.metadata/card mp' inner-id))
+                      users-col (m/find-first #(= users-id (:id %)) (lib/filterable-columns outer-q))
+                      ;; FE emits a name-based legacy field ref for a column surfaced from a nested card.
+                      users-ref [:field (:lib/source-column-alias users-col) {:base-type (:base-type users-col)}]]
+                  (mt/with-temp [:model/Card         {card-id :id} {:dataset_query outer-q}
+                                 :model/Dashboard    {dash-id :id}
+                                 {:parameters [{:id        "owner"    :name "Owner" :slug "owner"
+                                                :type      "id"       :sectionId "id"}
+                                               {:id        "text"     :name "Text"  :slug "text"
+                                                :type      "category" :sectionId "string"
+                                                :filteringParameters ["owner"]}]}
+                                 :model/DashboardCard {}
+                                 {:dashboard_id dash-id
+                                  :card_id      card-id
+                                  :parameter_mappings
+                                  [{:card_id      card-id
+                                    :parameter_id "owner"
+                                    :target       ["dimension" users-ref]}
+                                   {:card_id      card-id
+                                    :parameter_id "text"
+                                    :target       ["dimension" ["field" text-id nil]]}]}]
+                    (binding [api/*current-user-id*         (mt/user->id :rasta)
+                              qp.perms/*param-values-query* true]
+                      (let [dashboard (t2/select-one :model/Dashboard :id dash-id)
+                            actual   (into #{} (map first)
+                                           (:values (parameters.dashboard/chain-filter
+                                                     dashboard "text" {"owner" rasta-id})))]
+                        (is (= expected actual))))))))))))))
+
+(deftest ^:parallel chain-filter-implicit-join-non-pk-target-test
+  (testing "parameter mapping with :source-field reaches a non-PK column through the FK's own target (#85225)"
+    (mt/dataset avian-singles
+      (let [sender-id  (mt/id :messages :sender_id)
+            name-id    (mt/id :users :name)
+            text-id    (mt/id :messages :text)
+            card-query (mt/mbql-query messages)
+            rasta-name "Rasta Toucan"
+            expected   (into #{} (map first)
+                             (mt/rows (mt/process-query
+                                       (mt/mbql-query messages
+                                         {:filter   [:= [:field sender-id nil] 1]
+                                          :breakout [[:field text-id nil]]}))))]
+        (mt/with-temp [:model/Card         {card-id :id} {:dataset_query card-query}
+                       :model/Dashboard    {dash-id :id}
+                       {:parameters [{:id        "sender-name" :name "Sender Name" :slug "sender-name"
+                                      :type      "category"    :sectionId "string"}
+                                     {:id        "text"        :name "Text"        :slug "text"
+                                      :type      "category"    :sectionId "string"
+                                      :filteringParameters ["sender-name"]}]}
+                       :model/DashboardCard {}
+                       {:dashboard_id dash-id
+                        :card_id      card-id
+                        :parameter_mappings
+                        ;; Target is users.name reached via sender_id — a column that is NOT the FK's PK target.
+                        ;; The emitted FK edge must be sender_id → users.id (the FK's own target), not users.name.
+                        [{:card_id card-id :parameter_id "sender-name"
+                          :target ["dimension" ["field" name-id {:source-field sender-id}]]}
+                         {:card_id card-id :parameter_id "text"
+                          :target ["dimension" ["field" text-id nil]]}]}]
+          (binding [api/*current-user-id*         (mt/user->id :rasta)
+                    qp.perms/*param-values-query* true]
+            (let [dashboard (t2/select-one :model/Dashboard :id dash-id)
+                  actual   (into #{} (map first)
+                                 (:values (parameters.dashboard/chain-filter
+                                           dashboard "text" {"sender-name" rasta-name})))]
+              (is (= expected actual)))))))))
+
+(deftest ^:parallel chain-filter-implicit-join-source-field-test
+  (testing "parameter mapping with :source-field (implicit join) pins the FK so the dropdown follows it (#85225)"
+    (mt/dataset avian-singles
+      (let [users-id   (mt/id :users :id)
+            text-id    (mt/id :messages :text)
+            card-query (mt/mbql-query messages)
+            rasta-id   1]
+        (doseq [[fk-kw fk-id] [[:sender_id   (mt/id :messages :sender_id)]
+                               [:receiver_id (mt/id :messages :receiver_id)]]]
+          (testing (format "\nparameter reaches users.id via %s" fk-kw)
+            (let [expected (into #{} (map first)
+                                 (mt/rows (mt/process-query
+                                           (mt/mbql-query messages
+                                             {:filter   [:= [:field fk-id nil] rasta-id]
+                                              :breakout [[:field text-id nil]]}))))]
+              (mt/with-temp [:model/Card         {card-id :id} {:dataset_query card-query}
+                             :model/Dashboard    {dash-id :id}
+                             {:parameters [{:id        "owner"    :name "Owner" :slug "owner"
+                                            :type      "id"       :sectionId "id"}
+                                           {:id        "text"     :name "Text"  :slug "text"
+                                            :type      "category" :sectionId "string"
+                                            :filteringParameters ["owner"]}]}
+                             :model/DashboardCard {}
+                             {:dashboard_id dash-id
+                              :card_id      card-id
+                              :parameter_mappings
+                              ;; `:source-field` names the FK directly — this is what an FK
+                              ;; click-through in the query builder produces.
+                              [{:card_id      card-id
+                                :parameter_id "owner"
+                                :target       ["dimension" ["field" users-id {:source-field fk-id}]]}
+                               {:card_id      card-id
+                                :parameter_id "text"
+                                :target       ["dimension" ["field" text-id nil]]}]}]
+                (binding [api/*current-user-id*         (mt/user->id :rasta)
+                          qp.perms/*param-values-query* true]
+                  (let [dashboard (t2/select-one :model/Dashboard :id dash-id)
+                        actual   (into #{} (map first)
+                                       (:values (parameters.dashboard/chain-filter
+                                                 dashboard "text" {"owner" rasta-id})))]
                     (is (= expected actual))))))))))))
 
 (deftest ^:parallel target->via-path-condition-shapes-test
