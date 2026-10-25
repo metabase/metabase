@@ -1,6 +1,6 @@
 import cx from "classnames";
 import type { ReactNode } from "react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { c, t } from "ttag";
 
 import { ConfirmModal } from "metabase/common/components/ConfirmModal";
@@ -23,6 +23,8 @@ import {
   Modal as NewModal,
   Text,
 } from "metabase/ui";
+
+import { usePermissionsHelp } from "../../contexts/PermissionsHelpContext";
 
 import { PermissionsEditBar } from "./PermissionsEditBar";
 import S from "./PermissionsPageLayout.module.css";
@@ -66,17 +68,16 @@ export function PermissionsPageLayout({
   const showSplitPermsModal =
     canShowSplitPermsModal && !!showModalSetting && !isSplitPermsModalDismissed;
 
-  const [isHelpReferenceOpen, setIsHelpReferenceOpen] = useState(false);
+  const {
+    isHelpOpen: isHelpReferenceOpen,
+    toggleHelp: handleToggleHelpReference,
+  } = usePermissionsHelp();
   const navigate = useNavigate();
 
   const navigateToTab = (tab: PermissionsPageTab) =>
     navigate(`${getPermissionsBasePath()}/${tab}`);
 
   const handleClearSaveError = () => onClearSaveError?.();
-
-  const handleToggleHelpReference = useCallback(() => {
-    setIsHelpReferenceOpen((isOpen) => !isOpen);
-  }, []);
 
   const handleDimissSplitPermsModal = () => {
     setIsSplitPermsModalDismissed(true);

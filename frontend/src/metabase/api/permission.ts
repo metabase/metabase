@@ -10,7 +10,6 @@ import type {
   Membership,
   PermissionsGraph,
   UpdatePermissionsGraphRequest,
-  UpdatePermissionsGraphResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -46,12 +45,12 @@ export const permissionApi = Api.injectEndpoints({
       providesTags: () => [listTag("permissions-graph")],
     }),
     updatePermissionsGraph: builder.mutation<
-      UpdatePermissionsGraphResponse,
+      PermissionsGraph,
       UpdatePermissionsGraphRequest
     >({
       query: (body) => ({
         method: "PUT",
-        url: "/api/permissions/graph?skip-graph=true",
+        url: "/api/permissions/graph",
         body,
       }),
       invalidatesTags: (_, error) =>

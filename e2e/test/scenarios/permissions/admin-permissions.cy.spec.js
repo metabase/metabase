@@ -48,7 +48,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     cy.findAllByRole("option").contains("Query builder and native").click();
 
     // stub out the PUT and save
-    cy.intercept("PUT", "/api/permissions/graph?skip-graph=true", (req) => {
+    cy.intercept("PUT", "/api/permissions/graph", (req) => {
       req.reply(500, "Server error");
     });
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
@@ -595,9 +595,7 @@ describe("scenarios > admin > permissions", () => {
 
       // observe the save change request and assert that we don't get back
       // values for groups we did not modify
-      cy.intercept("PUT", "/api/permissions/graph?skip-graph=true").as(
-        "updateGraph",
-      );
+      cy.intercept("PUT", "/api/permissions/graph").as("updateGraph");
 
       // save changes
       cy.button("Save changes").click();
@@ -607,8 +605,8 @@ describe("scenarios > admin > permissions", () => {
 
       cy.wait("@updateGraph").then((interception) => {
         const requestGroupIds = Object.keys(interception.request.body.groups);
-        expect(requestGroupIds).to.have.length(1);
-        expect(interception.response.body.groups).to.be.undefined;
+        const responseGroupIds = Object.keys(interception.response.body.groups);
+        expect(requestGroupIds).to.deep.equal(responseGroupIds);
       });
 
       // make sure that our other group's permission data did not get changed

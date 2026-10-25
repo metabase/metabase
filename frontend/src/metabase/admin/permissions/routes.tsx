@@ -8,6 +8,8 @@ import {
 } from "metabase/plugins";
 import { Route, redirect } from "metabase/router";
 
+import { PermissionsHelpProvider } from "./contexts/PermissionsHelpContext";
+
 /**
  * The permissions pages, in one chunk of their own.
  *
@@ -63,7 +65,7 @@ const GROUPS_PERMISSIONS_PATHS = [
 ];
 
 const getRoutes = () => (
-  <Route>
+  <Route element={<PermissionsHelpProvider />}>
     <Route index element={redirect("data")} />
 
     <Route path="data" lazy={dataPermissions}>
