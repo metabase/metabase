@@ -4,7 +4,8 @@
    [medley.core :as m]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.performance :as perf :refer [run! every? mapv reduce empty? first second]]))
+   [metabase.util.match :as match]
+   [metabase.util.performance :refer [run! every? mapv reduce empty? first second]]))
 
 (declare collect-uuids*)
 
@@ -133,23 +134,16 @@
 (defn remove-lib-uuids
   "Recursively remove all uuids from `x`."
   [x]
-  (perf/postwalk
-   (fn [x]
-     (cond-> x
-       (map? x) (dissoc :lib/uuid)))
-   x))
+  (match/replace-all x
+    {:lib/uuid _} (dissoc &match :lib/uuid)))
 
 (defn sorted-maps
   "Recursively convert all maps in `x` to sorted maps using the same comparator
    as [[metabase.lib.schema.common/unfussy-sorted-map]]. This ensures consistent
    JSON serialization order regardless of how maps were constructed."
   [x sorted-map-fn]
-  (perf/postwalk
-   (fn [x]
-     (if (and (map? x) (not (sorted? x)))
-       (into (sorted-map-fn) x)
-       x))
-   x))
+  (match/replace-all x
+    (m :guard (and (map? m) (not (sorted? m)))) (into (sorted-map-fn) m)))
 
 (defn- aggregation-ref?
   "Check if `x` is an aggregation ref clause `[:aggregation opts uuid-string]`."

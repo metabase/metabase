@@ -146,8 +146,7 @@ type: question
                 ["Internal Metabase Database" "public" "v_alerts" "archived"]]
                false]]
              [:Card :dataset_query :stages :filters]))))
-    (is (= #{nil
-             java.lang.Long
+    (is (= #{java.lang.Long
              java.lang.Boolean
              clojure.lang.PersistentVector
              clojure.lang.PersistentTreeMap                 ; Sorted maps, not unsorted maps

@@ -844,7 +844,6 @@
                                      :database-position 2,
                                      :nfc-path ["r" "rr"]}]}]}]
                 (-> (into [] (driver/describe-fields :bigquery-cloud-sdk (lib.metadata/database (mt/metadata-provider)) {:table-names ["records"]}))
-                    
                     (match/replace-all #'set? (sort-by :name &match)))))
         (is (=? [{:name "id"}
                  {:name "r"
