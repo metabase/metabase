@@ -9,9 +9,6 @@ import { initializeHandleLinkPlugin } from "../embedding-sdk-ee/handle-link/hand
 // SETTINGS OVERRIDES:
 PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
-// oxfmt-ignore
-import "./shared";
-
 // CORE APP PLUGINS THAT USE hasPremiumFeature (import initialization functions):
 // oxfmt-ignore
 import { initializePlugin as initializeContentTranslation } from "./content_translation";

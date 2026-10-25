@@ -3,7 +3,6 @@ import { PLUGIN_IS_EE_BUILD } from "metabase/plugins";
 // SETTINGS OVERRIDES:
 PLUGIN_IS_EE_BUILD.isEEBuild = () => true;
 
-import "./shared";
 // PLUGINS THAT DON'T USE hasPremiumFeature (imported immediately):
 import "./license";
 // PLUGINS THAT USE hasPremiumFeature (import initialization functions):

@@ -37,12 +37,6 @@ const getDefaultTitle = (namespace?: CollectionNamespace) =>
     ? t`Permissions for this folder`
     : t`Permissions for this collection`;
 
-type CollectionPermissionsModalBodyProps = {
-  collectionId: CollectionId | undefined;
-  namespace?: CollectionNamespace;
-  onClose: () => void;
-};
-
 const useModalCollection = (
   collectionId: CollectionId | undefined,
   namespace?: CollectionNamespace,
@@ -76,11 +70,18 @@ const isHiddenFromPermissions = (
   collection.personal_owner_id != null ||
   (collections != null && isPersonalCollectionChild(collection, collections));
 
-const CollectionPermissionsModalBody = ({
-  collectionId,
+type CollectionPermissionsModalProps = {
+  params: { slug?: string };
+  namespace?: CollectionNamespace;
+  onClose: () => void;
+};
+
+export function CollectionPermissionsModal({
+  params,
   namespace = null,
   onClose,
-}: CollectionPermissionsModalBodyProps) => {
+}: CollectionPermissionsModalProps) {
+  const collectionId = Urls.extractCollectionId(params.slug);
   const { collection, collections } = useModalCollection(
     collectionId,
     namespace,
@@ -139,57 +140,6 @@ const CollectionPermissionsModalBody = ({
   );
 
   return (
-    <ModalContent
-      title={modalTitle}
-      onClose={onClose}
-      className={CS.overflowHidden}
-      footer={[
-        ...(isFolderNamespace(namespace)
-          ? []
-          : [
-              <Link
-                key="all-permissions"
-                className={CS.link}
-                to="/admin/permissions/collections"
-              >
-                {t`See all collection permissions`}
-              </Link>,
-            ]),
-        <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
-        <Button
-          key="save"
-          variant="filled"
-          disabled={!isDirty}
-          onClick={handleSave}
-        >
-          {t`Save`}
-        </Button>,
-      ]}
-    >
-      <div className={S.PermissionTableContainer}>
-        {permissionEditor && (
-          <PermissionsTable
-            {...permissionEditor}
-            onChange={handlePermissionChange}
-          />
-        )}
-      </div>
-    </ModalContent>
-  );
-};
-
-type CollectionPermissionsModalProps = {
-  params: { slug?: string };
-  namespace?: CollectionNamespace;
-  onClose: () => void;
-};
-
-export function CollectionPermissionsModal({
-  params,
-  namespace,
-  onClose,
-}: CollectionPermissionsModalProps) {
-  return (
     <Modal
       opened
       onClose={onClose}
@@ -197,11 +147,42 @@ export function CollectionPermissionsModal({
       padding={0}
       size="lg"
     >
-      <CollectionPermissionsModalBody
-        collectionId={Urls.extractCollectionId(params.slug)}
-        namespace={namespace}
+      <ModalContent
+        title={modalTitle}
         onClose={onClose}
-      />
+        className={CS.overflowHidden}
+        footer={[
+          ...(isFolderNamespace(namespace)
+            ? []
+            : [
+                <Link
+                  key="all-permissions"
+                  className={CS.link}
+                  to="/admin/permissions/collections"
+                >
+                  {t`See all collection permissions`}
+                </Link>,
+              ]),
+          <Button key="cancel" onClick={onClose}>{t`Cancel`}</Button>,
+          <Button
+            key="save"
+            variant="filled"
+            disabled={!isDirty}
+            onClick={handleSave}
+          >
+            {t`Save`}
+          </Button>,
+        ]}
+      >
+        <div className={S.PermissionTableContainer}>
+          {permissionEditor && (
+            <PermissionsTable
+              {...permissionEditor}
+              onChange={handlePermissionChange}
+            />
+          )}
+        </div>
+      </ModalContent>
     </Modal>
   );
 }

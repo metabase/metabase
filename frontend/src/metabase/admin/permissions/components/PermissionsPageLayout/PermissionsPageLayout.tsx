@@ -68,10 +68,9 @@ export function PermissionsPageLayout({
   const showSplitPermsModal =
     canShowSplitPermsModal && !!showModalSetting && !isSplitPermsModalDismissed;
 
-  const {
-    isHelpOpen: isHelpReferenceOpen,
-    toggleHelp: handleToggleHelpReference,
-  } = usePermissionsHelp();
+  const [isHelpReferenceOpen, setIsHelpReferenceOpen] = usePermissionsHelp();
+  const handleToggleHelpReference = () =>
+    setIsHelpReferenceOpen(!isHelpReferenceOpen);
   const navigate = useNavigate();
 
   const navigateToTab = (tab: PermissionsPageTab) =>

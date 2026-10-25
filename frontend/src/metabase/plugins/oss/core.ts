@@ -151,13 +151,11 @@ export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE =
   definePluginSlot(getDefaultDashboardSubscriptionParametersSectionOverride);
 
 const getDefaultReducers = () => ({
-  shared: () => null,
   documents: () => null,
   remoteSyncPlugin: () => null,
 });
 
 export const PLUGIN_REDUCERS: {
-  shared: any;
   documents: any;
   remoteSyncPlugin: any;
 } = definePluginSlot(getDefaultReducers);

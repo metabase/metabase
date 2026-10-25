@@ -15,11 +15,6 @@ export const setupPermissionsGraphEndpoints = (
   groups: Omit<Group, "members">[],
   databases: Database[],
 ) => {
-  fetchMock.get(
-    "path:/api/permissions/graph",
-    createMockPermissionsGraph({ groups, databases }),
-  );
-
   groups.forEach((group) => {
     fetchMock.get(
       `path:/api/permissions/graph/group/${group.id}`,

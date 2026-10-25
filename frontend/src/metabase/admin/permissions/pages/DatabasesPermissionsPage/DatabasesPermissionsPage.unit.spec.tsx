@@ -24,6 +24,7 @@ import type { Database } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
+import { DATABASES_PERMISSIONS_PATHS } from "../../routes";
 import { DataPermissionsPage } from "../DataPermissionsPage";
 
 import { DatabasesPermissionsPage } from "./DatabasesPermissionsPage";
@@ -58,17 +59,7 @@ const setup = async ({
 
   renderWithProviders(
     <Route path="/admin/permissions/data" element={<DataPermissionsPage />}>
-      {/*
-       * v7 cannot parse v3 optional groups, so the app spells each depth out as
-       * its own route (see DATABASES_PERMISSIONS_PATHS in permissions/routes.tsx).
-       * Mirror that here.
-       */}
-      {[
-        "database",
-        "database/:databaseId",
-        "database/:databaseId/schema/:schemaName",
-        "database/:databaseId/schema/:schemaName/table/:tableId",
-      ].map((path) => (
+      {DATABASES_PERMISSIONS_PATHS.map((path) => (
         <Route key={path} path={path} element={<DatabasesPermissionsPage />}>
           {PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES}
         </Route>

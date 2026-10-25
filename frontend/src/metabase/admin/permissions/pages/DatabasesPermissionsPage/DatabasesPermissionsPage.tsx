@@ -55,11 +55,8 @@ export function DatabasesPermissionsPage() {
   const showTransformPermissions = useShouldShowTransformPermissions();
 
   const sidebar = useMemo(
-    () =>
-      isSidebarLoading
-        ? null
-        : getDataFocusSidebar({ params, databases, database }),
-    [isSidebarLoading, params, databases, database],
+    () => getDataFocusSidebar({ params, databases, database }),
+    [params, databases, database],
   );
 
   const permissionEditor = useMemo(

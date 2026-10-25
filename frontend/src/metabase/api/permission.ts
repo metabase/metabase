@@ -23,13 +23,6 @@ import {
 
 export const permissionApi = Api.injectEndpoints({
   endpoints: (builder) => ({
-    getPermissionsGraph: builder.query<PermissionsGraph, void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/permissions/graph",
-      }),
-      providesTags: () => [listTag("permissions-graph")],
-    }),
     getGroupPermissionsGraph: builder.query<PermissionsGraph, GroupId>({
       query: (groupId) => ({
         method: "GET",
@@ -180,7 +173,6 @@ export const permissionApi = Api.injectEndpoints({
 });
 
 export const {
-  useGetPermissionsGraphQuery,
   useGetGroupPermissionsGraphQuery,
   useGetDatabasePermissionsGraphQuery,
   useUpdatePermissionsGraphMutation,

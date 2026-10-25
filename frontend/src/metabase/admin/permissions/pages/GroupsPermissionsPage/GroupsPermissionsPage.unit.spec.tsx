@@ -16,6 +16,7 @@ import {
   screen,
   waitFor,
   waitForLoaderToBeRemoved,
+  within,
 } from "__support__/ui";
 import { delay } from "__support__/utils";
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
@@ -26,6 +27,7 @@ import { createMockPermissionsGraph } from "metabase-types/api/mocks";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 
+import { GROUPS_PERMISSIONS_PATHS } from "../../routes";
 import { DataPermissionsPage } from "../DataPermissionsPage";
 
 import { GroupsPermissionsPage } from "./GroupsPermissionsPage";
@@ -80,17 +82,7 @@ const setup = async ({
 
   renderWithProviders(
     <Route path="/admin/permissions/data" element={<DataPermissionsPage />}>
-      {/*
-       * v7 cannot parse v3 optional groups, so the app spells each depth out as
-       * its own route (see GROUPS_PERMISSIONS_PATHS in permissions/routes.tsx).
-       * Mirror that here.
-       */}
-      {[
-        "group",
-        "group/:groupId",
-        "group/:groupId/database/:databaseId",
-        "group/:groupId/database/:databaseId/schema/:schemaName",
-      ].map((path) => (
+      {GROUPS_PERMISSIONS_PATHS.map((path) => (
         <Route key={path} path={path} element={<GroupsPermissionsPage />}>
           {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
         </Route>
@@ -141,6 +133,19 @@ describe("GroupsPermissionsPage", () => {
       expect(screen.getByText("Cancel")).toBeInTheDocument();
       expect(screen.getByText("Save changes")).toBeInTheDocument();
     });
+  });
+
+  it("shows the tables after drilling into a database", async () => {
+    await setup({
+      initialRoute: `/admin/permissions/data/group/${TEST_GROUPS[0].id}`,
+    });
+    const getRowCount = () =>
+      within(screen.getByTestId("permission-table")).getAllByRole("row").length;
+
+    await userEvent.click(await screen.findByText("Sample Database"));
+
+    expect(await screen.findByText("Orders")).toBeInTheDocument();
+    expect(getRowCount()).toBe((TEST_DATABASE.tables ?? []).length + 1);
   });
 
   it("shows the error when a permission graph fails to load", async () => {

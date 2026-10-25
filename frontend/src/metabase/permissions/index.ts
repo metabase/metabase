@@ -36,12 +36,11 @@ export {
   getPermissionWarning,
   getPermissionWarningModal,
 } from "./utils/confirmations";
-export { getDataFocusSidebar } from "./utils/data-sidebars";
 export {
   getDatabasesPermissionEditor,
   getGroupsDataPermissionEditor,
 } from "./utils/data-editor";
-export { getGroupsSidebar } from "./utils/data-sidebars";
+export { getDataFocusSidebar, getGroupsSidebar } from "./utils/data-sidebars";
 export type { DataTreeNodeItem } from "./utils/data-sidebars";
 export { getDefaultGroup, getOrderedGroups } from "./utils/groups";
 export {
@@ -65,8 +64,6 @@ export {
   getFieldsPermission,
   getSchemasPermission,
   getTablesPermission,
-} from "./utils/graph";
-export {
   hasPermissionValueInGraph,
   hasPermissionValueInSubgraph,
 } from "./utils/graph";

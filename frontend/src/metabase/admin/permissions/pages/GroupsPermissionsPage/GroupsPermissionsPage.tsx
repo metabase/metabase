@@ -65,7 +65,7 @@ export function GroupsPermissionsPage() {
 
   const permissionEditor = useMemo(
     () =>
-      groups && !isEditorLoading
+      groups
         ? getDatabasesPermissionEditor({
             params: groupRouteParams,
             databases,
@@ -83,7 +83,6 @@ export function GroupsPermissionsPage() {
       permissions,
       originalPermissions,
       groups,
-      isEditorLoading,
       showTransformPermissions,
     ],
   );

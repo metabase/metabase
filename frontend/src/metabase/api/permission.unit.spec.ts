@@ -36,19 +36,6 @@ describe("permissionApi data-permissions graph", () => {
     fetchMock.removeRoutes().clearHistory();
   });
 
-  it("fetches the full graph", async () => {
-    fetchMock.get("path:/api/permissions/graph", GRAPH);
-    const { store } = setup();
-
-    const { data } = await store.dispatch(
-      permissionApi.endpoints.getPermissionsGraph.initiate(),
-    );
-
-    expect(data?.revision).toBe(1);
-    const [request] = await findRequests("GET");
-    expect(request.url).toContain("/api/permissions/graph");
-  });
-
   it("fetches the graph for a single group", async () => {
     fetchMock.get("path:/api/permissions/graph/group/5", GRAPH);
     const { store } = setup();

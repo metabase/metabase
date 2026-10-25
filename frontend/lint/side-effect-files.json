@@ -70,7 +70,6 @@
     "enterprise/frontend/src/metabase-enterprise/sdk-iframe-embedding-plugins.ts": "entry",
     "enterprise/frontend/src/metabase-enterprise/sdk-iframe-embedding-script-plugins.ts": "entry",
     "enterprise/frontend/src/metabase-enterprise/sdk-plugins.ts": "entry",
-    "enterprise/frontend/src/metabase-enterprise/shared/index.ts": "global",
     "enterprise/frontend/src/metabase-enterprise/transforms-python/components/PythonEditor/utils.ts": "self",
     "enterprise/frontend/src/metabase-enterprise/user_provisioning/components/UserProvisioning.tsx": "self",
     "enterprise/frontend/src/metabase-enterprise/whitelabel/lib/whitelabel.ts": "global",

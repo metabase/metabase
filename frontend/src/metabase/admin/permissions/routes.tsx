@@ -57,7 +57,7 @@ export const DATABASES_PERMISSIONS_PATHS = [
   "database/:databaseId/schema/:schemaName/table/:tableId",
 ];
 
-const GROUPS_PERMISSIONS_PATHS = [
+export const GROUPS_PERMISSIONS_PATHS = [
   "group",
   "group/:groupId",
   "group/:groupId/database/:databaseId",
