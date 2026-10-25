@@ -7,9 +7,6 @@
    [metabase.actions.models :as action]
    [metabase.collections.models.collection :as collection]
    [metabase.lib-be.core :as lib-be]
-   [metabase.lib.core :as lib]
-   [metabase.lib.metadata :as lib.metadata]
-   [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.request.core :as request]
    [metabase.test :as mt]
@@ -24,26 +21,33 @@
   (testing "fetch values for implicit action will save an execution info"
     (mt/test-helpers-set-global-values!
       (mt/with-actions-enabled
-        (let [mp (mt/metadata-provider)]
-          (mt/with-actions [{model-id :id}      {:type :model :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+        (let [dataset-query (mt/mbql-query venues {:fields [$id $name]})
+              query (assoc
+                     dataset-query
+                     :parameters [{:id     "metabase.actions.execution/prefetch-parameters-pk"
+                                   :target [:dimension
+                                            (-> dataset-query
+                                                :query
+                                                :fields
+                                                first)]
+                                   :type   :number/=
+                                   :value  [1]}]
+                     :constraints nil
+                     :middleware nil
+                     :cache-strategy nil)]
+          (mt/with-actions [_                   {:type :model :dataset_query dataset-query}
                             {:keys [action-id]} {:type :implicit :kind "row/update"}]
-            (let [action                        (action/select-action :id action-id)
-                  {:keys [prefetch-parameters]} (#'actions.execution/build-implicit-query action :model.row/update {"id" 1})
-                  query                         (qp.card/query-for-card (t2/select-one :model/Card :id model-id)
-                                                                        prefetch-parameters nil nil)]
-              (process-userland-query-test/with-query-execution! [qe query]
-                (is (=? {"id" 1 "name" "Red Medicine"}
-                        (actions.execution/fetch-values action {"id" 1})))
-                (is (=? {:action_id action-id}
-                        (qe)))))))))))
+            (process-userland-query-test/with-query-execution! [qe query]
+              (is (= {"id" 1 "name" "Red Medicine"}
+                     (actions.execution/fetch-values (action/select-action :id action-id) {"id" 1})))
+              (is (=? {:action_id action-id}
+                      (qe))))))))))
 
 (deftest implicit-action-prefetch-parameter-type-test
   (testing "implicit action prefetch uses explicit parameter type instead of :id (QUE2-326)"
     (mt/test-helpers-set-global-values!
       (mt/with-actions-enabled
-        (mt/with-actions [_                   {:type          :model
-                                               :dataset_query (let [mp (mt/metadata-provider)]
-                                                                (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
+        (mt/with-actions [_                   {:type :model :dataset_query (mt/mbql-query venues {:fields [$id $name]})}
                           {:keys [action-id]} {:type :implicit :kind "row/update"}]
           (let [action                        (action/select-action :id action-id)
                 build-implicit-query          #'actions.execution/build-implicit-query

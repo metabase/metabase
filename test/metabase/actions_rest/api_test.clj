@@ -1256,8 +1256,7 @@
 (deftest fetch-implicit-action-default-values-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-enabled
-      (mt/with-actions [_                             {:type :model :dataset_query (let [mp (mt/metadata-provider)]
-                                                                                     (lib/query mp (lib.metadata/table mp (mt/id :venues))))
+      (mt/with-actions [_                             {:type :model :dataset_query (mt/mbql-query venues {:fields [$id $name]})
                                                        :collection_id (:id (collection/user->personal-collection (mt/user->id :crowberto)))}
                         {create-action-id :action-id} {:type :implicit :kind "row/create"}
                         {update-action-id :action-id} {:type :implicit :kind "row/update"}
@@ -1276,8 +1275,8 @@
           (is (= "Values can only be fetched for actions that require a Primary Key."
                  (mt/user-http-request :crowberto :post 400 (format "action/%d/execute/values" create-action-id) {:parameters {"id" 1}}))))
         (testing "fetch for update action return name and id"
-          (is (=? {:id 1 :name "Red Medicine"}
-                  (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" update-action-id) {:parameters {"id" 1}}))))
+          (is (= {:id 1 :name "Red Medicine"}
+                 (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" update-action-id) {:parameters {"id" 1}}))))
         (testing "fetch for delete action returns the id only"
           (is (= {:id 1}
                  (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" delete-action-id) {:parameters {"id" 1}}))))

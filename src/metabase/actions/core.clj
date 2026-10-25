@@ -56,6 +56,7 @@
   check-action-databases-enabled
   check-data-app-action-table
   check-implicit-action-table-pk
+  check-implicit-actions-supported
   dashcard->action
   insert!
   select-action

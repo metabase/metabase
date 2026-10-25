@@ -543,7 +543,7 @@
   (testing "dirty actions carry their model card, nil without a model, and no card id once deleted"
     (mt/with-temp
       [:model/Card             model       {:type :model :dataset_query (mt/native-query {:query "SELECT 1"})}
-       :model/Action           with-model  {:type :query :name "With model" :model_id (:id model)}
+       :model/Action           with-model  {:type :implicit :name "With model" :model_id (:id model)}
        :model/Action           data-action {:type :query :name "Data action"}
        :model/RemoteSyncObject _           {:model_type "Action" :model_id (:id with-model) :model_name "With model"
                                             :status "create" :status_changed_at (java.time.OffsetDateTime/now)}

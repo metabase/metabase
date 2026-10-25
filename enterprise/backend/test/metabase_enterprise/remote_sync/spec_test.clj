@@ -340,8 +340,8 @@
                  :model/Collection {plain-coll :id}    {:name "Plain" :location "/"}
                  :model/Card       {synced-model :id}  {:type :model :collection_id synced-coll}
                  :model/Card       {plain-model :id}   {:type :model :collection_id plain-coll}
-                 :model/Action     {synced-action :id} {:type :query :name "In Sync" :model_id synced-model}
-                 :model/Action     {plain-action :id}  {:type :query :name "Outside" :model_id plain-model}]
+                 :model/Action     {synced-action :id} {:type :implicit :name "In Sync" :model_id synced-model}
+                 :model/Action     {plain-action :id}  {:type :implicit :name "Outside" :model_id plain-model}]
     (f {:synced-coll synced-coll :synced-action synced-action :plain-action plain-action})))
 
 (deftest action-eligibility-follows-model-test

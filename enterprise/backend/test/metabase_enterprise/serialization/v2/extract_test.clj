@@ -1046,16 +1046,15 @@
     (ts/with-temp-dpc [:model/User     {ann-id :id} {:first_name "Ann"
                                                      :last_name  "Wilson"
                                                      :email      "ann@heart.band"}
-                       :model/Database {db-id :id :as db} {:name "My Database"}
-                       :model/Table    {table-id :id}     {:db_id db-id :name "VENUES"}]
+                       :model/Database {db-id :id :as db} {:name "My Database"}]
       (mt/with-db db
         (mt/with-actions [{card-id-1  :id
                            card-eid-1 :entity_id}
                           {:name          "Source question"
                            :database_id   db-id
                            :type          :model
-                           :dataset_query (let [mp (lib-be/application-database-metadata-provider db-id)]
-                                            (lib/query mp (lib.metadata/table mp table-id)))
+                           :query_type    :native
+                           :dataset_query (mt/native-query {:query "select 1"})
                            :creator_id    ann-id}
                           {:keys [action-id]}
                           {:name       "My Action"
@@ -1089,8 +1088,8 @@
                                                              :dataset_query {:database db-id
                                                                              :type     :native
                                                                              :native   {:query "select 1"}}}
-                         :model/Action     {action-id :id}  {:name "My Action" :type :query :model_id model-id}
-                         :model/Action     {archived-id :id} {:name "Old Action" :type :query :model_id model-id
+                         :model/Action     {action-id :id}  {:name "My Action" :type :implicit :model_id model-id}
+                         :model/Action     {archived-id :id} {:name "Old Action" :type :implicit :model_id model-id
                                                               :archived true}]
         (let [eid (fn [id] (t2/select-one-fn :entity_id :model/Action :id id))]
           (is (= #{(eid action-id) (eid archived-id)}

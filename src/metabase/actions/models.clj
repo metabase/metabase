@@ -102,7 +102,7 @@
     (throw (ex-info (tru "Actions must be made with models, not cards.")
                     {:status-code 400}))))
 
-(defn- check-implicit-actions-supported
+(defn check-implicit-actions-supported
   "Throws a 400 when `action` is implicit and its model's query does not support implicit actions."
   [{model-id :model_id, :as action}]
   (when (and (implicit? action)
@@ -222,8 +222,7 @@
   (u/prog1 (cond-> (public-sharing/add-public-uuid-prefix action)
              model-id set-model-collection)
     (when (and (implicit? action) model-id)
-      (check-implicit-action-model model-id)
-      (check-implicit-actions-supported action))
+      (check-implicit-action-model model-id))
     (check-collection-content <>)
     (check-collection-not-archived <>)
     (check-data-app-action <>)))
@@ -239,8 +238,7 @@
       (throw (model-collection-error)))
     (u/prog1 (public-sharing/add-public-uuid-prefix-if-changed action)
       (when (and (implicit? action) model-id (or (changed? :type) (changed? :model_id)))
-        (check-implicit-action-model model-id)
-        (check-implicit-actions-supported action))
+        (check-implicit-action-model model-id))
       (when (contains? (t2/changes <>) :collection_id)
         (check-collection-content <>))
       (when (some #(contains? (t2/changes <>) %) [:collection_id :archived])

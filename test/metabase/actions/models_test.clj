@@ -439,32 +439,12 @@
               (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Actions must be made with models, not cards"
                                     (action/update! {:id action-id :type :implicit :kind :row/update}
                                                     (action/select-action :id action-id))))))))
-      (testing "a query action cannot become implicit when its model has clauses"
+      (testing "the API refuses to make a query action implicit when its model has clauses"
         (mt/with-actions [_                   {:type :model :dataset_query (mt/mbql-query categories {:limit 1})}
                           {:keys [action-id]} {:type :query}]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for models with clauses"
-                                (action/update! {:id action-id :type :implicit :kind :row/update}
-                                                (action/select-action :id action-id)))))))))
-
-(deftest implicit-action-on-a-model-with-clauses-is-refused-test
-  (testing "an implicit action needs a model without clauses, on every write path that sets its model"
-    (let [mp     (mt/metadata-provider)
-          venues (lib/query mp (lib.metadata/table mp (mt/id :venues)))]
-      (mt/with-temp [:model/Card {plain-id :id}   {:type :model :dataset_query venues}
-                     :model/Card {clauses-id :id} {:type :model :dataset_query (lib/limit venues 1)}]
-        (mt/with-model-cleanup [:model/Action]
-          (let [insert! #(t2/insert-returning-pk! :model/Action {:name       "Implicit"
-                                                                 :type       :implicit
-                                                                 :model_id   %
-                                                                 :creator_id (mt/user->id :crowberto)})]
-            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for models with clauses"
-                                  (insert! clauses-id)))
-            (testing "nor can a load move one onto such a model"
-              (let [action-id (insert! plain-id)]
-                (binding [mi/*deserializing?* true]
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"not supported for models with clauses"
-                                        (t2/update! :model/Action action-id {:model_id clauses-id}))))
-                (is (= plain-id (t2/select-one-fn :model_id :model/Action :id action-id)))))))))))
+          (is (= "Implicit actions are not supported for models with clauses."
+                 (mt/user-http-request :crowberto :put 400 (str "action/" action-id)
+                                       {:type "implicit" :kind "row/update"}))))))))
 
 (deftest query-action-needs-a-query-on-a-database-test
   (testing "a query action holds a query on a database on every write path"

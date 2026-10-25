@@ -294,7 +294,7 @@
          :model/DashboardTab  dashtab   {:dashboard_id (:id dashboard)}
          :model/Card          card      {:name "A Card" :type :model}
          :model/Action               action    {:model_id (:id card)
-                                                :type     :query
+                                                :type     :implicit
                                                 :name     "An action"}]
         (let [columns    (disj (set/difference (set (keys dashcard)) (set @#'impl.dashboard/excluded-columns-for-dashcard-revision))
                                :dashboard_id :id)

@@ -2813,7 +2813,7 @@
       (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
                      :model/Card          {model-id :id} {:type :model}
                      :model/Card          {model-id-2 :id} {:type :model}
-                     :model/Action        {action-id :id} {:model_id model-id :type :query :name "action"}
+                     :model/Action        {action-id :id} {:model_id model-id :type :implicit :name "action"}
                      ;; Put the **same** card on the dashboard as both an action card and a question card
                      :model/DashboardCard action-card {:dashboard_id dashboard-id
                                                        :action_id action-id
@@ -4644,6 +4644,30 @@
                                :crowberto :post 400
                                path {:parameters {"name" 1}})))))))))))
 
+(deftest dashcard-implicit-action-only-expose-and-allow-model-fields
+  (mt/test-drivers (mt/normal-drivers-with-feature :actions)
+    (mt/with-actions-test-data-tables #{"venues" "categories"}
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-actions [{card-id :id} {:type :model :dataset_query (mt/mbql-query venues {:fields [$id $name]})}
+                          {:keys [action-id]} {:type :implicit :kind "row/update"}]
+          (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                         :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                                 :action_id action-id
+                                                                 :card_id card-id}]
+            (testing "Dashcard should only have id and name params"
+              (is (partial= {:dashcards [{:action {:parameters [{:id "id"} {:id "name"}]}}]}
+                            (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))
+            (let [execute-path (format "dashboard/%s/dashcard/%s/execute" dashboard-id dashcard-id)
+                  values-path  (format "dashboard/%s/dashcard/%s/execute/values" dashboard-id dashcard-id)]
+              (testing "Prefetch should limit to id and name"
+                (let [values (mt/user-http-request :crowberto :post 200 values-path {:parameters {"id" 1}})]
+                  (is (= {:id 1 :name "Red Medicine"} values))))
+              (testing "Update should only allow name"
+                (is (= {:rows-updated 1}
+                       (mt/user-http-request :crowberto :post 200 execute-path {:parameters {"id" 1 "name" "Blueberries"}})))
+                (is (partial= {:message "No destination parameter found for #{\"price\"}. Found: #{\"id\" \"name\"}"}
+                              (mt/user-http-request :crowberto :post 400 execute-path {:parameters {"id" 1 "name" "Blueberries" "price" 1234}})))))))))))
+
 (deftest dashcard-implicit-action-needs-read-access-to-the-action-test
   (testing "running or prefilling an implicit action from a dashcard needs read access to the action, not only to the dashboard"
     (mt/with-actions-test-data-and-actions-enabled
@@ -4670,15 +4694,15 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
     (mt/with-actions-test-data-tables #{"venues" "categories"}
       (mt/with-actions-test-data-and-actions-enabled
-        (mt/with-actions [{card-id :id} {:type          :model
-                                         :dataset_query (let [mp (mt/metadata-provider)]
-                                                          (lib/query mp (lib.metadata/table mp (mt/id :venues))))}
+        (mt/with-actions [{card-id :id} {:type :model, :dataset_query (mt/mbql-query venues {:fields [$id $name $price]})}
                           {:keys [action-id]} {:type :implicit
                                                :kind "row/update"
-                                               :visualization_settings {:fields (into {"id"   {:id "id" :hidden false}
-                                                                                       "name" {:id "name" :hidden false}}
-                                                                                      (for [id ["category_id" "latitude" "longitude" "price"]]
-                                                                                        [id {:id id :hidden true}]))}}]
+                                               :visualization_settings {:fields {"id"    {:id     "id"
+                                                                                          :hidden false}
+                                                                                 "name"  {:id     "name"
+                                                                                          :hidden false}
+                                                                                 "price" {:id     "price"
+                                                                                          :hidden true}}}}]
           (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
                          :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
                                                                  :action_id action-id

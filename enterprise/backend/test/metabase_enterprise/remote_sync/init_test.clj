@@ -264,9 +264,9 @@
                      :model/Collection {plain-id :id}    {:name "Plain" :location "/"}
                      :model/Card       {model-id :id}    {:type :model :collection_id synced-id}
                      :model/Card       {other-id :id}    {:type :model :collection_id plain-id}
-                     :model/Action     {live :id}        {:type :query :name "Live" :model_id model-id}
-                     :model/Action     {archived :id}    {:type :query :name "Old" :model_id model-id :archived true}
-                     :model/Action     {unsynced :id}    {:type :query :name "Elsewhere" :model_id other-id}]
+                     :model/Action     {live :id}        {:type :implicit :name "Live" :model_id model-id}
+                     :model/Action     {archived :id}    {:type :implicit :name "Old" :model_id model-id :archived true}
+                     :model/Action     {unsynced :id}    {:type :implicit :name "Elsewhere" :model_id other-id}]
         (t2/delete! :model/RemoteSyncObject :model_type "Action")
         (mt/with-dynamic-fn-redefs [impl/async-import! (constantly nil)
                                     remote-sync.object/dirty? (constantly false)]

@@ -81,6 +81,7 @@
     action-type :type
     :as action} :- ::actions.schema/action.create-request]
   (api/create-check :model/Action action)
+  (actions/check-implicit-actions-supported action)
   (actions/check-implicit-action-table-pk action)
   (actions/check-data-app-action-table action)
   (actions/check-action-databases-enabled action)
@@ -110,6 +111,7 @@
                    (tru "A model''s action can''t be archived. Delete it instead."))
     (when (some #(contains? action %) [:dataset_query :database_id :type :kind :model_id :table_id :collection_id])
       (let [merged (merge (actions/select-action :id id) action)]
+        (actions/check-implicit-actions-supported merged)
         (actions/check-implicit-action-table-pk merged)
         (actions/check-data-app-action-table merged)
         (actions/check-action-databases-enabled merged)))
