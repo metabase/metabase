@@ -19,6 +19,7 @@ export function usePermissionsDatabase(databaseId: DatabaseId | undefined) {
     useListDatabasesQuery();
   const {
     currentData: databaseWithTables,
+    isLoading,
     isFetching,
     error,
   } = useGetDatabaseMetadataQuery(
@@ -56,7 +57,9 @@ export function usePermissionsDatabase(databaseId: DatabaseId | undefined) {
   return {
     databases,
     database,
-    isLoading: (isFetching && databaseWithTables == null) || isLoadingDatabases,
+    isLoading: isLoading || isLoadingDatabases,
+    isLoadingDatabase:
+      (isFetching && databaseWithTables == null) || isLoadingDatabases,
     error: findErrorMessage(error),
   };
 }

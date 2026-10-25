@@ -54,7 +54,7 @@ export function DatabasesPermissionsPage() {
   const {
     databases,
     database,
-    isLoading: isSidebarLoading,
+    isLoadingDatabase: isSidebarLoading,
     error: sidebarError,
   } = usePermissionsDatabase(dataRouteParams.databaseId);
   const { isLoading } = useLoadDatabaseDataPermissions(

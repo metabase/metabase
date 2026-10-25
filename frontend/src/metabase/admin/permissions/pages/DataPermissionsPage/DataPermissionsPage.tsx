@@ -8,10 +8,12 @@ import {
   DataPermissionsHelp,
   DataPermissionsProvider,
   diffDataPermissions,
+  parseDataRouteParams,
   useDataPermissions,
   useLoadGroupDataPermissions,
+  usePermissionsDatabase,
 } from "metabase/permissions";
-import { Outlet } from "metabase/router";
+import { Outlet, useParams } from "metabase/router";
 import { Center, Loader } from "metabase/ui";
 import type { GroupInfo } from "metabase-types/api";
 
@@ -28,6 +30,7 @@ export function DataPermissionsPage() {
 }
 
 function DataPermissionsPageContent() {
+  const params = useParams<{ databaseId: string }>();
   const {
     data,
     isLoading: isLoadingGroups,
@@ -70,10 +73,14 @@ function DataPermissionsPageContent() {
     (groupsError != null ? getErrorMessage(groupsError) : undefined) ??
     allUsersGraph.error ??
     administratorsGraph.error;
+  const { isLoading: isLoadingDatabase } = usePermissionsDatabase(
+    parseDataRouteParams(params).databaseId,
+  );
   const isLoading =
     isLoadingGroups ||
     allUsersGraph.isLoading ||
     administratorsGraph.isLoading ||
+    isLoadingDatabase ||
     permissions == null;
 
   return (

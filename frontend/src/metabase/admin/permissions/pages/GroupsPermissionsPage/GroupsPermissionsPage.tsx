@@ -52,7 +52,7 @@ export function GroupsPermissionsPage() {
   const {
     databases,
     database,
-    isLoading: isEditorLoading,
+    isLoadingDatabase: isEditorLoading,
     error: editorError,
   } = usePermissionsDatabase(groupRouteParams.databaseId);
   const { isLoading } = useLoadGroupDataPermissions(groupRouteParams.groupId);
