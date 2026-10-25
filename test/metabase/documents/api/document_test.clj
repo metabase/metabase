@@ -468,9 +468,9 @@
             ;; Verify nothing changed
             (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))
             (is (= collection1-id (:collection_id (t2/select-one :model/Card :id card-id))))))
-        (testing "moving to non-existent collection fails gracefully"
+        (testing "moving to a non-existent collection is refused, as a document can't be written there"
           (mt/user-http-request :crowberto
-                                :put 400 (format "document/%s" document-id)
+                                :put 403 (format "document/%s" document-id)
                                 {:collection_id 99999})
           ;; Verify nothing changed
           (is (= collection1-id (:collection_id (t2/select-one :model/Document :id document-id))))

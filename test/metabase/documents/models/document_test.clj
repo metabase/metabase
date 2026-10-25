@@ -910,3 +910,20 @@
                   is a serdes path, so any guard that expects a raw integer skips the node and leaves
                   the path in place"
           (is (= card-id (get-in imported [:content 0 :attrs "id"]))))))))
+
+(deftest deleting-a-document-deletes-its-comments-test
+  (testing "a document deleted on any write path takes its comments with it"
+    (mt/with-temp [:model/Document {doc-id :id}     {}
+                   :model/Comment  {comment-id :id} {:target_id doc-id}]
+      (t2/delete! :model/Document doc-id)
+      (is (not (t2/exists? :model/Comment :id comment-id))))))
+
+(deftest saving-a-body-clears-the-placeholder-test
+  (testing "the first body saved over a placeholder document clears its placeholder flag, on any write path"
+    (mt/with-temp [:model/Document {doc-id :id} {:is_placeholder true}]
+      (t2/update! :model/Document doc-id {:name "Renamed"})
+      (is (true? (t2/select-one-fn :is_placeholder :model/Document :id doc-id)))
+      (t2/update! :model/Document doc-id {:document {:type    "doc"
+                                                     :content [{:type    "paragraph"
+                                                                :content [{:type "text" :text "body"}]}]}})
+      (is (false? (t2/select-one-fn :is_placeholder :model/Document :id doc-id))))))

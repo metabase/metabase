@@ -68,6 +68,11 @@
    changes :- ::documents.schema/document.update]
   (t2/update! :model/Document id changes))
 
+(mu/defn delete-document-comments!
+  "Delete the Comments on the Document with `document-id`, returning the number deleted."
+  [document-id :- ms/PositiveInt]
+  (t2/delete! :model/Comment :target_type "document" :target_id document-id))
+
 (mu/defn delete-document!
   "Delete the Document with `id`, returning the number deleted."
   [id :- ms/PositiveInt]

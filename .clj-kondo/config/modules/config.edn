@@ -928,6 +928,7 @@
    :model-exports #{:model/Document}
    :model-imports #{:model/Card
                     :model/Collection
+                    :model/Comment
                     :model/Dashboard
                     :model/Database
                     :model/Table

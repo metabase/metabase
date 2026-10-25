@@ -139,6 +139,16 @@
   ([_model pk]
    (mi/can-write? (documents.db/document pk))))
 
+(defmethod mi/can-update? :model/Document
+  [document changes]
+  (let [collection-id (get changes :collection_id ::not-moved)]
+    (and (mi/can-write? document)
+         (mi/can-write? (merge document changes))
+         (or (= ::not-moved collection-id)
+             (= collection-id (:collection_id document))
+             (nil? collection-id)
+             (documents.db/unarchived-collection-exists? collection-id)))))
+
 (def DocumentName
   "Validations for the name of a document"
   (mu/with-api-error-message
@@ -378,9 +388,9 @@
 (mu/defn update-document!
   "Apply `body` (any of `:name`, `:document`, `:collection_id`, `:collection_position`,
   `:cards`, `:archived`) to `existing-document`, clone any newly-embedded cards the document
-  doesn't own, publish `:event/document-update` (or `:event/document-delete` when archiving),
-  and return the updated document. Permission checks (write-check, archived state,
-  collection-move) are the caller's job, run before this — the same split the REST
+  doesn't own, publish `:event/document-delete` when archiving (the model publishes
+  `:event/document-update` for every update), and return the updated document. Permission checks
+  (update-check, archived state) are the caller's job, run before this — the same split the REST
   `PUT /api/document/:id` handler uses."
   [existing-document :- ::documents.schema/document
    {:keys [name document collection_id collection_position cards] :as body}
@@ -422,21 +432,14 @@
                                                            :content_type (:content_type existing-document)}
                                                           card-id-map))
                                          name (assoc :name name)
-                                         (contains? body :collection_id) (assoc :collection_id collection_id)
-                                         ;; First body save clears the auto-created Summary placeholder flag.
-                                         (and (:is_placeholder existing-document)
-                                              (contains? body :document))
-                                         (assoc :is_placeholder false)))
+                                         (contains? body :collection_id) (assoc :collection_id collection_id)))
         (when (seq pairings)
           (card/carry-pairings-for-document! document-id pairings)))
       (collections/check-for-remote-sync-update existing-document))
     (let [updated-document (hydrate-document document-id)]
       ;; Publish appropriate events
-      (if (:archived document-updates)
+      (when (:archived document-updates)
         (events/publish-event! :event/document-delete
-                               {:object updated-document
-                                :user-id api/*current-user-id*})
-        (events/publish-event! :event/document-update
                                {:object updated-document
                                 :user-id api/*current-user-id*}))
       updated-document)))
@@ -490,9 +493,10 @@
     ;; recorded for content updates. Promote it to a real instance here so the
     ;; revisions push can complete cleanly.
     (events/publish-event! :event/document-update
-                           {:object (if (t2/instance-of? :model/Document instance)
-                                      instance
-                                      (t2.instance/instance :model/Document instance))}))
+                           {:object  (if (t2/instance-of? :model/Document instance)
+                                       instance
+                                       (t2.instance/instance :model/Document instance))
+                            :user-id api/*current-user-id*}))
   instance)
 
 (t2/define-after-select :model/Document
@@ -742,6 +746,12 @@
   (collection/check-allowed-content :model/Document (:collection_id model))
   (public-sharing/add-public-uuid-prefix model))
 
+(t2/define-before-delete :model/Document [document]
+  (documents.db/delete-document-comments! (:id document)))
+
 (t2/define-before-update :model/Document [model]
   (collection/check-allowed-content :model/Document (:collection_id (t2/changes model)))
-  (public-sharing/add-public-uuid-prefix-if-changed model))
+  (cond-> (public-sharing/add-public-uuid-prefix-if-changed model)
+    (and (contains? (t2/changes model) :document)
+         (:is_placeholder (t2/original model)))
+    (assoc :is_placeholder false)))
