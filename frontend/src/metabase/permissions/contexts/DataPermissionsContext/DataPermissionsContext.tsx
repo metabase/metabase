@@ -17,10 +17,12 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
-import type {
-  DataPermissionUpdate,
-  DataPermissionView,
-  DataPermissionsDrafts,
+import {
+  type DataPermissionUpdate,
+  type DataPermissionView,
+  type DataPermissionsDrafts,
+  PLUGIN_TENANTS,
+  type PermissionsDatabase,
 } from "metabase/plugins";
 import type {
   DatabaseId,
@@ -51,6 +53,7 @@ type DataPermissionsContextValue = {
   originalPermissions: GroupsPermissions;
   diff: PermissionsGraphDiff;
   drafts: DataPermissionsDrafts;
+  editedDatabases: PermissionsDatabase[];
   isDirty: boolean;
   isLoading: boolean;
   isLoadingGraph: boolean;
@@ -109,6 +112,10 @@ export function DataPermissionsProvider({
     groups?.find(isAdminGroup)?.id ?? skipToken,
     REFETCH_OPTIONS,
   );
+  const externalUsersGraph = useGetGroupPermissionsGraphQuery(
+    groups?.find(PLUGIN_TENANTS.isExternalUsersGroup)?.id ?? skipToken,
+    REFETCH_OPTIONS,
+  );
   const groupGraph = useGetGroupPermissionsGraphQuery(
     view === "group" && groupId != null ? groupId : skipToken,
     REFETCH_OPTIONS,
@@ -124,14 +131,21 @@ export function DataPermissionsProvider({
 
   const allUsersData = allUsersGraph.currentData;
   const administratorsData = administratorsGraph.currentData;
+  const externalUsersData = externalUsersGraph.currentData;
   const routeData = routeGraph.currentData;
   const loadedPermissions = useMemo(
-    () => mergeLoadedGraphs([allUsersData, administratorsData, routeData]),
-    [allUsersData, administratorsData, routeData],
+    () =>
+      mergeLoadedGraphs([
+        allUsersData,
+        administratorsData,
+        externalUsersData,
+        routeData,
+      ]),
+    [allUsersData, administratorsData, externalUsersData, routeData],
   );
   const loadedRevision = Math.max(
     0,
-    ...[allUsersData, administratorsData, routeData].map(
+    ...[allUsersData, administratorsData, externalUsersData, routeData].map(
       (graph) => graph?.revision ?? 0,
     ),
   );
@@ -229,6 +243,7 @@ export function DataPermissionsProvider({
       originalPermissions: loadedPermissions,
       diff,
       drafts,
+      editedDatabases: editedGraphs.databases,
       isDirty,
       isLoading:
         groupsQuery.isLoading ||
@@ -251,6 +266,7 @@ export function DataPermissionsProvider({
       loadedPermissions,
       diff,
       drafts,
+      editedGraphs.databases,
       isDirty,
       groupsQuery.isLoading,
       allUsersGraph.isLoading,
