@@ -17,10 +17,7 @@ import {
   isDefaultGroup,
 } from "metabase/common/utils/groups";
 import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
-import type {
-  CollectionTreeItem,
-  ExpandedCollection,
-} from "metabase/redux/store";
+import type { CollectionTreeItem } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
 import {
   type Collection,
@@ -321,12 +318,7 @@ export const getCollectionsPermissionEditor = ({
             isDisabled,
             disabledTooltip,
             value,
-            warning: getCollectionWarning(
-              group.id,
-              // Unjustified type cast. FIXME
-              collection as ExpandedCollection,
-              permissions,
-            ),
+            warning: getCollectionWarning(group.id, collection, permissions),
             confirmations,
             options,
           },
@@ -343,12 +335,10 @@ export const getCollectionsPermissionEditor = ({
   };
 };
 
-const permissionsCollectionFilter = (collection: ExpandedCollection) =>
+const permissionsCollectionFilter = (collection: Collection) =>
   !collection.is_personal;
 
-function getDescendentCollections(
-  collection: ExpandedCollection,
-): ExpandedCollection[] {
+function getDescendentCollections(collection: Collection): Collection[] {
   const subCollections =
     collection.children?.filter(permissionsCollectionFilter) || [];
   return subCollections.concat(...subCollections.map(getDescendentCollections));
@@ -367,7 +357,7 @@ function getPermissionsSet(
 
 function getCollectionWarning(
   groupId: number,
-  collection: ExpandedCollection,
+  collection: Collection,
   permissions: CollectionPermissions,
 ) {
   if (!collection) {

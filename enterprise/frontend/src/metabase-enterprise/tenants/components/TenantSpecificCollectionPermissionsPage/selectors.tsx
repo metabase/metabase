@@ -18,7 +18,6 @@ import {
   getPermissionWarningModal,
 } from "metabase/permissions";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { ExpandedCollection } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
 import type {
   Collection,
@@ -155,8 +154,7 @@ export const getTenantSpecificCollectionsPermissionEditor = ({
             ),
             warning: getTenantSpecificCollectionWarning(
               group.id,
-              // Unjustified type cast. FIXME
-              collection as ExpandedCollection,
+              collection,
               permissions,
             ),
             confirmations,
@@ -175,12 +173,10 @@ export const getTenantSpecificCollectionsPermissionEditor = ({
   };
 };
 
-const permissionsCollectionFilter = (collection: ExpandedCollection) =>
+const permissionsCollectionFilter = (collection: Collection) =>
   !collection.is_personal;
 
-function getDescendentCollections(
-  collection: ExpandedCollection,
-): ExpandedCollection[] {
+function getDescendentCollections(collection: Collection): Collection[] {
   const subCollections =
     collection.children?.filter(permissionsCollectionFilter) || [];
   return subCollections.concat(...subCollections.map(getDescendentCollections));
@@ -188,7 +184,7 @@ function getDescendentCollections(
 
 function getTenantSpecificCollectionWarning(
   groupId: number,
-  collection: ExpandedCollection,
+  collection: Collection,
   permissions: CollectionPermissions,
 ) {
   if (!collection) {
