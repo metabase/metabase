@@ -251,7 +251,7 @@
 (t2/define-after-update :model/Action
   [{action-id :id, :as action}]
   (u/prog1 action
-    (when (:archived action)
+    (when (and (:archived action) (:archived_directly action))
       (actions.db/delete-dashcards-for-action! action-id))))
 
 (defn- set-query-database
