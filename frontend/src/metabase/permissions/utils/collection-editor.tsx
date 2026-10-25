@@ -16,7 +16,11 @@ import {
   getSpecialGroupType,
   isDefaultGroup,
 } from "metabase/common/utils/groups";
-import { PLUGIN_COLLECTIONS, PLUGIN_TENANTS } from "metabase/plugins";
+import {
+  PLUGIN_COLLECTIONS,
+  PLUGIN_TENANTS,
+  type SpecialGroupType,
+} from "metabase/plugins";
 import type { CollectionTreeItem } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
 import {
@@ -28,7 +32,6 @@ import {
   DataPermissionType,
   type DataPermissionValue,
   type GroupInfo,
-  type SpecialGroupType,
 } from "metabase-types/api";
 
 import { COLLECTION_OPTIONS } from "../constants/collections-permissions";

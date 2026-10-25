@@ -4,6 +4,7 @@ import type {
   DataPermissionView,
   PermissionAction,
   PermissionConfirmationProps,
+  PermissionEntityId,
   PermissionOption,
   PostActionFunction,
 } from "metabase/plugins";
@@ -12,7 +13,6 @@ import type {
   DataPermissionType,
   DataPermissionValue,
   GroupId,
-  PermissionEntityId,
 } from "metabase-types/api";
 
 export type GroupRouteParams = {

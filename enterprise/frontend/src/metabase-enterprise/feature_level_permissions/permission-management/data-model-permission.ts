@@ -10,18 +10,20 @@ import {
   getTablesPermission,
   navigateToGranularPermissions,
 } from "metabase/permissions";
-import type { PermissionOption } from "metabase/plugins";
+import type {
+  PermissionEntityId,
+  PermissionOption,
+  PermissionSubject,
+  SchemaEntityId,
+  SpecialGroupType,
+  TableEntityId,
+} from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
   type GroupInfo,
   type GroupsPermissions,
-  type PermissionEntityId,
-  type PermissionSubject,
-  type SchemaEntityId,
-  type SpecialGroupType,
-  type TableEntityId,
 } from "metabase-types/api";
 
 export const DATA_MODEL_PERMISSION_OPTIONS: Record<string, PermissionOption> = {

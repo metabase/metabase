@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import {
+  type DatabaseEntityId,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
@@ -10,18 +11,17 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  type PermissionsDatabase,
+  type SchemaEntityId,
+  type SpecialGroupType,
+  type TableEntityId,
 } from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
-  type DatabaseEntityId,
   type GroupInfo,
   type GroupsPermissions,
-  type PermissionsDatabase,
-  type SchemaEntityId,
-  type SpecialGroupType,
-  type TableEntityId,
 } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../constants/data-permissions";

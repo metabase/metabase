@@ -1,5 +1,6 @@
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
-import type { GroupId, PermissionEntityId } from "metabase-types/api";
+import type { PermissionEntityId } from "metabase/plugins";
+import type { GroupId } from "metabase-types/api";
 
 import {
   isDatabaseEntityId,

@@ -3,12 +3,9 @@ import { jt, t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
 import { getUser } from "metabase/current-user";
+import type { PermissionSubject, SpecialGroupType } from "metabase/plugins";
 import type { AdminPathKey, State } from "metabase/redux/store";
-import type {
-  PermissionSubject,
-  SpecialGroupType,
-  User,
-} from "metabase-types/api";
+import type { User } from "metabase-types/api";
 
 const canUserAccessDataModel = (user?: User) =>
   user?.permissions?.can_access_data_model ?? false;

@@ -18,11 +18,11 @@ import { getErrorMessage } from "metabase/api/utils/errors";
 import type {
   DataPermissionUpdate,
   DataPermissionsDrafts,
+  PermissionsDatabase,
 } from "metabase/plugins";
 import type {
   DatabaseId,
   GroupsPermissions,
-  PermissionsDatabase,
   PermissionsGraph,
 } from "metabase-types/api";
 

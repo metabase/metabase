@@ -16,15 +16,13 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
   PLUGIN_ADMIN_USER_FORM_FIELDS,
   PLUGIN_DATA_PERMISSIONS,
+  type PermissionEntityId,
   type PermissionOption,
+  type TableEntityId,
 } from "metabase/plugins";
 import { navigate } from "metabase/router";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
-import type {
-  GroupId,
-  PermissionEntityId,
-  TableEntityId,
-} from "metabase-types/api";
+import type { GroupId } from "metabase-types/api";
 import { DataPermissionValue } from "metabase-types/api";
 
 import { LoginAttributesWidget } from "./components/LoginAttributesWidget/LoginAttributesWidget";

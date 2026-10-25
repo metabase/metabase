@@ -10,17 +10,19 @@ import {
   getTablesPermission,
   navigateToGranularPermissions,
 } from "metabase/permissions";
-import type { PermissionOption } from "metabase/plugins";
+import type {
+  PermissionEntityId,
+  PermissionOption,
+  PermissionSubject,
+  SchemaEntityId,
+  TableEntityId,
+} from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
   type GroupInfo,
   type GroupsPermissions,
-  type PermissionEntityId,
-  type PermissionSubject,
-  type SchemaEntityId,
-  type TableEntityId,
 } from "metabase-types/api";
 
 const getTooltipMessage = (isAdmin: boolean, isBlockedAccess: boolean) => {

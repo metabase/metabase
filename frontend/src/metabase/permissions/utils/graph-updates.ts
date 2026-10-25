@@ -3,19 +3,19 @@ import _ from "underscore";
 
 import {
   type AppliedDataPermissionUpdate,
+  type DatabaseEntityId,
   PLUGIN_DATA_PERMISSIONS,
+  type PermissionEntityId,
+  type PermissionsDatabase,
+  type SchemaEntityId,
+  type TableEntityId,
 } from "metabase/plugins";
 import {
   type CollectionPermissions,
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
-  type DatabaseEntityId,
   type GroupsPermissions,
-  type PermissionEntityId,
-  type PermissionsDatabase,
-  type SchemaEntityId,
-  type TableEntityId,
 } from "metabase-types/api";
 
 import {

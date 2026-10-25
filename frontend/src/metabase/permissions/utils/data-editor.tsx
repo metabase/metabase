@@ -10,15 +10,15 @@ import {
   PLUGIN_AUDIT,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
   PLUGIN_TENANTS,
+  type PermissionEntityId,
+  type PermissionSubject,
+  type PermissionsDatabase,
+  type SpecialGroupType,
 } from "metabase/plugins";
 import { getPlan } from "metabase/settings";
 import type {
   GroupInfo,
   GroupsPermissions,
-  PermissionEntityId,
-  PermissionSubject,
-  PermissionsDatabase,
-  SpecialGroupType,
   TokenFeatures,
 } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";

@@ -1,12 +1,10 @@
 import type {
-  ConcreteTableId,
-  Database,
   DatabaseEntityId,
   PermissionEntityId,
   SchemaEntityId,
-  Table,
   TableEntityId,
-} from "metabase-types/api";
+} from "metabase/plugins";
+import type { ConcreteTableId, Database, Table } from "metabase-types/api";
 
 import type { PermissionsSchema } from "./metadata";
 

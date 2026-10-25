@@ -1,11 +1,13 @@
 import _ from "underscore";
 
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import {
+  PLUGIN_ADVANCED_PERMISSIONS,
+  type PermissionsDatabase,
+} from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionValue,
   type GroupsPermissions,
-  type PermissionsDatabase,
   type SchemaName,
   type TableId,
 } from "metabase-types/api";

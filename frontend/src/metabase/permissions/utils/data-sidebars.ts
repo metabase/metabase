@@ -2,15 +2,13 @@ import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { getGroupNameLocalized } from "metabase/common/utils/groups";
-import { PLUGIN_AUDIT } from "metabase/plugins";
+import {
+  PLUGIN_AUDIT,
+  type PermissionEntityId,
+  type PermissionsDatabase,
+} from "metabase/plugins";
 import { isNotNull } from "metabase/utils/types";
-import type {
-  Database,
-  GroupId,
-  GroupInfo,
-  PermissionEntityId,
-  PermissionsDatabase,
-} from "metabase-types/api";
+import type { Database, GroupId, GroupInfo } from "metabase-types/api";
 
 import type { PermissionsSidebarContentProps } from "../components/PermissionsSidebar/PermissionsSidebarContent";
 import type { RawDataRouteParams } from "../types";

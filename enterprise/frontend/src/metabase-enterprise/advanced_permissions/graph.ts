@@ -8,12 +8,11 @@ import {
   isTableEntityId,
   updateEntityPermission,
 } from "metabase/permissions";
+import type { PermissionEntityId, PermissionsDatabase } from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionValue,
   type GroupsPermissions,
-  type PermissionEntityId,
-  type PermissionsDatabase,
 } from "metabase-types/api";
 
 export function shouldRestrictNativeQueryPermissions(

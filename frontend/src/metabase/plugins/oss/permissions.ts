@@ -4,7 +4,7 @@ import type { ColorName } from "metabase/ui/colors/types";
 import type {
   DataPermission,
   DataPermissionType,
-  DatabaseEntityId,
+  Database,
   Dataset,
   GroupId,
   GroupInfo,
@@ -12,10 +12,6 @@ import type {
   GroupsPermissions,
   IconName,
   Impersonation,
-  PermissionEntityId,
-  PermissionSubject,
-  PermissionsDatabase,
-  SpecialGroupType,
   User,
 } from "metabase-types/api";
 import { DataPermissionValue } from "metabase-types/api";
@@ -28,6 +24,29 @@ type DataModelQueryProps = {
 };
 
 const DEFAULT_DATA_MODEL_QUERY_PROPS: DataModelQueryProps = {};
+
+export type DatabaseEntityId = {
+  databaseId: number;
+};
+
+export type SchemaEntityId = DatabaseEntityId & {
+  schemaName: string | undefined;
+};
+
+export type TableEntityId = SchemaEntityId & {
+  tableId: number;
+};
+
+export type PermissionEntityId = DatabaseEntityId &
+  Partial<Omit<TableEntityId, "databaseId">>;
+
+export type EntityWithGroupId = PermissionEntityId & { groupId: number };
+
+export type PermissionsDatabase = Database;
+
+export type PermissionSubject = "schemas" | "tables" | "fields";
+
+export type SpecialGroupType = "admin" | "analyst" | "external" | null;
 
 export type DataPermissionView = "database" | "group";
 

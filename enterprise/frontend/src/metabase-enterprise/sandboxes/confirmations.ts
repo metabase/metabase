@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
 import { hasPermissionValueInGraph } from "metabase/permissions";
-import type { PermissionEntityId } from "metabase-types/api";
+import type { PermissionEntityId } from "metabase/plugins";
 import { DataPermissionValue } from "metabase-types/api";
 import type { GroupsPermissions } from "metabase-types/api/permissions";
 

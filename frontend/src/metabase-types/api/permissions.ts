@@ -1,6 +1,5 @@
 import type {
   CollectionId,
-  Database,
   DatabaseId,
   SchemaName,
   TableId,
@@ -194,34 +193,6 @@ export type DataSegregationStrategy =
   | "row-column-level-security"
   | "connection-impersonation"
   | "database-routing";
-
-export type DatabaseEntityId = {
-  databaseId: number;
-};
-
-export type SchemaEntityId = DatabaseEntityId & {
-  schemaName: string | undefined;
-};
-
-export type TableEntityId = SchemaEntityId & {
-  tableId: number;
-};
-
-export type PermissionEntityId = DatabaseEntityId &
-  Partial<Omit<TableEntityId, "databaseId">>;
-
-export type EntityWithGroupId = PermissionEntityId & { groupId: number };
-
-/**
- * A database as the permissions tree sees it: the API database, with `tables`
- * from `GET /api/database/:id/metadata` and `router_user_attribute` from
- * `GET /api/database`. Neither endpoint returns both.
- */
-export type PermissionsDatabase = Database;
-
-export type PermissionSubject = "schemas" | "tables" | "fields";
-
-export type SpecialGroupType = "admin" | "analyst" | "external" | null;
 
 export type ApplicationPermissionKey =
   | "subscription"

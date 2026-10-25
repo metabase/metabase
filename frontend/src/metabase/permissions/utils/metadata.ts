@@ -1,10 +1,6 @@
+import type { PermissionsDatabase } from "metabase/plugins";
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
-import type {
-  DatabaseId,
-  PermissionsDatabase,
-  SchemaName,
-  Table,
-} from "metabase-types/api";
+import type { DatabaseId, SchemaName, Table } from "metabase-types/api";
 
 /**
  * The permissions tree treats schemas as entities, but a database from the API

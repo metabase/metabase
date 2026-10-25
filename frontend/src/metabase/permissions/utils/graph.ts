@@ -1,20 +1,22 @@
 import { getIn } from "icepick";
 import _ from "underscore";
 
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import {
-  type ConcreteTableId,
-  DataPermission,
-  DataPermissionValue,
   type DatabaseEntityId,
-  type DatabasePermissions,
   type EntityWithGroupId,
-  type GroupPermissions,
-  type GroupsPermissions,
+  PLUGIN_ADVANCED_PERMISSIONS,
   type PermissionEntityId,
   type PermissionsDatabase,
   type SchemaEntityId,
   type TableEntityId,
+} from "metabase/plugins";
+import {
+  type ConcreteTableId,
+  DataPermission,
+  DataPermissionValue,
+  type DatabasePermissions,
+  type GroupPermissions,
+  type GroupsPermissions,
 } from "metabase-types/api";
 
 import { isSchemaEntityId } from "./entity-ids";

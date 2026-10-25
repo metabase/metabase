@@ -5,11 +5,11 @@ import {
   type AppliedDataPermissionUpdate,
   type DataPermissionsDrafts,
   PLUGIN_DATA_PERMISSIONS,
+  type PermissionsDatabase,
 } from "metabase/plugins";
 import type {
   DatabaseId,
   GroupsPermissions,
-  PermissionsDatabase,
   PermissionsGraph,
 } from "metabase-types/api";
 

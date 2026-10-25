@@ -1,8 +1,8 @@
+import type { PermissionsDatabase } from "metabase/plugins";
 import type {
   ConcreteTableId,
   GroupInfo,
   GroupsPermissions,
-  PermissionsDatabase,
 } from "metabase-types/api";
 import { DataPermission } from "metabase-types/api";
 

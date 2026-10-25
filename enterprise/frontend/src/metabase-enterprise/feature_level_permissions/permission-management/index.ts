@@ -1,12 +1,14 @@
 import type { PermissionSectionConfig } from "metabase/permissions";
+import type {
+  PermissionEntityId,
+  PermissionSubject,
+  SpecialGroupType,
+} from "metabase/plugins";
 import { isNotNull } from "metabase/utils/types";
 import type {
   DataPermissionValue,
   GroupInfo,
   GroupsPermissions,
-  PermissionEntityId,
-  PermissionSubject,
-  SpecialGroupType,
 } from "metabase-types/api";
 
 import { buildDataModelPermission } from "./data-model-permission";

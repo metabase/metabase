@@ -1,17 +1,15 @@
 import { c, t } from "ttag";
 import _ from "underscore";
 
-import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import {
+  type DatabaseEntityId,
+  PLUGIN_ADVANCED_PERMISSIONS,
+  type PermissionEntityId,
+  type PermissionsDatabase,
+  type SchemaEntityId,
+} from "metabase/plugins";
 import { Alert, Flex, Icon, Text } from "metabase/ui";
-import type {
-  DatabaseEntityId,
-  GroupId,
-  GroupInfo,
-  GroupsPermissions,
-  PermissionEntityId,
-  PermissionsDatabase,
-  SchemaEntityId,
-} from "metabase-types/api";
+import type { GroupId, GroupInfo, GroupsPermissions } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
 import {

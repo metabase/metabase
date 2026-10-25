@@ -3,6 +3,7 @@ import type {
   AppliedDataPermissionUpdate,
   DataPermissionView,
   DataPermissionsDrafts,
+  PermissionEntityId,
 } from "metabase/plugins";
 import { navigate } from "metabase/router";
 import {
@@ -10,7 +11,6 @@ import {
   DataPermissionValue,
   type GroupId,
   type Impersonation,
-  type PermissionEntityId,
 } from "metabase-types/api";
 
 export const getImpersonatedPostAction = (

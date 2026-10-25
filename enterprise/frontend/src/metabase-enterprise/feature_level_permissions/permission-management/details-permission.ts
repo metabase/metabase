@@ -7,15 +7,17 @@ import {
   getPermissionWarning,
   getPermissionWarningModal,
 } from "metabase/permissions";
-import type { PermissionOption } from "metabase/plugins";
+import type {
+  PermissionEntityId,
+  PermissionOption,
+  PermissionSubject,
+} from "metabase/plugins";
 import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
   type GroupInfo,
   type GroupsPermissions,
-  type PermissionEntityId,
-  type PermissionSubject,
 } from "metabase-types/api";
 
 export const DETAILS_PERMISSION_OPTIONS: Record<string, PermissionOption> = {

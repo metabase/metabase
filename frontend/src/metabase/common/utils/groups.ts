@@ -1,7 +1,7 @@
 import { t } from "ttag";
 
-import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { GroupInfo, Member, SpecialGroupType } from "metabase-types/api";
+import { PLUGIN_TENANTS, type SpecialGroupType } from "metabase/plugins";
+import type { GroupInfo, Member } from "metabase-types/api";
 
 export const isApiKeyGroupMember = (member: Member) =>
   member.email.endsWith("@api-key.invalid");

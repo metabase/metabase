@@ -1,8 +1,5 @@
-import type {
-  Database,
-  DatabaseId,
-  PermissionsDatabase,
-} from "metabase-types/api";
+import type { PermissionsDatabase } from "metabase/plugins";
+import type { Database, DatabaseId } from "metabase-types/api";
 
 const mergeDatabase = (
   listed: Database | undefined,

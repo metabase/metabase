@@ -1,8 +1,8 @@
+import type { SpecialGroupType } from "metabase/plugins";
 import {
   DataPermissionValue,
   type Group,
   type GroupsPermissions,
-  type SpecialGroupType,
 } from "metabase-types/api";
 
 import {
