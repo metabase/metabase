@@ -11,6 +11,7 @@
    [metabase.actions.settings :as actions.settings]
    [metabase.actions.types :as actions.types]
    [metabase.api.common :as api]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.util :as driver.u]
@@ -340,6 +341,9 @@
             ;; TODO more granular controls
             (when-not (api/check-superuser)
               (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
+            (when (database-routing/routed? db)
+              (throw (ex-info (tru "You can''t edit tables on a database that routes your queries to a destination database.")
+                              {:status-code 403})))
             (check-data-editing-enabled-for-database db))))
       (log/with-context {:db-id (:id db)}
         (binding [*misc-value-cache* (atom {:databases (zipmap (map :id dbs) dbs)})]

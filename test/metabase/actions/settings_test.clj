@@ -45,11 +45,10 @@
                                       :active      true
                                       :created_at  :%now
                                       :updated_at  :%now})
-            (is (= [:setting/database-routing]
-                   (disabled-reasons router-db)))
+            (is (empty? (disabled-reasons router-db)))
             (is (= [:setting/database-routing]
                    (disabled-reasons target-db)))
-            (is (false? (can-configure-data-editing-for-db? router-db)))
+            (is (true? (can-configure-data-editing-for-db? router-db)))
             (is (false? (can-configure-data-editing-for-db? target-db)))))
         (testing "returns sync in progress reason when sync is incomplete"
           (mt/with-temp [:model/Database db {:initial_sync_status "incomplete"}]

@@ -42,17 +42,20 @@
   [_db-id]
   nil)
 
-(defenterprise db-routing-enabled?
-  "Returns whether or not the given database is either a router or destination database."
-  metabase-enterprise.database-routing.models
-  [_db-or-id]
-  false)
-
 (defenterprise destination-database-id
   "OSS version, returns nil."
   metabase-enterprise.database-routing.middleware
   [_database]
   nil)
+
+(defn routed?
+  "Whether the current user's queries against `database` go to a routing destination. A routing error, such as a
+  missing user attribute, counts as routed."
+  [database]
+  (try
+    (some? (destination-database-id database))
+    (catch clojure.lang.ExceptionInfo _
+      true)))
 
 (defn do-with-destination-database-id
   "Calls `f` with the id of the destination database that the current user's queries against `database` go to, with

@@ -25,19 +25,9 @@
       (throw (ex-info (tru "This database does not support DB routing") {:status-code 400})))
     (when (:router_database_id db)
       (throw (ex-info (tru "Cannot make a destination database a router database") {:status-code 400})))
-    (when (:uploads_enabled db)
-      (throw (ex-info (tru "Cannot enable database routing for a database with uploads enabled") {:status-code 400})))
-    (when (:write_data_details db)
-      (throw (ex-info (tru "Cannot enable database routing for a database with a write connection configured") {:status-code 400})))
     (when (:admin_details db)
       (throw (ex-info (tru "Cannot enable database routing for a database with an admin connection configured") {:status-code 400})))
-    (when (database-routing.db/transform-exists-for-source-database? database_id)
-      (throw (ex-info (tru "Cannot enable database routing for a database with transforms") {:status-code 400})))
     (setting/with-database db
-      (when (setting/get :database-enable-table-editing)
-        (throw (ex-info (tru "Cannot enable database routing for a database with table editing enabled") {:status-code 400})))
-      (when (setting/get :database-enable-actions)
-        (throw (ex-info (tru "Cannot enable database routing for a database with actions enabled") {:status-code 400})))
       (when (setting/get :persist-models-enabled)
         (throw (ex-info (tru "Cannot enable database routing for a database with model persistence enabled") {:status-code 400}))))))
 
@@ -74,12 +64,3 @@
   :feature :database-routing
   [db-id]
   (database-routing.db/delete-router! db-id))
-
-(defenterprise db-routing-enabled?
-  "Returns whether or not the given database is either a router or destination database."
-  :feature :database-routing
-  :fallback :oss
-  [db-or-id]
-  (or (database-routing.db/router-exists? (u/the-id db-or-id))
-      (some->> (:router-database-id db-or-id)
-               database-routing.db/router-exists?)))

@@ -488,23 +488,24 @@
             (driver.u/validate-connection-parameters! engine details)))))))
 
 (defn- check-routing-restrictions
-  "Throws when `database`'s pending update enables something that writes, model persistence or an admin connection
-  on a router or destination database."
+  "Throws when `database`'s pending update sets something that writes on a destination, which is only reached through
+  its router, or model persistence or an admin connection on a router or destination."
   [{:keys [id router_database_id] :as database}]
-  (let [changes  (t2/changes database)
-        routing? (delay (or router_database_id (warehouses.db/destination-database-exists? id)))]
-    (when (and (get-in changes [:settings :persist-models-enabled]) @routing?)
+  (let [changes (t2/changes database)]
+    (when (and (get-in changes [:settings :persist-models-enabled])
+               (or router_database_id (warehouses.db/destination-database-exists? id)))
       (throw (ex-info (tru "Cannot enable model persistence on a router or destination database") {:status-code 400})))
-    (when (and (:write_data_details changes) @routing?)
-      (throw (ex-info (tru "Cannot configure a write connection on a router or destination database") {:status-code 400})))
-    (when (and (:admin_details changes) @routing?)
+    (when (and (:admin_details changes)
+               (or router_database_id (warehouses.db/destination-database-exists? id)))
       (throw (ex-info (tru "Cannot configure an admin connection on a router or destination database") {:status-code 400})))
-    (when (and (:uploads_enabled changes) @routing?)
-      (throw (ex-info (tru "Cannot enable uploads on a router or destination database") {:status-code 400})))
-    (when (and (get-in changes [:settings :database-enable-actions]) @routing?)
-      (throw (ex-info (tru "Cannot enable data actions on a router or destination database") {:status-code 400})))
-    (when (and (get-in changes [:settings :database-enable-table-editing]) @routing?)
-      (throw (ex-info (tru "Cannot enable table editing on a router or destination database") {:status-code 400})))))
+    (when (and (:write_data_details changes) router_database_id)
+      (throw (ex-info (tru "Cannot configure a write connection on a destination database") {:status-code 400})))
+    (when (and (:uploads_enabled changes) router_database_id)
+      (throw (ex-info (tru "Cannot enable uploads on a destination database") {:status-code 400})))
+    (when (and (get-in changes [:settings :database-enable-actions]) router_database_id)
+      (throw (ex-info (tru "Cannot enable data actions on a destination database") {:status-code 400})))
+    (when (and (get-in changes [:settings :database-enable-table-editing]) router_database_id)
+      (throw (ex-info (tru "Cannot enable table editing on a destination database") {:status-code 400})))))
 
 (t2/define-before-update :model/Database
   [database]

@@ -11,6 +11,7 @@
    [metabase.analytics-interface.core :as analytics]
    [metabase.analytics.core :as analytics.core]
    [metabase.api.common :as api]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.ddl.interface :as ddl.i]
@@ -496,6 +497,10 @@
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
 
+      (database-routing/routed? db)
+      (ex-info (tru "Uploads are not permitted for users whose queries are routed to a destination database.")
+               {:status-code 403})
+
       (not (driver.u/supports? driver :uploads db))
       (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
                {:status-code 422}))))
@@ -927,6 +932,10 @@
       (not (:is_upload table))
       (ex-info (tru "The table must be an uploaded table.")
                {:status-code 422})
+
+      (database-routing/routed? database)
+      (ex-info (tru "Uploads are not permitted for users whose queries are routed to a destination database.")
+               {:status-code 403})
 
       (not (and (mi/can-query? table) (mi/can-write? table)))
       (ex-info (tru "You don''t have permissions to do that.")

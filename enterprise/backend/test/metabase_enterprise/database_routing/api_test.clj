@@ -117,48 +117,47 @@
                                   :destinations [{:name "fluffy"
                                                   :details (:details (mt/db))}]})))))
 
-(deftest cannot-enable-db-routing-when-other-features-enabled
-  (mt/with-temp [:model/Database {db-id :id} {:settings {:persist-models-enabled true}}]
-    (is (= "Cannot enable database routing for a database with model persistence enabled"
-           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"}))))
-  (mt/with-temp [:model/Database {db-id :id} {:settings {:database-enable-actions true}}]
-    (is (= "Cannot enable database routing for a database with actions enabled"
-           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"}))))
-  (mt/with-temp [:model/Database {db-id :id} {:uploads_enabled true}]
-    (is (= "Cannot enable database routing for a database with uploads enabled"
-           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"}))))
-  (mt/with-temp [:model/Database {db-id :id} {:admin_details {:host "other-host"}}]
-    (is (= "Cannot enable database routing for a database with an admin connection configured"
-           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"}))))
-  (mt/with-temp [:model/Database {db-id :id} {:write_data_details {:host "other-host"}}]
-    (is (= "Cannot enable database routing for a database with a write connection configured"
-           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"}))))
-  (mt/with-temp [:model/Database {router-db-id :id} {}
-                 :model/Database {db-id :id} {:router_database_id router-db-id}]
-    (is (= "Cannot make a destination database a router database"
-           (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
-                                 {:user_attribute "db_name"}))))
-  (mt/with-temp [:model/Database {db-id :id} {}]
-    (mt/with-temp [:model/Transform _ {:source_database_id db-id
-                                       :name "Test Transform"}]
-      (is (= "Cannot enable database routing for a database with transforms"
+(deftest routing-allows-writes-test
+  (testing "a database with actions, a write connection and transforms can route"
+    (mt/with-temp [:model/Database {db-id :id} {:write_data_details {:host "other-host"}
+                                                :settings           {:database-enable-actions true}}
+                   :model/Transform _ {:source_database_id db-id
+                                       :name               "Test Transform"}]
+      (mt/with-model-cleanup [:model/DatabaseRouter]
+        (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" db-id)
+                              {:user_attribute "db_name"}))))
+  (testing "a database with model persistence can't route"
+    (mt/with-temp [:model/Database {db-id :id} {:settings {:persist-models-enabled true}}]
+      (is (= "Cannot enable database routing for a database with model persistence enabled"
+             (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                   {:user_attribute "db_name"})))))
+  (testing "a database with an admin connection can't route"
+    (mt/with-temp [:model/Database {db-id :id} {:admin_details {:host "other-host"}}]
+      (is (= "Cannot enable database routing for a database with an admin connection configured"
+             (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                   {:user_attribute "db_name"})))))
+  (testing "a destination can't route"
+    (mt/with-temp [:model/Database {router-db-id :id} {}
+                   :model/Database {db-id :id} {:router_database_id router-db-id}]
+      (is (= "Cannot make a destination database a router database"
              (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
                                    {:user_attribute "db_name"}))))))
 
-(deftest cannot-enable-other-features-on-a-router-or-destination-test
+(deftest destinations-refuse-writes-test
   (mt/with-temp [:model/Database {router-id :id} {}
                  :model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}
                  :model/Database {dest-id :id} {:router_database_id router-id}]
-    (testing "the Database hook refuses enabling a feature routing rules out, however the update is made"
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot enable uploads on a router or destination database"
-                            (t2/update! :model/Database router-id {:uploads_enabled true})))
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot enable data actions on a router or destination database"
-                            (t2/update! :model/Database dest-id {:settings {:database-enable-actions true}}))))))
+    (testing "a router can enable them"
+      (t2/update! :model/Database router-id {:settings {:database-enable-actions true}})
+      (is (get-in (t2/select-one :model/Database router-id) [:settings :database-enable-actions])))
+    (testing "a router can't enable model persistence"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot enable model persistence on a router or destination database"
+                            (t2/update! :model/Database router-id {:settings {:persist-models-enabled true}}))))
+    (testing "the Database hook refuses enabling them on a destination, however the update is made"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot enable data actions on a destination database"
+                            (t2/update! :model/Database dest-id {:settings {:database-enable-actions true}})))
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Cannot enable uploads on a destination database"
+                            (t2/update! :model/Database dest-id {:uploads_enabled true}))))))
 
 (deftest can-delete-router-databases
   (mt/with-temp [:model/Database {db-id :id} {}

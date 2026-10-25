@@ -497,10 +497,11 @@
   [{:keys [source] :as transform} source-range-params]
   (let [{:keys [query]} source]
     (assert (query-transform? transform))
-    (-> query
-        (preprocess-incremental-query source-range-params)
-        massage-sql-query
-        qp.compile/compile)))
+    (database-routing/with-database-routing-off
+      (-> query
+          (preprocess-incremental-query source-range-params)
+          massage-sql-query
+          qp.compile/compile))))
 
 ;;; ------------------------------------------------- Target Table Management -------------------------------------------------
 
@@ -989,11 +990,11 @@
     (str/starts-with? (u/lower-case-en table-name) transform-temp-table-prefix)))
 
 (defn throw-if-db-routing-enabled!
-  "Throws if the database has routing enabled. Call before any driver operations to get a
-   clear error message rather than a confusing driver-level failure."
+  "Throws if the database is a routing destination, which is only reached through its router. Call before any driver
+   operations to get a clear error message rather than a confusing driver-level failure."
   [transform database]
-  (when (database-routing/db-routing-enabled? database)
-    (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) has database routing turned on. Running transforms on databases with db routing enabled is not supported."
+  (when (:router_database_id database)
+    (throw (ex-info (i18n/tru "Failed to run the transform ({0}) because the database ({1}) is a routing destination. Transforms can''t run on destination databases."
                               (:name transform)
                               (:name database))
                     {:driver (:engine database), :database database}))))

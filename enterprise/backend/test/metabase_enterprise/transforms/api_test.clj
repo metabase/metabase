@@ -5,7 +5,6 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
-   [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.premium-features.core :as premium-features]
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
@@ -113,38 +112,22 @@
           (let [response (mt/user-http-request :crowberto :get 200 (format "transform/%d" python-id))]
             (is (= "python" (:source_type response)))))))))
 
-(deftest create-transform-with-routing-fails-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :database-routing)
-    (mt/with-premium-features #{:transforms-basic :database-routing :hosting}
-      (mt/dataset transforms-dataset/transforms-test
-        (mt/with-db-perm-for-group! (perms-group/all-users) (mt/id) :perms/transforms :yes
-          (mt/with-data-analyst-role! (mt/user->id :lucky)
-            (with-transform-cleanup! [table-name "gadget_products"]
-              (mt/with-temp-vals-in-db :model/Database (mt/id) {:uploads_enabled false}
-                (mt/with-temp [:model/Database _destination {:engine driver/*driver*
-                                                             :router_database_id (mt/id)
-                                                             :details {:destination_database true}}
-                               :model/DatabaseRouter _ {:database_id (mt/id)
-                                                        :user_attribute "db_name"}]
-                  (is (= "Transforms are not supported on databases with DB routing enabled."
-                         (mt/user-http-request :crowberto :post 400 "transform"
-                                               (query-transform-payload table-name)))))))))))))
-
-(deftest update-transform-with-routing-fails-test
+(deftest transforms-on-a-router-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table :database-routing)
     (mt/with-premium-features #{:transforms-basic :database-routing :hosting}
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [table-name "gadget_products"]
-          (mt/with-temp-vals-in-db :model/Database (mt/id) {:uploads_enabled false}
-            (mt/with-temp [:model/Database _destination {:engine driver/*driver*
-                                                         :router_database_id (mt/id)
-                                                         :details {:destination_database true}}
-                           :model/DatabaseRouter _ {:database_id (mt/id)
-                                                    :user_attribute "db_name"}
-                           :model/Transform transform (query-transform-payload table-name)]
-              (is (= "Transforms are not supported on databases with DB routing enabled."
-                     (mt/user-http-request :crowberto :put 400 (format "transform/%s" (:id transform))
-                                           (assoc-in transform [:target :name] "gadget_products_2")))))))))))
+          (mt/with-temp [:model/Database _destination {:engine driver/*driver*
+                                                       :router_database_id (mt/id)
+                                                       :details {:destination_database true}}
+                         :model/DatabaseRouter _ {:database_id (mt/id)
+                                                  :user_attribute "db_name"}]
+            (mt/with-model-cleanup [:model/Transform]
+              (testing "an admin can create and edit a transform on a router"
+                (let [transform (mt/user-http-request :crowberto :post 200 "transform"
+                                                      (query-transform-payload table-name))]
+                  (mt/user-http-request :crowberto :put 200 (format "transform/%s" (:id transform))
+                                        {:name "Renamed transform"}))))))))))
 
 (deftest search-filters-transform-source-types-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)

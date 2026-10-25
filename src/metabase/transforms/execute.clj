@@ -1,8 +1,13 @@
 (ns metabase.transforms.execute
   (:require
+   [metabase.api.common :as api]
+   [metabase.database-routing.core :as database-routing]
    [metabase.indexes.models.table-index :as table-index]
+   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
+   [metabase.transforms.db :as transforms.db]
    [metabase.transforms.interface :as transforms.i]
+   [metabase.util.i18n :refer [tru]]
    ;; load the `transforms.i/execute!` `:query` method
    [metabase.transforms.query-impl]))
 
@@ -18,6 +23,16 @@
         (assoc-in [:target :indexes] (mapv :structured requests))
         (assoc-in [:target :index-request-ids] (into [] (keep :id) requests))
         (assoc :full-incremental-run? (transforms-base.u/full-incremental-run? transform)))))
+
+(defn- check-not-routed!
+  "Throws when the current user's queries against the target Database of `transform` go to a routing destination, since
+  a transform runs with the router's credentials."
+  [transform]
+  (when-let [db (when api/*current-user-id*
+                  (some-> (transforms-base.i/target-db-id transform) transforms.db/database))]
+    (when (database-routing/routed? db)
+      (throw (ex-info (tru "You can''t run transforms on a database that routes your queries to a destination database.")
+                      {:status-code 403})))))
 
 (defn execute!
   "Run `transform` and sync its target table.
@@ -36,6 +51,7 @@
                                   (when on-start
                                     (on-start run-id)))})]
      (try
+       (check-not-routed! transform)
        (transforms.i/execute! (resolve-target transform) opts)
        (catch Throwable t
          ;; so a caller awaiting the start isn't left hanging on a pre-start failure;
