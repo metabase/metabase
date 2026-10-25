@@ -69,10 +69,8 @@ export const ImpersonationModal = ({
   const handleSave = (attribute: UserAttributeKey) => {
     updateDataPermission({
       groupId,
-      permission: {
-        type: DataPermissionType.ACCESS,
-        permission: DataPermission.VIEW_DATA,
-      },
+      type: DataPermissionType.ACCESS,
+      permission: DataPermission.VIEW_DATA,
       value: DataPermissionValue.IMPERSONATED,
       entityId: { databaseId },
       view: "group",

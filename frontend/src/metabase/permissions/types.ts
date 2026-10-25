@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 
 import type {
+  DataPermissionUpdate,
   DataPermissionView,
   PermissionAction,
   PermissionConfirmationProps,
@@ -12,7 +13,6 @@ import type {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
-  GroupId,
 } from "metabase-types/api";
 
 export type GroupRouteParams = {
@@ -140,13 +140,7 @@ export type PermissionEditorType<
   hasLegacyNoSelfServiceValueInPermissionGraph?: boolean;
 };
 
-export type UpdateDataPermissionParams = {
-  groupId: GroupId;
-  permission: Pick<
-    PermissionSectionConfig,
-    "type" | "permission" | "postActions"
-  >;
-  value: DataPermissionValue;
-  entityId: PermissionEntityId;
+export type UpdateDataPermissionParams = DataPermissionUpdate & {
   view: DataPermissionView;
+  postActions?: PermissionSectionConfig["postActions"];
 };

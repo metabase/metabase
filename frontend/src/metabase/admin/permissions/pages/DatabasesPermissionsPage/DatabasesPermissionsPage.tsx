@@ -112,7 +112,9 @@ export function DatabasesPermissionsPage() {
       }
       updateDataPermission({
         groupId: assertNumericId(item.id),
-        permission,
+        type: permission.type,
+        permission: permission.permission,
+        postActions: permission.postActions,
         value,
         entityId: item.entityId,
         view: "database",

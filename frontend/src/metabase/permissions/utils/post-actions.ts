@@ -24,7 +24,7 @@ export const limitDatabasePermission =
     entityId: PermissionEntityId,
     accessPermissionValue: DataPermissionValue,
   ): PostActionFunction =>
-  (_entityId, _groupId, _view, _value, applyUpdate) => {
+  (_entityId, _groupId, _view, applyUpdate) => {
     const value =
       PLUGIN_ADVANCED_PERMISSIONS.getDatabaseLimitedAccessPermission(
         accessPermissionValue,
@@ -37,7 +37,6 @@ export const limitDatabasePermission =
         type: DataPermissionType.ACCESS,
         permission: DataPermission.VIEW_DATA,
         value,
-        view: "group",
       });
     }
 

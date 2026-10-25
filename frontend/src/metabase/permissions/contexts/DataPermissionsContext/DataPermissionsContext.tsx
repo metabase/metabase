@@ -61,7 +61,7 @@ type DataPermissionsContextValue = {
   updateDrafts: (
     updater: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts,
   ) => void;
-  savePermissions: () => Promise<boolean>;
+  savePermissions: () => Promise<void>;
   resetPermissions: () => void;
   clearSaveError: () => void;
 };
@@ -155,26 +155,13 @@ export function DataPermissionsProvider({
   );
 
   const updateDataPermission = useCallback(
-    async ({
-      groupId,
-      permission,
-      value,
-      entityId,
-      view,
-    }: UpdateDataPermissionParams) => {
-      const postAction = permission.postActions?.[value];
+    async ({ view, postActions, ...update }: UpdateDataPermissionParams) => {
+      const postAction = postActions?.[update.value];
       if (postAction) {
-        postAction(entityId, groupId, view, value, applyUpdate);
+        postAction(update.entityId, update.groupId, view, applyUpdate);
         return;
       }
-      await applyUpdate({
-        groupId,
-        entityId,
-        type: permission.type,
-        permission: permission.permission,
-        value,
-        view,
-      });
+      await applyUpdate(update);
     },
     [applyUpdate],
   );
@@ -202,11 +189,9 @@ export function DataPermissionsProvider({
       ...(sandboxes.length > 0 && { sandboxes }),
       ...(impersonations.length > 0 && { impersonations }),
     });
-    if (savedGraph == null) {
-      return false;
+    if (savedGraph != null) {
+      dispatch({ type: "reset" });
     }
-    dispatch({ type: "reset" });
-    return true;
   }, [drafts, editedGraphs, groups, revision, loadedRevision, updateGraph]);
 
   const resetPermissions = useCallback(() => {

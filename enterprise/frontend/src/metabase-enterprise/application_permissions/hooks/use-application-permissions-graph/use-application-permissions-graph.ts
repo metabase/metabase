@@ -42,17 +42,15 @@ export function useApplicationPermissionsGraph() {
 
   const savePermissions = useCallback(async () => {
     if (graph == null || permissions == null) {
-      return false;
+      return;
     }
     const result = await updateGraph({
       groups: permissions,
       revision: graph.revision,
     });
-    if (result.error) {
-      return false;
+    if (!result.error) {
+      clearEdits();
     }
-    clearEdits();
-    return true;
   }, [graph, permissions, updateGraph, clearEdits]);
 
   const resetPermissions = useCallback(() => {

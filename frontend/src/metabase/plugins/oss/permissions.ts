@@ -56,7 +56,6 @@ export type DataPermissionUpdate = {
   type: DataPermissionType;
   permission: DataPermission;
   value: DataPermissionValue;
-  view: DataPermissionView;
 };
 
 export type AppliedDataPermissionUpdate = DataPermissionUpdate & {
@@ -97,7 +96,6 @@ export type PostActionFunction = (
   entityId: PermissionEntityId,
   groupId: GroupId,
   view: DataPermissionView,
-  value: DataPermissionValue,
   applyUpdate: (update: DataPermissionUpdate) => void,
 ) => void;
 

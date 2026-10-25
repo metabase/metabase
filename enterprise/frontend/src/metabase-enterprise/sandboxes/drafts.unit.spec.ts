@@ -49,7 +49,6 @@ const createUpdate = (
   type: DataPermissionType.ACCESS,
   permission: DataPermission.VIEW_DATA,
   value: DataPermissionValue.UNRESTRICTED,
-  view: "group",
   database: DATABASE,
   ...update,
 });

@@ -118,7 +118,9 @@ export function GroupsPermissionsPage() {
       }
       updateDataPermission({
         groupId: groupRouteParams.groupId,
-        permission,
+        type: permission.type,
+        permission: permission.permission,
+        postActions: permission.postActions,
         value,
         entityId: item.entityId,
         view: "group",

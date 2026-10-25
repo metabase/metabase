@@ -75,10 +75,8 @@ const EditSandboxingModalContainer = ({
     updateDataPermission({
       groupId,
       entityId: { databaseId, schemaName: params.schemaName, tableId },
-      permission: {
-        type: DataPermissionType.ACCESS,
-        permission: DataPermission.VIEW_DATA,
-      },
+      type: DataPermissionType.ACCESS,
+      permission: DataPermission.VIEW_DATA,
       value: DataPermissionValue.SANDBOXED,
       view: location.pathname.startsWith(getGroupsBasePath())
         ? "group"

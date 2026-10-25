@@ -60,7 +60,6 @@ const NO_QUERIES_UPDATE: AppliedDataPermissionUpdate = {
   type: DataPermissionType.NATIVE,
   permission: DataPermission.CREATE_QUERIES,
   value: DataPermissionValue.NO,
-  view: "group",
   database: DATABASE,
 };
 
