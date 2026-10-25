@@ -195,9 +195,9 @@
 (deftest callback-reactivates-deactivated-user-test
   (testing "a deactivated user is reactivated on OIDC login when user provisioning is enabled (#79412)"
     (with-oidc-default-setup!
-      (with-ensure-encryption!
-        (with-successful-oidc!
-          (mt/with-temporary-setting-values [oidc-user-provisioning-enabled? true]
+      (mt/with-temporary-setting-values [oidc-user-provisioning-enabled? true]
+        (with-ensure-encryption!
+          (with-successful-oidc!
             ;; earlier callback tests may have provisioned the mock user already
             (t2/delete! :model/User :email "oidcuser@example.com")
             (mt/with-temp [:model/User {user-id :id} {:email "oidcuser@example.com" :is_active false}]
@@ -207,9 +207,9 @@
 (deftest callback-deactivated-user-without-provisioning-test
   (testing "a deactivated user gets a readable 401 when OIDC user provisioning is disabled (#79412)"
     (with-oidc-default-setup!
-      (with-ensure-encryption!
-        (with-successful-oidc!
-          (mt/with-temporary-setting-values [oidc-user-provisioning-enabled? false]
+      (mt/with-temporary-setting-values [oidc-user-provisioning-enabled? false]
+        (with-ensure-encryption!
+          (with-successful-oidc!
             ;; earlier callback tests may have provisioned the mock user already
             (t2/delete! :model/User :email "oidcuser@example.com")
             (mt/with-temp [:model/User {user-id :id} {:email "oidcuser@example.com" :is_active false}]

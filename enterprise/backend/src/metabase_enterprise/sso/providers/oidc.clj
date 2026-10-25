@@ -86,7 +86,7 @@
   [provider {:keys [user] :as request}]
   (when-not user
     (sso-utils/check-user-provisioning :oidc))
-  (let [provisioning-enabled? (sso-settings/jwt-user-provisioning-enabled?)
+  (let [provisioning-enabled? (sso-settings/oidc-user-provisioning-enabled?)
         user-was-deactivated? (and user (not (:is_active user)))
         reactivate-user?      (and user-was-deactivated?
                                    provisioning-enabled?)]
