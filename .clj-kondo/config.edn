@@ -520,6 +520,7 @@
   metabase.channel.impl.http-test/with-server                                           clojure.core/let
   metabase.collections.models.collection-test/with-collection-in-location               clojure.core/let
   metabase.collections.test-utils/with-library                                          clojure.core/fn
+  metabase.database-routing.core/with-destination-database-id                           clojure.core/let
   metabase.driver.mongo.connection/with-mongo-client                                    clojure.core/let
   metabase.driver.mongo.connection/with-mongo-database                                  clojure.core/let
   metabase.driver.mongo.query-processor/mongo-let                                       clojure.core/let
@@ -528,6 +529,7 @@
   metabase.driver.sql-jdbc.connection/with-connection-spec-for-testing-connection       clojure.core/let
   metabase.driver.sql-jdbc.execute.diagnostic/capturing-diagnostic-info                 clojure.core/fn
   metabase.driver-api.core/defsetting                                                   hooks.metabase.settings.models.setting/defsetting
+  metabase.driver-api.core/with-destination-database-id                                 clojure.core/let
   metabase.mcp.v2.registry/deftool                                                      clojure.core/defn
   metabase.metabot.tools.core/defrecoverable                                            clojure.core/defn
   metabase.metabot.tools.error/defrecoverable                                           clojure.core/defn

@@ -92,6 +92,7 @@
  connection-pool/destroy-connection-pool!
  connection-pool/map->properties
  database-routing/check-allowed-access!
+ database-routing/with-destination-database-id
  events/publish-event!
  lib-be/start-of-week
  lib-be/instance->metadata

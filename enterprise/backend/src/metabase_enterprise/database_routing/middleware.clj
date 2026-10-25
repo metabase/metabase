@@ -54,6 +54,19 @@
   []
   *destination-database-id*)
 
+(defenterprise destination-database-id
+  "Enterprise version. Returns the id of the destination database that the current user's queries against `database`
+  go to, or nil when they go to `database` itself. Throws when `database` is a destination accessed directly, or when
+  the routing feature or driver support is missing for a routed user."
+  :feature :none
+  [database]
+  (common/assert-not-direct-destination-access! database)
+  (u/prog1 (router-db-or-id->destination-db-id database)
+    (when <>
+      (premium-features/assert-has-feature :database-routing (tru "Database Routing"))
+      (when-not (driver.u/supports? (:engine database) :database-routing database)
+        (throw (ex-info "Unsupported database for database routing" {}))))))
+
 (defenterprise attach-destination-db-middleware
   "Pre-processing middleware. Calculates the destination database that should be used for this query, e.g. for caching
   purposes. Does not make any changes to the query besides (possibly) adding a `:destination-database/id` key."
@@ -66,14 +79,7 @@
         ;; (e.g. the offline semantic checker) must not do; they never execute queries, so there is
         ;; nothing for the assert to protect there.
         destination-db-id (when-not qp.i/*skip-middleware-because-app-db-access*
-                            (common/assert-not-direct-destination-access! database)
-                            (router-db-or-id->destination-db-id database))]
-    (when destination-db-id
-      (premium-features/assert-has-feature :database-routing (tru "Database Routing"))
-      (when-not (driver.u/supports? (:engine (lib.metadata/database (qp.store/metadata-provider)))
-                                    :database-routing
-                                    database)
-        (throw (ex-info "Unsupported database for database routing" {}))))
+                            (destination-database-id database))]
     ;; dissoc first: a client-supplied :destination-database/id must never survive preprocessing,
     ;; since swap-destination-db trusts this key at execution time.
     (cond-> (dissoc query :destination-database/id)

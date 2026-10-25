@@ -47,3 +47,24 @@
   metabase-enterprise.database-routing.models
   [_db-or-id]
   false)
+
+(defenterprise destination-database-id
+  "OSS version, returns nil."
+  metabase-enterprise.database-routing.middleware
+  [_database]
+  nil)
+
+(defn do-with-destination-database-id
+  "Calls `f` with the id of the destination database that the current user's queries against `database` go to, with
+  routing on, or with the id of `database` when there is none."
+  [database f]
+  (if-let [destination-id (destination-database-id database)]
+    (with-database-routing-on (f destination-id))
+    (f (:id database))))
+
+(defmacro with-destination-database-id
+  "Runs `body` with `id-binding` bound to the id of the database that the current user's queries against `database`
+  go to, as [[do-with-destination-database-id]] does."
+  {:style/indent 1}
+  [[id-binding database] & body]
+  `(do-with-destination-database-id ~database (fn [~id-binding] ~@body)))

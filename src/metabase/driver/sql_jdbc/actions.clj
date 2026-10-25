@@ -156,10 +156,10 @@
   [database-id f]
   (if *connection*
     (f *connection*)
-    (let [driver (driver.u/database->driver database-id)]
+    (driver-api/with-destination-database-id [connection-database-id (driver-api/cached-database database-id)]
       (sql-jdbc.execute/do-with-connection-with-options
-       driver
-       database-id
+       (driver.u/database->driver database-id)
+       connection-database-id
        {:write? true}
        (fn [^Connection conn]
          ;; execute inside of a transaction.
@@ -179,8 +179,9 @@
              (throw e))))))))
 
 (defmacro with-jdbc-transaction
-  "Execute `f` with a JDBC Connection for the Database with `database-id`. Uses [[*connection*]] if already bound,
-  otherwise fetches a new Connection from the Database's Connection pool and executes `f` inside of a transaction."
+  "Execute `f` with a JDBC Connection for the Database with `database-id`, or for the destination database the current
+  user is routed to. Uses [[*connection*]] if already bound, otherwise fetches a new Connection from the Database's
+  Connection pool and executes `f` inside of a transaction."
   {:style/indent 1}
   [[connection-binding database-id] & body]
   `(do-with-jdbc-transaction ~database-id (fn [~(vary-meta connection-binding assoc :tag 'Connection)] ~@body)))
