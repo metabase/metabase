@@ -1,14 +1,16 @@
-import type { Action, ThunkDispatch } from "@reduxjs/toolkit";
 import type { ReactElement, ReactNode } from "react";
 
-import type { State } from "metabase/redux/store";
 import type { ColorName } from "metabase/ui/colors/types";
 import type {
+  AppliedDataPermissionUpdate,
   DataPermission,
+  DataPermissionUpdate,
+  DataPermissionView,
+  DataPermissionsDrafts,
   DatabaseEntityId,
   Dataset,
-  Group,
   GroupId,
+  GroupInfo,
   GroupsPermissions,
   IconName,
   PermissionEntityId,
@@ -45,7 +47,7 @@ export interface PermissionAction {
   onSelect: (
     entityId: PermissionEntityId | undefined,
     groupId: GroupId,
-    view: "database" | "group",
+    view: DataPermissionView,
   ) => void;
 }
 
@@ -59,16 +61,10 @@ export interface PermissionConfirmationProps {
 export type PostActionFunction = (
   entityId: PermissionEntityId,
   groupId: GroupId,
-  view: "database" | "group",
+  view: DataPermissionView,
   value: DataPermissionValue,
-  getState: () => State,
-) =>
-  | Action
-  | ((
-      dispatch: ThunkDispatch<State, unknown, Action>,
-      getState: () => State,
-    ) => unknown)
-  | void;
+  applyUpdate: (update: DataPermissionUpdate) => void,
+) => void;
 
 const getDefaultAdminPermissionsDatabaseRoutes = (): ReactElement[] => [];
 const getDefaultAdminPermissionsDatabaseGroupRoutes = (): ReactElement[] => [];
@@ -139,17 +135,16 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION =
   definePluginSlot(getDefaultAdminPermissionsTableFieldsPostAction);
 
 const getDefaultDataPermissions = () => ({
-  permissionsPayloadExtraSelectors: [],
-  hasChanges: [],
+  updateDrafts: [],
   upgradeViewPermissionsIfNeeded: null,
   shouldRestrictNativeQueryPermissions: () => false,
 });
 
 export const PLUGIN_DATA_PERMISSIONS: {
-  permissionsPayloadExtraSelectors: ((
-    state: State,
-  ) => [Record<string, undefined | { group_id: number }[]>, string[]])[];
-  hasChanges: ((state: State) => boolean)[];
+  updateDrafts: ((
+    drafts: DataPermissionsDrafts,
+    update: AppliedDataPermissionUpdate,
+  ) => DataPermissionsDrafts)[];
   shouldRestrictNativeQueryPermissions: (
     permissions: GroupsPermissions,
     groupId: number,
@@ -229,7 +224,7 @@ const getDefaultFeatureLevelPermissions = () => ({
     groupType: SpecialGroupType;
     permissions: GroupsPermissions;
     dataAccessPermissionValue: DataPermissionValue;
-    defaultGroup: Group;
+    defaultGroup: GroupInfo;
     permissionSubject: PermissionSubject;
     permissionView?: "group" | "database";
     showTransformPermissions?: boolean;

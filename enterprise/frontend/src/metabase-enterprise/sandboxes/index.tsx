@@ -1,5 +1,4 @@
 import { t } from "ttag";
-import _ from "underscore";
 
 import { modalRoute } from "metabase/common/components/ModalRoute";
 import {
@@ -16,7 +15,6 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES,
   PLUGIN_ADMIN_USER_FORM_FIELDS,
   PLUGIN_DATA_PERMISSIONS,
-  PLUGIN_REDUCERS,
   type PermissionOption,
 } from "metabase/plugins";
 import { navigate } from "metabase/router";
@@ -28,11 +26,10 @@ import type {
 } from "metabase-types/api";
 import { DataPermissionValue } from "metabase-types/api";
 
-import sandboxingReducer from "./actions";
 import { LoginAttributesWidget } from "./components/LoginAttributesWidget/LoginAttributesWidget";
 import { getSandboxedTableWarningModal } from "./confirmations";
 import EditSandboxingModal from "./containers/EditSandboxingModal";
-import { getDraftPolicies, hasPolicyChanges } from "./selectors";
+import { removeUnsandboxedDrafts } from "./drafts";
 
 const OPTION_SEGMENTED = {
   get label() {
@@ -112,15 +109,6 @@ export function initializePlugin() {
     PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[OPTION_SEGMENTED.value] =
       getEditSegmentedAccessPostAction;
 
-    PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push((state) => {
-      const sandboxes = getDraftPolicies(state);
-      const modifiedGroupIds = _.uniq(
-        sandboxes.map((sb) => String(sb.group_id)),
-      );
-      return [{ sandboxes }, modifiedGroupIds];
-    });
-
-    PLUGIN_DATA_PERMISSIONS.hasChanges.push(hasPolicyChanges);
-    PLUGIN_REDUCERS.sandboxingPlugin = sandboxingReducer;
+    PLUGIN_DATA_PERMISSIONS.updateDrafts.push(removeUnsandboxedDrafts);
   }
 }

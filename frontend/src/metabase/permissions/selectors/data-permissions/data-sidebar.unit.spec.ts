@@ -1,39 +1,27 @@
-import type { State } from "metabase/redux/store";
-
 import type { RawDataRouteParams } from "../../types";
 
-import { state as mockState } from "./data-permissions.unit.spec.fixtures";
+import { databases } from "./data-permissions.unit.spec.fixtures";
 
 import { getDataFocusSidebar } from ".";
 
-// Unjustified type cast. FIXME
-const state = mockState as unknown as State;
-
-const getRouteProps = ({
-  databaseId,
-  schemaName,
-  tableId,
-}: RawDataRouteParams) => ({
-  params: {
-    databaseId,
-    schemaName,
-    tableId,
-  },
+const getSidebarOpts = (params: RawDataRouteParams) => ({
+  params,
+  databases,
+  database: databases.find(({ id }) => String(id) === params.databaseId),
 });
 
 describe("getDataFocusSidebar", () => {
   describe("when database is not selected", () => {
     it("returns a correct placeholder for databases list search", () => {
       const sidebarData = getDataFocusSidebar(
-        state,
-        getRouteProps({ databaseId: undefined }),
+        getSidebarOpts({ databaseId: undefined }),
       );
 
       expect(sidebarData?.filterPlaceholder).toEqual("Search for a database");
     });
 
     it("returns list of databases", () => {
-      const sidebarData = getDataFocusSidebar(state, getRouteProps({}));
+      const sidebarData = getDataFocusSidebar(getSidebarOpts({}));
 
       expect(sidebarData?.entityGroups).toEqual([
         [
@@ -58,7 +46,7 @@ describe("getDataFocusSidebar", () => {
     });
 
     it("excludes destination databases from the list", () => {
-      const sidebarData = getDataFocusSidebar(state, getRouteProps({}));
+      const sidebarData = getDataFocusSidebar(getSidebarOpts({}));
       const allDbNames = sidebarData?.entityGroups
         ?.flat()
         .map((entity: any) => entity.name);
@@ -70,8 +58,7 @@ describe("getDataFocusSidebar", () => {
   describe("when a database is selected", () => {
     it("returns a correct placeholder for databases list search", () => {
       const sidebarData = getDataFocusSidebar(
-        state,
-        getRouteProps({ databaseId: "2" }),
+        getSidebarOpts({ databaseId: "2" }),
       );
 
       expect(sidebarData?.filterPlaceholder).toEqual("Search for a table");
@@ -79,8 +66,7 @@ describe("getDataFocusSidebar", () => {
 
     it("returns tree of schemas and tables for a database with schemas", () => {
       const sidebarData = getDataFocusSidebar(
-        state,
-        getRouteProps({ databaseId: "2" }),
+        getSidebarOpts({ databaseId: "2" }),
       );
 
       expect(sidebarData?.entityGroups).toEqual([
@@ -163,8 +149,7 @@ describe("getDataFocusSidebar", () => {
 
     it("returns flat list of tables for a schemaless database", () => {
       const sidebarData = getDataFocusSidebar(
-        state,
-        getRouteProps({ databaseId: "3" }),
+        getSidebarOpts({ databaseId: "3" }),
       );
 
       expect(sidebarData?.entityGroups).toEqual([

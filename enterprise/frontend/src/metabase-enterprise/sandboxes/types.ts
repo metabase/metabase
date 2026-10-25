@@ -1,6 +1,3 @@
-import type { UpdateDataPermissionParams } from "metabase/permissions";
-import type { EnterpriseSharedState } from "metabase-enterprise/shared/reducer";
-import type { EnterpriseState } from "metabase-enterprise/shared/types";
 import type {
   GroupId,
   GroupTableAccessPolicy,
@@ -9,26 +6,10 @@ import type {
   UserAttributeKey,
 } from "metabase-types/api";
 
-export type RawGroupTableAccessPolicyParams = Pick<
-  UpdateDataPermissionParams,
-  "entityId" | "groupId" | "view"
->;
-
-// route-param strings and UPDATE_DATA_PERMISSION payload numbers template
-// into the same policy key
 export type GroupTableAccessPolicyParams = {
   groupId: GroupId | string;
   tableId: TableId | string;
 };
-
-export interface SandboxesState extends EnterpriseState {
-  plugins: {
-    sandboxingPlugin: {
-      groupTableAccessPolicies: Record<string, GroupTableAccessPolicy>;
-    };
-    shared: EnterpriseSharedState;
-  };
-}
 
 export type GroupTableAccessPolicyDraft = Pick<
   GroupTableAccessPolicy,

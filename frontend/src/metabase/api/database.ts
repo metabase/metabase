@@ -331,6 +331,7 @@ export const {
   useGetDatabaseQuery,
   useGetDatabaseHealthQuery,
   useGetDatabaseMetadataQuery,
+  useLazyGetDatabaseMetadataQuery,
   useGetDatabaseUsageInfoQuery,
   useGetDatabaseSettingsAvailableQuery,
   useListDatabaseSchemasQuery,

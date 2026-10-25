@@ -1,34 +1,41 @@
 import { assocIn } from "icepick";
 
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
+import type { GroupsPermissions } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
-import { state as mockState } from "./data-permissions.unit.spec.fixtures";
+import type { DataRouteParams } from "../../types";
+
+import {
+  databases,
+  groups,
+  initialPermissions,
+} from "./data-permissions.unit.spec.fixtures";
 
 import { getGroupsDataPermissionEditor } from ".";
 
-// Unjustified type cast. FIXME
-const stateWithoutLegacyValues = mockState as unknown as State;
-
 // adding legacy no self-service in the graph will prevent getGroupsDataPermissionEditor
 // from omitting the view data permission options in the case there's only one option
-const stateWithLegacyValues = assocIn(
-  mockState,
-  [
-    "admin",
-    "permissions",
-    "originalDataPermissions",
-    "1",
-    "3",
-    DataPermission.VIEW_DATA,
-  ],
+const permissionsWithLegacyValues: GroupsPermissions = assocIn(
+  initialPermissions,
+  ["1", "3", DataPermission.VIEW_DATA],
   DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-) as unknown as State;
+);
+
+const getEditor = (
+  params: DataRouteParams,
+  originalPermissions: GroupsPermissions,
+) =>
+  getGroupsDataPermissionEditor({
+    params,
+    database: databases.find(({ id }) => id === params.databaseId),
+    permissions: initialPermissions,
+    originalPermissions,
+    groups: Object.values(groups),
+    showTransformPermissions: false,
+  });
 
 describe("getGroupsDataPermissionEditor", () => {
-  // The selector memoizes on its inputs, and the plugin flag is not one of
-  // them, so it has to be set before the first call rather than per test.
   const originalPluginValue =
     PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn;
 
@@ -41,13 +48,9 @@ describe("getGroupsDataPermissionEditor", () => {
   });
 
   it("returns data for permission editor header", () => {
-    const permissionEditorData = getGroupsDataPermissionEditor(
-      stateWithLegacyValues,
-      {
-        params: {
-          databaseId: 3,
-        },
-      },
+    const permissionEditorData = getEditor(
+      { databaseId: 3 },
+      permissionsWithLegacyValues,
     );
 
     expect(permissionEditorData?.title).toEqual("Permissions for");
@@ -64,11 +67,10 @@ describe("getGroupsDataPermissionEditor", () => {
   });
 
   it("returns entities list for permissions editor", () => {
-    const entities = getGroupsDataPermissionEditor(stateWithLegacyValues, {
-      params: {
-        databaseId: 3,
-      },
-    })?.entities;
+    const entities = getEditor(
+      { databaseId: 3 },
+      permissionsWithLegacyValues,
+    )?.entities;
 
     expect(entities).toHaveLength(3);
     expect(entities?.map((entity) => entity.name)).toEqual([
@@ -133,11 +135,7 @@ describe("getGroupsDataPermissionEditor", () => {
   });
 
   it("omits view data options when there is only one view data option", () => {
-    const entities = getGroupsDataPermissionEditor(stateWithoutLegacyValues, {
-      params: {
-        databaseId: 3,
-      },
-    })?.entities;
+    const entities = getEditor({ databaseId: 3 }, initialPermissions)?.entities;
 
     const permissions = entities?.[1].permissions ?? [];
 

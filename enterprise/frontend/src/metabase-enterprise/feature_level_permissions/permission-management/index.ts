@@ -2,7 +2,7 @@ import type { PermissionSectionConfig } from "metabase/permissions";
 import { isNotNull } from "metabase/utils/types";
 import type {
   DataPermissionValue,
-  Group,
+  GroupInfo,
   GroupsPermissions,
   PermissionEntityId,
   PermissionSubject,
@@ -30,7 +30,7 @@ export const getFeatureLevelDataPermissions = ({
   groupType: SpecialGroupType;
   permissions: GroupsPermissions;
   dataAccessPermissionValue: DataPermissionValue;
-  defaultGroup: Group;
+  defaultGroup: GroupInfo;
   permissionSubject: PermissionSubject;
   permissionView?: "group" | "database";
   showTransformPermissions?: boolean;

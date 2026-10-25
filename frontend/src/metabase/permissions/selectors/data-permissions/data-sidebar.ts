@@ -1,10 +1,7 @@
-import type { Selector } from "@reduxjs/toolkit";
-import { createSelector } from "@reduxjs/toolkit";
 import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import { PLUGIN_AUDIT } from "metabase/plugins";
-import type { State } from "metabase/redux/store";
 import { isNotNull } from "metabase/utils/types";
 import type {
   Database,
@@ -20,9 +17,6 @@ import {
 } from "../../utils/data-entity-id";
 import { getDatabaseSchemas } from "../../utils/metadata";
 
-import { getPermissionsDatabase, getPermissionsDatabases } from "./databases";
-import { getIsLoadingDatabaseTables } from "./permission-editor";
-
 export type DataTreeNodeItem = {
   entityId: PermissionEntityId;
   children?: DataTreeNodeItem[];
@@ -35,18 +29,6 @@ export type DataSidebarProps = {
   entityViewFocus?: "database";
   selectedId?: string;
   filterPlaceholder: string;
-};
-
-const getRouteParams = (
-  _state: State,
-  props: { params: RawDataRouteParams },
-) => {
-  const { databaseId, schemaName, tableId } = props.params;
-  return {
-    databaseId,
-    schemaName,
-    tableId,
-  };
 };
 
 const getSchemaId = (name: string) => `schema:${name}`;
@@ -119,38 +101,26 @@ const getTablesSidebar = (
   };
 };
 
-const getSidebarDatabase = (
-  state: State,
-  props: { params: RawDataRouteParams },
-) =>
-  getPermissionsDatabase(
-    state,
-    props.params.databaseId != null
-      ? parseInt(props.params.databaseId)
-      : undefined,
-  );
+type DataFocusSidebarOpts = {
+  params: RawDataRouteParams;
+  databases: PermissionsDatabase[];
+  database: PermissionsDatabase | undefined;
+};
 
-export const getDataFocusSidebar: Selector<State, DataSidebarProps | null> =
-  createSelector(
-    getPermissionsDatabases,
-    getSidebarDatabase,
-    getRouteParams,
-    getIsLoadingDatabaseTables,
-    (databases, database, params, isLoading) => {
-      if (isLoading) {
-        return null;
-      }
+export const getDataFocusSidebar = ({
+  params,
+  databases,
+  database,
+}: DataFocusSidebarOpts): DataSidebarProps | null => {
+  const { databaseId, schemaName, tableId } = params;
 
-      const { databaseId, schemaName, tableId } = params;
+  if (databaseId == null) {
+    return getDatabasesSidebar(databases);
+  }
 
-      if (databaseId == null) {
-        return getDatabasesSidebar(databases);
-      }
+  if (database == null) {
+    return null;
+  }
 
-      if (database == null) {
-        return null;
-      }
-
-      return getTablesSidebar(database, schemaName, tableId);
-    },
-  );
+  return getTablesSidebar(database, schemaName, tableId);
+};

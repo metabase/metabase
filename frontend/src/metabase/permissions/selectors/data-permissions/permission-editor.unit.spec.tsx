@@ -1,18 +1,8 @@
-import {
-  createMockAdminState,
-  createMockApiState,
-  createMockPermissionsState,
-  createMockSettingsState,
-  createMockState,
-  seedApiQueryCache,
-} from "__support__/state";
-import { createMockEntitiesState } from "__support__/store";
 import type { GroupsPermissions } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockGroup,
-  createMockSchema,
   createMockTable,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
@@ -25,90 +15,92 @@ import {
 describe("getShouldShowTransformPermissions", () => {
   describe("OSS version", () => {
     it("should return false for OSS version regardless of other settings", () => {
-      const state = createMockState({
-        settings: createMockSettingsState({
-          "is-hosted?": false,
-          "transforms-enabled": true,
+      expect(
+        getShouldShowTransformPermissions({
+          tokenFeatures: createMockTokenFeatures(),
+          isHosted: false,
+          isTransformsEnabled: true,
         }),
-      });
-
-      expect(getShouldShowTransformPermissions(state)).toBe(false);
+      ).toBe(false);
     });
   });
 
   describe("Pro Self-Hosted", () => {
     it("should return true when transforms feature and setting are both enabled", () => {
-      const state = createMockState({
-        settings: createMockSettingsState({
-          "is-hosted?": false,
-          "transforms-enabled": true,
-          "token-features": createMockTokenFeatures({
+      expect(
+        getShouldShowTransformPermissions({
+          tokenFeatures: createMockTokenFeatures({
             "transforms-basic": true,
           }),
+          isHosted: false,
+          isTransformsEnabled: true,
         }),
-      });
-
-      expect(getShouldShowTransformPermissions(state)).toBe(true);
+      ).toBe(true);
     });
 
     it("should return false when transforms feature is enabled but setting is disabled", () => {
-      const state = createMockState({
-        settings: createMockSettingsState({
-          "is-hosted?": false,
-          "transforms-enabled": false,
-          "token-features": createMockTokenFeatures({
+      expect(
+        getShouldShowTransformPermissions({
+          tokenFeatures: createMockTokenFeatures({
             "transforms-basic": true,
           }),
+          isHosted: false,
+          isTransformsEnabled: false,
         }),
-      });
-
-      expect(getShouldShowTransformPermissions(state)).toBe(false);
+      ).toBe(false);
     });
   });
 
   describe("Pro Cloud", () => {
     it("should return true when transforms feature is enabled (ignores setting)", () => {
-      const state = createMockState({
-        settings: createMockSettingsState({
-          "is-hosted?": true,
-          "transforms-enabled": false,
-          "token-features": createMockTokenFeatures({
+      expect(
+        getShouldShowTransformPermissions({
+          tokenFeatures: createMockTokenFeatures({
             "transforms-basic": true,
           }),
+          isHosted: true,
+          isTransformsEnabled: false,
         }),
-      });
-
-      expect(getShouldShowTransformPermissions(state)).toBe(true);
+      ).toBe(true);
     });
 
     it("should return false when transforms feature is disabled", () => {
-      const state = createMockState({
-        settings: createMockSettingsState({
-          "is-hosted?": true,
-          "transforms-enabled": false,
-          "token-features": createMockTokenFeatures({
+      expect(
+        getShouldShowTransformPermissions({
+          tokenFeatures: createMockTokenFeatures({
             "transforms-basic": false,
           }),
+          isHosted: true,
+          isTransformsEnabled: false,
         }),
-      });
-
-      expect(getShouldShowTransformPermissions(state)).toBe(false);
+      ).toBe(false);
     });
 
     it("should return false when transforms feature is disabled even when the setting is enabled", () => {
-      const state = createMockState({
-        settings: createMockSettingsState({
-          "is-hosted?": true,
-          "transforms-enabled": true,
-          "token-features": createMockTokenFeatures({
+      expect(
+        getShouldShowTransformPermissions({
+          tokenFeatures: createMockTokenFeatures({
             "transforms-basic": false,
           }),
+          isHosted: true,
+          isTransformsEnabled: true,
         }),
-      });
-
-      expect(getShouldShowTransformPermissions(state)).toBe(false);
+      ).toBe(false);
     });
   });
+});
+
+const DATABASE = createMockDatabase({
+  id: 3,
+  name: "Test Database",
+  tables: [
+    createMockTable({
+      id: 10,
+      db_id: 3,
+      display_name: "People",
+      schema: "public",
+    }),
+  ],
 });
 
 describe("getDatabasesPermissionEditor", () => {
@@ -130,44 +122,14 @@ describe("getDatabasesPermissionEditor", () => {
       },
     };
 
-    const state = createMockState({
-      admin: createMockAdminState({
-        permissions: createMockPermissionsState({
-          dataPermissions: permissions,
-          originalDataPermissions: permissions,
-        }),
-      }),
-      entities: createMockEntitiesState({
-        databases: [
-          createMockDatabase({
-            id: 3,
-            name: "Test Database",
-            tables: [
-              createMockTable({
-                id: 10,
-                db_id: 3,
-                display_name: "People",
-                schema: "public",
-              }),
-            ],
-          }),
-        ],
-        schemas: [createMockSchema({ id: "3:public", name: "public" })],
-      }),
-      "metabase-api": seedApiQueryCache(createMockApiState(), [
-        {
-          endpointName: "listPermissionsGroups",
-          arg: {},
-          value: [groupWithoutMemberCount],
-        },
-      ]),
-    });
-
-    const editor = getDatabasesPermissionEditor(state, {
-      params: {
-        groupId: "1",
-        databaseId: "3",
-      },
+    const editor = getDatabasesPermissionEditor({
+      params: { groupId: 1, databaseId: 3 },
+      databases: [DATABASE],
+      database: DATABASE,
+      permissions,
+      originalPermissions: permissions,
+      groups: [groupWithoutMemberCount],
+      showTransformPermissions: false,
     });
 
     expect(editor?.description).toBeNull();

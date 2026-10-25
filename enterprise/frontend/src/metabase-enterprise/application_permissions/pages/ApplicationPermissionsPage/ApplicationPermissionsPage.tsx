@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 
 import { PermissionsEditor } from "metabase/admin/permissions/components/PermissionsEditor";
 import { PermissionsPageLayout } from "metabase/admin/permissions/components/PermissionsPageLayout";
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import { ApplicationPermissionsHelp } from "metabase/permissions";
 import { connect } from "metabase/redux";
 import {
@@ -14,7 +15,7 @@ import {
   getIsDirty,
 } from "metabase-enterprise/application_permissions/selectors";
 import type { ApplicationPermissionsState } from "metabase-enterprise/application_permissions/types/state";
-import type { GroupId } from "metabase-types/api";
+import type { GroupId, GroupInfo } from "metabase-types/api";
 
 const mapDispatchToProps = {
   initialize: initializeApplicationPermissions,
@@ -22,9 +23,12 @@ const mapDispatchToProps = {
   savePermissions: saveApplicationPermissions,
 };
 
-const mapStateToProps = (state: ApplicationPermissionsState) => {
+const mapStateToProps = (
+  state: ApplicationPermissionsState,
+  { groups }: { groups: GroupInfo[] },
+) => {
   return {
-    permissionEditor: getApplicationPermissionEditor(state),
+    permissionEditor: getApplicationPermissionEditor(state, groups),
     isDirty: getIsDirty(state),
   };
 };
@@ -82,8 +86,17 @@ const ApplicationPermissionsPage = ({
   );
 };
 
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default connect(
+const ConnectedApplicationPermissionsPage = connect(
   mapStateToProps,
   mapDispatchToProps,
 )(ApplicationPermissionsPage);
+
+const EMPTY_GROUP_LIST: GroupInfo[] = [];
+
+const ApplicationPermissionsPageWithGroups = () => {
+  const { data: groups = EMPTY_GROUP_LIST } = useListPermissionsGroupsQuery({});
+  return <ConnectedApplicationPermissionsPage groups={groups} />;
+};
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default ApplicationPermissionsPageWithGroups;

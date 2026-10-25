@@ -1,3 +1,4 @@
+import { setupGroupsEndpoint } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
   renderWithProviders,
@@ -5,6 +6,8 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
+
+import { DataPermissionsProvider } from "../../contexts/DataPermissionsContext";
 
 import { DataPermissionsHelp } from "./DataPermissionsHelp";
 
@@ -15,11 +18,18 @@ async function setup({ hasAdvancedPermissions = false } = {}) {
     }),
   });
 
-  renderWithProviders(<DataPermissionsHelp />, {
-    storeInitialState: {
-      settings,
+  setupGroupsEndpoint([]);
+
+  renderWithProviders(
+    <DataPermissionsProvider>
+      <DataPermissionsHelp />
+    </DataPermissionsProvider>,
+    {
+      storeInitialState: {
+        settings,
+      },
     },
-  });
+  );
 
   await waitForLoaderToBeRemoved();
 }

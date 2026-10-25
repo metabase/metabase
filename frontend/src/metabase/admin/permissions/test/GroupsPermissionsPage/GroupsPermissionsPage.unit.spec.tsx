@@ -3,13 +3,17 @@ import fetchMock from "fetch-mock";
 
 import { callMockEvent } from "__support__/events";
 import {
+  setupDatabaseMetadataEndpoint,
   setupDatabasesEndpoints,
   setupGroupsEndpoint,
   setupPermissionsGraphEndpoints,
+  setupUpdatePermissionsGraphEndpoint,
+  setupUpdatePermissionsGraphEndpointError,
 } from "__support__/server-mocks";
 import {
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { delay } from "__support__/utils";
@@ -18,6 +22,8 @@ import { GroupsPermissionsPage } from "metabase/admin/permissions/pages/GroupDat
 import { getBeforeUnloadUnsavedMessage } from "metabase/common/hooks/use-before-unload";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
 import { Route } from "metabase/router";
+import { DataPermission, DataPermissionValue } from "metabase-types/api";
+import { createMockPermissionsGraph } from "metabase-types/api/mocks";
 import { createMockGroup } from "metabase-types/api/mocks/group";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 const NATIVE_QUERIES_PERMISSION_INDEX = 0;
@@ -33,17 +39,31 @@ const TEST_GROUPS = [
   }),
 ];
 
+type SetupOpts = {
+  initialRoute?: string;
+  saveErrorMessage?: string;
+};
+
 const setup = async ({
   initialRoute = `/admin/permissions/data/group/${TEST_GROUPS[1].id}`,
-} = {}) => {
+  saveErrorMessage,
+}: SetupOpts = {}) => {
   setupDatabasesEndpoints([TEST_DATABASE]);
   setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
   setupGroupsEndpoint(TEST_GROUPS);
+  if (saveErrorMessage != null) {
+    setupUpdatePermissionsGraphEndpointError(saveErrorMessage);
+  } else {
+    setupUpdatePermissionsGraphEndpoint({
+      ...createMockPermissionsGraph({
+        groups: TEST_GROUPS,
+        databases: [TEST_DATABASE],
+      }),
+      revision: 2,
+    });
+  }
 
-  fetchMock.get(
-    `path:/api/database/${TEST_DATABASE.id}/metadata`,
-    TEST_DATABASE,
-  );
+  setupDatabaseMetadataEndpoint(TEST_DATABASE);
 
   const mockEventListener = jest.spyOn(window, "addEventListener");
 
@@ -109,6 +129,59 @@ describe("GroupsPermissionsPage", () => {
 
       expect(screen.getByText("Cancel")).toBeInTheDocument();
       expect(screen.getByText("Save changes")).toBeInTheDocument();
+    });
+  });
+
+  describe("saving", () => {
+    const saveChanges = async () => {
+      await userEvent.click(screen.getByText("Save changes"));
+      await userEvent.click(await screen.findByRole("button", { name: "Yes" }));
+    };
+
+    const getSavedBody = (): unknown => {
+      const call = fetchMock.callHistory.lastCall(
+        "path:/api/permissions/graph",
+        { method: "PUT" },
+      );
+      return typeof call?.options?.body === "string"
+        ? JSON.parse(call.options.body)
+        : undefined;
+    };
+
+    it("sends only the edited group and no drafts", async () => {
+      await setup();
+      await editDatabasePermission();
+      await saveChanges();
+
+      await waitFor(() =>
+        expect(
+          screen.queryByText("You've made changes to permissions."),
+        ).not.toBeInTheDocument(),
+      );
+      expect(getSavedBody()).toEqual({
+        revision: 1,
+        groups: {
+          [TEST_GROUPS[1].id]: {
+            [TEST_DATABASE.id]: expect.objectContaining({
+              [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
+            }),
+          },
+        },
+      });
+    });
+
+    it("shows the error and keeps the changes when saving fails", async () => {
+      await setup({ saveErrorMessage: "Revision is stale" });
+      await editDatabasePermission();
+      await saveChanges();
+
+      expect(
+        await screen.findByText("There was an error saving"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Revision is stale")).toBeInTheDocument();
+      expect(
+        screen.getByText("You've made changes to permissions."),
+      ).toBeInTheDocument();
     });
   });
 

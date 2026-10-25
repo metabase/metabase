@@ -2,7 +2,7 @@ import { t } from "ttag";
 
 import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { isNotFalsy } from "metabase/utils/types";
-import type { Group, PermissionsDatabase } from "metabase-types/api";
+import type { GroupInfo, PermissionsDatabase } from "metabase-types/api";
 
 import type {
   DataRouteParams,
@@ -22,7 +22,7 @@ import {
 export const getDatabasesEditorBreadcrumbs = (
   params: GroupRouteParams,
   database: PermissionsDatabase | undefined,
-  group: Group,
+  group: GroupInfo,
 ): PermissionEditorBreadcrumb[] | null => {
   const { groupId, databaseId, schemaName } = params;
 

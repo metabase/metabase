@@ -1,8 +1,8 @@
-import { Fragment, useCallback } from "react";
-import { useAsync } from "react-use";
+import { Fragment, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import {
@@ -16,16 +16,15 @@ import {
   getGroupFocusPermissionsUrl,
   getGroupsBasePath,
   getGroupsSidebar,
-  getIsLoadingDatabaseTables,
-  getLoadingDatabaseTablesError,
-  loadDataPermissionsForGroup,
   parseGroupRouteParams,
-  updateDataPermission,
+  useDataPermissions,
+  useGroupDataPermissionsGraph,
+  usePermissionsDatabase,
+  useShouldShowTransformPermissions,
 } from "metabase/permissions";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, useNavigate, useParams } from "metabase/router";
-import { getSetting } from "metabase/settings";
+import { useSetting } from "metabase/settings";
 import { Center, Loader } from "metabase/ui";
 import type { DataPermissionValue } from "metabase-types/api";
 
@@ -36,40 +35,64 @@ import {
 import { PermissionsEditorSplitPermsMessage } from "../../components/PermissionsEditor/PermissionsEditorSplitPermsMessage";
 
 export function GroupsPermissionsPage() {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-
-  // These selectors resolve the focused group from the route, so they take the
-  // route params rather than reading them from the store.
   const params = useParams<RawGroupRouteParams>();
-  const selectorProps = { params };
-  const sidebar = useSelector((state) =>
-    getGroupsSidebar(state, selectorProps),
+  const groupRouteParams = useMemo(
+    () =>
+      parseGroupRouteParams({
+        groupId: params.groupId,
+        databaseId: params.databaseId,
+        schemaName: params.schemaName,
+      }),
+    [params.groupId, params.databaseId, params.schemaName],
   );
-  const isEditorLoading = useSelector((state) =>
-    getIsLoadingDatabaseTables(state, selectorProps),
+  const { data: groups } = useListPermissionsGroupsQuery({});
+  const { permissions, originalPermissions, updateDataPermission } =
+    useDataPermissions();
+  const {
+    databases,
+    database,
+    isLoading: isEditorLoading,
+    error: editorError,
+  } = usePermissionsDatabase(groupRouteParams.databaseId);
+  const { isFetching: isLoading } = useGroupDataPermissionsGraph(
+    groupRouteParams.groupId,
   );
-  const editorError = useSelector((state) =>
-    getLoadingDatabaseTablesError(state, selectorProps),
-  );
+  const showTransformPermissions = useShouldShowTransformPermissions();
 
-  const groupRouteParams = parseGroupRouteParams(params);
+  const sidebar = useMemo(
+    () => getGroupsSidebar(groups ?? [], groupRouteParams.groupId),
+    [groups, groupRouteParams.groupId],
+  );
 
   const navigateToItem = (item: ITreeNodeItem) =>
     navigate(`${getGroupsBasePath()}/${item.id}`);
 
-  const { loading: isLoading } = useAsync(async () => {
-    if (groupRouteParams.groupId) {
-      await dispatch(loadDataPermissionsForGroup(groupRouteParams.groupId));
-    }
-  }, [groupRouteParams.groupId]);
-
-  const permissionEditor = useSelector((state) =>
-    getDatabasesPermissionEditor(state, { params }),
+  const permissionEditor = useMemo(
+    () =>
+      permissions && originalPermissions && groups && !isEditorLoading
+        ? getDatabasesPermissionEditor({
+            params: groupRouteParams,
+            databases,
+            database,
+            permissions,
+            originalPermissions,
+            groups,
+            showTransformPermissions,
+          })
+        : null,
+    [
+      groupRouteParams,
+      databases,
+      database,
+      permissions,
+      originalPermissions,
+      groups,
+      isEditorLoading,
+      showTransformPermissions,
+    ],
   );
-  const showSplitPermsMessage = useSelector((state) =>
-    getSetting(state, "show-updated-permission-banner"),
-  );
+  const showSplitPermsMessage = useSetting("show-updated-permission-banner");
 
   const handleEntityChange = useCallback(
     (entityType: string) => {
@@ -99,17 +122,15 @@ export function GroupsPermissionsPage() {
       if (item.entityId == null || groupRouteParams.groupId == null) {
         return;
       }
-      dispatch(
-        updateDataPermission({
-          groupId: groupRouteParams.groupId,
-          permission,
-          value,
-          entityId: item.entityId,
-          view: "group",
-        }),
-      );
+      updateDataPermission({
+        groupId: groupRouteParams.groupId,
+        permission,
+        value,
+        entityId: item.entityId,
+        view: "group",
+      });
     },
-    [dispatch, groupRouteParams.groupId],
+    [updateDataPermission, groupRouteParams.groupId],
   );
 
   const handleAction = (

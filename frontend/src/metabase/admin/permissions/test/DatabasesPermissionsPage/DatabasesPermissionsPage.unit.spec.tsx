@@ -1,8 +1,8 @@
 import { userEvent } from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import { callMockEvent } from "__support__/events";
 import {
+  setupDatabaseMetadataEndpoint,
   setupDatabasesEndpoints,
   setupGroupsEndpoint,
   setupPermissionsGraphEndpoints,
@@ -47,8 +47,8 @@ const setup = async ({
 
   const databaseMetadata = defer<Database>();
 
-  fetchMock.get(
-    `path:/api/database/${TEST_DATABASE.id}/metadata`,
+  setupDatabaseMetadataEndpoint(
+    TEST_DATABASE,
     deferDatabaseMetadata ? () => databaseMetadata.promise : TEST_DATABASE,
   );
 

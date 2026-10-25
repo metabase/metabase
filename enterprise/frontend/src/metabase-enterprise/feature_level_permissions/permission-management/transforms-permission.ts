@@ -13,7 +13,7 @@ import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
-  type Group,
+  type GroupInfo,
   type GroupsPermissions,
   type PermissionEntityId,
   type PermissionSubject,
@@ -81,7 +81,7 @@ export const buildTransformsPermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
-  defaultGroup: Group,
+  defaultGroup: GroupInfo,
   permissionSubject: PermissionSubject,
 ): PermissionSectionConfig | null => {
   if (permissionSubject !== "schemas") {

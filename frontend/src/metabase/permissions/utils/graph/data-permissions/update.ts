@@ -3,7 +3,9 @@ import _ from "underscore";
 
 import { PLUGIN_DATA_PERMISSIONS } from "metabase/plugins";
 import {
+  type AppliedDataPermissionUpdate,
   DataPermission,
+  DataPermissionType,
   DataPermissionValue,
   type DatabaseEntityId,
   type GroupsPermissions,
@@ -408,4 +410,107 @@ export function inferAndUpdateEntityPermissions(
   }
 
   return permissions;
+}
+
+export function applyDataPermissionUpdate(
+  permissions: GroupsPermissions,
+  {
+    groupId,
+    entityId,
+    type,
+    permission,
+    value,
+    database,
+  }: AppliedDataPermissionUpdate,
+): GroupsPermissions {
+  if (type === DataPermissionType.DETAILS) {
+    return updatePermission(
+      permissions,
+      groupId,
+      entityId.databaseId,
+      DataPermission.DETAILS,
+      [],
+      value,
+    );
+  }
+
+  if (type === DataPermissionType.TRANSFORMS) {
+    return updatePermission(
+      permissions,
+      groupId,
+      entityId.databaseId,
+      DataPermission.TRANSFORMS,
+      [],
+      value,
+    );
+  }
+
+  let updatedPermissions = permissions;
+  if (
+    type === DataPermissionType.NATIVE &&
+    PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded
+  ) {
+    updatedPermissions = PLUGIN_DATA_PERMISSIONS.upgradeViewPermissionsIfNeeded(
+      updatedPermissions,
+      groupId,
+      entityId,
+      value,
+      database,
+      permission,
+    );
+  }
+
+  updatedPermissions = restrictCreateQueriesPermissionsIfNeeded(
+    updatedPermissions,
+    groupId,
+    entityId,
+    permission,
+    value,
+    database,
+  );
+
+  updatedPermissions = revokeTransformsPermissionIfNeeded(
+    updatedPermissions,
+    groupId,
+    entityId,
+    permission,
+    value,
+  );
+
+  if (isTableEntityId(entityId)) {
+    return inferAndUpdateEntityPermissions(
+      updateFieldsPermission(
+        updatedPermissions,
+        groupId,
+        entityId,
+        value,
+        database,
+        permission,
+      ),
+      groupId,
+      entityId,
+      database,
+      permission,
+    );
+  }
+
+  if (isSchemaEntityId(entityId)) {
+    return updateTablesPermission(
+      updatedPermissions,
+      groupId,
+      entityId,
+      value,
+      database,
+      permission,
+    );
+  }
+
+  return updateSchemasPermission(
+    updatedPermissions,
+    groupId,
+    entityId,
+    value,
+    database,
+    permission,
+  );
 }

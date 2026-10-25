@@ -10,6 +10,8 @@ import type {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
+  DataPermissionView,
+  GroupId,
   PermissionEntityId,
 } from "metabase-types/api";
 
@@ -136,4 +138,15 @@ export type PermissionEditorType = {
   entities: PermissionEditorEntity[];
   breadcrumbs?: PermissionEditorBreadcrumb[] | null;
   hasLegacyNoSelfServiceValueInPermissionGraph?: boolean;
+};
+
+export type UpdateDataPermissionParams = {
+  groupId: GroupId;
+  permission: Pick<
+    PermissionSectionConfig,
+    "type" | "permission" | "postActions"
+  >;
+  value: DataPermissionValue;
+  entityId: PermissionEntityId;
+  view: DataPermissionView;
 };

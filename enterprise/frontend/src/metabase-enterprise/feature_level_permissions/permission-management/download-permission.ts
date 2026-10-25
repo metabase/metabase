@@ -15,7 +15,7 @@ import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
-  type Group,
+  type GroupInfo,
   type GroupsPermissions,
   type PermissionEntityId,
   type PermissionSubject,
@@ -139,7 +139,7 @@ export const buildDownloadPermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   dataAccessPermissionValue: DataPermissionValue,
-  defaultGroup: Group,
+  defaultGroup: GroupInfo,
   permissionSubject: PermissionSubject,
 ): PermissionSectionConfig => {
   const hasChildEntities = permissionSubject !== "fields";

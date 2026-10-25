@@ -6,7 +6,7 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
 import type {
-  Group,
+  GroupInfo,
   GroupsPermissions,
   PermissionsDatabase,
   SchemaEntityId,
@@ -20,9 +20,9 @@ import {
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
-import { navigateToGranularPermissions } from "../../permissions";
 import type { PermissionSectionConfig } from "../../types";
 import { getSchemasPermission, getTablesPermission } from "../../utils/graph";
+import { navigateToGranularPermissions } from "../../utils/post-actions";
 import {
   getBlockWarning,
   getPermissionWarning,
@@ -39,7 +39,7 @@ const buildAccessPermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
-  defaultGroup: Group,
+  defaultGroup: GroupInfo,
 ): PermissionSectionConfig => {
   const value = getTablesPermission(
     permissions,
@@ -198,7 +198,7 @@ export const buildTablesPermissions = ({
   groupType: SpecialGroupType;
   permissions: GroupsPermissions;
   originalPermissions: GroupsPermissions;
-  defaultGroup: Group;
+  defaultGroup: GroupInfo;
   database: PermissionsDatabase;
   showTransformPermissions: boolean;
 }): PermissionSectionConfig[] => {

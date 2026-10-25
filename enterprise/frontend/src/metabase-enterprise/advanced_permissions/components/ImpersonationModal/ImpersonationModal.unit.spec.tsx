@@ -1,10 +1,11 @@
 import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
   setupDatabaseEndpoints,
+  setupDatabaseMetadataEndpoint,
   setupExistingImpersonationEndpoint,
+  setupGroupsEndpoint,
   setupMissingImpersonationEndpoint,
   setupUserAttributesEndpoint,
 } from "__support__/server-mocks";
@@ -14,10 +15,12 @@ import {
   waitFor,
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
+import {
+  DataPermissionsProvider,
+  useDataPermissions,
+} from "metabase/permissions";
 import { Route, useLocation, useParams } from "metabase/router";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
-import { advancedPermissionsSlice } from "metabase-enterprise/advanced_permissions/reducer";
-import { getImpersonations } from "metabase-enterprise/advanced_permissions/selectors";
 import { shared } from "metabase-enterprise/shared/reducer";
 import {
   createMockDatabase,
@@ -25,14 +28,32 @@ import {
   createMockTable,
 } from "metabase-types/api/mocks";
 
-/** Feeds the modal its route props the way `modalRoute` does in the app. */
 function RoutedImpersonationModal({ onClose }: { onClose: () => void }) {
   const params = useParams();
   const location = useLocation();
   return (
-    <ImpersonationModal params={params} location={location} onClose={onClose} />
+    <DataPermissionsProvider>
+      <ImpersonationModal
+        params={params}
+        location={location}
+        onClose={onClose}
+      />
+      <ImpersonationDrafts />
+    </DataPermissionsProvider>
   );
 }
+
+function ImpersonationDrafts() {
+  const { drafts } = useDataPermissions();
+  return (
+    <output data-testid="impersonation-drafts">
+      {JSON.stringify(drafts.impersonations)}
+    </output>
+  );
+}
+
+const getImpersonationDrafts = (): unknown =>
+  JSON.parse(screen.getByTestId("impersonation-drafts").textContent ?? "");
 
 const groupId = 2;
 const databaseId = 1;
@@ -51,11 +72,8 @@ const setup = async ({
     ...databaseDetails,
   });
   setupDatabaseEndpoints(database);
-  fetchMock.get({
-    url: `path:/api/database/${databaseId}/metadata`,
-    query: { include_hidden: true },
-    response: database,
-  });
+  setupDatabaseMetadataEndpoint(database);
+  setupGroupsEndpoint([]);
   setupUserAttributesEndpoint(userAttributes);
 
   if (hasImpersonation) {
@@ -70,7 +88,7 @@ const setup = async ({
     setupMissingImpersonationEndpoint(databaseId, groupId);
   }
 
-  const { store } = renderWithProviders(
+  renderWithProviders(
     <>
       <Route path="/" />
       <Route
@@ -84,7 +102,6 @@ const setup = async ({
       customReducers: {
         plugins: combineReducers({
           shared: shared.reducer,
-          advancedPermissionsPlugin: advancedPermissionsSlice.reducer,
         }),
       },
     },
@@ -92,7 +109,7 @@ const setup = async ({
 
   await waitForLoaderToBeRemoved();
 
-  return { store, onClose };
+  return { onClose };
 };
 
 describe("impersonation modal", () => {
@@ -142,15 +159,15 @@ describe("impersonation modal", () => {
   });
 
   it("should not update impersonation if it has not changed", async () => {
-    const { store } = await setup({ userAttributes: ["foo"] });
+    await setup({ userAttributes: ["foo"] });
 
     await userEvent.click(screen.getByText(/save/i));
 
-    expect(getImpersonations(store.getState())).toHaveLength(0);
+    expect(getImpersonationDrafts()).toHaveLength(0);
   });
 
   it("should create impersonation", async () => {
-    const { store, onClose } = await setup({ hasImpersonation: false });
+    const { onClose } = await setup({ hasImpersonation: false });
 
     await userEvent.click(
       await screen.findByPlaceholderText("Pick a user attribute"),
@@ -161,7 +178,7 @@ describe("impersonation modal", () => {
     await userEvent.click(await screen.findByRole("button", { name: /save/i }));
 
     await waitFor(() => {
-      expect(getImpersonations(store.getState())).toStrictEqual([
+      expect(getImpersonationDrafts()).toStrictEqual([
         {
           attribute: "foo",
           db_id: 1,
@@ -174,7 +191,7 @@ describe("impersonation modal", () => {
   });
 
   it("should update impersonation", async () => {
-    const { store, onClose } = await setup();
+    const { onClose } = await setup();
 
     await userEvent.click(
       await screen.findByPlaceholderText("Pick a user attribute"),
@@ -185,7 +202,7 @@ describe("impersonation modal", () => {
     await userEvent.click(await screen.findByRole("button", { name: /save/i }));
 
     await waitFor(() => {
-      expect(getImpersonations(store.getState())).toStrictEqual([
+      expect(getImpersonationDrafts()).toStrictEqual([
         {
           attribute: "bar",
           db_id: 1,

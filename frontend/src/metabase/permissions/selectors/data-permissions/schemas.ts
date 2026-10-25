@@ -11,7 +11,7 @@ import {
   DataPermissionType,
   type DataPermissionValue,
   type DatabaseEntityId,
-  type Group,
+  type GroupInfo,
   type GroupsPermissions,
   type PermissionsDatabase,
   type SpecialGroupType,
@@ -19,12 +19,12 @@ import {
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
 import { Messages } from "../../constants/messages";
+import type { PermissionSectionConfig } from "../../types";
+import { getSchemasPermission } from "../../utils/graph";
 import {
   limitDatabasePermission,
   navigateToGranularPermissions,
-} from "../../permissions";
-import type { PermissionSectionConfig } from "../../types";
-import { getSchemasPermission } from "../../utils/graph";
+} from "../../utils/post-actions";
 import {
   getPermissionWarning,
   getPermissionWarningModal,
@@ -39,7 +39,7 @@ const buildAccessPermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
-  defaultGroup: Group,
+  defaultGroup: GroupInfo,
   database: PermissionsDatabase,
 ): PermissionSectionConfig => {
   const accessPermissionConfirmations = (newValue: DataPermissionValue) => [
@@ -111,8 +111,11 @@ const buildAccessPermission = (
     confirmations: accessPermissionConfirmations,
     options,
     postActions: {
-      controlled: () =>
-        limitDatabasePermission(groupId, entityId, accessPermissionValue),
+      controlled: limitDatabasePermission(
+        groupId,
+        entityId,
+        accessPermissionValue,
+      ),
       ...PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
     },
     actions: PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS,
@@ -124,7 +127,7 @@ const buildNativePermission = (
   groupId: number,
   isAdmin: boolean,
   permissions: GroupsPermissions,
-  defaultGroup: Group,
+  defaultGroup: GroupInfo,
   database: PermissionsDatabase,
   accessPermissionValue: DataPermissionValue,
 ): PermissionSectionConfig => {
@@ -211,7 +214,7 @@ export const buildSchemasPermissions = ({
   groupType: SpecialGroupType;
   permissions: GroupsPermissions;
   originalPermissions: GroupsPermissions;
-  defaultGroup: Group;
+  defaultGroup: GroupInfo;
   database: PermissionsDatabase;
   permissionView: "group" | "database";
   showTransformPermissions: boolean;

@@ -1,23 +1,15 @@
-import { useAsync } from "react-use";
+import { useMemo } from "react";
 
-import {
-  skipToken,
-  useGetDatabaseMetadataQuery,
-  useListDatabasesQuery,
-  useListPermissionsGroupsQuery,
-} from "metabase/api";
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import { isAdminGroup, isDefaultGroup } from "metabase/common/utils/groups";
 import {
-  DATABASE_TABLES_QUERY,
   DataPermissionsHelp,
-  clearSaveError,
-  getDiff,
-  getIsDataPermissionsDirty,
-  loadDataPermissionsForGroup,
-  restoreLoadedPermissions,
-  saveDataPermissions,
+  DataPermissionsProvider,
+  getDataPermissionsDiff,
+  useDataPermissions,
+  useGroupDataPermissionsGraph,
+  usePermissionsDatabase,
 } from "metabase/permissions";
-import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, useParams } from "metabase/router";
 import { Center, Loader } from "metabase/ui";
 import type { GroupInfo } from "metabase-types/api";
@@ -27,48 +19,60 @@ import { PermissionsPageLayout } from "../../components/PermissionsPageLayout/Pe
 const EMPTY_GROUP_LIST: GroupInfo[] = [];
 
 export function DataPermissionsPage() {
+  return (
+    <DataPermissionsProvider>
+      <DataPermissionsPageContent />
+    </DataPermissionsProvider>
+  );
+}
+
+function DataPermissionsPageContent() {
   const params = useParams<{ databaseId: string }>();
-  const { isLoading: isLoadingDatabases } = useListDatabasesQuery();
   const { data, isLoading: isLoadingGroups } = useListPermissionsGroupsQuery(
     {},
   );
   const groups = data ?? EMPTY_GROUP_LIST;
-  const isDirty = useSelector(getIsDataPermissionsDirty);
-  const saveError = useSelector((state) => state.admin.permissions.saveError);
-  const diff = useSelector((state) => getDiff(state, { groups }));
-  const dispatch = useDispatch();
+  const {
+    permissions,
+    originalPermissions,
+    databasesWithTables,
+    isDirty,
+    hasRevisionChanged,
+    saveError,
+    savePermissions,
+    resetPermissions,
+    clearSaveError,
+  } = useDataPermissions();
 
-  const resetPermissions = () => dispatch(restoreLoadedPermissions());
-  const savePermissions = () => dispatch(saveDataPermissions());
+  const { isLoading: isLoadingAllUsers } = useGroupDataPermissionsGraph(
+    groups.find(isDefaultGroup)?.id,
+  );
+  const { isLoading: isLoadingAdministrators } = useGroupDataPermissionsGraph(
+    groups.find(isAdminGroup)?.id,
+  );
+  const { isLoading: isLoadingDatabase } = usePermissionsDatabase(
+    params.databaseId != null ? Number(params.databaseId) : undefined,
+  );
 
-  const { loading: isLoadingAllUsers } = useAsync(async () => {
-    if (isLoadingGroups) {
-      return;
-    }
-    const allUsers = groups.find(isDefaultGroup);
-    await dispatch(loadDataPermissionsForGroup(allUsers?.id));
-  }, [isLoadingGroups]);
-
-  const { loading: isLoadingAdminstrators } = useAsync(async () => {
-    if (isLoadingGroups) {
-      return;
-    }
-    const admins = groups.find(isAdminGroup);
-    await dispatch(loadDataPermissionsForGroup(admins?.id));
-  }, [isLoadingGroups]);
-
-  const { isLoading: isLoadingTables } = useGetDatabaseMetadataQuery(
-    params.databaseId !== undefined
-      ? { id: Number(params.databaseId), ...DATABASE_TABLES_QUERY }
-      : skipToken,
+  const diff = useMemo(
+    () =>
+      permissions && originalPermissions
+        ? getDataPermissionsDiff({
+            groups,
+            permissions,
+            originalPermissions,
+            databasesWithTables,
+          })
+        : undefined,
+    [groups, permissions, originalPermissions, databasesWithTables],
   );
 
   const isLoading =
-    isLoadingDatabases ||
     isLoadingGroups ||
     isLoadingAllUsers ||
-    isLoadingAdminstrators ||
-    isLoadingTables;
+    isLoadingAdministrators ||
+    isLoadingDatabase ||
+    permissions == null;
 
   return (
     <PermissionsPageLayout
@@ -78,7 +82,8 @@ export function DataPermissionsPage() {
       diff={diff}
       isDirty={isDirty}
       saveError={saveError}
-      onClearSaveError={() => dispatch(clearSaveError())}
+      onClearSaveError={clearSaveError}
+      hasRevisionChanged={isDirty && hasRevisionChanged}
       helpContent={<DataPermissionsHelp />}
       canShowSplitPermsModal={!isLoading}
     >

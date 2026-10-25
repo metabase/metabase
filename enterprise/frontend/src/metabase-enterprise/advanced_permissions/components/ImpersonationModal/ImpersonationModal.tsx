@@ -4,11 +4,13 @@ import { useMount } from "react-use";
 import { skipToken, useGetDatabaseQuery } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import { updateDataPermission } from "metabase/permissions";
+import { useDataPermissions } from "metabase/permissions";
 import { useDispatch } from "metabase/redux";
 import { parseIntParam } from "metabase/urls";
-import { updateImpersonation } from "metabase-enterprise/advanced_permissions/reducer";
-import { getImpersonation } from "metabase-enterprise/advanced_permissions/selectors";
+import {
+  getImpersonationDraft,
+  setImpersonationDraft,
+} from "metabase-enterprise/advanced_permissions/drafts";
 import type {
   ImpersonationModalParams,
   ImpersonationParams,
@@ -52,9 +54,8 @@ export const ImpersonationModal = ({
   } = useGetDatabaseQuery(databaseId != null ? { id: databaseId } : skipToken);
 
   const attributes = useEnterpriseSelector(getUserAttributes);
-  const draftImpersonation = useEnterpriseSelector(
-    getImpersonation(databaseId, groupId),
-  );
+  const { drafts, updateDrafts, updateDataPermission } = useDataPermissions();
+  const draftImpersonation = getImpersonationDraft(drafts, databaseId, groupId);
 
   const {
     data: impersonation,
@@ -72,22 +73,20 @@ export const ImpersonationModal = ({
 
   const handleSave = useCallback(
     (attribute: UserAttributeKey) => {
-      dispatch(
-        updateDataPermission({
-          groupId,
-          permission: {
-            type: DataPermissionType.ACCESS,
-            permission: DataPermission.VIEW_DATA,
-          },
-          value: DataPermissionValue.IMPERSONATED,
-          entityId: { databaseId },
-          view: "group",
-        }),
-      );
+      updateDataPermission({
+        groupId,
+        permission: {
+          type: DataPermissionType.ACCESS,
+          permission: DataPermission.VIEW_DATA,
+        },
+        value: DataPermissionValue.IMPERSONATED,
+        entityId: { databaseId },
+        view: "group",
+      });
 
       if (attribute !== selectedAttribute) {
-        dispatch(
-          updateImpersonation({
+        updateDrafts(
+          setImpersonationDraft({
             attribute,
             db_id: databaseId,
             group_id: groupId,
@@ -97,7 +96,14 @@ export const ImpersonationModal = ({
 
       onClose();
     },
-    [onClose, databaseId, dispatch, groupId, selectedAttribute],
+    [
+      onClose,
+      databaseId,
+      groupId,
+      selectedAttribute,
+      updateDataPermission,
+      updateDrafts,
+    ],
   );
 
   useMount(() => {

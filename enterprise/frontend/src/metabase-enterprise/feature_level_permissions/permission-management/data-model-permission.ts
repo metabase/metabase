@@ -15,7 +15,7 @@ import {
   DataPermission,
   DataPermissionType,
   DataPermissionValue,
-  type Group,
+  type GroupInfo,
   type GroupsPermissions,
   type PermissionEntityId,
   type PermissionSubject,
@@ -108,7 +108,7 @@ export const buildDataModelPermission = (
   groupId: number,
   groupType: SpecialGroupType,
   permissions: GroupsPermissions,
-  defaultGroup: Group,
+  defaultGroup: GroupInfo,
   permissionSubject: PermissionSubject,
 ): PermissionSectionConfig => {
   const hasChildEntities = permissionSubject !== "fields";

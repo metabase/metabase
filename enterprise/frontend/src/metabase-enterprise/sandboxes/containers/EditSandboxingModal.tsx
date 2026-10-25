@@ -7,21 +7,25 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
-import { getGroupsBasePath } from "metabase/permissions";
-import { useDispatch, useSelector } from "metabase/redux";
+import { getGroupsBasePath, useDataPermissions } from "metabase/permissions";
 import { parseIntParam } from "metabase/urls";
-import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";
 import type { GroupTableAccessPolicy } from "metabase-types/api";
+import {
+  DataPermission,
+  DataPermissionType,
+  DataPermissionValue,
+} from "metabase-types/api";
 
-import { updatePolicy, updateTableSandboxingPermission } from "../actions";
 import EditSandboxingModal from "../components/EditSandboxingModal";
+import { setSandboxDraft } from "../drafts";
+import { getPolicyKeyFromParams } from "../utils";
 
 const EditSandboxingModalContainer = ({
   params,
   location,
   onClose,
 }: ModalComponentProps) => {
-  const dispatch = useDispatch();
+  const { drafts, updateDrafts, updateDataPermission } = useDataPermissions();
 
   const groupId = parseIntParam(params.groupId);
   const tableId = parseIntParam(params.tableId);
@@ -46,11 +50,10 @@ const EditSandboxingModalContainer = ({
     error: attributesError,
   } = useListUserAttributesQuery();
 
-  const draftPolicy = useSelector((state) =>
+  const draftPolicy =
     groupId != null && tableId != null
-      ? getGroupTableAccessPolicy(state, { params: { groupId, tableId } })
-      : undefined,
-  );
+      ? drafts.sandboxes[getPolicyKeyFromParams({ groupId, tableId })]
+      : undefined;
 
   if (groupId == null || tableId == null || databaseId == null) {
     return <LoadingAndErrorWrapper error={t`Invalid table id`} />;
@@ -70,18 +73,19 @@ const EditSandboxingModalContainer = ({
   }
 
   const handleSave = async (policy: GroupTableAccessPolicy) => {
-    dispatch(updatePolicy(policy));
-    dispatch(
-      updateTableSandboxingPermission({
-        groupId,
-        entityId: { databaseId, schemaName: params.schemaName, tableId },
-        // the modal is mounted under both permissions editor views; only
-        // permission post-actions read the view
-        view: location.pathname.startsWith(getGroupsBasePath())
-          ? "group"
-          : "database",
-      }),
-    );
+    updateDrafts(setSandboxDraft(policy));
+    updateDataPermission({
+      groupId,
+      entityId: { databaseId, schemaName: params.schemaName, tableId },
+      permission: {
+        type: DataPermissionType.ACCESS,
+        permission: DataPermission.VIEW_DATA,
+      },
+      value: DataPermissionValue.SANDBOXED,
+      view: location.pathname.startsWith(getGroupsBasePath())
+        ? "group"
+        : "database",
+    });
     onClose();
   };
 

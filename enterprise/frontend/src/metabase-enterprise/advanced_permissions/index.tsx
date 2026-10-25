@@ -11,7 +11,6 @@ import {
   PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_DATA_PERMISSIONS,
-  PLUGIN_REDUCERS,
   type PermissionOption,
 } from "metabase/plugins";
 import { navigate } from "metabase/router";
@@ -20,11 +19,13 @@ import { DataPermissionValue } from "metabase-types/api";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
 import {
+  getImpersonatedPostAction,
+  removeChangedImpersonationDrafts,
+} from "./drafts";
+import {
   shouldRestrictNativeQueryPermissions,
   upgradeViewPermissionsIfNeeded,
 } from "./graph";
-import { advancedPermissionsSlice, getImpersonatedPostAction } from "./reducer";
-import { getImpersonations } from "./selectors";
 import { getEditImpersonationUrl } from "./utils";
 
 const IMPERSONATED_PERMISSION_OPTION = {
@@ -122,18 +123,7 @@ export function initializePlugin() {
       DataPermissionValue.IMPERSONATED
     ] = getImpersonatedPostAction;
 
-    PLUGIN_REDUCERS.advancedPermissionsPlugin =
-      advancedPermissionsSlice.reducer;
-
-    PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push((state) => {
-      const impersonations = getImpersonations(state);
-      const impersonationGroupIds = impersonations.map((i) => `${i.group_id}`);
-      return [{ impersonations }, impersonationGroupIds];
-    });
-
-    PLUGIN_DATA_PERMISSIONS.hasChanges.push(
-      (state) => getImpersonations(state).length > 0,
-    );
+    PLUGIN_DATA_PERMISSIONS.updateDrafts.push(removeChangedImpersonationDrafts);
 
     PLUGIN_ADMIN_PERMISSIONS_DATABASE_ACTIONS[
       DataPermissionValue.IMPERSONATED

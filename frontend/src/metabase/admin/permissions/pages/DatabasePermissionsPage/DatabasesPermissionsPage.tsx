@@ -1,8 +1,8 @@
-import { Fragment, useCallback } from "react";
-import { useAsync } from "react-use";
+import { Fragment, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import { PermissionsEditorLegacyNoSelfServiceWarning } from "metabase/admin/permissions/components/PermissionsEditor/PermissionsEditorLegacyWarning";
+import { useListPermissionsGroupsQuery } from "metabase/api";
 import { getPermissionsBasePath } from "metabase/common/components/PermissionsBasePath/base-path";
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
 import {
@@ -18,16 +18,15 @@ import {
   getDatabaseFocusPermissionsUrl,
   getDatabasesBasePath,
   getGroupsDataPermissionEditor,
-  getIsLoadingDatabaseTables,
-  getLoadingDatabaseTablesError,
-  loadDataPermissionsForDb,
   parseDataRouteParams,
-  updateDataPermission,
+  useDataPermissions,
+  useDatabaseDataPermissionsGraph,
+  usePermissionsDatabase,
+  useShouldShowTransformPermissions,
 } from "metabase/permissions";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
-import { useDispatch, useSelector } from "metabase/redux";
 import { Outlet, useNavigate, useParams } from "metabase/router";
-import { getSetting } from "metabase/settings";
+import { useSetting } from "metabase/settings";
 import { Center, Loader } from "metabase/ui";
 import type { DataPermissionValue } from "metabase-types/api";
 
@@ -38,26 +37,59 @@ import {
 import { PermissionsEditorSplitPermsMessage } from "../../components/PermissionsEditor/PermissionsEditorSplitPermsMessage";
 
 export function DatabasesPermissionsPage() {
-  const dispatch = useDispatch();
   const navigate = useNavigate();
-
-  // These selectors resolve the focused database/schema/table from the route,
-  // so they take the route params rather than reading them from the store.
   const params = useParams<RawDataRouteParams>();
-  const selectorProps = { params };
-  const sidebar = useSelector((state) =>
-    getDataFocusSidebar(state, selectorProps),
+  const dataRouteParams = useMemo(
+    () =>
+      parseDataRouteParams({
+        databaseId: params.databaseId,
+        schemaName: params.schemaName,
+        tableId: params.tableId,
+      }),
+    [params.databaseId, params.schemaName, params.tableId],
   );
-  const isSidebarLoading = useSelector((state) =>
-    getIsLoadingDatabaseTables(state, selectorProps),
+  const { data: groups } = useListPermissionsGroupsQuery({});
+  const { permissions, originalPermissions, updateDataPermission } =
+    useDataPermissions();
+  const {
+    databases,
+    database,
+    isLoading: isSidebarLoading,
+    error: sidebarError,
+  } = usePermissionsDatabase(dataRouteParams.databaseId);
+  const { isFetching: isLoading } = useDatabaseDataPermissionsGraph(
+    dataRouteParams.databaseId,
   );
-  const sidebarError = useSelector((state) =>
-    getLoadingDatabaseTablesError(state, selectorProps),
+  const showTransformPermissions = useShouldShowTransformPermissions();
+
+  const sidebar = useMemo(
+    () =>
+      isSidebarLoading
+        ? null
+        : getDataFocusSidebar({ params, databases, database }),
+    [isSidebarLoading, params, databases, database],
   );
 
-  const dataRouteParams = parseDataRouteParams(params);
-  const permissionEditor = useSelector((state) =>
-    getGroupsDataPermissionEditor(state, { params: dataRouteParams }),
+  const permissionEditor = useMemo(
+    () =>
+      permissions && originalPermissions && groups
+        ? getGroupsDataPermissionEditor({
+            params: dataRouteParams,
+            database,
+            permissions,
+            originalPermissions,
+            groups,
+            showTransformPermissions,
+          })
+        : null,
+    [
+      dataRouteParams,
+      database,
+      permissions,
+      originalPermissions,
+      groups,
+      showTransformPermissions,
+    ],
   );
 
   const navigateToItem = (item: ITreeNodeItem) =>
@@ -71,15 +103,7 @@ export function DatabasesPermissionsPage() {
     );
   const navigateToDatabaseList = () => navigate(getDatabasesBasePath());
 
-  const showSplitPermsMessage = useSelector((state) =>
-    getSetting(state, "show-updated-permission-banner"),
-  );
-
-  const { loading: isLoading } = useAsync(async () => {
-    if (dataRouteParams.databaseId) {
-      await dispatch(loadDataPermissionsForDb(dataRouteParams.databaseId));
-    }
-  }, [dataRouteParams.databaseId]);
+  const showSplitPermsMessage = useSetting("show-updated-permission-banner");
 
   const handleEntityChange = useCallback(
     (entityType: string) => {
@@ -97,17 +121,15 @@ export function DatabasesPermissionsPage() {
       if (!item.entityId) {
         return;
       }
-      dispatch(
-        updateDataPermission({
-          groupId: assertNumericId(item.id),
-          permission,
-          value,
-          entityId: item.entityId,
-          view: "database",
-        }),
-      );
+      updateDataPermission({
+        groupId: assertNumericId(item.id),
+        permission,
+        value,
+        entityId: item.entityId,
+        view: "database",
+      });
     },
-    [dispatch],
+    [updateDataPermission],
   );
 
   const handleAction = (

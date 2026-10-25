@@ -10,23 +10,18 @@ export type { PermissionsTableProps } from "./components/PermissionsTable";
 export { ToolbarButton } from "./components/ToolbarButton";
 export { COLLECTION_OPTIONS } from "./constants/collections-permissions";
 export { Messages } from "./constants/messages";
+export { DATABASE_TABLES_QUERY } from "./constants/databases";
 export {
-  LOAD_DATA_PERMISSIONS,
-  SAVE_DATA_PERMISSIONS,
-  UPDATE_DATA_PERMISSION,
-  clearSaveError,
-  loadDataPermissionsForDb,
-  loadDataPermissionsForGroup,
-  navigateToGranularPermissions,
-  permissions,
-  restoreLoadedPermissions,
-  saveDataPermissions,
-  updateDataPermission,
-} from "./permissions";
-export type {
-  UpdateDataPermissionParams,
-  UpdateDataPermissionPayload,
-} from "./permissions";
+  DataPermissionsProvider,
+  useDataPermissions,
+} from "./contexts/DataPermissionsContext";
+export type { DataPermissionsContextValue } from "./contexts/DataPermissionsContext";
+export {
+  useDatabaseDataPermissionsGraph,
+  useGroupDataPermissionsGraph,
+} from "./hooks/use-data-permissions-graph";
+export { usePermissionsDatabase } from "./hooks/use-permissions-database";
+export { useShouldShowTransformPermissions } from "./hooks/use-should-show-transform-permissions";
 export { useCollectionPermissionsGraph } from "./hooks/use-collection-permissions-graph";
 export {
   buildCollectionTree,
@@ -44,24 +39,16 @@ export {
 } from "./selectors/confirmations";
 export {
   getDataFocusSidebar,
+  getDataPermissionsDiff,
   getDatabasesPermissionEditor,
   getGroupsDataPermissionEditor,
   getGroupsSidebar,
-  getIsLoadingDatabaseTables,
-  getLoadingDatabaseTablesError,
 } from "./selectors/data-permissions";
 export type { DataTreeNodeItem } from "./selectors/data-permissions";
-export { DATABASE_TABLES_QUERY } from "./selectors/data-permissions/databases";
-export {
-  getDiff,
-  getIsDataPermissionsDirty,
-} from "./selectors/data-permissions/diff";
 export {
   getDefaultGroup,
   getOrderedGroups,
-  selectGroupList,
 } from "./selectors/data-permissions/groups";
-export { showRevisionChangedModal } from "./selectors/data-permissions/revision";
 export {
   assertNumericId,
   parseDataRouteParams,
@@ -77,6 +64,7 @@ export type {
   PermissionsGraphDiff,
   RawDataRouteParams,
   RawGroupRouteParams,
+  UpdateDataPermissionParams,
 } from "./types";
 export { isSchemaEntityId, isTableEntityId } from "./utils/data-entity-id";
 export {
@@ -89,6 +77,7 @@ export {
   updateEntityPermission,
 } from "./utils/graph";
 export { isEmbeddingHubPermissions } from "./utils/is-embedding-hub";
+export { navigateToGranularPermissions } from "./utils/post-actions";
 export {
   getDatabaseFocusPermissionsUrl,
   getDatabasesBasePath,

@@ -4,9 +4,9 @@ import { useEffect, useId } from "react";
  * Where the permissions editor is currently mounted.
  *
  * Unlike the tenant URLs, this cannot be a React context: the permission URL
- * builders are called from redux selectors and thunks
- * (`selectors/data-permissions/breadcrumbs.ts`, `permissions.ts`,
- * `advanced_permissions/reducer.ts`), which have no component to read a context
+ * builders are called from plain functions and post actions
+ * (`selectors/data-permissions/breadcrumbs.ts`, `utils/post-actions.ts`,
+ * `advanced_permissions/drafts.ts`), which have no component to read a context
  * from. Only one permissions editor renders at a time, so a module-level value
  * set by whichever host mounted it is sufficient and keeps every call site's
  * signature unchanged.

@@ -4,7 +4,6 @@ import { appReducer as app } from "metabase/admin/app/reducers";
 import { databasesReducer as databases } from "metabase/admin/databases/database";
 import { datamodel } from "metabase/admin/datamodel/datamodel";
 import { people } from "metabase/admin/people/people";
-import { permissions } from "metabase/permissions";
 import { combineReducers } from "metabase/redux";
 
 export const admin = combineReducers({
@@ -12,5 +11,4 @@ export const admin = combineReducers({
   databases,
   datamodel,
   people,
-  permissions,
 });

@@ -3,8 +3,7 @@ import { jt, t } from "ttag";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useDocsUrl } from "metabase/common/hooks";
 import { PLUGIN_TRANSFORMS } from "metabase/plugins";
-import { useSelector } from "metabase/redux";
-import { getSetting } from "metabase/settings";
+import { useSetting } from "metabase/settings";
 import {
   Accordion,
   Box,
@@ -17,20 +16,20 @@ import {
 } from "metabase/ui";
 import { DataPermissionValue } from "metabase-types/api";
 
+import { useDataPermissions } from "../../contexts/DataPermissionsContext";
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
 import { PermissionHelpDescription } from "../PermissionHelpDescription";
 
 export const DataPermissionsHelp = () => {
-  const isAdvancedPermissionsFeatureEnabled = useSelector(
-    (state) => getSetting(state, "token-features").advanced_permissions,
-  );
-
-  const shouldShowLegacyNoSelfServiceInfo = useSelector((state) =>
+  const isAdvancedPermissionsFeatureEnabled =
+    useSetting("token-features").advanced_permissions;
+  const { originalPermissions } = useDataPermissions();
+  const shouldShowLegacyNoSelfServiceInfo =
+    originalPermissions != null &&
     hasPermissionValueInGraph(
-      state.admin.permissions.originalDataPermissions,
+      originalPermissions,
       DataPermissionValue.LEGACY_NO_SELF_SERVICE,
-    ),
-  );
+    );
   const { url: docsUrl } = useDocsUrl("permissions/data");
 
   return (

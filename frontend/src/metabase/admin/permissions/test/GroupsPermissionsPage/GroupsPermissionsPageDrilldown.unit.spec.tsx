@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
-import fetchMock from "fetch-mock";
 
 import {
+  setupDatabaseMetadataEndpoint,
   setupDatabasesEndpoints,
   setupGroupsEndpoint,
   setupPermissionsGraphEndpoints,
@@ -42,10 +42,7 @@ const setup = () => {
   setupPermissionsGraphEndpoints(TEST_GROUPS, [TEST_DATABASE]);
   setupGroupsEndpoint(TEST_GROUPS);
 
-  fetchMock.get(
-    `path:/api/database/${TEST_DATABASE.id}/metadata`,
-    TEST_DATABASE,
-  );
+  setupDatabaseMetadataEndpoint(TEST_DATABASE);
 
   return renderWithProviders(
     <Route path="/admin/permissions/data" element={<DataPermissionsPage />}>

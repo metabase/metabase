@@ -1,7 +1,9 @@
-import { QueryStatus } from "@reduxjs/toolkit/query";
-
-import { createMockSettingsState } from "__support__/state";
-import type { Database, SchemaName, TableId } from "metabase-types/api";
+import type {
+  Database,
+  GroupsPermissions,
+  SchemaName,
+  TableId,
+} from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 import {
   createMockDatabase,
@@ -87,7 +89,7 @@ export const groups = {
   }),
 };
 
-export const initialPermissions = {
+export const initialPermissions: GroupsPermissions = {
   1: {
     // Sample database
     1: {
@@ -123,53 +125,6 @@ export const initialPermissions = {
     3: {
       [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
       [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
-    },
-  },
-};
-
-const fulfilled = (
-  endpointName: string,
-  originalArgs: unknown,
-  data: unknown,
-) => ({
-  status: QueryStatus.fulfilled,
-  data,
-  error: undefined,
-  originalArgs,
-  requestId: `test-request-${endpointName}`,
-  endpointName,
-  startedTimeStamp: 0,
-  fulfilledTimeStamp: 0,
-});
-
-// The permissions tree reads its databases straight out of the RTK Query cache,
-// so the fixture seeds the same entries DataPermissionsPage subscribes to.
-// The tree takes each database's identity from the listDatabases cache and its
-// tables from permissions state, so the fixture seeds both.
-const databasesWithTables = Object.fromEntries(
-  databases.map((database) => [database.id, database]),
-);
-
-export const state = {
-  admin: {
-    permissions: {
-      dataPermissions: initialPermissions,
-      originalDataPermissions: initialPermissions,
-      databasesWithTables,
-    },
-  },
-  settings: createMockSettingsState(),
-  "metabase-api": {
-    queries: {
-      "listPermissionsGroups({})": fulfilled(
-        "listPermissionsGroups",
-        {},
-        Object.values(groups),
-      ),
-      "listDatabases(undefined)": fulfilled("listDatabases", undefined, {
-        data: databases,
-        total: databases.length,
-      }),
     },
   },
 };

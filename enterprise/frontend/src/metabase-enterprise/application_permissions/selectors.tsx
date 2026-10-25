@@ -16,7 +16,7 @@ import {
 } from "metabase/permissions";
 import { PLUGIN_TENANTS } from "metabase/plugins";
 import type { State } from "metabase/redux/store";
-import type { Group } from "metabase-types/api";
+import type { GroupInfo } from "metabase-types/api";
 
 import { APPLICATION_PERMISSIONS_OPTIONS } from "./constants";
 import type {
@@ -29,7 +29,7 @@ import type { ApplicationPermissionsState } from "./types/state";
 export function getPermissionWarning(
   value: ApplicationPermissionValue,
   defaultGroupValue: ApplicationPermissionValue,
-  defaultGroup: Group,
+  defaultGroup: GroupInfo,
 ) {
   if (defaultGroupValue === "yes" && value === "no") {
     return getDefaultGroupHasHigherAccessText(defaultGroup);
@@ -67,7 +67,7 @@ const getPermission = (
   permissions: ApplicationPermissions,
   isAdmin: boolean,
   groupId: number,
-  defaultGroup: Group,
+  defaultGroup: GroupInfo,
   permissionKey: ApplicationPermissionKey,
   isDisabled: boolean,
   tooltip: string | null = null,
@@ -99,14 +99,14 @@ const getPermission = (
 export const getApplicationPermissionEditor = createSelector(
   (state: ApplicationPermissionsState) =>
     state.plugins.applicationPermissionsPlugin?.applicationPermissions,
-  getOrderedGroups,
-  getDefaultGroup,
-  (permissions, groups: Group[][], defaultGroup?: Group) => {
-    if (!permissions || groups == null || !defaultGroup) {
+  (_state: ApplicationPermissionsState, groups: GroupInfo[]) => groups,
+  (permissions, groups) => {
+    const defaultGroup = getDefaultGroup(groups);
+    if (!permissions || !defaultGroup) {
       return null;
     }
 
-    const allGroups = groups.flat();
+    const allGroups = getOrderedGroups(groups).flat();
 
     const externalUsersGroup = _.find(
       allGroups,

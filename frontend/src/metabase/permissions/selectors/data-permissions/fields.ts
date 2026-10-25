@@ -9,7 +9,7 @@ import {
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
 import type {
-  Group,
+  GroupInfo,
   GroupsPermissions,
   PermissionsDatabase,
   SpecialGroupType,
@@ -45,7 +45,7 @@ const buildAccessPermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
-  defaultGroup: Group,
+  defaultGroup: GroupInfo,
   database: PermissionsDatabase,
 ): PermissionSectionConfig => {
   const value = getFieldsPermission(
@@ -208,7 +208,7 @@ export const buildFieldsPermissions = ({
   groupType: SpecialGroupType;
   permissions: GroupsPermissions;
   originalPermissions: GroupsPermissions;
-  defaultGroup: Group;
+  defaultGroup: GroupInfo;
   database: PermissionsDatabase;
   showTransformPermissions: boolean;
 }): PermissionSectionConfig[] => {

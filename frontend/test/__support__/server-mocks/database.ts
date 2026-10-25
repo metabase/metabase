@@ -41,8 +41,11 @@ export function setupDatabaseEndpoints(db: Database) {
   setupUpdateDatabaseEndpoint(db);
 }
 
-export function setupDatabaseMetadataEndpoint(db: Database) {
-  fetchMock.get(`path:/api/database/${db.id}/metadata`, db, {
+export function setupDatabaseMetadataEndpoint(
+  db: Database,
+  response: Database | (() => Promise<Database>) = db,
+) {
+  fetchMock.get(`path:/api/database/${db.id}/metadata`, response, {
     name: `database-${db.id}-metadata`,
   });
 }

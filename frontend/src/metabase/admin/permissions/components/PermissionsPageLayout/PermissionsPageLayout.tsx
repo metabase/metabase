@@ -13,9 +13,7 @@ import {
   type PermissionsGraphDiff,
   ToolbarButton,
   isEmbeddingHubPermissions,
-  showRevisionChangedModal,
 } from "metabase/permissions";
-import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
 import { useUserSetting } from "metabase/settings";
 import {
@@ -46,6 +44,7 @@ type PermissionsPageLayoutProps = {
   onLoad?: () => void;
   saveError?: string | null;
   onClearSaveError?: () => void;
+  hasRevisionChanged?: boolean;
   navigateToLocation?: (location: string) => void;
   navigateToTab?: (tab: string) => void;
   helpContent?: ReactNode;
@@ -61,6 +60,7 @@ export function PermissionsPageLayout({
   onLoad,
   saveError,
   onClearSaveError,
+  hasRevisionChanged = false,
   helpContent,
   canShowSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
@@ -74,8 +74,6 @@ export function PermissionsPageLayout({
     useState(false);
   const showSplitPermsModal =
     canShowSplitPermsModal && !!showModalSetting && !isSplitPermsModalDismissed;
-
-  const showRefreshModal = useSelector(showRevisionChangedModal);
 
   const [isHelpReferenceOpen, setIsHelpReferenceOpen] = useState(false);
   const navigate = useNavigate();
@@ -169,7 +167,7 @@ export function PermissionsPageLayout({
       )}
       <NewModal
         title="Someone just changed permissions"
-        opened={showRefreshModal}
+        opened={hasRevisionChanged}
         size="lg"
         withCloseButton={false}
         onClose={() => true}
