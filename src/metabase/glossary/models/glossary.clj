@@ -1,8 +1,11 @@
 (ns metabase.glossary.models.glossary
   (:require
+   [metabase.api.common :as api]
    [metabase.glossary.db :as glossary.db]
    [metabase.glossary.schema]
+   [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
+   [metabase.remote-sync.core :as remote-sync]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -23,6 +26,29 @@
           id->creator (glossary.db/users-by-id creator-ids)]
       (for [entry glossary-entries]
         (assoc entry :creator (get id->creator (:creator_id entry)))))))
+
+(defn- may-edit?
+  "Whether the current user may edit the glossary: they can enter Data Studio, and a read-only remote-sync instance
+  whose Library is synced has not locked it."
+  []
+  (and (api/entitled-data-analyst?)
+       (remote-sync/model-editable? :model/Glossary nil)))
+
+(defmethod mi/can-read? :model/Glossary
+  ([_entry] true)
+  ([_model _id] true))
+
+(defmethod mi/can-write? :model/Glossary
+  ([_entry] (may-edit?))
+  ([_model _id] (may-edit?)))
+
+(defmethod mi/can-create? :model/Glossary
+  [_model _entry]
+  (may-edit?))
+
+(defmethod mi/can-update? :model/Glossary
+  [entry _changes]
+  (mi/can-write? entry))
 
 (def GlossaryEntry
   "Schema for a glossary entry."
