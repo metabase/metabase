@@ -1,6 +1,7 @@
 (ns metabase-enterprise.database-routing.api
   (:require
    [metabase-enterprise.database-routing.db :as database-routing.db]
+   [metabase-enterprise.database-routing.models :as database-routing.models]
    [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
@@ -38,7 +39,9 @@
   (api/check-400 (database-routing.db/router-exists? router_database_id))
   (api/check-400 (not (database-routing.db/destination-name-exists? router_database_id (map :name destinations)))
                  "A destination database with that name already exists.")
-  (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (database-routing.db/database router_database_id)]
+  (let [{:keys [engine auto_run_queries is_on_demand] :as router-db} (database-routing.db/database router_database_id)
+        destinations (map #(update % :details (partial database-routing.models/router-shared-details router_database_id))
+                          destinations)]
     (if-let [invalid-destinations (->> destinations
                                        (keep (fn [{details :details n :name}]
                                                (try

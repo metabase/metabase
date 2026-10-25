@@ -327,6 +327,36 @@
 (def ^:private router-details
   {:host "pg.example.com" :port 5432 :dbname "shared" :user "admin"})
 
+(deftest same-server-destinations-take-the-router-server-details-test
+  (mt/with-temp [:model/Database {router-id :id} {:engine :postgres :details router-details}
+                 :model/DatabaseRouter _ {:database_id router-id :user_attribute "tenant" :mode "internal"}]
+    (mt/with-model-cleanup [:model/Database]
+      (let [[{dest-id :id}] (mt/user-http-request :crowberto :post 200 "ee/database-routing/destination-database"
+                                                  {:router_database_id router-id
+                                                   :destinations       [{:name    "tenant_a"
+                                                                         :details {:host "other.example.com"
+                                                                                   :user "tenant_a"}}]})
+            details         #(t2/select-one-fn :details :model/Database dest-id)]
+        (testing "the router's server details replace the destination's"
+          (is (= {:host "pg.example.com" :port 5432 :dbname "shared" :user "tenant_a" :same-server-destination true}
+                 (details))))
+        (testing "a destination can't point itself at another server"
+          (t2/update! :model/Database dest-id {:details {:host "other.example.com" :user "tenant_a"}})
+          (is (= "pg.example.com" (:host (details)))))
+        (testing "a change to the router's server reaches its destinations"
+          (t2/update! :model/Database router-id {:details (assoc router-details :host "pg2.example.com")})
+          (is (= "pg2.example.com" (:host (details)))))
+        (testing "a server detail the router drops is dropped from its destinations"
+          (t2/update! :model/Database router-id {:details (dissoc router-details :port)})
+          (is (not (contains? (details) :port))))
+        (testing "a destination can't set a server detail the router doesn't have"
+          (t2/update! :model/Database dest-id {:details (assoc (details) :port 6543)})
+          (is (not (contains? (details) :port))))
+        (testing "a change to the router's server reaches its destinations without the routing feature"
+          (mt/with-premium-features #{}
+            (t2/update! :model/Database router-id {:details (assoc router-details :host "pg3.example.com")}))
+          (is (= "pg3.example.com" (:host (details)))))))))
+
 (deftest changing-the-router-mode-deletes-its-destinations-test
   (mt/with-temp [:model/Database {router-id :id} {:engine :postgres :details router-details}
                  :model/DatabaseRouter _ {:database_id router-id :user_attribute "tenant"}

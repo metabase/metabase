@@ -460,6 +460,17 @@
     (throw (ex-info (tru "Cannot change router_database_id; a destination database is established at creation, not by updating an existing database.")
                     {:status-code 400}))))
 
+(defenterprise router-shared-details
+  "OSS implementation. Returns the `details` of a destination of the router with `router-database-id` unchanged."
+  metabase-enterprise.database-routing.models
+  [_router-database-id details]
+  details)
+
+(defenterprise sync-destination-details!
+  "OSS implementation. Does nothing."
+  metabase-enterprise.database-routing.models
+  [_database])
+
 (def ^:private details-keys
   "Every place a Database stores a set of connection details."
   [:details :write_data_details :admin_details])
@@ -529,10 +540,17 @@
       (throw (ex-info (get (routing-restriction-messages (some? router_database_id)) (first enabled))
                       {:status-code 400})))))
 
-(t2/define-before-update :model/Database
+(defn- with-router-shared-details
+  "Copies the server details of a destination database's router onto the details it is writing; see
+  [[router-shared-details]]."
   [database]
-  (assert-router-database-id-not-mutated! database)
-  (check-routing-restrictions! database)
+  (cond-> database
+    (and (:router_database_id database) (:details (t2/changes database)))
+    (update :details #(router-shared-details (:router_database_id database) %))))
+
+(defn- before-update
+  "The rest of the `:model/Database` before-update hook, run on `database` with its router's server details applied."
+  [database]
   (let [changes  (t2/changes database)
         original (t2/original database)]
     ;; An engine change can make existing detail keys acquire new meaning, so validate every details map under the new
@@ -592,25 +610,35 @@
                          :existing-engine existing-engine
                          :new-engine      new-engine}))))))
 
+(t2/define-before-update :model/Database
+  [database]
+  (assert-router-database-id-not-mutated! database)
+  (check-routing-restrictions! database)
+  (before-update (with-router-shared-details database)))
+
 (t2/define-after-update :model/Database
   [database]
   ;; This will not do anything when coming from [[metabase-enterprise.advanced-config.file/initialize!]], since the
   ;; scheduler will not be up yet. Thus, we call [[metabase.sync.task.sync-databases/check-and-schedule-tasks!]]
   ;; from [[metabase.core/init!]] to self-heal.
-  (check-and-schedule-tasks-for-db! (t2.realize/realize database)))
+  (check-and-schedule-tasks-for-db! (t2.realize/realize database))
+  (sync-destination-details! database))
 
 (t2/define-before-insert :model/Database
-  [{:keys [details initial_sync_status engine], :as database}]
-  (validate-connection-details! engine database details-keys)
-  (-> (merge {:is_full_sync true
-              :is_on_demand false}
-             database)
-      (cond->
-       (not details)             (assoc :details {})
-       (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
-      secret/handle-incoming-client-secrets!
-      maybe-disable-uploads-for-all-dbs!
-      infer-db-schedules))
+  [{router-database-id :router_database_id, :as database}]
+  (let [{:keys [details initial_sync_status engine], :as database}
+        (cond-> database
+          router-database-id (update :details #(router-shared-details router-database-id (or % {}))))]
+    (validate-connection-details! engine database details-keys)
+    (-> (merge {:is_full_sync true
+                :is_on_demand false}
+               database)
+        (cond->
+         (not details)             (assoc :details {})
+         (not initial_sync_status) (assoc :initial_sync_status "incomplete"))
+        secret/handle-incoming-client-secrets!
+        maybe-disable-uploads-for-all-dbs!
+        infer-db-schedules)))
 
 (defmethod mi/exclude-internal-content-hsql :model/Database
   [_model & {:keys [table-alias]}]

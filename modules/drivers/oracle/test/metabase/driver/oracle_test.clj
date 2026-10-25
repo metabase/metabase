@@ -337,6 +337,7 @@
                                     "tunnel-enabled" true}}
                       {:name "advanced-options"}
                       {:name "destination-database"}
+                      {:name "same-server-destination"}
                       {:name "write-data-connection"}
                       {:name "admin-connection"}
                       {:name "auto_run_queries"}

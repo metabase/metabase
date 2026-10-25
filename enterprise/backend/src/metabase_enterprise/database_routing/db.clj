@@ -5,6 +5,7 @@
    [metabase-enterprise.database-routing.schema :as database-routing.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
@@ -95,10 +96,21 @@
    changes     :- ::database-routing.schema/database-router.update]
   (t2/update! :model/DatabaseRouter :database_id database-id changes))
 
+(mu/defn destination-databases :- [:sequential [:map [:id ::lib.schema.id/database] [:details [:maybe ms/DatabaseDetails]]]]
+  "The ID and details of every destination Database of the router with `router-database-id`."
+  [router-database-id :- ::lib.schema.id/database]
+  (t2/select [:model/Database :id :details] :router_database_id router-database-id))
+
 (mu/defn delete-destination-databases!
   "Delete every destination Database of the router with `router-database-id`."
   [router-database-id :- ::lib.schema.id/database]
   (t2/delete! :model/Database :router_database_id router-database-id))
+
+(mu/defn update-database-details!
+  "Set the details of the Database with `database-id`."
+  [database-id :- ::lib.schema.id/database
+   details     :- ms/DatabaseDetails]
+  (t2/update! :model/Database database-id {:details details}))
 
 (mu/defn delete-router!
   "Delete the DatabaseRouter of the Database with `database-id`."

@@ -963,3 +963,11 @@
     (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "allow-private"]
       (is (= :allow-private
              (startup/def-startup-validation! ::driver.settings/warehouse-allowed-networks))))))
+
+(deftest fields-hidden-for-same-server-destination-test
+  (testing "the fields a same-server routing destination takes from its router"
+    (doseq [[driver expected] {:postgres #{"host" "port" "dbname"}
+                               :mysql    #{"host" "port" "dbname"}
+                               :h2       #{}}]
+      (testing driver
+        (is (= expected (driver.u/fields-hidden-for-same-server-destination driver)))))))

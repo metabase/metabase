@@ -76,6 +76,20 @@
    :id
    {:default nil}))
 
+(defn shared-detail-keys
+  "The detail keys that a same-server destination database takes from its router, for `engine`. Empty when the engine
+  declares none, in which case its destinations keep their full connection details."
+  [engine]
+  (into #{} (map keyword) (driver.u/fields-hidden-for-same-server-destination (keyword engine))))
+
+(defn- with-shared-details
+  "`details` of a destination of the same-server `router`, with its server details replaced by the router's."
+  [router details]
+  (let [ks (shared-detail-keys (:engine router))]
+    (-> (apply dissoc details ks)
+        (merge (select-keys (:details router) ks))
+        (assoc :same-server-destination true))))
+
 (defenterprise router-mode
   "Enterprise implementation. Returns the mode of the router of the Database with `database-id`, or nil when it isn't
   a router. Uses `:feature :none` so a router keeps its restrictions while the `:database-routing` feature is
@@ -83,6 +97,27 @@
   :feature :none
   [database-id]
   (database-routing.db/router-mode database-id))
+
+(defenterprise router-shared-details
+  "Enterprise implementation. Returns the `details` of a destination of the router with `router-database-id` as they
+  should be stored: with the router's server details when the router is in `internal` mode."
+  :feature :none
+  [router-database-id details]
+  (if (= "internal" (database-routing.db/router-mode router-database-id))
+    (with-shared-details (database-routing.db/database router-database-id) details)
+    (dissoc details :same-server-destination)))
+
+(defenterprise sync-destination-details!
+  "Enterprise implementation. Replaces the server details of the destination databases of `database`, when it is an
+  `internal` router, with its own."
+  :feature :none
+  [database]
+  (when (and (not (:router_database_id database))
+             (= "internal" (database-routing.db/router-mode (u/the-id database))))
+    (doseq [{:keys [id details]} (database-routing.db/destination-databases (u/the-id database))
+            :let                 [synced (with-shared-details database details)]
+            :when                (not= synced details)]
+      (database-routing.db/update-database-details! id synced))))
 
 (defenterprise hash-input-for-database-routing
   "Enterprise version. Returns a hash input that will be used for fields subject to database routing.
