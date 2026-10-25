@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
+   [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.remote-sync.events :as rs-events]
    [metabase-enterprise.remote-sync.impl :as impl]
    [metabase-enterprise.remote-sync.init :as init]
@@ -315,9 +316,10 @@
                                      :remote-sync-branch "main"]
     (mt/with-model-cleanup [:model/RemoteSyncObject :model/DataApp :model/Collection :model/PermissionsGroup]
       (let [insert-app! (fn [slug]
-                          (t2/insert-returning-pk! :model/DataApp {:name         slug
-                                                                   :display_name slug
-                                                                   :bundle_path  "index.js"
+                          (t2/insert-returning-pk! :model/DataApp {:name                   slug
+                                                                   :display_name           slug
+                                                                   :resource_collection_id (data-apps.tu/app-collection-id!)
+                                                                   :bundle_path            "index.js"
                                                                    :bundle       (.getBytes "BUNDLE" "UTF-8")}))
             published   (insert-app! "published")
             tracked     (insert-app! "tracked")]

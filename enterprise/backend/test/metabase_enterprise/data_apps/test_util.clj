@@ -20,6 +20,13 @@
 
 (set! *warn-on-reflection* true)
 
+(defn app-collection-id!
+  "The ID of a new top-level collection of data apps, which a data app inserted through Toucan needs."
+  []
+  (t2/insert-returning-pk! :model/Collection {:name      (str "Data App collection " (random-uuid))
+                                              :namespace "data-apps"
+                                              :location  "/"}))
+
 (defn collection-entity-id
   "A stable resource collection entity ID for the app in `data_apps/<slug>`."
   [slug]

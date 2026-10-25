@@ -5,10 +5,9 @@
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.models.data-app]
+   [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.api.common :as api]
-   [metabase.events.core :as events]
    [metabase.models.interface :as mi]
-   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -18,11 +17,13 @@
 (defn- insert-app! [& {:as extra}]
   (t2/insert-returning-pk!
    :model/DataApp
-   (merge {:name         "m"
-           :display_name "M"
-           :bundle_path  "index.js"
-           :bundle       (.getBytes "BUNDLEBYTES" "UTF-8")}
-          extra)))
+   (cond-> (merge {:name         "m"
+                   :display_name "M"
+                   :bundle_path  "index.js"
+                   :bundle       (.getBytes "BUNDLEBYTES" "UTF-8")}
+                  extra)
+     (not (contains? extra :resource_collection_id))
+     (assoc :resource_collection_id (data-apps.tu/app-collection-id!)))))
 
 (deftest bundle-hash-follows-the-bundle-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -43,14 +44,20 @@
       (t2/update! :model/DataApp id {:bundle nil})
       (is (nil? (hash))))))
 
-(deftest insert-creates-the-resources-the-app-owns-test
+(deftest insert-needs-a-resource-collection-test
+  (testing "an app is inserted with the collection its API handler or its import made, never creating one"
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (let [before (t2/count :model/Collection)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not match schema"
+                              (insert-app! :resource_collection_id nil)))
+        (is (= before (t2/count :model/Collection)) "no collection is created")))))
+
+(deftest insert-names-the-collection-it-is-given-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [{:keys [resource_collection_id]} (t2/select-one :model/DataApp (insert-app!))]
-      (is (=? {:name "Data App: m" :namespace :data-apps :location "/"}
-              (t2/select-one :model/Collection :id resource_collection_id))
-          "the collection is the app's own, in the data-apps namespace")
-      (is (= #{} (perms/collection-read-access-group-ids resource_collection_id))
-          "no group but Administrators can read the new collection"))))
+    (mt/with-temp [:model/Collection {collection-id :id} {:name "Imported" :namespace :data-apps}]
+      (let [app (t2/select-one :model/DataApp (insert-app! :resource_collection_id collection-id))]
+        (is (= collection-id (:resource_collection_id app)))
+        (is (= "Data App: m" (t2/select-one-fn :name :model/Collection :id collection-id)))))))
 
 (deftest the-resource-collection-follows-the-slug-test
   (testing "renaming an app, on any write path, renames its resource collection"
@@ -60,26 +67,6 @@
         (is (= "Data App: renamed"
                (t2/select-one-fn :name :model/Collection
                                  :id (t2/select-one-fn :resource_collection_id :model/DataApp :id app-id))))))))
-
-(deftest insert-publishes-the-creation-of-the-collection-test
-  (testing "the collection is created the way any collection is, so what listens to collection events (remote sync,
-            the activity log) sees it"
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [created (atom [])]
-        (mt/with-dynamic-fn-redefs [events/publish-event! (fn [topic {:keys [object]}]
-                                                            (when (= :event/collection-create topic)
-                                                              (swap! created conj (:id object))))]
-          (let [id (insert-app!)]
-            (is (= [(t2/select-one-fn :resource_collection_id :model/DataApp id)] @created))))))))
-
-(deftest insert-keeps-the-collection-it-is-given-test
-  (testing "an import names the collection its manifest references, so the insert links that one rather than creating"
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (mt/with-temp [:model/Collection {collection-id :id} {:name "Data App: m" :namespace :data-apps}]
-        (let [before (t2/count :model/Collection)
-              app    (t2/select-one :model/DataApp (insert-app! :resource_collection_id collection-id))]
-          (is (= collection-id (:resource_collection_id app)))
-          (is (= before (t2/count :model/Collection)) "no second collection is created"))))))
 
 (deftest the-resource-collection-cannot-change-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -94,11 +81,11 @@
         (testing "an update that names the same collection is not a change"
           (t2/update! :model/DataApp id {:resource_collection_id collection-id :display_name "Renamed"})
           (is (= "Renamed" (t2/select-one-fn :display_name :model/DataApp id))))
-        (testing "an app whose collection was deleted out from under it may be given one again"
+        (testing "nor can an app whose collection was deleted out from under it be given another"
           (t2/delete! :model/Collection :id collection-id)
           (is (nil? (t2/select-one-fn :resource_collection_id :model/DataApp id)) "the reference was cleared")
-          (t2/update! :model/DataApp id {:resource_collection_id other-id})
-          (is (= other-id (t2/select-one-fn :resource_collection_id :model/DataApp id))))))))
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"resource collection cannot be changed"
+                                (t2/update! :model/DataApp id {:resource_collection_id other-id}))))))))
 
 (deftest delete-removes-the-resource-collection-the-app-owns-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]

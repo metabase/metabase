@@ -8,6 +8,7 @@
    [metabase-enterprise.data-apps.db :as data-apps.db]
    [metabase-enterprise.data-apps.group-access :as data-app.group-access]
    [metabase-enterprise.data-apps.models.data-app :as data-app]
+   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase-enterprise.data-apps.typed-schema :as data-apps.typed-schema]
    [metabase.api-scope.data-app :as api-scope]
@@ -18,7 +19,8 @@
    [metabase.remote-sync.core :as remote-sync]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
-   [metabase.util.malli.schema :as ms])
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
   (:import
    (java.io ByteArrayInputStream)))
 
@@ -212,8 +214,11 @@
    body :- CreateDataAppRequest]
   (api/create-check :model/DataApp body)
   (check-editable! body)
-  (let [row (merge create-defaults {:display_name (:name body)} body)
-        app (data-apps.db/data-app (data-apps.apps/create-app! (with-bundle row)))]
+  (let [row    (merge create-defaults {:display_name (:name body)} body)
+        app-id (t2/with-transaction [_conn]
+                 (let [collection (data-app.resources/create-resource-collection! row)]
+                   (data-apps.apps/create-app! (with-bundle (assoc row :resource_collection_id (:id collection))))))
+        app    (data-apps.db/data-app app-id)]
     (events/publish-event! :event/data-app-create {:object app :user-id api/*current-user-id*})
     (data-app-response app)))
 

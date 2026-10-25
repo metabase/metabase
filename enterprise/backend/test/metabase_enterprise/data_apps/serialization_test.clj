@@ -19,9 +19,10 @@
 
 (defn- insert-app! [& {:as extra}]
   (t2/insert-returning-instance! :model/DataApp
-                                 (merge {:name          "sales-ops"
-                                         :display_name  "Sales Ops"
-                                         :bundle_path   "dist/index.js"
+                                 (merge {:name                   "sales-ops"
+                                         :display_name           "Sales Ops"
+                                         :resource_collection_id (data-apps.tu/app-collection-id!)
+                                         :bundle_path            "dist/index.js"
                                          :bundle        (.getBytes "console.log(1)" "UTF-8")
                                          :allowed_hosts ["https://api.example.com"]}
                                         extra)))

@@ -116,10 +116,12 @@
    [:resource_collection_id {:optional true} [:maybe ms/PositiveInt]]])
 
 (mr/def ::data-app.insert
-  "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, display name, and bundle path required."
+  "What an insert of a DataApp accepts: [[::data-app.update]] with its slug, display name, bundle path, and resource
+  collection required."
   [:merge
    ::data-app.update
    [:map
-    [:name         ::slug]
-    [:display_name ::display-name]
-    [:bundle_path  ::bundle-path]]])
+    [:name                   ::slug]
+    [:display_name           ::display-name]
+    [:bundle_path            ::bundle-path]
+    [:resource_collection_id ms/PositiveInt]]])

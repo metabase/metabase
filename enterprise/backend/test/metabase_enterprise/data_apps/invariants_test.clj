@@ -231,16 +231,10 @@
             (testing "a remote-synced one is fine, as remote sync marks an app's collection"
               (is (pos-int? (app! "synced" synced-id))))
             (testing "a top-level collection of data apps is fine"
-              (let [app-id (app! "accepted" root-id)]
-                (testing "but not for a second app"
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
-                                        (app! "second" root-id))))
-                (testing "an app whose collection is gone is given one the same way"
-                  (t2/query-one {:update :data_app :set {:resource_collection_id nil} :where [:= :id app-id]})
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"must be a top-level collection of data apps"
-                                        (t2/update! :model/DataApp app-id {:resource_collection_id default-id})))
-                  (t2/update! :model/DataApp app-id {:resource_collection_id root-id})
-                  (is (= root-id (t2/select-one-fn :resource_collection_id :model/DataApp :id app-id))))))))))))
+              (is (pos-int? (app! "accepted" root-id)))
+              (testing "but not for a second app"
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"already belongs to another data app"
+                                      (app! "second" root-id)))))))))))
 
 (deftest content-of-data-apps-namespace-is-checked-before-its-app-loads-test
   (testing "a load may write a collection's content before the app that owns it, so the namespace decides"

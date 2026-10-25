@@ -5,7 +5,6 @@
    [metabase-enterprise.data-apps.apps :as data-apps.apps]
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.group-access :as group-access]
-   [metabase-enterprise.data-apps.resources :as data-app.resources]
    [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
@@ -20,7 +19,7 @@
 ;;; ---------------------------------------------- Helpers ----------------------------------------------
 
 (defn- create-app! []
-  (t2/insert! :model/DataApp
+  (t2/insert! :model/DataApp :resource_collection_id (data-apps.tu/app-collection-id!)
               :name         "demo"
               :display_name "Demo"
               :bundle_path  "index.js"
@@ -122,9 +121,10 @@
         (mt/with-non-admin-groups-no-root-collection-perms
           (let [{:keys [resource_collection_id] :as app}
                 (first (t2/insert-returning-instances! :model/DataApp
-                                                       {:name         "action-perms-app"
-                                                        :display_name "Action perms app"
-                                                        :bundle_path  "data_apps/action-perms-app/index.js"}))
+                                                       {:name                   "action-perms-app"
+                                                        :display_name           "Action perms app"
+                                                        :bundle_path            "data_apps/action-perms-app/index.js"
+                                                        :resource_collection_id (data-apps.tu/app-collection-id!)}))
                 permission_group_id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Action readers"}))
                 _ (group-access/add-groups! app [permission_group_id])]
             (perms/add-user-to-group! (mt/user->id :rasta) permission_group_id)
@@ -151,9 +151,9 @@
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-        (t2/insert! :model/DataApp :name "old" :display_name "Old" :bundle_path "data_apps/old/index.js"
+        (t2/insert! :model/DataApp :resource_collection_id (data-apps.tu/app-collection-id!) :name "old" :display_name "Old" :bundle_path "data_apps/old/index.js"
                     :bundle (.getBytes "BUNDLE" "UTF-8") :version 1)
-        (t2/insert! :model/DataApp :name "current" :display_name "Current" :bundle_path "data_apps/current/index.js"
+        (t2/insert! :model/DataApp :resource_collection_id (data-apps.tu/app-collection-id!) :name "current" :display_name "Current" :bundle_path "data_apps/current/index.js"
                     :bundle (.getBytes "BUNDLE" "UTF-8") :version 2)
         (let [group-id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Data app test group"}))]
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
@@ -193,14 +193,12 @@
 (deftest bundle-includes-allowed-hosts-header-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (t2/insert! :model/DataApp
+      (t2/insert! :model/DataApp :resource_collection_id (data-apps.tu/app-collection-id!)
                   :name          "demo"
                   :display_name  "Demo"
                   :bundle_path   "data_apps/demo/index.js"
                   :bundle        (.getBytes "BUNDLE" "UTF-8")
                   :allowed_hosts ["https://api.example.com"])
-      ;; publish the app so its bundle is served (crowberto, as a superuser, can read the collection)
-      (data-app.resources/ensure-resources! (t2/select-one :model/DataApp :name "demo"))
       (testing "the bundle response includes only the app's configured allowed hosts"
         (let [resp (mt/user-http-request-full-response :crowberto :get 200 "ee/apps/demo/bundle")]
           (is (= (json/encode ["https://api.example.com"])
@@ -209,12 +207,12 @@
 (deftest list-includes-allowed-hosts-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (t2/insert! :model/DataApp
+      (t2/insert! :model/DataApp :resource_collection_id (data-apps.tu/app-collection-id!)
                   :name "withhosts" :display_name "With"
                   :bundle_path "data_apps/withhosts/index.js"
                   :allowed_hosts ["https://api.example.com"])
       ;; inserted without the column → stored NULL, exercising the read coercion
-      (t2/insert! :model/DataApp
+      (t2/insert! :model/DataApp :resource_collection_id (data-apps.tu/app-collection-id!)
                   :name "nohosts" :display_name "No"
                   :bundle_path "data_apps/nohosts/index.js")
       (testing "the list endpoint returns allowed_hosts, always a list (NULL → [])"

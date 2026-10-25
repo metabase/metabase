@@ -23,11 +23,11 @@
   (is (= {:enabled false} (normalize ::data-apps.schema/data-app.update {:enabled false}))))
 
 (deftest data-app-insert-requires-the-manifest-columns-test
-  (is (valid? ::data-apps.schema/data-app.insert {:name "a" :display_name "A" :bundle_path "i.js"}))
-  (doseq [k [:name :display_name :bundle_path]]
-    (is (not (valid? ::data-apps.schema/data-app.insert
-                     (dissoc {:name "a" :display_name "A" :bundle_path "i.js"} k)))
-        (str "should require " k))))
+  (let [row {:name "a" :display_name "A" :bundle_path "i.js" :resource_collection_id 1}]
+    (is (valid? ::data-apps.schema/data-app.insert row))
+    (doseq [k [:name :display_name :bundle_path :resource_collection_id]]
+      (is (not (valid? ::data-apps.schema/data-app.insert (dissoc row k)))
+          (str "should require " k)))))
 
 (deftest version-test
   (testing "nil means 1: every app predates the field"

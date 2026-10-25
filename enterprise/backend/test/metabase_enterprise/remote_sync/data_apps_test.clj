@@ -105,6 +105,13 @@
         (is (= "v1" (remote-sync.task/last-version)))
         (is (= "BUNDLE-V2" (bundle-text "sales")))))))
 
+(deftest created-app-collection-is-tracked-test
+  (testing "the API creates an app's collection the way any collection is created, so remote sync tracks it"
+    (with-data-apps-sync
+      (let [{:keys [resource_collection_id]} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "sales"})]
+        (is (=? {:model_type "Collection" :status "create" :model_name "Data App: sales"}
+                (t2/select-one :model/RemoteSyncObject :model_type "Collection" :model_id resource_collection_id)))))))
+
 (deftest export-writes-and-removes-data-app-files-test
   (with-data-apps-sync
     (let [mock (test-helpers/create-mock-source :initial-files {"main" {}})

@@ -1246,24 +1246,6 @@
              (is (empty? (data-app-deps app-id)))
              (is (not (t2/exists? :model/DependencyStatus :entity_type :data-app :entity_id app-id))))))))))
 
-(deftest ^:synchronized data-app-given-a-collection-depends-on-its-cards-test
-  (testing "an app that lost its collection, given one that already holds a card, depends on that card"
-    (data-apps.tu/with-published-tables! [(mt/id :venues)]
-      (deps.test/run-with-dependencies-setup!
-       (fn [mp]
-         (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
-                        {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
-                        :model/Collection {given-collection-id :id} {:namespace "data-apps"}
-                        :model/Card {card-id :id} {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                                                   :collection_id given-collection-id}]
-           (t2/delete! :model/Collection collection-id)
-           (deps.test/synchronously-run-dependency-job!)
-           (is (empty? (data-app-deps app-id)))
-           (t2/update! :model/DataApp app-id {:resource_collection_id given-collection-id})
-           (assert-pending :data-app app-id)
-           (deps.test/synchronously-run-dependency-job!)
-           (is (= #{[:card card-id]} (data-app-deps app-id)))))))))
-
 (deftest ^:synchronized data-app-dependency-job-skips-the-bundle-test
   (testing "the dependency job computes an app's dependencies without reading its bundle"
     (deps.test/run-with-dependencies-setup!

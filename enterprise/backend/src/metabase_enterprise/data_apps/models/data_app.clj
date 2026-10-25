@@ -93,24 +93,15 @@
 
 (t2/define-before-insert :model/DataApp
   [data-app]
-  ;; Every app owns a resource collection from its first moment: one it is given (an import names the collection
-  ;; its manifest references) or one created here, so the column is never null.
-  (let [row (prepare ::data-apps.schema/data-app.insert data-app)]
-    (some-> (:resource_collection_id row) (check-resource-collection nil))
-    (cond-> row
-      (nil? (:resource_collection_id row))
-      (assoc :resource_collection_id (:id (data-app.resources/create-resource-collection! row))))))
+  (u/prog1 (prepare ::data-apps.schema/data-app.insert data-app)
+    (check-resource-collection (:resource_collection_id <>) nil)))
 
 (t2/define-before-update :model/DataApp
   [data-app]
   (let [changes (t2/changes data-app)]
-    ;; A missing collection (the column is nullable, so the row survives its collection's deletion) may be set
-    ;; again; one the app has is never replaced or cleared.
-    (when (and (contains? changes :resource_collection_id)
-               (some? (:resource_collection_id (t2/original data-app))))
+    (when (contains? changes :resource_collection_id)
       (throw (ex-info (tru "A data app''s resource collection cannot be changed.")
                       {:status-code 400, :data-app-id (:id data-app)})))
-    (some-> (:resource_collection_id changes) (check-resource-collection (:id data-app)))
     (merge data-app (some->> changes (prepare ::data-apps.schema/data-app.update)))))
 
 ;; Reads always see `allowed_hosts` as a vector, never nil — a row synced before
@@ -142,7 +133,8 @@
 
 (t2/define-after-insert :model/DataApp
   [app]
-  (merge app (data-app.resources/ensure-resources! app)))
+  (u/prog1 app
+    (data-app.resources/rename-resource-collection! app)))
 
 (t2/define-after-update :model/DataApp
   [app]
@@ -243,10 +235,7 @@
     (throw (ex-info (tru "A data app named \"{0}\" already exists on this instance. Delete it, or give the app in the repository another slug."
                          (:slug ingested))
                     {:status-code 400})))
-  (let [app (serdes/default-load-one! ingested maybe-local)]
-    (when maybe-local
-      (data-app.resources/ensure-resources! app))
-    app))
+  (serdes/default-load-one! ingested maybe-local))
 
 (defenterprise data-app-collection-ids
   "The resource collections of the data apps, which hold the copies an app runs."

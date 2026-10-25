@@ -475,6 +475,19 @@
                       (memoize/memo-clear! @#'collection/user->personal-collection-id))))))
  ::evict-personal-collection-cache)
 
+;; A data app is inserted with the collection its API handler or its import made, so a temporary one gets a new
+;; collection of data apps unless it names one. Deleting the app deletes its collection.
+(methodical/defmethod t2.with-temp/do-with-temp* :around :model/DataApp
+  [model explicit-attributes f]
+  (next-method model
+               (cond-> explicit-attributes
+                 (not (contains? explicit-attributes :resource_collection_id))
+                 (assoc :resource_collection_id (t2/insert-returning-pk! :model/Collection
+                                                                         {:name      (u.random/random-name)
+                                                                          :namespace "data-apps"
+                                                                          :location  "/"})))
+               f))
+
 (def ^:private dimension-lock
   "Serialises temporary Dimensions against each other.
 
