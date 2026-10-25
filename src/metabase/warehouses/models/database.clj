@@ -487,6 +487,12 @@
           (when (driver.impl/registered? engine)
             (driver.u/validate-connection-parameters! engine details)))))))
 
+(defenterprise router-mode
+  "OSS implementation. Database routing modes are an enterprise feature, so there is none."
+  metabase-enterprise.database-routing.models
+  [_database-id]
+  nil)
+
 (defn- routing-restriction-messages
   [destination?]
   (if destination?
@@ -517,7 +523,9 @@
                         :actions [:settings :database-enable-actions]
                         :editing [:settings :database-enable-table-editing]})]
     (when (and (seq enabled)
-               (or router_database_id (warehouses.db/destination-database-exists? id)))
+               (or router_database_id
+                   (some? (router-mode id))
+                   (warehouses.db/destination-database-exists? id)))
       (throw (ex-info (get (routing-restriction-messages (some? router_database_id)) (first enabled))
                       {:status-code 400})))))
 
@@ -831,3 +839,15 @@
   "Batch hydrate `Tables` for the given `Database`."
   [_model k databases]
   (hydrate-router-user-attribute k databases))
+
+(defenterprise hydrate-router-mode
+  "OSS implementation. Hydrates the database routing mode on the databases."
+  metabase-enterprise.database-routing.models
+  [_k databases]
+  (for [database databases]
+    (assoc database :router_mode nil)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Database :router_mode]
+  "Batch hydrate the database routing mode of the given Databases."
+  [_model k databases]
+  (hydrate-router-mode k databases))

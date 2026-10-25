@@ -71,11 +71,22 @@
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/select-fn->fn :database_id :user_attribute :model/DatabaseRouter :database_id [:in database-ids]))
 
+(mu/defn router-mode :- [:maybe ::database-routing.schema/mode]
+  "The mode of the router of the Database with `database-id`, or nil when it isn't a router."
+  [database-id :- ::lib.schema.id/database]
+  (t2/select-one-fn :mode :model/DatabaseRouter :database_id database-id))
+
+(mu/defn router-modes-by-database
+  "A map of Database ID to routing mode for `database-ids`."
+  [database-ids :- [:sequential ::lib.schema.id/database]]
+  (t2/select-fn->fn :database_id :mode :model/DatabaseRouter :database_id [:in database-ids]))
+
 (mu/defn insert-router!
   "Insert a DatabaseRouter for the Database with `database-id`."
   [router :- [:map {:closed true}
               [:database_id    ::lib.schema.id/database]
-              [:user_attribute :string]]]
+              [:user_attribute :string]
+              [:mode           {:optional true} ::database-routing.schema/mode]]]
   (t2/insert! :model/DatabaseRouter router))
 
 (mu/defn update-router!
@@ -83,6 +94,11 @@
   [database-id :- ::lib.schema.id/database
    changes     :- ::database-routing.schema/database-router.update]
   (t2/update! :model/DatabaseRouter :database_id database-id changes))
+
+(mu/defn delete-destination-databases!
+  "Delete every destination Database of the router with `router-database-id`."
+  [router-database-id :- ::lib.schema.id/database]
+  (t2/delete! :model/Database :router_database_id router-database-id))
 
 (mu/defn delete-router!
   "Delete the DatabaseRouter of the Database with `database-id`."

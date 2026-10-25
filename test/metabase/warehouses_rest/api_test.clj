@@ -98,7 +98,8 @@
      :settings              {}
      :features              (map u/qualified-name (driver.u/features driver db))
      :initial_sync_status   "complete"
-     :router_user_attribute nil})))
+     :router_user_attribute nil
+     :router_mode           nil})))
 
 (defn- table-details [table]
   (-> (merge (mt/obj->json->obj (mt/object-defaults :model/Table))
@@ -906,7 +907,7 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute :router_mode)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -1235,7 +1236,7 @@
   (testing "GET /api/database"
     (testing "Test that we can get all the DBs (ordered by name, then driver)"
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
+        (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :router_mode :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
                                 (disj :details :write_data_details :admin_details :initial_sync_error))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]

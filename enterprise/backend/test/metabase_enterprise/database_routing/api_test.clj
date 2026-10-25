@@ -323,3 +323,16 @@
                    (mt/user-http-request :rasta :delete 403 (str "database/" dest)))))
           (is (t2/exists? :model/Database :id regular-db-id))
           (is (t2/exists? :model/Database :id dest)))))))
+
+(def ^:private router-details
+  {:host "pg.example.com" :port 5432 :dbname "shared" :user "admin"})
+
+(deftest changing-the-router-mode-deletes-its-destinations-test
+  (mt/with-temp [:model/Database {router-id :id} {:engine :postgres :details router-details}
+                 :model/DatabaseRouter _ {:database_id router-id :user_attribute "tenant"}
+                 :model/Database _ {:engine :postgres :router_database_id router-id :details router-details}]
+    (is (= "external" (t2/select-one-fn :mode :model/DatabaseRouter :database_id router-id)))
+    (mt/user-http-request :crowberto :put 200 (str "ee/database-routing/router-database/" router-id)
+                          {:user_attribute "tenant" :mode "internal"})
+    (is (= "internal" (t2/select-one-fn :mode :model/DatabaseRouter :database_id router-id)))
+    (is (not (t2/exists? :model/Database :router_database_id router-id)))))

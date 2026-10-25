@@ -46,13 +46,15 @@
 
 (t2/define-before-insert :model/DatabaseRouter
   [router]
-  (u/prog1 router
+  (u/prog1 (merge {:mode "external"} router)
     (check-router! <>)))
 
 (t2/define-before-update :model/DatabaseRouter
   [router]
-  (u/prog1 router
-    (check-router! <>)))
+  (check-router! router)
+  (when (contains? (t2/changes router) :mode)
+    (database-routing.db/delete-destination-databases! (:database_id router)))
+  router)
 
 (defenterprise hydrate-router-user-attribute
   "Enterprise implementation. Hydrates the router user attribute on the databases"
@@ -63,6 +65,24 @@
    (fn [] (database-routing.db/router-user-attributes-by-database (map :id databases)))
    :id
    {:default nil}))
+
+(defenterprise hydrate-router-mode
+  "Enterprise implementation. Hydrates the database routing mode on the databases."
+  :feature :database-routing
+  [k databases]
+  (mi/instances-with-hydrated-data
+   databases k
+   (fn [] (database-routing.db/router-modes-by-database (map :id databases)))
+   :id
+   {:default nil}))
+
+(defenterprise router-mode
+  "Enterprise implementation. Returns the mode of the router of the Database with `database-id`, or nil when it isn't
+  a router. Uses `:feature :none` so a router keeps its restrictions while the `:database-routing` feature is
+  unavailable."
+  :feature :none
+  [database-id]
+  (database-routing.db/router-mode database-id))
 
 (defenterprise hash-input-for-database-routing
   "Enterprise version. Returns a hash input that will be used for fields subject to database routing.
