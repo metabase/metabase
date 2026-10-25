@@ -132,8 +132,7 @@ type: question
 
 (deftest serialization-deep-sort-test
   (testing "Sorting applies to all levels of nested data structures"
-    (is (= #{clojure.lang.MapEntry
-             java.lang.Boolean
+    (is (= #{java.lang.Boolean
              clojure.lang.PersistentVector
              clojure.lang.PersistentTreeMap                 ; Sorted maps, not unsorted maps
              java.lang.String
@@ -149,7 +148,6 @@ type: question
              [:Card :dataset_query :stages :filters]))))
     (is (= #{nil
              java.lang.Long
-             clojure.lang.MapEntry
              java.lang.Boolean
              clojure.lang.PersistentVector
              clojure.lang.PersistentTreeMap                 ; Sorted maps, not unsorted maps
