@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { EmptyState } from "metabase/common/components/EmptyState";
@@ -26,8 +26,8 @@ export type PermissionsEditorContentProps<
     "onChange" | "onSelect" | "onAction"
   > & {
     onBreadcrumbsItemSelect?: (item: PermissionEditorBreadcrumb) => void;
-    postHeaderContent?: React.FC;
-    preHeaderContent?: React.FC;
+    postHeaderContent?: ReactNode;
+    preHeaderContent?: ReactNode;
   };
 
 export function PermissionsEditorContent<
@@ -43,8 +43,8 @@ export function PermissionsEditorContent<
   onChange,
   onSelect,
   onAction,
-  postHeaderContent: PostHeaderContent = () => null,
-  preHeaderContent: PreHeaderContent = () => null,
+  postHeaderContent,
+  preHeaderContent,
 }: PermissionsEditorContentProps<TSection>) {
   const [filter, setFilter] = useState("");
   //this needs to be state to trigger a rerender when it's set
@@ -71,7 +71,7 @@ export function PermissionsEditorContent<
 
   return (
     <Flex direction="column" pl="xxl" h="100%" data-testid="permissions-editor">
-      <PreHeaderContent />
+      {preHeaderContent}
       <Subhead data-testid="permissions-editor-breadcrumbs">
         {title}{" "}
         {breadcrumbs && onBreadcrumbsItemSelect && (
@@ -84,7 +84,7 @@ export function PermissionsEditorContent<
 
       {description && <Text lh="normal">{description}</Text>}
 
-      <PostHeaderContent />
+      {postHeaderContent}
 
       <TextInput
         mt="lg"

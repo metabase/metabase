@@ -1,4 +1,3 @@
-import { combineReducers } from "@reduxjs/toolkit";
 import userEvent from "@testing-library/user-event";
 
 import {
@@ -21,7 +20,6 @@ import {
 } from "metabase/permissions";
 import { Route, useLocation, useParams } from "metabase/router";
 import { ImpersonationModal } from "metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModal";
-import { shared } from "metabase-enterprise/shared/reducer";
 import {
   createMockDatabase,
   createMockImpersonation,
@@ -99,11 +97,6 @@ const setup = async ({
     {
       initialRoute: `database/${databaseId}/impersonated/group/${groupId}`,
       withRouter: true,
-      customReducers: {
-        plugins: combineReducers({
-          shared: shared.reducer,
-        }),
-      },
     },
   );
 

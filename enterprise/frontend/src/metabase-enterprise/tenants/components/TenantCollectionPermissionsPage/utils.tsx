@@ -38,8 +38,8 @@ export const tenantCollectionsQuery = {
 } as const;
 
 export const getTenantCollectionsSidebar = (
-  collections: Collection[],
   selectedId: CollectionId | undefined,
+  collections: Collection[],
 ): CollectionSidebarType => ({
   selectedId,
   title: t`Shared collections`,

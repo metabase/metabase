@@ -18,10 +18,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 import { DataPermissionValue } from "metabase-types/api";
 
 import { ImpersonationModal } from "./components/ImpersonationModal";
-import {
-  getImpersonatedPostAction,
-  removeChangedImpersonationDrafts,
-} from "./drafts";
+import { removeChangedImpersonationDrafts } from "./drafts";
 import {
   shouldRestrictNativeQueryPermissions,
   upgradeViewPermissionsIfNeeded,
@@ -121,7 +118,8 @@ export function initializePlugin() {
 
     PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS[
       DataPermissionValue.IMPERSONATED
-    ] = getImpersonatedPostAction;
+    ] = (entityId, groupId, view) =>
+      navigate(getEditImpersonationUrl(entityId, groupId, view));
 
     PLUGIN_DATA_PERMISSIONS.pruneDrafts.push(removeChangedImpersonationDrafts);
 

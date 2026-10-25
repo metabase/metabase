@@ -1,5 +1,3 @@
-import { useListPermissionsGroupsQuery } from "metabase/api";
-import { getErrorMessage } from "metabase/api/utils/errors";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import {
   DataPermissionsHelp,
@@ -17,6 +15,7 @@ import { PermissionsPageLayout } from "../../components/PermissionsPageLayout";
 
 export function DataPermissionsPage() {
   const params = useParams<{ groupId: string; databaseId: string }>();
+  const { databaseId } = parseDataRouteParams(params);
   const { pathname } = useLocation();
   const view = pathname.startsWith(getDatabasesBasePath())
     ? "database"
@@ -26,11 +25,9 @@ export function DataPermissionsPage() {
     <DataPermissionsProvider
       view={view}
       groupId={parseGroupRouteParams(params).groupId}
-      databaseId={parseDataRouteParams(params).databaseId}
+      databaseId={databaseId}
     >
-      <DataPermissionsPageContent
-        databaseId={parseDataRouteParams(params).databaseId}
-      />
+      <DataPermissionsPageContent databaseId={databaseId} />
     </DataPermissionsProvider>
   );
 }
@@ -42,13 +39,11 @@ type DataPermissionsPageContentProps = {
 function DataPermissionsPageContent({
   databaseId,
 }: DataPermissionsPageContentProps) {
-  const { isLoading: isLoadingGroups, error: groupsError } =
-    useListPermissionsGroupsQuery({});
   const {
     diff,
     isDirty,
     isLoading: isLoadingGraphs,
-    error: graphError,
+    error,
     hasRevisionChanged,
     saveError,
     savePermissions,
@@ -57,10 +52,7 @@ function DataPermissionsPageContent({
   } = useDataPermissions();
   const { isLoading: isLoadingDatabase } = usePermissionsDatabase(databaseId);
 
-  const error =
-    (groupsError != null ? getErrorMessage(groupsError) : undefined) ??
-    graphError;
-  const isLoading = isLoadingGroups || isLoadingGraphs || isLoadingDatabase;
+  const isLoading = isLoadingGraphs || isLoadingDatabase;
 
   return (
     <PermissionsPageLayout

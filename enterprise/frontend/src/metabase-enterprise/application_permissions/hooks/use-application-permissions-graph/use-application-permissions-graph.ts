@@ -27,9 +27,12 @@ const updateApplicationPermissions = (
 ): ApplicationPermissions => assocIn(permissions, [groupId, permission], value);
 
 export function useApplicationPermissionsGraph() {
-  const { data: graph } = useGetApplicationPermissionsGraphQuery(undefined, {
-    refetchOnMountOrArgChange: true,
-  });
+  const { data: graph, isFetching } = useGetApplicationPermissionsGraphQuery(
+    undefined,
+    {
+      refetchOnMountOrArgChange: true,
+    },
+  );
   const [updateGraph, { error, reset }] =
     useUpdateApplicationPermissionsGraphMutation();
   const { permissions, isDirty, addEdit, clearEdits } = usePermissionEdits(
@@ -60,6 +63,7 @@ export function useApplicationPermissionsGraph() {
   return {
     permissions,
     isDirty,
+    isFetching,
     saveError: error ? getErrorMessage(error) : null,
     updateApplicationPermission: addEdit,
     savePermissions,

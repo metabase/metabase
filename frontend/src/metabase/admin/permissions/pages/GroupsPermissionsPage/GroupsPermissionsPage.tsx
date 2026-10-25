@@ -37,13 +37,8 @@ export function GroupsPermissionsPage() {
   const navigate = useNavigate();
   const params = useParams<RawGroupRouteParams>();
   const groupRouteParams = useMemo(
-    () =>
-      parseGroupRouteParams({
-        groupId: params.groupId,
-        databaseId: params.databaseId,
-        schemaName: params.schemaName,
-      }),
-    [params.groupId, params.databaseId, params.schemaName],
+    () => parseGroupRouteParams(params),
+    [params],
   );
   const { data: groups } = useListPermissionsGroupsQuery({});
   const {
@@ -183,18 +178,14 @@ export function GroupsPermissionsPage() {
           onChange={handlePermissionChange}
           onAction={handleAction}
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
-          preHeaderContent={() => (
-            <>
-              {showSplitPermsMessage && <PermissionsEditorSplitPermsMessage />}
-            </>
-          )}
-          postHeaderContent={() => (
-            <>
-              {showLegacyNoSelfServiceWarning && (
-                <PermissionsEditorLegacyNoSelfServiceWarning />
-              )}
-            </>
-          )}
+          preHeaderContent={
+            showSplitPermsMessage && <PermissionsEditorSplitPermsMessage />
+          }
+          postHeaderContent={
+            showLegacyNoSelfServiceWarning && (
+              <PermissionsEditorLegacyNoSelfServiceWarning />
+            )
+          }
         />
       )}
 

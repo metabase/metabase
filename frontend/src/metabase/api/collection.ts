@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import type {
   Collection,
   CollectionItemModel,
@@ -136,23 +134,6 @@ export const collectionApi = Api.injectEndpoints({
       }),
       invalidatesTags: (_, error) =>
         invalidateTags(error, [listTag("collection-permissions-graph")]),
-      async onQueryStarted(
-        { namespace, groups },
-        { dispatch, queryFulfilled },
-      ) {
-        await queryFulfilled.then(({ data }) => {
-          dispatch(
-            collectionApi.util.updateQueryData(
-              "getCollectionPermissionsGraph",
-              namespace != null ? { namespace } : undefined,
-              (graph) => {
-                graph.revision = data.revision;
-                Object.assign(graph.groups, groups);
-              },
-            ),
-          );
-        }, _.noop);
-      },
     }),
     createCollection: builder.mutation<Collection, CreateCollectionRequest>({
       query: (body) => ({

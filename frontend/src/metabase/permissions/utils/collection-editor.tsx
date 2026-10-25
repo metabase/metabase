@@ -110,8 +110,8 @@ export type CollectionSidebarType = {
 };
 
 export const getCollectionsSidebar = (
-  collections: Collection[],
   selectedId: CollectionId | undefined,
+  collections: Collection[],
 ): CollectionSidebarType => ({
   selectedId,
   title: t`Collections`,

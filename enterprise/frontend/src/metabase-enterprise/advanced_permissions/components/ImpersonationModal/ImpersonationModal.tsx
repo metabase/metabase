@@ -1,11 +1,13 @@
 import { useCallback } from "react";
-import { useMount } from "react-use";
 
-import { skipToken, useGetDatabaseQuery } from "metabase/api";
+import {
+  skipToken,
+  useGetDatabaseQuery,
+  useListUserAttributesQuery,
+} from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
 import { useDataPermissions } from "metabase/permissions";
-import { useDispatch } from "metabase/redux";
 import { parseIntParam } from "metabase/urls";
 import {
   getImpersonationDraft,
@@ -17,9 +19,6 @@ import type {
 } from "metabase-enterprise/advanced_permissions/types";
 import { getImpersonatedDatabaseId } from "metabase-enterprise/advanced_permissions/utils";
 import { useGetImpersonationQuery } from "metabase-enterprise/api";
-import { useEnterpriseSelector } from "metabase-enterprise/redux";
-import { fetchUserAttributes } from "metabase-enterprise/shared/reducer";
-import { getUserAttributes } from "metabase-enterprise/shared/selectors";
 import {
   DataPermission,
   DataPermissionType,
@@ -53,7 +52,7 @@ export const ImpersonationModal = ({
     error,
   } = useGetDatabaseQuery(databaseId != null ? { id: databaseId } : skipToken);
 
-  const attributes = useEnterpriseSelector(getUserAttributes);
+  const { data: attributes } = useListUserAttributesQuery();
   const { drafts, updateDrafts, updateDataPermission } = useDataPermissions();
   const draftImpersonation = getImpersonationDraft(drafts, databaseId, groupId);
 
@@ -68,8 +67,6 @@ export const ImpersonationModal = ({
 
   const selectedAttribute =
     draftImpersonation?.attribute ?? impersonation?.attribute;
-
-  const dispatch = useDispatch();
 
   const handleSave = useCallback(
     (attribute: UserAttributeKey) => {
@@ -105,10 +102,6 @@ export const ImpersonationModal = ({
       updateDrafts,
     ],
   );
-
-  useMount(() => {
-    dispatch(fetchUserAttributes());
-  });
 
   const isLoading =
     isDatabaseLoading || isImpersonationLoading || !attributes || !database;

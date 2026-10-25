@@ -13,7 +13,7 @@ import { usePermissionEdits } from "../use-permission-edits";
 import { updateCollectionPermissions } from "./utils";
 
 export function useCollectionPermissionsGraph(namespace?: CollectionNamespace) {
-  const { data: graph } = useGetCollectionPermissionsGraphQuery(
+  const { data: graph, isFetching } = useGetCollectionPermissionsGraphQuery(
     namespace != null ? { namespace } : undefined,
     { refetchOnMountOrArgChange: true },
   );
@@ -51,6 +51,7 @@ export function useCollectionPermissionsGraph(namespace?: CollectionNamespace) {
   return {
     permissions,
     isDirty,
+    isFetching,
     saveError: error ? getErrorMessage(error) : null,
     updateCollectionPermission: addEdit,
     savePermissions,

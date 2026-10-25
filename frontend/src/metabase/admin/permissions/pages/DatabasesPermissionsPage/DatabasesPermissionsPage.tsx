@@ -38,15 +38,7 @@ import { PermissionsEditorSplitPermsMessage } from "../../components/Permissions
 export function DatabasesPermissionsPage() {
   const navigate = useNavigate();
   const params = useParams<RawDataRouteParams>();
-  const dataRouteParams = useMemo(
-    () =>
-      parseDataRouteParams({
-        databaseId: params.databaseId,
-        schemaName: params.schemaName,
-        tableId: params.tableId,
-      }),
-    [params.databaseId, params.schemaName, params.tableId],
-  );
+  const dataRouteParams = useMemo(() => parseDataRouteParams(params), [params]);
   const { data: groups } = useListPermissionsGroupsQuery({});
   const {
     permissions,
@@ -177,18 +169,14 @@ export function DatabasesPermissionsPage() {
           onBreadcrumbsItemSelect={handleBreadcrumbsItemSelect}
           onChange={handlePermissionChange}
           onAction={handleAction}
-          preHeaderContent={() => (
-            <>
-              {showSplitPermsMessage && <PermissionsEditorSplitPermsMessage />}
-            </>
-          )}
-          postHeaderContent={() => (
-            <>
-              {showLegacyNoSelfServiceWarning && (
-                <PermissionsEditorLegacyNoSelfServiceWarning />
-              )}
-            </>
-          )}
+          preHeaderContent={
+            showSplitPermsMessage && <PermissionsEditorSplitPermsMessage />
+          }
+          postHeaderContent={
+            showLegacyNoSelfServiceWarning && (
+              <PermissionsEditorLegacyNoSelfServiceWarning />
+            )
+          }
         />
       )}
 

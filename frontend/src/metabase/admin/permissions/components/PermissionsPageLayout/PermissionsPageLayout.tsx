@@ -34,13 +34,13 @@ type PermissionsPageLayoutProps = {
   children: ReactNode;
   tab: PermissionsPageTab;
   diff?: PermissionsGraphDiff;
-  isDirty?: boolean;
-  onSave?: () => void;
-  onCancel?: () => void;
-  saveError?: string | null;
-  onClearSaveError?: () => void;
+  isDirty: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+  saveError: string | null;
+  onClearSaveError: () => void;
   hasRevisionChanged?: boolean;
-  helpContent?: ReactNode;
+  helpContent: ReactNode;
   canShowSplitPermsModal?: boolean;
 };
 
@@ -77,8 +77,6 @@ export function PermissionsPageLayout({
   const navigateToTab = (tab: PermissionsPageTab) =>
     navigate(`${getPermissionsBasePath()}/${tab}`);
 
-  const handleClearSaveError = () => onClearSaveError?.();
-
   const handleDimissSplitPermsModal = () => {
     setIsSplitPermsModalDismissed(true);
     setShowModalSetting(false);
@@ -88,20 +86,15 @@ export function PermissionsPageLayout({
     <Flex className={CS.overflowHidden} h="100%">
       <Flex className={CS.overflowHidden} direction="column" flex={1}>
         {isDirty && (
-          <PermissionsEditBar
-            diff={diff}
-            isDirty={isDirty}
-            onSave={onSave}
-            onCancel={() => onCancel?.()}
-          />
+          <PermissionsEditBar diff={diff} onSave={onSave} onCancel={onCancel} />
         )}
 
-        <LeaveRouteConfirmModal isEnabled={Boolean(isDirty)} />
+        <LeaveRouteConfirmModal isEnabled={isDirty} />
 
         <ConfirmModal
           opened={saveError != null}
-          onClose={handleClearSaveError}
-          onConfirm={handleClearSaveError}
+          onClose={onClearSaveError}
+          onConfirm={onClearSaveError}
           title={t`There was an error saving`}
           message={saveError}
           confirmButtonText={t`OK`}
@@ -123,7 +116,7 @@ export function PermissionsPageLayout({
                 : "lg"
             }
           >
-            {helpContent && !isHelpReferenceOpen && (
+            {!isHelpReferenceOpen && (
               <ToolbarButton
                 text={t`Permissions help`}
                 icon="info"

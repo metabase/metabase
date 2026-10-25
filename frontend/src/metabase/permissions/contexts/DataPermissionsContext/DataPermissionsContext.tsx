@@ -99,7 +99,8 @@ export function DataPermissionsProvider({
     INITIAL_DATA_PERMISSIONS_STATE,
   );
 
-  const { data: groups } = useListPermissionsGroupsQuery({});
+  const groupsQuery = useListPermissionsGroupsQuery({});
+  const groups = groupsQuery.data;
   const allUsersGraph = useGetGroupPermissionsGraphQuery(
     groups?.find(isDefaultGroup)?.id ?? skipToken,
     REFETCH_OPTIONS,
@@ -231,8 +232,11 @@ export function DataPermissionsProvider({
     () => getIsDataPermissionsDirty({ edits, drafts }),
     [edits, drafts],
   );
-  const graphError =
-    allUsersGraph.error ?? administratorsGraph.error ?? routeGraph.error;
+  const loadError =
+    groupsQuery.error ??
+    allUsersGraph.error ??
+    administratorsGraph.error ??
+    routeGraph.error;
 
   const value = useMemo(
     () => ({
@@ -241,9 +245,12 @@ export function DataPermissionsProvider({
       diff,
       drafts,
       isDirty,
-      isLoading: allUsersGraph.isLoading || administratorsGraph.isLoading,
+      isLoading:
+        groupsQuery.isLoading ||
+        allUsersGraph.isLoading ||
+        administratorsGraph.isLoading,
       isFetching: routeGraph.isFetching,
-      error: graphError != null ? getErrorMessage(graphError) : undefined,
+      error: loadError != null ? getErrorMessage(loadError) : undefined,
       hasRevisionChanged:
         isDirty && revision != null && loadedRevision > revision,
       saveError:
@@ -260,10 +267,11 @@ export function DataPermissionsProvider({
       diff,
       drafts,
       isDirty,
+      groupsQuery.isLoading,
       allUsersGraph.isLoading,
       administratorsGraph.isLoading,
       routeGraph.isFetching,
-      graphError,
+      loadError,
       revision,
       loadedRevision,
       saveErrorPayload,

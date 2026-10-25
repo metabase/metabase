@@ -1,30 +1,13 @@
-import { getDatabasesBasePath, getGroupsBasePath } from "metabase/permissions";
 import type {
   AppliedDataPermissionUpdate,
-  DataPermissionView,
   DataPermissionsDrafts,
-  PermissionEntityId,
 } from "metabase/plugins";
-import { navigate } from "metabase/router";
 import {
   DataPermission,
   DataPermissionValue,
   type GroupId,
   type Impersonation,
 } from "metabase-types/api";
-
-export const getImpersonatedPostAction = (
-  entityId: PermissionEntityId,
-  groupId: GroupId,
-  view: DataPermissionView,
-) =>
-  view === "database"
-    ? navigate(
-        `${getDatabasesBasePath()}/${entityId.databaseId}/impersonated/group/${groupId}`,
-      )
-    : navigate(
-        `${getGroupsBasePath()}/${groupId}/impersonated/database/${entityId.databaseId}`,
-      );
 
 const isSameImpersonation = (a: Impersonation, b: Impersonation) =>
   a.db_id === b.db_id && a.group_id === b.group_id;

@@ -1,5 +1,4 @@
 import { CollectionPermissionsPageContent } from "metabase/admin/permissions/components/CollectionPermissionsPageContent";
-import type { Collection, CollectionId } from "metabase-types/api";
 
 import {
   getTenantSpecificCollectionEntity,
@@ -8,22 +7,14 @@ import {
   tenantSpecificCollectionsQuery,
 } from "./utils";
 
-const getSidebar = (
-  _collections: Collection[],
-  collectionId: CollectionId | undefined,
-) => getTenantSpecificCollectionsSidebar(collectionId);
-
-const getShouldPropagateToChildren = () => true;
-
 export function TenantSpecificCollectionPermissionsPage() {
   return (
     <CollectionPermissionsPageContent
       tab="tenant-specific-collections"
       collectionsQuery={tenantSpecificCollectionsQuery}
-      getSidebar={getSidebar}
+      getSidebar={getTenantSpecificCollectionsSidebar}
       getCollection={getTenantSpecificCollectionEntity}
       getPermissionEditor={getTenantSpecificCollectionsPermissionEditor}
-      getShouldPropagateToChildren={getShouldPropagateToChildren}
     />
   );
 }

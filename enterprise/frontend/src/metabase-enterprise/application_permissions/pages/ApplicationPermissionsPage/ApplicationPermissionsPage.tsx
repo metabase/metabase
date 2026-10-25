@@ -23,6 +23,7 @@ export function ApplicationPermissionsPage() {
   const {
     permissions,
     isDirty,
+    isFetching,
     saveError,
     updateApplicationPermission,
     savePermissions,
@@ -66,6 +67,7 @@ export function ApplicationPermissionsPage() {
       {permissionEditor && (
         <PermissionsEditor
           {...permissionEditor}
+          isLoading={isFetching}
           onChange={handlePermissionChange}
         />
       )}

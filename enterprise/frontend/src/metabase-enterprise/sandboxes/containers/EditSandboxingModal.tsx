@@ -50,16 +50,14 @@ const EditSandboxingModalContainer = ({
     error: attributesError,
   } = useListUserAttributesQuery();
 
-  const draftPolicy =
-    groupId != null && tableId != null
-      ? drafts.sandboxes[getPolicyKeyFromParams({ groupId, tableId })]
-      : undefined;
-
   if (groupId == null || tableId == null || databaseId == null) {
     return <LoadingAndErrorWrapper error={t`Invalid table id`} />;
   }
 
-  const policy = draftPolicy ?? fetchedPolicy ?? undefined;
+  const policy =
+    drafts.sandboxes[getPolicyKeyFromParams({ groupId, tableId })] ??
+    fetchedPolicy ??
+    undefined;
 
   const isLoading = isPoliciesLoading || isAttributesLoading;
   const error = policiesError || attributesError;
@@ -92,7 +90,7 @@ const EditSandboxingModalContainer = ({
   return (
     <EditSandboxingModal
       policy={policy}
-      attributes={attributes || []}
+      attributes={attributes}
       params={{ groupId, tableId }}
       onCancel={onClose}
       onSave={handleSave}

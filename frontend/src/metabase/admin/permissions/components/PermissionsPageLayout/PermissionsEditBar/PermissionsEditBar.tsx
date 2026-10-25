@@ -14,14 +14,12 @@ import S from "./PermissionsEditBar.module.css";
 
 interface PermissionsEditBarProps {
   diff?: PermissionsGraphDiff;
-  isDirty: boolean;
   onCancel: () => void;
-  onSave?: () => void;
+  onSave: () => void;
 }
 
 export function PermissionsEditBar({
   diff,
-  isDirty,
   onCancel,
   onSave,
 }: PermissionsEditBarProps) {
@@ -31,7 +29,6 @@ export function PermissionsEditBar({
     <Button
       key="save"
       onClick={openModal}
-      disabled={!isDirty}
       variant={isEmbeddingHub ? "filled" : "on-dark-primary"}
     >{t`Save changes`}</Button>
   );
@@ -59,7 +56,7 @@ export function PermissionsEditBar({
         opened={modelOpened}
         content={diff ? <PermissionsConfirm diff={diff} /> : null}
         onConfirm={() => {
-          onSave?.();
+          onSave();
           closeModal();
         }}
         onClose={closeModal}

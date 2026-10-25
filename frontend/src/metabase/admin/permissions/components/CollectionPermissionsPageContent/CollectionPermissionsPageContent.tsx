@@ -33,8 +33,8 @@ type CollectionPermissionsPageContentProps = {
   tab: ComponentProps<typeof PermissionsPageLayout>["tab"];
   collectionsQuery: ListCollectionsTreeRequest;
   getSidebar: (
-    collections: Collection[],
     collectionId: CollectionId | undefined,
+    collections: Collection[],
   ) => CollectionSidebarType;
   getCollection: (
     collections: Collection[],
@@ -68,6 +68,7 @@ export function CollectionPermissionsPageContent({
   const {
     permissions,
     isDirty,
+    isFetching,
     saveError,
     updateCollectionPermission,
     savePermissions,
@@ -76,7 +77,7 @@ export function CollectionPermissionsPageContent({
   } = useCollectionPermissionsGraph(collectionsQuery.namespace);
 
   const sidebar = useMemo(
-    () => getSidebar(collections ?? [], collectionId),
+    () => getSidebar(collectionId, collections ?? []),
     [collections, collectionId, getSidebar],
   );
   const collection = useMemo(
@@ -133,6 +134,7 @@ export function CollectionPermissionsPageContent({
         <PermissionsEditor
           key={collection?.id}
           {...permissionEditor}
+          isLoading={isFetching}
           onChange={handlePermissionChange}
         />
       ) : (
