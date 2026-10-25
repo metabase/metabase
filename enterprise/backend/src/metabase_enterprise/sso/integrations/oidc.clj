@@ -92,7 +92,6 @@
                                        session
                                        (t/zoned-date-time (t/zone-id "GMT")))
           base-response))
-      ;; provider messages may be deferred (UserLocalizedString), but ex-info needs a String
       (let [error-msg (str (or (:message login-result) (tru "OIDC authentication failed")))]
         (log/errorf "OIDC authentication failed for provider %s: %s" provider-key error-msg)
         (throw (ex-info error-msg {:status-code 401}))))))
