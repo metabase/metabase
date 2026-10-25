@@ -425,23 +425,15 @@ export function applyDataPermissionUpdate(
     database,
   }: AppliedDataPermissionUpdate,
 ): GroupsPermissions {
-  if (type === DataPermissionType.DETAILS) {
+  if (
+    type === DataPermissionType.DETAILS ||
+    type === DataPermissionType.TRANSFORMS
+  ) {
     return updatePermission(
       permissions,
       groupId,
       entityId.databaseId,
-      DataPermission.DETAILS,
-      [],
-      value,
-    );
-  }
-
-  if (type === DataPermissionType.TRANSFORMS) {
-    return updatePermission(
-      permissions,
-      groupId,
-      entityId.databaseId,
-      DataPermission.TRANSFORMS,
+      permission,
       [],
       value,
     );

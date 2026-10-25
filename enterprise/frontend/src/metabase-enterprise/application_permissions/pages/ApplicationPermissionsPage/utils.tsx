@@ -4,12 +4,12 @@ import _ from "underscore";
 import {
   getGroupNameLocalized,
   isAdminGroup,
+  isDefaultGroup,
 } from "metabase/common/utils/groups";
 import {
   Messages,
   type PermissionEditorType,
   type PermissionSectionBase,
-  getDefaultGroup,
   getDefaultGroupHasHigherAccessText,
   getOrderedGroups,
 } from "metabase/permissions";
@@ -93,7 +93,7 @@ export const getApplicationPermissionEditor = (
   permissions: ApplicationPermissions,
   groups: GroupInfo[],
 ): PermissionEditorType<ApplicationPermissionSection> | null => {
-  const defaultGroup = getDefaultGroup(groups);
+  const defaultGroup = groups.find(isDefaultGroup);
   if (!defaultGroup) {
     return null;
   }

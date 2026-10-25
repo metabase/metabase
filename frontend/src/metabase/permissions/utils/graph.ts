@@ -11,7 +11,6 @@ import {
   type TableEntityId,
 } from "metabase/plugins";
 import {
-  type ConcreteTableId,
   DataPermission,
   DataPermissionValue,
   type DatabasePermissions,
@@ -19,7 +18,7 @@ import {
   type GroupsPermissions,
 } from "metabase-types/api";
 
-import { isSchemaEntityId } from "./entity-ids";
+import { isSchemaEntityId, tableToTableEntityId } from "./entity-ids";
 import { getDatabaseSchema, getDatabaseSchemas } from "./metadata";
 
 export const isRestrictivePermission = (value: DataPermissionValue) =>
@@ -225,40 +224,24 @@ export function hasPermissionValueInSubgraph(
       : getDatabaseSchemas(database),
   );
 
-  if (schemasToSearch) {
-    const hasSchemaWithMatchingPermission = schemasToSearch.some((schema) => {
-      const currVal = getTablesPermission(
+  return schemasToSearch.some(
+    (schema) =>
+      getTablesPermission(
         permissions,
         groupId,
         { databaseId: entityId.databaseId, schemaName: schema.name },
         permission,
-      );
-      return value === currVal;
-    });
-
-    if (hasSchemaWithMatchingPermission) {
-      return true;
-    }
-  }
-
-  return schemasToSearch.some((schema) => {
-    return schema.tables.some((table) => {
-      return (
-        value ===
-        getFieldsPermission(
-          permissions,
-          groupId,
-          {
-            databaseId: entityId.databaseId,
-            schemaName: schema.name,
-            // A permission entity always names a real warehouse table, never a card.
-            tableId: table.id as ConcreteTableId,
-          },
-          permission,
-        )
-      );
-    });
-  });
+      ) === value ||
+      schema.tables.some(
+        (table) =>
+          getFieldsPermission(
+            permissions,
+            groupId,
+            { ...tableToTableEntityId(table), databaseId: entityId.databaseId },
+            permission,
+          ) === value,
+      ),
+  );
 }
 
 // return boolean if able to find if a value is present in all or a portion of the permissions graph

@@ -42,7 +42,7 @@ export {
 } from "./utils/data-editor";
 export { getDataFocusSidebar, getGroupsSidebar } from "./utils/data-sidebars";
 export type { DataTreeNodeItem } from "./utils/data-sidebars";
-export { getDefaultGroup, getOrderedGroups } from "./utils/groups";
+export { getOrderedGroups } from "./utils/groups";
 export {
   assertNumericId,
   parseDataRouteParams,

@@ -1,5 +1,3 @@
-import { useCallback } from "react";
-
 import {
   skipToken,
   useGetDatabaseQuery,
@@ -68,40 +66,30 @@ export const ImpersonationModal = ({
   const selectedAttribute =
     draftImpersonation?.attribute ?? impersonation?.attribute;
 
-  const handleSave = useCallback(
-    (attribute: UserAttributeKey) => {
-      updateDataPermission({
-        groupId,
-        permission: {
-          type: DataPermissionType.ACCESS,
-          permission: DataPermission.VIEW_DATA,
-        },
-        value: DataPermissionValue.IMPERSONATED,
-        entityId: { databaseId },
-        view: "group",
-      });
-
-      if (attribute !== selectedAttribute) {
-        updateDrafts(
-          setImpersonationDraft({
-            attribute,
-            db_id: databaseId,
-            group_id: groupId,
-          }),
-        );
-      }
-
-      onClose();
-    },
-    [
-      onClose,
-      databaseId,
+  const handleSave = (attribute: UserAttributeKey) => {
+    updateDataPermission({
       groupId,
-      selectedAttribute,
-      updateDataPermission,
-      updateDrafts,
-    ],
-  );
+      permission: {
+        type: DataPermissionType.ACCESS,
+        permission: DataPermission.VIEW_DATA,
+      },
+      value: DataPermissionValue.IMPERSONATED,
+      entityId: { databaseId },
+      view: "group",
+    });
+
+    if (attribute !== selectedAttribute) {
+      updateDrafts(
+        setImpersonationDraft({
+          attribute,
+          db_id: databaseId,
+          group_id: groupId,
+        }),
+      );
+    }
+
+    onClose();
+  };
 
   const isLoading =
     isDatabaseLoading || isImpersonationLoading || !attributes || !database;

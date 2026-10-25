@@ -20,6 +20,3 @@ export const getOrderedGroups = (groups: GroupInfo[]): GroupInfo[][] => {
     ..._.partition(unpinnedGroups, PLUGIN_TENANTS.isTenantGroup),
   ];
 };
-
-export const getDefaultGroup = (groups: GroupInfo[]) =>
-  groups.find(isDefaultGroup);

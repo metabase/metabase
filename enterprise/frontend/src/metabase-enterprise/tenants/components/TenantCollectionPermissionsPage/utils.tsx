@@ -119,8 +119,6 @@ export const getTenantCollectionsPermissionEditor = ({
         ? Messages.EXTERNAL_USERS_NO_ACCESS_COLLECTION
         : Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS;
 
-      const disabled = isAdmin;
-
       return {
         id: group.id,
         name: getGroupNameLocalized(group),
@@ -133,8 +131,8 @@ export const getTenantCollectionsPermissionEditor = ({
             type: DataPermissionType.COLLECTIONS,
             toggleLabel,
             hasChildren,
-            isDisabled: disabled,
-            disabledTooltip: disabled ? disabledTooltip : null,
+            isDisabled: isAdmin,
+            disabledTooltip: isAdmin ? disabledTooltip : null,
             value: getCollectionPermission(
               permissions,
               group.id,

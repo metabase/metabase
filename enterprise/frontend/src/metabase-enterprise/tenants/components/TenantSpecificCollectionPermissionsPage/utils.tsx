@@ -20,7 +20,6 @@ import {
   getRootPermissionsCollection,
 } from "metabase/permissions";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { isNotNull } from "metabase/utils/types";
 import type {
   Collection,
   CollectionId,
@@ -71,68 +70,60 @@ export const getTenantSpecificCollectionsPermissionEditor = ({
   const nonTenantGroups = groups.filter(
     (group) => !PLUGIN_TENANTS.isTenantGroup(group),
   );
+  const defaultGroup = _.find(nonTenantGroups, isDefaultGroup);
+  const defaultGroupPermission = defaultGroup
+    ? getCollectionPermission(permissions, defaultGroup.id, collection.id)
+    : "none";
 
-  const entities = nonTenantGroups
-    .map((group) => {
-      const isAdmin = isAdminGroup(group);
+  const entities = defaultGroup
+    ? nonTenantGroups.map((group) => {
+        const isAdmin = isAdminGroup(group);
 
-      const defaultGroup = _.find(nonTenantGroups, isDefaultGroup);
+        const confirmations = (newValue: DataPermissionValue) => [
+          getPermissionWarningModal(
+            newValue,
+            defaultGroupPermission,
+            null,
+            defaultGroup,
+            group.id,
+          ),
+        ];
 
-      const defaultGroupPermission = defaultGroup
-        ? getCollectionPermission(permissions, defaultGroup.id, collection.id)
-        : "none";
+        const options = [
+          COLLECTION_OPTIONS.write,
+          COLLECTION_OPTIONS.read,
+          COLLECTION_OPTIONS.none,
+        ];
 
-      if (!defaultGroup) {
-        return null;
-      }
-
-      const confirmations = (newValue: DataPermissionValue) => [
-        getPermissionWarningModal(
-          newValue,
-          defaultGroupPermission,
-          null,
-          defaultGroup,
-          group.id,
-        ),
-      ];
-
-      const options = [
-        COLLECTION_OPTIONS.write,
-        COLLECTION_OPTIONS.read,
-        COLLECTION_OPTIONS.none,
-      ];
-
-      const disabled = isAdmin;
-
-      return {
-        id: group.id,
-        name: getGroupNameLocalized(group),
-        permissions: [
-          {
-            permission: DataPermission.COLLECTIONS,
-            type: DataPermissionType.COLLECTIONS,
-            // Always show toggle as checked and disabled for tenant-specific collections
-            toggleLabel: t`Also change sub-collections`,
-            hasChildren: true,
-            toggleDisabled: true,
-            toggleDefaultValue: true,
-            isDisabled: disabled,
-            disabledTooltip: disabled
-              ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
-              : null,
-            value: getCollectionPermission(
-              permissions,
-              group.id,
-              collection.id,
-            ),
-            warning: getCollectionWarning(group.id, collection, permissions),
-            confirmations,
-            options,
-          },
-        ],
-      };
-    })
-    .filter(isNotNull);
+        return {
+          id: group.id,
+          name: getGroupNameLocalized(group),
+          permissions: [
+            {
+              permission: DataPermission.COLLECTIONS,
+              type: DataPermissionType.COLLECTIONS,
+              // Always show toggle as checked and disabled for tenant-specific collections
+              toggleLabel: t`Also change sub-collections`,
+              hasChildren: true,
+              toggleDisabled: true,
+              toggleDefaultValue: true,
+              isDisabled: isAdmin,
+              disabledTooltip: isAdmin
+                ? Messages.UNABLE_TO_CHANGE_ADMIN_PERMISSIONS
+                : null,
+              value: getCollectionPermission(
+                permissions,
+                group.id,
+                collection.id,
+              ),
+              warning: getCollectionWarning(group.id, collection, permissions),
+              confirmations,
+              options,
+            },
+          ],
+        };
+      })
+    : [];
 
   return {
     title: t`Permissions for ${collection.name}`,

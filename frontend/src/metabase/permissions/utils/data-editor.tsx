@@ -85,15 +85,14 @@ const getFilterPlaceholder = (
   }
 };
 
-const hasViewDataOptions = (entities: any[]) => {
-  return entities.some(
-    (entity) =>
-      entity.permissions?.findIndex(
-        (permissionSectionConfig: any) =>
-          permissionSectionConfig.permission === DataPermission.VIEW_DATA,
-      ) > -1,
+const hasViewDataOptions = (
+  entities: { permissions?: PermissionSectionConfig[] }[],
+) =>
+  entities.some((entity) =>
+    entity.permissions?.some(
+      (section) => section.permission === DataPermission.VIEW_DATA,
+    ),
   );
-};
 
 type EntityWithPermissions = {
   id: string | number;
@@ -114,18 +113,10 @@ export const getShouldShowTransformPermissions = ({
   tokenFeatures,
   isHosted,
   isTransformsEnabled,
-}: TransformPermissionsSettings) => {
-  if (getPlan(tokenFeatures) === "oss") {
-    return false;
-  }
-  if (!isHosted && tokenFeatures["transforms-basic"] && isTransformsEnabled) {
-    return true;
-  }
-  if (isHosted && tokenFeatures["transforms-basic"]) {
-    return true;
-  }
-  return false;
-};
+}: TransformPermissionsSettings) =>
+  getPlan(tokenFeatures) !== "oss" &&
+  tokenFeatures["transforms-basic"] &&
+  (isHosted || isTransformsEnabled);
 
 type DatabasesPermissionEditorOpts = {
   params: GroupRouteParams;
@@ -202,7 +193,8 @@ export const getDatabasesPermissionEditor = ({
         };
       });
   } else if (database && databaseId != null) {
-    const maybeDbEntities = schemas
+    permissionSubject = "tables";
+    entities = schemas
       .toSorted((a, b) => a.name.localeCompare(b.name))
       .map((schema) => {
         const entityId = getSchemaEntityId(schema);
@@ -223,11 +215,7 @@ export const getDatabasesPermissionEditor = ({
           }),
         };
       });
-    if (maybeDbEntities) {
-      permissionSubject = "tables";
-      entities = maybeDbEntities;
-    }
-  } else if (groupId != null) {
+  } else {
     permissionSubject = "schemas";
     entities = databases
       .filter((db) => !db.is_saved_questions)
@@ -280,7 +268,7 @@ export const getDatabasesPermissionEditor = ({
   const hasLegacyNoSelfServiceValueInPermissionGraph =
     hasPermissionValueInEntityGraphs(
       permissions,
-      entities.map((entity: any) => ({ groupId, ...entity.entityId })),
+      entities.map((entity) => ({ groupId, ...entity.entityId })),
       DataPermission.VIEW_DATA,
       DataPermissionValue.LEGACY_NO_SELF_SERVICE,
     );
@@ -433,10 +421,7 @@ export const getGroupsDataPermissionEditor = ({
   const hasLegacyNoSelfServiceValueInPermissionGraph =
     hasPermissionValueInEntityGraphs(
       permissions,
-      entities.map((entity: any) => ({
-        groupId: entity.id,
-        ...entity.entityId,
-      })),
+      entities.map((entity) => ({ groupId: entity.id, ...entity.entityId })),
       DataPermission.VIEW_DATA,
       DataPermissionValue.LEGACY_NO_SELF_SERVICE,
     );
