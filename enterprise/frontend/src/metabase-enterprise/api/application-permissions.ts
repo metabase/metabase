@@ -1,7 +1,9 @@
+import _ from "underscore";
+
 import type { ApplicationPermissionsGraph } from "metabase-types/api";
 
 import { EnterpriseApi } from "./api";
-import { invalidateTags, listTag } from "./tags";
+import { listTag } from "./tags";
 
 export const applicationPermissionsApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -24,8 +26,17 @@ export const applicationPermissionsApi = EnterpriseApi.injectEndpoints({
         url: "/api/ee/advanced-permissions/application/graph",
         body,
       }),
-      invalidatesTags: (_, error) =>
-        invalidateTags(error, [listTag("application-permissions-graph")]),
+      async onQueryStarted(_body, { dispatch, queryFulfilled }) {
+        await queryFulfilled.then(({ data }) => {
+          dispatch(
+            applicationPermissionsApi.util.upsertQueryData(
+              "getApplicationPermissionsGraph",
+              undefined,
+              data,
+            ),
+          );
+        }, _.noop);
+      },
     }),
   }),
 });

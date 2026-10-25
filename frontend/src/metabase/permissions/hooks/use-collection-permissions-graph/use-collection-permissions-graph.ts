@@ -1,114 +1,60 @@
-import { useCallback, useState } from "react";
-import _ from "underscore";
+import { useCallback } from "react";
 
 import {
   useGetCollectionPermissionsGraphQuery,
   useUpdateCollectionPermissionsGraphMutation,
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils/errors";
-import type {
-  CollectionNamespace,
-  CollectionPermissions,
-  CollectionPermissionsGraph,
-} from "metabase-types/api";
+import type { CollectionNamespace } from "metabase-types/api";
 
 import { getModifiedCollectionPermissionsGraphParts } from "../../utils/graph-updates";
+import { usePermissionEdits } from "../use-permission-edits";
 
-import {
-  type UpdateCollectionPermissionParams,
-  updateCollectionPermissions,
-} from "./utils";
-
-type CollectionPermissionsDraft = {
-  savedGraph: CollectionPermissionsGraph;
-  permissions: CollectionPermissions;
-};
-
-const getDraft = (
-  graph: CollectionPermissionsGraph | undefined,
-): CollectionPermissionsDraft | null =>
-  graph ? { savedGraph: graph, permissions: graph.groups } : null;
+import { updateCollectionPermissions } from "./utils";
 
 export function useCollectionPermissionsGraph(namespace?: CollectionNamespace) {
-  const { data: loadedGraph, refetch } = useGetCollectionPermissionsGraphQuery(
+  const { data: graph } = useGetCollectionPermissionsGraphQuery(
     namespace != null ? { namespace } : undefined,
     { refetchOnMountOrArgChange: true },
   );
-  const [updateGraph] = useUpdateCollectionPermissionsGraphMutation();
-  const [draftGraph, setDraftGraph] = useState(loadedGraph);
-  const [draft, setDraft] = useState(() => getDraft(loadedGraph));
-  const [saveError, setSaveError] = useState<string | null>(null);
-
-  if (loadedGraph !== draftGraph) {
-    setDraftGraph(loadedGraph);
-    const hasEdits =
-      draft != null && !_.isEqual(draft.permissions, draft.savedGraph.groups);
-    if (!hasEdits || loadedGraph?.revision !== draft.savedGraph.revision) {
-      setDraft(getDraft(loadedGraph));
-    }
-  }
-
-  const isDirty =
-    draft != null && !_.isEqual(draft.permissions, draft.savedGraph.groups);
-
-  const updateCollectionPermission = useCallback(
-    (params: UpdateCollectionPermissionParams) => {
-      setDraft(
-        (draft) =>
-          draft && {
-            ...draft,
-            permissions: updateCollectionPermissions(
-              draft.permissions,
-              draft.savedGraph.groups,
-              params,
-            ),
-          },
-      );
-    },
-    [],
+  const [updateGraph, { error, reset }] =
+    useUpdateCollectionPermissionsGraphMutation();
+  const { permissions, isDirty, addEdit, clearEdits } = usePermissionEdits(
+    graph?.groups,
+    updateCollectionPermissions,
   );
 
   const savePermissions = useCallback(async () => {
-    if (draft == null) {
+    if (graph == null || permissions == null) {
       return false;
     }
-    const { data: savedGraph, error } = await updateGraph({
+    const result = await updateGraph({
       namespace,
-      revision: draft.savedGraph.revision,
+      revision: graph.revision,
       groups: getModifiedCollectionPermissionsGraphParts(
-        draft.savedGraph.groups,
-        draft.permissions,
+        graph.groups,
+        permissions,
       ),
     });
-    if (savedGraph == null) {
-      setSaveError(getErrorMessage(error));
+    if (result.error) {
       return false;
     }
-    setSaveError(null);
-    setDraft({
-      savedGraph: { ...savedGraph, groups: draft.permissions },
-      permissions: draft.permissions,
-    });
+    clearEdits();
     return true;
-  }, [draft, namespace, updateGraph]);
+  }, [graph, permissions, namespace, updateGraph, clearEdits]);
 
   const resetPermissions = useCallback(() => {
-    setSaveError(null);
-    setDraft(
-      (draft) => draft && { ...draft, permissions: draft.savedGraph.groups },
-    );
-    refetch();
-  }, [refetch]);
-
-  const clearSaveError = useCallback(() => setSaveError(null), []);
+    clearEdits();
+    reset();
+  }, [clearEdits, reset]);
 
   return {
-    permissions: draft?.permissions,
+    permissions,
     isDirty,
-    saveError,
-    updateCollectionPermission,
+    saveError: error ? getErrorMessage(error) : null,
+    updateCollectionPermission: addEdit,
     savePermissions,
     resetPermissions,
-    clearSaveError,
+    clearSaveError: reset,
   };
 }

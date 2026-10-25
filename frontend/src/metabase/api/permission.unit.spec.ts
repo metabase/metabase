@@ -126,33 +126,32 @@ describe("permission graph cache", () => {
     );
   });
 
-  it("refetches subscribed collection permission graphs after a save", async () => {
-    setupCollectionPermissionsGraphEndpoint({ groups: {}, revision: 1 });
+  it("writes the saved groups and revision into the cached collection permission graph", async () => {
+    setupCollectionPermissionsGraphEndpoint({
+      groups: { 1: { 2: "read" } },
+      revision: 1,
+    });
     const { store } = setup();
-    store.dispatch(
+    await store.dispatch(
       collectionApi.endpoints.getCollectionPermissionsGraph.initiate(),
-    );
-    await waitFor(() =>
-      expect(
-        fetchMock.callHistory.calls("path:/api/collection/graph", {
-          method: "GET",
-        }),
-      ).toHaveLength(1),
     );
 
     await store.dispatch(
       collectionApi.endpoints.updateCollectionPermissionsGraph.initiate({
-        groups: {},
+        groups: { 1: { 2: "write" } },
         revision: 1,
       }),
     );
 
-    await waitFor(() =>
-      expect(
-        fetchMock.callHistory.calls("path:/api/collection/graph", {
-          method: "GET",
-        }),
-      ).toHaveLength(2),
-    );
+    expect(
+      collectionApi.endpoints.getCollectionPermissionsGraph.select()(
+        store.getState(),
+      ).data,
+    ).toEqual({ groups: { 1: { 2: "write" } }, revision: 2 });
+    expect(
+      fetchMock.callHistory.calls("path:/api/collection/graph", {
+        method: "GET",
+      }),
+    ).toHaveLength(1);
   });
 });

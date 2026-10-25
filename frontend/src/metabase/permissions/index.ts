@@ -21,6 +21,7 @@ export {
 export { usePermissionsDatabase } from "./hooks/use-permissions-database";
 export { useShouldShowTransformPermissions } from "./hooks/use-should-show-transform-permissions";
 export { useCollectionPermissionsGraph } from "./hooks/use-collection-permissions-graph";
+export { usePermissionEdits } from "./hooks/use-permission-edits";
 export {
   buildCollectionTree,
   collectionsQuery,
