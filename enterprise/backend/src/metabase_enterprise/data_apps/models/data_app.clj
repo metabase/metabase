@@ -137,7 +137,6 @@
   [_model app]
   (and api/*is-superuser?* (editable? app)))
 
-;; Enabling or disabling an app is this instance's own choice, so a read-only remote-sync instance allows it.
 (defmethod mi/can-update? :model/DataApp
   [app changes]
   (and api/*is-superuser?*
