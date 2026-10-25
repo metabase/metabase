@@ -31,10 +31,11 @@ import {
   type SpecialGroupType,
 } from "metabase-types/api";
 
-import { COLLECTION_OPTIONS } from "../../constants/collections-permissions";
-import { Messages } from "../../constants/messages";
-import type { PermissionEditorType } from "../../types";
-import { getPermissionWarningModal } from "../confirmations";
+import { COLLECTION_OPTIONS } from "../constants/collections-permissions";
+import { Messages } from "../constants/messages";
+import type { PermissionEditorType } from "../types";
+
+import { getPermissionWarningModal } from "./confirmations";
 
 export const collectionsQuery = {
   "exclude-other-user-collections": true,

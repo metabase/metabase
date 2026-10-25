@@ -5,7 +5,7 @@ import {
   isDatabaseEntityId,
   isSchemaEntityId,
   isTableEntityId,
-} from "./data-entity-id";
+} from "./metadata";
 
 export const getDatabasesBasePath = () =>
   `${getPermissionsBasePath()}/data/database`;

@@ -6,7 +6,7 @@ import type {
   GroupId,
 } from "metabase-types/api";
 
-import { getDescendantCollections } from "../../utils/collection-permissions/editor";
+import { getDescendantCollections } from "../../utils/collection-editor";
 
 export type UpdateCollectionPermissionParams = {
   groupId: GroupId;

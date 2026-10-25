@@ -12,7 +12,7 @@ import type {
   CollectionPermissionsGraph,
 } from "metabase-types/api";
 
-import { getModifiedCollectionPermissionsGraphParts } from "../../utils/graph/partial-updates";
+import { getModifiedCollectionPermissionsGraphParts } from "../../utils/graph-updates";
 
 import {
   type UpdateCollectionPermissionParams,

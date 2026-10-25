@@ -13,8 +13,10 @@ import type {
   PermissionsGraph,
 } from "metabase-types/api";
 
-import { applyDataPermissionUpdate } from "../../utils/graph/data-permissions/update";
-import { mergeGroupsPermissionsUpdates } from "../../utils/graph/partial-updates";
+import {
+  applyDataPermissionUpdate,
+  mergeGroupsPermissionsUpdates,
+} from "../../utils/graph-updates";
 
 export type DataPermissionsState = {
   permissions: GroupsPermissions | null;

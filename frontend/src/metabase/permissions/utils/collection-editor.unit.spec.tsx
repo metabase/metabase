@@ -7,7 +7,7 @@ import {
   createMockGroup,
 } from "metabase-types/api/mocks";
 
-import { getCollectionsPermissionEditor } from "./editor";
+import { getCollectionsPermissionEditor } from "./collection-editor";
 
 const ALL_USERS_GROUP = createMockGroup({
   id: 1,

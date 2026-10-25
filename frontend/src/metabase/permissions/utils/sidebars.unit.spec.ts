@@ -1,7 +1,7 @@
-import type { RawDataRouteParams } from "../../types";
+import type { RawDataRouteParams } from "../types";
 
 import { databases } from "./data-permissions.unit.spec.fixtures";
-import { getDataFocusSidebar } from "./data-sidebar";
+import { getDataFocusSidebar } from "./sidebars";
 
 const getSidebarOpts = (params: RawDataRouteParams) => ({
   params,

@@ -14,13 +14,16 @@ import type {
 } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
-import { isSchemaEntityId, isTableEntityId } from "./data-entity-id";
 import {
   getFieldsPermission,
   getSchemasPermission,
-} from "./graph/data-permissions/get";
-import { hasPermissionValueInSubgraph } from "./graph/data-permissions/has";
-import { tableToTableEntityId } from "./metadata";
+  hasPermissionValueInSubgraph,
+} from "./graph";
+import {
+  isSchemaEntityId,
+  isTableEntityId,
+  tableToTableEntityId,
+} from "./metadata";
 
 export const getDefaultGroupHasHigherAccessText = (
   defaultGroup: Pick<GroupInfo, "name">,

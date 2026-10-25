@@ -28,23 +28,26 @@ import type {
   GroupRouteParams,
   PermissionEditorType,
   PermissionSectionConfig,
-} from "../../types";
-import {
-  getDatabaseEntityId,
-  getSchemaEntityId,
-  getTableEntityId,
-} from "../data-entity-id";
-import { hasPermissionValueInEntityGraphs } from "../graph/data-permissions/has";
-import { getDatabaseSchema, getDatabaseSchemas } from "../metadata";
+} from "../types";
 
 import {
   getDatabasesEditorBreadcrumbs,
   getGroupsDataEditorBreadcrumbs,
 } from "./breadcrumbs";
-import { buildFieldsPermissions } from "./fields";
+import {
+  buildFieldsPermissions,
+  buildSchemasPermissions,
+  buildTablesPermissions,
+} from "./data-sections";
+import { hasPermissionValueInEntityGraphs } from "./graph";
 import { getOrderedGroups } from "./groups";
-import { buildSchemasPermissions } from "./schemas";
-import { buildTablesPermissions } from "./tables";
+import {
+  getDatabaseEntityId,
+  getDatabaseSchema,
+  getDatabaseSchemas,
+  getSchemaEntityId,
+  getTableEntityId,
+} from "./metadata";
 
 const getGroupHint = (groupType: SpecialGroupType): string | null => {
   switch (groupType) {

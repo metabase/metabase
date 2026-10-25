@@ -28,7 +28,7 @@ import type {
 
 import { DATABASE_TABLES_QUERY } from "../../constants/databases";
 import type { UpdateDataPermissionParams } from "../../types";
-import { getModifiedGroupsPermissionsGraphParts } from "../../utils/graph/partial-updates";
+import { getModifiedGroupsPermissionsGraphParts } from "../../utils/graph-updates";
 
 import {
   INITIAL_DATA_PERMISSIONS_STATE,

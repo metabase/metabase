@@ -10,13 +10,13 @@ import type {
   DatabasePermissionsDiff,
   GroupPermissionsDiff,
   PermissionsGraphDiff,
-} from "../../types";
+} from "../types";
 
 import {
   getFieldsPermission,
   getSchemasPermission,
-} from "./data-permissions/get";
-import { isRestrictivePermission } from "./data-permissions/utils";
+  isRestrictivePermission,
+} from "./graph";
 
 function deleteIfEmpty(object: any, key: string | number) {
   if (Object.keys(object[key]).length === 0) {

@@ -32,24 +32,21 @@ export {
   getRootCollectionTreeItem,
   getRootPermissionsCollection,
   parseCollectionIdParam,
-} from "./utils/collection-permissions/editor";
-export type { CollectionSidebarType } from "./utils/collection-permissions/editor";
+} from "./utils/collection-editor";
+export type { CollectionSidebarType } from "./utils/collection-editor";
 export {
   getDefaultGroupHasHigherAccessText,
   getPermissionWarning,
   getPermissionWarningModal,
 } from "./utils/confirmations";
-export { getDataFocusSidebar } from "./utils/data-permissions/data-sidebar";
+export { getDataFocusSidebar } from "./utils/sidebars";
 export {
   getDatabasesPermissionEditor,
   getGroupsDataPermissionEditor,
-} from "./utils/data-permissions/permission-editor";
-export { getGroupsSidebar } from "./utils/data-permissions/group-sidebar";
-export type { DataTreeNodeItem } from "./utils/data-permissions/data-sidebar";
-export {
-  getDefaultGroup,
-  getOrderedGroups,
-} from "./utils/data-permissions/groups";
+} from "./utils/data-editor";
+export { getGroupsSidebar } from "./utils/sidebars";
+export type { DataTreeNodeItem } from "./utils/sidebars";
+export { getDefaultGroup, getOrderedGroups } from "./utils/groups";
 export {
   assertNumericId,
   parseDataRouteParams,
@@ -65,20 +62,20 @@ export type {
   RawDataRouteParams,
   RawGroupRouteParams,
 } from "./types";
-export { isSchemaEntityId, isTableEntityId } from "./utils/data-entity-id";
-export { diffDataPermissions } from "./utils/graph/permissions-diff";
+export { isSchemaEntityId, isTableEntityId } from "./utils/metadata";
+export { diffDataPermissions } from "./utils/graph-diff";
 export {
   getEntityPermission,
   getFieldsPermission,
   getSchemasPermission,
   getTablesPermission,
-} from "./utils/graph/data-permissions/get";
+} from "./utils/graph";
 export {
   hasPermissionValueInGraph,
   hasPermissionValueInSubgraph,
-} from "./utils/graph/data-permissions/has";
-export { updateEntityPermission } from "./utils/graph/data-permissions/update";
-export { isEmbeddingHubPermissions } from "./utils/is-embedding-hub";
+} from "./utils/graph";
+export { updateEntityPermission } from "./utils/graph-updates";
+export { isEmbeddingHubPermissions } from "./utils/embedding";
 export { navigateToGranularPermissions } from "./utils/post-actions";
 export {
   getDatabaseFocusPermissionsUrl,

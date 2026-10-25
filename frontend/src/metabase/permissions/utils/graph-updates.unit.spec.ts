@@ -5,7 +5,7 @@ import {
   getModifiedCollectionPermissionsGraphParts,
   getModifiedGroupsPermissionsGraphParts,
   mergeGroupsPermissionsUpdates,
-} from "./partial-updates";
+} from "./graph-updates";
 
 describe("getModifiedGroupsPermissionsGraphParts", () => {
   it("should only include groups that have had data permission updated", async () => {

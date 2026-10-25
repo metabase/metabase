@@ -11,7 +11,7 @@ import {
 } from "metabase-types/api";
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
-import { hasPermissionValueInSubgraph } from "./has";
+import { hasPermissionValueInSubgraph } from "./graph";
 
 const createDatabase = (
   tablesBySchema: Record<SchemaName, TableId[]>,

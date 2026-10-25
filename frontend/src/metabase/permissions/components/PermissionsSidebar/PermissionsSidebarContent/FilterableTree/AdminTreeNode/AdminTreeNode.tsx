@@ -3,7 +3,7 @@ import { forwardRef } from "react";
 import { Tree } from "metabase/common/components/tree";
 import type { TreeNodeProps } from "metabase/common/components/tree/types";
 
-import { isEmbeddingHubPermissions } from "../../../../../utils/is-embedding-hub";
+import { isEmbeddingHubPermissions } from "../../../../../utils/embedding";
 
 import styles from "./AdminTreeNode.module.css";
 

@@ -8,13 +8,18 @@ import type {
   DataRouteParams,
   GroupRouteParams,
   PermissionEditorBreadcrumb,
-} from "../../types";
-import { getDatabaseEntityId, getSchemaEntityId } from "../data-entity-id";
-import { getDatabaseSchema, getDatabaseSchemas } from "../metadata";
+} from "../types";
+
+import {
+  getDatabaseEntityId,
+  getDatabaseSchema,
+  getDatabaseSchemas,
+  getSchemaEntityId,
+} from "./metadata";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
-} from "../urls";
+} from "./urls";
 
 export const getDatabasesEditorBreadcrumbs = (
   params: GroupRouteParams,

@@ -27,7 +27,7 @@ import {
   getCollectionsPermissionEditor,
   getPermissionsCollection,
   isFolderNamespace,
-} from "../../utils/collection-permissions/editor";
+} from "../../utils/collection-editor";
 import { PermissionsTable } from "../PermissionsTable";
 
 import S from "./CollectionPermissionsModal.module.css";

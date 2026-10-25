@@ -1,21 +1,27 @@
 import { t } from "ttag";
 
 import type { ITreeNodeItem } from "metabase/common/components/tree/types";
+import { getGroupNameLocalized } from "metabase/common/utils/groups";
 import { PLUGIN_AUDIT } from "metabase/plugins";
 import { isNotNull } from "metabase/utils/types";
 import type {
   Database,
+  GroupId,
+  GroupInfo,
   PermissionEntityId,
   PermissionsDatabase,
 } from "metabase-types/api";
 
-import type { RawDataRouteParams } from "../../types";
+import type { PermissionsSidebarContentProps } from "../components/PermissionsSidebar/PermissionsSidebarContent/index";
+import type { RawDataRouteParams } from "../types";
+
+import { getOrderedGroups } from "./groups";
 import {
   getDatabaseEntityId,
+  getDatabaseSchemas,
   getSchemaEntityId,
   getTableEntityId,
-} from "../data-entity-id";
-import { getDatabaseSchemas } from "../metadata";
+} from "./metadata";
 
 export type DataTreeNodeItem = {
   entityId: PermissionEntityId;
@@ -123,4 +129,48 @@ export const getDataFocusSidebar = ({
   }
 
   return getTablesSidebar(database, schemaName, tableId);
+};
+
+export type GroupSidebarProps = Pick<
+  PermissionsSidebarContentProps,
+  "selectedId" | "entityGroups" | "entityViewFocus" | "filterPlaceholder"
+>;
+
+export const getGroupsSidebar = (
+  groups: GroupInfo[],
+  groupId: GroupId | undefined,
+): GroupSidebarProps => {
+  const [pinnedGroups, externalGroups, internalGroups] =
+    getOrderedGroups(groups);
+
+  const pinnedGroupItems = pinnedGroups.map((group) => ({
+    ...group,
+    name: getGroupNameLocalized(group),
+    icon: "bolt" as const,
+  }));
+
+  const internalGroupItems = internalGroups.map((group) => ({
+    ...group,
+    name: getGroupNameLocalized(group),
+    icon: "group" as const,
+  }));
+
+  const externalGroupItems = externalGroups.map((group) => ({
+    ...group,
+    name: getGroupNameLocalized(group),
+    icon: group.magic_group_type ? ("bolt" as const) : ("globe" as const),
+  }));
+
+  const entityGroups = [
+    pinnedGroupItems,
+    internalGroupItems,
+    externalGroupItems,
+  ].filter((groups) => groups.length > 0);
+
+  return {
+    selectedId: groupId ?? undefined,
+    entityGroups,
+    entityViewFocus: "group",
+    filterPlaceholder: t`Search for a group`,
+  };
 };
