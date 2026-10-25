@@ -17,11 +17,8 @@ import {
   type TableEntityId,
 } from "metabase-types/api";
 
-import {
-  getDatabaseSchema,
-  getDatabaseSchemas,
-  isSchemaEntityId,
-} from "./metadata";
+import { isSchemaEntityId } from "./entity-ids";
+import { getDatabaseSchema, getDatabaseSchemas } from "./metadata";
 
 export const isRestrictivePermission = (value: DataPermissionValue) =>
   value === DataPermissionValue.NO ||
@@ -69,7 +66,7 @@ function getOmittedPermissionValue(
 
 // returns portion of the graph that might be undefined,
 // purposefully does not try to determine the entity's value from its parent
-export function getRawPermissionsGraphValue(
+function getRawPermissionsGraphValue(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: PermissionEntityId,

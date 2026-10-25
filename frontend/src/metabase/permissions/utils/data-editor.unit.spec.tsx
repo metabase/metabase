@@ -21,7 +21,7 @@ import {
   databases,
   groups,
   initialPermissions,
-} from "./data-permissions.unit.spec.fixtures";
+} from "./data-editor.unit.spec.fixtures";
 
 describe("getShouldShowTransformPermissions", () => {
   describe("OSS version", () => {

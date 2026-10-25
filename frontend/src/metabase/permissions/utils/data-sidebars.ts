@@ -12,23 +12,23 @@ import type {
   PermissionsDatabase,
 } from "metabase-types/api";
 
-import type { PermissionsSidebarContentProps } from "../components/PermissionsSidebar/PermissionsSidebarContent/index";
+import type { PermissionsSidebarContentProps } from "../components/PermissionsSidebar/PermissionsSidebarContent";
 import type { RawDataRouteParams } from "../types";
 
-import { getOrderedGroups } from "./groups";
 import {
   getDatabaseEntityId,
-  getDatabaseSchemas,
   getSchemaEntityId,
   getTableEntityId,
-} from "./metadata";
+} from "./entity-ids";
+import { getOrderedGroups } from "./groups";
+import { getDatabaseSchemas } from "./metadata";
 
 export type DataTreeNodeItem = {
   entityId: PermissionEntityId;
   children?: DataTreeNodeItem[];
 } & ITreeNodeItem;
 
-export type DataSidebarProps = {
+type DataSidebarProps = {
   title?: string;
   description?: string;
   entityGroups: DataTreeNodeItem[][];
@@ -131,7 +131,7 @@ export const getDataFocusSidebar = ({
   return getTablesSidebar(database, schemaName, tableId);
 };
 
-export type GroupSidebarProps = Pick<
+type GroupSidebarProps = Pick<
   PermissionsSidebarContentProps,
   "selectedId" | "entityGroups" | "entityViewFocus" | "filterPlaceholder"
 >;

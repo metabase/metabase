@@ -4,10 +4,10 @@ import * as Urls from "metabase/urls";
 
 /**
  * Declares the embedding hub as the permissions editor's host, so the URL
- * builders in `utils/urls` — which redux selectors and thunks also call — build
+ * builders in `utils/urls` — which plain functions and post actions also call — build
  * links back into the hub rather than always into admin. Admin needs no
  * equivalent wrapper: its base path is already `getPermissionsBasePath`'s
- * resting default. `is-embedding-hub.ts`'s color switch reads this same base
+ * resting default. `permissions/utils/embedding.ts`.s color switch reads this same base
  * path, so setting it here is the only thing this component needs to do.
  *
  * The assignment happens during render rather than in an effect: children

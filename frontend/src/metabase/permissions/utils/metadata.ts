@@ -1,15 +1,9 @@
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
 import type {
-  ConcreteTableId,
-  Database,
-  DatabaseEntityId,
   DatabaseId,
-  PermissionEntityId,
   PermissionsDatabase,
-  SchemaEntityId,
   SchemaName,
   Table,
-  TableEntityId,
 } from "metabase-types/api";
 
 /**
@@ -54,60 +48,3 @@ export const getDatabaseSchema = (
 export const getDatabaseSchemaNames = (
   database: PermissionsDatabase,
 ): SchemaName[] => getDatabaseSchemas(database).map((schema) => schema.name);
-
-export const tableToTableEntityId = (table: Table) => ({
-  databaseId: table.db_id,
-  schemaName: table.schema ?? "",
-  // A permission entity always names a real warehouse table, never a card.
-  tableId: table.id as ConcreteTableId,
-});
-
-/**
- * Whether a table sits under an entity id. An unset field on the entity id
- * matches any table, so a database id alone matches all of its tables.
- * A table with no schema reports it as either null or "", so both sides
- * are normalised before comparing.
- */
-export const isTableUnderEntityId = (
-  table: Table,
-  entityId: Partial<TableEntityId>,
-) =>
-  (entityId.databaseId == null || table.db_id === entityId.databaseId) &&
-  (entityId.schemaName === undefined ||
-    (table.schema ?? "") === (entityId.schemaName ?? "")) &&
-  (entityId.tableId == null || table.id === entityId.tableId);
-
-export const getDatabaseEntityId = (databaseEntity: Pick<Database, "id">) => ({
-  databaseId: databaseEntity.id,
-});
-
-export const getSchemaEntityId = (schemaEntity: PermissionsSchema) => ({
-  databaseId: schemaEntity.databaseId,
-  schemaName: schemaEntity.name,
-});
-
-export const getTableEntityId = (tableEntity: Table) => ({
-  databaseId: tableEntity.db_id,
-  schemaName: tableEntity.schema,
-  // A permission entity always names a real warehouse table, never a card.
-  tableId: tableEntity.id as ConcreteTableId,
-});
-
-export const isTableEntityId = (
-  entityId: Partial<PermissionEntityId>,
-): entityId is TableEntityId => entityId.tableId != null;
-
-export const isSchemaEntityId = (
-  entityId: Partial<PermissionEntityId>,
-): entityId is SchemaEntityId & { schemaName: string } =>
-  // not sure why schemaName can be undefined on SchemaEntityId
-  entityId.schemaName != null &&
-  entityId.schemaName !== "" &&
-  !isTableEntityId(entityId);
-
-export const isDatabaseEntityId = (
-  entityId: Partial<PermissionEntityId>,
-): entityId is DatabaseEntityId =>
-  entityId.databaseId != null &&
-  !isSchemaEntityId(entityId) &&
-  !isTableEntityId(entityId);

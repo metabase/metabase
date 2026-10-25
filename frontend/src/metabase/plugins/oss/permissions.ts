@@ -49,9 +49,6 @@ export type DataPermissionsDrafts = {
   impersonations: Impersonation[];
 };
 
-// These describe the entries EE plugins contribute to the permissions editor.
-// They live here (not in metabase/permissions) because the plugin registry sits
-// below the permissions module; metabase/permissions re-exports them.
 export interface PermissionOption {
   label: string;
   value: DataPermissionValue;

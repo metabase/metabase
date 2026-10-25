@@ -47,7 +47,7 @@ import {
   navigateToGranularPermissions,
 } from "./post-actions";
 
-export const getNativePermissionDisabledTooltip = (
+const getNativePermissionDisabledTooltip = (
   isAdmin: boolean,
   accessPermissionValue: DataPermissionValue,
 ) => {

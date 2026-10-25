@@ -19,19 +19,18 @@ import {
 } from "metabase-types/api";
 
 import {
+  isSchemaEntityId,
+  isTableEntityId,
+  isTableUnderEntityId,
+  tableToTableEntityId,
+} from "./entity-ids";
+import {
   getFieldsPermission,
   getPermissionPath,
   getSchemasPermission,
   isRestrictivePermission,
 } from "./graph";
-import {
-  getDatabaseSchema,
-  getDatabaseSchemaNames,
-  isSchemaEntityId,
-  isTableEntityId,
-  isTableUnderEntityId,
-  tableToTableEntityId,
-} from "./metadata";
+import { getDatabaseSchema, getDatabaseSchemaNames } from "./metadata";
 
 function updatePermission(
   permissions: GroupsPermissions,

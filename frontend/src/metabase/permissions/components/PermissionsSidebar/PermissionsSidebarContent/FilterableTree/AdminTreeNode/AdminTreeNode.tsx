@@ -7,9 +7,6 @@ import { isEmbeddingHubPermissions } from "../../../../../utils/embedding";
 
 import styles from "./AdminTreeNode.module.css";
 
-/**
- * Switches between admin's purple and the hub's blue. See `is-embedding-hub.ts`.
- */
 export const AdminTreeNode = forwardRef<HTMLLIElement, TreeNodeProps>(
   function AdminTreeNode(props, ref) {
     const className = getTreeNodeClassName(

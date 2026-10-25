@@ -49,7 +49,7 @@ type DataPermissionsContextValue = {
   addLoadedDatabase: (database: PermissionsDatabase) => void;
   updateDataPermission: (params: UpdateDataPermissionParams) => Promise<void>;
   updateDrafts: (
-    update: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts,
+    updater: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts,
   ) => void;
   savePermissions: () => Promise<boolean>;
   resetPermissions: () => void;
@@ -142,8 +142,8 @@ export function DataPermissionsProvider({
   );
 
   const updateDrafts = useCallback(
-    (update: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts) =>
-      dispatch({ type: "draftsUpdated", updater: update }),
+    (updater: (drafts: DataPermissionsDrafts) => DataPermissionsDrafts) =>
+      dispatch({ type: "draftsUpdated", updater }),
     [],
   );
 

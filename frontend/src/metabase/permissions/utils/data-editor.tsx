@@ -33,21 +33,20 @@ import type {
 import {
   getDatabasesEditorBreadcrumbs,
   getGroupsDataEditorBreadcrumbs,
-} from "./breadcrumbs";
+} from "./data-breadcrumbs";
 import {
   buildFieldsPermissions,
   buildSchemasPermissions,
   buildTablesPermissions,
 } from "./data-sections";
-import { hasPermissionValueInEntityGraphs } from "./graph";
-import { getOrderedGroups } from "./groups";
 import {
   getDatabaseEntityId,
-  getDatabaseSchema,
-  getDatabaseSchemas,
   getSchemaEntityId,
   getTableEntityId,
-} from "./metadata";
+} from "./entity-ids";
+import { hasPermissionValueInEntityGraphs } from "./graph";
+import { getOrderedGroups } from "./groups";
+import { getDatabaseSchema, getDatabaseSchemas } from "./metadata";
 
 const getGroupHint = (groupType: SpecialGroupType): string | null => {
   switch (groupType) {

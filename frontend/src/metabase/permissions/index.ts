@@ -39,13 +39,13 @@ export {
   getPermissionWarning,
   getPermissionWarningModal,
 } from "./utils/confirmations";
-export { getDataFocusSidebar } from "./utils/sidebars";
+export { getDataFocusSidebar } from "./utils/data-sidebars";
 export {
   getDatabasesPermissionEditor,
   getGroupsDataPermissionEditor,
 } from "./utils/data-editor";
-export { getGroupsSidebar } from "./utils/sidebars";
-export type { DataTreeNodeItem } from "./utils/sidebars";
+export { getGroupsSidebar } from "./utils/data-sidebars";
+export type { DataTreeNodeItem } from "./utils/data-sidebars";
 export { getDefaultGroup, getOrderedGroups } from "./utils/groups";
 export {
   assertNumericId,
@@ -62,7 +62,7 @@ export type {
   RawDataRouteParams,
   RawGroupRouteParams,
 } from "./types";
-export { isSchemaEntityId, isTableEntityId } from "./utils/metadata";
+export { isSchemaEntityId, isTableEntityId } from "./utils/entity-ids";
 export { diffDataPermissions } from "./utils/graph-diff";
 export {
   getEntityPermission,

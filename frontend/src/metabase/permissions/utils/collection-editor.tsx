@@ -374,18 +374,18 @@ export function getCollectionWarning(
     groupId,
     collection.id,
   );
-  const descendentCollections = getDescendantCollections(collection);
-  const descendentPerms = getPermissionsSet(
-    descendentCollections,
+  const descendantCollections = getDescendantCollections(collection);
+  const descendantPerms = getPermissionsSet(
+    descendantCollections,
     permissions,
     groupId,
   );
   if (
     collectionPerm === "none" &&
-    (descendentPerms.has("read") || descendentPerms.has("write"))
+    (descendantPerms.has("read") || descendantPerms.has("write"))
   ) {
     return t`This group has permission to view at least one subcollection of this collection.`;
-  } else if (collectionPerm === "read" && descendentPerms.has("write")) {
+  } else if (collectionPerm === "read" && descendantPerms.has("write")) {
     return t`This group has permission to edit at least one subcollection of this collection.`;
   }
 

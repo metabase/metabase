@@ -41,7 +41,9 @@ export function useCollectionPermissionsGraph(namespace?: CollectionNamespace) {
 
   if (loadedGraph !== draftGraph) {
     setDraftGraph(loadedGraph);
-    if (loadedGraph?.revision !== draft?.savedGraph.revision) {
+    const hasEdits =
+      draft != null && !_.isEqual(draft.permissions, draft.savedGraph.groups);
+    if (!hasEdits || loadedGraph?.revision !== draft.savedGraph.revision) {
       setDraft(getDraft(loadedGraph));
     }
   }

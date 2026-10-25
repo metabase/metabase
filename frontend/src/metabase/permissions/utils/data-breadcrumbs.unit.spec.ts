@@ -1,6 +1,6 @@
 import { createMockDatabase, createMockTable } from "metabase-types/api/mocks";
 
-import { getGroupsDataEditorBreadcrumbs } from "./breadcrumbs";
+import { getGroupsDataEditorBreadcrumbs } from "./data-breadcrumbs";
 
 describe("admin > permissions > data > breadcrumbs", () => {
   describe("getGroupsDataEditorBreadcrumbs", () => {

@@ -5,7 +5,7 @@ import { useEffect, useId } from "react";
  *
  * Unlike the tenant URLs, this cannot be a React context: the permission URL
  * builders are called from plain functions and post actions
- * (`utils/data-permissions/breadcrumbs.ts`, `utils/post-actions.ts`,
+ * (`utils/data-breadcrumbs.ts`, `utils/post-actions.ts`,
  * `advanced_permissions/drafts.ts`), which have no component to read a context
  * from. Only one permissions editor renders at a time, so a module-level value
  * set by whichever host mounted it is sufficient and keeps every call site's

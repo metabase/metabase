@@ -15,15 +15,15 @@ import type {
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 
 import {
+  isSchemaEntityId,
+  isTableEntityId,
+  tableToTableEntityId,
+} from "./entity-ids";
+import {
   getFieldsPermission,
   getSchemasPermission,
   hasPermissionValueInSubgraph,
 } from "./graph";
-import {
-  isSchemaEntityId,
-  isTableEntityId,
-  tableToTableEntityId,
-} from "./metadata";
 
 export const getDefaultGroupHasHigherAccessText = (
   defaultGroup: Pick<GroupInfo, "name">,

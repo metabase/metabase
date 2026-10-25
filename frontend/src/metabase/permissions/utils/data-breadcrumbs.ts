@@ -10,12 +10,8 @@ import type {
   PermissionEditorBreadcrumb,
 } from "../types";
 
-import {
-  getDatabaseEntityId,
-  getDatabaseSchema,
-  getDatabaseSchemas,
-  getSchemaEntityId,
-} from "./metadata";
+import { getDatabaseEntityId, getSchemaEntityId } from "./entity-ids";
+import { getDatabaseSchema, getDatabaseSchemas } from "./metadata";
 import {
   getDatabaseFocusPermissionsUrl,
   getGroupFocusPermissionsUrl,
