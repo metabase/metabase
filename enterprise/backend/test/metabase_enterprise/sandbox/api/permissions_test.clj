@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase-enterprise.sandbox.models.permissions.delete-sandboxes :as delete-sandboxes]
    [metabase-enterprise.test :as met]
    [metabase.model-persistence.models.persisted-info :as persisted-info]
    [metabase.permissions.models.permissions-group :as perms-group]
@@ -107,6 +108,26 @@
             (mt/user-http-request :crowberto :put 200 "permissions/graph" graph')
             (testing "GTAP should not have been deleted"
               (is (t2/exists? :model/Sandbox :group_id (u/the-id (perms-group/all-users)), :table_id (mt/id :venues))))))))))
+
+(deftest collapsed-sandboxed-perms-dont-delete-gtaps-test
+  (testing "delete-gtaps-if-needed-after-permissions-change!"
+    (testing (str "sandboxing the last unsandboxed table makes the frontend collapse the schema (or DB) to `sandboxed`, "
+                  "which should keep the existing sandboxes rather than delete them")
+      (doseq [[message view-data-changes] {"schema-level sandboxed" {"PUBLIC" :sandboxed}
+                                           "DB-level sandboxed"     :sandboxed}]
+        (testing message
+          (met/with-gtaps! {:gtaps {:venues {}}}
+            (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change!
+             {(u/the-id &group) {(mt/id) {:view-data view-data-changes}}})
+            (is (t2/exists? :model/Sandbox :group_id (u/the-id &group) :table_id (mt/id :venues)))))))
+    (testing "any other schema- or DB-level value still deletes the sandboxes under it"
+      (doseq [[message view-data-changes] {"schema-level unrestricted" {"PUBLIC" :unrestricted}
+                                           "DB-level unrestricted"     :unrestricted}]
+        (testing message
+          (met/with-gtaps! {:gtaps {:venues {}}}
+            (delete-sandboxes/delete-gtaps-if-needed-after-permissions-change!
+             {(u/the-id &group) {(mt/id) {:view-data view-data-changes}}})
+            (is (not (t2/exists? :model/Sandbox :group_id (u/the-id &group) :table_id (mt/id :venues))))))))))
 
 (defn- fake-persist-card! [card]
   (let [persisted-info (persisted-info/turn-on-model! (mt/user->id :rasta) card)]
