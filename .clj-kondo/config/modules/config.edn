@@ -97,7 +97,6 @@
    :uses #{analytics
            api
            collections
-           database-routing
            driver
            events
            lib
@@ -890,7 +889,7 @@
   database-routing
   {:team "UX West"
    :api  #{metabase.database-routing.core}
-   :uses #{premium-features}}
+   :uses #{premium-features util}}
 
   dependencies
   {:team "Graphy"
@@ -4572,6 +4571,7 @@
    :api #{metabase-enterprise.transform-testing.api metabase-enterprise.transform-testing.init}
    :uses #{api
            audit-app
+           database-routing
            driver
            events
            lib

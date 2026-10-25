@@ -497,10 +497,6 @@
       (ex-info (tru "Uploads are not permitted for sandboxed users.")
                {:status-code 403})
 
-      (database-routing/routed? db)
-      (ex-info (tru "Uploads are not permitted for users whose queries are routed to a destination database.")
-               {:status-code 403})
-
       (not (driver.u/supports? driver :uploads db))
       (ex-info (tru "Uploads are not supported on {0} databases." (str/capitalize (name driver)))
                {:status-code 422}))))
@@ -538,6 +534,7 @@
 (defn- check-can-create-upload
   "Throws an error if the user cannot upload to the given database and schema."
   [db schema-name]
+  (database-routing/check-not-routed db)
   (when-let [error (can-create-upload-error db schema-name)]
     (throw error)))
 
@@ -912,6 +909,7 @@
 (defn- check-can-update
   "Throws an error if the user cannot upload to the given database and schema."
   [db table]
+  (database-routing/check-not-routed db)
   (when-let [error (can-update-error db table)]
     (throw error)))
 
@@ -933,10 +931,6 @@
       (ex-info (tru "The table must be an uploaded table.")
                {:status-code 422})
 
-      (database-routing/routed? database)
-      (ex-info (tru "Uploads are not permitted for users whose queries are routed to a destination database.")
-               {:status-code 403})
-
       (not (and (mi/can-query? table) (mi/can-write? table)))
       (ex-info (tru "You don''t have permissions to do that.")
                {:status-code 403}))))
@@ -945,6 +939,7 @@
   "Throws an error if the given table is not an upload, or if the user does not have permission to delete it."
   [table database]
   ;; For now anyone that can update a table is allowed to delete it.
+  (database-routing/check-not-routed database)
   (when-let [error (can-delete-error table database)]
     (throw error)))
 

@@ -31,6 +31,7 @@
    [metabase-enterprise.transform-testing.schema :as transform-testing.schema]
    [metabase-enterprise.transform-testing.validator :as transform-testing.validator]
    [metabase.api.common :as api]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -133,6 +134,9 @@
   (let [database (api/check-404 (transform-testing.db/database
                                  (transforms-base.u/transform-source-database transform)))
         driver   (keyword (:engine database))]
+    (when (:router_database_id database)
+      (throw (ex-info (tru "Transform tests can''t run on destination databases.") {:status-code 400})))
+    (database-routing/check-not-routed database)
     (when-not (driver.u/supports? driver :transforms/testing database)
       (throw (transform-testing.errors/ex
               ::transform-testing.errors/unsupported-driver

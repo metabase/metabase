@@ -183,6 +183,7 @@
   (api/create-check :model/Transform body)
   (transforms.core/check-database-feature body)
   (transforms.core/validate-incremental-column-type! body)
+  (transforms.core/check-target-not-routed body)
   (api/check (not (transforms-base.u/target-table-exists? body))
              409
              (deferred-tru "A table with that name already exists."))
@@ -318,7 +319,7 @@
   "Delete a transform's output table."
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
-  (api/write-check :model/Transform id)
+  (transforms.core/check-target-not-routed (api/write-check :model/Transform id))
   (transforms-base.u/delete-target-table-by-id! id)
   nil)
 

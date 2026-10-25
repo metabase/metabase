@@ -4,15 +4,17 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.database-routing.e2e-test :as e2e]
    [metabase-enterprise.test :as met]
-   [metabase.actions.core :as actions]
+   [metabase-enterprise.transform-testing.runner :as transform-testing.runner]
    [metabase.app-db.core :as mdb]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
+   [metabase.transforms.core :as transforms.core]
    [metabase.transforms.execute :as transforms.execute]
    [metabase.upload.impl :as upload.impl]
    [metabase.util :as u]
@@ -64,7 +66,7 @@
                 (is (= {:router "by-crowberto" :destination "by-rasta"}
                        {:router (owner-of-row-1 router-db) :destination (owner-of-row-1 dest-1)}))))))))))
 
-(deftest routed-users-cannot-run-transforms-edit-tables-or-upload-test
+(deftest routed-users-cannot-run-transforms-or-upload-test
   (mt/with-premium-features #{:database-routing}
     (binding [driver.settings/*allow-testing-h2-connections* true]
       (e2e/with-routing-setup! [router-db [[_dest-1 "destination-db-1"]]]
@@ -80,21 +82,44 @@
             (met/with-user-attributes! :crowberto {"db_name" "destination-db-1"}
               (mt/with-current-user (mt/user->id :crowberto)
                 (testing "a routed user can't run a transform on the router"
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can't run transforms"
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"routes your queries"
                                         (transforms.execute/execute! transform))))
-                (testing "a routed user can't edit the router's tables"
-                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"can't edit tables"
-                                        (actions/perform-action-v2! :table.row/create
-                                                                    {:unknown :model-action}
-                                                                    [{:database router-id :table-id table-id :row {"id" 1 "owner" "x"}}]
-                                                                    :policy :data-editing))))
-                (testing "a routed user can't upload to the router"
-                  (with-redefs [upload.impl/uploads-enabled? (constantly true)]
-                    (is (re-find #"routed"
-                                 (ex-message (#'upload.impl/can-use-uploads-error (t2/select-one :model/Database router-id)))))))))
+                (testing "a routed user can't upload to, append to, replace or delete uploads on the router"
+                  (let [db (t2/select-one :model/Database router-id)]
+                    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"routes your queries"
+                                          (#'upload.impl/check-can-create-upload db "PUBLIC")))
+                    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"routes your queries"
+                                          (#'upload.impl/check-can-update db {:id table-id :is_upload true})))
+                    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"routes your queries"
+                                          (#'upload.impl/check-can-delete {:id table-id :is_upload true} db)))))))
             (mt/with-current-user (mt/user->id :crowberto)
               (testing "an admin without the attribute isn't refused as routed"
-                (with-redefs [upload.impl/uploads-enabled? (constantly true)]
-                  (is (not (some->> (#'upload.impl/can-use-uploads-error (t2/select-one :model/Database router-id))
-                                    ex-message
-                                    (re-find #"routed")))))))))))))
+                (is (not (re-find #"routes your queries"
+                                  (or (try (#'upload.impl/check-can-create-upload (t2/select-one :model/Database router-id) "PUBLIC")
+                                           (catch clojure.lang.ExceptionInfo e (ex-message e)))
+                                      ""))))))))))))
+
+(deftest routed-users-cannot-test-or-touch-transform-targets-test
+  (mt/with-premium-features #{:database-routing :transforms-basic :hosting}
+    (binding [driver.settings/*allow-testing-h2-connections* true]
+      (e2e/with-routing-setup! [router-db [[_dest-1 "destination-db-1"]]]
+        (let [router-id (u/the-id router-db)
+              mp        (lib-be/application-database-metadata-provider router-id)
+              transform {:name   "tenant transform"
+                         :source {:type :query :query (lib/native-query mp "SELECT 1")}
+                         :target {:type "table" :schema "PUBLIC" :name "tenant_transform" :database router-id}}]
+          (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}
+                         :model/Transform saved transform]
+            (met/with-user-attributes! :crowberto {"db_name" "destination-db-1"}
+              (mt/with-current-user (mt/user->id :crowberto)
+                (testing "a routed admin can still create and edit transforms on the router"
+                  (is (mi/can-create? :model/Transform transform))
+                  (is (mi/can-write? saved)))
+                (testing "a routed admin can't touch a transform's target table on the router"
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"routes your queries"
+                                        (transforms.core/check-target-not-routed saved)))
+                  (is (= "You can't do this on a database that routes your queries to a destination database."
+                         (mt/user-http-request :crowberto :delete 403 (format "transform/%d/table" (:id saved))))))
+                (testing "a routed admin can't test a transform on the router"
+                  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"routes your queries"
+                                        (transform-testing.runner/validate-transform-test (:id saved) [] []))))))))))))

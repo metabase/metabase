@@ -38,6 +38,7 @@
   transform-source-type]
  [metabase.transforms.util
   add-source-readable
+  check-target-not-routed
   is-temp-transform-table?]
  [metabase.transforms.crud
   check-database-feature

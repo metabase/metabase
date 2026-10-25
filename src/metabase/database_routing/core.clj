@@ -1,7 +1,8 @@
 (ns metabase.database-routing.core
   "The OSS namespace for database routing."
   (:require
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.util.i18n :refer [tru]]))
 
 (defenterprise with-database-routing-on-fn
   "OSS Version, does nothing"
@@ -56,6 +57,13 @@
     (some? (destination-database-id database))
     (catch clojure.lang.ExceptionInfo _
       true)))
+
+(defn check-not-routed
+  "Throws a 403 when the current user's queries against `database` go to a routing destination."
+  [database]
+  (when (routed? database)
+    (throw (ex-info (tru "You can''t do this on a database that routes your queries to a destination database.")
+                    {:status-code 403}))))
 
 (defn do-with-destination-database-id
   "Calls `f` with the id of the destination database that the current user's queries against `database` go to, with

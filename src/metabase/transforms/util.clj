@@ -8,6 +8,7 @@
    [clojure.core.async :as a]
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc :as sql-jdbc]
@@ -20,6 +21,7 @@
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.tracing.core :as tracing]
+   [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.canceling :as canceling]
    [metabase.transforms.db :as transforms.db]
@@ -34,6 +36,12 @@
 (set! *warn-on-reflection* true)
 
 ;;; ------------------------------------------------- Feature Gating -------------------------------------------------
+
+(defn check-target-not-routed
+  "Throws a 403 when the current user's queries against the target Database of `transform` go to a routing
+  destination, since a transform's target is written and read with the router's credentials."
+  [transform]
+  (some-> (transforms-base.i/target-db-id transform) transforms.db/database database-routing/check-not-routed))
 
 (defn check-feature-enabled
   "Checking whether we have proper feature flags for using a given transform."
