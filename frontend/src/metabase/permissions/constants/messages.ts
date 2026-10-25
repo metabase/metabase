@@ -13,6 +13,9 @@ export const Messages = {
   get ONLY_ADMINS_CAN_CURATE_DATA_ACTIONS() {
     return t`Only administrators can create and edit data actions. Groups with View access can run them.`;
   },
+  get ONLY_ADMINS_CAN_CURATE_DATA_APPS() {
+    return t`Only administrators can create and edit data apps. Groups with View access can use them.`;
+  },
   get NATIVE_PERMISSION_REQUIRES_DATA_ACCESS() {
     return t`Groups with View data access set to "Blocked" can't create queries.`;
   },

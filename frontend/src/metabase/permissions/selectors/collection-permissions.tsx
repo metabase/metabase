@@ -225,13 +225,53 @@ const getCollectionPermission = (
 const getNamespace = (_state: State, props: CollectionIdProps) =>
   props.namespace;
 
-const ADMIN_ONLY_WRITE_NAMESPACES: CollectionNamespace[] = [
-  "data-actions",
-  "data-apps",
-];
+const ADMIN_ONLY_WRITE_NAMESPACE_HINTS: Partial<
+  Record<NonNullable<CollectionNamespace>, () => string>
+> = {
+  "data-actions": () => Messages.ONLY_ADMINS_CAN_CURATE_DATA_ACTIONS,
+  "data-apps": () => Messages.ONLY_ADMINS_CAN_CURATE_DATA_APPS,
+};
+
+const getAdminOnlyWriteHint = (namespace?: CollectionNamespace) =>
+  namespace != null
+    ? ADMIN_ONLY_WRITE_NAMESPACE_HINTS[namespace]?.()
+    : undefined;
 
 const isAdminOnlyWriteNamespace = (namespace?: CollectionNamespace) =>
-  ADMIN_ONLY_WRITE_NAMESPACES.includes(namespace ?? null);
+  getAdminOnlyWriteHint(namespace) != null;
+
+type CollectionOptionsOpts = {
+  value: DataPermissionValue;
+  isIACollection: boolean;
+  isAdminOnlyWrite: boolean;
+  isTenantCollection: boolean;
+  isExternal: boolean;
+};
+
+const canCurate = ({
+  value,
+  isIACollection,
+  isAdminOnlyWrite,
+  isTenantCollection,
+  isExternal,
+}: CollectionOptionsOpts) =>
+  !isIACollection &&
+  !(isAdminOnlyWrite && value !== COLLECTION_OPTIONS.write.value) &&
+  !(isTenantCollection && isExternal);
+
+const getCollectionOptions = (opts: CollectionOptionsOpts) =>
+  canCurate(opts)
+    ? [
+        COLLECTION_OPTIONS.write,
+        COLLECTION_OPTIONS.read,
+        COLLECTION_OPTIONS.none,
+      ]
+    : [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none];
+
+const getCollectionAccessColumn = (namespace?: CollectionNamespace) => {
+  const hint = getAdminOnlyWriteHint(namespace);
+  return { name: t`Collection access`, ...(hint != null && { hint }) };
+};
 
 const getToggleLabel = (namespace?: CollectionNamespace) =>
   FOLDER_NAMESPACES.includes(namespace ?? null)
@@ -323,16 +363,13 @@ export const getCollectionsPermissionEditor = createSelector(
           collection.id,
         );
 
-        const options =
-          isIACollection ||
-          (isAdminOnlyWrite && value !== COLLECTION_OPTIONS.write.value) ||
-          (isTenantCollection && isExternal)
-            ? [COLLECTION_OPTIONS.read, COLLECTION_OPTIONS.none]
-            : [
-                COLLECTION_OPTIONS.write,
-                COLLECTION_OPTIONS.read,
-                COLLECTION_OPTIONS.none,
-              ];
+        const options = getCollectionOptions({
+          value,
+          isIACollection,
+          isAdminOnlyWrite,
+          isTenantCollection,
+          isExternal,
+        });
 
         const disabledTooltip = getCollectionDisabledTooltip(
           groupType,
@@ -375,15 +412,7 @@ export const getCollectionsPermissionEditor = createSelector(
     return {
       title: t`Permissions for ${collection.name}`,
       filterPlaceholder: t`Search for a group`,
-      columns: [
-        { name: t`Group name` },
-        {
-          name: t`Collection access`,
-          ...(isAdminOnlyWrite && {
-            hint: Messages.ONLY_ADMINS_CAN_CURATE_DATA_ACTIONS,
-          }),
-        },
-      ],
+      columns: [{ name: t`Group name` }, getCollectionAccessColumn(namespace)],
       entities,
     };
   },
