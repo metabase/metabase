@@ -3,8 +3,39 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 
-const { ORDERS_ID } = SAMPLE_DATABASE;
+const {
+  ACCOUNTS_ID,
+  ANALYTIC_EVENTS_ID,
+  FEEDBACK_ID,
+  INVOICES_ID,
+  ORDERS_ID,
+  PEOPLE_ID,
+  PRODUCTS_ID,
+  REVIEWS_ID,
+} = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
+
+const SAMPLE_DB_TABLE_IDS = {
+  ACCOUNTS_ID,
+  ANALYTIC_EVENTS_ID,
+  FEEDBACK_ID,
+  INVOICES_ID,
+  ORDERS_ID,
+  PEOPLE_ID,
+  PRODUCTS_ID,
+  REVIEWS_ID,
+};
+
+const SAMPLE_DB_TABLE_NAMES = [
+  "Accounts",
+  "Analytic Events",
+  "Feedback",
+  "Invoices",
+  "Orders",
+  "People",
+  "Products",
+  "Reviews",
+];
 
 const DATA_ACCESS_PERM_IDX = 0;
 const CREATE_QUERIES_PERM_IDX = 1;
@@ -804,6 +835,59 @@ describe("scenarios > admin > permissions > view data > sandboxed", () => {
     cy.reload();
 
     H.assertPermissionTable(expectedFinalPermissions);
+  });
+
+  it("should keep existing row and column security when sandboxing the last table in a schema", () => {
+    Object.values(SAMPLE_DB_TABLE_IDS)
+      .filter((tableId) => tableId !== ORDERS_ID)
+      .forEach((tableId) => {
+        cy.sandboxTable({ group_id: ALL_USERS_GROUP, table_id: tableId });
+      });
+
+    cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
+    cy.visit(
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC`,
+    );
+
+    H.modifyPermission(
+      "Orders",
+      DATA_ACCESS_PERM_IDX,
+      "Row and column security",
+    );
+
+    H.modal().within(() => {
+      cy.findByText("Configure row and column security for this table");
+      cy.findByText("Pick a column").click();
+    });
+    H.popover().findByText("User ID").click();
+    H.modal().findByPlaceholderText("Pick a user attribute").click();
+    H.popover().findByText("attr_uid").click();
+    H.modal().button("Save").click();
+
+    H.savePermissions();
+    cy.wait("@saveGraph").its("response.statusCode").should("eq", 200);
+
+    cy.request("GET", "/api/mt/gtap").then(({ body: sandboxes }) => {
+      const sandboxedTableIds = sandboxes
+        .filter((sandbox) => sandbox.group_id === ALL_USERS_GROUP)
+        .map((sandbox) => sandbox.table_id)
+        .sort((a, b) => a - b);
+
+      expect(sandboxedTableIds).to.deep.equal(
+        Object.values(SAMPLE_DB_TABLE_IDS).sort((a, b) => a - b),
+      );
+    });
+
+    cy.reload();
+    H.assertPermissionTable(
+      SAMPLE_DB_TABLE_NAMES.map((name) => [
+        name,
+        "Row and column security",
+        "Query builder only",
+        "1 million rows",
+        "No",
+      ]),
+    );
   });
 });
 

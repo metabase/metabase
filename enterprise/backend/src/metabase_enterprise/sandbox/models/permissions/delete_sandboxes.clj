@@ -12,18 +12,26 @@
   [changes {:keys [group_id db_id schema table_id]}]
   (let [view-data-changes (get-in changes [group_id db_id :view-data])]
     (cond
-      (nil? view-data-changes)     false
+      (nil? view-data-changes)
+      false
+
       ;; DB-level change (keyword like :unrestricted) → delete all sandboxes for this group+db
-      (keyword? view-data-changes) true
+      (keyword? view-data-changes)
+      (not= view-data-changes :sandboxed)
+
       :else
       ;; the API graph keys tables that have no schema under "", but `metabase_table.schema` is nil for them, so
       ;; look the schema up the way the graph spells it
       (let [schema-changes (or (get view-data-changes (or schema ""))
                                (get view-data-changes schema))]
         (cond
-          (nil? schema-changes)     false
+          (nil? schema-changes)
+          false
+
           ;; Schema-level change → delete all sandboxes for this group+db+schema
-          (keyword? schema-changes) true
+          (keyword? schema-changes)
+          (not= schema-changes :sandboxed)
+
           :else
           ;; Table-level change → delete unless the new value is :sandboxed
           (let [table-change (get schema-changes table_id)]
