@@ -26,7 +26,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
-   [clojure.walk :as walk]
    [metabase-enterprise.serialization.v2.extract :as extract]
    [metabase-enterprise.serialization.v2.ingest :as ingest]
    [metabase-enterprise.serialization.v2.load :as load]
@@ -38,6 +37,7 @@
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.log :as log]
+   [metabase.util.match :as match]
    [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
@@ -80,12 +80,8 @@
 (defn read-yaml
   "Reads a YAML file and returns Clojure data, with ignored fields removed."
   [file]
-  (walk/postwalk
-   (fn [x]
-     (if (map? x)
-       (reduce dissoc x ignored-fields)
-       x))
-   (yaml/parse-string (slurp file))))
+  (match/replace-all (yaml/parse-string (slurp file))
+    #'map? (reduce dissoc &match ignored-fields)))
 
 (defn non-empty-diff [diff]
   (when (some identity diff)
