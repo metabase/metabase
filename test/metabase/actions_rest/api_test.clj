@@ -366,9 +366,9 @@
            (let [created (mt/user-http-request :crowberto :post 200 "action"
                                                (cross-db-native-action model-id model-db-id model-db-id))
                  url     (str "action/" (:id created))]
-             (testing "blanking the query leaves the action on the database it was created against"
-               (is (=? {:database_id model-db-id}
-                       (mt/user-http-request :crowberto :put 200 url {:dataset_query {}}))))
+             (testing "blanking the query is refused, which leaves the action on the database it was created against"
+               (is (= "Must provide a dataset_query for query actions"
+                      (mt/user-http-request :crowberto :put 400 url {:dataset_query {}}))))
              (testing "a database_id in the body is dropped"
                (is (=? {:database_id model-db-id}
                        (mt/user-http-request :crowberto :put 200 url {:database_id other-db-id}))))

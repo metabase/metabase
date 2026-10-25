@@ -143,6 +143,14 @@
   (collection/check-allowed-content :action collection-id)
   (check-model-less-collection action))
 
+(defn- check-collection-not-archived
+  "Throws a 400 when `action` is unarchived and its Collection is archived."
+  [{collection-id :collection_id, :as action}]
+  (when (and (some? collection-id)
+             (not (:archived action))
+             (actions.db/archived-collection? collection-id))
+    (throw (ex-info (tru "An action can''t go in an archived collection.") {:status-code 400}))))
+
 (defn- model-collection-error
   "The 400 for an action of a model put in a Collection other than its model's."
   []
@@ -198,13 +206,13 @@
     (when (some #(= "card" (some-> (:values_source_type %) name)) (:parameters action))
       (throw (data-app-action-error (tru "An action in a data app''s collection can''t take a parameter''s values from a card."))))))
 
-(defn- check-data-app-action-table
-  "Throws when an implicit action in the Collection with `collection-id`, a data app's, writes to the Table with
-  `table-id` while that table is not published to the Library; a load skips this, as it may publish the table later."
-  [collection-id table-id]
-  (when (and (some? collection-id)
+(defn check-data-app-action-table
+  "Throws a 400 when `action`, an implicit action in a data app's collection, writes to a Table not published to the
+  Library, which the API checks rather than a hook as a load can bring the table as a stub."
+  [{collection-id :collection_id, table-id :table_id, :as action}]
+  (when (and (implicit? action)
+             (some? collection-id)
              (some? table-id)
-             (not mi/*deserializing?*)
              (perms/data-app-collection? collection-id)
              (not (actions.db/table-published? table-id)))
     (throw (data-app-action-error (tru "An implicit action in a data app''s collection can write only to a table published to the Library.")))))
@@ -216,6 +224,7 @@
     (when (and (implicit? action) model-id)
       (check-implicit-action-model model-id))
     (check-collection-content <>)
+    (check-collection-not-archived <>)
     (check-data-app-action <>)))
 
 (t2/define-before-update :model/Action
@@ -233,12 +242,12 @@
         (check-implicit-actions-supported action))
       (when (contains? (t2/changes <>) :collection_id)
         (check-collection-content <>))
+      (when (some #(contains? (t2/changes <>) %) [:collection_id :archived])
+        (check-collection-not-archived <>))
       (when (some #(contains? (t2/changes <>) %) [:collection_id :type :archived :public_uuid :parameters])
         (check-data-app-action <>))
       (when (contains? (t2/changes <>) :collection_id)
-        (check-data-app-action-query (:collection_id <>) (:dataset_query (actions.db/query-action (:id <>))))
-        (when (implicit? <>)
-          (check-data-app-action-table (:collection_id <>) (actions.db/implicit-action-table-id (:id <>))))))))
+        (check-data-app-action-query (:collection_id <>) (:dataset_query (actions.db/query-action (:id <>))))))))
 
 (defn- set-query-database
   "`query-action` with the `:database_id` of its query, when it has one, as a row copied whole may hold its query
@@ -248,15 +257,23 @@
     (assoc query-action :database_id database-id)
     query-action))
 
+(defn- check-query-database
+  "Throws a 400 unless `query-action` holds a query on a database, or a row copied whole with its query undecoded."
+  [{query :dataset_query}]
+  (when-not (or (string? query) (:database query))
+    (throw (ex-info (tru "Must provide a dataset_query for query actions") {:status-code 400}))))
+
 (t2/define-before-insert :model/QueryAction
   [query-action]
   (u/prog1 (set-query-database query-action)
+    (check-query-database <>)
     (check-data-app-action-query (actions.db/action-collection-id (:action_id <>)) (:dataset_query <>))))
 
 (t2/define-before-update :model/QueryAction
   [query-action]
   (u/prog1 (set-query-database query-action)
     (when (contains? (t2/changes query-action) :dataset_query)
+      (check-query-database <>)
       (check-data-app-action-query (actions.db/action-collection-id (:action_id <>)) (:dataset_query <>)))))
 
 (defn- check-implicit-action-table
@@ -285,25 +302,16 @@
       (when-not (= 1 (count (filter #(isa? (:semantic_type %) :type/PK) fields)))
         (throw (ex-info (tru "An implicit action needs a table with exactly one primary key.") {:status-code 400}))))))
 
-(defn- check-model-less-implicit-action-table
-  "Throws a 400 when the Table of `implicit-action`, an action without a model, is not published to the Library while
-  the action is in a data app's collection."
-  [{table-id :table_id, action-id :action_id}]
-  (when table-id
-    (check-data-app-action-table (actions.db/action-collection-id action-id) table-id)))
-
 (t2/define-before-update :model/ImplicitAction
   [implicit-action]
   (u/prog1 implicit-action
     (when (contains? (t2/changes implicit-action) :table_id)
-      (check-implicit-action-table implicit-action)
-      (check-model-less-implicit-action-table implicit-action))))
+      (check-implicit-action-table implicit-action))))
 
 (t2/define-before-insert :model/ImplicitAction
   [implicit-action]
   (u/prog1 implicit-action
-    (check-implicit-action-table implicit-action)
-    (check-model-less-implicit-action-table implicit-action)))
+    (check-implicit-action-table implicit-action)))
 
 (defn- action-database-ids
   "The ids of the Databases `action` runs against: its query's, or for an implicit action its model's or its table's."
@@ -425,10 +433,6 @@
         (actions.db/update-action! id action-row))
       (when (and (:archived updates) (not (:archived existing-action)))
         (actions.db/delete-dashcards-for-action! id))
-      (when-let [collection-id (and (contains? updates :collection_id)
-                                    (not= (:collection_id updates) (:collection_id existing-action))
-                                    (:collection_id updates))]
-        (api/check-400 (actions.db/unarchived-collection-exists? collection-id)))
       (collection/check-for-remote-sync-update (t2/instance :model/Action existing-action)))))
 
 (mu/defn update!

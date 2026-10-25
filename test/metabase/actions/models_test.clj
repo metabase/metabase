@@ -435,6 +435,48 @@
                                 (action/update! {:id action-id :type :implicit :kind :row/update}
                                                 (action/select-action :id action-id)))))))))
 
+(deftest query-action-needs-a-query-on-a-database-test
+  (testing "a query action holds a query on a database on every write path"
+    (mt/with-temp [:model/Collection {collection-id :id} {:namespace "data-actions"}]
+      (mt/with-model-cleanup [:model/Action]
+        (let [action-id (t2/insert-returning-pk! :model/Action {:name          "No query"
+                                                                :type          :query
+                                                                :collection_id collection-id
+                                                                :creator_id    (mt/user->id :crowberto)})]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Must provide a dataset_query"
+                                (t2/insert! :model/QueryAction {:action_id action-id :dataset_query {}})))
+          (t2/insert! :model/QueryAction {:action_id     action-id
+                                          :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                           "update categories set name = 'x' where id = 1")})
+          (testing "and an update can't blank it"
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Must provide a dataset_query"
+                                  (t2/update! :model/QueryAction action-id {:dataset_query {}})))
+            (is (= (mt/id) (t2/select-one-fn :database_id :model/QueryAction :action_id action-id)))))))))
+
+(deftest unarchived-action-in-archived-collection-is-refused-test
+  (testing "an unarchived action can't be in an archived collection, while an archived one can, as archiving a
+            collection archives what it holds"
+    (mt/with-temp [:model/Collection {archived-id :id} {:namespace "data-actions" :archived true}
+                   :model/Collection {live-id :id}     {:namespace "data-actions"}]
+      (mt/with-model-cleanup [:model/Action]
+        (let [insert! (fn [collection-id archived?]
+                        (t2/insert-returning-pk! :model/Action {:name          "Action"
+                                                                :type          :query
+                                                                :collection_id collection-id
+                                                                :archived      archived?
+                                                                :creator_id    (mt/user->id :crowberto)}))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived collection"
+                                (insert! archived-id false)))
+          (let [action-id (insert! archived-id true)]
+            (testing "nor unarchived there"
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived collection"
+                                    (t2/update! :model/Action action-id {:archived false})))))
+          (let [action-id (insert! live-id false)]
+            (testing "nor moved into one"
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo #"archived collection"
+                                    (t2/update! :model/Action action-id {:collection_id archived-id})))
+              (is (= live-id (t2/select-one-fn :collection_id :model/Action :id action-id))))))))))
+
 (deftest model-to-saved-question-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions/custom)
     (mt/with-actions-enabled

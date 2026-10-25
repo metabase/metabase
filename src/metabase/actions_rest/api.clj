@@ -77,17 +77,13 @@
   "Create a new action."
   [_route-params
    _query-params
-   {:keys [parameters dataset_query]
+   {:keys [parameters]
     action-type :type
     :as action} :- ::actions.schema/action.create-request]
-  (when (and (nil? (:database dataset_query))
-             (= action-type :query))
-    (throw (ex-info (tru "Must provide a dataset_query for query actions")
-                    {:type        action-type
-                     :status-code 400})))
   (api/create-check :model/Action action)
   (actions/check-implicit-actions-supported action)
   (actions/check-implicit-action-table-pk action)
+  (actions/check-data-app-action-table action)
   (actions/check-action-databases-enabled action)
   (let [action-id (actions/insert! (assoc action :creator_id api/*current-user-id*))]
     (analytics/track-event! :snowplow/action
@@ -113,9 +109,10 @@
     (api/update-check existing-action action)
     (api/check-400 (not (and (:archived action) (get action :model_id (:model_id existing-action))))
                    (tru "A model''s action can''t be archived. Delete it instead."))
-    (when (some #(contains? action %) [:dataset_query :database_id :type :kind :model_id :table_id])
+    (when (some #(contains? action %) [:dataset_query :database_id :type :kind :model_id :table_id :collection_id])
       (let [merged (merge (actions/select-action :id id) action)]
         (actions/check-implicit-action-table-pk merged)
+        (actions/check-data-app-action-table merged)
         (actions/check-action-databases-enabled merged)))
     (actions/update! (assoc action :id id) existing-action))
   (let [{:keys [parameters type] :as action} (actions/select-action :id id)]

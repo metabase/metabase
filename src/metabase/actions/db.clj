@@ -86,10 +86,10 @@
   [entity-id :- :string]
   (t2/select-one-fn :namespace [:model/Collection :namespace] :entity_id entity-id))
 
-(mu/defn unarchived-collection-exists?
-  "Whether the unarchived Collection with `collection-id` exists."
+(mu/defn archived-collection?
+  "Whether the Collection with `collection-id` is archived."
   [collection-id :- ::lib.schema.id/collection]
-  (t2/exists? :model/Collection :id collection-id :archived false))
+  (t2/exists? :model/Collection :id collection-id :archived true))
 
 (mu/defn action-collection-id
   "The Collection id of the Action with `action-id`, or nil."
