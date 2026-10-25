@@ -86,7 +86,12 @@
   [provider {:keys [user] :as request}]
   (when-not user
     (sso-utils/check-user-provisioning :oidc))
-  (next-method provider request))
+  (let [user-was-deactivated? (and user (not (:is_active user)))
+        reactivate-user?      (and user-was-deactivated?
+                                   (sso-settings/oidc-user-provisioning-enabled?))]
+    (next-method provider (cond-> request
+                            reactivate-user?
+                            (assoc-in [:user-data :is_active] true)))))
 
 (methodical/defmethod auth-identity/login! :after :provider/custom-oidc
   [_provider result]

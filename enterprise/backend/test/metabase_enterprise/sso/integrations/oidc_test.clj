@@ -177,6 +177,47 @@
             (is (sso.test-setup/successful-login? response))
             (is (= "/" (get-in response [:headers "Location"])))))))))
 
+(defn- do-callback
+  "Initiate the OIDC flow to get a state cookie, then hit the callback, expecting `expected-status`."
+  [expected-status]
+  (let [init-response (mt/client-full-response :get 302 "/auth/sso/test-idp"
+                                               {:request-options {:redirect-strategy :none}}
+                                               :redirect "/")
+        cookie-header (->> (get-in init-response [:headers "Set-Cookie"])
+                           (map #(first (str/split % #";")))
+                           (str/join "; "))]
+    (mt/client-real-response :get expected-status "/auth/sso/test-idp/callback"
+                             {:request-options {:redirect-strategy :none
+                                                :headers {"Cookie" cookie-header}}}
+                             :code "test-code"
+                             :state "test-state")))
+
+(deftest callback-reactivates-deactivated-user-test
+  (testing "a deactivated user is reactivated on OIDC login when user provisioning is enabled (#79412)"
+    (with-oidc-default-setup!
+      (with-ensure-encryption!
+        (with-successful-oidc!
+          (mt/with-temporary-setting-values [oidc-user-provisioning-enabled? true]
+            ;; earlier callback tests may have provisioned the mock user already
+            (t2/delete! :model/User :email "oidcuser@example.com")
+            (mt/with-temp [:model/User {user-id :id} {:email "oidcuser@example.com" :is_active false}]
+              (is (sso.test-setup/successful-login? (do-callback 302)))
+              (is (true? (t2/select-one-fn :is_active :model/User :id user-id))))))))))
+
+(deftest callback-deactivated-user-without-provisioning-test
+  (testing "a deactivated user gets a readable 401 when OIDC user provisioning is disabled (#79412)"
+    (with-oidc-default-setup!
+      (with-ensure-encryption!
+        (with-successful-oidc!
+          (mt/with-temporary-setting-values [oidc-user-provisioning-enabled? false]
+            ;; earlier callback tests may have provisioned the mock user already
+            (t2/delete! :model/User :email "oidcuser@example.com")
+            (mt/with-temp [:model/User {user-id :id} {:email "oidcuser@example.com" :is_active false}]
+              (let [response (do-callback 401)]
+                (is (str/includes? (:body response) "Your account is disabled"))
+                (is (not (str/includes? (:body response) "ClassCastException"))))
+              (is (false? (t2/select-one-fn :is_active :model/User :id user-id))))))))))
+
 ;;; -------------------------------------------------- Open Redirect Protection Tests --------------------------------------------------
 
 (deftest no-open-redirect-test
