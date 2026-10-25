@@ -175,18 +175,18 @@
                          :model/DashboardCard {dashcard-id :id} {:action_id action-id
                                                                  :dashboard_id dashboard-id}]
             (is (= 1 (t2/count :model/DashboardCard :id dashcard-id)))
-            (action/update! {:id action-id, :archived true} (action/select-action :id action-id))
+            (action/update! {:id action-id, :archived true, :archived_directly true} (action/select-action :id action-id))
             (is (zero? (t2/count :model/DashboardCard :id dashcard-id)))))))))
 
 (deftest archiving-an-action-deletes-its-dashcards-on-every-write-path-test
-  (testing "an action archived through Toucan, as a load or an archived collection archives it, loses its dashcards"
+  (testing "an action archived on its own through Toucan, as a load archives it, loses its dashcards"
     (mt/with-temp [:model/Collection    {collection-id :id} {:namespace "data-actions"}
                    :model/Action        {action-id :id}     {:name "Action" :type :query :collection_id collection-id}
                    :model/Dashboard     {dashboard-id :id}  {}
                    :model/DashboardCard {dashcard-id :id}   {:action_id action-id :dashboard_id dashboard-id}]
       (t2/update! :model/Action action-id {:name "Renamed"})
       (is (= 1 (t2/count :model/DashboardCard :id dashcard-id)))
-      (t2/update! :model/Action action-id {:archived true})
+      (t2/update! :model/Action action-id {:archived true :archived_directly true})
       (is (zero? (t2/count :model/DashboardCard :id dashcard-id))))))
 
 (deftest dashcard-deletion-test-2
