@@ -1,5 +1,6 @@
 (ns metabase.parameters.dashboard
   (:require
+   [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.lib-be.core :as lib-be]
@@ -18,48 +19,77 @@
    [toucan2.core :as t2]))
 
 (defn- field-ref->endpoint
-  "Extract `{:table :field :join-alias}` from an MBQL 5 `:field` clause."
-  [mp [_tag opts field-id]]
-  {:table      (:table-id (lib.metadata/field mp field-id))
-   :field      field-id
-   :join-alias (:join-alias opts)})
+  "Extract `{:table :field :join-alias}` from an MBQL `:field` clause."
+  [mp field-ref]
+  (let [field-id (lib/field-ref-id field-ref)]
+    {:table      (:table-id (lib.metadata/field mp field-id))
+     :field      field-id
+     :join-alias (:join-alias (lib/options field-ref))}))
+
+(defn- =-field-refs
+  "If `condition` is an `:=` join condition between two `:field` refs, return `[a b]`; otherwise nil."
+  [condition]
+  (when (and (lib/clause-of-type? condition :=)
+             (lib/standard-join-condition? condition))
+    (let [a (lib/standard-join-condition-lhs condition)
+          b (lib/standard-join-condition-rhs condition)]
+      (when (and (lib/clause-of-type? a :field) (lib/clause-of-type? b :field))
+        [a b]))))
 
 (defn- condition->link
   "If `condition` is `[:= _opts <field> <field>]` where exactly one field carries `:join-alias = out-alias`, return
-  `{:in <endpoint> :out <endpoint>}`. `:out` is the hop we're walking *out of* (this join's side); `:in` is the side
+  `[in out]`. `out` is the hop we're walking *out of* (this join's side); `in` is the side
   we're walking *into* next — its `:join-alias` names the previous hop, or nil when we've reached the base table.
   Return nil when the clause isn't a qualifying link."
   [mp out-alias condition]
-  (when (lib/clause-of-type? condition :=)
-    (let [[_= _opts a b] condition]
-      (when (and (lib/clause-of-type? a :field) (lib/clause-of-type? b :field))
-        (let [ea (field-ref->endpoint mp a)
-              eb (field-ref->endpoint mp b)
-              [in out] (cond
-                         (and (= out-alias (:join-alias ea))
-                              (not= out-alias (:join-alias eb))) [eb ea]
-                         (and (= out-alias (:join-alias eb))
-                              (not= out-alias (:join-alias ea))) [ea eb])]
-          (when in {:in in, :out out}))))))
+  (when-let [[a b] (=-field-refs condition)]
+    (let [ea (field-ref->endpoint mp a)
+          eb (field-ref->endpoint mp b)]
+      (cond
+        (and (= out-alias (:join-alias ea)) (not= out-alias (:join-alias eb))) [eb ea]
+        (and (= out-alias (:join-alias eb)) (not= out-alias (:join-alias ea))) [ea eb]))))
 
-(defn- target->via-path
-  "Walk `query`'s joins backward from the alias on parameter `target`, emitting the ordered edge list (base table
-  outward) in the shape `metabase.parameters.chain-filter/find-joins` uses. For each join, the first condition that
-  qualifies as a link contributes an edge; walking continues from the incoming side's `:join-alias` until the base
-  table is reached. Return nil when the target has no `:join-alias`, when the alias doesn't resolve to a join on the
-  target's stage, or when no condition on the chain's joins qualifies as a link."
+(defn- source-field->via-path
+  "If `target` carries `:source-field` (an implicit-join FK field-id), emit the one-hop FK edge the field ref names.
+  `:lhs` is the FK field on the source table; `:rhs` is the FK's own target field (typically a PK).
+  Return nil when the FK target can't be resolved."
+  [query target]
+  (when-let [fk-id (:source-field (lib/parameter-target-field-options target))]
+    (let [fk-field (lib.metadata/field query fk-id)
+          fk-table (:table-id fk-field)
+          pk-id    (:fk-target-field-id fk-field)
+          pk-table (some->> pk-id (lib.metadata/field query) :table-id)]
+      (when (and fk-table pk-id pk-table)
+        [{:lhs {:table fk-table :field fk-id}
+          :rhs {:table pk-table :field pk-id}}]))))
+
+(defn- join-alias->via-path
+  "Walk `query`'s joins backward from `target`'s `:join-alias`, emitting the ordered edge list (base table outward).
+  See [[target->via-path]] for the full contract."
   [query target]
   (when-let [target-alias (:join-alias (lib/parameter-target-field-options target))]
     (let [stage-number (lib/parameter-target-stage-number target)]
       (loop [alias target-alias, path ()]
         (when-let [join (lib/maybe-resolve-join query stage-number alias)]
-          (when-let [{:keys [in out]} (some #(condition->link query alias %) (lib/join-conditions join))]
+          (when-let [[in out] (some #(condition->link query alias %) (lib/join-conditions join))]
             (let [edge  {:lhs (select-keys in  [:table :field])
                          :rhs (select-keys out [:table :field])}
                   path' (cons edge path)]
               (if-let [next-alias (:join-alias in)]
                 (recur next-alias path')
                 (vec path')))))))))
+
+(defn- target->via-path
+  "Resolve `target` to an ordered sequence of FK edges (base table outward) in the shape
+  `metabase.parameters.chain-filter/find-joins` uses. Handles two cases:
+
+  - Explicit joins (`:join-alias`): walk the card's join chain back to the base table.
+  - Implicit joins (`:source-field`): emit the one-hop edge the field ref itself names.
+
+  Return nil when the target carries neither hint, or when a hint can't be resolved against `query`."
+  [query target]
+  (or (join-alias->via-path query target)
+      (source-field->via-path query target)))
 
 (def ^:const result-limit
   "How many results to return when chain filtering"
@@ -72,6 +102,33 @@
     (lib/query (lib-be/application-database-metadata-provider (:database_id card))
                (:dataset_query card))))
 
+(defn- condition->fk-pair
+  "If `condition` is `[:= _opts <field> <field>]` with two distinct integer field-ids, return `#{a b}`; otherwise nil."
+  [condition]
+  (when-let [[a b] (=-field-refs condition)]
+    (let [fa (lib/field-ref-id a)
+          fb (lib/field-ref-id b)]
+      (when (and (int? fa) (int? fb) (not= fa fb))
+        #{fa fb}))))
+
+(defn- query->fk-pairs
+  "Every FK edge the expanded `query` uses, as a set of unordered `#{lhs-id rhs-id}` pairs. Recurses through
+  nested cards (`:source-card` on a stage) so joins declared in an inner card are visible even when they don't
+  surface on the outer stage."
+  [query]
+  (let [here   (into #{}
+                     (comp (mapcat #(lib/joins query %))
+                           (mapcat lib/join-conditions)
+                           (keep condition->fk-pair))
+                     (range (lib/stage-count query)))
+        nested (into #{}
+                     (mapcat (fn [card-id]
+                               (when-let [c (lib.metadata/card query card-id)]
+                                 (when-let [dq (:dataset-query c)]
+                                   (query->fk-pairs (lib/query query dq))))))
+                     (lib/all-source-card-ids-recursive query))]
+    (set/union here nested)))
+
 (mu/defn- param->fields
   [param :- ::parameters.schema/resolved-parameter
    & {:keys [op-override]} :- [:maybe [:map {:closed true} [:op-override {:optional true} [:maybe :keyword]]]]]
@@ -83,12 +140,24 @@
           :when field-id
           :let [target   (:target mapping)
                 card     (:card (:dashcard mapping))
-                via-path (when (:join-alias (lib/parameter-target-field-options target))
-                           (some-> (card->query card) (target->via-path target)))]]
+                opts     (lib/parameter-target-field-options target)
+                query    (card->query card)
+                via-path (when (and query (or (:join-alias opts) (:source-field opts)))
+                           (target->via-path query target))
+                ;; With no via-path to pin, fall back to the FK pairs the expanded card actually joins through —
+                ;; the deduper will prefer any parallel edge whose endpoints match a pair.
+                fk-pairs (when (and query (empty? via-path))
+                           (not-empty (query->fk-pairs query)))]]
       {:field-id field-id
        :op       op
        :options  options
-       :via-path via-path})))
+       :via-path via-path
+       :fk-pairs fk-pairs})))
+
+(defn- entry->constraint
+  "Project a `param->fields` entry down to the `::chain-filter/constraint` shape."
+  [entry value]
+  (-> entry (dissoc :fk-pairs) (assoc :value value)))
 
 (mu/defn ^:private chain-filter-constraints :- ::chain-filter/constraints
   [dashboard                   :- :metabase.dashboards.schema/dashboard
@@ -96,8 +165,8 @@
   (vec (for [[param-key value] constraint-param-key->value
              :let              [param (get-in dashboard [:resolved-params param-key])]
              :when             param
-             field             (param->fields param)]
-         (assoc field :value value))))
+             entry             (param->fields param)]
+         (entry->constraint entry value))))
 
 (defn filter-values-from-field-refs
   "Get filter values when only field-refs (e.g. `[:field \"SOURCE\" {:base-type :type/Text}]`)
@@ -162,9 +231,10 @@
          (let [;; results can come back as [[value] ...] *or* as [[value remapped] ...].
                ;; One chain-filter call per mapping, each threading its own :via-path so a parameter mapped to the
                ;; same base field via multiple joins unions each mapping's dropdown values.
-               call            (fn [{:keys [field-id via-path]}]
+               call            (fn [{:keys [field-id via-path fk-pairs]}]
                                  (let [opts (cond-> [:limit result-limit]
-                                              (seq via-path) (into [:via-path via-path]))]
+                                              (seq via-path) (into [:via-path via-path])
+                                              (seq fk-pairs) (into [:fk-pairs fk-pairs]))]
                                    (if (seq query)
                                      (apply chain-filter/chain-filter-search field-id constraints query opts)
                                      (apply chain-filter/chain-filter field-id constraints opts))))
@@ -279,8 +349,8 @@
                                   (first field-ids)
                                   (into (chain-filter-constraints dashboard
                                                                   constraint-param-key->value)
-                                        (for [field (param->fields param :op-override :=)]
-                                          (assoc field :value value)))
+                                        (for [entry (param->fields param :op-override :=)]
+                                          (entry->constraint entry value)))
                                   :relax-fk-requirement? true
                                   :limit 1)
            ;; Default case when we have multiple field-ids:

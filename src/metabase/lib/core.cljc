@@ -1204,7 +1204,10 @@
 (shared.ns/import-fns
  [lib.join
   join-fields-to-add-to-parent-stage ;; TODO: Unexport this; it's only used from tests and QP.
-  raw-join-strategy])                ;; TODO: Unexport this; it's only used from tests.
+  raw-join-strategy                  ;; TODO: Unexport this; it's only used from tests.
+  standard-join-condition?
+  standard-join-condition-lhs
+  standard-join-condition-rhs])
 
 ;;; ## Column selection
 ;;; These functions control what subset of the available columns are returned from a given stage of a query. This is

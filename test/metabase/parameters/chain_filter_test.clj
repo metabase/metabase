@@ -383,7 +383,7 @@
     (binding [chain-filter/*enable-reverse-joins* false]
       (mt/$ids nil
         (is (= [{:lhs {:table $$venues, :field %venues.category_id}, :rhs {:table $$categories, :field %categories.id}}]
-               (#'chain-filter/find-all-joins (mt/metadata-provider) (mt/id) $$venues #{%categories.name %users.id})))))))
+               (#'chain-filter/find-all-joins (mt/metadata-provider) (mt/id) $$venues #{%categories.name %users.id} #{})))))))
 
 (deftest ^:parallel find-all-joins-test-2
   (mt/dataset airports
@@ -394,7 +394,8 @@
                    :rhs {:table $$municipality, :field %municipality.id}}
                   {:lhs {:table $$municipality, :field %municipality.region_id}
                    :rhs {:table $$region, :field %region.id}}]
-                 (#'chain-filter/find-all-joins (mt/metadata-provider) (mt/id) $$airport #{%region.name %municipality.name %region.id}))))))))
+                 (#'chain-filter/find-all-joins (mt/metadata-provider) (mt/id) $$airport
+                                                #{%region.name %municipality.name %region.id} #{}))))))))
 
 (deftest ^:parallel multi-hop-test
   (mt/dataset airports
