@@ -867,10 +867,12 @@
       (-> (unremapped-chain-filter field-id constraints options)
           (update :values add-human-readable-values v->human-readable))
 
-      ;; Cached field-values are keyed by (field-id, constraints) only — they can't distinguish between pinned paths,
-      ;; so skip the cache when the caller asked for a specific `:via-path`.
+      ;; Cached field-values are keyed by (field-id, constraints) only — they can't distinguish between pinned paths.
+      ;; Skip the cache only when a path/pair preference *could matter*, i.e. there are constraints that drive joins.
+      ;; With no constraints the query would be a plain SELECT with no joins, so the cache is still correct.
       (and (use-cached-field-values? field-id) (nil? @remapping)
-           (empty? (:via-path options)) (empty? (:fk-pairs options)))
+           (or (empty? constraints)
+               (and (empty? (:via-path options)) (empty? (:fk-pairs options)))))
       (do
         (check-field-value-query-permissions field-id constraints options)
         (cached-field-values field-id constraints options))
@@ -1056,7 +1058,8 @@
       (human-readable-values-remapped-chain-filter-search field-id @v->human-readable constraints query-string options)
 
       (and (search-cached-field-values? field-id constraints) (nil? @the-remapped-field-id)
-           (empty? (:via-path options)) (empty? (:fk-pairs options)))
+           (or (empty? constraints)
+               (and (empty? (:via-path options)) (empty? (:fk-pairs options)))))
       (do
         (check-field-value-query-permissions field-id constraints options)
         (cached-field-values-search field-id query-string constraints options))
