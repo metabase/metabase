@@ -72,9 +72,11 @@
                  ;; Foreign key sync is not supported. The test loader adds constraints after table
                  ;; creation, but DuckDB requires foreign keys in the CREATE TABLE statement.
                  :metadata/key-constraints
+                 ;; Transforms are not supported at all.
                  :transforms/table
                  :transforms/python
                  :transforms/index-ddl
+                 :transforms/testing
                  ;; DuckDB uses RE2, which does not support lookahead or lookbehind assertions.
                  :regex/lookaheads-and-lookbehinds]]
   (defmethod driver/database-supports? [:motherduck feature]
