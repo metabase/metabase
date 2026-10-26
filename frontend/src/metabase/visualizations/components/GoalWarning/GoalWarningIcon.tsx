@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
@@ -13,9 +14,15 @@ type GoalWarningIconProps = {
 };
 
 export function GoalWarningIcon({ source, onClick }: GoalWarningIconProps) {
+  const messageId = useId();
+
   return (
-    <Tooltip label={getGoalWarningMessage(source)}>
+    <Tooltip
+      keepMounted // kept mounted so the button's description exists while the tooltip is closed
+      label={<span id={messageId}>{getGoalWarningMessage(source)}</span>}
+    >
       <UnstyledButton
+        aria-describedby={messageId}
         aria-label={t`Goal warning`}
         display="block"
         onClick={onClick}

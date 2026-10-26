@@ -462,11 +462,9 @@ describe("Scalar conditional colors", () => {
     );
 
     await userEvent.hover(screen.getByLabelText("Goal warning"));
-    expect(
-      await screen.findByText(
-        "Couldn't get some color range values. Click to open settings.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Couldn't get some color range values. Click to open settings.",
+    );
 
     await userEvent.click(screen.getByLabelText("Goal warning"));
     expect(onOpenChartSettings).toHaveBeenCalledWith({
