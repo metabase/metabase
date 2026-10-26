@@ -19,6 +19,8 @@ title: API changelog
 - `POST /api/ee/serialization/export` accepts a `dirname` of 1-255 characters from `A-Z a-z 0-9 _ - . %`
   that does not start with `.` or `-`. Other values get `400 Bad Request`.
 
+- The sandbox host used by custom visualizations and data apps is now at `GET /api/ee/browser-sandboxing/sandbox-host`, replacing `GET /api/ee/custom-viz-plugin/sandbox-host`.
+
 ## Metabase 0.65.0
 
 - `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with

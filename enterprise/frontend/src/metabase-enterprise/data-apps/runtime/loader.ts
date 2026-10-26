@@ -7,7 +7,10 @@ import { pick } from "underscore";
 
 import * as sdkExports from "embedding-sdk-package";
 import * as dataAppExports from "embedding-sdk-package/data-app";
-import { DATA_APP_REALM_HOST_URL, getSubpathSafeUrl } from "metabase/urls";
+import {
+  NEAR_MEMBRANE_SANDBOX_HOST_URL,
+  getSubpathSafeUrl,
+} from "metabase/urls";
 import { createDataAppSandbox } from "metabase-enterprise/data-apps/sandbox/sandbox";
 import {
   DATA_APP_PROVIDER_PROP_KEYS,
@@ -117,7 +120,7 @@ export const instantiateDataAppBundle = async (
     label,
     targetWindow,
     allowedHosts,
-    realmHostUrl: getSubpathSafeUrl(DATA_APP_REALM_HOST_URL),
+    realmHostUrl: getSubpathSafeUrl(NEAR_MEMBRANE_SANDBOX_HOST_URL),
     endowments: {
       React,
       reactDom: ReactDOM,
