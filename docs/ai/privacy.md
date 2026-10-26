@@ -49,7 +49,7 @@ Query execution is on by default. Admins can turn it off in [AI settings](./sett
 
 When query execution is off, Metabot doesn't run queries to read their results, but it can still build queries and charts for you. Other features on this page, like chart analysis, can still send values from your data.
 
-Metabot in Slack and in embedded apps doesn't read query results, regardless of this setting.
+Metabot in Slack doesn't read query results, regardless of this setting.
 
 ## Data sent to your own AI provider
 

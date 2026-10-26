@@ -144,7 +144,7 @@ Toggle query execution on or off. It's on by default, and the toggle is hidden w
 
 Metabot runs queries with the permissions of the person asking, and sends the result rows to your AI provider. See [AI privacy](./privacy.md#metabot-sends-query-results-to-the-ai-provider-when-it-runs-queries).
 
-Metabot in Slack and in embedded apps doesn't read query results, regardless of this setting.
+This setting doesn't apply to Metabot in Slack or in embedded apps.
 
 If [`MB_METABOT_QUERY_EXECUTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_query_execution_enabled) is set, the toggle shows its value and is locked.
 
