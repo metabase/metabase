@@ -322,7 +322,7 @@ describe("admin > database > database routing", () => {
         .should("be.checked")
         .click({ force: true });
 
-      cy.log("should be disabled if uploads are enabled for the database");
+      cy.log("should not be disabled if uploads are enabled for the database");
       cy.visit("/admin/settings/uploads");
       cy.findByLabelText("Upload Settings Form")
         .findByPlaceholderText("Select a database")
@@ -338,9 +338,7 @@ describe("admin > database > database routing", () => {
         .click();
 
       visitDatabaseAdminPage(WRITABLE_DB_ID);
-      assertDbRoutingDisabled(
-        "Database routing can't be enabled if uploads are enabled for this database.",
-      );
+      assertDbRoutingNotDisabled();
     });
 
     it("should highlight that a dabtabase has routing enabled on the permissions pages", () => {
@@ -444,7 +442,7 @@ describe("admin > database > database routing", () => {
         disableModelActionsViaApi(WRITABLE_DB_ID);
       });
 
-      it("should not be possible to enable model persistence or uploads when database routing is enabled", () => {
+      it("should not be possible to enable model persistence when database routing is enabled", () => {
         cy.log("setup");
         enableGlobalModelPersistence();
         configureDbRoutingViaAPI({
@@ -481,15 +479,17 @@ describe("admin > database > database routing", () => {
           .should("be.enabled");
 
         cy.log(
-          "should not be possible to enable uploads when database routing is enabled",
+          "should be possible to enable uploads when database routing is enabled",
         );
         // Keep this step last: it navigates away from the database page.
         visitUploadSettingsPage();
 
         cy.findByLabelText("Database to use for uploads").click();
-        H.popover()
-          .findByText("Writable Postgres12 (DB Routing Enabled)")
-          .should("be.visible");
+        H.popover().findByText("Writable Postgres12").click();
+        cy.findByLabelText("Database to use for uploads").should(
+          "have.value",
+          "Writable Postgres12",
+        );
       });
     });
   });

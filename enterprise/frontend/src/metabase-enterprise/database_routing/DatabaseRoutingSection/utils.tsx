@@ -9,7 +9,6 @@ import type { Database } from "metabase-types/api";
 export const getDisabledFeatureMessage = (database: Database) => {
   return match({
     isPersisted: hasFeature(database, "persist-models-enabled"),
-    isUploadDb: database.uploads_enabled,
     supportsRouting: !!database.features?.includes("database-routing"),
   })
     .with(
@@ -20,11 +19,6 @@ export const getDisabledFeatureMessage = (database: Database) => {
       { isPersisted: true },
       () =>
         t`Database routing can't be enabled if model persistence is enabled.`,
-    )
-    .with(
-      { isUploadDb: true },
-      () =>
-        t`Database routing can't be enabled if uploads are enabled for this database.`,
     )
     .otherwise(() => undefined);
 };

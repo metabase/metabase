@@ -194,3 +194,22 @@
                                        :inputs [{"id" 1 "owner" "admin"}]})
                 (is (= [{:id 1 :owner "admin"}] (query-h2 dest-1 "SELECT * FROM \"acct\"")))
                 (is (= [] (query-h2 router-db "SELECT * FROM \"acct\"")))))))))))
+
+(deftest admins-upload-to-router-test
+  (testing "an admin who isn't routed uploads to a router, and the table lands on the router itself"
+    (mt/with-premium-features #{:database-routing}
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (met/with-user-attributes! :rasta {"db_name" "destination-db-1"}
+          (e2e/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
+            (let [router-id (u/the-id router-db)]
+              (t2/update! :model/Database router-id {:uploads_enabled true :uploads_schema_name "PUBLIC"})
+              (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}]
+                (mt/with-current-user (mt/user->id :crowberto)
+                  (upload/create-csv-upload! {:collection-id nil
+                                              :filename      "admin.csv"
+                                              :file          (upload-test/csv-file-with ["admin_col" "row"] "admin")
+                                              :db-id         router-id
+                                              :schema-name   "PUBLIC"
+                                              :table-prefix  "admin_"}))
+                (is (seq (query-h2 router-db "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) LIKE 'admin_%'")))
+                (is (empty? (query-h2 dest-1 "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) LIKE 'admin_%'")))))))))))
