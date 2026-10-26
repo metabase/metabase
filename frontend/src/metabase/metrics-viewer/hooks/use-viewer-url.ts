@@ -3,8 +3,6 @@ import { t } from "ttag";
 
 import { useToast } from "metabase/common/hooks";
 import type { Location } from "metabase/router";
-import { useNavigate } from "metabase/router";
-import * as Urls from "metabase/urls";
 import type { MeasureId } from "metabase-types/api";
 import type { MetricId } from "metabase-types/api/metric";
 
@@ -30,18 +28,21 @@ export interface LoadSourcesRequest {
   measureIds: MeasureId[];
 }
 
+/** Where the viewer state is read from: the page URL, or an encoded state held by an embedding view. */
+export type ViewerStateLocation = Pick<Location, "hash" | "search">;
+
 export function useViewerUrl(
   state: MetricsViewerPageState,
   initialize: (state: MetricsViewerPageState) => void,
   onLoadSources: (request: LoadSourcesRequest) => void,
-  location: Location,
+  location: ViewerStateLocation,
   setFormulaEntities: (
     entities: MetricsViewerFormulaEntity[],
     slotMapping?: Map<number, number>,
   ) => void,
   setInitialLoadComplete: (initialLoadComplete: boolean) => void,
+  onHashChange: (hash: string) => void,
 ): void {
-  const navigate = useNavigate();
   const [sendToast] = useToast();
   const lastHashRef = useRef<string | null>(null);
 
@@ -184,12 +185,7 @@ export function useViewerUrl(
     const hash = encodeState(serializedState);
     if (hash !== undefined && hash !== lastHashRef.current) {
       lastHashRef.current = hash;
-      const url = Urls.metricsViewer(hash);
-      if (!window.location.hash) {
-        navigate(url, { replace: true });
-      } else {
-        navigate(url);
-      }
+      onHashChange(hash);
     }
-  }, [state, navigate]);
+  }, [state, onHashChange]);
 }

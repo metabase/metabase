@@ -1,20 +1,8 @@
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
-import { BreakoutLegend } from "metabase/metrics-viewer/components/BreakoutLegend/BreakoutLegend";
-import { DimensionPickerSidebar } from "metabase/metrics-viewer/components/DimensionPickerSidebar";
-import {
-  MetricsViewerEmptyState,
-  MetricsViewerNoDimensionBreakoutEmptyState,
-} from "metabase/metrics-viewer/components/EmptyState";
-import { MetricSearchPanel } from "metabase/metrics-viewer/components/MetricSearchPanel";
-import { MetricsViewerDimensionBreakoutContent } from "metabase/metrics-viewer/components/MetricsViewerDimensionBreakoutContent";
-import {
-  MetricsViewerProvider,
-  useMetricsViewerContext,
-} from "metabase/metrics-viewer/context";
+import { MetricsViewerBody } from "metabase/metrics-viewer/components/MetricsViewerBody";
+import { MetricsViewerProvider } from "metabase/metrics-viewer/context";
 import { useViewerState } from "metabase/metrics-viewer/hooks";
-import { Box, Center, Flex, Stack } from "metabase/ui";
-
-import S from "./MetricsViewerPage.module.css";
+import { Center } from "metabase/ui";
 
 export function MetricsViewerPage() {
   const viewerState = useViewerState();
@@ -30,56 +18,7 @@ export function MetricsViewerPage() {
 
   return (
     <MetricsViewerProvider value={viewerState}>
-      <MetricsViewerPageBody />
+      <MetricsViewerBody />
     </MetricsViewerProvider>
-  );
-}
-
-function MetricsViewerPageBody() {
-  const { definitions, activeDimensionBreakout, isSidebarOpen } =
-    useMetricsViewerContext();
-
-  const hasDefinitions = Object.keys(definitions).length > 0;
-  const hasLoadedDefinitions = Object.values(definitions).some(
-    (entry) => entry.definition != null,
-  );
-  const showDimensionPickerSidebar = isSidebarOpen && activeDimensionBreakout;
-  const showBreakoutLegend =
-    !showDimensionPickerSidebar && activeDimensionBreakout?.type !== "scalar";
-
-  return (
-    <Stack px="3rem" h="100%" gap={0} className={S.root}>
-      <Box pt="lg" flex="0 0 auto">
-        <MetricSearchPanel />
-      </Box>
-      <Flex flex="1 1 auto" mih={0}>
-        <Stack gap={0} flex={1} mih={0} miw={0}>
-          <Flex flex="1 1 auto" mih={0} pt="xl">
-            <Flex
-              direction="column"
-              pt="lg"
-              pb="xl"
-              flex={1}
-              miw={0}
-              className={S.content}
-            >
-              {!hasDefinitions ? (
-                <MetricsViewerEmptyState />
-              ) : activeDimensionBreakout ? (
-                <MetricsViewerDimensionBreakoutContent />
-              ) : hasLoadedDefinitions ? (
-                <MetricsViewerNoDimensionBreakoutEmptyState />
-              ) : null}
-            </Flex>
-            {showBreakoutLegend && <BreakoutLegend />}
-            {showDimensionPickerSidebar && (
-              <DimensionPickerSidebar
-                activeDimensionBreakout={activeDimensionBreakout}
-              />
-            )}
-          </Flex>
-        </Stack>
-      </Flex>
-    </Stack>
   );
 }

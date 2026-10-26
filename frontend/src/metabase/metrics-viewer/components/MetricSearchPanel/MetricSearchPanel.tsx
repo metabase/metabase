@@ -22,7 +22,17 @@ import { MetricsFilterPills } from "../MetricsFilterPills";
 
 import S from "./MetricSearchPanel.module.css";
 
-export function MetricSearchPanel() {
+type MetricSearchPanelProps = {
+  /**
+   * Whether to show the "Explore" heading and its Filter button. Pages embedding the viewer
+   * hide them when they have their own title and filters.
+   */
+  showHeading?: boolean;
+};
+
+export function MetricSearchPanel({
+  showHeading = true,
+}: MetricSearchPanelProps) {
   const {
     definitions,
     formulaEntities,
@@ -86,48 +96,50 @@ export function MetricSearchPanel() {
 
   return (
     <Stack gap="lg">
-      <Flex align="center" justify="space-between" mih="1.875rem">
-        <Text fw={700} size="lg" component="h1">
-          {t`Explore`}
-        </Text>
-        {hasDefinitions && (
-          <FilterPopover
-            definitionSources={definitionSources}
-            metricColors={metricColors}
-            onSourceDefinitionChange={handleSourceDefinitionChange}
-          >
-            <Button.Group>
-              <Button
-                variant="light"
-                color="filter"
-                leftSection={
-                  <Icon
-                    name={hasFilters ? "filter_plus" : "filter"}
-                    size={16}
-                  />
-                }
-              >
-                {t`Filter`}
-              </Button>
-              {hasFilters && (
-                <Tooltip label={toggleLabel}>
-                  <Button
-                    variant="light"
-                    color="filter"
-                    aria-label={toggleLabel}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setIsFilterPillsExpanded((prev) => !prev);
-                    }}
-                  >
-                    {filterCount}
-                  </Button>
-                </Tooltip>
-              )}
-            </Button.Group>
-          </FilterPopover>
-        )}
-      </Flex>
+      {showHeading && (
+        <Flex align="center" justify="space-between" mih="1.875rem">
+          <Text fw={700} size="lg" component="h1">
+            {t`Explore`}
+          </Text>
+          {hasDefinitions && (
+            <FilterPopover
+              definitionSources={definitionSources}
+              metricColors={metricColors}
+              onSourceDefinitionChange={handleSourceDefinitionChange}
+            >
+              <Button.Group>
+                <Button
+                  variant="light"
+                  color="filter"
+                  leftSection={
+                    <Icon
+                      name={hasFilters ? "filter_plus" : "filter"}
+                      size={16}
+                    />
+                  }
+                >
+                  {t`Filter`}
+                </Button>
+                {hasFilters && (
+                  <Tooltip label={toggleLabel}>
+                    <Button
+                      variant="light"
+                      color="filter"
+                      aria-label={toggleLabel}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setIsFilterPillsExpanded((prev) => !prev);
+                      }}
+                    >
+                      {filterCount}
+                    </Button>
+                  </Tooltip>
+                )}
+              </Button.Group>
+            </FilterPopover>
+          )}
+        </Flex>
+      )}
       <Box className={S.container}>
         <Box>
           <MetricSearch
