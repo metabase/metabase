@@ -273,11 +273,11 @@
 (deftest ^:parallel transform-values-for-col-test
   (testing "test that different columns types are transformed"
     (is (= (map list [123M 123.0 123N 123 "123"])
-           (map #(#'qp.add-remaps/transform-values-for-col {:base-type %} [123] false)
+           (map #(#'qp.add-remaps/transform-values-for-col {:base-type %} [123])
                 [:type/Decimal :type/Float :type/BigInteger :type/Integer :type/Text])))
     (testing "and stringified if necessary"
       (is (= (map list ["9007199254740992" "9007199254740992" "9007199254740992"])
-             (map #(#'qp.add-remaps/transform-values-for-col {:base-type %} [9007199254740992] true)
+             (map #(#'qp.add-remaps/transform-values-for-col {:base-type %} [9007199254740992])
                   [:type/Integer :type/BigInteger :type/Decimal]))))))
 
 (deftest ^:parallel external-remappings-metadata-test
