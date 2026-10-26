@@ -2,6 +2,7 @@
   (:require
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting :refer [defsetting]]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -44,21 +45,33 @@
   :visibility :public
   :doc        false)
 
-(defsetting metaplow-tracking-enabled
-  (deferred-tru
-   (str "Boolean indicating whether analytics events are being sent to Metaplow. "
-        "True if anonymous tracking is enabled for this instance, and a Metaplow collector URL is set."))
-  :type       :boolean
-  :getter     (fn [] (boolean (and (anon-tracking-enabled)
-                                   (setting/get-value-of-type :string :metaplow-url))))
-  :visibility :public
-  :doc        false)
+(defn- default-metaplow-url
+  "The Metabase Track collector in production run mode, and nil in every other run mode — dev, test and e2e runs must
+  not send real telemetry. Air-gapped instances get no default either; an explicitly set URL still applies."
+  []
+  (when (and config/is-prod?
+             (not (premium-features/airgap-enabled)))
+    "https://product-analytics-ingestion.metabase.com/api/send"))
 
 (defsetting metaplow-url
   (deferred-tru "The URL of the Metaplow collector to send analytics events to.")
   :encryption :when-encryption-key-set
+  ;; resolved per read rather than as `:default`, which is fixed at load time, before the token is known
+  :getter     (fn []
+                (or (setting/get-value-of-type :string :metaplow-url)
+                    (default-metaplow-url)))
   :visibility :public
   :audit      :never
+  :doc        false)
+
+(defsetting metaplow-tracking-enabled
+  (deferred-tru
+   (str "Boolean indicating whether analytics events are being sent to Metaplow. "
+        "True if anonymous tracking is enabled for this instance, and a Metaplow collector URL is set or defaulted."))
+  :type       :boolean
+  :getter     (fn [] (boolean (and (anon-tracking-enabled)
+                                   (metaplow-url))))
+  :visibility :public
   :doc        false)
 
 (defsetting snowplow-url

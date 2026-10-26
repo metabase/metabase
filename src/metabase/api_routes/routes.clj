@@ -5,6 +5,7 @@
    [metabase.activity-feed.api]
    [metabase.agent-api.api]
    [metabase.analytics.api]
+   [metabase.analytics.api.metaplow-proxy]
    [metabase.analytics.api.proxy]
    [metabase.api-keys.api]
    [metabase.api.docs]
@@ -81,6 +82,7 @@
          metabase.activity-feed.api/keep-me
          metabase.agent-api.api/keep-me
          metabase.analytics.api/keep-me
+         metabase.analytics.api.metaplow-proxy/keep-me
          metabase.analytics.api.proxy/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.util/keep-me
@@ -189,7 +191,7 @@
    "/ai-entity-analysis"   metabase.metabot.api.entity-analysis/routes
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
-   "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
+   "/analytics-proxy"      (+public-exceptions metabase.analytics.api.proxy/routes)
    "/api-key"              (+auth 'metabase.api-keys.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
@@ -228,6 +230,7 @@
    "/measure"              (+auth 'metabase.measures.api)
    "/metabase-mcp"         (metabase.mcp.api/+mcp-enabled metabase.mcp.api/handler)
    "/metabot"              metabase.metabot.api/routes
+   "/metaplow-proxy"       (+public-exceptions metabase.analytics.api.metaplow-proxy/routes)
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)
