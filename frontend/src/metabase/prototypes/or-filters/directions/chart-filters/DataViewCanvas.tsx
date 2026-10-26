@@ -264,6 +264,7 @@ function ThresholdPills({ query, onChange }: FilterCanvasProps) {
       ))}
       <AddCompactThreshold
         summaryQuery={summaryQuery}
+        isEmpty={thresholds.length === 0}
         onChange={handleChange}
       />
     </Group>
@@ -331,12 +332,14 @@ function CompactThreshold({ query, filter, onChange }: CompactThresholdProps) {
 
 type AddCompactThresholdProps = {
   summaryQuery: Lib.Query;
+  isEmpty: boolean;
   onChange: (query: Lib.Query) => void;
 };
 
 /** "+": pick a measure, then set its number in the app's filter picker. */
 function AddCompactThreshold({
   summaryQuery,
+  isEmpty,
   onChange,
 }: AddCompactThresholdProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -354,15 +357,24 @@ function AddCompactThreshold({
       onChange={(opened) => (opened ? setIsOpened(true) : close())}
     >
       <Popover.Target>
-        <ActionIcon
-          size="sm"
-          variant="subtle"
-          c="text-secondary"
-          aria-label={t`Add a filter on the summary`}
-          onClick={() => (isOpened ? close() : setIsOpened(true))}
-        >
-          <Icon name="add" size={12} />
-        </ActionIcon>
+        {isEmpty ? (
+          <UnstyledButton
+            className={cx(S.threshold, S.thresholdCompact, S.thresholdEmpty)}
+            onClick={() => (isOpened ? close() : setIsOpened(true))}
+          >
+            <Text size="xs" fw="bold" c="inherit">{t`Show if…`}</Text>
+          </UnstyledButton>
+        ) : (
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            c="text-secondary"
+            aria-label={t`Add a filter on the summary`}
+            onClick={() => (isOpened ? close() : setIsOpened(true))}
+          >
+            <Icon name="add" size={12} />
+          </ActionIcon>
+        )}
       </Popover.Target>
       <Popover.Dropdown>
         {column ? (
@@ -385,6 +397,11 @@ function AddCompactThreshold({
           />
         ) : (
           <Stack gap={0} p="sm" miw={200}>
+            {!isEmpty && (
+              <Text size="xs" fw="bold" c="text-secondary" px="sm" pb="xs">
+                {t`Show if…`}
+              </Text>
+            )}
             {measures.map((measure, index) => (
               <Button
                 key={index}

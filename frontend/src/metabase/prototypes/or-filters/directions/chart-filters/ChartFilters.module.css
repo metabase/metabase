@@ -85,6 +85,11 @@
   text-decoration: underline dashed;
 }
 
+.thresholdEmpty {
+  border-style: dashed;
+  color: var(--mb-color-text-secondary);
+}
+
 .thresholdCompact:hover {
   border-color: var(--mb-color-core-summarize);
 }
