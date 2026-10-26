@@ -16,6 +16,8 @@ title: API changelog
   (`sensitive`). Pass the new `include_sensitive_fields=true` to get them, for tables whose data model the current user
   can edit, as with `GET /api/table/:id/query_metadata`.
 
+- The custom visualization sandbox host has moved from `GET /api/ee/custom-viz-plugin/sandbox-host` to `GET /api/ee/near-membrane-plugin/sandbox-host`.
+
 ## Metabase 0.65.0
 
 - `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with
