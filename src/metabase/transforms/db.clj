@@ -36,10 +36,12 @@
   (t2/select :model/Transform :id [:in transform-ids]))
 
 (mu/defn transforms-of-source-types
-  "The Transforms whose source type is one of `source-types`, optionally narrowed to `database-id`, ordered by ID."
+  "The Transforms not in the Trash whose source type is one of `source-types`, optionally narrowed to `database-id`,
+  ordered by ID."
   [source-types :- [:set :string]
    database-id  :- [:maybe ::lib.schema.id/database]]
   (t2/select :model/Transform {:where    [:and
+                                          [:= :archived false]
                                           [:in :source_type source-types]
                                           (when database-id [:= :source_database_id database-id])]
                                :order-by [[:id :asc]]}))

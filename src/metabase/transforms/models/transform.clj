@@ -3,6 +3,7 @@
    [clojure.set :as set]
    [medley.core :as m]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.collections.models.collection :as collection]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
@@ -257,9 +258,39 @@
   (hydrate-permission k transforms transform-writable?))
 
 (methodical/defmethod t2/batched-hydrate [:model/Transform :can_execute]
-  "Add can_execute to transforms. Executing a transform requires write permission."
+  "Add can_execute to transforms. Executing a transform requires write permission, and a transform in the Trash never
+  runs."
   [_model k transforms]
-  (hydrate-permission k transforms transform-writable?))
+  (hydrate-permission k transforms (fn [transform models-cache]
+                                     (and (not (:archived transform))
+                                          (transform-writable? transform models-cache)))))
+
+(defn- writable-transform-ids
+  "The IDs of the `transforms` that the current user can write. One prefetch of the source models serves them all, so
+  the check runs no query per transform."
+  [transforms]
+  (let [models-cache (transforms.u/prefetch-source-models transforms)]
+    (into #{} (comp (filter #(transform-writable? % models-cache)) (map :id)) transforms)))
+
+(methodical/defmethod t2/batched-hydrate [:model/Transform :can_delete]
+  "Add can_delete to transforms: a transform in the Trash that the current user can write. It replaces the generic
+  method, which checks write access one transform at a time."
+  [_model _k transforms]
+  (let [writable-ids (writable-transform-ids (filter :archived transforms))]
+    (for [transform transforms]
+      (assoc transform :can_delete (contains? writable-ids (:id transform))))))
+
+(defmethod collection/hydrate-can-restore :model/Transform
+  [_model transforms]
+  ;; The default method checks write access on the folder. Transform access comes from the data analyst role and
+  ;; database permissions instead, so check the transform itself.
+  (let [trashed             (filter :archived_directly transforms)
+        folder-id->archived (when-let [folder-ids (not-empty (into [] (comp (keep :collection_id) (distinct)) trashed))]
+                              (collections/collection-archived-flags folder-ids))
+        writable-ids        (writable-transform-ids trashed)]
+    (for [transform transforms]
+      (assoc transform :can_restore (and (contains? writable-ids (:id transform))
+                                         (not (get folder-id->archived (:collection_id transform))))))))
 
 (methodical/defmethod t2/batched-hydrate [:model/TransformRun :transform]
   "Add transform to a TransformRun. For orphaned runs (where transform was deleted),
@@ -474,7 +505,7 @@
 
 (defmethod serdes/make-spec "Transform"
   [_model-name opts]
-  {:copy      [:name :description :entity_id :owner_email]
+  {:copy      [:archived :archived_directly :name :description :entity_id :owner_email]
    :skip      [:source_type :target_db_id :target_table_id :last_checkpoint_value :table_dependencies]
    :transform {:creator_id         (serdes/fk :model/User)
                :owner_user_id      (serdes/fk :model/User)
@@ -524,7 +555,9 @@
                :target             {:export #(serdes/export-mbql (dissoc % :table_id))
                                     :import serdes/import-mbql}
                :tags               (serdes/nested :model/TransformTransformTag :transform_id (merge {:sort-by (juxt :position :entity_id)} opts))
-               :indexes            (serdes/nested :model/TableIndex :transform_id (merge {:sort-by :index_name} opts))}})
+               :indexes            (serdes/nested :model/TableIndex :transform_id (merge {:sort-by :index_name} opts))}
+   :defaults  {:archived          false
+               :archived_directly false}})
 
 (defmethod serdes/deserialization-dependencies "Transform"
   [{:keys [collection_id source tags]}]

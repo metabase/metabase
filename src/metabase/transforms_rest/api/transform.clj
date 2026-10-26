@@ -91,6 +91,8 @@
    [:updated_at :any]
    [:creator_id pos-int?]
    [:collection_id [:maybe pos-int?]]
+   [:archived :boolean]
+   [:archived_directly :boolean]
    [:target_db_id {:optional true} [:maybe pos-int?]]
    [:run_trigger {:optional true} [:maybe :keyword]]
    [:creator CreatorResponse]
@@ -105,6 +107,8 @@
    [:can_read {:optional true} :boolean]
    [:can_write {:optional true} :boolean]
    [:can_execute {:optional true} :boolean]
+   [:can_restore {:optional true} :boolean]
+   [:can_delete {:optional true} :boolean]
    ;; Index methods requestable on the target table (driver capability); nil when unsupported. Set only by GET /:id.
    ;; Referenced by registry keyword (not a require) to avoid a transforms-rest -> driver module dependency; the schema
    ;; is registered by `metabase.driver`, which is loaded well before any response is coerced.
@@ -303,6 +307,7 @@
             [:run_trigger {:optional true} ::run-trigger]
             [:tag_ids {:optional true} [:sequential ms/PositiveInt]]
             [:collection_id {:optional true} [:maybe ms/PositiveInt]]
+            [:archived {:optional true} :boolean]
             [:owner_user_id {:optional true} [:maybe ms/PositiveInt]]
             [:owner_email {:optional true} [:maybe :string]]]]
   (api/write-check :model/Transform id)

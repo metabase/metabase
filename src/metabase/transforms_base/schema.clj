@@ -78,6 +78,8 @@
    [:creator_id            {:optional true} [:maybe ::lib.schema.id/user]]
    [:source_database_id    {:optional true} [:maybe ::lib.schema.id/database]]
    [:collection_id         {:optional true} [:maybe ::lib.schema.id/collection]]
+   [:archived              {:optional true} :boolean]
+   [:archived_directly     {:optional true} :boolean]
    [:owner_user_id         {:optional true} [:maybe ::lib.schema.id/user]]
    [:owner_email           {:optional true} [:maybe :string]]
    [:target_db_id          {:optional true} [:maybe ::lib.schema.id/database]]

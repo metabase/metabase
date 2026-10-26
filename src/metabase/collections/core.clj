@@ -2,6 +2,7 @@
   "Main namespace for interacting with collections"
   (:require
    [metabase.collections.create]
+   [metabase.collections.db]
    [metabase.collections.models.collection]
    [metabase.collections.update]
    [metabase.collections.util]
@@ -16,6 +17,8 @@
 (p/import-vars
  [metabase.collections.create
   create-collection!]
+ [metabase.collections.db
+  collection-archived-flags]
  [metabase.collections.update
   update-collection!]
  [metabase.collections.models.collection

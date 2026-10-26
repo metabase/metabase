@@ -2283,3 +2283,106 @@
                          :last_run :status)))
               (testing "cancelling a transform with no running run is a 404"
                 (mt/user-http-request :crowberto :post 404 (format "transform/%s/cancel" id))))))))))
+
+;;; ------------------------------------------------------------
+;;; Trash
+;;; ------------------------------------------------------------
+
+(defn- listed-transform-ids
+  [user]
+  (into #{} (map :id) (mt/user-http-request user :get 200 "transform")))
+
+(deftest trash-and-restore-transform-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (with-transform-db-perms!
+      (with-transforms-api-users! [user]
+        (mt/with-temp [:model/Collection {folder-id :id} {:name "Folder" :namespace :transforms}
+                       :model/Transform  {transform-id :id} {:collection_id folder-id}]
+          (let [url (format "transform/%d" transform-id)]
+            (testing "a live transform"
+              (is (=? {:archived          false
+                       :archived_directly false
+                       :can_restore       false
+                       :can_delete        false
+                       :can_execute       true}
+                      (mt/user-http-request user :get 200 url))))
+            (testing "move to trash keeps the folder and ignores a collection_id in the same body"
+              (is (=? {:archived          true
+                       :archived_directly true
+                       :collection_id     folder-id
+                       :can_restore       true
+                       :can_delete        true
+                       :can_execute       false}
+                      (mt/user-http-request user :put 200 url {:archived true :collection_id nil}))))
+            (testing "GET /api/transform/:id returns the trashed transform"
+              (is (=? {:id transform-id :archived true}
+                      (mt/user-http-request user :get 200 url))))
+            (testing "GET /api/transform leaves out the trashed transform"
+              (is (not (contains? (listed-transform-ids user) transform-id))))
+            (testing "restore"
+              (is (=? {:archived          false
+                       :archived_directly false
+                       :collection_id     folder-id
+                       :can_restore       false
+                       :can_delete        false
+                       :can_execute       true}
+                      (mt/user-http-request user :put 200 url {:archived false})))
+              (is (contains? (listed-transform-ids user) transform-id)))))))))
+
+(deftest trash-broken-transform-test
+  (testing "a trash, restore or move skips the source and target validation"
+    (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+      ;; H2 has no transforms support, so every other edit of a transform that writes to it fails.
+      (mt/with-temp [:model/Collection {folder-id :id} {:name "Folder" :namespace :transforms}
+                     :model/Transform  {transform-id :id} {}]
+        (let [url (format "transform/%d" transform-id)]
+          (testing "an edit of the broken transform fails"
+            (is (= "The database does not support the requested transform features."
+                   (mt/user-http-request :crowberto :put 400 url {:name "Renamed"}))))
+          (is (=? {:archived true}
+                  (mt/user-http-request :crowberto :put 200 url {:archived true})))
+          (is (=? {:archived false}
+                  (mt/user-http-request :crowberto :put 200 url {:archived false})))
+          (is (=? {:collection_id folder-id}
+                  (mt/user-http-request :crowberto :put 200 url {:collection_id folder-id}))))))))
+
+(deftest trash-transform-folder-in-trash-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/with-temp [:model/Collection {folder-id :id}         {:name "Folder" :namespace :transforms}
+                   :model/Collection {live-folder-id :id}    {:name "Live" :namespace :transforms}
+                   :model/Collection {trashed-folder-id :id} {:name "Trashed" :namespace :transforms :archived true}
+                   :model/Transform  {transform-id :id}      {:collection_id folder-id}]
+      (let [url (format "transform/%d" transform-id)]
+        (testing "a move into a folder in the trash fails"
+          (is (= "You can't move a transform into a folder that is in the trash."
+                 (mt/user-http-request :crowberto :put 400 url {:collection_id trashed-folder-id}))))
+        (testing "a restore while the folder is in the trash fails"
+          (mt/user-http-request :crowberto :put 200 url {:archived true})
+          (t2/update! :model/Collection folder-id {:archived true})
+          (is (=? {:can_restore false}
+                  (mt/user-http-request :crowberto :get 200 url)))
+          (is (= "Restore the folder first, or move the transform to another folder."
+                 (mt/user-http-request :crowberto :put 400 url {:archived false}))))
+        (testing "a move out of the trash into a live folder restores the transform"
+          (is (=? {:archived          false
+                   :archived_directly false
+                   :collection_id     live-folder-id}
+                  (mt/user-http-request :crowberto :put 200 url {:archived false :collection_id live-folder-id}))))))))
+
+(deftest create-transform-in-folder-in-trash-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
+      (mt/dataset transforms-dataset/transforms-test
+        (mt/with-temp [:model/Collection {trashed-folder-id :id} {:name "Trashed" :namespace :transforms :archived true}]
+          (testing "a create in a folder in the trash fails"
+            (is (= "You can't create a transform in a folder that is in the trash."
+                   (mt/user-http-request :crowberto :post 400 "transform"
+                                         {:name          "Transform in a trashed folder"
+                                          :source        {:type  "query"
+                                                          :query (make-query "Gadget")}
+                                          :target        {:type   "table"
+                                                          :schema (get-test-schema)
+                                                          :name   "trashed_folder_create_test"}
+                                          :collection_id trashed-folder-id})))
+            (is (not (t2/exists? :model/Transform :collection_id trashed-folder-id)))))))))
+

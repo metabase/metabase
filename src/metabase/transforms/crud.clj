@@ -5,6 +5,7 @@
   (:require
    [clojure.string :as str]
    [metabase.api.common :as api]
+   [metabase.collections.core :as collections]
    [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
@@ -120,7 +121,8 @@
   (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
     (api/check-403 (seq enabled-types))
     (let [transforms (transforms.db/transforms-of-source-types enabled-types database-id)]
-      (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
+      (->> (t2/hydrate transforms :last_run :transform_tag_ids :creator :owner
+                       :can_read :can_write :can_execute :can_restore :can_delete)
            (into []
                  (comp (transforms-base.u/->date-field-filter-xf [:last_run :start_time] last-run-start-time)
                        (transforms-base.u/->status-filter-xf [:last_run :status] last-run-statuses)
@@ -146,11 +148,25 @@
   (let [{:keys [target] :as transform} (api/read-check :model/Transform id)
         target-table (transforms-base.u/target-table (transforms-base.i/target-db-id transform) target :active true)]
     (-> transform
-        (t2/hydrate :last_run :transform_tag_ids :creator :owner :can_read :can_write :can_execute)
+        (t2/hydrate :last_run :transform_tag_ids :creator :owner
+                    :can_read :can_write :can_execute :can_restore :can_delete)
         (u/update-some :last_run transforms-base.u/present-run)
         (assoc :table target-table)
         (assoc :requestable_indexes (requestable-indexes transform))
         transforms.u/add-source-readable)))
+
+(defn- check-folder-in-trash!
+  "Reject a create or a move into a folder in the Trash, and a restore of a transform whose folder is in the Trash.
+  `old` is nil for a create."
+  [old new]
+  (when-let [folder-id (:collection_id new)]
+    (when (get (collections/collection-archived-flags [folder-id]) folder-id)
+      (api/check-400 (= folder-id (:collection_id old))
+                     (if old
+                       (deferred-tru "You can''t move a transform into a folder that is in the trash.")
+                       (deferred-tru "You can''t create a transform in a folder that is in the trash.")))
+      (api/check-400 (not (and (:archived old) (not (:archived new))))
+                     (deferred-tru "Restore the folder first, or move the transform to another folder.")))))
 
 (defn create-transform!
   "Create new transform in the appdb.
@@ -158,6 +174,7 @@
   ([body]
    (create-transform! body nil))
   ([body creator-id]
+   (check-folder-in-trash! nil body)
    (when (transforms-base.u/query-transform? body)
      (validate-transform-query! body))
    (validate-target-schema! body)
@@ -183,39 +200,49 @@
      transform)))
 
 (defn update-transform!
-  "Update a transform. Validates features, database support, cycles, and target conflicts.
-   Returns the updated transform with hydrated associations."
+  "Update a transform. Validates features, database support, cycles, and target conflicts, unless the update only
+  moves the transform to or from the Trash or to another folder. Returns the updated transform with hydrated
+  associations."
   [id body]
   (let [transform (t2/with-transaction [_]
                     ;; Cycle detection should occur within the transaction to avoid race
-                    (let [old (transforms.db/transform id)
-                          new (merge old body)
+                    (let [old  (transforms.db/transform id)
+                          ;; A broken transform must still go to the Trash, so a trash, restore or move skips the
+                          ;; source and target validation, as a card update checks only the columns that change.
+                          ;; It also skips the premium feature check, so an instance whose license was downgraded
+                          ;; can still trash, restore or move a transform whose type it can no longer edit.
+                          archive-or-move-only? (every? #{:archived :collection_id} (keys body))
+                          body (api/updates-with-archived-directly old body)
+                          new  (merge old body)
                           target-fields #(-> % :target (select-keys [:schema :name]))]
                       (api/check-403 (and (mi/can-write? old) (mi/can-write? new)))
-                      ;; we must validate on a full transform object
-                      (check-feature-enabled! new)
-                      (check-database-feature new)
-                      (when (contains? body :target)
-                        (validate-target-schema! new))
-                      (when (contains? body :source)
-                        (validate-incremental-column-type! new))
-                      (when (or (contains? body :source) (contains? body :target))
-                        (validate-incremental-table-tag! new)
-                        (validate-lookback! new))
-                      (when (transforms-base.u/query-transform? old)
-                        (validate-transform-query! new)
-                        (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]
-                          (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
-                                          {:status-code 400}))))
-                      (api/check (not (and (not= (target-fields old) (target-fields new))
-                                           (transforms-base.u/target-table-exists? new)))
-                                 409
-                                 (deferred-tru "A table with that name already exists.")))
-                    (transforms.db/update-transform! id (dissoc body :tag_ids))
-                    ;; Update tag associations if provided
-                    (when (contains? body :tag_ids)
-                      (transform.model/update-transform-tags! id (:tag_ids body)))
-                    (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner :can_read :can_write :can_execute))]
+                      (check-folder-in-trash! old new)
+                      (when-not archive-or-move-only?
+                        ;; we must validate on a full transform object
+                        (check-feature-enabled! new)
+                        (check-database-feature new)
+                        (when (contains? body :target)
+                          (validate-target-schema! new))
+                        (when (contains? body :source)
+                          (validate-incremental-column-type! new))
+                        (when (or (contains? body :source) (contains? body :target))
+                          (validate-incremental-table-tag! new)
+                          (validate-lookback! new))
+                        (when (transforms-base.u/query-transform? old)
+                          (validate-transform-query! new)
+                          (when-let [{:keys [cycle-str]} (transforms-base.ordering/get-transform-cycle new)]
+                            (throw (ex-info (str "Cyclic transform definitions detected: " cycle-str)
+                                            {:status-code 400}))))
+                        (api/check (not (and (not= (target-fields old) (target-fields new))
+                                             (transforms-base.u/target-table-exists? new)))
+                                   409
+                                   (deferred-tru "A table with that name already exists.")))
+                      (transforms.db/update-transform! id (dissoc body :tag_ids))
+                      ;; Update tag associations if provided
+                      (when (contains? body :tag_ids)
+                        (transform.model/update-transform-tags! id (:tag_ids body))))
+                    (t2/hydrate (transforms.db/transform id) :transform_tag_ids :creator :owner
+                                :can_read :can_write :can_execute :can_restore :can_delete))]
     (events/publish-event! :event/transform-update {:object transform :user-id api/*current-user-id*})
     (-> transform
         transforms.u/add-source-readable)))
