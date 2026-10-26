@@ -2631,7 +2631,6 @@
            app-db
            appearance
            core.initialization-status
-           data-apps
            driver
            embedding
            lib.be
@@ -3855,7 +3854,6 @@
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Permissions
                     :model/Table}
    :model-exports #{:model/DataApp}}
 
