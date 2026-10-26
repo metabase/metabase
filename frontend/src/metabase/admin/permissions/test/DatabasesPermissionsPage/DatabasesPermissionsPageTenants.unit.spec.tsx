@@ -20,6 +20,7 @@ import { DataPermissionsPage } from "metabase/admin/permissions/pages/DataPermis
 import { DatabasesPermissionsPage } from "metabase/admin/permissions/pages/DatabasePermissionsPage/DatabasesPermissionsPage";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_GROUP_ROUTES } from "metabase/plugins";
 import { Route } from "metabase/router";
+import type { SchemasPermissions } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockGroup } from "metabase-types/api/mocks/group";
@@ -64,7 +65,7 @@ const MANAGE_TABLE_METADATA_INDEX = 3;
 const MANAGE_DATABASE_INDEX = 4;
 
 interface SetupOpts {
-  tenantGroupViewData?: DataPermissionValue;
+  tenantGroupViewData?: SchemasPermissions;
 }
 
 const SETTINGS_STATE = mockSettings({
