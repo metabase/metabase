@@ -81,5 +81,22 @@ MB_DB_CONNECTION_URI=... clojure -M:run:ee import /path/to/serdes-out -e
 
 Then open each metric in the UI, run it, and compare the number against a hand-written SQL query.
 
-Pipeline: `parse` (manifest -> IR) -> `resolve` (IR + config -> portable refs, base types, entity ids) -> `emit`
-(MBQL 5 + serdes YAML). Each stage only knows the previous stage's schema, see `dev.dbt-import.schemas.*`.
+## Filters and SQL expressions
+
+A measure's `expr` may be SQL rather than a column, and a metric or measure may carry a `filter` of Jinja-wrapped
+MetricFlow references around SQL. Both go through sqlglot (`metabase.sql-parsing.core/parse-expression`, used by
+`dev.dbt-import.sql`), which parses an expression on its own in the dialect of the config's `:driver`, and a small
+subset of SQL maps onto MBQL: column references, literals, `+ - * /`, comparisons, `AND`/`OR`/`NOT`,
+`IN`, `BETWEEN`, `IS [NOT] NULL`, `LIKE` with a `%x%`, `x%` or `%x` pattern, and `CASE WHEN ... THEN ... ELSE ... END`.
+Functions, casts and anything else are reported as unsupported, naming the construct.
+
+In a filter, `Dimension('<entity>__<dimension>')` resolves to one of the metric's own columns when the entity is the
+semantic model's primary entity, and `TimeDimension(..., '<grain>')` additionally buckets it by the matching Metabase
+temporal unit; `metric_time` is the measure's `agg_time_dimension` and `Entity('<name>')` is that entity's column. A
+dimension reached through any other entity lives on another semantic model and is reported as needing a join
+(QRES-4); `Metric(...)` references are reported as QRES-5.
+
+Pipeline: `parse` (manifest -> IR) -> `resolve` (IR + config -> Lib queries against a metadata provider built from the
+manifest, entity ids) -> `emit` (serdes YAML, with serdes' own MBQL export turning the provider's ids back into
+names). MBQL is never written or read by hand: queries are built with `metabase.lib.core` and what the converter needs
+to know about them comes from Lib. Each stage only knows the previous stage's schema, see `dev.dbt-import.schemas.*`.

@@ -8,6 +8,7 @@
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.resolve :as resolve]
    [dev.dbt-import.test-util :as tu :refer [fld]]
+   [medley.core :as m]
    [metabase.queries.models.card :as card]
    [metabase.util :as u])
   (:import
@@ -26,56 +27,18 @@
        parse/parse-manifest-file
        (resolve/resolve-manifest config)))
 
-(def ^:private field
-  {:ref ["Sales DB" "public" "fact_sales" "sales"], :base-type :type/Float})
-
-(defn- resolved-metric
-  "A hand-built resolved metric with aggregation `agg`; `overrides` land on the IR metric."
-  [agg field & {:as overrides}]
-  {:metric       (merge {:name                   "m"
-                         :unique-id              "metric.p.m"
-                         :label                  "M"
-                         :description            nil
-                         :semantic-model         "fact_sales"
-                         :measure                "m"
-                         :agg                    agg
-                         :expr                   (if field "sales" "1")
-                         :agg-params             nil
-                         :non-additive-dimension nil
-                         :agg-time-dimension     nil
-                         :filters                []
-                         :fill-nulls-with        nil
-                         :join-to-timespine      false
-                         :meta                   nil}
-                        overrides)
-   :entity-id    "AAAAAAAAAAAAAAAAAAAAA"
-   :database     "Sales DB"
-   :source-table ["Sales DB" "public" "fact_sales"]
-   :field        field})
-
-(deftest ^:parallel aggregation-clause-test
-  (let [f [:field {:base-type :type/Float} ["Sales DB" "public" "fact_sales" "sales"]]]
-    (is (= [:sum {} f] (emit/aggregation-clause (resolved-metric :sum field))))
-    (is (= [:avg {} f] (emit/aggregation-clause (resolved-metric :average field))))
-    (is (= [:min {} f] (emit/aggregation-clause (resolved-metric :min field))))
-    (is (= [:max {} f] (emit/aggregation-clause (resolved-metric :max field))))
-    (is (= [:median {} f] (emit/aggregation-clause (resolved-metric :median field))))
-    (is (= [:distinct {} f] (emit/aggregation-clause (resolved-metric :count_distinct field))))
-    (testing "counts"
-      (is (= [:count {}] (emit/aggregation-clause (resolved-metric :count nil))))
-      (is (= [:count {}] (emit/aggregation-clause (resolved-metric :sum nil)))
-          "sum of the literal 1 is a row count")
-      (is (= [:count-where {} [:not-null {} f]] (emit/aggregation-clause (resolved-metric :count field)))
-          "COUNT(col) skips nulls"))
-    (is (= [:count-where {} [:= {} [:field {:base-type :type/Boolean} ["Sales DB" "public" "fact_sales" "sales"]] true]]
-           (emit/aggregation-clause (resolved-metric :sum_boolean (assoc field :base-type :type/Boolean)))))
-    (testing "percentile accepts a fraction or a percentage"
-      (is (= [:percentile {} f 0.95]
-             (emit/aggregation-clause (resolved-metric :percentile field :agg-params {:percentile 0.95}))
-             (emit/aggregation-clause (resolved-metric :percentile field :agg-params {:percentile 95})))))
-    (testing "fill_nulls_with wraps the aggregation in coalesce"
-      (is (= [:coalesce {} [:sum {} f] 0]
-             (emit/aggregation-clause (resolved-metric :sum field :fill-nulls-with 0)))))))
+(deftest ^:parallel dataset-query-test
+  (let [resolved (tu/resolve-manifest-map (tu/build-manifest {}))
+        stage    (-> (emit/dataset-query (first (:metrics resolved))) :stages first)]
+    (testing "the stage serdes writes: portable table and field refs, no clause ids, no :filters key without filters"
+      (is (= {:lib/type     :mbql.stage/mbql
+              :source-table [tu/db "public" "fact_sales"]
+              :aggregation  [[:sum {} (fld "sales" :type/Float)]]}
+             stage))))
+  (testing "filters go on the stage, in order"
+    (is (= [[:= {} (fld "status" :type/Text) "Shipped"] [:> {} (fld "amount" :type/Decimal) 0]]
+           (tu/filters {:metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('fact_sales_key__status') }} = 'Shipped'"}
+                                                          {:where_sql_template "{{ Dimension('fact_sales_key__amount') }} > 0"}]}}})))))
 
 (deftest ^:parallel files-test
   (let [files (emit/files config (flexanalytics-resolved))]
@@ -87,6 +50,7 @@
             "collections/main/dbt_metrics/quantity.yaml"
             "collections/main/dbt_metrics/rowcount.yaml"
             "collections/main/dbt_metrics/sales.yaml"
+            "collections/main/dbt_metrics/sales_to_target_ratio.yaml"
             "collections/main/dbt_metrics/target.yaml"]
            (map :path files)))
     (is (= [{:model "Collection"}]
@@ -101,8 +65,8 @@
         out-dir   (temp-dir)
         paths     (emit/write! out-dir (emit/files config resolved))
         read-yaml (fn [path] (yaml/parse-string (slurp (io/file out-dir path))))
-        sales     (first (filter (comp #{"sales"} :name :metric) (:metrics resolved)))]
-    (is (= 9 (count paths)))
+        sales     (m/find-first (comp #{"sales"} :name :metric) (:metrics resolved))]
+    (is (= 10 (count paths)))
     (testing "the collection file"
       (is (= {:name        "dbt metrics"
               :entity_id   (-> resolved :collection :entity-id)
@@ -123,12 +87,17 @@
                               :stages   [{:lib/type     "mbql.stage/mbql"
                                           :source-table ["Sales DB" "public" "fact_sales"]
                                           :aggregation  [["sum" {} ["field"
-                                                                    {:base-type "type/Float"}
+                                                                    {:base-type "type/Float", :effective-type "type/Float"}
                                                                     ["Sales DB" "public" "fact_sales" "sales"]]]]}]}
               :serdes/meta   [{:model "Card"}]}
              (-> (read-yaml "collections/main/dbt_metrics/sales.yaml")
                  (select-keys [:name :description :entity_id :type :display :collection_id :creator_id :card_schema
                                :dataset_query :serdes/meta])))))
+    (testing "a metric over a SQL expression aggregates the expression"
+      (is (= [["avg" {} ["/" {}
+                         ["field" {:base-type "type/Float", :effective-type "type/Float"} ["Sales DB" "public" "fact_sales" "sales"]]
+                         ["field" {:base-type "type/Float", :effective-type "type/Float"} ["Sales DB" "public" "fact_sales" "target"]]]]]
+             (-> (read-yaml "collections/main/dbt_metrics/sales_to_target_ratio.yaml") :dataset_query :stages first :aggregation))))
     (testing "no result_metadata: the instance infers it on import"
       (is (not (contains? (read-yaml "collections/main/dbt_metrics/sales.yaml") :result_metadata))))))
 

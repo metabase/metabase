@@ -66,7 +66,9 @@
     [:description [:maybe :string]]]])
 
 (mr/def ::semantic-model
-  "One physical table and everything the semantic layer declares on it. `measures` and `columns` are keyed by name."
+  "One physical table and everything the semantic layer declares on it. `measures` and `columns` are keyed by name.
+  `primary-entity` names the entity a filter uses as the prefix of this model's own dimensions
+  (`Dimension('<primary-entity>__<dimension>')`); nil when the model declares none."
   [:map
    [:name                       :string]
    [:unique-id                  :string]
@@ -75,6 +77,7 @@
    [:relation                   ::relation]
    [:columns                    [:map-of :string ::column]]
    [:default-agg-time-dimension [:maybe :string]]
+   [:primary-entity             [:maybe :string]]
    [:entities                   [:sequential ::entity]]
    [:dimensions                 [:sequential ::dimension]]
    [:measures                   [:map-of :string ::measure]]])

@@ -1,9 +1,9 @@
 (ns dev.dbt-import.emit
   "Stage 3 of the converter: turn resolved metrics into Metabase serdes entities and write them as a YAML tree.
 
-  Each metric becomes a Card of `type: metric` with a one-stage MBQL 5 query holding a `source-table` and a single
-  `aggregation`, written the way `metabase-enterprise.serialization` exports it: portable refs, no clause UUIDs
-  (import regenerates them) and no `result_metadata` (import infers it). The layout matches a real export,
+  Each metric becomes a Card of `type: metric` whose query is the resolve stage's Lib query, written the way
+  [[metabase-enterprise.serialization.dump]] exports it: portable refs, no clause UUIDs (import regenerates them) and
+  no `result_metadata` (import infers it). The layout matches a real export,
 
       collections/main/<collection>.yaml
       collections/main/<collection>/<metric>.yaml
@@ -11,6 +11,7 @@
   so `clojure -M:run:ee import <dir> -e` loads it. Only knows the resolve stage's output."
   (:require
    [clojure.java.io :as io]
+   [dev.dbt-import.metadata :as metadata]
    [dev.dbt-import.schemas.resolved :as resolved]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
@@ -34,45 +35,14 @@
    [:entity ::entity]
    [:metric {:optional true} ::resolved/metric]])
 
-(mu/defn- field-clause :- vector?
-  "A portable `:field` clause. The base type is left out when the manifest did not declare one; the instance fills it
-  in when the import binds the field."
-  [{field-ref :ref, :keys [base-type]} :- ::resolved/field]
-  [:field (cond-> {} base-type (assoc :base-type base-type)) field-ref])
-
-(mu/defn- percentile-fraction :- number?
-  "dbt writes the percentile as a fraction (`0.95`); tolerate a percentage (`95`) too."
-  [p :- number?]
-  (if (> p 1) (/ p 100.0) (double p)))
-
-(mu/defn aggregation-clause :- vector?
-  "The MBQL 5 aggregation clause for a resolved metric, in serdes (portable-ref) form."
-  [{{:keys [agg agg-params fill-nulls-with]} :metric, :keys [field]} :- ::resolved/metric]
-  (let [f      (some-> field field-clause)
-        clause (case agg
-                 ;; SQL COUNT(col) skips nulls, COUNT(1) does not
-                 :count          (if f [:count-where {} [:not-null {} f]] [:count {}])
-                 ;; a sum of the literal 1 is a row count
-                 :sum            (if f [:sum {} f] [:count {}])
-                 :average        [:avg {} f]
-                 :min            [:min {} f]
-                 :max            [:max {} f]
-                 :median         [:median {} f]
-                 :count_distinct [:distinct {} f]
-                 :sum_boolean    [:count-where {} [:= {} f true]]
-                 :percentile     [:percentile {} f (percentile-fraction (:percentile agg-params))])]
-    (if (some? fill-nulls-with)
-      [:coalesce {} clause fill-nulls-with]
-      clause)))
-
 (mu/defn dataset-query :- :map
-  "A one-stage MBQL 5 query over the metric's source table with its aggregation, in serdes form."
-  [{:keys [database source-table] :as metric} :- ::resolved/metric]
-  {:lib/type :mbql/query
-   :database database
-   :stages   [{:lib/type     :mbql.stage/mbql
-               :source-table source-table
-               :aggregation  [(aggregation-clause metric)]}]})
+  "A resolved metric's query as serdes writes it: `serdes/export-mbql` strips the clause ids and, through the lookups
+  bound here, turns the provider's made-up database, table and field ids into names."
+  [{:keys [metadata-provider query]} :- ::resolved/metric]
+  (binding [serdes/*export-database-fk* (fn [_id] (metadata/database-name metadata-provider))
+            serdes/*export-table-fk*    (fn [table-id] (metadata/portable-table-ref metadata-provider table-id))
+            serdes/*export-field-fk*    (fn [field-id] (metadata/portable-field-ref metadata-provider field-id))]
+    (serdes/export-mbql query)))
 
 (mu/defn- collection-entity :- ::entity
   [{collection-name :name, :keys [entity-id]} :- ::resolved/collection]
@@ -121,10 +91,10 @@
           metrics)))
 
 (mu/defn write! :- [:sequential :string]
-  "Write `files` under `out-dir` with the same YAML formatting serdes export uses. Returns the paths written,
+  "Write `entries` under `out-dir` with the same YAML formatting serdes export uses. Returns the paths written,
   relative to `out-dir`."
   [out-dir :- :string
-   files   :- [:sequential ::file]]
-  (doseq [{:keys [path entity]} files]
+   entries :- [:sequential ::file]]
+  (doseq [{:keys [path entity]} entries]
     (dump/spit-yaml! (io/file out-dir path) (serdes/storable entity)))
-  (mapv :path files))
+  (mapv :path entries))

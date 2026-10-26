@@ -6,7 +6,7 @@
   These describe the *input* contract, not the converter's intermediate representation. They cover manifest schema
   v12 (dbt 1.12), and only the keys the converter looks at. Undeclared keys pass through untouched.
 
-  Decode with [[decode-manifest]], which expects the JSON parsed with *string* keys (`metabase.util.json/decode`
+  Decode with [[decode-manifest]], which expects the JSON parsed with *string* keys ([[metabase.util.json/decode]]
   without keywordization). The transformer then:
 
   * keywordizes the keys of every map that a `:map` schema here reaches, so field access is idiomatic;
@@ -325,7 +325,7 @@
     (decode-manifest (with-open [r (io/reader \"target/manifest.json\")]
                        (json/decode r)))"
   [manifest]
-  ;; the decoder is cached under a namespaced key and rebuilt only when a schema is re-`mr/def`'d
+  ;; the decoder is cached under a namespaced key and rebuilt only when a schema is defined again with [[mr/def]]
   (let [decoder (mr/cached ::decoder ::manifest (fn [] (mc/decoder ::manifest transformer)))
         decoded (decoder manifest)]
     (if-let [error (mr/explain ::manifest decoded)]

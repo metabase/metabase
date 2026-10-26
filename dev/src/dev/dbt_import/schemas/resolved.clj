@@ -1,9 +1,11 @@
 (ns dev.dbt-import.schemas.resolved
-  "Schemas for the converter config and for the resolve stage's output: IR metrics bound to Metabase portable refs
-  and base types, ready for the emit stage."
+  "Schemas for the converter config and for the resolve stage's output: IR metrics bound to Lib queries, ready for the
+  emit stage."
   (:require
    [dev.dbt-import.schemas.ir :as ir]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]))
 
 (mr/def ::config.base-types
@@ -15,7 +17,7 @@
    ;; Metabase Database it is connected as. This is the one thing the manifest cannot supply.
    [:databases       [:map-of :string :string]]
    ;; `:driver` is the Metabase driver those databases use, e.g. `:postgres`. Column base types come from the driver's
-   ;; own `database-type->base-type`.
+   ;; own [[metabase.driver.sql-jdbc.sync/database-type->base-type]].
    [:driver          :keyword]
    ;; `:creator-email` is the user the cards are created as. Serdes resolves it by email and synthesizes an inactive
    ;; user when none exists, but a card cannot be imported without one.
@@ -34,31 +36,14 @@
   "A 21-character NanoID, as used for `entity_id`."
   [:re #"^[A-Za-z0-9_-]{21}$"])
 
-;; TODO (Cam 2026-10-22) aren't there already schemas for this and `::field-ref` somewhere already?
-(mr/def ::table-ref
-  "Serdes portable table reference: `[database schema table]`, all by name."
-  [:tuple :string :string :string])
-
-(mr/def ::field-ref
-  "Serdes portable field reference: `[database schema table column]`, all by name."
-  [:tuple :string :string :string :string])
-
-(mr/def ::field
-  "A resolved column: its portable ref and Metabase base type. The base type is nil when the project does not declare
-  the column's `data_type` (or the column at all); the instance supplies it when the import binds the field."
-  [:map
-   [:ref       ::field-ref]
-   [:base-type [:maybe ::lib.schema.common/base-type]]])
-
 (mr/def ::metric
-  "An IR metric whose source table and aggregated column are resolved. `field` is nil when the aggregation is over
-  the literal `1`, i.e. a row count."
+  "An IR metric bound to Metabase: the Lib query that computes it, built against the [[dev.dbt-import.metadata]]
+  provider for its database, which is what turns the query's ids back into names when it is written out."
   [:map
-   [:metric       ::ir/metric]
-   [:entity-id    ::entity-id]
-   [:database     :string]
-   [:source-table ::table-ref]
-   [:field        [:maybe ::field]]])
+   [:metric            ::ir/metric]
+   [:entity-id         ::entity-id]
+   [:metadata-provider ::lib.schema.metadata/metadata-provider]
+   [:query             ::lib.schema/query]])
 
 (mr/def ::collection
   "The collection the metrics are written into."
