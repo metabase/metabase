@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import { setupTenantEntpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -79,5 +81,54 @@ describe("TenantsListingApp", () => {
     setup({ isAdmin: true, tenants: [createMockTenant()] });
 
     expect(await screen.findByText("New tenant")).toBeInTheDocument();
+  });
+
+  describe("active and deactivated tabs", () => {
+    const ACTIVE_TENANT = createMockTenant({
+      id: 1,
+      name: "Parrot",
+      slug: "parrot",
+      is_active: true,
+    });
+
+    const DEACTIVATED_TENANT = createMockTenant({
+      id: 2,
+      name: "Eagle",
+      slug: "eagle",
+      is_active: false,
+    });
+
+    it("lists only active tenants, and only the deactivated ones on the other tab", async () => {
+      setup({ tenants: [ACTIVE_TENANT, DEACTIVATED_TENANT] });
+
+      expect(await screen.findByText("Parrot")).toBeInTheDocument();
+      expect(screen.queryByText("Eagle")).not.toBeInTheDocument();
+
+      await userEvent.click(screen.getByRole("tab", { name: "Deactivated" }));
+
+      expect(await screen.findByText("Eagle")).toBeInTheDocument();
+      expect(screen.queryByText("Parrot")).not.toBeInTheDocument();
+    });
+
+    it("offers no tabs while every tenant is active", async () => {
+      setup({ tenants: [ACTIVE_TENANT] });
+
+      expect(await screen.findByText("Parrot")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("tab", { name: "Deactivated" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("tab", { name: "Active" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("offers no tabs to a non-admin", async () => {
+      setup({ isAdmin: false, tenants: [ACTIVE_TENANT, DEACTIVATED_TENANT] });
+
+      expect(await screen.findByText("Parrot")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("tab", { name: "Deactivated" }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
