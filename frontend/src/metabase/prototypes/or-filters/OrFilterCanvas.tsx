@@ -27,20 +27,15 @@ import {
   clearFilters,
   withCountByBinnedTotal,
   withCountByCategory,
-  withCountByCategoryByMonth,
   withCountByMonth,
   withCountBySource,
   withCountByState,
   withCountFilterDrilled,
   withCountWhereByCategory,
   withCountWhereDrilled,
-  withDnfExample,
   withFilteredCountByCategoryByMonth,
   withFkFilterDrilled,
   withFourLevelsExample,
-  withNestedExample,
-  withOrExample,
-  withPillsExample,
   withPivotDrilled,
   withRawRows,
   withTwoGroupsExample,
@@ -70,46 +65,15 @@ const DEFAULT_DISPLAY: CardDisplayType = "table";
 const SYNTHETIC_SHAPE_EXAMPLES: Example[] = [
   {
     get label() {
-      return t`A or B`;
-    },
-    load: withOrExample,
-  },
-  {
-    get label() {
-      return t`(A and B) or C`;
-    },
-    load: withDnfExample,
-  },
-  {
-    get label() {
-      return t`(A or B), C as two pills`;
-    },
-    load: withPillsExample,
-  },
-  {
-    get label() {
       return t`(A and B) or (C and D)`;
     },
     load: withTwoGroupsExample,
   },
   {
     get label() {
-      return t`A and B and (C or (D and E))`;
-    },
-    load: withNestedExample,
-  },
-  {
-    get label() {
       return t`A or (B and (C or (D and E)))`;
     },
     load: withFourLevelsExample,
-  },
-  {
-    get label() {
-      return t`Count by Category by Month`;
-    },
-    load: withCountByCategoryByMonth,
-    display: "bar",
   },
   {
     get label() {
