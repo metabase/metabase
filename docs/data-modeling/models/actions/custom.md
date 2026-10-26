@@ -12,11 +12,12 @@ Write SQL to update records in your databases.
 
 ## Creating a custom action
 
-> You must be in a group with Native query editing access to create an action.
+> Only admins can create custom actions.
 
 1. First, [create a model](../../../data-modeling/models/models.md).
-2. Visit the model and click on the **info** button.
-3. Click the **Actions** tab.
+2. Visit the model and click the **info** button.
+3. Click **Actions**.
+4. Click **New action**.
 
 To write an action without a model, see [Data actions](./data-actions.md).
 
@@ -75,6 +76,16 @@ Creates a publicly shareable link to the action form. Anyone with access to that
 Here you can edit the success message, which is the message Metabase will display in the toast that pops up after Metabase hears back from the database that everything went smoothly.
 
 If something goes wrong, Metabase will display the error message it received from the database.
+
+## Deleting a custom action
+
+Only admins can delete custom actions. Deleting an action also removes any dashboard buttons and public forms that use it. You can't archive a model's action, only delete it.
+
+1. Visit the model, click the **info** button, and click **Actions**.
+2. Click the **...** next to the action, and select **Delete**.
+3. Confirm by clicking **Delete**.
+
+<!-- TODO screenshot: the ... menu of a custom action on a model's actions page, opened, showing Edit and Delete (signed in as an admin) -->
 
 ## Example custom actions
 

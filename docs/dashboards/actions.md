@@ -10,7 +10,7 @@ You can add buttons to dashboards to perform [actions](../data-modeling/models/a
 
 ## Create an action
 
-To add an action button to a dashboard, you'll first need to create an action on a model. See [Model actions](../data-modeling/models/actions/introduction.md).
+To add an action button to a dashboard, an admin first needs to create an action on a model. See [Model actions](../data-modeling/models/actions/introduction.md).
 
 ## Add an action button to a dashboard
 
@@ -35,6 +35,8 @@ People viewing the dashboard will be able to click the button and perform your c
 ![Button form](./images/button-form.png)
 
 You can add as many buttons as you want, and wire them up to one or more filters.
+
+If the action behind a button is archived, the button is disabled, and its tooltip says **This action is archived**.
 
 ## Connect an action to a dashboard filter
 

@@ -15,7 +15,7 @@ You can't add data actions to [dashboard buttons](../../../dashboards/actions.md
 
 ## Create a data action
 
-The **New** button only shows up if an admin has [turned on data actions](./introduction.md#enabling-actions-for-a-database) for at least one database, and you have [native query editing](../../../permissions/data.md#query-builder-and-native-create-queries-permission) permission on that database. Actions only work on PostgreSQL and MySQL.
+Only admins can create data actions. The **New** button only shows up if an admin has [turned on data actions](./introduction.md#enabling-actions-for-a-database) for at least one database. Actions only work on PostgreSQL and MySQL.
 
 1. Go to [Data Studio](../../data-studio.md#get-to-data-studio) > **Data actions**.
 2. Click **New** > **Action**.
@@ -33,22 +33,15 @@ Go to **Data Studio** > **Data actions** and click an action. Each action has fo
 
 ## Organize and archive data actions
 
+Only admins can create folders, and move, archive, or unarchive data actions.
+
 - **Create a folder**: Click **New** > **Collection**.
 - **Move or archive an action**: Open the action, click the **three-dot** menu next to its name, and select **Move** or **Archive**. Public forms that use an archived action stop working.
 - **Unarchive an action**: Click the **three-dot** menu next to **Data actions** at the top of the tree, select **View archived actions**, and click the action's **Unarchive action** icon.
 
 ## Data action permissions
 
-{% include plans-blockquote.html feature="Data action folder permissions" %}
-
-By default, only admins can see, create, and run data actions. [Data Analysts](../../../people-and-groups/managing.md#data-analysts) can open Data Studio, but they also need folder access.
-
-To give a group access, click the **three-dot** menu next to a folder and select **Change permissions**. For the root, use the **three-dot** menu next to **Data actions** at the top of the tree. The levels work like [collection permissions](../../../permissions/collections.md#collection-permission-levels):
-
-- **Curate**: Create, edit, move, and archive the data actions in the folder. To create an action or change its SQL, people also need [native query editing](../../../permissions/data.md#query-builder-and-native-create-queries-permission) permission on the database.
-- **View**: See and run the data actions in the folder.
-
-Data actions that aren't in a folder use the permissions of the **Data actions** root.
+Only admins can create, edit, move, archive, or delete data actions. You can't give other groups [Curate access](../../../permissions/collections.md#collection-permission-levels) to data actions folders.
 
 ## Further reading
 

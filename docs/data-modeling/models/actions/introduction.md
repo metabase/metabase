@@ -35,10 +35,10 @@ For actions to work, you'll first need to do the following two things:
 
 ## Who can use actions
 
-- **To create or edit an action**, a person must be in a group with [Native query editing](../../../permissions/data.md) privileges for the relevant database.
-- **To run an action**, all you need is view access to the action's model or dashboard (or a link to a public action).
+- **To create, edit, or delete an action**, you must be an admin. That includes basic actions, custom actions, and [data actions](./data-actions.md#data-action-permissions).
+- **To run an action**, all you need is view access to the action's model or dashboard (or a link to a public action). But people with [row and column security](../../../permissions/row-and-column-security.md#people-with-row-and-column-security-cant-run-actions) on any table in a database can't run model actions on that database.
 
-For data actions, folder permissions also apply. See [Data action permissions](./data-actions.md#data-action-permissions).
+Remote sync and serialization imports can also create and change actions, so anyone who can push to a [synced repository](../../../installation-and-operation/remote-sync.md#treat-write-access-to-your-repository-like-admin-access) can change your actions.
 
 ## Types of actions
 
@@ -55,6 +55,20 @@ There are multiple ways to run actions:
 - From a [public form](./custom.md#make-public) of an action.
 - From a [button on dashboard](../../../dashboards/actions.md).
 - From the **Run** tab of a [data action](./data-actions.md#edit-and-run-a-data-action) in Data Studio.
+
+## Deleting a model deletes its actions
+
+A model's actions don't outlive the model. Metabase deletes all of a model's actions, and the dashboard buttons that use them, when someone:
+
+- Moves the model to the trash.
+- Moves the collection that the model is in to the trash.
+- Turns the model back into a saved question.
+
+Restoring the model from the trash doesn't bring its actions back.
+
+You also can't archive a model's action. You can only [delete it](./custom.md#deleting-a-custom-action).
+
+[Data actions](./data-actions.md) don't belong to a model, so they work differently: they go to the trash with their folder, and come back when you restore the folder.
 
 ## Auditing actions
 
