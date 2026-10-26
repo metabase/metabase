@@ -7,6 +7,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.metabot.db :as metabot.db]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]))
 
 (defn handle-agent-error
@@ -222,3 +223,91 @@
     (if (seq destination-ids)
       (remove #(contains? destination-ids (:database_id %)) cards)
       cards)))
+
+;;; ------------------------------------------ metric sources ------------------------------------------
+
+(defn metric-card-shape-get
+  "Read `kebab-k` from a lib metadata card or `snake-k` from a Toucan row.
+
+  A lib metadata card throws on snake_case keys, even when the corresponding kebab-case value is nil."
+  [card kebab-k snake-k]
+  (if (:lib/type card)
+    (get card kebab-k)
+    (get card snake-k)))
+
+(defn readable-source-cards
+  "Return readable cards from `card-ids` as `{card-id -> row}`, or nil for empty input.
+
+  Read the cards in one query, including `:name`, `:entity_id`, and the columns needed by `can-read?`.
+  Missing and unreadable cards are omitted."
+  [card-ids]
+  (when (seq card-ids)
+    (into {}
+          (comp (filter mi/can-read?) (map (juxt :id identity)))
+          (metabot.db/card-source-rows card-ids))))
+
+(defn metric-required-source
+  "Return the source required to use metric `card`, or nil when its definition cannot be read.
+
+  Return `{:kind :card, :card-id C}` for a single-stage definition on card C. Otherwise return
+  `{:kind :table, :table-id T, :bare-table-only? boolean}`. A single-stage table metric also works on a card over T;
+  a multi-stage metric requires a stage directly on T, even when its definition starts from a card.
+  A nil table ID means there is no usable table source.
+
+  This follows `splice-compatible-metrics` in [[metabase.query-processor.middleware.metrics]]. The query processor
+  compares the metric's last stage, so the first stage's `report_card.source_card_id` is insufficient.
+  Legacy definitions are converted to MBQL 5 before classification. Missing, blank, or unconvertible definitions
+  return nil."
+  [card]
+  (let [definition (metric-card-shape-get card :dataset-query :dataset_query)
+        stages     (or (not-empty (:stages definition))
+                       (when (seq definition)
+                         (try
+                           (:stages (lib/->mbql5 definition))
+                           (catch Exception _ nil))))]
+    (when (seq stages)
+      (if-let [card-id (and (= 1 (count stages)) (:source-card (first stages)))]
+        {:kind :card, :card-id card-id}
+        {:kind             :table
+         ;; The definition's own `:source-table` when it has one, which is what the QP compares; `table_id` is
+         ;; derived at save time and only needed for a card-rooted definition.
+         :table-id         (or (:source-table (first stages))
+                               (metric-card-shape-get card :table-id :table_id))
+         :bare-table-only? (> (count stages) 1)}))))
+
+(defn metric-compatible-with-stage?
+  "Return whether `required` permits a metric on the stage's source.
+
+  `required` comes from [[metric-required-source]]. `stage-table-id` is the resolved primary table ID, including
+  for card sources; `stage-card-id` identifies the source card. Throw for an unrecognized source kind."
+  [required {:keys [stage-card-id stage-table-id]}]
+  (case (:kind required)
+    :card  (= (:card-id required) stage-card-id)
+    :table (and (some? (:table-id required))
+                (= (:table-id required) stage-table-id)
+                (or (not (:bare-table-only? required))
+                    (nil? stage-card-id)))
+    (throw (ex-info "Unrecognized metric source kind" {:required required}))))
+
+(defn metric-source-fields
+  "Return the LLM fields identifying a metric's usable source.
+
+  A `source-card` with `:id`, `:name`, and `:entity_id` produces `:source_card_*` fields. A `source-table` with
+  `:id`, `:schema`, and `:name` produces `:base_table_*` fields; `database-name` is needed for the portable FK.
+  The caller must check access and supply the source selected by [[metric-required-source]].
+  When neither is usable, return `{:source_unavailable true}` so the LLM knows to skip the metric."
+  [{:keys [source-card source-table database-name]}]
+  (cond
+    source-card
+    {:source_card_id                 (:id source-card)
+     :source_card_name               (:name source-card)
+     :source_card_portable_entity_id (:entity_id source-card)}
+
+    source-table
+    (cond-> {:base_table_id     (:id source-table)
+             :base_table_name   (:name source-table)
+             :base_table_schema (:schema source-table)}
+      database-name (assoc :base_table_portable_fk [database-name (:schema source-table) (:name source-table)]))
+
+    :else
+    {:source_unavailable true}))
