@@ -47,7 +47,9 @@ describe("admin > database > database routing", () => {
       cy.findByLabelText("Enable database routing")
         .should("not.be.checked")
         .click({ force: true }); // mantine toggle hides the real input
-      cy.findByRole("button", { name: /Add/ }).should("be.disabled");
+      dbRoutingSection()
+        .findByRole("button", { name: /Add/ })
+        .should("be.disabled");
       cy.findByTestId("db-routing-user-attribute").click();
       H.popover().findByText("attr_uid").click();
       H.undoToast().within(() => {
@@ -67,7 +69,7 @@ describe("admin > database > database routing", () => {
       // database creation
       cy.log("should be able to create a destination databases");
       dbRoutingSection().findByText("No destination databases added yet");
-      cy.findByRole("link", { name: /Add/ }).click();
+      dbRoutingSection().findByRole("link", { name: /Add/ }).click();
 
       H.modal().within(() => {
         cy.log("should not allow changing engine");
@@ -96,7 +98,7 @@ describe("admin > database > database routing", () => {
       H.tooltip().should("contain.text", "Connected");
 
       cy.log("should validate destination db creation");
-      cy.findByRole("link", { name: /Add/ }).click();
+      dbRoutingSection().findByRole("link", { name: /Add/ }).click();
 
       H.modal().within(() => {
         cy.log("should prevent adding a db with the same name");

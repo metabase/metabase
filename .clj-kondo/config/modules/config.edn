@@ -3893,7 +3893,7 @@
            warehouses
            warehouses.schema}
    :model-exports #{:model/DatabaseRouter}
-   :model-imports #{:model/Database :model/Transform}}
+   :model-imports #{:model/Database}}
 
   enterprise/dependencies
   {:team "Graphy"
