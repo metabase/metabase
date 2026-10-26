@@ -1,9 +1,7 @@
-(ns metabase-enterprise.near-membrane-plugin.api
-  "Static evaluator document shared by custom viz and data apps.
-   Requires enabled custom viz or a data apps feature token."
+(ns metabase-enterprise.browser-sandboxing.api
+  "Static evaluator document shared by custom visualizations and data apps."
   (:require
-   [metabase.api.macros :as api.macros]
-   [metabase.premium-features.core :as premium-features]))
+   [metabase.api.macros :as api.macros]))
 
 (set! *warn-on-reflection* true)
 
@@ -15,6 +13,7 @@
 (def ^:private sandbox-host-csp
   "CSP applied ONLY to the sandbox iframe document.
    - `'unsafe-eval'` required by near-membrane to evaluate plugin code inside the realm.
+   - `form-action 'none'` blocks form submissions. Data apps rely on this.
    - `frame-ancestors *` instead of `X-Frame-Options`, so EAJS customer pages can frame it too."
   "default-src 'none'; script-src 'unsafe-eval'; form-action 'none'; frame-ancestors *;")
 
@@ -48,12 +47,10 @@
   "Serve a minimal HTML document used as the iframe `src` for the near-membrane
    sandbox. The response carries a per-document `Content-Security-Policy` that permits
    `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict
-   nonce-based CSP. 404s unless custom viz is enabled or the data apps feature token is present,
-   and the request passes the fetch-metadata gate (see [[donor-load-allowed?]])."
+   nonce-based CSP. Available in EE when the request passes the fetch-metadata gate
+   (see [[donor-load-allowed?]])."
   [_route-params _query-params _body request]
-  (if-not (and (or (premium-features/enable-custom-viz?)
-                   (premium-features/has-feature? :data-apps))
-               (donor-load-allowed? request))
+  (if-not (donor-load-allowed? request)
     {:status  404
      :headers {"Content-Type"  "text/plain; charset=utf-8"
                "Cache-Control" "no-store"}

@@ -1,4 +1,4 @@
-(ns metabase-enterprise.near-membrane-plugin.api-test
+(ns metabase-enterprise.browser-sandboxing.api-test
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -14,12 +14,11 @@
   "<!doctype html><html><head><meta charset=\"utf-8\"></head><body></body></html>")
 
 (deftest sandbox-host-endpoint-test
-  (testing "GET /sandbox-host returns minimal HTML with a per-document CSP"
-    (mt/with-premium-features #{:custom-viz}
-      (mt/with-temporary-setting-values [csp-img-enabled true
-                                         custom-viz-enabled true]
+  (testing "GET /sandbox-host returns minimal HTML with a per-document CSP without a feature token"
+    (mt/with-premium-features #{}
+      (mt/with-temporary-setting-values [custom-viz-enabled false]
         (let [resp (mt/user-http-request-full-response
-                    :rasta :get 200 "ee/near-membrane-plugin/sandbox-host")
+                    :rasta :get 200 "ee/browser-sandboxing/sandbox-host")
               headers (:headers resp)]
           (testing "the body is exactly the inert donor document (pinned: this endpoint is unauthed, nothing may be added to it)"
             (is (= inert-donor-doc (:body resp))))
@@ -38,30 +37,6 @@
             ;; URL-keyed shared cache can't see, so a cached 200 must never be replayable.
             (is (= "no-store" (get headers "Cache-Control")))))))))
 
-(deftest sandbox-host-custom-viz-disabled-test
-  (mt/with-premium-features #{:custom-viz}
-    (mt/with-temporary-setting-values [custom-viz-enabled false]
-      (mt/user-http-request-full-response :rasta :get 404 "ee/near-membrane-plugin/sandbox-host"))))
-
-(deftest sandbox-host-data-apps-without-custom-viz-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-temporary-setting-values [custom-viz-enabled false
-                                       enable-embedding-modular false]
-      (mt/user-http-request-full-response :rasta :get 200 "ee/near-membrane-plugin/sandbox-host"))))
-
-(deftest sandbox-host-data-apps-with-custom-viz-disabled-test
-  (mt/with-premium-features #{:custom-viz :data-apps}
-    (mt/with-temporary-setting-values [custom-viz-enabled false
-                                       enable-embedding-modular false]
-      (mt/user-http-request-full-response :rasta :get 200 "ee/near-membrane-plugin/sandbox-host"))))
-
-(deftest sandbox-host-requires-feature-test
-  (mt/with-premium-features #{}
-    (let [response (mt/user-http-request-full-response :rasta :get 404 "ee/near-membrane-plugin/sandbox-host")]
-      (is (= "Not found" (:body response)))
-      (is (= "no-store" (get-in response [:headers "Cache-Control"])))
-      (is (not (str/includes? (str (get-in response [:headers "Content-Security-Policy"])) "unsafe-eval"))))))
-
 (defn- get-sandbox-host
   "GET the donor endpoint, as `:rasta` when `authed?`, asserting `expected-status`.
    A nil `sec-fetch-site`/`sec-fetch-dest` means the header is not sent at all."
@@ -72,14 +47,14 @@
         args    (cond-> []
                   (seq headers) (conj {:request-options {:headers headers}}))]
     (if authed?
-      (apply mt/user-http-request-full-response :rasta :get expected-status "ee/near-membrane-plugin/sandbox-host" args)
-      (apply client/client-full-response :get expected-status "ee/near-membrane-plugin/sandbox-host" args))))
+      (apply mt/user-http-request-full-response :rasta :get expected-status "ee/browser-sandboxing/sandbox-host" args)
+      (apply client/client-full-response :get expected-status "ee/browser-sandboxing/sandbox-host" args))))
 
 (deftest sandbox-host-fetch-metadata-gate-test
   ;; The whole gate in one table. Every 200 also pins the body: the donor is reachable without
   ;; authentication and its response carries an eval-permitting CSP, so it must ALWAYS be this
   ;; exact empty document. Never add content, data, or anything request-dependent to it.
-  (mt/with-premium-features #{:data-apps}
+  (mt/with-premium-features #{}
     (doseq [{:keys [description expected-status] :as scenario}
             [{:description     "an unauthed browser-attested same-origin iframe navigation is served (the EAJS path)"
               :sec-fetch-site  "same-origin"
@@ -127,7 +102,8 @@
 
 (deftest removed-evaluator-routes-test
   (mt/with-premium-features #{:custom-viz :data-apps}
-    (doseq [route ["ee/custom-viz-plugin/sandbox-host" "ee/apps/sandbox-host"]]
+    (doseq [route ["ee/custom-viz-plugin/sandbox-host"
+                   "ee/apps/sandbox-host"]]
       (mt/user-http-request-full-response :rasta :get 404 route))))
 
 (deftest data-apps-still-require-authentication-test

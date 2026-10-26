@@ -3675,6 +3675,11 @@
            util}
    :model-imports #{:model/User}}
 
+  enterprise/browser-sandboxing
+  {:team "Gadget"
+   :api #{metabase-enterprise.browser-sandboxing.api}
+   :uses #{api}}
+
   enterprise/cache
   {:team "UX West"
    :api  #{metabase-enterprise.cache.init}
@@ -4171,11 +4176,6 @@
            remote-sync
            util}
    :model-imports #{:model/NativeQuerySnippet}}
-
-  enterprise/near-membrane-plugin
-  {:team "Gadget"
-   :api #{metabase-enterprise.near-membrane-plugin.api}
-   :uses #{api premium-features}}
 
   enterprise/permissions
   {:team "UX West"

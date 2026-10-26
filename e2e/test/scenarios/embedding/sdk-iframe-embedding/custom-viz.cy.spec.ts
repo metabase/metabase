@@ -43,7 +43,7 @@ describe(
       cy.log(
         "EAJS has no eval-permissive page CSP, so the plugin sandbox loads the hosted donor document",
       );
-      cy.intercept("GET", "**/api/ee/near-membrane-plugin/sandbox-host*").as(
+      cy.intercept("GET", "**/api/ee/browser-sandboxing/sandbox-host*").as(
         "getSandboxHost",
       );
 

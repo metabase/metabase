@@ -123,7 +123,7 @@ describe("instantiateDataAppBundle", () => {
 
     expect(mockedCreateSandbox).toHaveBeenCalledWith(
       expect.objectContaining({
-        realmHostUrl: "/api/ee/near-membrane-plugin/sandbox-host",
+        realmHostUrl: "/api/ee/browser-sandboxing/sandbox-host",
       }),
     );
   });
