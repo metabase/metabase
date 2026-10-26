@@ -1,3 +1,5 @@
+import { getColumnIcon } from "metabase/common/utils/columns";
+import * as Lib from "metabase-lib";
 import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   isBoolean,
@@ -171,12 +173,21 @@ export const getUserPropertyOptions = (
   roles: ColumnRoles,
 ) => {
   const roleColumns = new Set(Object.values(roles));
-  return toOptions(
-    (getUserPropertyFields(context) ?? []).filter(
+  return (getUserPropertyFields(context) ?? [])
+    .filter(
       (field) =>
         context.usersTable !== undefined || !roleColumns.has(field.name),
-    ),
-  );
+    )
+    .map((field) => ({
+      value: field.name,
+      label: field.display_name,
+      icon: getColumnIcon(
+        Lib.legacyColumnTypeInfo({
+          effective_type: field.effective_type,
+          semantic_type: field.semantic_type,
+        }),
+      ),
+    }));
 };
 
 export const isUserPropertyColumn = (

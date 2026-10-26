@@ -78,25 +78,33 @@ export const getFunnelStepsOption = (
   const grid = getGrid(chartLayout);
   const gridWidth = chartWidth - grid.left - grid.right;
   const barWidth = (gridWidth / Math.max(counts.length, 1)) * BAR_WIDTH_RATIO;
-  const seriesColor = Color(seriesModel.color);
+  // A step without a color of its own takes the series color.
+  const stepColors = counts.map((_count, index) =>
+    Color(
+      settings["product_analytics.funnel_step_colors"]?.[index] ??
+        seriesModel.color,
+    ),
+  );
 
   const ghostSeries: BarSeriesOption = {
     id: FUNNEL_STEPS_GHOST_SERIES_ID,
     type: "bar",
     barWidth,
     barGap: "-100%",
-    data: counts.map(() => maxCount),
-    itemStyle: {
-      color: seriesColor.alpha(GHOST_FILL_ALPHA).string(),
-      decal: {
-        symbol: "rect",
-        symbolSize: 1,
-        dashArrayX: [1, 0],
-        dashArrayY: [1, 7],
-        rotation: -Math.PI / 4,
-        color: seriesColor.alpha(GHOST_HATCH_ALPHA).string(),
+    data: counts.map((_count, index) => ({
+      value: maxCount,
+      itemStyle: {
+        color: stepColors[index].alpha(GHOST_FILL_ALPHA).string(),
+        decal: {
+          symbol: "rect",
+          symbolSize: 1,
+          dashArrayX: [1, 0],
+          dashArrayY: [1, 7],
+          rotation: -Math.PI / 4,
+          color: stepColors[index].alpha(GHOST_HATCH_ALPHA).string(),
+        },
       },
-    },
+    })),
     // The ghost spans the full plot height, so its labels line up across the top
     label: {
       show: true,
@@ -127,8 +135,13 @@ export const getFunnelStepsOption = (
     type: "bar",
     barWidth,
     barGap: "-100%",
-    data: counts,
-    itemStyle: { color: seriesModel.color },
+    // Like other bars, a step no one reached is still a sliver, so the chart
+    // doesn't look like its data is off-screen.
+    barMinHeight: 1,
+    data: counts.map((count, index) => ({
+      value: count,
+      itemStyle: { color: stepColors[index].string() },
+    })),
     label: {
       show: true,
       position: [0, "100%"],

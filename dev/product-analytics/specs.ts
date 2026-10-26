@@ -111,12 +111,10 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
         kind,
         ...chrome,
         cohorts: {
-          by: "startDate",
           return: { flag: FLAG.active },
-          returnRule: "onOrAfter",
-          horizon: 8,
+          returnRule: "exactly",
         },
-        output: { cohortsDisplay: "percent" },
+        output: { cohortsDisplay: "percent", cohortsLines: "each" },
       };
   }
 };

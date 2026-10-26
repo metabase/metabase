@@ -7,7 +7,8 @@ export type CheckboxCardOption<T extends string> = {
   value: T;
   label: string;
   description?: string;
-  color?: ColorName;
+  /** A palette color name, or a picked CSS color. */
+  color?: ColorName | string;
 };
 
 type CheckboxCardsWidgetProps<T extends string> = SettingWidgetProps<T[]> & {

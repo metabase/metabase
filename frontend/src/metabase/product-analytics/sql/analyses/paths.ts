@@ -5,6 +5,13 @@ import type { Cte, DrillPoint, QueryPlan } from "../compose";
 
 import { pointString, scopedEvents } from "./base";
 import {
+  BREAKOUT_COLUMN,
+  breakoutDrillCondition,
+  breakoutGroupBy,
+  breakoutSelect,
+  withBreakout,
+} from "./breakout";
+import {
   PATHS_COLUMNS,
   kindSql,
   pathNodeKeySql,
@@ -98,14 +105,12 @@ export const getPathDepth = (paths: PathsSpec): number =>
   Math.min(paths.steps, 8);
 
 /**
- * The CTEs every paths query shares: each visit's steps in order as
- * `ordered_steps`, and the window of them the paths cover as `bounds`.
- * `carried` columns are computed on each event and kept on its step.
+ * Each visit's steps in order as `ordered_steps`, and the window of them the
+ * paths cover as `bounds`.
  */
-export const pathWindowCtes = (
+const pathWindowCtes = (
   spec: AnalysisSpec,
   paths: PathsSpec,
-  carried: readonly { as: string; sql: string }[] = [],
 ): { ctes: Cte[]; warnings: string[] } => {
   const warnings: string[] = [];
   const gap = paths.sessionGapMinutes * 60;
@@ -122,12 +127,8 @@ export const pathWindowCtes = (
     { as: "is_start", sql: start !== null ? flagSql(start.flag) : "0" },
     { as: "is_end", sql: end !== null ? flagSql(end.flag) : "0" },
     { as: "step_name", sql: stepNameSql(spec) },
-    ...carried,
   ]);
   warnings.push(...base.warnings);
-  const carriedNames = carried.map(({ as }) => as);
-  const carry = (indent: string) =>
-    carriedNames.map((name) => `${indent}${name},`);
 
   const ctes: Cte[] = [...base.ctes];
 
@@ -142,7 +143,6 @@ export const pathWindowCtes = (
       "  step_name,",
       "  is_start,",
       "  is_end,",
-      ...carry("  "),
       "  sum(new_visit) OVER (PARTITION BY actor ORDER BY ts",
       "    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS visit",
       "FROM (",
@@ -152,7 +152,6 @@ export const pathWindowCtes = (
       "    step_name,",
       "    is_start,",
       "    is_end,",
-      ...carry("    "),
       "    if(row_number() OVER (PARTITION BY actor ORDER BY ts) = 1",
       `       OR dateDiff('second', lagInFrame(ts, 1, ts) OVER (PARTITION BY actor ORDER BY ts`,
       "         ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), ts) > " +
@@ -202,12 +201,10 @@ export const pathWindowCtes = (
       "  step_name,",
       "  is_start,",
       "  is_end,",
-      ...carry("  "),
       "  row_number() OVER (PARTITION BY actor, visit ORDER BY ts) AS position",
       "FROM (",
       "  SELECT",
       "    actor, visit, ts, step_name, is_start, is_end,",
-      ...carry("    "),
       "    lagInFrame(step_name, 1, '') OVER (PARTITION BY actor, visit ORDER BY ts",
       "      ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS previous_name",
       "  FROM visits",
@@ -333,13 +330,14 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
   const members = (point: DrillPoint): string | null => {
     const source = pointString(point.source);
     const target = pointString(point.target);
+    const inGroup = breakoutDrillCondition(spec, point[BREAKOUT_COLUMN]);
     if (source !== null && target !== null) {
-      return `SELECT DISTINCT actor FROM edges\nWHERE source = ${lit(source)} AND target = ${lit(target)}`;
+      return `SELECT DISTINCT actor FROM edges\nWHERE source = ${lit(source)} AND target = ${lit(target)}${inGroup}`;
     }
     const node = source ?? target;
     return node === null
       ? null
-      : `SELECT DISTINCT actor FROM edges\nWHERE source = ${lit(node)} OR target = ${lit(node)}`;
+      : `SELECT DISTINCT actor FROM edges\nWHERE (source = ${lit(node)} OR target = ${lit(node)})${inGroup}`;
   };
 
   return {
@@ -353,9 +351,12 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
       `  ${PATHS_COLUMNS.sourceLabel},`,
       `  ${PATHS_COLUMNS.targetLabel},`,
       `  ${PATHS_COLUMNS.targetKind},`,
+      ...breakoutSelect(spec),
       `  ${volume} AS weight`,
-      "FROM edges",
-      `GROUP BY step, source, target, ${PATHS_COLUMNS.sourceLabel}, ${PATHS_COLUMNS.targetLabel}, ${PATHS_COLUMNS.targetKind}`,
+      // The nodes are picked from everyone's steps, so each group's links
+      // share them.
+      `FROM ${withBreakout(spec, "edges")}`,
+      `GROUP BY ${breakoutGroupBy(spec)}step, source, target, ${PATHS_COLUMNS.sourceLabel}, ${PATHS_COLUMNS.targetLabel}, ${PATHS_COLUMNS.targetKind}`,
       "ORDER BY step, weight DESC",
     ].join("\n"),
     warnings: [

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { skipToken, useGetTableQueryMetadataQuery } from "metabase/api";
 import { useMetadataProvider } from "metabase/metadata-store";
@@ -10,6 +10,7 @@ import { getAnalysisConfig } from "./analyses/config";
 import type {
   AnalysisContext,
   AnalysisSettingsByKind,
+  DisplayColors,
   UsersTable,
 } from "./analyses/types";
 import type { BaseQueryInput } from "./base-query";
@@ -27,6 +28,8 @@ type UseAnalysisArgs<K extends AnalysisKind> = {
   tableId: ConcreteTableId | undefined;
   stored: StoredSettings;
   onChangeSettings: (changes: Partial<AnalysisSettingsByKind[K]>) => void;
+  /** Colors picked in the display panel. */
+  colors: DisplayColors;
 };
 
 /** The table the person column links to, once its metadata is loaded. */
@@ -61,6 +64,7 @@ export const useAnalysis = <K extends AnalysisKind>({
   tableId,
   stored,
   onChangeSettings,
+  colors,
 }: UseAnalysisArgs<K>) => {
   const config = getAnalysisConfig(kind);
   const tableMetadata = useGetTableQueryMetadataQuery(
@@ -84,21 +88,38 @@ export const useAnalysis = <K extends AnalysisKind>({
     () => computeSettings(config.settings, context, stored),
     [config, context, stored],
   );
+  // Only the widgets see the picked colors, so picking one doesn't recompute
+  // the settings or the query.
+  const widgetContext = useMemo<AnalysisContext>(
+    () => ({ ...context, displayColors: colors }),
+    [context, colors],
+  );
+  const handleChangeSettings = useCallback(
+    (changes: Partial<AnalysisSettingsByKind[K]>) =>
+      onChangeSettings({
+        ...changes,
+        ...config.getFollowingChanges?.(changes, computed),
+      }),
+    [config, computed, onChangeSettings],
+  );
   const widgets = useMemo(
     () =>
       getSettingWidgets(
         config.settings,
-        context,
+        widgetContext,
         stored,
         computed,
-        onChangeSettings,
+        handleChangeSettings,
       ),
-    [config, context, stored, computed, onChangeSettings],
+    [config, widgetContext, stored, computed, handleChangeSettings],
   );
 
   const flags = createFlagAllocator();
   const specResult = config.toSpec(computed, flags);
   const spec = specResult.status === "ready" ? specResult.spec : undefined;
+  const requiredPeopleSegments = computed.filters.people.map(
+    flags.segmentFlagFor,
+  );
   // After `toSpec`, which gives a flag to each event it uses.
   const base = useStableValue<BaseQueryInput>({
     dateRange: computed.date_range,
@@ -107,6 +128,8 @@ export const useAnalysis = <K extends AnalysisKind>({
     extraColumns: config.getExtraColumns?.(computed, context) ?? [],
     usersTable: usersTable?.link,
     filters: computed.filters,
+    peopleSegments: flags.segments,
+    requiredPeopleSegments,
     lookbackDays: spec !== undefined ? getLookbackDays(spec) : 0,
   });
   const missing = specResult.status === "incomplete" ? specResult.missing : [];
@@ -116,14 +139,14 @@ export const useAnalysis = <K extends AnalysisKind>({
     config,
     table,
     usersTable,
-    context,
     computed,
-    base,
     widgets,
     spec,
     missing,
     display: config.getDisplay(computed),
-    vizSettings: config.getVizSettings(computed),
+    question: config.getQuestion?.(computed) ?? config.question,
+    vizSettings: config.getVizSettings(computed, colors),
+    colorSlots: config.getColorSlots?.(computed, colors) ?? [],
     query,
   };
 };

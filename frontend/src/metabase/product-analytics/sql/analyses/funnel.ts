@@ -15,9 +15,16 @@ import {
   parseStepLabel,
   pointString,
   scopedEvents,
-  splitCols,
-  splitGroup,
 } from "./base";
+import {
+  ACTOR_BREAKOUTS_CTE,
+  BREAKOUT_COLUMN,
+  breakoutDrillCondition,
+  breakoutGroupBy,
+  breakoutOrderBy,
+  breakoutSelect,
+  withBreakout,
+} from "./breakout";
 
 const MODE: Record<string, string> = {
   strict: ", 'strict_order'",
@@ -25,12 +32,8 @@ const MODE: Record<string, string> = {
   any: "",
 };
 
-/** The "Step by step" view's label for a step, numbered from 1. */
-export const getFunnelStepLabel = (stepNumber: number, name: string): string =>
-  `${stepNumber}. ${name}`;
-
 /** The step flags, plus the disqualifier flags, on `scoped_events`. */
-export const funnelFlags = (funnel: FunnelSpec) => [
+const funnelFlags = (funnel: FunnelSpec) => [
   ...funnel.steps.map((step, index) => ({
     as: `step_${index + 1}`,
     sql: flagSql(step.flag),
@@ -45,13 +48,13 @@ export const funnelFlags = (funnel: FunnelSpec) => [
  * When each actor first did each step: `t_1` … `t_n`. Not for durations,
  * which need one run through the steps; see `funnelChainsCte`.
  */
-export const funnelStepTimes = (funnel: FunnelSpec): string =>
+const funnelStepTimes = (funnel: FunnelSpec): string =>
   funnel.steps
     .map((_, index) => `  minIf(ts, step_${index + 1}) AS t_${index + 1}`)
     .join(",\n");
 
 /** Whether each actor did each step at all: `hit_1` … `hit_n`. */
-export const funnelHits = (funnel: FunnelSpec): string =>
+const funnelHits = (funnel: FunnelSpec): string =>
   funnel.steps
     .map((_, index) => `  countIf(step_${index + 1}) > 0 AS hit_${index + 1}`)
     .join(",\n");
@@ -60,7 +63,7 @@ export const funnelHits = (funnel: FunnelSpec): string =>
  * Per-actor aggregates ending in `level`, how far the actor got in order.
  * Only for orderings that enforce one; see `funnelHits` for "any".
  */
-export const funnelOrderedLevel = (
+const funnelOrderedLevel = (
   funnel: FunnelSpec,
 ): { sql: string; warnings: string[] } => {
   const window = seconds(funnel.window);
@@ -127,7 +130,7 @@ const stepNumbers = (funnel: FunnelSpec): number[] =>
  * Measure durations with these, not `t_k`: a step's first time ever can come
  * from another run, like an earlier visit that went nowhere.
  */
-export const funnelChainsCte = (funnel: FunnelSpec): Cte => {
+const funnelChainsCte = (funnel: FunnelSpec): Cte => {
   const n = funnel.steps.length;
   const steps = stepNumbers(funnel);
   const isEach = funnel.anchor === "each";
@@ -175,7 +178,7 @@ export const funnelChainsCte = (funnel: FunnelSpec): Cte => {
   };
 };
 
-export type FunnelLevels = {
+type FunnelLevels = {
   ctes: Cte[];
   /** The CTE with one row per kept actor: `level` (or `hit_k`) and `t_1` … `t_n`. */
   source: string;
@@ -184,21 +187,14 @@ export type FunnelLevels = {
 };
 
 /**
- * `scoped_events` with the step flags (plus `extraColumns`), then one row per
- * actor with how far they got, without the disqualified actors.
+ * `scoped_events` with the step flags, then one row per actor with how far
+ * they got, without the disqualified actors.
  */
-export const funnelLevels = (
-  spec: AnalysisSpec,
-  funnel: FunnelSpec,
-  extraColumns: { as: string; sql: string }[] = [],
-): FunnelLevels => {
+const funnelLevels = (spec: AnalysisSpec, funnel: FunnelSpec): FunnelLevels => {
   const warnings: string[] = [];
   const n = funnel.steps.length;
 
-  const base = scopedEvents(spec, undefined, [
-    ...funnelFlags(funnel),
-    ...extraColumns,
-  ]);
+  const base = scopedEvents(spec, undefined, funnelFlags(funnel));
   warnings.push(...base.warnings);
 
   let levelExpr: string;
@@ -220,11 +216,10 @@ export const funnelLevels = (
     body: [
       "SELECT",
       "  actor,",
-      ...splitCols(base),
       levelExpr + ",",
       funnelStepTimes(funnel),
       "FROM scoped_events",
-      `GROUP BY ${splitGroup(base)}actor`,
+      "GROUP BY actor",
     ]
       .filter(Boolean)
       .join("\n"),
@@ -427,6 +422,16 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
     source = "funnel_timed";
   }
 
+  if (spec.breakout !== undefined) {
+    ctes.push({
+      name: "funnel_broken_out",
+      note: "each actor's row once per group they're in",
+      deps: [source, ACTOR_BREAKOUTS_CTE],
+      body: `SELECT * FROM ${withBreakout(spec, source)}`,
+    });
+    source = "funnel_broken_out";
+  }
+
   if (funnel.allowRetry) {
     warnings.push(
       "“Let someone try more than once” is not modelled — each actor is counted at their deepest single attempt. Multiple attempts need the stream sessionised first.",
@@ -438,14 +443,30 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
       .map((step) => lit(funnel.steps[step - 1].label))
       .join(", ")}] AS step_name`;
 
-  // Keep in sync with `getFunnelStepLabel`.
+  // Keep in sync with `parseStepLabel`.
   const stepLabel = "concat(toString(step), '. ', step_name)";
   const view = spec.output.funnelView ?? "steps";
   const people = grainLabel(spec.grain);
   const timeBuckets = getTimeToConvertBuckets(funnel.window);
+  const isBrokenOut = spec.breakout !== undefined;
+  const orderBy = (...columns: string[]) =>
+    `ORDER BY ${[...breakoutOrderBy(spec), ...columns].join(", ")}`;
   let select: string;
 
-  if (view === "overTime") {
+  if (view === "overTime" && isBrokenOut) {
+    // A line per group, of how many got to the last step: a line per step per
+    // group would be one dimension too many.
+    select = [
+      "SELECT",
+      `  ${bucket(startSql(funnel), spec.bucket.granularity)} AS period,`,
+      `  ${BREAKOUT_COLUMN},`,
+      `  round(countIf(${finishedSql(funnel)}) / nullIf(count(), 0), 4) AS conversion`,
+      `FROM ${source}`,
+      `WHERE ${startedSql(funnel)}`,
+      `GROUP BY period, ${BREAKOUT_COLUMN}`,
+      orderBy("period"),
+    ].join("\n");
+  } else if (view === "overTime") {
     // A line per step after the first, which everyone in a period reached.
     const lineSteps = n > 1 ? stepNumbers(funnel).slice(1) : [1];
     select = [
@@ -464,29 +485,41 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
       name: "conversion_times",
       note: "the duration range each actor who finished took",
       deps: [source],
-      body: [
-        `SELECT ${timeBucketSql(funnel, timeBuckets)} AS time_bucket`,
-        `FROM ${source}`,
-        `WHERE ${finishedWithTimesSql(funnel)}`,
-      ].join("\n"),
+      // Broken out, everyone stays in with no range unless they finished,
+      // so a group nobody in finished still gets its rows.
+      body: isBrokenOut
+        ? [
+            "SELECT",
+            ...breakoutSelect(spec),
+            `  if(${finishedWithTimesSql(funnel)}, ${timeBucketSql(funnel, timeBuckets)}, NULL) AS time_bucket`,
+            `FROM ${source}`,
+          ].join("\n")
+        : [
+            "SELECT",
+            `  ${timeBucketSql(funnel, timeBuckets)} AS time_bucket`,
+            `FROM ${source}`,
+            `WHERE ${finishedWithTimesSql(funnel)}`,
+          ].join("\n"),
     });
     select = [
       "SELECT",
       `  bucket_label AS ${TIME_TO_CONVERT_COLUMN},`,
+      ...breakoutSelect(spec),
       `  countIf(time_bucket = bucket) AS ${people}`,
       "FROM conversion_times",
       `ARRAY JOIN [${timeBuckets.map((timeBucket) => timeBucket.index).join(", ")}] AS bucket, [${timeBuckets.map((timeBucket) => lit(timeBucket.label)).join(", ")}] AS bucket_label`,
-      "GROUP BY bucket, bucket_label",
+      `GROUP BY ${breakoutGroupBy(spec)}bucket, bucket_label`,
       // From the fastest anyone took, and past the window only when someone did.
       "HAVING bucket >= (SELECT min(time_bucket) FROM conversion_times)",
       `  AND (bucket < ${timeBuckets.length} OR ${people} > 0)`,
-      "ORDER BY bucket",
+      orderBy("bucket"),
     ].join("\n");
   } else {
     const isOrdered = funnel.ordering !== "any";
     select = [
       "SELECT",
       `  ${stepLabel} AS label,`,
+      ...breakoutSelect(spec),
       `  countIf(${reachedStepSql(funnel, "step")}) AS ${people}${isOrdered ? "," : ""}`,
       ...(isOrdered
         ? [
@@ -495,24 +528,26 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
         : []),
       `FROM ${source}`,
       stepArray(stepNumbers(funnel)),
-      "GROUP BY step, step_name",
-      "ORDER BY step",
+      `GROUP BY ${breakoutGroupBy(spec)}step, step_name`,
+      orderBy("step"),
     ].join("\n");
   }
 
   const members = (point: DrillPoint): string | null => {
-    const from = `SELECT actor FROM ${source}`;
+    const inGroup = breakoutDrillCondition(spec, point[BREAKOUT_COLUMN]);
+    const from = `SELECT DISTINCT actor FROM ${source}`;
     if (view === "overTime") {
       const period = pointString(point.period);
       if (period === null) {
         return null;
       }
-      const step = parseStepLabel(point.label)?.step;
+      // Broken out, each line is the last step's.
+      const step = isBrokenOut ? n : parseStepLabel(point.label)?.step;
       const reached =
         step !== undefined && step >= 1 && step <= n
           ? ` AND ${reachedStepSql(funnel, String(step))}`
           : "";
-      return `${from}\nWHERE ${startedSql(funnel)} AND ${bucket(startSql(funnel), spec.bucket.granularity)} = ${dateTimeLit(period)}${reached}`;
+      return `${from}\nWHERE ${startedSql(funnel)} AND ${bucket(startSql(funnel), spec.bucket.granularity)} = ${dateTimeLit(period)}${reached}${inGroup}`;
     }
     if (view === "timeToConvert") {
       const label = pointString(point[TIME_TO_CONVERT_COLUMN]);
@@ -521,13 +556,13 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
       );
       return timeBucket === undefined
         ? null
-        : `${from}\nWHERE ${finishedWithTimesSql(funnel)} AND ${timeBucketSql(funnel, timeBuckets)} = ${timeBucket.index}`;
+        : `${from}\nWHERE ${finishedWithTimesSql(funnel)} AND ${timeBucketSql(funnel, timeBuckets)} = ${timeBucket.index}${inGroup}`;
     }
     const step = parseStepLabel(point.label)?.step;
     if (step === undefined || step < 1 || step > n) {
       return null;
     }
-    return `${from}\nWHERE ${reachedStepSql(funnel, String(step))}`;
+    return `${from}\nWHERE ${reachedStepSql(funnel, String(step))}${inGroup}`;
   };
 
   return { ctes, select, warnings, members };

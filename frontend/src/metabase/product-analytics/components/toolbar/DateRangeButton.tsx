@@ -11,17 +11,26 @@ export const DateRangeButton = ({
   value,
   onChange,
 }: SettingWidgetProps<string>) => {
-  const [opened, { open, close }] = useDisclosure();
+  const [opened, { close, toggle }] = useDisclosure();
   const dateRange = parseDateRange(value);
 
   return (
     <Popover
       opened={opened}
-      onChange={(isOpened) => (isOpened ? open() : close())}
+      // Controlled, so the target doesn't toggle it; the button does.
+      onChange={(isOpened) => {
+        if (!isOpened) {
+          close();
+        }
+      }}
       position="bottom-end"
     >
       <Popover.Target>
-        <Button variant="default" leftSection={<Icon name="calendar" />}>
+        <Button
+          variant="default"
+          leftSection={<Icon name="calendar" />}
+          onClick={toggle}
+        >
           {dateRange !== undefined
             ? getDateFilterDisplayName(dateRange)
             : value}

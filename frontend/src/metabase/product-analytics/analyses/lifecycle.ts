@@ -15,6 +15,11 @@ import { pointString } from "../sql/analyses/base";
 import { FIRST_SEEN_EXTRA_COLUMN } from "../sql/analyses/lifecycle";
 import { grainTitle } from "../sql/compile/grain";
 
+import {
+  getBreakoutExtraColumns,
+  getBreakoutSpec,
+  getChartPerGroupSettings,
+} from "./breakout";
 import { getDateColumnOptions, isDateColumnInTable } from "./column-roles";
 import { commonSettings } from "./common-settings";
 import { getAxisTitleSettings } from "./series-settings";
@@ -30,6 +35,7 @@ import {
 import type {
   AnalysisConfig,
   AnalysisSettingDefinitions,
+  DisplayColors,
   LifecycleSettings,
 } from "./types";
 
@@ -47,10 +53,16 @@ const STATE_COLOR_NAMES: Record<LifecycleStateName, ColorName> = {
   dormant: "accent3",
 };
 
-const getStateColor = (state: LifecycleStateName): string =>
-  color(STATE_COLOR_NAMES[state]);
+const getStateColorKey = (state: LifecycleStateName): string =>
+  `state.${state}`;
 
-export const getStateName = (state: LifecycleStateName): string => {
+/** The state's picked color, else its palette color. */
+const getStateColor = (
+  state: LifecycleStateName,
+  colors: DisplayColors,
+): string => colors[getStateColorKey(state)] ?? color(STATE_COLOR_NAMES[state]);
+
+const getStateName = (state: LifecycleStateName): string => {
   switch (state) {
     case "new":
       return t`New`;
@@ -102,10 +114,14 @@ const getFirstSeenColumn = (settings: LifecycleSettings): string | null =>
 const getPeriod = (granularity: Granularity): Period =>
   granularity === "hour" ? "day" : granularity;
 
+const { breakout_view: breakoutView, ...common } = commonSettings({
+  granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
+  breakout: true,
+  canPivot: true,
+});
+
 const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
-  ...commonSettings({
-    granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
-  }),
+  ...common,
   "lifecycle.active": withWidgetProps({
     getTitle: () => t`What action counts as being active?`,
     getSection: () => "setup",
@@ -114,7 +130,7 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
     isValid: (value) => isOptionalEventDefinition(value),
     getProps: (context) => ({
       ...getEventDefinitionProps(context),
-      emptyLabel: t`Any action or event`,
+      emptyLabel: t`Any event`,
     }),
   }),
   "lifecycle.first_seen_column": withWidgetProps({
@@ -146,11 +162,14 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
     getDefault: () => [...STATES],
     isValid: (value) =>
       isUnknownArray(value) && value.every((state) => isOneOf(STATES, state)),
-    getProps: (_context, settings) => ({
+    getProps: (context, settings) => ({
       options: STATES.map((state) => ({
         value: state,
         label: getStateName(state),
-        color: STATE_COLOR_NAMES[state],
+        // The chart's color for the group, picked or from the palette.
+        color:
+          context.displayColors?.[getStateColorKey(state)] ??
+          STATE_COLOR_NAMES[state],
         description: getStateDescription(
           state,
           getPeriod(settings.granularity),
@@ -158,6 +177,8 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
       })),
     }),
   }),
+  // Last in setup, under what it shows.
+  breakout_view: breakoutView,
 };
 
 export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
@@ -184,6 +205,7 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
     }
     return ready({
       ...getCommonSpec("lifecycle", settings),
+      breakout: getBreakoutSpec(settings.breakout, events),
       lifecycle: {
         // Empty means any event counts as being active.
         active: active === null ? undefined : { flag: events.flagFor(active) },
@@ -193,14 +215,19 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
       output: { lifecycleShown: settings["lifecycle.shown"] },
     });
   },
-  getExtraColumns: (settings) => {
+  getExtraColumns: (settings, context) => {
     const column = getFirstSeenColumn(settings);
-    return column !== null
-      ? [{ as: FIRST_SEEN_EXTRA_COLUMN, column, from: "events" }]
-      : [];
+    return [
+      ...(column !== null
+        ? [{ as: FIRST_SEEN_EXTRA_COLUMN, column, from: "events" as const }]
+        : []),
+      ...getBreakoutExtraColumns(settings.breakout, context),
+    ];
   },
   getDisplay: () => "bar",
-  getVizSettings: (settings) => ({
+  getVizSettings: (settings, colors) => ({
+    // The states already stack, so each group gets a chart of its own.
+    ...(settings.breakout !== null ? getChartPerGroupSettings() : {}),
     "graph.dimensions": ["period", "state"],
     "graph.metrics": ["actors"],
     "stackable.stack_type": "stacked",
@@ -211,8 +238,11 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
         state,
         {
           title: getStateName(state),
-          color: getStateColor(state),
-          color_name: STATE_COLOR_NAMES[state],
+          color: getStateColor(state, colors),
+          // A picked color has no palette name to follow.
+          ...(colors[getStateColorKey(state)] === undefined
+            ? { color_name: STATE_COLOR_NAMES[state] }
+            : {}),
         },
       ]),
     ),
@@ -221,13 +251,19 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
       key: state,
       name: getStateName(state),
       enabled: true,
-      color: getStateColor(state),
+      color: getStateColor(state, colors),
     })),
     ...getAxisTitleSettings({
       x: Lib.describeTemporalUnit(settings.granularity),
       y: grainTitle(settings.counting),
     }),
   }),
+  getColorSlots: (_settings, colors) =>
+    STATES.map((state) => ({
+      key: getStateColorKey(state),
+      label: getStateName(state),
+      color: getStateColor(state, colors),
+    })),
   describePoint: (settings, point) => {
     const state = STATES.find((item) => item === pointString(point.state));
     if (state === undefined) {

@@ -51,8 +51,10 @@ type EventDefinitionListWidgetProps = SettingWidgetProps<EventDefinition[]> & {
  * edit first, or discards it when it can't be submitted. Nothing can be
  * dragged during an edit.
  *
- * A palette segment dropped on an item becomes one more of its conditions;
- * dropped on an empty slot or the zone below the list, it's a new event.
+ * The add button adds an empty slot, to click and define or drop a segment
+ * on. A palette segment dropped on an item becomes one more of its
+ * conditions; dropped on an empty slot or the zone below the list, it's a
+ * new event.
  */
 export const EventDefinitionListWidget = ({
   id,
@@ -70,12 +72,14 @@ export const EventDefinitionListWidget = ({
   const sensors = useDndSensors({ distance: DRAG_DISTANCE });
   // `value.length` while adding a new event.
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  // Empty slots added with the add button, beyond the `minSlots` ones.
+  const [addedSlotCount, setAddedSlotCount] = useState(0);
   const isAdding = editingIndex === value.length;
   const isDragDisabled = editingIndex !== null;
   // The editor for a new event takes the first empty slot's place.
   const emptySlotCount = Math.max(
     0,
-    minSlots - value.length - (isAdding ? 1 : 0),
+    Math.max(0, minSlots - value.length) + addedSlotCount - (isAdding ? 1 : 0),
   );
   const emptySlotLabel = isPaletteOpen
     ? t`Drag an event segment here`
@@ -86,7 +90,18 @@ export const EventDefinitionListWidget = ({
     [value],
   );
 
+  // A new event fills the first empty slot: a `minSlots` one while there are
+  // any, then one that was added.
+  const fillSlot = () => {
+    if (value.length >= minSlots) {
+      setAddedSlotCount((count) => Math.max(0, count - 1));
+    }
+  };
+
   const handleSubmit = (event: EventDefinition) => {
+    if (isAdding) {
+      fillSlot();
+    }
     onChange(
       isAdding
         ? [...value, event]
@@ -125,6 +140,9 @@ export const EventDefinitionListWidget = ({
       });
       return;
     }
+    if (atIndex >= value.length) {
+      fillSlot();
+    }
     onChange(
       atIndex >= value.length
         ? [...value, event]
@@ -162,9 +180,10 @@ export const EventDefinitionListWidget = ({
                 <ListRow
                   handle={
                     <DragHandle
+                      n={index + 1}
                       handleRef={dragHandleRef}
                       listeners={dragHandleListeners}
-                      hidden={isDragDisabled}
+                      disabled={isDragDisabled}
                     />
                   }
                 >
@@ -220,16 +239,17 @@ export const EventDefinitionListWidget = ({
           />
         </ListRow>
       )}
-      <Box>
+      {/* In a row of its own, so it lines up with the wells, not the numbers. */}
+      <ListRow>
         <Button
           variant="light"
           leftSection={<Icon name="add" />}
           disabled={tableQuery === undefined}
-          onClick={() => setEditingIndex(value.length)}
+          onClick={() => setAddedSlotCount((count) => count + 1)}
         >
           {addLabel}
         </Button>
-      </Box>
+      </ListRow>
     </Stack>
   );
 };
@@ -251,7 +271,7 @@ const ListRow = ({ handle, children }: ListRowProps) => (
   </Group>
 );
 
-/** Stands where the drag handle goes on a slot that has nothing to drag yet. */
+/** The step's number, in the handle's place, on rows and empty slots alike. */
 const SlotNumber = ({ n }: { n: number }) => (
   <Text size="sm" c="text-tertiary" ta="center" lh={1}>
     {n}
@@ -259,26 +279,30 @@ const SlotNumber = ({ n }: { n: number }) => (
 );
 
 type DragHandleProps = {
+  /** The step's number, which is what's shown. */
+  n: number;
   handleRef: MutableRefObject<HTMLElement | null>;
   listeners: SyntheticListenerMap | undefined;
-  hidden: boolean;
+  /** During an edit, when nothing can be dragged. */
+  disabled: boolean;
 };
 
 /**
- * Like other Metabase sortable lists, mouse and touch only. Hidden rather
- * than unmounted, since `Sortable` registers the handle element once.
+ * The step's number doubles as its reorder handle: the step's own grabber
+ * drags it to the palette instead. Like other Metabase sortable lists, mouse
+ * and touch only. Always mounted, since `Sortable` registers the handle
+ * element once.
  */
-const DragHandle = ({ handleRef, listeners, hidden }: DragHandleProps) => (
+const DragHandle = ({ n, handleRef, listeners, disabled }: DragHandleProps) => (
   <Box
     ref={(element: HTMLDivElement | null) => {
       handleRef.current = element;
     }}
     className={S.handle}
-    display={hidden ? "none" : "flex"}
-    c="text-secondary"
+    data-disabled={disabled}
     data-testid="drag-handle"
-    {...listeners}
+    {...(disabled ? {} : listeners)}
   >
-    <Icon name="grabber" size={HANDLE_SIZE} />
+    <SlotNumber n={n} />
   </Box>
 );

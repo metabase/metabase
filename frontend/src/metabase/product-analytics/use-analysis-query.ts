@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import {
   skipToken,
@@ -8,6 +9,7 @@ import {
 } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataProvider } from "metabase/metadata-store";
+import type * as Lib from "metabase-lib";
 import type {
   ConcreteTableId,
   Dataset,
@@ -16,10 +18,15 @@ import type {
 } from "metabase-types/api";
 
 import { type BaseQueryInput, buildBaseQuery } from "./base-query";
-import { type BaseColumns, buildSql } from "./build-sql";
+import {
+  type BaseColumns,
+  type BasePeopleSegments,
+  buildSql,
+} from "./build-sql";
 import type { ProjectedColumn } from "./columns";
 import { nativeCompileRequest } from "./compile-base";
 import { COLUMN_ROLE_FOR_GRAIN } from "./filters";
+import { buildPeopleSegmentsQuery } from "./segments/people-segments";
 import type { AnalysisSpec } from "./spec/types";
 
 export type AnalysisQueryArgs = {
@@ -30,7 +37,7 @@ export type AnalysisQueryArgs = {
   base: BaseQueryInput;
 };
 
-export type AnalysisQueryResult = {
+type AnalysisQueryResult = {
   sql: string | null;
   compiledBase: CompiledBase | undefined;
   dataset: Dataset | undefined;
@@ -67,7 +74,7 @@ type CompiledBaseResult = {
  * Compiles the base query to SQL with `/api/dataset/native`. Nothing is
  * compiled until `isReady`.
  */
-export const useCompiledBase = ({
+const useCompiledBase = ({
   isReady,
   tableId,
   base,
@@ -111,14 +118,22 @@ export const useCompiledBase = ({
   const native = useGetNativeDatasetQuery(request?.request ?? skipToken);
   const sql = native.currentData?.query;
 
+  const people = useCompiledPeopleSegments({
+    isReady: request?.request !== undefined,
+    metadataProvider,
+    base,
+  });
+
   const compiled = useMemo((): CompiledBase | undefined => {
     const extraColumns: ProjectedColumn[] | undefined = request?.extraColumns;
     const compiledDatabaseId = request?.databaseId;
     const flags = request?.flags;
+    const hasPeopleSegments = base.peopleSegments.length > 0;
     return sql !== undefined &&
       extraColumns !== undefined &&
       compiledDatabaseId !== undefined &&
-      flags !== undefined
+      flags !== undefined &&
+      (!hasPeopleSegments || people.compiled !== undefined)
       ? {
           sql,
           databaseId: compiledDatabaseId,
@@ -130,10 +145,11 @@ export const useCompiledBase = ({
               const column = base.columns[COLUMN_ROLE_FOR_GRAIN[grain]];
               return column !== null ? [{ column, ids }] : [];
             }),
+            peopleSegments: people.compiled,
           },
         }
       : undefined;
-  }, [sql, request, base]);
+  }, [sql, request, base, people.compiled]);
 
   const queryError = native.error
     ? getErrorMessage(native.error)
@@ -144,8 +160,84 @@ export const useCompiledBase = ({
   return {
     compiled,
     isLoading:
-      tableId !== undefined && (tableMetadata.isFetching || native.isFetching),
-    error: request?.error ?? queryError,
+      tableId !== undefined &&
+      (tableMetadata.isFetching || native.isFetching || people.isLoading),
+    error: request?.error ?? queryError ?? people.error,
+  };
+};
+
+type CompiledPeopleSegmentsArgs = {
+  /** The base query compiles; nothing is compiled before it does. */
+  isReady: boolean;
+  metadataProvider: Lib.MetadataProvider;
+  /** Must keep its identity while unchanged. */
+  base: BaseQueryInput;
+};
+
+type CompiledPeopleSegmentsResult = {
+  /** Undefined while compiling, and when no people segment is in use. */
+  compiled: BasePeopleSegments | undefined;
+  isLoading: boolean;
+  error: string | undefined;
+};
+
+/** Compiles who's in each people segment the analysis uses, from the users table. */
+const useCompiledPeopleSegments = ({
+  isReady,
+  metadataProvider,
+  base,
+}: CompiledPeopleSegmentsArgs): CompiledPeopleSegmentsResult => {
+  const { usersTable, peopleSegments, requiredPeopleSegments } = base;
+  // Memoized for the same reason as the base query's request.
+  const request = useMemo(() => {
+    if (!isReady || peopleSegments.length === 0) {
+      return undefined;
+    }
+    if (usersTable === undefined) {
+      return {
+        error: t`Link a Customers or Users table to the person column to use people segments.`,
+      };
+    }
+    try {
+      const query = buildPeopleSegmentsQuery(
+        metadataProvider,
+        usersTable,
+        peopleSegments,
+      );
+      return {
+        request: nativeCompileRequest(query),
+        primaryKey: usersTable.primaryKey,
+      };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }, [isReady, metadataProvider, usersTable, peopleSegments]);
+
+  const native = useGetNativeDatasetQuery(request?.request ?? skipToken);
+  const sql = native.currentData?.query;
+  const primaryKey = request?.primaryKey;
+
+  const compiled = useMemo(
+    (): BasePeopleSegments | undefined =>
+      sql !== undefined && primaryKey !== undefined
+        ? {
+            sql,
+            primaryKey,
+            flags: peopleSegments.map(({ flag }) => flag),
+            required: [...requiredPeopleSegments],
+          }
+        : undefined,
+    [sql, primaryKey, peopleSegments, requiredPeopleSegments],
+  );
+
+  return {
+    compiled,
+    isLoading: native.isFetching,
+    error:
+      request?.error ??
+      (native.error ? getErrorMessage(native.error) : undefined),
   };
 };
 
@@ -157,7 +249,7 @@ type NativeQueryWithConstraints = NativeDatasetQuery & {
  * A native query for `/api/dataset`. `maxRows` raises the default row limit
  * for results that are known to be bounded.
  */
-export const toNativeDatasetQuery = (
+const toNativeDatasetQuery = (
   sql: string,
   databaseId: number,
   maxRows?: number,

@@ -10,8 +10,9 @@ import { SANKEY_CHART_STYLE } from "../constants/style";
 import type { SankeyChartLayout } from "../layout/types";
 import type { SankeyChartModel } from "../model/types";
 
-// Breakout colors tell flows apart, so they need to read more strongly than the default edges.
-const BREAKOUT_EDGE_OPACITY = 0.35;
+// Breakout colors tell flows apart, so they're drawn solid: see-through, a
+// light shade beside its own darker one washes out.
+const BREAKOUT_EDGE_OPACITY = 1;
 
 export const getSankeyChartOption = (
   chartModel: SankeyChartModel,

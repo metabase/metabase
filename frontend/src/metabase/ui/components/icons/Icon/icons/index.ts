@@ -249,6 +249,7 @@ import sort_component from "./sort.svg?component";
 import sort_arrows_component from "./sort_arrows.svg?component";
 import sparkles_component from "./sparkles.svg?component";
 import split_component from "./split.svg?component";
+import split_branch_component from "./split_branch.svg?component";
 import sql_component from "./sql.svg?component";
 import star_component from "./star.svg?component";
 import star_filled_component from "./star_filled.svg?component";
@@ -554,6 +555,7 @@ export const Icons: Record<IconName, React.VFC> = {
   slack: slack_component,
   slack_colorized: slack_colorized_component,
   sliders: sliders_component,
+  split_branch: split_branch_component,
   smartscalar: smartscalar_component,
   smile: smile_component,
   snail: snail_component,

@@ -5,39 +5,54 @@ import { formatDurationShort } from "metabase/utils/formatting";
 import type { EChartsTooltipModel } from "../../../components/ChartTooltip/EChartsTooltip/EChartsTooltip";
 import type { ComputedVisualizationSettings } from "../../../types";
 import { INDEX_KEY } from "../constants/dataset";
-import type { BaseCartesianChartModel } from "../model/types";
+import { getDatasetKey } from "../model/dataset";
+import { isBreakoutSeries } from "../model/guards";
+import type {
+  BaseCartesianChartModel,
+  DataKey,
+  SeriesModel,
+} from "../model/types";
 
 import { FUNNEL_STEPS_MEDIAN_SECONDS_COLUMN } from "./model";
 import { getFunnelSteps } from "./steps";
 
+// Broken out, each group has its own median.
 const getMedianSecondsFromPrevious = (
   chartModel: BaseCartesianChartModel,
+  seriesModel: SeriesModel,
   dataIndex: number,
 ): number | undefined => {
-  const dataKey = Object.keys(chartModel.columnByDataKey).find(
-    (key) =>
-      chartModel.columnByDataKey[key].name ===
-      FUNNEL_STEPS_MEDIAN_SECONDS_COLUMN,
+  const column = Object.values(chartModel.columnByDataKey).find(
+    ({ name }) => name === FUNNEL_STEPS_MEDIAN_SECONDS_COLUMN,
   );
   const datasetIndex = chartModel.transformedDataset[dataIndex]?.[INDEX_KEY];
-  if (dataKey === undefined || typeof datasetIndex !== "number") {
+  if (column === undefined || typeof datasetIndex !== "number") {
     return undefined;
   }
+  const dataKey = isBreakoutSeries(seriesModel)
+    ? getDatasetKey(column, seriesModel.cardId, seriesModel.breakoutValue)
+    : getDatasetKey(column, seriesModel.cardId);
   const value = chartModel.dataset[datasetIndex]?.[dataKey];
   return typeof value === "number" ? value : undefined;
 };
 
 /**
  * The tooltip for a step of the funnel steps chart. A step's bar tells who
- * got there and how fast; the ghost bar above it tells who didn't.
+ * got there and how fast; the ghost bar above it tells who didn't. Broken
+ * out, each group's bar tells it for that group, under the group's name.
  */
 export const getFunnelStepsTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   dataIndex: number,
+  seriesId: DataKey,
   isGhost: boolean,
 ): EChartsTooltipModel | null => {
-  const steps = getFunnelSteps(chartModel, settings);
+  const steps = getFunnelSteps(
+    chartModel,
+    settings,
+    isGhost ? undefined : seriesId,
+  );
   if (!steps || dataIndex >= steps.counts.length) {
     return null;
   }
@@ -76,7 +91,11 @@ export const getFunnelStepsTooltipModel = (
     };
   }
 
-  const medianSeconds = getMedianSecondsFromPrevious(chartModel, dataIndex);
+  const medianSeconds = getMedianSecondsFromPrevious(
+    chartModel,
+    seriesModel,
+    dataIndex,
+  );
   return {
     header,
     rows: [

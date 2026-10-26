@@ -8,11 +8,15 @@
 
 .root[data-empty="true"] {
   border-style: dashed;
-  background-color: transparent;
+  background-color: var(--mb-color-background-secondary);
 }
 
 .root:has(.editButton:hover:not(:disabled)) {
   background-color: var(--mb-color-background-secondary);
+}
+
+.root[data-empty="true"]:has(.editButton:hover:not(:disabled)) {
+  border-color: var(--mb-color-border-strong);
 }
 
 .root[data-drop-active="true"] {

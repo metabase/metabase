@@ -1,19 +1,26 @@
-import { useRef, useState } from "react";
+import cx from "classnames";
+import { useRef } from "react";
 import { t } from "ttag";
 import { noop } from "underscore";
 
+import CS from "metabase/css/core/index.css";
 import {
+  ActionIcon,
   Alert,
   Box,
   Button,
+  Flex,
   Group,
-  Loader,
+  Icon,
   Paper,
   Stack,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
+import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
+import { getChartSkeletonImage } from "metabase/visualizations/components/skeletons/ChartSkeleton/ChartSkeleton";
 import type { ClickActionsMode } from "metabase/visualizations/types";
 import type {
   CardDisplayType,
@@ -25,13 +32,42 @@ import type {
 
 import type { MissingSetting } from "../analyses/types";
 
-import S from "./AnalysisResult.module.css";
-import { ResizeHandle } from "./ResizeHandle";
-import { InsightsToggle } from "./supporting/InsightsToggle";
-
 const SYNTHETIC_CARD_ID = -1;
 const MIN_HEIGHT_PX = 400;
-const MAX_HEIGHT_PX = 880;
+// Where the cohort table's "Cohort" header text starts: the grid's padding
+// plus the header cell's, in CohortTable.module.css. The title lines up with it.
+const COHORT_LABEL_INSET = "1rem";
+
+type AnalysisSeriesInput = {
+  title: string;
+  display: CardDisplayType;
+  vizSettings: VisualizationSettings;
+  dataset: Dataset | undefined;
+  datasetQuery: DatasetQuery | undefined;
+};
+
+/** The chart's series, once there's a result. Also feeds the display panel. */
+export const getAnalysisRawSeries = ({
+  title,
+  display,
+  vizSettings,
+  dataset,
+  datasetQuery,
+}: AnalysisSeriesInput): RawSeries | null =>
+  dataset?.data !== undefined && datasetQuery !== undefined
+    ? [
+        {
+          card: {
+            id: SYNTHETIC_CARD_ID,
+            name: title,
+            display,
+            visualization_settings: vizSettings,
+            dataset_query: datasetQuery,
+          },
+          data: dataset.data,
+        },
+      ]
+    : null;
 
 type AnalysisResultProps = {
   title: string;
@@ -47,6 +83,10 @@ type AnalysisResultProps = {
   /** Omit when the setup panel is already open. */
   onOpenSetup?: () => void;
   clickActionsMode: ClickActionsMode;
+  /** Shown in place of the chart, once there's a result. */
+  placeholder?: string;
+  isDisplayOpen: boolean;
+  onToggleDisplay: () => void;
 };
 
 export const AnalysisResult = ({
@@ -61,47 +101,59 @@ export const AnalysisResult = ({
   setupLabel,
   onOpenSetup,
   clickActionsMode,
+  placeholder,
+  isDisplayOpen,
+  onToggleDisplay,
 }: AnalysisResultProps) => {
-  const paperRef = useRef<HTMLDivElement>(null);
-  // Undefined until the bottom edge is dragged.
-  const [height, setHeight] = useState<number>();
-  const rawSeries: RawSeries | null =
-    dataset?.data !== undefined && datasetQuery !== undefined
-      ? [
-          {
-            card: {
-              id: SYNTHETIC_CARD_ID,
-              name: title,
-              display,
-              visualization_settings: vizSettings,
-              dataset_query: datasetQuery,
-            },
-            data: dataset.data,
-          },
-        ]
-      : null;
+  const rawSeries = getAnalysisRawSeries({
+    title,
+    display,
+    vizSettings,
+    dataset,
+    datasetQuery,
+  });
   // Errors and loading come first: settings can't be finished without a table.
   const isIncomplete = missing.length > 0 && !error && !isLoading;
   const isShowingVisualization =
     !isIncomplete && !isLoading && !error && rawSeries !== null;
+  // A rerun empties `dataset`, so the last chart shown stays up under the
+  // running overlay, as in the query builder. Before any chart, a skeleton.
+  const lastShownSeries = useRef<RawSeries | null>(null);
+  if (isShowingVisualization) {
+    lastShownSeries.current = rawSeries;
+  }
+  const staleSeries = isLoading ? lastShownSeries.current : null;
+  const shownSeries = isShowingVisualization ? rawSeries : staleSeries;
+  const displayLabel = isDisplayOpen
+    ? t`Hide display options`
+    : t`Show display options`;
+  // Stays clickable while the panel is open, so a rerun can't strand it.
+  const canToggleDisplay = isShowingVisualization || isDisplayOpen;
   return (
-    <Paper
-      ref={paperRef}
-      withBorder
-      radius="md"
-      p="lg"
-      miw={0}
-      mih={MIN_HEIGHT_PX}
-      mah={MAX_HEIGHT_PX}
-      // Until it's resized, the chart fills the column's height.
-      flex={height === undefined ? 1 : "none"}
-      h={height}
-      className={S.root}
-    >
+    <Paper withBorder radius="md" p="lg" miw={0} mih={MIN_HEIGHT_PX} flex={1}>
       <Stack h="100%">
-        <Group justify="space-between" wrap="nowrap">
-          <Title order={4}>{title}</Title>
-          <InsightsToggle />
+        <Group justify="space-between" wrap="nowrap" gap="sm">
+          <Title
+            order={4}
+            pl={display === "cohort" ? COHORT_LABEL_INSET : undefined}
+          >
+            {title}
+          </Title>
+          <Tooltip label={displayLabel}>
+            <ActionIcon
+              // Metabase's theme makes the default variant's border
+              // transparent; this restores Mantine's bordered look.
+              variant="default"
+              size="lg"
+              bd="1px solid var(--mb-color-border)"
+              aria-label={displayLabel}
+              aria-pressed={isDisplayOpen}
+              disabled={!canToggleDisplay}
+              onClick={onToggleDisplay}
+            >
+              <Icon name="palette" />
+            </ActionIcon>
+          </Tooltip>
         </Group>
         <Stack gap="sm" flex={1} mih={0}>
           {isIncomplete && (
@@ -112,34 +164,36 @@ export const AnalysisResult = ({
             />
           )}
           {!isIncomplete && error && <Alert color="error">{error}</Alert>}
-          {!isIncomplete && isLoading && (
-            <Box ta="center" py="xl">
-              <Loader />
-            </Box>
+          {!isIncomplete && isLoading && staleSeries === null && (
+            <Flex direction="column" flex={1} mih={0}>
+              {getChartSkeletonImage(display)}
+            </Flex>
           )}
           {!isIncomplete && !isLoading && !error && rawSeries === null && (
             <Text c="text-secondary">{t`Results will appear here.`}</Text>
           )}
-          {isShowingVisualization && (
-            <Box flex={1} mih={0}>
+          {shownSeries !== null && placeholder !== undefined && (
+            <Stack align="center" justify="center" flex={1} ta="center">
+              <Text c="text-secondary" maw="32rem">
+                {placeholder}
+              </Text>
+            </Stack>
+          )}
+          {shownSeries !== null && placeholder === undefined && (
+            <Box flex={1} mih={0} pos="relative">
               <Visualization
-                rawSeries={rawSeries}
+                rawSeries={shownSeries}
                 isQueryBuilder={false}
                 mode={clickActionsMode}
                 onChangeCardAndRun={noop}
               />
+              {staleSeries !== null && (
+                <VisualizationRunningState className={cx(CS.spread, CS.z2)} />
+              )}
             </Box>
           )}
         </Stack>
       </Stack>
-      <ResizeHandle
-        className={S.handle}
-        axis="y"
-        getSize={() => paperRef.current?.offsetHeight ?? MIN_HEIGHT_PX}
-        min={MIN_HEIGHT_PX}
-        max={MAX_HEIGHT_PX}
-        onResize={setHeight}
-      />
     </Paper>
   );
 };

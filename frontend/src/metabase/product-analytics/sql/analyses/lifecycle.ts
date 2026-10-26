@@ -3,13 +3,22 @@ import { INTERVAL, dateTimeLit, lit } from "../compile/dialect";
 import type { DrillPoint, QueryPlan } from "../compose";
 
 import { pointString, scopedEvents, startOf } from "./base";
+import {
+  BREAKOUT_COLUMN,
+  breakoutDeps,
+  breakoutDrillCondition,
+  breakoutGroupBy,
+  breakoutOrderBy,
+  breakoutSelect,
+  withBreakout,
+} from "./breakout";
 import { IN_RANGE_FLAG } from "./lookback";
 
 /** The `events_base` column with when each actor was first seen, when the spec has one. */
 export const FIRST_SEEN_EXTRA_COLUMN = "first_seen";
 
 /** What lifecycle reads from `events_base` beyond each event's actor and time. */
-export const lifecycleEventColumns = (
+const lifecycleEventColumns = (
   lifecycle: LifecycleSpec,
 ): { as: string; sql: string }[] =>
   lifecycle.hasFirstSeen
@@ -20,7 +29,7 @@ export const lifecycleEventColumns = (
  * Aggregates over an actor's events in a period: whether any of them is in
  * the date range, and when the actor was first seen.
  */
-export const lifecyclePeriodColumns = (lifecycle: LifecycleSpec): string[] => [
+const lifecyclePeriodColumns = (lifecycle: LifecycleSpec): string[] => [
   `max(${IN_RANGE_FLAG}) AS in_range`,
   ...(lifecycle.hasFirstSeen
     ? [`min(${FIRST_SEEN_EXTRA_COLUMN}) AS first_seen_at`]
@@ -38,7 +47,7 @@ export const lifecyclePeriodColumns = (lifecycle: LifecycleSpec): string[] => [
  *   the period before, and resurrected otherwise. Like PostHog's, someone
  *   first seen before the range is resurrected in their first period in it.
  */
-export const lifecycleStateColumns = (lifecycle: LifecycleSpec): string[] => {
+const lifecycleStateColumns = (lifecycle: LifecycleSpec): string[] => {
   const firstPeriod = lifecycle.hasFirstSeen
     ? startOf(lifecycle.period, "first_seen_at")
     : "min(period) OVER (PARTITION BY actor)";
@@ -130,16 +139,15 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
   const quiet = {
     name: "went_quiet",
     note: "the period in the range after each actor's last active one, where they did not return",
-    deps: ["actor_periods", "range_periods"],
+    deps: ["actor_periods", "range_periods", ...breakoutDeps(spec)],
     body: [
       "SELECT",
+      ...breakoutSelect(spec),
       // Not aliased `period`: ClickHouse would read the alias in WHERE.
       `  period + INTERVAL ${step} AS quiet_period,`,
       "  count() AS actors",
-      "FROM (",
-      ...wentQuiet.map((line) => `  ${line}`),
-      ")",
-      "GROUP BY quiet_period",
+      `FROM ${withBreakout(spec, `(\n${wentQuiet.map((line) => `  ${line}`).join("\n")}\n)`)}`,
+      `GROUP BY ${breakoutGroupBy(spec)}quiet_period`,
     ].join("\n"),
   };
 
@@ -158,27 +166,31 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
       return null;
     }
     const at = dateTimeLit(clickedPeriod);
+    const inGroup = breakoutDrillCondition(spec, point[BREAKOUT_COLUMN]);
     if (state !== "dormant") {
-      return `SELECT actor FROM classified\nWHERE period = ${at} AND state = ${lit(state)}`;
+      return `SELECT actor FROM classified\nWHERE period = ${at} AND state = ${lit(state)}${inGroup}`;
     }
-    return [...wentQuiet, `  AND period + INTERVAL ${step} = ${at}`].join("\n");
+    return [
+      ...wentQuiet,
+      `  AND period + INTERVAL ${step} = ${at}${inGroup}`,
+    ].join("\n");
   };
 
   return {
     ctes: [...base.ctes, periods, rangePeriods, classified, quiet],
     select: [
-      "SELECT period, state, actors FROM (",
-      "  SELECT period, state, count() AS actors",
-      "  FROM classified",
+      `SELECT ${breakoutGroupBy(spec)}period, state, actors FROM (`,
+      `  SELECT ${breakoutGroupBy(spec)}period, state, count() AS actors`,
+      `  FROM ${withBreakout(spec, "classified")}`,
       wanted.length
         ? `  WHERE state IN (${wanted.map((s) => `'${s}'`).join(", ")})`
         : "  WHERE 0",
-      "  GROUP BY period, state",
+      `  GROUP BY ${breakoutGroupBy(spec)}period, state`,
       "  UNION ALL",
-      "  SELECT quiet_period AS period, 'dormant' AS state, -actors AS actors",
+      `  SELECT ${breakoutGroupBy(spec)}quiet_period AS period, 'dormant' AS state, -actors AS actors`,
       `  FROM went_quiet${shown.includes("dormant") ? "" : "\n  WHERE 0"}`,
       ")",
-      "ORDER BY period, state",
+      `ORDER BY ${[...breakoutOrderBy(spec), "period", "state"].join(", ")}`,
     ].join("\n"),
     warnings: [
       ...base.warnings,

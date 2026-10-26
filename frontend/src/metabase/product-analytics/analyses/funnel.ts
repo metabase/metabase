@@ -1,26 +1,37 @@
 import { t } from "ttag";
 
 import { SegmentedControl } from "metabase/ui";
+import { color } from "metabase/ui/colors";
+import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
 import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
 import { parseStepLabel, pointString } from "../sql/analyses/base";
+import { BREAKOUT_COLUMN } from "../sql/analyses/breakout";
 import { TIME_TO_CONVERT_COLUMN } from "../sql/analyses/funnel";
 import { grainLabel, grainTitle } from "../sql/compile/grain";
 
+import {
+  getBreakoutExtraColumns,
+  getBreakoutSeriesSettings,
+  getBreakoutSpec,
+  getStackedGroupsSettings,
+} from "./breakout";
 import { commonSettings } from "./common-settings";
 import {
+  SERIES_COLOR_KEY,
   getAxisTitleSettings,
   getConversionColumnSettings,
+  getSeriesColorSlot,
   getSeriesSettings,
 } from "./series-settings";
 import {
   getCommonSpec,
   getEventDefinitionProps,
-  getPageviewSpec,
   incomplete,
   isBoolean,
   isEventDefinitionList,
@@ -31,6 +42,8 @@ import {
 import type {
   AnalysisConfig,
   AnalysisSettingDefinitions,
+  ColorSlot,
+  DisplayColors,
   FunnelSettings,
 } from "./types";
 
@@ -47,8 +60,43 @@ const ORDERINGS: readonly FunnelSettings["funnel.ordering"][] = [
 ];
 const ANCHORS: readonly FunnelSettings["funnel.anchor"][] = ["first", "each"];
 
-const common = commonSettings({
-  granularity: { units: ["hour", "day", "week", "month"], defaultUnit: "week" },
+// Over time draws a line per step, so they start in different colors.
+const LINE_COLOR_NAMES: readonly ColorName[] = [
+  "accent0",
+  "accent1",
+  "accent2",
+  "accent3",
+  "accent4",
+  "accent5",
+  "accent6",
+  "accent7",
+];
+
+const getStepColorKey = (index: number): string => `step.${index}`;
+
+/**
+ * A step's picked color, shared by the views that draw steps. Step by step
+ * defaults every bar to the brand color; over time, each line to its own.
+ */
+const getStepColor = (
+  view: FunnelSettings["funnel.view"],
+  index: number,
+  colors: DisplayColors,
+): string =>
+  colors[getStepColorKey(index)] ??
+  (view === "overTime"
+    ? color(LINE_COLOR_NAMES[index % LINE_COLOR_NAMES.length])
+    : color("brand"));
+
+// Keep in sync with the planner's step labels, which `parseStepLabel` reads.
+const getStepLabel = (index: number, name: string): string =>
+  `${index + 1}. ${name}`;
+
+// Hourly starts are noise next to a completion window that's usually days.
+const { breakout_view: breakoutView, ...common } = commonSettings({
+  granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
+  breakout: true,
+  canPivot: true,
 });
 
 const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
@@ -127,6 +175,64 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
     getDefault: () => false,
     isValid: (value) => isBoolean(value),
   },
+  // Last in setup, under the steps and view it shows. Over time's line per
+  // group already reads like a table's columns.
+  breakout_view: {
+    ...breakoutView,
+    getHidden: (context, settings) =>
+      settings["funnel.view"] === "overTime" ||
+      (breakoutView.getHidden?.(context, settings) ?? false),
+    readDependencies: ["breakout", "funnel.view"],
+  },
+};
+
+/**
+ * Over time broken out: a line per group of how many got to the last step,
+ * since a line per step per group would be too many.
+ */
+const getOverTimeByGroupSettings = (
+  settings: FunnelSettings,
+): VisualizationSettings => ({
+  "graph.dimensions": ["period", BREAKOUT_COLUMN],
+  "graph.metrics": ["conversion"],
+  ...getBreakoutSeriesSettings(settings.breakout),
+  ...getConversionColumnSettings("conversion"),
+  ...getAxisTitleSettings({
+    x: Lib.describeTemporalUnit(settings.granularity),
+    y: t`Conversion`,
+  }),
+});
+
+/**
+ * The bars broken out: a chart per group, each a whole funnel, or with
+ * "Stack series" off, the groups side by side. The step chart's labels and
+ * ghost bars draw one series, so side by side, steps are plain bars that
+ * keep the steps' tooltip.
+ */
+const getBarsByGroupSettings = (
+  settings: FunnelSettings,
+): VisualizationSettings => {
+  const people = grainLabel(settings.counting);
+  const peopleTitle = grainTitle(settings.counting);
+  const groupSettings = getBreakoutSeriesSettings(settings.breakout);
+  return settings["funnel.view"] === "timeToConvert"
+    ? {
+        "graph.dimensions": [TIME_TO_CONVERT_COLUMN, BREAKOUT_COLUMN],
+        "graph.metrics": [people],
+        ...getStackedGroupsSettings(),
+        ...groupSettings,
+        ...getAxisTitleSettings({ x: t`Time to finish`, y: peopleTitle }),
+      }
+    : {
+        "graph.dimensions": ["label", BREAKOUT_COLUMN],
+        "graph.metrics": [people],
+        "product_analytics.funnel_steps": true,
+        // The step names say what the axis is.
+        "graph.x_axis.labels_enabled": false,
+        ...getStackedGroupsSettings(),
+        ...groupSettings,
+        ...getAxisTitleSettings({ y: peopleTitle }),
+      };
 };
 
 export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
@@ -153,6 +259,7 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
     }
     return ready({
       ...getCommonSpec("funnel", settings),
+      breakout: getBreakoutSpec(settings.breakout, events),
       funnel: {
         steps: steps.map((event, index) => ({
           index,
@@ -165,32 +272,39 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         ordering: settings["funnel.ordering"],
         allowRetry: settings["funnel.allow_retry"],
       },
-      // For the paths between steps. After the steps, so they keep their flags.
-      ...getPageviewSpec(settings, events),
       output: { funnelView: settings["funnel.view"] },
     });
   },
+  getExtraColumns: ({ breakout }, context) =>
+    getBreakoutExtraColumns(breakout, context),
   getDisplay: (settings) => {
     switch (settings["funnel.view"]) {
-      case "steps":
-        return "bar";
       case "overTime":
         return "line";
+      case "steps":
       case "timeToConvert":
         return "bar";
     }
   },
-  getVizSettings: (settings) => {
+  getVizSettings: (settings, colors) => {
+    if (settings.breakout !== null) {
+      return settings["funnel.view"] === "overTime"
+        ? getOverTimeByGroupSettings(settings)
+        : getBarsByGroupSettings(settings);
+    }
     const people = grainLabel(settings.counting);
     const peopleTitle = grainTitle(settings.counting);
-    switch (settings["funnel.view"]) {
+    const view = settings["funnel.view"];
+    const steps = settings["funnel.steps"];
+    switch (view) {
       case "steps":
         return {
           "graph.dimensions": ["label"],
           "graph.metrics": [people],
           "product_analytics.funnel_steps": true,
-          // The step labels are drawn by the chart, so the layout shouldn't reserve x-axis tick space
-          "graph.x_axis.axis_enabled": false,
+          "product_analytics.funnel_step_colors": steps.map((_step, index) =>
+            getStepColor(view, index, colors),
+          ),
           ...getSeriesSettings(people, peopleTitle),
           ...getAxisTitleSettings({ y: peopleTitle }),
         };
@@ -198,6 +312,15 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         return {
           "graph.dimensions": ["period", "label"],
           "graph.metrics": ["conversion"],
+          // One line per step after the first, keyed by its label.
+          series_settings: Object.fromEntries(
+            steps
+              .map((step, index) => [
+                getStepLabel(index, step.name),
+                { color: getStepColor(view, index, colors) },
+              ])
+              .slice(1),
+          ),
           ...getConversionColumnSettings("conversion"),
           ...getAxisTitleSettings({
             x: Lib.describeTemporalUnit(settings.granularity),
@@ -208,10 +331,27 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
         return {
           "graph.dimensions": [TIME_TO_CONVERT_COLUMN],
           "graph.metrics": [people],
-          ...getSeriesSettings(people, peopleTitle),
+          ...getSeriesSettings(people, peopleTitle, colors[SERIES_COLOR_KEY]),
           ...getAxisTitleSettings({ x: t`Time to finish`, y: peopleTitle }),
         };
     }
+  },
+  getColorSlots: (settings, colors) => {
+    const view = settings["funnel.view"];
+    // Broken out, the groups have the colors.
+    if (settings.breakout !== null) {
+      return [];
+    }
+    if (view === "timeToConvert") {
+      return [getSeriesColorSlot(colors)];
+    }
+    const slots: ColorSlot[] = settings["funnel.steps"].map((step, index) => ({
+      key: getStepColorKey(index),
+      label: getStepLabel(index, step.name),
+      color: getStepColor(view, index, colors),
+    }));
+    // Over time has no line for the first step.
+    return view === "overTime" ? slots.slice(1) : slots;
   },
   describePoint: (settings, point) => {
     switch (settings["funnel.view"]) {

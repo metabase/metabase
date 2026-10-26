@@ -50,9 +50,11 @@ export const EventDefinitionWidget = ({
     setIsEditing(false);
   };
 
+  // Clearing leaves the empty well, to click or drop a segment on, rather
+  // than an editor with nothing in it.
   const handleClear = () => {
     onChange(null);
-    setIsEditing(true);
+    setIsEditing(false);
   };
 
   // A drop on an empty well defines the event; on a filled one, it adds a condition.
