@@ -2,6 +2,7 @@
   "Application database queries for the data-apps module. Every function here is a direct Toucan 2 call with no
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
+   [clojure.set :as set]
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -167,3 +168,47 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-pks-vec :model/Action {:where    [:and [:= :collection_id collection-id] [:= :archived false]]
                                     :order-by [[:name :asc] [:id :asc]]}))
+
+(mu/defn database-exists? :- :boolean
+  "Whether there is a Database with `database-id`."
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Database :id database-id))
+
+(mu/defn external-card-ids :- [:set ::lib.schema.id/card]
+  "Among `card-ids`, those of no Card in the collection with `collection-id`."
+  [collection-id :- [:maybe ::lib.schema.id/collection]
+   card-ids      :- [:set {:min 1} ::lib.schema.id/card]]
+  (set/difference card-ids (when collection-id
+                             (t2/select-pks-set :model/Card :id [:in card-ids] :collection_id collection-id))))
+
+(mu/defn external-metric-ids :- [:set ::lib.schema.id/card]
+  "Among `card-ids`, those of no metric in the Library's Metrics collection."
+  [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
+  (set/difference card-ids (t2/select-fn-set :id [:model/Card :report_card.id]
+                                             {:join  [:collection [:= :collection.id :report_card.collection_id]]
+                                              :where [:and
+                                                      [:in :report_card.id card-ids]
+                                                      [:= :report_card.type "metric"]
+                                                      [:= :collection.type collection/library-metrics-collection-type]]})))
+
+(mu/defn external-table-ids :- [:set ::lib.schema.id/table]
+  "Among `table-ids`, those of no Table published to the Library."
+  [table-ids :- [:set {:min 1} ::lib.schema.id/table]]
+  (set/difference table-ids (t2/select-pks-set :model/Table {:from  [(warehouse-schema-overlay/table-query)]
+                                                             :where [:and [:in :id table-ids] [:= :is_published true]]})))
+
+(mu/defn external-segment-ids :- [:set ::lib.schema.id/segment]
+  "Among `segment-ids`, those of no Segment of a Table published to the Library."
+  [segment-ids :- [:set {:min 1} ::lib.schema.id/segment]]
+  (set/difference segment-ids (t2/select-fn-set :id [:model/Segment :segment.id]
+                                                {:join  [(warehouse-schema-overlay/table-query {:alias :table})
+                                                         [:= :table.id :segment.table_id]]
+                                                 :where [:and [:in :segment.id segment-ids] [:= :table.is_published true]]})))
+
+(mu/defn external-measure-ids :- [:set ::lib.schema.id/measure]
+  "Among `measure-ids`, those of no Measure of a Table published to the Library."
+  [measure-ids :- [:set {:min 1} ::lib.schema.id/measure]]
+  (set/difference measure-ids (t2/select-fn-set :id [:model/Measure :measure.id]
+                                                {:join  [(warehouse-schema-overlay/table-query {:alias :table})
+                                                         [:= :table.id :measure.table_id]]
+                                                 :where [:and [:in :measure.id measure-ids] [:= :table.is_published true]]})))

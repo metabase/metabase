@@ -866,7 +866,10 @@
   data-apps
   {:team "Embedding"
    :api #{metabase.data-apps.core}
-   :uses #{premium-features}}
+   :uses #{api
+           api-scope
+           premium-features
+           util}}
 
   data-studio
   {:team "Gadget"
@@ -2326,6 +2329,7 @@
            batch-processing
            cache
            dashboards
+           data-apps
            database-routing
            driver
            events
@@ -3839,6 +3843,7 @@
            collections
            events
            lib
+           lib.be
            lib.schema
            lib.types
            models
@@ -3855,6 +3860,9 @@
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
+                    :model/Database
+                    :model/Measure
+                    :model/Segment
                     :model/Table}
    :model-exports #{:model/DataApp}}
 
