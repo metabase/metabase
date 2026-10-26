@@ -66,6 +66,16 @@ describe("cache-keys.sh", () => {
     }
   });
 
+  // A cljs build of other sources is the wrong build, so there is no prefix to fall back to.
+  it("emits the cljs build's path and key, and no restore key", () => {
+    expect(get("cljs-dev-path")).toEqual("target/cljs_dev");
+    expect(get("cljs-dev-key")).toMatch(/^cljs-dev-Linux-[\d.]+-[0-9a-f]{64}$/);
+    expect(get("cljs-dev-key", { RUNNER_OS: "macOS" })).not.toEqual(
+      get("cljs-dev-key"),
+    );
+    expect(() => run(["cljs-dev-restore-key"], {}, true)).toThrow();
+  });
+
   // The Cypress binary depends on the Cypress version alone, so an unrelated dependency bump must not
   // invalidate a 200MB download.
   it("keys the Cypress binary on the resolved version, not the lockfile", () => {

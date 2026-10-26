@@ -78,6 +78,21 @@ CYPRESS_VERSION="$CYPRESS_VERSIONS"
 # and the key that identifies its cache entry cannot drift apart.
 CLOJURE_VERSION="1.12.0.1488"
 
+# The development cljs build is a function of these paths and nothing else: the cljs sources, the clj
+# macros and resources they can read, the tests on the cljs classpath, and the files that pin shadow-cljs
+# and every dependency. All of `src` counts and not only its cljs files, because a macro in a .clj file
+# changes the output.
+#
+# The trees are hashed from the commit, not from the files, so the key costs milliseconds on every job
+# instead of a read of four thousand files. A job with a sparse checkout does not have these paths; it
+# gets no cljs outputs at all, and a caller that asks for one fails in `query` below.
+CLJS_BUILD_INPUTS=(src resources test deps.edn shadow-cljs.edn package.json bun.lock)
+CLJS_BUILD_TREE="$(git ls-tree HEAD -- "${CLJS_BUILD_INPUTS[@]}" 2>/dev/null || true)"
+CLJS_BUILD_HASH=""
+if [ "$(printf '%s\n' "$CLJS_BUILD_TREE" | grep -c .)" = "${#CLJS_BUILD_INPUTS[@]}" ]; then
+  CLJS_BUILD_HASH="$(printf '%s\n' "$CLJS_BUILD_TREE" | sha256)"
+fi
+
 emit_multiline() {
   local name="$1"; shift
   printf '%s<<CACHE_KEYS_EOF\n' "$name"
@@ -112,6 +127,12 @@ spec() {
   echo "cypress-path=$HOME/.cache/Cypress"
   echo "cypress-key=cypress-$OS-$CYPRESS_VERSION"
   echo "cypress-restore-key=cypress-$OS-"
+
+  # No restore-key: a build of other sources is not a slower start, it is the wrong build.
+  if [ -n "$CLJS_BUILD_HASH" ]; then
+    echo "cljs-dev-path=target/cljs_dev"
+    echo "cljs-dev-key=cljs-dev-$OS-$CLOJURE_VERSION-$CLJS_BUILD_HASH"
+  fi
 }
 
 # Print one output's value, including the multiline form, and fail on a name that does not exist. A
