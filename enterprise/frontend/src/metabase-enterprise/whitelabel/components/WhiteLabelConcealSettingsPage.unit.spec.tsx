@@ -1,6 +1,10 @@
+import userEvent from "@testing-library/user-event";
+
 import {
+  findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
 import { UndoListing } from "metabase/common/components/UndoListing";
@@ -21,6 +25,7 @@ const setup = async () => {
       description: "Login page illustration",
     }),
   ]);
+  setupUpdateSettingEndpoint();
 
   renderWithProviders(
     <>
@@ -49,5 +54,20 @@ describe("WhiteLabelConcealSettingsPage", () => {
     await setup();
 
     expect((await screen.findAllByText(setting)).length).toBeGreaterThan(0);
+  });
+
+  it("should save a new application name", async () => {
+    await setup();
+
+    const input = await screen.findByLabelText("Application name");
+    await userEvent.clear(input);
+    await userEvent.type(input, "New Test Co");
+    await userEvent.tab();
+
+    const [{ url, body }] = await findRequests("PUT");
+    expect(url).toMatch(/application-name/);
+    expect(body).toEqual({ value: "New Test Co" });
+
+    expect(await screen.findByText("Changes saved")).toBeInTheDocument();
   });
 });

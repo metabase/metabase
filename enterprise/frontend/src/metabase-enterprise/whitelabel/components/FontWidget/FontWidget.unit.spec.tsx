@@ -4,6 +4,7 @@ import {
   findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupStatefulSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
@@ -95,6 +96,37 @@ describe("FontWidget", () => {
     expect(body2).toEqual({
       value: [],
     });
+  });
+
+  it("should apply each of several consecutive font changes (metabase#45486)", async () => {
+    setupStatefulSettingsEndpoints({
+      "available-fonts": ["Lato", "Lora", "Comic Sans"],
+      "application-font": "Lato",
+      "application-font-files": null,
+    });
+    setupSettingsEndpoints([
+      { key: "application-font", value: "Lato" },
+      { key: "application-font-files", value: null },
+    ]);
+    renderWithProviders(<FontWidget />);
+    await screen.findByText("Font");
+    await waitFor(() =>
+      expect(screen.getByRole("textbox", { name: "Font" })).toHaveValue("Lato"),
+    );
+
+    await clickSelect("Lato", "Lora");
+    await expectPuts(2);
+
+    await clickSelect("Lora", "Comic Sans");
+    await expectPuts(4);
+
+    const puts = await findRequests("PUT");
+    expect(puts[2].url).toMatch(/application-font$/);
+    expect(puts[2].body).toEqual({ value: "Comic Sans" });
+
+    expect(await screen.findByRole("textbox", { name: "Font" })).toHaveValue(
+      "Comic Sans",
+    );
   });
 
   it("should set a built-in font from a custom font", async () => {
