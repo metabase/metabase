@@ -4200,3 +4200,10 @@
         (is (= own (t2/select-one-fn :resource_collection_id :data_app :id other-app)))
         (testing "a second app on a collection is refused"
           (is (thrown? Exception (app! "third" shared))))))))
+
+(deftest drop-data-app-group-assignment-test
+  (testing "pmgj27: the data app group assignments are dropped, since the app's collection grants record its access"
+    (impl/test-migrations ["pmgj27"] [migrate!]
+      (is (= [] (t2/select :data_app_group_assignment)))
+      (migrate!)
+      (is (thrown? Exception (t2/select :data_app_group_assignment))))))

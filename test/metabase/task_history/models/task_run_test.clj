@@ -123,7 +123,8 @@
 (deftest with-task-run-prevents-nesting-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "nested with-task-run does not create a new run"
-      (let [outer-run-id (atom nil)
+      (let [runs-before  (t2/count :model/TaskRun)
+            outer-run-id (atom nil)
             inner-run-id (atom nil)]
         (task-history/with-task-run {:run_type    :sync
                                      :entity_type :database
@@ -134,14 +135,15 @@
                                        :entity_id   2}
             (reset! inner-run-id (task-history/current-run-id))))
         (is (= @outer-run-id @inner-run-id) "inner run uses same run-id")
-        (is (= 1 (t2/count :model/TaskRun)) "only one run created")))))
+        (is (= (inc runs-before) (t2/count :model/TaskRun)) "only one run created")))))
 
 (deftest with-task-run-nil-info-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "with-task-run with nil run-info just executes body"
-      (task-history/with-task-run nil
-        (is (nil? (task-history/current-run-id)) "run-id remains nil"))
-      (is (zero? (t2/count :model/TaskRun)) "no run created"))))
+      (let [runs-before (t2/count :model/TaskRun)]
+        (task-history/with-task-run nil
+          (is (nil? (task-history/current-run-id)) "run-id remains nil"))
+        (is (= runs-before (t2/count :model/TaskRun)) "no run created")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          complete-task-run! tests                                              |
