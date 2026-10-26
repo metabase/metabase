@@ -22,7 +22,7 @@ export type MetadataGenerationPendingBadgeProps = {
 };
 
 type MetadataGenerationPlugin = {
-  /** The "Generate metadata" button of the database details panel. */
+  /** The "Generate field metadata" button of the database details panel. */
   DatabaseButton: ComponentType<MetadataGenerationDatabaseButtonProps>;
   TableButton: ComponentType<MetadataGenerationTableButtonProps>;
   /** The pending AI suggestions of a table or field pane, with the preview toggle. Nothing when there are none. */

@@ -28,7 +28,7 @@ interface Props extends Omit<
   /** When false, "Unspecified" is not offered. */
   canClear?: boolean;
   onChange: (value: FieldDataSensitivity | null) => void;
-  /** Needed when `source` can be `human`: the "Reset to automatic" button calls it. */
+  /** Needed when `source` can be `human`: the "Reset" button calls it. */
   onReset?: () => void;
 }
 
@@ -79,9 +79,9 @@ export const DataSensitivityPicker = ({
             {getSourceLabel(source)}
           </Text>
           {isUserSet && (
-            <Tooltip label={t`Use the AI or classifier value`}>
+            <Tooltip label={t`Remove your value and use the AI or sync value`}>
               <Button size="compact-sm" variant="subtle" onClick={onReset}>
-                {t`Reset to automatic`}
+                {t`Reset`}
               </Button>
             </Tooltip>
           )}
@@ -112,7 +112,7 @@ function getSourceLabel(source: FieldDataSensitivitySource): string {
   const labels: Record<FieldDataSensitivitySource, string> = {
     human: t`Set by a person`,
     ai: t`Set by AI`,
-    deterministic: t`Set by the automatic classifier`,
+    deterministic: t`Detected by sync`,
   };
 
   return labels[source];

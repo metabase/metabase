@@ -129,7 +129,7 @@ function getButtonState(
     return {
       action: "generate",
       icon: <Loader size="xs" />,
-      label: t`Generating metadata…`,
+      label: t`Generating field metadata…`,
     };
   }
   if (hasPending) {
@@ -142,6 +142,6 @@ function getButtonState(
   return {
     action: "generate",
     icon: <Icon name="sparkles" />,
-    label: t`Generate metadata`,
+    label: t`Generate field metadata`,
   };
 }

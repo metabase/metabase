@@ -126,13 +126,13 @@ export function getRunRequest(
 export function getUnavailableMessage(reason: string): string {
   switch (reason) {
     case "metabot-disabled":
-      return t`Metabot is disabled. Enable Metabot to generate metadata.`;
+      return t`Metabot is disabled. Enable Metabot to generate field metadata.`;
     case "no-llm":
       return t`No AI provider is configured for Metabot.`;
     case "usage-limit":
       return t`The AI usage limit has been reached.`;
     default:
-      return t`AI metadata generation is not available.`;
+      return t`Field metadata generation is not available.`;
   }
 }
 

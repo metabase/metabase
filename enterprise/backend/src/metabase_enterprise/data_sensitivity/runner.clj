@@ -32,7 +32,7 @@
    [metabase.request.core :as request]
    [metabase.run-tracking.core :as rt]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs tru]]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -606,7 +606,7 @@
                                    :terminal {:status    "failed"
                                               :ended_at  :%now
                                               :is_active nil
-                                              :message   (trs "The run stopped sending heartbeats for {0} minutes; its node probably stopped."
+                                              :message   (tru "The run stopped sending heartbeats for {0} minutes; its node probably stopped."
                                                               stale-minutes)}})]
     (doseq [{run-id :id} reaped]
       (try
