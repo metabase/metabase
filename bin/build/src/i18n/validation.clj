@@ -41,8 +41,9 @@
   "Return a flat violation map for `msgstr` (may have empty `:types`). Backend strings get all three
   checks; frontend strings get only the format-system-agnostic ones. All applicable types are
   collected — no short-circuiting. Single `MessageFormat` parse for backend strings."
-  [msgid msgstr message backend?]
-  (let [count-fn     (arg-count-fn backend?)
+  [msgstr message backend?]
+  (let [msgid        (:id message)
+        count-fn     (arg-count-fn backend?)
         format-error (if backend?
                        (validation/message-format-error msgstr)
                        (validation/regex-message-format-error msgid msgstr))
@@ -85,10 +86,9 @@
   [locale po-contents]
   (for [message  (:messages po-contents)
         form     (msgstr-forms message)
-        :let     [msgid    (:id message)
-                  msgstr   (:msgstr form)
+        :let     [msgstr   (:msgstr form)
                   backend? (i18n/backend-message? message)
-                  result   (check-violations msgid msgstr message backend?)]
+                  result   (check-violations msgstr message backend?)]
         :when    (seq (:types result))]
     (merge {:locale       locale
             :msgid        (:id message)
