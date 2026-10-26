@@ -2402,3 +2402,51 @@
                                        :data
                                        (into #{} (map :id)))
                                   transform-id))))))))))
+
+(deftest trashed-transforms-in-the-trash-test
+  (mt/initialize-if-needed! :db)
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (with-transform-db-perms!
+      (with-transforms-api-users! [user]
+        (mt/with-temp [:model/Collection {folder-id :id} {:name "Folder" :namespace :transforms}
+                       :model/Transform  {transform-id :id} {:collection_id folder-id}]
+          (let [trash-id   (:id (mt/user-http-request user :get 200 "collection/trash"))
+                item-ids   (fn [user collection-id]
+                             (->> (mt/user-http-request user :get 200 (format "collection/%d/items" collection-id))
+                                  :data
+                                  (filter #(= "transform" (:model %)))
+                                  (into #{} (map :id))))]
+            (mt/user-http-request user :put 200 (format "transform/%d" transform-id) {:archived true})
+            (testing "the Trash lists the trashed transform"
+              (is (=? [{:id          transform-id
+                        :model       "transform"
+                        :archived    true
+                        :can_write   true
+                        :can_restore true
+                        :can_delete  true}]
+                      (->> (mt/user-http-request user :get 200 (format "collection/%d/items" trash-id))
+                           :data
+                           (filter #(= "transform" (:model %)))))))
+            (testing "its folder no longer lists it"
+              (is (not (contains? (item-ids user folder-id) transform-id))))
+            (testing "a user without transform access does not see it in the Trash"
+              (is (not (contains? (item-ids :rasta trash-id) transform-id))))
+            (mt/user-http-request user :put 200 (format "transform/%d" transform-id) {:archived false})
+            (testing "after a restore the folder lists it again and the Trash does not"
+              (is (contains? (item-ids user folder-id) transform-id))
+              (is (not (contains? (item-ids user trash-id) transform-id))))))))))
+
+(deftest search-the-trash-for-transforms-test
+  (mt/initialize-if-needed! :db)
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (search.tu/with-temp-index-table-if-supported
+      (let [search-term (str "transform-search-" (u/generate-nano-id))]
+        (mt/with-temp [:model/Transform {transform-id :id} {:name (str search-term "_trashed")}]
+          (mt/user-http-request :crowberto :put 200 (format "transform/%d" transform-id) {:archived true})
+          (search.tu/with-appdb-search-and-legacy-search
+            (testing "a search of the Trash finds the trashed transform"
+              (is (contains? (->> (mt/user-http-request :crowberto :get 200 "search"
+                                                        :q search-term :models "transform" :archived true)
+                                  :data
+                                  (into #{} (map :id)))
+                             transform-id)))))))))

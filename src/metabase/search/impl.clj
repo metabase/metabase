@@ -102,6 +102,13 @@
     (can-write? search-ctx instance)
     (can-read? search-ctx instance)))
 
+(defmethod check-permissions-for-model :transform
+  [_search-ctx _instance]
+  ;; Only superusers get transform results (the spec's `:visibility`), and the query keeps only the enabled source
+  ;; types. A superuser can write all of those, unless remote sync makes transforms read-only. The Trash lists
+  ;; trashed transforms in that mode too, so the archived search needs no write check.
+  true)
+
 (defmethod check-permissions-for-model :database
   [search-ctx instance]
   (if (:archived? search-ctx)

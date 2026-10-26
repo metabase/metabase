@@ -472,18 +472,51 @@
             [:= :archived (boolean archived?)]]})
 
 (defmethod collection-children-query :transform
-  [_model collection {:keys [pinned-state]}]
+  [_model collection {:keys [archived? pinned-state]}]
   (let [enabled-types (transforms.gating/enabled-source-types-for-user)]
-    {:select [:id :collection_id :name [(h2x/literal "transform") :model] :description :entity_id]
-     :from   [[:transform :transform]]
-     :where  [:and
-              (poison-when-pinned-clause pinned-state)
-              [:= :collection_id (:id collection)]
-              (if (seq enabled-types)
-                [:in :source_type enabled-types]
-                [:=
-                 [:inline 0]
-                 [:inline 1]])]}))
+    {:select    [:transform.id
+                 :transform.collection_id
+                 :transform.name
+                 [(h2x/literal "transform") :model]
+                 :transform.description
+                 :transform.entity_id
+                 :transform.archived
+                 :transform.archived_directly
+                 [:u.id :last_edit_user]
+                 [:u.email :last_edit_email]
+                 [:u.first_name :last_edit_first_name]
+                 [:u.last_name :last_edit_last_name]
+                 [:r.timestamp :last_edit_timestamp]]
+     :from      [[:transform :transform]]
+     :left-join [[:revision :r] [:and
+                                 [:= :r.model_id :transform.id]
+                                 [:= :r.most_recent true]
+                                 [:= :r.model (h2x/literal "Transform")]]
+                 [:core_user :u] [:= :u.id :r.user_id]]
+     :where     [:and
+                 (poison-when-pinned-clause pinned-state)
+                 (if (collection/is-trash? collection)
+                   [:= :transform.archived_directly true]
+                   [:and
+                    [:= :transform.collection_id (:id collection)]
+                    [:= :transform.archived_directly false]])
+                 [:= :transform.archived (boolean archived?)]
+                 (if (seq enabled-types)
+                   [:in :transform.source_type enabled-types]
+                   always-false-hsql-expr)]}))
+
+(defmethod post-process-collection-children :transform
+  [_ _ _ rows]
+  ;; The transform permission checks read the source and target, which the children query does not select.
+  (let [id->transform (when (seq rows)
+                        (-> (collections.db/transforms-by-id (map :id rows))
+                            (t2/hydrate :can_write :can_restore :can_delete)
+                            (->> (m/index-by :id))))]
+    (for [row rows]
+      (-> row
+          (update :archived api/bit->boolean)
+          (update :archived_directly api/bit->boolean)
+          (merge (select-keys (id->transform (:id row)) [:can_write :can_restore :can_delete]))))))
 
 (defmethod collection-children-query :action
   [_model collection {:keys [archived? pinned-state]}]
@@ -1153,8 +1186,8 @@
       limit-res)))
 
 (defn- valid-collection-models
-  "Return every item model that can appear in `collection-namespace`."
-  [collection-namespace]
+  "Return every item model that can appear in `collection`."
+  [{collection-namespace :namespace, :as collection}]
   (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
                    ;; Tables in collections are an EE feature (library)
                    (premium-features/has-feature? :library) (conj :table)
@@ -1162,14 +1195,16 @@
         :let     [toucan-model       (model-name->toucan-model model-kw)
                   allowed-namespaces (collection/allowed-namespaces toucan-model)]
         :when    (or (= model-kw :collection)
-                     (contains? allowed-namespaces (keyword collection-namespace)))]
+                     (contains? allowed-namespaces (keyword collection-namespace))
+                     ;; Transform folders are in the `transforms` namespace; trashed transforms are in the main Trash.
+                     (and (= model-kw :transform) (collection/is-trash? collection)))]
     model-kw))
 
 (mu/defn collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models created-by-id], :as options}       :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (valid-collection-models collection-namespace)
+  (let [valid-models (for [model-kw (valid-collection-models collection)
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            ;; a creator filter drops models that don't index a creator
@@ -1187,7 +1222,7 @@
   "The models that can appear as a filterable item of `collection`. Snippets are never included: they are not a
   filterable type. When present, `restrict-models` limits the set."
   [collection restrict-models]
-  (cond->> (remove #{:snippet} (valid-collection-models (:namespace collection)))
+  (cond->> (remove #{:snippet} (valid-collection-models collection))
     (seq restrict-models) (filter restrict-models)))
 
 (mu/defn collection-filter-metadata :- [:map

@@ -602,6 +602,11 @@
                                [:= :archived_at nil]
                                [:in :collection_id collection-ids]]}))
 
+(mu/defn transforms-by-id
+  "The Transforms with `transform-ids`."
+  [transform-ids :- [:sequential ::lib.schema.id/transform]]
+  (t2/select :model/Transform :id [:in transform-ids]))
+
 (defn transform-collection-ids-in
   "The distinct `:collection_id`s of the Transforms with one of `source-types` in the Collections with
   `collection-ids`."
