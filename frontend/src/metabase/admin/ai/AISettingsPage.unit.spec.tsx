@@ -64,26 +64,20 @@ const setup = async ({
   contentVerification = false,
   initialRoute,
   isConfigured = true,
-  metabotEnabled = true,
   metabots = buildDefaultMetabots(),
   collections = defaultSeedCollections,
   page = "ai-features",
-  queryExecutionEnabled = false,
-  queryExecutionEnvName,
 }: {
   aiFeaturesEnabled?: boolean;
   enableEmbedding?: boolean;
   contentVerification?: boolean;
   initialRoute?: string;
   isConfigured?: boolean;
-  metabotEnabled?: boolean;
   metabots?: Parameters<typeof setupMetabotsEndpoints>[0];
   collections?: Parameters<
     typeof setupCollectionByIdEndpoint
   >[0]["collections"];
   page?: Page;
-  queryExecutionEnabled?: boolean;
-  queryExecutionEnvName?: string;
 } = {}) => {
   const tokenFeatures = createMockTokenFeatures({
     embedding_sdk: enableEmbedding,
@@ -100,8 +94,7 @@ const setup = async ({
     "llm-metabot-configured?": isConfigured,
     "llm-metabot-provider": null,
     "mcp-enabled?": true,
-    "metabot-enabled?": metabotEnabled,
-    "metabot-query-execution-enabled?": queryExecutionEnabled,
+    "metabot-enabled?": true,
     "token-features": tokenFeatures,
   });
 
@@ -110,16 +103,6 @@ const setup = async ({
     createMockSettingDefinition({
       key: "llm-metabot-provider",
       value: null,
-    }),
-    createMockSettingDefinition({
-      key: "metabot-enabled?",
-      value: metabotEnabled,
-    }),
-    createMockSettingDefinition({
-      key: "metabot-query-execution-enabled?",
-      value: queryExecutionEnvName ? undefined : queryExecutionEnabled,
-      is_env_setting: queryExecutionEnvName != null,
-      env_name: queryExecutionEnvName,
     }),
   ]);
   setupUpdateSettingEndpoint();
@@ -326,86 +309,5 @@ describe("AISettingsPage", () => {
     const puts = await findRequests("PUT");
     expect(puts[0].url).toContain("/setting/ai-features-enabled%3F");
     expect(puts[0].body).toEqual({ value: false });
-  });
-
-  it("shows query execution as off when the setting is off", async () => {
-    await setup({ queryExecutionEnabled: false });
-
-    expect(
-      screen.getByRole("switch", {
-        name: "Let Metabot run queries and read their results",
-      }),
-    ).not.toBeChecked();
-    expect(
-      screen.getByText(/The result rows are sent to your AI provider/),
-    ).toBeInTheDocument();
-  });
-
-  it("shows query execution as on when the setting is on", async () => {
-    await setup({ queryExecutionEnabled: true });
-
-    expect(
-      screen.getByRole("switch", {
-        name: "Let Metabot run queries and read their results",
-      }),
-    ).toBeChecked();
-  });
-
-  it("persists turning query execution on", async () => {
-    await setup({ queryExecutionEnabled: false });
-
-    await userEvent.click(
-      screen.getByRole("switch", {
-        name: "Let Metabot run queries and read their results",
-      }),
-    );
-
-    await waitFor(async () => {
-      const puts = await findRequests("PUT");
-      expect(puts).toHaveLength(1);
-    });
-
-    const puts = await findRequests("PUT");
-    expect(puts[0].url).toContain(
-      "/setting/metabot-query-execution-enabled%3F",
-    );
-    expect(puts[0].body).toEqual({ value: true });
-  });
-
-  it("locks query execution to the value an env var sets", async () => {
-    await setup({
-      queryExecutionEnabled: true,
-      queryExecutionEnvName: "MB_METABOT_QUERY_EXECUTION_ENABLED",
-    });
-
-    const toggle = await screen.findByRole("switch", {
-      name: "Let Metabot run queries and read their results",
-    });
-    expect(
-      await screen.findByTestId("setting-env-var-message"),
-    ).toHaveTextContent("MB_METABOT_QUERY_EXECUTION_ENABLED");
-    expect(toggle).toBeChecked();
-    expect(toggle).toBeDisabled();
-  });
-
-  it("hides query execution while Metabot is off", async () => {
-    await setup({ metabotEnabled: false, queryExecutionEnabled: true });
-
-    expect(await screen.findByText("Metabot is disabled")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("switch", {
-        name: "Let Metabot run queries and read their results",
-      }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("disables query execution until an AI provider is configured", async () => {
-    await setup({ isConfigured: false });
-
-    expect(
-      screen.getByText("Let Metabot run queries and read their results", {
-        selector: '[aria-disabled="true"] *',
-      }),
-    ).toBeInTheDocument();
   });
 });

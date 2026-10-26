@@ -30,10 +30,16 @@ import { waitForRequest } from "__support__/utils";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { TEST_METABOT_IDS } from "metabase/metabot/tests/utils";
 import { reinitialize } from "metabase/plugins";
-import type { MetabotId, MetabotInfo, RecentItem } from "metabase-types/api";
+import type {
+  MetabotId,
+  MetabotInfo,
+  RecentItem,
+  SettingDefinition,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockMetabotInfo,
+  createMockSettingDefinition,
   createMockSettings,
   createMockTokenFeatures,
 } from "metabase-types/api/mocks";
@@ -92,9 +98,10 @@ const setup = async (
   metabots: MetabotInfo[] = defaultMetabots,
   seedCollections = defaultSeedCollections,
   settings = createMockSettings({ "llm-metabot-configured?": true }),
+  settingDefinitions: SettingDefinition[] = [],
 ) => {
   setupPropertiesEndpoints(settings);
-  setupSettingsEndpoints([]);
+  setupSettingsEndpoints(settingDefinitions);
   setupMetabotsEndpoints(metabots);
   setupCollectionByIdEndpoint({
     collections: seedCollections.map((c: any) => ({ id: c.model_id, ...c })),
@@ -135,6 +142,43 @@ const setup = async (
 };
 
 const enabledToggle = () => screen.findByTestId("metabot-enabled-toggle");
+
+const QUERY_EXECUTION_LABEL = "Let Metabot run queries and read their results";
+
+const queryExecutionSwitch = () =>
+  screen.findByRole("switch", { name: QUERY_EXECUTION_LABEL });
+
+const setupQueryExecution = ({
+  enabled = true,
+  envName,
+  metabotEnabled = true,
+}: {
+  enabled?: boolean;
+  envName?: string;
+  metabotEnabled?: boolean;
+} = {}) =>
+  setup(
+    TEST_METABOT_IDS.INTERNAL,
+    defaultMetabots,
+    defaultSeedCollections,
+    createMockSettings({
+      "llm-metabot-configured?": true,
+      "metabot-enabled?": metabotEnabled,
+      "metabot-query-execution-enabled?": enabled,
+    }),
+    [
+      createMockSettingDefinition({
+        key: "metabot-enabled?",
+        value: metabotEnabled,
+      }),
+      createMockSettingDefinition({
+        key: "metabot-query-execution-enabled?",
+        value: envName ? undefined : enabled,
+        is_env_setting: envName != null,
+        env_name: envName,
+      }),
+    ],
+  );
 
 const getLastSettingUpdateCall = (settingKey: string) =>
   fetchMock.callHistory.lastCall(
@@ -326,5 +370,70 @@ describe("MetabotSettingsPanel", () => {
 
     const putRequests = await findRequests("PUT");
     expect(putRequests[0].body).toEqual({ use_verified_content: true });
+  });
+});
+
+describe("MetabotSettingsPanel query execution", () => {
+  mockGetBoundingClientRect();
+
+  afterEach(() => {
+    reinitialize();
+  });
+
+  it.each([true, false])("shows the setting's value: %s", async (enabled) => {
+    await setupQueryExecution({ enabled });
+
+    expect(
+      await screen.findByRole("switch", {
+        name: QUERY_EXECUTION_LABEL,
+        checked: enabled,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/The result rows are sent to your AI provider/),
+    ).toBeInTheDocument();
+  });
+
+  it("persists turning query execution off", async () => {
+    await setupQueryExecution();
+
+    await userEvent.click(await queryExecutionSwitch());
+    await waitForRequest(() =>
+      getLastSettingUpdateCall("metabot-query-execution-enabled?"),
+    );
+    const call = getLastSettingUpdateCall("metabot-query-execution-enabled?");
+    expect(call?.options?.body).toBe(JSON.stringify({ value: false }));
+  });
+
+  it("locks query execution to the value an env var sets", async () => {
+    await setupQueryExecution({
+      envName: "MB_METABOT_QUERY_EXECUTION_ENABLED",
+    });
+
+    const toggle = await queryExecutionSwitch();
+    expect(
+      await screen.findByTestId("setting-env-var-message"),
+    ).toHaveTextContent("MB_METABOT_QUERY_EXECUTION_ENABLED");
+    expect(toggle).toBeChecked();
+    expect(toggle).toBeDisabled();
+  });
+
+  it("hides query execution while Metabot is off", async () => {
+    await setupQueryExecution({ metabotEnabled: false });
+
+    expect(await screen.findByText("Metabot is disabled")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("switch", { name: QUERY_EXECUTION_LABEL }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("doesn't show query execution for embedded Metabot", async () => {
+    setupEmbeddingPlugin();
+    await setup(TEST_METABOT_IDS.EMBEDDED);
+
+    expect(await screen.findByText("Collection Two")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("switch", { name: QUERY_EXECUTION_LABEL }),
+    ).not.toBeInTheDocument();
   });
 });
