@@ -547,6 +547,19 @@ const configs = [
     },
   },
   {
+    files: ["metaplow/**/*.js"],
+    languageOptions: {
+      sourceType: "commonjs",
+      globals: {
+        ...globals.node,
+      },
+    },
+    rules: {
+      "no-console": "off",
+      "import/no-commonjs": "off",
+    },
+  },
+  {
     files: ["frontend/src/metabase/**/*"],
 
     rules: {

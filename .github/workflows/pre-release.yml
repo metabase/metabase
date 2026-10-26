@@ -184,6 +184,7 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
           snowplow: true
+          metaplow: true
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
