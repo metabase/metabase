@@ -43,11 +43,11 @@
 
 (mr/def ::metric-type
   "`metrics[].type`. Only `:simple` is handled by QRES-1; the rest are QRES-5."
-  [:enum :simple :ration :cumulative :derived :conversion])
+  [:enum :simple :ratio :cumulative :derived :conversion])
 
 (mr/def ::entity-type
   "`semantic_models[].entities[].type`."
-  [:enum :primate :unique :foreign :natural])
+  [:enum :primary :unique :foreign :natural])
 
 (mr/def ::dimension-type
   "`semantic_models[].dimensions[].type`."
