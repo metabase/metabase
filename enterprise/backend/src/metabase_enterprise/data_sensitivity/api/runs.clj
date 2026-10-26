@@ -13,9 +13,10 @@
 (set! *warn-on-reflection* true)
 
 (api.macros/defendpoint :post "/runs" :- ::run/metadata-generation-run
-  "Start a background metadata generation run over the active tables of a database: all of them, those in `schemas`,
-  or `table_ids`. `attributes` defaults to data sensitivity and semantic type. The run writes proposals only, never
-  field metadata. A database has at most one active run: a second start is a 409. Poll `GET /runs/:id` for progress."
+  "Start a background metadata generation run over the active, visible tables of a database: all of them, those in
+  `schemas`, or `table_ids`. Sensitive and hidden fields are skipped. `attributes` defaults to data sensitivity and
+  semantic type. The run writes proposals only, never field metadata. A database has at most one active run: a second
+  start is a 409. Poll `GET /runs/:id` for progress."
   [_route-params
    _query-params
    {:keys [database_id] :as body} :- [:merge

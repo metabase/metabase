@@ -434,6 +434,36 @@
             (is (= 400 (:status-code (try (runner/retry-failed! db ended (mt/user->id :crowberto))
                                           (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))))))
 
+(deftest hidden-tables-and-fields-skipped-test
+  (do-with-temp-tables
+   4
+   (fn [db [t0 t1 t2' t3]]
+     (t2/update! :model/Table (:id t1) {:visibility_type :hidden})
+     (t2/insert! :model/TableUserSettings {:table_id (:id t2') :visibility_type :cruft})
+     (t2/insert! :model/Field {:table_id (:id t3) :name "ds_03_sensitive" :base_type :type/Text
+                               :database_type "TEXT" :visibility_type :sensitive})
+     (t2/insert! :model/Field {:table_id (:id t3) :name "ds_03_hidden" :base_type :type/Text
+                               :database_type "TEXT" :visibility_type :hidden})
+     (testing "the estimate counts visible tables and their fields that are not sensitive or hidden"
+       (is (=? {:table_count 2 :field_count 2}
+               (runner/estimate db {:attributes [:data_sensitivity]}))))
+     (let [prompts (atom [])]
+       (ds.tu/do-with-llm!
+        (fn [& [_model messages :as args]]
+          (swap! prompts conj (:content (last messages)))
+          (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args))
+        (fn []
+          (testing "a database run skips tables hidden on the table or by a user"
+            (let [ended (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))]
+              (is (=? {:status :succeeded :total_tables 2} ended))
+              (is (= #{(:id t0) (:id t3)} (set (map :table_id (suggestions (:id ended))))))))
+          (testing "the prompt holds no sensitive or hidden field"
+            (is (not-any? #(str/includes? % "ds_03_sensitive") @prompts))
+            (is (not-any? #(str/includes? % "ds_03_hidden") @prompts)))
+          (testing "a run that names a hidden table is a 400"
+            (is (= 400 (:status-code (try (start! db {:table_ids [(:id t1)]})
+                                          (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))))))
+
 (deftest failed-table-usage-test
   (testing "the usage of the chunks that finished in a table that failed counts in the run's usage"
     (mt/with-temp [:model/Database db    {}
