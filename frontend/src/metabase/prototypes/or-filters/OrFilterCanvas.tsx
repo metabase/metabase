@@ -18,6 +18,7 @@ import type { CardDisplayType } from "metabase-types/api";
 
 import { CompactReadingContext } from "./directions/expression-bar-2/settings";
 import { CompactReadingContext as Iteration3CompactReadingContext } from "./directions/expression-bar-3/settings";
+import { CompactReadingContext as UnifiedCompactReadingContext } from "./directions/expression-bar-unified/settings";
 import { ChillFrame } from "./frames/ChillFrame";
 import { NotebookFrame } from "./frames/NotebookFrame";
 import { FilterTreeInspector } from "./harness/FilterTreeInspector";
@@ -108,6 +109,18 @@ const EXAMPLES: Example[] = [
   },
 ];
 
+/** Each expression-bar copy has its own settings context; the canvas feeds the right one. */
+function getReadingContext(directionId: string) {
+  switch (directionId) {
+    case "expression-bar-inline-3":
+      return Iteration3CompactReadingContext;
+    case "expression-bar-unified":
+      return UnifiedCompactReadingContext;
+    default:
+      return CompactReadingContext;
+  }
+}
+
 type OrFilterCanvasProps = {
   direction: FilterDirection;
 };
@@ -139,12 +152,10 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
 
   const hasCompactReading =
     direction.id === "expression-bar-inline-2" ||
-    direction.id === "expression-bar-inline-3";
+    direction.id === "expression-bar-inline-3" ||
+    direction.id === "expression-bar-unified";
 
-  const ReadingContext =
-    direction.id === "expression-bar-inline-3"
-      ? Iteration3CompactReadingContext
-      : CompactReadingContext;
+  const ReadingContext = getReadingContext(direction.id);
 
   return (
     <ReadingContext.Provider value={hasCompactReading && compactReading}>
