@@ -263,14 +263,48 @@ describe("EmbeddingDataPicker", () => {
         embeddingType: "full-app",
         dataPicker: "flat",
         hasMetrics: true,
+        hasLibrary: true,
         hasNestedQueriesEnabled: false,
       });
 
       expect(
-        await screen.findByRole("link", { name: "Orders model" }),
+        await screen.findByRole("link", { name: "Published Orders" }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("link", { name: "Revenue" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should not show models when nested queries are disabled", async () => {
+      setup({
+        embeddingType: "full-app",
+        dataPicker: "flat",
+        hasLibrary: true,
+        hasNestedQueriesEnabled: false,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Published Orders" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Orders model" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not show models when nested queries are disabled, even with `entity_types=["model"]`', async () => {
+      setup({
+        embeddingType: "full-app",
+        dataPicker: "flat",
+        entityTypes: ["model"],
+        hasLibrary: true,
+        hasNestedQueriesEnabled: false,
+      });
+
+      expect(
+        await screen.findByRole("link", { name: "Published Orders" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: "Orders model" }),
       ).not.toBeInTheDocument();
     });
 
