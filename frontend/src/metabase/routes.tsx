@@ -2,7 +2,6 @@ import type { Store, ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 
 import { App } from "metabase/AppComponent";
 import { getAccountRoutes } from "metabase/account/routes";
-import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
@@ -27,6 +26,7 @@ import { getMetricRoutes } from "metabase/metrics/routes";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { getMonitorRedirects, getMonitorRoutes } from "metabase/monitor/routes";
+import { CollectionPermissionsModal } from "metabase/permissions";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_DATA_APPS,
