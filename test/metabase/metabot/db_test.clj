@@ -1,6 +1,7 @@
 (ns metabase.metabot.db-test
   (:require
    [clojure.test :refer :all]
+   [metabase.collections.test-utils :as collections.tu]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.metabot.db :as metabot.db]
@@ -27,6 +28,16 @@
                 (str "can-query? disagrees for " user))
             (is (= (mi/can-read? :model/Table table-id) (mi/can-read? row))
                 (str "can-read? disagrees for " user))))))))
+
+(deftest table-schema-rows-read-published-state-test
+  (testing "Rows carry a table's published state, which is stored with the user's table settings"
+    (collections.tu/with-library [{data :data}]
+      (mt/with-temp [:model/Table            {table-id :id} {:db_id (mt/id), :name "metabot published", :active true}
+                     :model/TableUserSettings _             {:table_id      table-id
+                                                             :is_published  true
+                                                             :collection_id (:id data)}]
+        (is (=? [{:id table-id, :is_published true, :collection_id (:id data)}]
+                (metabot.db/table-schema-rows [table-id])))))))
 
 (deftest card-source-info-classifies-legacy-metrics-test
   (testing "Reading stored metric sources preserves stage structure without upgrading curated dimensions"

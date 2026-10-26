@@ -5,6 +5,8 @@
    [metabase.activity-feed.core :as activity-feed]
    [metabase.activity-feed.models.recent-views :as recent-views]
    [metabase.collections.test-utils :as collections.tu]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.test-util :as v2.tu]
@@ -513,6 +515,32 @@
                                                     {:token-scopes #{"agent:content:read"}})]
               (is (= [inside-id outside-id]
                      (->> content :content first :text v2.tu/strip-data-boundary json/decode+kw :data (map :id)))))))))))
+
+(deftest metric-source-card-is-a-numeric-id-test
+  (testing "a metric defined on a model names the model by its numeric id, which `fields` can pick"
+    (binding [search.ingestion/*force-sync* true]
+      (search.tu/with-appdb-search-if-available-otherwise-legacy
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {model-id :id}  {:type          :model
+                                                      :name          "mcpcardmetric model"
+                                                      :dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))}
+                         :model/Card {metric-id :id} {:type          :metric
+                                                      :name          "mcpcardmetric count"
+                                                      :dataset_query (-> (lib/query mp (lib.metadata/card mp model-id))
+                                                                         (lib/aggregate (lib/count)))}]
+            (mt/with-current-user (mt/user->id :crowberto)
+              (let [search (fn [args]
+                             (->> (tools.search/search-tool (merge {:term_queries ["mcpcardmetric"] :type ["metric"]} args)
+                                                            {:token-scopes #{"agent:content:read"}})
+                                  :content first :text v2.tu/strip-data-boundary json/decode+kw :data
+                                  (filter #(= metric-id (:id %)))))]
+                (testing "in the detailed row, without the portable entity id the v2 tools don't accept"
+                  (let [row (first (search {:response_format "detailed"}))]
+                    (is (=? {:source_card_id model-id, :source_card_name "mcpcardmetric model"} row))
+                    (is (not (contains? row :source_card_portable_entity_id)))))
+                (testing "and as a picked field"
+                  (is (= [{:id metric-id, :source_card_id model-id}]
+                         (search {:fields ["id" "source_card_id"]}))))))))))))
 
 (deftest collection-row-path-omits-unreadable-ancestors-test
   (testing "GHY-4137: a collection row builds its path from its own :location — that path must
