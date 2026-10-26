@@ -439,6 +439,20 @@
             (is (re-find #"portable FK" (v1-hints/recovery-hint d)))
             (is (re-find #"numeric table id" (message/render (v2-hints/recovery-hint d))))))))))
 
+(deftest ^:parallel v1-card-source-recovery-hint-test
+  (testing "an ambiguous foreign key on a card source points at the columns the card returns"
+    (is (= (str "Call `read_resource` with `metabase://model/12/fields` to list the foreign-key columns this "
+                "model returns.")
+           (v1-hints/recovery-hint {:error :ambiguous-fk :source-card 12 :source-card-type "model"})))
+    (testing "and on a table source at the table's fields"
+      (is (str/includes? (v1-hints/recovery-hint {:error :ambiguous-fk})
+                         "metabase://table/<numeric id>/fields"))))
+  (testing "a column the card does not return points at the columns it does"
+    (doseq [error [:column-not-returned :unexportable-fk]]
+      (is (= "Call `read_resource` with `metabase://question/12/fields` to list the columns this question returns."
+             (v1-hints/recovery-hint {:error error :source-card 12 :source-card-type "question"}))
+          (str error)))))
+
 (deftest execute-representations-query-unknown-db-in-source-table-test
   (testing (str "Post step-14-follow-up the first stage's `source-table[0]` is the sole source\n"
                 "of truth for the application database. A DB name that doesn't match any app\n"
