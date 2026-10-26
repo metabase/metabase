@@ -77,6 +77,12 @@ To fix the group's access:
 1. Click the group's row. A sidebar opens with the group's **Missing tables**.
 2. Click a table, and select **Change permissions** to open that table's data permissions.
 
+## How people open data apps
+
+People in an app's groups can open a live app at its address, `/apps/<slug>`. People can also open an app from the **Data apps** section of the left navigation sidebar, which lists the live apps they can open.
+
+People can also find an app by searching for its name or description. Clicking the result opens the app. Search shows people only the live apps in their groups. Admins see every app.
+
 ## Delete a data app
 
 Data Studio doesn't have an option to delete apps. To delete an app, ask your agent, or run:

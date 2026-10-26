@@ -122,8 +122,6 @@ categories:
       - name: "Data apps"
         url: "data-apps/start"
         pages:
-          - name: "Overview"
-            url: "data-apps/introduction"
           - name: "Build a data app"
             url: "data-apps/build"
           - name: "Manage data apps"
