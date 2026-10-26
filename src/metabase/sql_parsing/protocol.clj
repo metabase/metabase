@@ -35,16 +35,7 @@
     "Whether the SQL is a single statement of `stmt-type`, as a keywordized map that includes the SQL
     reconstructed from the parsed AST.")
   (transpile-sql [parser sql from-dialect to-dialect]
-    "Transpile the SQL from one dialect to another, as a keywordized result map."))
-
-(defn call-failed-ex
-  "The uniform exception for a failed sqlglot call, thrown by every backend so callers can handle parse
-  errors without knowing which ran ([[metabase.sql-parsing.core/parse-error?]]). `error` is rendered as
-  `ErrorType: message`, with the Python error name where one applies."
-  ([error]
-   (call-failed-ex error nil))
-  ([error cause]
-   (ex-info (str "sqlglot call failed: " error)
-            {:sql-parsing/error             true
-             :sql-parsing/python-error-type (some->> error (re-find #"^\w+"))}
-            cause)))
+    "Transpile the SQL from one dialect to another, as a keywordized result map.")
+  (parse-expression [parser dialect sql]
+    "Parse a single SQL expression (no surrounding SELECT) into its sqlglot tree, as a keywordized map
+    `{:class ... :sql ... :args {...}}`; see [[metabase.sql-parsing.core/parse-expression]]."))
