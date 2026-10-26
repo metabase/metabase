@@ -116,7 +116,7 @@ describe("DataSensitivityPicker", () => {
   });
 
   it.each([
-    ["deterministic", "Set by the automatic classifier"],
+    ["deterministic", "Detected by sync"],
     ["ai", "Set by AI"],
   ] as const)(
     "shows the %s source without a reset action",
@@ -125,7 +125,7 @@ describe("DataSensitivityPicker", () => {
 
       expect(screen.getByText(sourceLabel)).toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: "Reset to automatic" }),
+        screen.queryByRole("button", { name: "Reset" }),
       ).not.toBeInTheDocument();
     },
   );
@@ -134,9 +134,7 @@ describe("DataSensitivityPicker", () => {
     const { onReset } = setup({ value: "PII", source: "human" });
 
     expect(screen.getByText("Set by a person")).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Reset to automatic" }),
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Reset" }));
 
     expect(onReset).toHaveBeenCalled();
   });

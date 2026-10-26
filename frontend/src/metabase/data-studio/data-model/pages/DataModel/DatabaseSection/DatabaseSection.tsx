@@ -124,7 +124,7 @@ function DatabaseSectionContent({ database }: DatabaseSectionContentProps) {
           loading={isRescanning}
           onClick={handleRescan}
         >
-          {t`Re-scan`}
+          {t`Re-scan field values`}
         </Button>
         <PLUGIN_METADATA_GENERATION.DatabaseButton databaseId={database.id} />
       </Group>

@@ -232,7 +232,7 @@ describe("GenerateMetadataModal", () => {
 
     expect(
       await screen.findByText(
-        "Metabot is disabled. Enable Metabot to generate metadata.",
+        "Metabot is disabled. Enable Metabot to generate field metadata.",
       ),
     ).toBeInTheDocument();
     expect(getStartButton()).toBeDisabled();

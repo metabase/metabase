@@ -285,7 +285,7 @@ describe("FieldSection", () => {
       });
 
       await userEvent.click(
-        await screen.findByRole("button", { name: "Reset to automatic" }),
+        await screen.findByRole("button", { name: "Reset" }),
       );
 
       await waitFor(async () => {
