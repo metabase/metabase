@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.sql :as driver.sql]
@@ -493,6 +494,10 @@
         (is (= "SELECT `test_data`.`venues`.`id` AS `id` FROM `test_data`.`venues` ORDER BY `test_data`.`venues`.`id` ASC LIMIT 5" compiled)))
       (testing "pretty"
         (is (= "SELECT\n  `test_data`.`venues`.`id` AS `id`\nFROM\n  `test_data`.`venues`\nORDER BY\n  `test_data`.`venues`.`id` ASC\nLIMIT\n  5" pretty))))))
+
+(deftest pool-does-not-test-connections-on-checkout-test
+  (with-redefs [driver-api/is-test? false]
+    (is (false? (get (sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse (mt/db)) "testConnectionOnCheckout")))))
 
 (deftest ^:parallel clickhouse-can-connect
   (mt/test-driver :clickhouse
