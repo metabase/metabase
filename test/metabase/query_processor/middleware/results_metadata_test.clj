@@ -18,7 +18,6 @@
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.compile :as qp.compile]
-   [metabase.query-processor.db :as query-processor.db]
    [metabase.query-processor.middleware.results-metadata :as middleware.results-metadata]
    [metabase.query-processor.preprocess :as qp.preprocess]
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
@@ -600,8 +599,8 @@
                                  [:data :results_metadata :columns]))]
     (is (seq baseline))
     (mt/with-temp [:model/Card {card-id :id} {:dataset_query reduced-query}]
-      ;; set-card-result-metadata! bypasses populate hooks, so the stale baseline sticks.
-      (query-processor.db/set-card-result-metadata! card-id baseline)
+      ;; Install the stale wider baseline directly, bypassing populate hooks that would recompute it.
+      (t2/update! :model/Card card-id {:result_metadata baseline})
       (mt/as-admin
         (qp/process-query-for-card
          (t2/select-one :model/Card card-id) :api
