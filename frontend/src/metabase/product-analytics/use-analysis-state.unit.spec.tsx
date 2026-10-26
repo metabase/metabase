@@ -25,15 +25,15 @@ type SetupOpts = {
 const setup = ({ savedSettings, hash = "" }: SetupOpts = {}) => {
   const { result, router } = renderHookWithProviders(
     () => useAnalysisState<TestSettings>(savedSettings),
-    { withRouter: true, initialRoute: `/event-analysis/5${hash}` },
+    { withRouter: true, initialRoute: `/product-analysis/5${hash}` },
   );
   const testRouter = checkNotNull(router);
   const getHash = () => testRouter.location.hash.replace(/^#/, "");
   return { result, router: testRouter, getHash };
 };
 
-const NEW_ANALYSIS_ROUTE = "/event-analysis/new/funnel";
-const SAVED_ANALYSIS_ROUTE = "/event-analysis/5";
+const NEW_ANALYSIS_ROUTE = "/product-analysis/new";
+const SAVED_ANALYSIS_ROUTE = "/product-analysis/5";
 
 const OpenPanel = ({ savedSettings }: { savedSettings?: StoredSettings }) => {
   const { panel } = useAnalysisState<TestSettings>(savedSettings);
@@ -74,7 +74,7 @@ const setupPanel = ({ initialRoute }: PanelSetupOpts) => {
   renderRoutes(
     [
       { path: NEW_ANALYSIS_ROUTE, element: <NewAnalysisPage /> },
-      { path: "/event-analysis/:cardId", element: <SavedAnalysisPage /> },
+      { path: "/product-analysis/:cardId", element: <SavedAnalysisPage /> },
     ],
     { initialRoute },
   );

@@ -14,7 +14,7 @@ const NewAnalysis = () => {
   return (
     <button
       onClick={() =>
-        navigate("/event-analysis/1", {
+        navigate("/product-analysis/1", {
           replace: true,
           state: JUST_CREATED_STATE,
         })
@@ -33,8 +33,8 @@ const SavedAnalysis = () => {
 const setup = ({ initialRoute }: { initialRoute: string }) => {
   const { router } = renderRoutes(
     [
-      { path: "/event-analysis/new/funnel", element: <NewAnalysis /> },
-      { path: "/event-analysis/:cardId", element: <SavedAnalysis /> },
+      { path: "/product-analysis/new", element: <NewAnalysis /> },
+      { path: "/product-analysis/:cardId", element: <SavedAnalysis /> },
     ],
     { initialRoute, withUndos: true },
   );
@@ -44,7 +44,7 @@ const setup = ({ initialRoute }: { initialRoute: string }) => {
 describe("useAddToDashboardToast", () => {
   it("offers to add a newly created analysis to a dashboard", async () => {
     const { getLocation } = setup({
-      initialRoute: "/event-analysis/new/funnel",
+      initialRoute: "/product-analysis/new",
     });
 
     await userEvent.click(screen.getByRole("button", { name: "Create" }));
@@ -58,7 +58,7 @@ describe("useAddToDashboardToast", () => {
   });
 
   it("doesn't offer it when opening a saved analysis", async () => {
-    setup({ initialRoute: "/event-analysis/1" });
+    setup({ initialRoute: "/product-analysis/1" });
 
     expect(await screen.findByText("Picker closed")).toBeInTheDocument();
     expect(

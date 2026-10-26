@@ -51,7 +51,7 @@ const setup = ({
       }),
     {
       withRouter: true,
-      initialRoute: "/event-analysis/new/funnel",
+      initialRoute: "/product-analysis/new",
       storeInitialState: {
         currentUser: createMockUser({
           can_write_any_collection: canWriteToCollections,
@@ -186,7 +186,7 @@ describe("useSaveAnalysis", () => {
         ),
       );
 
-      expect(getLocation().pathname).toBe("/event-analysis/1");
+      expect(getLocation().pathname).toBe("/product-analysis/1");
       expect(getLocation().state).toEqual(JUST_CREATED_STATE);
       expect(result.current.isLocationAllowed()).toBe(true);
     });
