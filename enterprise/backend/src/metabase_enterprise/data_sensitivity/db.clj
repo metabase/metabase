@@ -247,13 +247,20 @@
 ;;; Apply
 
 (mu/defn active-fields-by-id :- [:map-of ::lib.schema.id/field (ms/InstanceOf :model/Field)]
-  "A map of field id to the active Field, with the values readers see and `:can_write` hydrated, for `field-ids`."
+  "A map of field id to the active Field of an active Table, with the values readers see and `:can_write` hydrated,
+  for `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (if (seq field-ids)
     (into {}
           (map (juxt :id identity))
-          (t2/hydrate (t2/select :model/Field :id [:in field-ids] :active true
-                                 {:from [(warehouse-schema-overlay/field-query)]})
+          (t2/hydrate (t2/select :model/Field
+                                 {:from  [(warehouse-schema-overlay/field-query)]
+                                  :where [:and
+                                          [:in :id field-ids]
+                                          [:= :active true]
+                                          [:in :table_id ^:allow-subquery {:select [:id]
+                                                                           :from   [:metabase_table]
+                                                                           :where  [:= :active true]}]]})
                       :can_write))
     {}))
 

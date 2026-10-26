@@ -244,6 +244,19 @@
            (is (= #{:pending} (set (vals (statuses [key-field misfit missing])))))
            (is (nil? (settings a-fk)))))))))
 
+(deftest apply-skips-fields-of-inactive-tables-test
+  (mt/with-premium-features #{:data-sensitivity}
+    (do-with-run
+     (fn [run-id {:keys [b b-text]}]
+       (let [desc (suggestion! run-id b b-text :attribute :description :proposed_value "Hidden.")]
+         (t2/update! :model/Table b {:active false})
+         (is (= {:written 0 :rejected 0 :failed 1
+                 :failures [{:proposal_id desc :field_id b-text :attribute "description" :reason "field_not_found"}]}
+                (apply! {:accept [desc]})))
+         (testing "a field of an inactive table gets no AI value and its proposal stays pending"
+           (is (nil? (:ai_description (settings b-text))))
+           (is (= {desc :pending} (statuses [desc])))))))))
+
 (deftest apply-counts-written-proposals-when-an-event-handler-fails-test
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-run
