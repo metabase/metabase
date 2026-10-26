@@ -1031,3 +1031,17 @@
       (is (str/includes? xml "<query>\n```json"))
       (is (str/includes? xml "```\n</query>"))
       (is (str/includes? xml "\"PRODUCTS\"")))))
+
+(deftest ^:parallel related-tables-note-does-not-presuppose-sql-test
+  (testing "table/model XML reaches profiles without SQL tools (read_resource, viewing context), so the related-tables usage note carries no SQL-writing guidance (BOT-1891)"
+    (let [related [{:id 20 :name "orders" :database_schema "public"
+                    :related_by {:id 91 :name "user_id"} :fields []}]]
+      (doseq [[label xml] {"table" (llm-shape/table->xml {:id 10 :name "users" :database_id 1
+                                                          :database_engine "postgres"
+                                                          :related_tables related})
+                           "model" (llm-shape/model->xml {:id 5 :name "Sales Model" :database_id 1
+                                                          :database_engine "postgres"
+                                                          :related_tables related})}]
+        (testing label
+          (is (str/includes? xml "Foreign key fields from related tables") "premise: the section renders")
+          (is (not (re-find #"(?i)for SQL queries" xml))))))))

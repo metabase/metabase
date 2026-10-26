@@ -949,7 +949,8 @@
     (->> (t2/query query)
          (map #(update-vals % (comp keyword lower-case-en)))
          (remove (fn [{:keys [table_name]}]
-                   (or (#{:databasechangelog :databasechangeloglock} table_name)
+                   ;; databasechangelog_first_run copies the changelog's dateexecuted, so it keeps the same type
+                   (or (#{:databasechangelog :databasechangeloglock :databasechangelog_first_run} table_name)
                        ;; excludes views
                        (str/starts-with? (name table_name) "v_"))))
          (map #(update % :is_nullable (fn [x] (= :yes x))))

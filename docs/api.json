@@ -20613,6 +20613,13 @@
               "type" : "null"
             } ]
           },
+          "in_host_app" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          },
           "current_time_with_timezone" : {
             "oneOf" : [ {
               "type" : "string"
@@ -38792,8 +38799,33 @@
       "get" : {
         "operationId" : "get-api-database",
         "summary" : "GET /api/database",
-        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible\n    tables the current user can read), matching the per-DB `/api/database/:id/schemas`\n    response. Lets clients avoid N round-trips when populating a database/schema picker.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Should only be used if\n    Enterprise Edition code is available the advanced-permissions feature is enabled.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions\n    for at least one table in the database. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
+        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible\n    tables the current user can read), matching the per-DB `/api/database/:id/schemas`\n    response. Lets clients avoid N round-trips when populating a database/schema picker.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those\n    permissions to non-admins requires Enterprise Edition code and the advanced-permissions feature; without both,\n    this is admin-only.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
         "parameters" : [ {
+          "in" : "query",
+          "name" : "include",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "enum" : [ "tables", "schemas" ]
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "description" : "include must be either empty, 'tables', or 'schemas'"
+        }, {
+          "in" : "query",
+          "name" : "include_analytics",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
           "in" : "query",
           "name" : "saved",
           "required" : false,
@@ -38807,7 +38839,19 @@
           }
         }, {
           "in" : "query",
-          "name" : "include_analytics",
+          "name" : "include_editable_data_model",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "exclude_uneditable_details",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -38831,19 +38875,6 @@
           }
         }, {
           "in" : "query",
-          "name" : "include",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "enum" : [ "tables", "schemas" ]
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : "include must be either empty, 'tables', or 'schemas'"
-        }, {
-          "in" : "query",
           "name" : "router_database_id",
           "required" : false,
           "schema" : {
@@ -38857,44 +38888,9 @@
           }
         }, {
           "in" : "query",
-          "name" : "can-write-metadata",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
           "name" : "can-query",
           "required" : false,
           "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "exclude_uneditable_details",
-          "required" : false,
-          "schema" : {
-            "default" : false,
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "include_editable_data_model",
-          "required" : false,
-          "schema" : {
-            "default" : false,
             "oneOf" : [ {
               "type" : "boolean"
             }, {
@@ -39097,7 +39093,7 @@
       "get" : {
         "operationId" : "get-api-database-id",
         "summary" : "GET /api/database/{id}",
-        "description" : "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables\n  belonging to this database, or the Tables and Fields, respectively. If the requestor has write permissions for the\n  DB\n   (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the\n   returned details (see [[metabase.secrets.models.secret/expand-db-details-inferred-secret-values]] for full details).\n\n   Passing include_editable_data_model will only return tables for which the current user has data model editing\n   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.\n   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID\n   and tables, with no additional metadata.\n\n   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n   [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`\n   in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the\n   database details.",
+        "description" : "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables\n  belonging to this database, or the Tables and Fields, respectively. If the requestor has write permissions for the\n  DB\n   (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the\n   returned details (see [[metabase.secrets.models.secret/expand-db-details-inferred-secret-values]] for full details).\n\n   Passing include_editable_data_model will only return tables for which the current user has data model editing\n   permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the\n   advanced-permissions feature; without both, this is admin-only. In addition, if the user has no data access for the\n   DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata.\n\n   Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n   [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for `:model/Database`\n   in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user lacks permission to change the\n   database details.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -39602,7 +39598,7 @@
       "get" : {
         "operationId" : "get-api-database-id-metadata",
         "summary" : "GET /api/database/{id}/metadata",
-        "description" : "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.\n  By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.\n\n  Passing include_editable_data_model will only return tables for which the current user has data model editing\n  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.\n  In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID\n  and tables, with no additional metadata.",
+        "description" : "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.\n  By default only non-hidden tables are returned. Passing include_hidden=true includes them.\n\n  Passing include_sensitive_fields=true includes fields with visibility_type sensitive, for tables whose data model the\n  current user can edit.\n\n  Passing include_editable_data_model will only return tables for which the current user has data model editing\n  permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the\n  advanced-permissions feature; without both, this is admin-only. In addition, if the user has no data access for the\n  DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -39615,6 +39611,18 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_sensitive_fields",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -39708,7 +39716,7 @@
       "get" : {
         "operationId" : "get-api-database-id-schema",
         "summary" : "GET /api/database/{id}/schema",
-        "description" : "Return a list of Tables for a Database whose schema is the `schema` query parameter, or `nil` or an\n  empty string when no `schema` is given. Unlike the `/:id/schema/:schema` route, the query parameter\n  supports schema names containing slashes, which are rejected at the HTTP layer when percent-encoded in\n  the URL path (#77353).\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query\n  - `can-write-metadata=true` - filter to only tables the user can edit metadata for",
+        "description" : "Return a list of Tables for a Database whose schema is the `schema` query parameter, or `nil` or an\n  empty string when no `schema` is given. Unlike the `/:id/schema/:schema` route, the query parameter\n  supports schema names containing slashes, which are rejected at the HTTP layer when percent-encoded in\n  the URL path (#77353).\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -39766,17 +39774,6 @@
           }
         }, {
           "in" : "query",
-          "name" : "can-write-metadata",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
           "name" : "include_measures",
           "required" : false,
           "schema" : {
@@ -39805,7 +39802,7 @@
       "get" : {
         "operationId" : "get-api-database-id-schema-schema",
         "summary" : "GET /api/database/{id}/schema/{schema}",
-        "description" : "Returns a list of Tables for the given Database `id` and `schema`.\n\n  Schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer when\n  percent-encoded in the URL path; pass those as the `schema` query parameter of `GET /:id/schema/`\n  instead (#77353).\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query\n  - `can-write-metadata=true` - filter to only tables the user can edit metadata for",
+        "description" : "Returns a list of Tables for the given Database `id` and `schema`.\n\n  Schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer when\n  percent-encoded in the URL path; pass those as the `schema` query parameter of `GET /:id/schema/`\n  instead (#77353).\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -39860,17 +39857,6 @@
           }
         }, {
           "in" : "query",
-          "name" : "can-write-metadata",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
           "name" : "include_measures",
           "required" : false,
           "schema" : {
@@ -39899,7 +39885,7 @@
       "get" : {
         "operationId" : "get-api-database-id-schemas",
         "summary" : "GET /api/database/{id}/schemas",
-        "description" : "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.\n\n  Optional filters:\n  - `can-query=true` - filter to only schemas containing tables the user can query\n  - `can-write-metadata=true` - filter to only schemas containing tables the user can edit metadata for",
+        "description" : "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.\n\n  Optional filters:\n  - `can-query=true` - filter to only schemas containing tables the user can query",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -39936,17 +39922,6 @@
         }, {
           "in" : "query",
           "name" : "can-query",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "can-write-metadata",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -47250,7 +47225,6 @@
                     "type" : "boolean"
                   }
                 },
-                "required" : [ "expected_branch" ],
                 "additionalProperties" : false
               }
             }
@@ -64816,7 +64790,7 @@
       "get" : {
         "operationId" : "get-api-table",
         "summary" : "GET /api/table",
-        "description" : "Get all `Tables`.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can execute queries against\n  - `can-write=true` - filter to only tables the user can edit metadata for",
+        "description" : "Get all `Tables`.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can execute queries against\n  - `include-editable-data-model=true` - filter to only tables the user can edit the data model of, instead of the\n    tables the user can read",
         "parameters" : [ {
           "in" : "query",
           "name" : "visibility-type",
@@ -64887,7 +64861,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "can-write",
+          "name" : "include-editable-data-model",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -65509,7 +65483,7 @@
       "get" : {
         "operationId" : "get-api-table-id-query_metadata",
         "summary" : "GET /api/table/{id}/query_metadata",
-        "description" : "Get metadata about a `Table` useful for running queries.\n   Returns DB, fields, field FKs, and field values.\n\n   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`\n   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.\n\n   Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's\n   data model, while `false` checks that they have data access perms for the table. Defaults to `false`.\n\n   These options are provided for use in the Admin Edit Metadata page.",
+        "description" : "Get metadata about a `Table` useful for running queries.\n   Returns DB, fields, field FKs, and field values.\n\n   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`.\n   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response if the current user has\n   data model editing permissions for the table. Defaults to `false`.\n\n   Passing `include_editable_data_model=true` will check that the current user has data model editing permissions for\n   the table, even when Remote Sync makes the table read-only, while `false` checks that they can read the table.\n   Defaults to `false`.\n\n   The response includes `can_write`, which is false when the user cannot edit the table's metadata right now.\n\n   These options are provided for use in the data model pages.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
