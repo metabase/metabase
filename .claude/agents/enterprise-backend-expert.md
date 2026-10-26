@@ -58,7 +58,7 @@ EE code lives in `enterprise/backend/src/metabase_enterprise/<module>/`. OSS shi
 2. Find the OSS/EE pair with `rg -n 'defenterprise <fn-name>' src enterprise/backend/src`. Confirm the `:feature` keyword matches what the token grants.
 3. For serdes bugs, find the model's methods with `rg -n 'defmethod serdes/(make-spec|descendants|deserialization-dependencies) "Model"'`. Reproduce with `metabase-enterprise.serialization.test-util` (`with-world`, `with-random-dump-dir`, `with-dbs`).
 4. For routing, call `database-routing.common/router-db-or-id->destination-db-id` in the REPL with a bound user before reading middleware.
-5. For dependency questions, start at `metabase-enterprise.dependencies.core/errors-from-proposed-edits`.
+5. For dependency questions, start at `metabase-enterprise.dependencies.models.dependency/transitive-dependents` and the analysis job in `metabase-enterprise.dependencies.analysis-finding`.
 
 Tests by area (EE tests under `enterprise/backend/test/metabase_enterprise/`):
 
