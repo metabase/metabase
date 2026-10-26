@@ -62,7 +62,8 @@
    [:is_simple :boolean]
    [:reason {:optional true} :string]])
 
-;; Re-export multimethod vars so implementations can use sql-tools/foo-impl
+;; Re-export multimethod vars so implementations can use sql-tools/foo-impl, and the driver → sqlglot dialect mapping
+;; so callers outside the module can parse SQL in a database's dialect
 (p/import-vars
  [interface
   returned-columns-impl
@@ -73,7 +74,9 @@
   replace-names-impl
   referenced-tables-raw-impl
   simple-query?-impl
-  add-into-clause-impl])
+  add-into-clause-impl]
+ [sqlglot
+  driver->dialect])
 
 (defn parser-backend
   "Get current value of sql-tools-parser-backend."

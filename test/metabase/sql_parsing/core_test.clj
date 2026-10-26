@@ -86,8 +86,8 @@
 
 (deftest ^:parallel parse-expression-test
   (testing "the sqlglot tree of a bare expression, as the dbt metrics converter reads it"
-    (doseq [{:keys [name sql dialect tree error]} (cases "parse_expression")]
-      (testing name
+    (doseq [{case-name :name, :keys [sql dialect tree error]} (cases "parse_expression")]
+      (testing case-name
         (if error
           (let [e (is (thrown? Exception (sql-parsing/parse-expression dialect sql)) (pr-str sql))]
             (is (sql-parsing/parse-error? e) (pr-str sql))
