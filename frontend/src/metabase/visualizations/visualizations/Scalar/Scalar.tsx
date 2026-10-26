@@ -136,15 +136,16 @@ function ScalarComponent(
   const color = getColor(value, segments);
   const tooltipContent = getTooltipContent(segments, formatOptions);
 
+  const hasGoalWarning = isQueryBuilder && hasGoalErrors && onOpenChartSettings;
   const handleGoalWarningClick =
-    isQueryBuilder && hasGoalErrors && onOpenChartSettings
+    hasGoalWarning
       ? () =>
           onOpenChartSettings({
             initialChartSettings: { section: t`Conditional colors` },
           })
       : undefined;
   // reserved on both sides so the value stays centered
-  const goalWarningWidthPx = handleGoalWarningClick
+  const goalWarningWidthPx = hasGoalWarning
     ? GOAL_WARNING_ICON_SIZE + GOAL_WARNING_GAP_PX
     : 0;
 

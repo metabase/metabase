@@ -72,6 +72,7 @@ export const useChartSettingsSections = ({
   // every request to open the settings brings a new `initial`, even for the same section
   if (initial !== previousInitial) {
     setPreviousInitial(initial);
+
     if (initial?.section) {
       setCurrentSection(initial.section);
     }
