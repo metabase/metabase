@@ -1,8 +1,7 @@
 (ns metabase-enterprise.data-sensitivity.models.metadata-generation-proposal
-  "A `metadata_generation_proposal` is the pending or rejected value that the AI proposes for one attribute of one
-  field. There is one row per field and attribute. A run upserts the rows of the fields it covers, and `last_run_id`
-  names the run that wrote a row last. Accept writes the value and deletes the row; reject sets status `rejected`
-  until the next run that covers the field and the attribute."
+  "A `metadata_generation_proposal` is the pending value that the AI proposes for one attribute of one field. There
+  is one row per field and attribute. A run upserts the rows of the fields it covers, and `last_run_id` names the run
+  that wrote a row last. Accept writes the value and deletes the row; reject deletes the row."
   (:require
    [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
    [metabase.models.interface :as mi]
@@ -22,7 +21,7 @@
   [:enum :high :medium :low])
 
 (mr/def ::status
-  [:enum :pending :rejected])
+  [:enum :pending])
 
 (mr/def ::metadata-generation-proposal
   [:map
@@ -35,8 +34,6 @@
    [:confidence     [:maybe ::confidence]]
    [:reasoning      [:maybe :string]]
    [:status         ::status]
-   [:decided_by     [:maybe ms/PositiveInt]]
-   [:decided_at     [:maybe some?]]
    [:created_at     some?]
    [:updated_at     some?]])
 

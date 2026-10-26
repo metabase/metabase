@@ -146,7 +146,7 @@ export function ReviewModal({
       <Modal.Overlay />
       <Modal.Content>
         <Modal.Header className={S.header}>
-          <Modal.Title>{t`Review AI-generated metadata suggestions`}</Modal.Title>
+          <Modal.Title>{t`Review AI field metadata suggestions`}</Modal.Title>
           <Group gap="sm" wrap="nowrap">
             {opened && hasTables && (
               <ReviewActions
@@ -1081,7 +1081,7 @@ function getColumns({
       id: "accept",
       header: () => (
         <Tooltip
-          label={t`Selects or clears every suggestion of this table, except those that would replace a value a person set.`}
+          label={t`Select or clear every suggestion in this table, except those that replace a value a person set.`}
         >
           <Box component="span" display="inline-flex">
             <Checkbox

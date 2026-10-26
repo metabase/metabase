@@ -438,8 +438,8 @@
   (mi/instances-with-hydrated-data
    fields k
    #(into {}
-          (map (fn [{:keys [id data_sensitivity] :as layers}]
-                 [id (warehouse-schema-overlay/field-value-source layers :data_sensitivity data_sensitivity)]))
+          (map (fn [{:keys [id field_data_sensitivity] :as layers}]
+                 [id (warehouse-schema-overlay/field-value-source layers :data_sensitivity field_data_sensitivity)]))
           (warehouse-schema.db/field-data-sensitivity-layers (keep :id fields)))
    :id))
 

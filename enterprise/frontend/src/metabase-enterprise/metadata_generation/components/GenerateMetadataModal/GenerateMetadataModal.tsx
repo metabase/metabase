@@ -4,6 +4,8 @@ import _ from "underscore";
 
 import { skipToken, useGetDatabaseMetadataQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
+import { useSelector } from "metabase/redux";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import {
   Alert,
   Button,
@@ -48,9 +50,7 @@ const ALL_ATTRIBUTES: MetadataGenerationAttribute[] = [
   "description",
 ];
 
-const SCOPE_TYPES = ["database", "schemas", "tables"] as const;
-
-type ScopeType = (typeof SCOPE_TYPES)[number];
+type ScopeType = "database" | "schemas" | "tables";
 
 type GenerateMetadataModalProps = {
   databaseId: DatabaseId;
@@ -140,6 +140,7 @@ export function GenerateMetadataForm({
   onStarted,
   onCancel,
 }: GenerateMetadataFormProps) {
+  const applicationName = useSelector(getApplicationName);
   const [scopeType, setScopeType] = useState<ScopeType>(
     initialTableIds?.length ? "tables" : "database",
   );
@@ -152,14 +153,14 @@ export function GenerateMetadataForm({
   const [startRun, { isLoading: isStarting, error: startError }] =
     useStartMetadataGenerationRunMutation();
 
-  // The tables and schemas are only needed to offer a scope choice.
+  // The tables and schemas are only needed to offer a scope choice. Runs skip
+  // hidden tables, so they are not offered.
   const { data: database, isLoading: isLoadingDatabase } =
     useGetDatabaseMetadataQuery(
       isScopeFixed
         ? skipToken
         : {
             id: databaseId,
-            include_hidden: true,
             remove_inactive: true,
             skip_fields: true,
           },
@@ -234,7 +235,7 @@ export function GenerateMetadataForm({
   return (
     <Stack gap="lg" data-testid="generate-metadata-form">
       <Text size="sm" c="text-secondary">
-        {t`An AI model reads the metadata, sample values and a few rows of each table and suggests values. Nothing changes until you review and accept the suggestions.`}
+        {t`${applicationName} sends the metadata, cached field values and up to 10 sample rows of each table to the AI provider that Metabot uses. Nothing changes until you review and accept the suggestions.`}
       </Text>
 
       {!isScopeFixed && (

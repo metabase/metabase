@@ -4,7 +4,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v65.2026-10-08T12:00:00
+      id: dgw4zf
       author: tplude
       comment: Add ai_semantic_type to metabase_field_user_settings
       changes:
@@ -19,7 +19,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v65.2026-10-08T12:00:01
+      id: gehyev
       author: tplude
       comment: Add ai_description to metabase_field_user_settings
       changes:
@@ -34,7 +34,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v65.2026-10-08T12:00:02
+      id: n738c5
       author: tplude
       comment: Add ai_data_sensitivity to metabase_field_user_settings
       changes:
@@ -49,7 +49,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v65.2026-10-08T12:00:03
+      id: rk1ogu
       author: tplude
       comment: Add data_sensitivity_set to metabase_field_user_settings
       changes:
@@ -65,12 +65,13 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v65.2026-10-08T12:00:04
+      id: bqbzvn
       author: tplude
       comment: Mark the data_sensitivity user settings already recorded as set
       changes:
         - sql:
             sql: >-
               UPDATE metabase_field_user_settings
-              SET data_sensitivity_set = (data_sensitivity IS NOT NULL)
+              SET data_sensitivity_set = TRUE
+              WHERE data_sensitivity IS NOT NULL
       rollback: # not necessary

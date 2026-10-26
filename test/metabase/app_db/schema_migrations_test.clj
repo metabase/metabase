@@ -4050,8 +4050,8 @@
           (is (true? (:finished (message)))))))))
 
 (deftest field-user-settings-ai-values-migration-test
-  (testing "v65.2026-10-08T12:00:00 to 12:00:04: AI value columns and data_sensitivity_set, backfilled from data_sensitivity"
-    (impl/test-migrations ["v65.2026-10-08T12:00:00" "v65.2026-10-08T12:00:04"] [migrate!]
+  (testing "dgw4zf to bqbzvn: AI value columns and data_sensitivity_set, backfilled from data_sensitivity"
+    (impl/test-migrations ["dgw4zf" "bqbzvn"] [migrate!]
       (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "FUS AI Test DB"
                                                                        :engine     "h2"
                                                                        :created_at :%now
@@ -4093,9 +4093,9 @@
           (is (thrown? Exception (t2/query "SELECT data_sensitivity_set FROM metabase_field_user_settings"))))))))
 
 (deftest metadata-generation-tables-test
-  (testing "v65.2026-10-09T00:00:00 thru v65.2026-10-09T00:00:11: metadata_generation_run and
+  (testing "oqir62 thru si8rzd: metadata_generation_run and
            metadata_generation_proposal"
-    (impl/test-migrations ["v65.2026-10-09T00:00:00" "v65.2026-10-09T00:00:11"] [migrate!]
+    (impl/test-migrations ["oqir62" "si8rzd"] [migrate!]
       (migrate!)
       (let [user-id       (t2/insert-returning-pk! :core_user {:first_name    "Metadata"
                                                                :last_name     "Generation"
@@ -4141,8 +4141,7 @@
                                                          :table_id       table-id
                                                          :field_id       field-id
                                                          :attribute      attribute
-                                                         :proposed_value "PII"
-                                                         :decided_by     user-id}))
+                                                         :proposed_value "PII"}))
             proposal-a    (insert-proposal! field-a "data_sensitivity")
             proposal-b    (insert-proposal! field-b "data_sensitivity")
             proposal      #(t2/select-one :metadata_generation_proposal :id %)]
@@ -4162,10 +4161,9 @@
             (t2/update! :metadata_generation_proposal :id proposal-b {:last_run_id ended-run-id})
             (t2/delete! :metadata_generation_run :id ended-run-id)
             (is (=? {:last_run_id nil} (proposal proposal-b)))))
-        (testing "deleting a user keeps the run and the proposal and clears the user reference"
+        (testing "deleting a user keeps the run and clears the user reference"
           (t2/delete! :core_user :id user-id)
-          (is (nil? (t2/select-one-fn :creator_id :metadata_generation_run :id run-id)))
-          (is (=? {:decided_by nil} (proposal proposal-a))))
+          (is (nil? (t2/select-one-fn :creator_id :metadata_generation_run :id run-id))))
         (testing "deleting a field deletes its proposals"
           (t2/delete! :metabase_field :id field-b)
           (is (nil? (proposal proposal-b)))

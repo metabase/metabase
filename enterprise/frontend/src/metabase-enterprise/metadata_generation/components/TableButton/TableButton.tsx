@@ -29,11 +29,11 @@ export function TableButton({ table }: MetadataGenerationTableButtonProps) {
 
   return (
     <>
-      <Tooltip label={t`Generate metadata`}>
+      <Tooltip label={t`Generate field metadata`}>
         <Button
           flex="0 1 auto"
           leftSection={<Icon name="sparkles" />}
-          aria-label={t`Generate metadata`}
+          aria-label={t`Generate field metadata`}
           onClick={openModal}
         />
       </Tooltip>

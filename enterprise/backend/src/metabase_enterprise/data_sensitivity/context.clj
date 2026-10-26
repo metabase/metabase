@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-sensitivity.context
-  "Builds the per-table packet the LLM data-sensitivity classifier consumes: app-DB metadata for every active field
+  "Builds the per-table packet that the metadata generation LLM call consumes: app-DB metadata for every active field
   of a table plus, when `:include-values?` is true, cached FieldValues and a small warehouse row sample. The row
   sample is the only warehouse query; a failure there is recorded under `[:sample :error]` and the packet still
   builds so a broken connection degrades to schema-only classification. A cancel during the sample throws an
@@ -267,10 +267,10 @@
   (merge default-options (u/remove-nils opts)))
 
 (mu/defn table-packet :- ::packet
-  "Build the classification packet for `table` of `database`. Hidden and sensitive fields are included; retired and
-  inactive fields are not. Values are read as the current user: when [[values-restriction]] gives a reason, no
-  values are read and `[:sample :error]` carries it. The row sample runs through the query processor with the
-  permissions of the current user. A superuser on a routed database samples the router database only inside
+  "Build the classification packet for `table` of `database`, over the fields of [[db/active-fields]]: retired,
+  sensitive, hidden and inactive fields are not in it. Values are read as the current user: when
+  [[values-restriction]] gives a reason, no values are read and `[:sample :error]` carries it. The row sample runs
+  through the query processor with the permissions of the current user. A superuser on a routed database samples the router database only inside
   `database-routing/with-database-routing-off`."
   [database :- (ms/InstanceOf :model/Database)
    table    :- (ms/InstanceOf :model/Table)

@@ -10,7 +10,7 @@ SELECT
         WHEN 'agent'                             THEN 'Metabot'
         WHEN 'contextual_interestingness'        THEN 'Research'
         WHEN 'exploration'                       THEN 'Research'
-        WHEN 'data_sensitivity_classification'   THEN 'Data Sensitivity'
+        WHEN 'metadata_generation'               THEN 'Metadata Generation'
         WHEN 'document_generate_content'         THEN 'Documents'
         WHEN 'example_question_generation_batch' THEN 'Suggested Prompts'
         WHEN 'conversation_title'                THEN 'Conversation titles'

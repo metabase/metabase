@@ -1,7 +1,6 @@
 (ns metabase-enterprise.data-sensitivity.models.metadata-generation-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [java-time.api :as t]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-proposal :as proposal]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
    [metabase.test :as mt]
@@ -80,8 +79,7 @@
         (is (some? (insert-run! db-id)))))))
 
 (deftest proposal-round-trip-test
-  (mt/with-temp [:model/User     {user-id :id}     {}
-                 :model/Database {db-id :id}       {}
+  (mt/with-temp [:model/Database {db-id :id}       {}
                  :model/Database {other-db-id :id} {}
                  :model/Table    {table-id :id}    {:db_id db-id}
                  :model/Field    {field-id :id}    {:table_id table-id}]
@@ -96,15 +94,9 @@
                  :proposed_value "type/Email"
                  :confidence     :high
                  :reasoning      "Values look like email addresses."
-                 :status         :pending
-                 :decided_by     nil}
+                 :status         :pending}
                 row))
         (is (mr/validate ::proposal/metadata-generation-proposal row)))
-      (testing "a rejection records the user and time"
-        (t2/update! :model/MetadataGenerationProposal proposal-id
-                    {:status :rejected :decided_by user-id :decided_at (t/offset-date-time)})
-        (is (=? {:status :rejected :decided_by user-id :decided_at some?}
-                (t2/select-one :model/MetadataGenerationProposal proposal-id))))
       (testing "a field has one proposal per attribute, across runs"
         (let [{other-run-id :id} (insert-run! other-db-id)]
           (is (thrown? Exception (t2/with-transaction [_conn] (insert-proposal! other-run-id table-id field-id)))))
@@ -149,13 +141,13 @@
         (t2/delete! :model/Database db-id)
         (is (zero? (t2/count :model/MetadataGenerationRun :database_id db-id)))
         (is (zero? (t2/count :model/MetadataGenerationProposal :field_id field-id))))))
-  (testing "deleting a user keeps runs and proposals and clears the user reference"
+  (testing "deleting a user keeps runs and clears the user reference"
     (mt/with-temp [:model/User     {user-id :id}  {}
                    :model/Database {db-id :id}    {}
                    :model/Table    {table-id :id} {:db_id db-id}
                    :model/Field    {field-id :id} {:table_id table-id}]
       (let [{run-id :id}      (insert-run! db-id :creator_id user-id)
-            {proposal-id :id} (insert-proposal! run-id table-id field-id :decided_by user-id)]
+            {proposal-id :id} (insert-proposal! run-id table-id field-id)]
         (t2/delete! :model/User user-id)
         (is (=? {:creator_id nil} (t2/select-one :model/MetadataGenerationRun run-id)))
-        (is (=? {:decided_by nil} (t2/select-one :model/MetadataGenerationProposal proposal-id)))))))
+        (is (some? (t2/select-one :model/MetadataGenerationProposal proposal-id)))))))

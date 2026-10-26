@@ -52,12 +52,20 @@
   [[(t2/table-name :model/FieldUserSettings) settings-alias]
    [:= (u/qualified-key settings-alias :field_id) (u/qualified-key field-alias :id)]])
 
+(def ^:private field-user-set-by-value-columns
+  "The flagged columns whose non-NULL user value means the user set it, whatever the flag. A node of an older version
+  writes a human `data_sensitivity` without `data_sensitivity_set`, which it does not know."
+  #{:data_sensitivity})
+
 (mu/defn- field-user-set-condition
   "Honey SQL test for whether the user set `column`, or nil when a non-NULL value says so itself."
   [column         :- (into [:enum] user-settable-field-columns)
    settings-alias :- :keyword]
   (if-let [flag (field-user-settings-flags column)]
-    [:= (u/qualified-key settings-alias flag) true]
+    (let [flag-set [:= (u/qualified-key settings-alias flag) true]]
+      (if (field-user-set-by-value-columns column)
+        [:or flag-set [:not= (u/qualified-key settings-alias column) nil]]
+        flag-set))
     (when (= column :coercion_strategy)
       [:not= (u/qualified-key settings-alias :effective_type) nil])))
 
@@ -92,7 +100,8 @@
   the test that [[field-query]] makes in SQL."
   [user-settings column]
   (if-let [flag (field-user-settings-flags column)]
-    (true? (get user-settings flag))
+    (or (true? (get user-settings flag))
+        (and (contains? field-user-set-by-value-columns column) (some? (get user-settings column))))
     (some? (get user-settings (if (= column :coercion_strategy) :effective_type column)))))
 
 (defn field-ai-set?

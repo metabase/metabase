@@ -138,7 +138,7 @@ export type MetadataGenerationProposal = {
 /**
  * One review. Give `accept` and `edits`, or `reject_all` with `database_id`. An edit replaces the proposed value and
  * accepts its proposal. `proposed_values` gives the proposed value the client saw: a proposal that a run changed
- * since is skipped as `changed`. `reject_all` rejects every pending proposal of the database.
+ * since is skipped as `changed`. `reject_all` deletes every pending proposal of the database.
  */
 export type ApplyMetadataGenerationProposalsRequest = {
   accept?: MetadataGenerationProposalId[];

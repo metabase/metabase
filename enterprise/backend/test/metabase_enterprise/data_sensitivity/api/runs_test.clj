@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-sensitivity.api.runs-test
   (:require
    [clojure.test :refer [deftest is testing]]
-   [metabase-enterprise.data-sensitivity.core-test :as core-test]
+   [metabase-enterprise.data-sensitivity.test-util :as ds.tu]
    [metabase.test :as mt]
    [toucan2.core :as t2])
   (:import
@@ -46,12 +46,12 @@
      (fn [db tables]
        (let [started (CountDownLatch. 1)
              block?  (atom true)]
-         (core-test/do-with-llm!
+         (ds.tu/do-with-llm!
           (fn [& args]
             (when @block?
               (.countDown started)
               (Thread/sleep 30000))
-            (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args))
+            (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args))
           (fn []
             (let [run (mt/user-http-request :crowberto :post 200 "ee/data-sensitivity/runs"
                                             {:database_id (:id db) :schemas ["S0"] :attributes ["data_sensitivity"]})]
@@ -91,8 +91,8 @@
     (do-with-temp-tables
      1
      (fn [db _tables]
-       (core-test/do-with-llm!
-        (core-test/canned-llm (constantly {}))
+       (ds.tu/do-with-llm!
+        (ds.tu/canned-llm (constantly {}))
         (fn []
           (testing "an unknown database is a 404"
             (mt/user-http-request :crowberto :post 404 "ee/data-sensitivity/runs" {:database_id Integer/MAX_VALUE}))
@@ -115,8 +115,8 @@
     (do-with-temp-tables
      4
      (fn [db tables]
-       (core-test/do-with-llm!
-        (core-test/canned-llm (constantly {}))
+       (ds.tu/do-with-llm!
+        (ds.tu/canned-llm (constantly {}))
         (fn []
           (testing "the whole database with the default attributes"
             (is (=? {:table_count        4

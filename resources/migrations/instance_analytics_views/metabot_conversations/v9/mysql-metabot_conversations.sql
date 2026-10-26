@@ -62,7 +62,7 @@ SELECT
                 WHEN 'unknown'                           THEN 'Unknown'
                 WHEN 'contextual_interestingness'        THEN 'Research'
                 WHEN 'exploration'                       THEN 'Research'
-                WHEN 'data_sensitivity_classification'   THEN 'Data Sensitivity'
+                WHEN 'metadata_generation'               THEN 'Metadata Generation'
                 ELSE aul.source
             END
      FROM ai_usage_log aul

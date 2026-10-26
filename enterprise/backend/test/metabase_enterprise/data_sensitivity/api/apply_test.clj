@@ -129,15 +129,13 @@
            (t2/update! :model/Field a-int {:active false})
            (is (= (assoc nothing :rejected 3)
                   (apply! {:reject_all true :database_id db})))
-           (testing "every pending proposal of active fields of the database is rejected, human-set ones too"
-             (is (= {human :rejected ds :rejected b-sem :rejected inactive :pending other :pending}
+           (testing "every pending proposal of active fields of the database is deleted, human-set ones too"
+             (is (= {human :deleted ds :deleted b-sem :deleted inactive :pending other :pending}
                     (statuses [human ds b-sem inactive other]))))
-           (testing "a rejection writes nothing and records who decided it"
+           (testing "a rejection writes nothing"
              (is (=? {:semantic_type :type/Name :ai_semantic_type nil} (settings a-text)))
-             (is (nil? (settings a-plain)))
-             (is (=? {:decided_by (mt/user->id :crowberto) :decided_at some?}
-                     (t2/select-one :model/MetadataGenerationProposal ds))))
-           (testing "rejected proposals are hidden from the review"
+             (is (nil? (settings a-plain))))
+           (testing "the review has no proposals of the database left"
              (is (= [] (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals/tables"
                                              :database-id db))))
            (testing "a second reject_all rejects nothing"
@@ -246,22 +244,18 @@
            (is (= #{:pending} (set (vals (statuses [key-field misfit missing])))))
            (is (nil? (settings a-fk)))))))))
 
-(deftest apply-does-not-accept-rejected-proposals-test
+(deftest apply-skips-fields-of-inactive-tables-test
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-run
-     (fn [run-id {:keys [a a-plain a-fk]}]
-       (let [desc (suggestion! run-id a a-plain :attribute :description :proposed_value "AI text"
-                               :status :rejected :decided_by (mt/user->id :crowberto))
-             key  (suggestion! run-id a a-fk :proposed_value "type/Category"
-                               :status :rejected :decided_by (mt/user->id :crowberto))]
-         (testing "a rejected proposal accepted by id is not written and is listed as changed"
-           (is (=? {:written 0 :failed 1 :failures [{:proposal_id desc :reason "changed"}]}
-                   (apply! {:accept [desc] :proposed_values {desc "AI text"}})))
-           (is (nil? (settings a-plain)))
-           (is (= {desc :rejected} (statuses [desc]))))
-         (testing "a rejected proposal accepted by id stays rejected when it cannot be written"
-           (is (=? {:written 0} (apply! {:accept [key]})))
-           (is (= {key :rejected} (statuses [key])))))))))
+     (fn [run-id {:keys [b b-text]}]
+       (let [desc (suggestion! run-id b b-text :attribute :description :proposed_value "Hidden.")]
+         (t2/update! :model/Table b {:active false})
+         (is (= {:written 0 :rejected 0 :failed 1
+                 :failures [{:proposal_id desc :field_id b-text :attribute "description" :reason "field_not_found"}]}
+                (apply! {:accept [desc]})))
+         (testing "a field of an inactive table gets no AI value and its proposal stays pending"
+           (is (nil? (:ai_description (settings b-text))))
+           (is (= {desc :pending} (statuses [desc])))))))))
 
 (deftest apply-counts-written-proposals-when-an-event-handler-fails-test
   (mt/with-premium-features #{:data-sensitivity}
@@ -358,7 +352,7 @@
        (field-user-settings/upsert-user-settings (t2/select-one :model/Field a-text) {:semantic_type :type/Name})
        (let [sem   (suggestion! run-id a a-int :proposed_value "type/Quantity")
              ds    (suggestion! run-id a a-plain :attribute :data_sensitivity
-                                :proposed_value "PII" :status :rejected)
+                                :proposed_value "PII")
              desc  (suggestion! run-id a a-plain :attribute :description
                                 :proposed_value "A field.")
              human (suggestion! run-id a a-text

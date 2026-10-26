@@ -4,8 +4,6 @@
    [metabase-enterprise.data-sensitivity.models.metadata-generation-proposal :as proposal]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
-   [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -18,13 +16,6 @@
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
-(mu/defn active-schema?
-  "Whether the Database with `database-id` has an active Table in `schema`."
-  [database-id :- ::lib.schema.id/database
-   schema      :- :string]
-  (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
-                            :where [:and [:= :db_id database-id] [:= :active true] [:= :schema schema]]}))
-
 (mu/defn database
   "The Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
@@ -36,14 +27,14 @@
   [:and
    table-condition
    [:= :active true]
-   [:not= :visibility_type "retired"]
+   [:not-in :visibility_type ["retired" "sensitive" "hidden"]]
    [:= :nfc_path nil]
    [:= :parent_id nil]])
 
 (mu/defn active-fields
-  "The active, non-retired, top-level Fields of `table-id`, ordered by position then id. Hidden and sensitive fields
-  are included. JSON child fields are excluded: SQL unfolding sets only `nfc_path`, Mongo sets `nfc_path` and
-  `parent_id`."
+  "The active, top-level Fields of `table-id` whose `visibility_type`, as users see it, is not retired, sensitive or
+  hidden, ordered by position then id. Sync, FieldValues and Metabot also skip the values of sensitive and hidden
+  fields. JSON child fields are excluded: SQL unfolding sets only `nfc_path`, Mongo sets `nfc_path` and `parent_id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Field
              {:from     [(warehouse-schema-overlay/field-query)]
@@ -79,21 +70,13 @@
                                                 {:from [(warehouse-schema-overlay/table-query)]})))
 
 (mu/defn active-tables
-  "The active Tables of `database-id`, restricted to `schema` when it is non-nil, ordered by schema then name."
-  [database-id :- ::lib.schema.id/database
-   schema      :- [:maybe :string]]
+  "The active Tables of `database-id` with no `visibility_type` as users see it, as sync selects them, ordered by
+  schema then name."
+  [database-id :- ::lib.schema.id/database]
   (t2/select :model/Table
              {:from     [(warehouse-schema-overlay/table-query)]
-              :where    (cond-> [:and [:= :db_id database-id] [:= :active true]]
-                          schema (conj [:= :schema schema]))
+              :where    [:and [:= :db_id database-id] [:= :active true] [:= :visibility_type nil]]
               :order-by [[:schema :asc] [:name :asc]]}))
-
-(mu/defn commit-labels!
-  "In one transaction, set the `data_sensitivity` of every Field in `field-ids-by-label` to its label."
-  [field-ids-by-label :- [:map-of ::lib.schema.metadata/column.data-sensitivity [:sequential ::lib.schema.id/field]]]
-  (t2/with-transaction [_conn]
-    (doseq [[label field-ids] field-ids-by-label]
-      (t2/update! :model/Field :id [:in field-ids] {:data_sensitivity label}))))
 
 ;;; Metadata generation runs
 
@@ -152,26 +135,28 @@
    [:proposals  [:sequential ::proposal/new-proposal]]])
 
 (defn- upsert-table-proposals!
-  "Make the proposals of `table_id` for `attributes` the ones in `proposals`: a new proposal replaces the pending or
-  rejected row of its field and attribute, and a row that `proposals` does not have is deleted. Rows of other tables
-  and other attributes do not change."
+  "Make the proposals of `table_id` for `attributes` the ones in `proposals`: a new proposal replaces the row of its
+  field and attribute, and a row that `proposals` does not have is deleted. Rows of other tables
+  and other attributes do not change. When an apply deletes an existing row before its update, the new proposal is
+  inserted."
   [{:keys [table_id attributes proposals]}]
   (let [existing (into {}
                        (map (juxt (juxt :field_id :attribute) :id))
                        (t2/select [:model/MetadataGenerationProposal :id :field_id :attribute]
                                   :table_id table_id :attribute [:in attributes]))
         by-key   (into {} (map (juxt (juxt :field_id :attribute) identity)) proposals)
-        gone     (vec (keep (fn [[k id]] (when-not (by-key k) id)) existing))
-        inserts  (vec (remove #(existing ((juxt :field_id :attribute) %)) proposals))]
+        gone     (vec (keep (fn [[k id]] (when-not (by-key k) id)) existing))]
     (when (seq gone)
       (t2/delete! :model/MetadataGenerationProposal :id [:in gone]))
-    (doseq [[k id] existing
-            :let [p (by-key k)]
-            :when p]
-      (t2/update! :model/MetadataGenerationProposal id
-                  (assoc (select-keys p [:last_run_id :proposed_value :confidence :reasoning])
-                         :status :pending :decided_by nil :decided_at nil)))
-    (when (seq inserts)
+    (when-let [inserts (not-empty
+                        (into []
+                              (filter (fn [p]
+                                        (let [id (existing ((juxt :field_id :attribute) p))]
+                                          (or (nil? id)
+                                              (zero? (t2/update! :model/MetadataGenerationProposal id
+                                                                 (select-keys p [:last_run_id :proposed_value
+                                                                                 :confidence :reasoning])))))))
+                              proposals))]
       (t2/insert! :model/MetadataGenerationProposal inserts))))
 
 (mu/defn record-table! :- :boolean
@@ -262,13 +247,20 @@
 ;;; Apply
 
 (mu/defn active-fields-by-id :- [:map-of ::lib.schema.id/field (ms/InstanceOf :model/Field)]
-  "A map of field id to the active Field, with the values readers see and `:can_write` hydrated, for `field-ids`."
+  "A map of field id to the active Field of an active Table, with the values readers see and `:can_write` hydrated,
+  for `field-ids`."
   [field-ids :- [:sequential ::lib.schema.id/field]]
   (if (seq field-ids)
     (into {}
           (map (juxt :id identity))
-          (t2/hydrate (t2/select :model/Field :id [:in field-ids] :active true
-                                 {:from [(warehouse-schema-overlay/field-query)]})
+          (t2/hydrate (t2/select :model/Field
+                                 {:from  [(warehouse-schema-overlay/field-query)]
+                                  :where [:and
+                                          [:in :id field-ids]
+                                          [:= :active true]
+                                          [:in :table_id ^:allow-subquery {:select [:id]
+                                                                           :from   [:metabase_table]
+                                                                           :where  [:= :active true]}]]})
                       :can_write))
     {}))
 
@@ -287,18 +279,9 @@
   (when (seq ids)
     (t2/delete! :model/Dimension :id [:in ids])))
 
-(mu/defn set-proposal-status! :- :int
-  "Set `status` on the proposals with `ids`, decided by `user-id` now. Returns the number of rows updated."
-  [ids     :- [:sequential ms/PositiveInt]
-   status  :- ::proposal/status
-   user-id :- ms/PositiveInt]
-  (if (seq ids)
-    (t2/update! :model/MetadataGenerationProposal :id [:in ids]
-                {:status status :decided_by user-id :decided_at (mi/now)})
-    0))
-
-(mu/defn delete-proposals!
-  "Delete the proposals with `ids`."
+(mu/defn delete-proposals! :- :int
+  "Delete the proposals with `ids`. Returns the number of rows deleted."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (t2/delete! :model/MetadataGenerationProposal :id [:in ids])))
+  (if (seq ids)
+    (t2/delete! :model/MetadataGenerationProposal :id [:in ids])
+    0))
