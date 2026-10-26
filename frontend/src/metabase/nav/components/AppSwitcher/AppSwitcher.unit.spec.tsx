@@ -312,6 +312,15 @@ describe("ProfileLink", () => {
       });
     });
 
+    it("should name the about entry after the application", async () => {
+      await setup();
+      await openHelpSubmenu();
+
+      expect(
+        screen.getByRole("menuitem", { name: "About Metabase" }),
+      ).toBeInTheDocument();
+    });
+
     describe("help link", () => {
       describe("when the setting is set to hidden", () => {
         it("should return not be visible", async () => {
