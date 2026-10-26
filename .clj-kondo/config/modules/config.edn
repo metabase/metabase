@@ -2871,6 +2871,7 @@
            warehouses.schema}
    :model-imports #{:model/Database
                     :model/Field
+                    :model/FieldUserSettings
                     :model/FieldValues
                     :model/Table}}
 
@@ -3306,7 +3307,7 @@
   warehouse-schema-overlay
   {:team "UX West"
    :api  #{metabase.warehouse-schema-overlay.core}
-   :uses #{util}
+   :uses #{premium-features util}
    :model-imports #{:model/Field
                     :model/FieldUserSettings
                     :model/Table
@@ -3857,20 +3858,26 @@
 
   enterprise/data-sensitivity
   {:team "Graphy"
-   :api  #{metabase-enterprise.data-sensitivity.api}
+   :api  #{metabase-enterprise.data-sensitivity.api metabase-enterprise.data-sensitivity.init}
    :uses #{api
            database-routing
            driver
+           events
            lib.schema
            metabot
            models
            permissions
+           premium-features
            query-processor
+           request
+           run-tracking
+           task
            util
            util.config
            warehouse-schema-overlay
            warehouses.schema}
    :model-imports #{:model/Database
+                    :model/Dimension
                     :model/Field
                     :model/FieldUserSettings
                     :model/Table}}

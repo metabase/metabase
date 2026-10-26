@@ -169,11 +169,10 @@
       (is (= 1 (sync.data-sensitivity/reset-data-sensitivity! orders)))
       (is (nil? (sync-label total)))
       (is (= :PII (sync-label ssn))))
-    (testing "a database scope clears categories and PUBLIC alike, including fields with a label-less mirror row"
-      (is (= 3 (sync.data-sensitivity/reset-data-sensitivity! db)))
-      (is (= [nil nil nil] (map sync-label [ssn foo email]))))
-    (testing "a label backed by the mirror is human-set; the reset clears only the classifier's own label"
-      (is (= :PUBLIC (sync-label notes)))
+    (testing "a database scope clears categories and PUBLIC alike, including fields with a user-settings row"
+      (is (= 4 (sync.data-sensitivity/reset-data-sensitivity! db)))
+      (is (= [nil nil nil nil] (map sync-label [ssn foo notes email]))))
+    (testing "a human label lives in the user settings and is untouched"
       (is (= :PHI (mirror-label notes)))
       (is (= :PHI (label notes))))
     (testing "other databases are untouched"
@@ -194,11 +193,11 @@
         (sync.data-sensitivity/scan-data-sensitivity! db :force? true)
         (is (= :PII (sync-label ssn))))
       (testing "a reset scan recomputes it under the current rules and reports the reset count"
-        (is (= {:fields-scanned 1 :fields-labeled 1 :fields-failed 0 :fields-reset 1}
+        (is (= {:fields-scanned 2 :fields-labeled 2 :fields-failed 0 :fields-reset 2}
                (sync.data-sensitivity/scan-data-sensitivity! db :reset? true)))
         (is (= :SEC_KEY (sync-label ssn))))
-      (testing "the user's label in the mirror is untouched, and is still what readers see"
-        (is (= :SEC_KEY (sync-label notes)) "reclassified by the earlier forced scan, which also revisits PUBLIC fields")
+      (testing "the user's label is untouched, and is still what readers see"
+        (is (= :SEC_KEY (sync-label notes)))
         (is (= :PHI (mirror-label notes)))
         (is (= :PHI (label notes)))))))
 

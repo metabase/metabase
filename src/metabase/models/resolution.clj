@@ -77,6 +77,8 @@
     :model/McpSessionLog                     metabase.mcp.models.mcp-session-log
     :model/McpToolCallLog                    metabase.mcp.models.mcp-tool-call-log
     :model/Measure                           metabase.measures.models.measure
+    :model/MetadataGenerationProposal        metabase-enterprise.data-sensitivity.models.metadata-generation-proposal
+    :model/MetadataGenerationRun             metabase-enterprise.data-sensitivity.models.metadata-generation-run
     :model/TableIndex                        metabase.indexes.models.table-index
     :model/Metabot                           metabase.metabot.models.metabot
     :model/MetabotConversation               metabase.metabot.models.metabot-conversation

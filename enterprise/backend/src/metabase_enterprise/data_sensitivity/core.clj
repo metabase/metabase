@@ -31,6 +31,11 @@
 
 (set! *warn-on-reflection* true)
 
+(defn bad-request
+  "An exception for a 400 response with `message`."
+  [message]
+  (ex-info message {:status-code 400}))
+
 (def required-permission
   "The Metabot permission the structured call declares. Granted by the all-yes binding, so it only labels the call;
   the API limits callers to superusers instead."
@@ -59,12 +64,13 @@
 
 (mr/def ::parse-counts
   "Model output the parse discarded: entries naming a field the table does not have, fields with an invalid
-  category or no entry at all, and invalid semantic types."
+  category or no entry at all, invalid semantic types, and semantic types that do not fit the field's type."
   [:map
    [:dropped_unknown  :int]
    [:dropped_invalid  :int]
    [:dropped_missing  :int]
-   [:semantic_dropped :int]])
+   [:semantic_dropped :int]
+   [:semantic_misfit  :int]])
 
 (mr/def ::field-result
   [:map
@@ -141,7 +147,7 @@
   {:fields 0 :agree 0 :disagree 0 :new 0 :abstain 0 :dropped 0 :semantic_changed 0 :committed 0})
 
 (def ^:private zero-parse-counts
-  {:dropped_unknown 0 :dropped_invalid 0 :dropped_missing 0 :semantic_dropped 0})
+  {:dropped_unknown 0 :dropped_invalid 0 :dropped_missing 0 :semantic_dropped 0 :semantic_misfit 0})
 
 ;;; Pre-flight
 
@@ -207,11 +213,12 @@
      :semantic_changed (count (filter :semantic_changed fields))
      :committed        (count (filter :committed fields))}))
 
-(defn- parse-counts [{:keys [dropped-unknown dropped-invalid dropped-missing semantic-dropped]}]
+(defn- parse-counts [{:keys [dropped-unknown dropped-invalid dropped-missing semantic-dropped semantic-misfit]}]
   {:dropped_unknown  dropped-unknown
    :dropped_invalid  dropped-invalid
    :dropped_missing  dropped-missing
-   :semantic_dropped semantic-dropped})
+   :semantic_dropped semantic-dropped
+   :semantic_misfit  semantic-misfit})
 
 ;;; Commit
 
@@ -252,7 +259,7 @@
                    (.initCause e))))
         (or (ex-message e) (str (class e)))))))
 
-(defn- sample-connection-error
+(defn sample-connection-error
   "When `opts` ask for values and `database` cannot connect, the connection error; otherwise nil. Tested once per run
   so a dead database costs one connection timeout rather than one per table."
   [database opts]
@@ -263,7 +270,7 @@
 
 ;;; Classify
 
-(defn- assert-unique-names!
+(defn assert-unique-names!
   "Throw when two packet fields share a name. The model keys its entries by name, so a duplicate would join one
   entry to two fields."
   [table fields]

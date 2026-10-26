@@ -366,16 +366,37 @@
              :active false {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn incomplete-analysis-fields-for-table
-  "The active, visible Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not yet analyzed."
-  [table-id            :- ::lib.schema.id/table
-   fingerprint-version :- :int]
-  (t2/select :model/Field
-             :table_id table-id
-             :active true
-             :visibility_type [:not-in ["sensitive" "retired"]]
-             :fingerprint_version fingerprint-version
-             :last_analyzed nil
-             {:from [(warehouse-schema-overlay/field-query)]}))
+  "The active, visible Fields of the Table with `table-id` fingerprinted at `fingerprint-version` but not yet analyzed,
+  as readers see them. With `{:deterministic-ai-columns? true}`, `semantic_type`, `description` and
+  `data_sensitivity` are sync's own values: the view of the classifiers, which write that layer under the human and
+  AI values. The other columns include user settings either way, such as a coercion."
+  ([table-id            :- ::lib.schema.id/table
+    fingerprint-version :- :int]
+   (incomplete-analysis-fields-for-table table-id fingerprint-version nil))
+  ([table-id            :- ::lib.schema.id/table
+    fingerprint-version :- :int
+    {:keys [deterministic-ai-columns?]} :- [:maybe [:map {:closed true}
+                                                    [:deterministic-ai-columns? {:optional true} :boolean]]]]
+   (t2/select :model/Field
+              :table_id table-id
+              :active true
+              :visibility_type [:not-in ["sensitive" "retired"]]
+              :fingerprint_version fingerprint-version
+              :last_analyzed nil
+              {:from [(warehouse-schema-overlay/field-query
+                       {:deterministic-ai-columns? (boolean deterministic-ai-columns?)})]})))
+
+(mu/defn layered-semantic-types-for-table :- [:map-of ::lib.schema.id/field [:maybe :keyword]]
+  "The semantic type that readers see for each Field of the Table with `table-id` that has a human or accepted AI
+  semantic type. Fields that show sync's own semantic type are not in the map."
+  [table-id :- ::lib.schema.id/table]
+  (t2/select-pk->fn :semantic_type :model/Field
+                    {:from       [(warehouse-schema-overlay/field-query)]
+                     :inner-join [[(t2/table-name :model/FieldUserSettings) :layer]
+                                  [:= :layer.field_id :metabase_field.id]]
+                     :where      [:and
+                                  [:= :metabase_field.table_id table-id]
+                                  (warehouse-schema-overlay/field-layered-condition :semantic_type :layer)]}))
 
 (mu/defn name-field-count-for-table
   "The number of active, visible Fields of the Table with `table-id` whose semantic type is `:type/Name`."
@@ -564,7 +585,7 @@
 (mu/defn mark-fk!
   "Set the `fk_target_field_id` of the Field at `[fk-table-schema fk-table-name fk-column-name]` in the Database with
   `db-id` to the id of the Field at `[pk-table-schema pk-table-name pk-column-name]`, unless it already points there.
-  Returns 1 if a Field was updated, 0 otherwise."
+  Returns the id of the updated Field, or nil."
   [db-id            :- ::lib.schema.id/database
    fk-table-schema  :- [:maybe :string]
    fk-table-name    :- :string
@@ -577,10 +598,11 @@
         field (when (and fk-id pk-id)
                 (t2/select-one [:model/Field :id :fk_target_field_id :has_field_values] :id fk-id
                                {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))]
-    (if (and field (not= pk-id (:fk_target_field_id field)))
-      (t2/update! :model/Field fk-id (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
-                                       (= :auto-list (:has_field_values field)) (assoc :has_field_values nil)))
-      0)))
+    (when (and field
+               (not= pk-id (:fk_target_field_id field))
+               (pos? (t2/update! :model/Field fk-id (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
+                                                      (= :auto-list (:has_field_values field)) (assoc :has_field_values nil)))))
+      fk-id)))
 
 (defn- data-sensitivity-to-scan-clause
   "Honey SQL clause matching Fields the data-sensitivity classifier still has to scan: unlabeled ones, plus those it
@@ -634,15 +656,9 @@
   (t2/update! :model/Field field-id {:data_sensitivity data-sensitivity}))
 
 (def ^:private classifier-data-sensitivity-clause
-  "Honey SQL clause matching Fields whose non-null `data_sensitivity` has no value in the `FieldUserSettings` mirror,
-  i.e. was written by the data-sensitivity classifier rather than a user."
-  [:and
-   [:not= :data_sensitivity nil]
-   [:not [:exists ^:allow-subquery {:select [1]
-                                    :from   [[:metabase_field_user_settings :s]]
-                                    :where  [:and
-                                             [:= :s.field_id :metabase_field.id]
-                                             [:not= :s.data_sensitivity nil]]}]]])
+  "Honey SQL clause matching Fields with a non-null `data_sensitivity` in `metabase_field`. Only the deterministic
+  classifier writes that column; human and AI values live in `metabase_field_user_settings`."
+  [:not= :data_sensitivity nil])
 
 (mu/defn reset-classifier-data-sensitivity-for-table!
   "Clear the classifier-written `data_sensitivity` (see [[classifier-data-sensitivity-clause]]) of the Fields of the

@@ -18,10 +18,12 @@
    [metabase.permissions.core :as perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.util :as u]
+   [metabase.util.jvm :as u.jvm]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouse-schema.models.field :as field]
    [metabase.warehouse-schema.models.field-values :as field-values]))
 
@@ -68,6 +70,7 @@
    [:display_name    [:maybe :string]]
    [:description     [:maybe :string]]
    [:base_type       :keyword]
+   [:effective_type  {:optional true} [:maybe :keyword]]
    [:database_type   [:maybe :string]]
    [:semantic_type   [:maybe :keyword]]
    [:position        [:maybe :int]]
@@ -75,6 +78,7 @@
    [:fk_target       [:maybe :string]]
    [:fingerprint     [:maybe ::fingerprint]]
    [:human_set       [:set :keyword]]
+   [:ai_set          {:optional true} [:set :keyword]]
    [:current         [:map {:closed true}
                       [:data_sensitivity [:maybe :keyword]]
                       [:human_set       :boolean]]]
@@ -99,7 +103,10 @@
              [:error      [:maybe :string]]]]])
 
 (defn- human-set-keys [user-settings]
-  (into #{} (filter #(some? (get user-settings %))) field/field-user-settings))
+  (into #{} (filter #(warehouse-schema-overlay/field-user-set? user-settings %)) field/field-user-settings))
+
+(defn- ai-set-keys [user-settings]
+  (into #{} (filter #(warehouse-schema-overlay/field-ai-set? user-settings %)) (keys warehouse-schema-overlay/field-ai-columns)))
 
 (defn- fk-targets
   "Map of target field id -> `schema.table.field` for every `fk_target_field_id` among `fields`."
@@ -163,7 +170,7 @@
   "Whether an `InterruptedException` is `e` or in its cause chain. Throwing it clears the interrupt flag of the thread,
   so this is the only trace of the interrupt that caught it."
   [^Throwable e]
-  (boolean (some #(instance? InterruptedException %) (take-while some? (iterate ex-cause e)))))
+  (boolean (some #(instance? InterruptedException %) (u.jvm/full-exception-chain e))))
 
 (defn- run-sample
   "Run the row sample with a cancel channel of its own, which the query processor uses instead of a new one. Returns
@@ -228,17 +235,19 @@
     "this database uses database routing"))
 
 (defn- field-entry
-  "The packet entry for `field`, with its non-nil user-settings values taking precedence over the Field row.
-  `:human_set` names the columns a user has set."
+  "The packet entry for `field`, with the user-settings values a person set taking precedence over the Field row, a
+  cleared value included. `:human_set` names the columns a user has set, `:ai_set` the columns that show an accepted AI
+  value."
   [{:keys [id] :as field} {:keys [user-settings fk-targets cached sampled]}]
   (let [settings  (get user-settings id)
         human-set (human-set-keys settings)
-        field     (merge field (u/select-keys-when settings :non-nil field/field-user-settings))]
+        field     (merge field (select-keys settings human-set))]
     {:id              id
      :name            (:name field)
      :display_name    (:display_name field)
      :description     (:description field)
      :base_type       (:base_type field)
+     :effective_type  (:effective_type field)
      :database_type   (:database_type field)
      :semantic_type   (:semantic_type field)
      :position        (:position field)
@@ -246,6 +255,7 @@
      :fk_target       (some->> (:fk_target_field_id field) (get fk-targets))
      :fingerprint     (fingerprint-summary (:fingerprint field))
      :human_set       human-set
+     :ai_set          (ai-set-keys settings)
      :current         {:data_sensitivity (:data_sensitivity field)
                        :human_set       (contains? human-set :data_sensitivity)}
      :cached_values   (get cached id)

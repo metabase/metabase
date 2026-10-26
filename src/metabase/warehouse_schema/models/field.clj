@@ -132,7 +132,9 @@
 
 (t2/define-after-select :model/Field
   [field]
-  (dissoc field :is_defective_duplicate :unique_field_helper))
+  (-> field
+      (dissoc :is_defective_duplicate :unique_field_helper)
+      warehouse-schema-overlay/fold-ai-proposals))
 
 (defn- enforce-effective-type-invariant
   "GHY-3388 invariant: a Field row with no coercion_strategy must have effective_type=base_type.
@@ -428,6 +430,18 @@
    fields k
    #(warehouse-schema.db/fields-by-id (map :parent_id fields))
    :parent_id))
+
+(methodical/defmethod t2/batched-hydrate [:model/Field :data_sensitivity_source]
+  "The layer the Field's `:data_sensitivity` comes from: `:human` (also when a person cleared it), `:ai`,
+  `:deterministic`, or nil when no layer has a value; see [[warehouse-schema-overlay/field-value-source]]."
+  [_model k fields]
+  (mi/instances-with-hydrated-data
+   fields k
+   #(into {}
+          (map (fn [{:keys [id data_sensitivity] :as layers}]
+                 [id (warehouse-schema-overlay/field-value-source layers :data_sensitivity data_sensitivity)]))
+          (warehouse-schema.db/field-data-sensitivity-layers (keep :id fields)))
+   :id))
 
 ;;; ------------------------------------------------- Serialization -------------------------------------------------
 

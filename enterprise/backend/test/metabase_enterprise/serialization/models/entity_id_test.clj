@@ -82,6 +82,8 @@
     :model/McpSessionLog
     :model/McpToolCallLog
     :model/FieldValues
+    :model/MetadataGenerationProposal
+    :model/MetadataGenerationRun
     :model/MetabotConversation
     :model/MetabotFeedback
     :model/MetabotGroupLimit
