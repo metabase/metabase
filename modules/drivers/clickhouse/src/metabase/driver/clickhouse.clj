@@ -191,6 +191,18 @@
          :jdbc_metadata_use_show_statements false}
         (sql-jdbc.common/handle-additional-options details :separator-style :url))))
 
+(defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse
+  [driver database]
+  ;; A ClickHouse connection is an HTTP client that does not contact the server when c3p0 acquires
+  ;; it, so it will succeed even if the server is down, whereas other drivers would fail here.
+  ;; However the `testConnectionOnCheckout` test does contact the server, so it will fail if the
+  ;; server is down. Then c3p0 will continue to acquire and test new connections, flooding the logs
+  ;; and causing a stack overflow. Since the connection is an HTTP client, there's no server state
+  ;; that can go stale on the connection so the test can be disabled (#85512).
+  (merge
+   ((get-method sql-jdbc.conn/data-warehouse-connection-pool-properties :sql-jdbc) driver database)
+   {"testConnectionOnCheckout" false}))
+
 (defmethod driver/database-supports? [:clickhouse :uploads] [_driver _feature db]
   (let [{:keys [cloud single-node]} (clickhouse-version/dbms-version db)]
     (boolean (or cloud single-node))))

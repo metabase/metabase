@@ -142,11 +142,13 @@
   [query :- ::lib.schema/query]
   (let [mp          (lib.metadata/->metadata-provider query)
         bad-sources (volatile! #{})
+        ;; `mu/defn` doesn't validate input in prod, so a malformed id (e.g. "card__1") can get here: report the
+        ;; error, but only name the source when it's a real id
         flag!       (fn [error entity-type entity-id]
                       (vswap! bad-sources conj
-                              (assoc error
-                                     :source-entity-type entity-type
-                                     :source-entity-id   entity-id)))]
+                              (cond-> error
+                                (pos-int? entity-id) (assoc :source-entity-type entity-type
+                                                            :source-entity-id   entity-id))))]
     (lib.walk/walk-stages
      query
      (fn [_query _path stage]

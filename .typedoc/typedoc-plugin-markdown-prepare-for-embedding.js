@@ -13,6 +13,9 @@ const convertSectionNameToSnippetName = (sectionName) =>
 
 /**
  * A typedoc plugin that prepares `.md` files for embedding
+ * - it makes links to other API pages absolute, so they resolve the same from every page that
+ *   includes a snippet. It's done here rather than with `publicPath`, because typedoc-plugin-markdown
+ *   counts the link urls when deciding to break a union over several lines.
  * - it wraps content of all sections into `jekyll_include_plugin` snippet comments,
  *   so such snippets can be included into other `.md` files.
  *   See: https://github.com/flant/jekyll_include_plugin/tree/master
@@ -21,6 +24,13 @@ export function load(app) {
   app.renderer.on(MarkdownPageEvent.END, (page) => {
     const isMarkdownPage = page.url.endsWith(".md");
     const isIndexFile = page.url.endsWith("index.md");
+
+    if (isMarkdownPage) {
+      page.contents = page.contents.replaceAll(
+        "](./api/",
+        "](/docs/latest/embedding/sdk/api/",
+      );
+    }
 
     if (!isMarkdownPage || isIndexFile) {
       return;

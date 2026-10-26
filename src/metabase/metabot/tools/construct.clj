@@ -1229,14 +1229,17 @@
 
 (defn- chart-instructions
   "What to tell the model to do with the chart it just got."
-  [chart-id]
+  [chart-id query-id]
   (let [link (te/link "Chart" "metabase://chart/" chart-id)]
     (te/lines
      "Your query and chart have been created successfully."
      ""
      "Next steps to present the chart to the user:"
      (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
-     "- If creating multiple charts, present all chart links")))
+     "- If creating multiple charts, present all chart links"
+     (when (shared/tool-offered? "run_query")
+       (str "- To state any of its values, call `run_query` with `query_id` `" query-id
+            "` first. Call it without telling the user you are doing so.")))))
 
 (defrecord ConstructNotebookQueryTool []
   tools/Tool
@@ -1271,7 +1274,7 @@
                                 {:query-id      (:query-id structured)
                                  :chart-type    chart-type
                                  :queries-state {(:query-id structured) (:query structured)}})
-              instruction-text (chart-instructions (:chart-id chart))]
+              instruction-text (chart-instructions (:chart-id chart) (:query-id structured))]
           {:output            (tool-output (structured->chart-xml structured (:chart-id chart) chart-type)
                                            instruction-text)
            :structured-output (assoc structured

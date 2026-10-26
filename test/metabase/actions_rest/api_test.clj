@@ -9,12 +9,15 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.permissions.core :as perms]
+   [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.test-util :as perms.test-util]
    [metabase.search.core :as search]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util :as u]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -355,7 +358,7 @@
                                           {:dataset_query (write-query query-db-id)}))))))))))
 
 (deftest action-update-cannot-repoint-a-query-action-with-a-blanked-query-test
-  (testing "PUT /api/action/:id checks actions-enabled on a database_id that no query overrides"
+  (testing "PUT /api/action/:id can't repoint a query action whose query has no database"
     (do-with-actions-enabled-on-model-db-only!
      (fn [model-db-id other-db-id]
        (mt/with-model-cleanup [:model/Action]
@@ -366,9 +369,9 @@
              (testing "blanking the query leaves the action on the database it was created against"
                (is (=? {:database_id model-db-id}
                        (mt/user-http-request :crowberto :put 200 url {:dataset_query {}}))))
-             (testing "the database_id that would now be written through is checked"
-               (is (= "Actions are not enabled."
-                      (mt/user-http-request :crowberto :put 400 url {:database_id other-db-id}))))
+             (testing "a database_id in the body is dropped"
+               (is (=? {:database_id model-db-id}
+                       (mt/user-http-request :crowberto :put 200 url {:database_id other-db-id}))))
              (is (=? {:database_id model-db-id}
                      (mt/user-http-request :crowberto :get 200 url))))))))))
 
@@ -530,8 +533,8 @@
               (is (=? {:errors {:name "string"},
                        :specific-errors {:name ["missing required key, received: nil"]}}
                       (mt/user-http-request :crowberto :post 400 "action" {:type "query"})))
-              (is (=? {:specific-errors {:model_id ["missing required key, received: nil"]}}
-                      (mt/user-http-request :crowberto :post 400 "action" {:type "implicit" :name "test"}))))))))))
+              (is (= "An implicit action needs a table."
+                     (mt/user-http-request :crowberto :post 400 "action" {:type "implicit" :name "test"}))))))))))
 
 (deftest model-actions-cannot-be-archived-test
   (testing "a model's action can't be archived, only deleted"
@@ -585,7 +588,6 @@
   {:name          "Rename Category"
    :type          "query"
    :collection_id collection-id
-   :database_id   (mt/id)
    :dataset_query {:database (mt/id)
                    :type     "native"
                    :native   {:query         "UPDATE categories SET name = {{name}} WHERE id = {{id}}"
@@ -619,6 +621,81 @@
                    (-> (mt/run-mbql-query categories {:fields [$name] :filter [:= $id 1]})
                        mt/rows
                        ffirst)))))))))
+
+(deftest query-action-database-is-its-query-database-test
+  (testing "a query action's database is always its query's: a database_id in a create or update body is dropped"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (mt/with-temp [:model/Database {other-db-id :id} {}]
+          (let [created (mt/user-http-request :crowberto :post 200 "action"
+                                              (assoc (model-less-query-action nil) :database_id other-db-id))
+                path    (str "action/" (:id created))]
+            (is (=? {:database_id (mt/id)} created))
+            (is (=? {:database_id (mt/id)}
+                    (mt/user-http-request :crowberto :put 200 path {:database_id other-db-id})))
+            (is (= (mt/id) (t2/select-one-fn :database_id :model/QueryAction :action_id (:id created)))))))))
+  (testing "a query action needs a query"
+    (mt/with-actions-test-data-and-actions-enabled
+      (is (= "Must provide a dataset_query for query actions"
+             (mt/user-http-request :crowberto :post 400 "action"
+                                   (dissoc (model-less-query-action nil) :dataset_query)))))))
+
+(defn- table-query
+  "A query of the test Table `table-key`."
+  [table-key]
+  (let [mp (mt/metadata-provider)]
+    (lib/query mp (lib.metadata/table mp (mt/id table-key)))))
+
+(deftest implicit-action-without-model-test
+  (testing "an implicit action without a model writes to its table, and a reader of its collection who can query the table runs and prefills it"
+    (mt/with-actions-test-data-tables #{"categories" "venues"}
+      (mt/with-actions-test-data-and-actions-enabled
+        (perms.test-util/with-restored-perms!
+          (mt/with-model-cleanup [:model/Action]
+            (mt/with-temp [:model/Collection {coll-id :id} {:namespace "data-actions"}]
+              (let [create!  (fn [kind]
+                               (mt/user-http-request :crowberto :post 200 "action"
+                                                     {:name "Table action" :type "implicit" :kind kind
+                                                      :table_id (mt/id :categories) :collection_id coll-id}))
+                    update   (create! "row/update")
+                    path     (str "action/" (:id update))]
+                (is (=? {:model_id    nil
+                         :table_id    (mt/id :categories)
+                         :database_id (mt/id)
+                         :parameters  [{:id "id"} {:id "name"}]}
+                        update))
+                (perms/grant-collection-read-permissions! (perms/all-users-group) coll-id)
+                (mt/with-no-data-perms-for-all-users!
+                  (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/view-data :unrestricted)
+                  (testing "prefilling reads the row as the user, so without query access to the table it fills in nothing"
+                    (is (= {} (mt/user-http-request :rasta :post 200 (str path "/execute/values") {:parameters {"id" 1}}))))
+                  (data-perms/set-database-permission! (perms/all-users-group) (mt/id) :perms/create-queries :query-builder)
+                  (is (= {:id 1 :name "African"}
+                         (mt/user-http-request :rasta :post 200 (str path "/execute/values") {:parameters {"id" 1}})))
+                  (is (=? {:rows-updated 1}
+                          (mt/user-http-request :rasta :post 200 (str path "/execute")
+                                                {:parameters {:id 1 :name "Renamed Category"}}))))
+                (is (= {:id 1 :name "Renamed Category"}
+                       (mt/user-http-request :crowberto :post 200 (str path "/execute/values") {:parameters {"id" 1}})))
+                (testing "its table can be changed"
+                  (is (=? {:table_id (mt/id :venues)}
+                          (mt/user-http-request :crowberto :put 200 path {:table_id (mt/id :venues)}))))))))))))
+
+(deftest implicit-insert-returns-only-action-columns-test
+  (testing "the row an implicit insert returns has only the primary key and the columns the action has fields for, so no sensitive column"
+    (mt/with-actions-test-data-tables #{"venues" "categories"}
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-temp-vals-in-db :model/Field (mt/id :venues :price) {:visibility_type "sensitive"}
+          (mt/with-model-cleanup [:model/Action]
+            (let [{action-id :id}       (mt/user-http-request :crowberto :post 200 "action"
+                                                              {:name "Add venue" :type "implicit" :kind "row/create"
+                                                               :table_id (mt/id :venues)})
+                  {:keys [created-row]} (mt/user-http-request :crowberto :post 200 (str "action/" action-id "/execute")
+                                                              {:parameters {:name "Bird" :category_id 1}})
+                  columns               (set (map (comp u/lower-case-en name) (keys created-row)))]
+              (is (contains? columns "id"))
+              (is (contains? columns "name"))
+              (is (not (contains? columns "price"))))))))))
 
 (deftest only-admins-write-actions-without-model-test
   (testing "only admins can create or update an action without a model, whatever their permissions on its collection"
@@ -725,14 +802,20 @@
               (is (=? {:can_write false} (mt/user-http-request :rasta :get 200 (str "action/" action-id)))))))))))
 
 (deftest attached-action-keeps-model-collection-test
-  (testing "an action with a model stays in the model's collection whatever collection_id an update sends"
+  (testing "an action with a model can't be moved out of the model's collection"
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-temp [:model/Collection {coll-id :id}  {}
                      :model/Collection {other-id :id} {}]
-        (mt/with-actions [{:keys [action-id]} {:public_uuid nil :made_public_by_id nil :collection_id coll-id}]
+        (mt/with-actions [_                   {:type :model :dataset_query (table-query :categories) :collection_id coll-id}
+                          {:keys [action-id]} {:public_uuid nil :made_public_by_id nil}]
           (let [model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)]
-            (mt/user-http-request :crowberto :put 200 (str "action/" action-id) {:collection_id other-id})
-            (is (= model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)))))))))
+            (is (= "A model's action goes in the model's collection."
+                   (mt/user-http-request :crowberto :put 400 (str "action/" action-id) {:collection_id other-id})))
+            (is (= model-collection (t2/select-one-fn :collection_id :model/Action :id action-id)))
+            (testing "sending the collection it already has is fine"
+              (is (=? {:collection_id model-collection}
+                      (mt/user-http-request :crowberto :put 200 (str "action/" action-id)
+                                            {:collection_id model-collection}))))))))))
 
 (deftest action-without-model-collection-guards-test
   (testing "an action without a model can only go in the data actions root or an existing, unarchived data actions collection"
@@ -753,16 +836,74 @@
             (mt/user-http-request :crowberto :put 400 path {:collection_id default-id})
             (is (= coll-id (:collection_id (mt/user-http-request :crowberto :get 200 path))))))))))
 
+(deftest implicit-action-without-model-needs-single-pk-table-test
+  (testing "the API refuses an implicit action without a model on a table without exactly one usable primary key"
+    (mt/with-temp [:model/Database {db-id :id}           {:engine :h2}
+                   :model/Table {no-pk-id :id}        {:db_id db-id :name "NO_PK"}
+                   :model/Field _                      {:table_id no-pk-id :name "name" :base_type :type/Text}
+                   :model/Table {composite-pk-id :id} {:db_id db-id :name "COMPOSITE_PK"}
+                   :model/Field _                      {:table_id composite-pk-id :name "a" :base_type :type/Integer
+                                                        :semantic_type :type/PK}
+                   :model/Field _                      {:table_id composite-pk-id :name "b" :base_type :type/Integer
+                                                        :semantic_type :type/PK}
+                   :model/Table {sensitive-pk-id :id} {:db_id db-id :name "SENSITIVE_PK"}
+                   :model/Field _                      {:table_id sensitive-pk-id :name "id" :base_type :type/Integer
+                                                        :semantic_type :type/PK :visibility_type :sensitive}]
+      (mt/with-actions-test-data-and-actions-enabled
+        (mt/with-model-cleanup [:model/Action]
+          (let [{action-id :id} (mt/user-http-request :crowberto :post 200 "action"
+                                                      {:name "Good" :type "implicit" :kind "row/create"
+                                                       :table_id (mt/id :categories)})]
+            (doseq [[description table-id] {"no primary key"        no-pk-id
+                                            "a composite one"       composite-pk-id
+                                            "only a sensitive one"  sensitive-pk-id}]
+              (testing description
+                (is (= "An implicit action needs a table with exactly one primary key."
+                       (mt/user-http-request :crowberto :post 400 "action"
+                                             {:name "Bad" :type "implicit" :kind "row/create"
+                                              :table_id table-id})))
+                (is (= "An implicit action needs a table with exactly one primary key."
+                       (mt/user-http-request :crowberto :put 400 (str "action/" action-id)
+                                             {:table_id table-id})))))))))))
+
+(deftest implicit-action-of-model-on-native-question-checks-actions-enabled-test
+  (testing "an implicit action of a model built on a native question is refused while actions are off on its database"
+    (mt/with-actions-test-data
+      (mt/with-model-cleanup [:model/Action]
+        (let [mp (mt/metadata-provider)]
+          (mt/with-temp [:model/Card {question-id :id} {:dataset_query (lib/native-query mp "SELECT * FROM categories")}
+                         :model/Card {model-id :id}    {:type          :model
+                                                        :dataset_query (lib/query mp (lib.metadata/card mp question-id))}]
+            (is (= "Actions are not enabled."
+                   (mt/user-http-request :crowberto :post 400 "action"
+                                         {:name "Add" :type "implicit" :kind "row/create"
+                                          :model_id model-id})))))))))
+
 (deftest action-with-missing-model-test
-  (testing "creating or moving an action onto a model that does not exist is a 404"
+  (testing "creating an action on a model that does not exist is a 404"
     (mt/with-actions-test-data-and-actions-enabled
       (mt/with-model-cleanup [:model/Action]
         (is (= "Not found."
                (mt/user-http-request :crowberto :post 404 "action"
-                                     (assoc (model-less-query-action nil) :model_id Integer/MAX_VALUE))))
-        (let [path (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))))]
-          (is (= "Not found."
-                 (mt/user-http-request :crowberto :put 404 path {:model_id Integer/MAX_VALUE}))))))))
+                                     (assoc (model-less-query-action nil) :model_id Integer/MAX_VALUE))))))))
+
+(deftest action-model-cannot-change-test
+  (testing "an action's model is set on create and can't be changed, added or removed"
+    (mt/with-actions-test-data-and-actions-enabled
+      (mt/with-model-cleanup [:model/Action]
+        (mt/with-actions [{model-id :id}      {:type :model :dataset_query (table-query :categories)}
+                          {:keys [action-id]} {:type :query}]
+          (let [model-less (str "action/" (:id (mt/user-http-request :crowberto :post 200 "action" (model-less-query-action nil))))
+                of-model   (str "action/" action-id)]
+            (is (= "An action's model can't be changed."
+                   (mt/user-http-request :crowberto :put 400 model-less {:model_id model-id})))
+            (is (= "An action's model can't be changed."
+                   (mt/user-http-request :crowberto :put 400 of-model {:model_id nil})))
+            (is (=? {:model_id nil} (mt/user-http-request :crowberto :get 200 model-less)))
+            (is (=? {:model_id model-id} (mt/user-http-request :crowberto :get 200 of-model)))
+            (testing "sending the model it already has is fine"
+              (is (=? {:name "Same model"}
+                      (mt/user-http-request :crowberto :put 200 of-model {:name "Same model" :model_id model-id}))))))))))
 
 (deftest archiving-directly-test
   (testing "archiving an action through the API marks it as archived directly, and unarchiving clears that"
@@ -1091,9 +1232,9 @@
                                                                                        :hidden true}}}}]
         (testing "Hidden parameter should fail gracefully"
           (testing "POST /api/action/:id/execute"
-            (is (partial= {:message "No destination parameter found for #{\"name\"}. Found: #{\"last_login\" \"id\"}"}
-                          (mt/user-http-request :crowberto :post 400 (format "action/%s/execute" action-id)
-                                                {:parameters {:name "Darth Vader"}})))))))))
+            (is (re-find #"^No destination parameter found for #\{\"name\"\}"
+                         (:message (mt/user-http-request :crowberto :post 400 (format "action/%s/execute" action-id)
+                                                         {:parameters {:name "Darth Vader"}}))))))))))
 
 (deftest implicit-update-timestamp-round-trip-test
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
