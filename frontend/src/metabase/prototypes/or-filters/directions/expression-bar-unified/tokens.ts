@@ -414,6 +414,51 @@ export function insertToken<T extends ExpressionToken>(
   return { tokens: nextTokens, caret: caretAfterToken };
 }
 
+/**
+ * Appends `token` as the last AND-ed conjunct. When the expression's top
+ * level is an `or`, it is wrapped in parentheses first, so the new conjunct
+ * applies to all of it rather than to the last branch only.
+ */
+export function appendConjunct<T extends ExpressionToken>(
+  tokens: readonly T[],
+  token: T,
+): { tokens: (T | Token)[]; caret: number; wrapped: boolean } {
+  // A trailing "and" the user already typed is the one the append supplies.
+  const last = tokens.at(-1);
+  const expression =
+    last?.type === "op" && last.op === "and" ? tokens.slice(0, -1) : tokens;
+  const wrapped = needsWrapForConjunct(expression);
+  const base: (T | Token)[] = wrapped
+    ? [OPEN_PAREN, ...expression, CLOSE_PAREN]
+    : [...expression];
+  return { ...insertToken(base, base.length, token), wrapped };
+}
+
+function needsWrapForConjunct(tokens: readonly ExpressionToken[]): boolean {
+  const parsed = parseTokens(tokens);
+  const isTopLevelOr =
+    parsed.ok && parsed.tree?.type === "node" && parsed.tree.op === "or";
+  return isTopLevelOr && !isWrappedInParens(tokens);
+}
+
+/** Does one pair of parentheses enclose the whole stream? */
+function isWrappedInParens(tokens: readonly ExpressionToken[]): boolean {
+  const first = tokens[0];
+  if (first?.type !== "paren" || first.side !== "open") {
+    return false;
+  }
+  let depth = 0;
+  for (const [index, token] of tokens.entries()) {
+    if (token.type === "paren") {
+      depth += token.side === "open" ? 1 : -1;
+    }
+    if (depth === 0) {
+      return index === tokens.length - 1;
+    }
+  }
+  return false;
+}
+
 export function removeTokenAt<T extends ExpressionToken>(
   tokens: readonly T[],
   index: number,

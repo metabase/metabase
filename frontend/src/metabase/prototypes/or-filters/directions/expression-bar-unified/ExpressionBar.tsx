@@ -44,6 +44,7 @@ import {
   CLOSE_PAREN,
   type ExpressionToken,
   OPEN_PAREN,
+  appendConjunct,
   filterToken,
   insertToken,
   opToken,
@@ -68,6 +69,12 @@ type ExpressionBarProps = {
    * edits one stage, like a notebook step.
    */
   withSummary?: boolean;
+  /**
+   * Where a picked filter on the summary lands: at the caret (default), or
+   * `"end"` to append it as the last AND-ed conjunct wherever the caret is,
+   * so the summary filters always form the tail of the expression.
+   */
+  summaryPlacement?: "caret" | "end";
   placeholder?: string;
   /** Extra class on the bar box. */
   className?: string;
@@ -93,6 +100,7 @@ export function ExpressionBar({
   stageIndex,
   onChange,
   withSummary = false,
+  summaryPlacement = "caret",
   placeholder = t`Type a column, "and", "or", "("…`,
   className,
   hasInlineActions = false,
@@ -147,6 +155,18 @@ export function ExpressionBar({
   const [freshIndexes, setFreshIndexes] = useState<ReadonlySet<number>>(
     () => new Set(),
   );
+  const flashTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const flashTokens = useCallback((indexes: ReadonlySet<number>) => {
+    clearTimeout(flashTimeoutRef.current);
+    setFreshIndexes(indexes);
+    if (indexes.size > 0) {
+      flashTimeoutRef.current = setTimeout(
+        () => setFreshIndexes(new Set()),
+        FRESH_TOKEN_FLASH_MS,
+      );
+    }
+  }, []);
 
   // External query changes (examples, drills, other frames) drop the draft
   // and briefly highlight what arrived.
@@ -161,16 +181,8 @@ export function ExpressionBar({
     const fresh = isOwnCommit
       ? new Set<number>()
       : freshTokenIndexes(previous, committedTokens, queryFor);
-    setFreshIndexes(fresh);
-    if (fresh.size === 0) {
-      return;
-    }
-    const timeout = setTimeout(
-      () => setFreshIndexes(new Set()),
-      FRESH_TOKEN_FLASH_MS,
-    );
-    return () => clearTimeout(timeout);
-  }, [committedTokens, queryFor]);
+    flashTokens(fresh);
+  }, [committedTokens, queryFor, flashTokens]);
 
   const isDirty = tokens !== committedTokens;
   const parsed = useMemo(() => parseTokens(tokens), [tokens]);
@@ -215,10 +227,29 @@ export function ExpressionBar({
     setDropdownView({ type: "browse" });
   };
 
-  const insert = (token: ExpressionToken) => {
-    const next = insertToken(tokens, caret, token);
-    setTokens(next.tokens);
-    setCaret(next.caret);
+  const insert = (
+    token: ExpressionToken,
+    placement: "caret" | "end" = "caret",
+  ) => {
+    if (placement === "caret") {
+      const next = insertToken(tokens, caret, token);
+      setTokens(next.tokens);
+      setCaret(next.caret);
+    } else {
+      const wasAtEnd = caret === tokens.length;
+      const next = appendConjunct(tokens, token);
+      setTokens(next.tokens);
+      // The caret stays where the user was; wrapping shifts everything by one.
+      setCaret(wasAtEnd ? next.caret : next.wrapped ? caret + 1 : caret);
+      // Show what appeared away from the caret: the tail token, and the wrap.
+      const fresh = new Set(
+        next.wrapped ? [0, next.tokens.indexOf(token) - 2] : [],
+      );
+      if (!wasAtEnd) {
+        fresh.add(next.caret - 1);
+      }
+      flashTokens(fresh);
+    }
     setText("");
     focusInput();
   };
@@ -227,11 +258,13 @@ export function ExpressionBar({
     filterable: Lib.Filterable,
     pickStageIndex: number,
   ) => {
+    const isSummaryFilter = pickStageIndex === summaryStageIndex;
     insert(
       filterToken(
         toFilterClause(queryFor(pickStageIndex), pickStageIndex, filterable),
         pickStageIndex,
       ),
+      summaryPlacement === "end" && isSummaryFilter ? "end" : "caret",
     );
     closeDropdown();
     focusInput();
