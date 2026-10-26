@@ -172,7 +172,7 @@ function MetabotQueryExecutionSettingsSection({ id }: { id: string }) {
         lockedEnvName={envName}
         onChange={onChange}
         switchDisabled={isBusy}
-        title={t`Let Metabot read query results`}
+        title={t`Let Metabot run queries and read their results`}
       />
     </Box>
   );

@@ -326,7 +326,9 @@ describe("AISettingsPage", () => {
     await setup({ queryExecutionEnabled: false });
 
     expect(
-      screen.getByRole("switch", { name: "Let Metabot read query results" }),
+      screen.getByRole("switch", {
+        name: "Let Metabot run queries and read their results",
+      }),
     ).not.toBeChecked();
     expect(
       screen.getByText(/The result rows are sent to your AI provider/),
@@ -337,7 +339,9 @@ describe("AISettingsPage", () => {
     await setup({ queryExecutionEnabled: true });
 
     expect(
-      screen.getByRole("switch", { name: "Let Metabot read query results" }),
+      screen.getByRole("switch", {
+        name: "Let Metabot run queries and read their results",
+      }),
     ).toBeChecked();
   });
 
@@ -345,7 +349,9 @@ describe("AISettingsPage", () => {
     await setup({ queryExecutionEnabled: false });
 
     await userEvent.click(
-      screen.getByRole("switch", { name: "Let Metabot read query results" }),
+      screen.getByRole("switch", {
+        name: "Let Metabot run queries and read their results",
+      }),
     );
 
     await waitFor(async () => {
@@ -367,7 +373,7 @@ describe("AISettingsPage", () => {
     });
 
     const toggle = await screen.findByRole("switch", {
-      name: "Let Metabot read query results",
+      name: "Let Metabot run queries and read their results",
     });
     expect(
       await screen.findByText("Using MB_METABOT_QUERY_EXECUTION_ENABLED"),
@@ -384,7 +390,7 @@ describe("AISettingsPage", () => {
     await setup({ isConfigured: false });
 
     expect(
-      screen.getByText("Let Metabot read query results", {
+      screen.getByText("Let Metabot run queries and read their results", {
         selector: '[aria-disabled="true"] *',
       }),
     ).toBeInTheDocument();
