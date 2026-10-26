@@ -10,12 +10,24 @@ import {
 
 import { CanAccessDataStudio } from "./route-guards";
 
+jest.mock("metabase/utils/iframe", () => ({
+  ...jest.requireActual("metabase/utils/iframe"),
+  isWithinIframe: jest.fn(() => false),
+}));
+
+const { isWithinIframe } = jest.requireMock("metabase/utils/iframe");
+
 interface SetupOpts {
   user: Partial<User>;
   tokenFeatures?: Partial<TokenFeatures>;
+  allowDataStudioInIframe?: boolean;
 }
 
-const setup = ({ user, tokenFeatures = {} }: SetupOpts) =>
+const setup = ({
+  user,
+  tokenFeatures = {},
+  allowDataStudioInIframe = false,
+}: SetupOpts) =>
   renderWithProviders(
     <>
       <Route element={<CanAccessDataStudio />}>
@@ -29,6 +41,7 @@ const setup = ({ user, tokenFeatures = {} }: SetupOpts) =>
         settings: mockSettings({
           "has-user-setup": true,
           "token-features": createMockTokenFeatures(tokenFeatures),
+          "allow-data-studio-in-iframe": allowDataStudioInIframe,
         }),
       }),
       withRouter: true,
@@ -37,6 +50,48 @@ const setup = ({ user, tokenFeatures = {} }: SetupOpts) =>
   );
 
 describe("CanAccessDataStudio", () => {
+  beforeEach(() => {
+    isWithinIframe.mockReturnValue(false);
+  });
+
+  describe("inside an iframe", () => {
+    beforeEach(() => {
+      isWithinIframe.mockReturnValue(true);
+    });
+
+    it("redirects admins to unauthorized when allow-data-studio-in-iframe is off", async () => {
+      const { router } = setup({
+        user: { is_superuser: true },
+        allowDataStudioInIframe: false,
+      });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe("/unauthorized");
+      });
+    });
+
+    it("renders for admins when allow-data-studio-in-iframe is on", () => {
+      setup({
+        user: { is_superuser: true },
+        allowDataStudioInIframe: true,
+      });
+
+      expect(screen.getByText("data studio page")).toBeInTheDocument();
+    });
+
+    it("still redirects users who are neither admins nor analysts when allow-data-studio-in-iframe is on", async () => {
+      const { router } = setup({
+        user: { is_data_analyst: false, is_superuser: false },
+        tokenFeatures: { advanced_permissions: true },
+        allowDataStudioInIframe: true,
+      });
+
+      await waitFor(() => {
+        expect(router?.location.pathname).toBe("/unauthorized");
+      });
+    });
+  });
+
   it("renders for analysts when advanced-permissions is available", () => {
     setup({
       user: { is_data_analyst: true, is_superuser: false },

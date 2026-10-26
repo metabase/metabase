@@ -31,6 +31,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.sql.util :as sql.u]
    [metabase.lib-be.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
@@ -2696,6 +2697,257 @@
             (is (=? {:type :missing-column
                      :name "xix"}
                     (first (driver/validate-native-query-fields :postgres broken-query))))))))))
+
+;;; ---------------------------------------- Workspace provisioning ----------------------------------------------
+
+(defmacro ^:private with-drop-schema!
+  "Run `body`, ensuring `schema` is dropped (CASCADE) on `admin-spec` afterward."
+  [admin-spec schema & body]
+  `(try
+     ~@body
+     (finally
+       (jdbc/execute! ~admin-spec
+                      [(format "DROP SCHEMA IF EXISTS %s CASCADE"
+                               (sql.u/quote-name :postgres :schema ~schema))]))))
+
+(defmacro ^:private with-drop-role!
+  "Run `body`, ensuring `role` is dropped on `admin-spec` afterward."
+  [admin-spec role & body]
+  `(try
+     ~@body
+     (finally
+       (jdbc/execute! ~admin-spec
+                      [(format "DROP ROLE IF EXISTS %s"
+                               (sql.u/quote-name :postgres :field ~role))]))))
+
+(deftest workspace-precondition-usage-grant-option-test
+  (mt/test-driver :postgres
+    (testing "assert-has-usage-grant-option! throws when current_user lacks USAGE WITH GRANT OPTION on the schema"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              role       "ws_pre_usage_role"
+              schema     "ws_pre_usage_schema"
+              password   (str (random-uuid))]
+          (with-drop-role! admin-spec role
+            (with-drop-schema! admin-spec schema
+              (let [qrole   (sql.u/quote-name :postgres :field role)
+                    qschema (sql.u/quote-name :postgres :schema schema)]
+                (jdbc/execute! admin-spec
+                               [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD '%s'; "
+                                             "CREATE SCHEMA %s; "
+                                             ;; USAGE without WITH GRANT OPTION
+                                             "GRANT USAGE ON SCHEMA %s TO %s;")
+                                        qrole password qschema qschema qrole)])
+                (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                 [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
+                  (testing "fails when grant option is missing"
+                    (is (thrown-with-msg?
+                         clojure.lang.ExceptionInfo
+                         #"USAGE WITH GRANT OPTION"
+                         (postgres/assert-has-usage-grant-option! user-spec schema))))
+                  (testing "passes once WITH GRANT OPTION is granted"
+                    (jdbc/execute! admin-spec
+                                   [(format "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION"
+                                            qschema qrole)])
+                    (is (nil? (postgres/assert-has-usage-grant-option! user-spec schema)))))))))))))
+
+(deftest workspace-precondition-table-grant-option-test
+  (mt/test-driver :postgres
+    (testing "assert-has-grant-option! throws when current_user lacks SELECT WITH GRANT OPTION on a schema table"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              role       "ws_pre_table_role"
+              schema     "ws_pre_table_schema"
+              table      "ws_pre_table_t"
+              password   (str (random-uuid))]
+          (with-drop-role! admin-spec role
+            (with-drop-schema! admin-spec schema
+              (let [qrole   (sql.u/quote-name :postgres :field role)
+                    qschema (sql.u/quote-name :postgres :schema schema)
+                    qtable  (sql.u/quote-name :postgres :table table)
+                    qobject (str qschema "." qtable)]
+                (jdbc/execute! admin-spec
+                               [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD '%s'; "
+                                             "CREATE SCHEMA %s; "
+                                             "CREATE TABLE %s (id INT); "
+                                             ;; Pass the schema-USAGE precondition so we test the table check in isolation.
+                                             "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION; "
+                                             ;; SELECT *without* WITH GRANT OPTION
+                                             "GRANT SELECT ON %s TO %s;")
+                                        qrole password qschema qobject qschema qrole qobject qrole)])
+                (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                 [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
+                  (testing "fails and names the offending table"
+                    (is (thrown-with-msg?
+                         clojure.lang.ExceptionInfo
+                         #"SELECT WITH GRANT OPTION"
+                         (postgres/assert-has-grant-option! user-spec schema))))
+                  (testing "passes once SELECT WITH GRANT OPTION is granted"
+                    (jdbc/execute! admin-spec
+                                   [(format "GRANT SELECT ON %s TO %s WITH GRANT OPTION"
+                                            qobject qrole)])
+                    (is (nil? (postgres/assert-has-grant-option! user-spec schema)))))))))))))
+
+(deftest workspace-precondition-alter-default-privileges-test
+  (mt/test-driver :postgres
+    (testing "assert-can-alter-default-privileges! throws when an object owner is not a role the current_user belongs to"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              role       "ws_pre_adp_role"
+              owner      "ws_pre_adp_other_owner"
+              schema     "ws_pre_adp_schema"
+              table      "ws_pre_adp_t"
+              password   (str (random-uuid))]
+          (with-drop-role! admin-spec role
+            (with-drop-role! admin-spec owner
+              (with-drop-schema! admin-spec schema
+                (let [qrole   (sql.u/quote-name :postgres :field role)
+                      qowner  (sql.u/quote-name :postgres :field owner)
+                      qschema (sql.u/quote-name :postgres :schema schema)
+                      qobject (str qschema "." (sql.u/quote-name :postgres :table table))]
+                  (jdbc/execute! admin-spec
+                                 [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD '%s'; "
+                                               "CREATE ROLE %s; "
+                                               "CREATE SCHEMA %s; "
+                                               "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION; "
+                                               "CREATE TABLE %s (id INT); "
+                                               "ALTER TABLE %s OWNER TO %s;")
+                                          qrole password qowner qschema qschema qrole qobject qobject qowner)])
+                  (sql-jdbc.conn/with-connection-spec-for-testing-connection
+                   [user-spec [:postgres (assoc (:details (mt/db)) :user role :password password)]]
+                    (testing "fails and names the unmemberable owner"
+                      (is (thrown-with-msg?
+                           clojure.lang.ExceptionInfo
+                           #"not a member of \d+ role"
+                           (postgres/assert-can-alter-default-privileges! user-spec schema))))
+                    (testing "passes once the current_user becomes a member of the owner role"
+                      (jdbc/execute! admin-spec
+                                     [(format "GRANT %s TO %s" qowner qrole)])
+                      (is (nil? (postgres/assert-can-alter-default-privileges! user-spec schema))))))))))))))
+
+(deftest ^:synchronized workspace-destroy-survives-foreign-grantor-default-priv-test
+  ;; PostgreSQL counterpart to Redshift's GHY-3709 destroy fix. The Redshift
+  ;; driver had to grow explicit `pg_default_acl` discovery + per-grantor
+  ;; REVOKEs because Redshift's `DROP OWNED BY` semantics differ from PG. PG's
+  ;; destroy issues `DROP OWNED BY <iso-user>` which removes default-priv ACL
+  ;; entries where the iso-user appears as a grantee, regardless of who granted
+  ;; them. This test pins that contract: seed a foreign-grantor default-priv
+  ;; row targeting the iso-user and confirm `destroy-workspace-isolation!`
+  ;; still cleans up without raising "user cannot be dropped because some
+  ;; objects depend on it".
+  (mt/test-driver :postgres
+    (testing "destroy succeeds when a non-current_user grantor seeded a default-priv targeting the iso-user"
+      (mt/with-empty-db
+        (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+              grantor    "ws_destroy_foreign_grantor"
+              schema     "ws_destroy_foreign_schema"
+              qgrantor   (sql.u/quote-name :postgres :field grantor)
+              qschema    (sql.u/quote-name :postgres :schema schema)
+              workspace  {:id   (rand-int Integer/MAX_VALUE)
+                          :name "wsd-foreign-destroy"}]
+          (with-drop-role! admin-spec grantor
+            (with-drop-schema! admin-spec schema
+              (jdbc/execute! admin-spec
+                             [(format (str "CREATE ROLE %s WITH LOGIN PASSWORD 'pwd'; "
+                                           "GRANT %s TO CURRENT_USER; "
+                                           "CREATE SCHEMA %s AUTHORIZATION %s;")
+                                      qgrantor qgrantor qschema qgrantor)])
+              (let [workspace+det (merge workspace (driver/workspace-isolation-details :postgres (mt/db) workspace))
+                    _             (driver/init-workspace-isolation! :postgres (mt/db) workspace+det)
+                    iso-user      (-> workspace+det :database_details :user)
+                    qiso          (sql.u/quote-name :postgres :field iso-user)]
+                (try
+                  ;; Seed the foreign-grantor default-priv: set the grantor role and
+                  ;; issue ALTER DEFAULT PRIVILEGES so the resulting pg_default_acl
+                  ;; row is owned by the grantor, not by current_user.
+                  (jdbc/execute! admin-spec
+                                 [(format (str "SET ROLE %s; "
+                                               "ALTER DEFAULT PRIVILEGES IN SCHEMA %s "
+                                               "GRANT SELECT ON TABLES TO %s; "
+                                               "RESET ROLE;")
+                                          qgrantor qschema qiso)])
+                  (testing "destroy completes without error"
+                    (is (some? (driver/destroy-workspace-isolation! :postgres (mt/db) workspace+det))))
+                  (testing "the iso-user has been dropped"
+                    (is (empty? (jdbc/query admin-spec
+                                            ["SELECT 1 FROM pg_roles WHERE rolname = ?" iso-user]))))
+                  (finally
+                    ;; If destroy raised, the iso-user may still exist -- clean up so the
+                    ;; with-drop-role!/with-drop-schema! frames don't fail on the schema.
+                    ;; Log instead of swallowing so CI surfaces orphan-role accumulation
+                    ;; rather than masking it behind a failed schema drop downstream.
+                    (try (jdbc/execute! admin-spec
+                                        [(format "DROP OWNED BY %s CASCADE" qiso)])
+                         (catch Throwable t
+                           (log/warnf t "Test cleanup: DROP OWNED BY %s failed" qiso)))
+                    (try (jdbc/execute! admin-spec
+                                        [(format "DROP USER IF EXISTS %s" qiso)])
+                         (catch Throwable t
+                           (log/warnf t "Test cleanup: DROP USER %s failed" qiso)))))))))))))
+
+(deftest ^:synchronized workspace-destroy-revokes-grants-recorded-by-grant-option-login-test
+  ;; The provisioning login is a member of the input tables' owner role and also holds
+  ;; SELECT/USAGE WITH GRANT OPTION directly. Postgres's best-grantor rule then records the
+  ;; login as grantor of the workspace user's read grants, and `DROP OWNED BY`, which acts as
+  ;; the owner, misses them, so `DROP USER` used to fail.
+  (mt/test-driver :postgres
+    (mt/with-empty-db
+      (let [admin-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            login      "ws_destroy_grantor_login"
+            owner      "ws_destroy_grantor_owner"
+            schema     "ws_destroy_grantor_input"
+            password   (str (random-uuid))
+            qlogin     (sql.u/quote-name :postgres :field login)
+            qowner     (sql.u/quote-name :postgres :field owner)
+            qschema    (sql.u/quote-name :postgres :schema schema)
+            workspace  {:id (rand-int Integer/MAX_VALUE) :name "wsd-grantor-destroy"}]
+        (with-drop-role! admin-spec login
+          (with-drop-role! admin-spec owner
+            (try
+              (with-drop-schema! admin-spec schema
+                (jdbc/execute! admin-spec
+                               [(format (str "CREATE ROLE %s; "
+                                             "CREATE ROLE %s WITH LOGIN CREATEROLE PASSWORD '%s'; "
+                                             "GRANT CREATE ON DATABASE %s TO %s; "
+                                             "CREATE SCHEMA %s AUTHORIZATION %s; "
+                                             "CREATE TABLE %s.orders (id INT); "
+                                             "ALTER TABLE %s.orders OWNER TO %s; "
+                                             "GRANT %s TO %s; "
+                                             "GRANT USAGE ON SCHEMA %s TO %s WITH GRANT OPTION; "
+                                             "GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s WITH GRANT OPTION;")
+                                        qowner qlogin password
+                                        (sql.u/quote-name :postgres :database (-> (mt/db) :details :db)) qlogin
+                                        qschema qowner qschema qschema qowner qowner qlogin
+                                        qschema qlogin qschema qlogin)])
+                (mt/with-temp [:model/Database login-db {:engine  :postgres
+                                                         :details (assoc (:details (mt/db))
+                                                                         :user login :password password)}]
+                  (let [workspace+det (merge workspace (driver/workspace-isolation-details :postgres login-db workspace))
+                        iso-user      (-> workspace+det :database_details :user)
+                        grants-to     (fn [role]
+                                        (jdbc/query admin-spec
+                                                    [(str "SELECT pg_get_userbyid(a.grantor) AS grantor "
+                                                          "FROM pg_class c CROSS JOIN LATERAL aclexplode(c.relacl) a "
+                                                          "WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?) "
+                                                          "UNION ALL "
+                                                          "SELECT pg_get_userbyid(a.grantor) AS grantor "
+                                                          "FROM pg_namespace n CROSS JOIN LATERAL aclexplode(n.nspacl) a "
+                                                          "WHERE a.grantee = (SELECT oid FROM pg_roles WHERE rolname = ?)")
+                                                     role role]))]
+                    (driver/init-workspace-isolation! :postgres login-db workspace+det)
+                    (driver/grant-workspace-read-access! :postgres login-db workspace+det [schema])
+                    (testing "the login, not the owner, is recorded as grantor"
+                      (is (contains? (set (map :grantor (grants-to iso-user))) login)))
+                    (driver/destroy-workspace-isolation! :postgres login-db workspace+det)
+                    (testing "teardown leaves no grants, no iso schema and no iso role"
+                      (is (empty? (grants-to iso-user)))
+                      (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_namespace WHERE nspname = ?"
+                                                          (:schema workspace+det)])))
+                      (is (empty? (jdbc/query admin-spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" iso-user])))))))
+              (finally
+                ;; The login's database CREATE grant would block dropping it.
+                (when (seq (jdbc/query admin-spec ["SELECT 1 FROM pg_roles WHERE rolname = ?" login]))
+                  (jdbc/execute! admin-spec [(format "DROP OWNED BY %s" qlogin)]))))))))))
 
 (deftest ^:synchronized reducible-query-streams-large-result-set-test
   (testing "reducible-query streams large result sets via a server-side cursor (autoCommit=false)"

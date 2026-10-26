@@ -102,6 +102,9 @@
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase-enterprise.advanced-config.file.settings]
    [metabase-enterprise.advanced-config.file.users]
+   [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
+   [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
+   [metabase-enterprise.workspaces.core :as ws]
    [metabase.lib.core :as lib]
    [metabase.premium-features.core :as premium-features]
    [metabase.util :as u]
@@ -119,7 +122,9 @@
   ;; for `users:` section code
   metabase-enterprise.advanced-config.file.users/keep-me
   ;; for `api-keys:` section code
-  metabase-enterprise.advanced-config.file.api-keys/keep-me)
+  metabase-enterprise.advanced-config.file.api-keys/keep-me
+  ;; for `workspace:` section code
+  advanced-config.file.workspace/keep-me)
 
 (set! *warn-on-reflection* true)
 
@@ -264,6 +269,18 @@
                                                                  config-sections)]
     (concat settings-sections other-sections)))
 
+(defn- assert-section-allowed!
+  "Throw unless the token allows initializing `section-name` from the config file. You can only use the
+  config-from-file stuff with an EE/Pro token with the `:config-text-file` feature; the `:settings` section is the lone
+  carve-out, since you may need it to *install* the token. The `:workspace` section also needs `:workspaces`."
+  [section-name]
+  (when-not (= section-name :settings)
+    (when-not (premium-features/enable-config-text-file?)
+      (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
+                      {}))))
+  (when (= section-name :workspace)
+    (premium-features/assert-has-feature :workspaces (tru "Workspaces"))))
+
 (defn ^{:added "0.45.0"} initialize!
   "Initialize Metabase according to the directives in `parsed-config` — a parsed
    YAML map matching the [[::config]] spec. Opts:
@@ -280,12 +297,15 @@
    ;; enabling that check tho)
    (when-let [m (config parsed-config opts)]
      (doseq [[section-name section-config] (sort-by-initialization-order (:config m))]
-       ;; You can only use the config-from-file stuff with an EE/Pro token with the `:config-text-file` feature.
-       ;; The `:settings` section is the lone carve-out — you may need it to *install* the token.
-       (when-not (= section-name :settings)
-         (when-not (premium-features/enable-config-text-file?)
-           (throw (ex-info (tru "Metabase config files require a Premium token with the :config-text-file feature.")
-                           {}))))
+       (assert-section-allowed! section-name)
+       (when (and (= section-name :databases)
+                  (get-in m [:config :workspace :metadata_file]))
+         ;; The `:workspace` section loads these databases' metadata from a file after this section creates them; a
+         ;; sync started on creation would race that load and redo its work. The setting persists, so it is written
+         ;; only once the `:workspace` section is known to be allowed, after the `:settings` section may have
+         ;; installed the token.
+         (assert-section-allowed! :workspace)
+         (advanced-config.settings/config-from-file-sync-databases! false))
        (log/info (u/format-color :magenta "Initializing %s from config file..." section-name) (u/emoji "🗄️"))
        (advanced-config.file.i/initialize-section! section-name section-config))
      (log/info (u/colorize :magenta "Done initializing from file.") (u/emoji "🗄️")))
@@ -293,6 +313,15 @@
 
 (defn boot-initialize!
   "Boot-time entry point: read the config file from disk and run [[initialize!]]
-   with `{{env VAR}}` template expansion enabled. No-op when no file is present."
+   with `{{env VAR}}` template expansion enabled. No-op when no file is present.
+   When the config contains a `:workspace` section, locks the workspace against
+   runtime mutation (see
+   [[metabase-enterprise.workspaces.core/workspace-locked-by-config?]])."
   []
-  (initialize! (config-from-disk) {:expand-templates? true}))
+  (let [parsed (config-from-disk)
+        result (initialize! parsed {:expand-templates? true})]
+    ;; Only a workspace loaded from config.yml at boot locks; one set at runtime through
+    ;; `POST /api/ee/workspace-instance/current` stays editable.
+    (when (get-in parsed [:config :workspace])
+      (ws/mark-locked-by-config!))
+    result))

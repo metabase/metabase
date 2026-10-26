@@ -55,9 +55,9 @@
 ;; Set of `:model/X` keywords defined by this module that it allows others to reference. By default all are private.
 ;; If you know what you're doing, we support an :any keyword, but let's prefer explicit sets for now.
 ;;
-;;    transforms
+;;    enterprise/workspaces
 ;;    {...
-;;     :model-exports #{:model/Transform :model/TransformRun}}
+;;     :model-exports #{:model/Workspace :model/WorkspaceMergeTransform}}
 ;;
 ;; ## `model-imports`:
 ;;
@@ -118,7 +118,8 @@
            users
            util
            warehouse-schema-overlay
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/Action :model/ImplicitAction :model/QueryAction}
    :model-imports #{:model/Card
                     :model/Collection
@@ -950,8 +951,10 @@
            metabase.driver.sql-jdbc.execute
            metabase.driver.sql-jdbc.execute.diagnostic
            metabase.driver.sql-jdbc.sync
-           ;; TODO (lbrdnk 2025/12/17): We should revisit addition of the following line. Ideally this would
-           ;; become part of the driver api rather than callers reaching directly into the normalize module.
+           ;; TODO (lbrdnk 2025/12/17): We should revisit addition of the following line. I've added it to make
+           ;; tests pass as we are using it directly with ee/workspaces module. I believe later, when workspaces
+           ;; are in better state quality wise, it should become part of the driver api and that should be used
+           ;; instead of calling directly into the normalize module.
            metabase.driver.sql.normalize
            metabase.driver.sql.query-processor
            metabase.driver.sql.util
@@ -980,7 +983,8 @@
            util.config
            warehouse-schema-overlay
            warehouses
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Database :model/Field :model/Table}}
 
   embedding
@@ -1749,7 +1753,8 @@
            task.history
            tracing
            util
-           warehouses}
+           warehouses
+           workspaces}
    :model-exports #{:model/PersistedInfo}
    :model-imports #{:model/Card :model/Database}}
 
@@ -2294,6 +2299,7 @@
               metabase.query-processor.middleware.add-remaps
               metabase.query-processor.middleware.catch-exceptions
               metabase.query-processor.middleware.constraints
+              metabase.query-processor.middleware.enterprise
               metabase.query-processor.middleware.permissions
               metabase.query-processor.parameters.dates
               metabase.query-processor.parameters.operators
@@ -2354,7 +2360,8 @@
            users
            util
            util.config
-           warehouse-schema-overlay}
+           warehouse-schema-overlay
+           workspaces}
    :model-imports #{:model/Card
                     :model/DashboardCardSeries
                     :model/Database
@@ -2868,7 +2875,8 @@
            util.config
            warehouse-schema-overlay
            warehouses
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Database
                     :model/Field
                     :model/FieldValues
@@ -3093,7 +3101,8 @@
            sync
            transforms.indexes
            util
-           warehouse-schema-overlay}}
+           warehouse-schema-overlay
+           workspaces}}
 
   transforms.feature-gating
   {:team "Graphy"
@@ -3172,7 +3181,8 @@
            sync
            util
            warehouse-schema-overlay
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-imports #{:model/Card
                     :model/Database
                     :model/Field
@@ -3483,6 +3493,13 @@
            system
            util}}
 
+  workspaces
+  {:team "Graphy"
+   :api #{metabase.workspaces.core
+          metabase.workspaces.table-remapping}
+   :uses #{premium-features
+           util}}
+
   xrays
   {:team "Graphy"
    :api  #{metabase.xrays.api
@@ -3566,7 +3583,8 @@
            sync
            users
            util
-           warehouses}
+           warehouses
+           enterprise/workspaces}
    :model-imports #{:model/ApiKey :model/Database :model/User}}
 
   enterprise/analytics
@@ -3580,7 +3598,7 @@
            enterprise/search.semantic
            enterprise/sso
            enterprise/sso.scim}
-   :model-imports #{:model/Database :model/Sandbox}}
+   :model-imports #{:model/Database :model/Sandbox :model/Workspace}}
 
   enterprise/analytics.internal-stats
   {:team "UX West"
@@ -3892,7 +3910,8 @@
            settings
            util
            warehouses
-           warehouses.schema}
+           warehouses.schema
+           workspaces}
    :model-exports #{:model/DatabaseRouter}
    :model-imports #{:model/Database :model/Transform}}
 
@@ -4683,7 +4702,38 @@
            util
            warehouse-schema-overlay
            warehouses.schema}
-   :model-imports #{:model/Database :model/Field :model/Table}}}
+   :model-imports #{:model/Database :model/Field :model/Table}}
+
+  enterprise/workspaces
+  {:team "Graphy"
+   :api  #{metabase-enterprise.workspaces.api
+           metabase-enterprise.workspaces.core
+           metabase-enterprise.workspaces.init
+           metabase-enterprise.workspaces.load-metadata}
+   :uses #{api
+           app-db
+           cache
+           driver
+           lib.metadata
+           lib.schema
+           models
+           permissions
+           premium-features
+           query-processor
+           sample-data
+           settings
+           sql-tools
+           util
+           warehouse-schema-overlay
+           warehouses.secrets
+           workspaces}
+   :model-exports #{:model/Workspace}
+   :model-imports #{:model/Database
+                    :model/Field
+                    :model/FieldUserSettings
+                    :model/Table
+                    :model/TableUserSettings
+                    :model/User}}}
 
  ;; namespaces matching these patterns (with `re-find`) are excluded from the module linter. Since regex literals
  ;; aren't allowed in EDN just used the `(str <regex>)` version i.e. two slashes instead of one.

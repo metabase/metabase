@@ -19,12 +19,12 @@
 {:ignore-counts                {:aliased-namespace-symbol                                  3
                                 :consistent-alias                                          2
                                 :def-fn                                                    1
-                                :deprecated-namespace                                      29
+                                :deprecated-namespace                                      30
                                 :deprecated-var                                            53
                                 :discouraged-java-method                                   4
                                 :duplicate-require                                         1
                                 :main-without-gen-class                                    1
-                                :metabase/discourage-dynamic-vars                          325
+                                :metabase/discourage-dynamic-vars                          328
                                 :metabase/discourage-millis-duration                       1
                                 :metabase/modules                                          23
                                 :metabase/namespace-name                                   3
@@ -53,7 +53,7 @@
                                 :legacy-mbql.normalize 14
                                 :legacy-mbql.schema    14
                                 :legacy-mbql.util      2
-                                :query-processor.store 8
+                                :query-processor.store 9
                                 :toucan2.core          3
                                 :util.malli.schema     2}
  :discouraged-var-counts       {:clojure.core/eval                                     6
