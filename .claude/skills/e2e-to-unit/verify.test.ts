@@ -224,6 +224,32 @@ export function useThing(isPolling) {
     ]);
   });
 
+  it("keeps a shorthand property a property once its value is switched", () => {
+    const sourceFile = parseSource("use-thing.ts", HOOK);
+    const fn = functionAtLine(sourceFile, 2);
+    if (!fn) {
+      throw new Error("function not found");
+    }
+    const mutants = withIds(
+      mutantsForFunction(sourceFile, "use-thing.ts", fn, "useThing", 4),
+    );
+    const output = applySchemata(HOOK, mutants);
+
+    // A shorthand property is its own key and value, so the switch has to go
+    // inside the value and leave the key in front of it. Wrapping the whole
+    // property instead emits `{ (cond ? isLoading: undefined : (isLoading)) }`,
+    // which does not parse, and a file that does not compile reports every
+    // mutant in it as survived rather than as an error.
+    expect(output).toContain(
+      "isLoading: (globalThis.__E2E_MUTANT__ === 1 ? undefined : (isLoading))",
+    );
+    const compiled = ts.transpileModule(output, {
+      compilerOptions: { target: ts.ScriptTarget.ES2020 },
+      reportDiagnostics: true,
+    });
+    expect(compiled.diagnostics ?? []).toHaveLength(0);
+  });
+
   const NAVBAR = `
 export function Navbar({ currentPath }) {
   return (

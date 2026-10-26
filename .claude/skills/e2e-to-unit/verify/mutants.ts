@@ -45,6 +45,12 @@ export interface Mutant {
   description: string;
   statement: boolean;
   replacement: string;
+  /**
+   * Text emitted before the switch, for a mutant whose node cannot itself be
+   * a ternary arm. A shorthand property is the only such case: the key has to
+   * sit outside the switch so the value can be the ternary.
+   */
+  prefix?: string;
 }
 
 /** A mutant before the planner decides to keep it and gives it an id. */
@@ -173,6 +179,8 @@ interface Candidate {
   description: string;
   /** Orders candidates of one kind; lower goes first. */
   rank?: number;
+  /** See `Mutant.prefix`. */
+  prefix?: string;
 }
 
 const snippet = (text: string, max = 60) => {
@@ -214,6 +222,7 @@ function candidatesIn(
     description: string,
     statement = false,
     rank = 0,
+    prefix?: string,
   ) =>
     out.push({
       kind,
@@ -224,6 +233,7 @@ function candidatesIn(
       mutated,
       description,
       rank,
+      prefix,
     });
 
   /**
@@ -240,13 +250,15 @@ function candidatesIn(
     }
     for (const property of object.properties) {
       if (ts.isShorthandPropertyAssignment(property)) {
+        const name = property.name.getText(sourceFile);
         push(
           "object-property-undefined",
           property,
-          `${property.name.getText(sourceFile)}: undefined`,
-          `property \`${property.name.getText(sourceFile)}\` becomes undefined`,
+          "undefined",
+          `property \`${name}\` becomes undefined`,
           false,
           0,
+          `${name}: `,
         );
       } else if (ts.isPropertyAssignment(property)) {
         const forwarded = ts.isIdentifier(property.initializer);
@@ -395,6 +407,7 @@ export function mutantsForFunction(
       description: candidate.description,
       statement: candidate.statement,
       replacement: candidate.mutated,
+      prefix: candidate.prefix,
     });
   }
   return chosen;
@@ -426,6 +439,7 @@ export function applySchemata(text: string, mutants: Mutant[]) {
         next++;
       }
       out += text.slice(cursor, mutant.start);
+      out += mutant.prefix ?? "";
       out += wrap(
         mutant,
         build(mutant.start, mutant.end, inRange.slice(index + 1, next)),
