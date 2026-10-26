@@ -2312,7 +2312,7 @@
               (is (seq rows))
               (is (every? #(= "Gizmo" (first %)) rows))))
           (testing "after the sandbox filter column is dropped, the query fails closed rather than returning unfiltered rows"
-            (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+            (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
               (jdbc/execute! db-spec ["ALTER TABLE \"PUBLIC\".\"PRODUCTS\" DROP COLUMN \"CATEGORY\";"]))
             ;; The consumer query selects only ID (a column that still exists). This is what makes the
             ;; assertion distinguish fail-CLOSED from fail-OPEN: if the sandbox were silently dropped

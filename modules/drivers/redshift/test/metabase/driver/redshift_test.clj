@@ -14,6 +14,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-util :as lib.tu]
@@ -43,13 +44,13 @@
   (mt/test-driver :redshift
     (testing "default"
       (is (= "public"
-             (driver.sql/default-schema :redshift (mt/db)))))
+             (driver.sql/default-schema :redshift (lib.metadata/database (mt/metadata-provider))))))
     (testing "schema configured in the JDBC additional options"
       (let [schema  (redshift.tx/unique-session-schema)
             details (assoc (:details (mt/db)) :additional-options (str "currentSchema=" schema))]
         (mt/with-temp [:model/Database database {:engine :redshift, :details details}]
           (is (= schema
-                 (driver.sql/default-schema :redshift database))))))))
+                 (driver.sql/default-schema :redshift (driver.u/ensure-lib-database database)))))))))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 (use-fixtures :once (fixtures/initialize :db))
@@ -247,7 +248,7 @@
             ;; sync the schema again to pick up the new view (and table, though we aren't checking that)
             (binding [sync-util/*log-exceptions-and-continue?*                       false
                       redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-              (sync/sync-database! database {:scan :schema}))
+              (sync/sync-database! (:id database) {:scan :schema}))
             (testing "the new view should have been synced"
               (is (contains?
                    (t2/select-fn-set :name :model/Table :db_id (u/the-id database))
@@ -278,7 +279,7 @@
              qual-view-nm)
             (binding [sync-util/*log-exceptions-and-continue?*                       false
                       redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-              (sync/sync-database! database {:scan :schema}))
+              (sync/sync-database! (:id database) {:scan :schema}))
             (testing "the new view should have been synced without errors"
               (is (contains?
                    (t2/select-fn-set :name :model/Table :db_id (u/the-id database))
@@ -305,7 +306,7 @@
              (mt/with-temp [:model/Database db {:engine :redshift, :details details}]
                (let [table-is-in-results? (fn []
                                             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
-                                              (->> (:tables (driver/describe-database :redshift db))
+                                              (->> (:tables (driver/describe-database :redshift (driver.u/ensure-lib-database db)))
                                                    (map :name)
                                                    (some #{table-name})
                                                    boolean)))
@@ -345,13 +346,13 @@
                            :model/Database db {:engine :redshift, :details details}]
               (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
                 (persist-models!)
-                (let [synced-schemas (into #{} (map :schema) (:tables (driver/describe-database :redshift db)))]
+                (let [synced-schemas (into #{} (map :schema) (:tables (driver/describe-database :redshift (driver.u/ensure-lib-database db))))]
                   (testing "sense check: there are results matching some schemas in the schema-filters-patterns"
                     ;; the schema this run just loaded `avian-singles` into, rather than anything shaped like a
                     ;; session schema: it ties the assertion to the name [[unique-prefix]] actually produces, so
                     ;; renaming those schemas fails here instead of silently emptying the result
                     (is (contains? synced-schemas (redshift.tx/unique-session-schema))))
-                  (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                  (let [all-schemas (map :table_schema (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                                                    "select distinct table_schema from information_schema.tables;"))]
                     (testing "metabase_cache_ tables are excluded from results"
                       (let [match? #(re-matches #"metabase_cache(.*)" %)]
@@ -378,7 +379,7 @@
              qual-mview-nm)
             (binding [redshift.tx/*override-describe-database-to-filter-by-db-name?* false]
               (u/auto-retry 3
-                (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift database)))]
+                (let [table-names (into #{} (map :name) (:tables (driver/describe-database :redshift (driver.u/ensure-lib-database database))))]
                   (when-not (contains? table-names mview-nm)
                     (Thread/sleep 1000)
                     (throw (ex-info "Materialized view not yet visible in describe-database results"
@@ -441,7 +442,7 @@
                 qual-view-name               (format "\"%s\".\"%s\"" schema-name view-nm)
                 mview-name                   (tx/db-qualified-table-name db-name "mview")
                 qual-mview-name              (format "\"%s\".\"%s\"" schema-name mview-name)
-                conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec database)
+                conn-spec                    (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                 get-privileges               (fn []
                                                (sql-jdbc.conn/with-connection-spec-for-testing-connection
                                                 [spec [:redshift (assoc (:details database) :user username)]
@@ -848,4 +849,4 @@
                                                            ["stringly" "false"]]]
                                       {:name nm, :schema "s", :type "table", :description nil, :selectable selectable}))]
         (is (= [{:name "readable", :schema "s", :description nil}]
-               (into [] (#'redshift/describe-database-tables db))))))))
+               (into [] (#'redshift/describe-database-tables (driver.u/lib-database (:id db))))))))))

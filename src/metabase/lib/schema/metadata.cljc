@@ -1108,7 +1108,6 @@
    [:timezone                    {:optional true} [:maybe :string]]
    [:default-schema              {:optional true} [:maybe :string]]
    [:write-data-details          {:optional true} [:maybe ::lib.schema.common/database-details]]
-   [:admin-details               {:optional true} [:maybe ::lib.schema.common/database-details]]
    [:router-database-id          {:optional true} [:maybe ::lib.schema.id/database]]
    [:auto-run-queries            {:optional true} [:maybe :boolean]]
    [:cache-field-values-schedule {:optional true} [:maybe :string]]
