@@ -39,19 +39,21 @@ Metabot runs queries as you, with your data permissions, including [row and colu
 
 Metabase stores the query results that Metabot reads as part of the conversation, in your Metabase application database.
 
-Admins can review stored conversations, including query results, in [AI usage auditing](./usage-auditing.md).
+On Pro and Enterprise plans, admins can review stored conversations, including query results, in [AI usage auditing](./usage-auditing.md).
 
 By default, your Metabase instance keeps stored conversations for a limited time. On self-hosted Metabase, you can change how long with [`MB_AI_USAGE_MAX_RETENTION_DAYS`](../configuring-metabase/environment-variables.md#mb_ai_usage_max_retention_days).
 
 ### Turn query execution on or off
 
-Admins control whether Metabot can run queries in [AI settings](./settings.md).
+Query execution is on by default. Admins can turn it off in [AI settings](./settings.md#query-execution).
 
 When query execution is off, Metabot doesn't run queries to read their results, but it can still build queries and charts for you. Other features on this page, like chart analysis, can still send values from your data.
 
+Metabot in Slack and in embedded apps doesn't read query results, regardless of this setting.
+
 ## Data sent to your own AI provider
 
-If you're using your own API key, everything listed above is sent to your selected AI provider, including query results when Metabot can run queries. Your provider's data handling, retention, and privacy policies apply to that data. Review them before you turn on query execution.
+If you're using your own API key, everything listed above is sent to your selected AI provider, including query results when Metabot can run queries. Your provider's data handling, retention, and privacy policies apply to that data. Query execution is on by default, so review them before people start using Metabot, or turn query execution off until you have.
 
 ## Data sent to the MCP client
 
