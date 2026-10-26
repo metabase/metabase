@@ -24,11 +24,11 @@
 (def ^:private known-sources
   #{"metabot_agent"
     "contextual_interestingness"
-    "data_sensitivity_classification"
     "conversation_title"
     "document_generate_content"
     "example_question_generation_batch"
     "exploration"
+    "metadata_generation"
     "slack"
     "slackbot"
     "oss-sql-gen"

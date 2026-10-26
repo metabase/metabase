@@ -317,7 +317,7 @@
           (is (every? #(= (llm/response-schema-for llm/default-attributes) (:schema %)) @calls))
           (is (every? #(= 0.0 (:temperature %)) @calls))
           (is (= (map #(llm/max-tokens % llm/default-attributes) [60 60 10]) (sort > (map :max-tokens @calls))))
-          (is (every? #(= {:source "data_sensitivity_classification" :tag "data-sensitivity"
+          (is (every? #(= {:source "metadata_generation" :tag "metadata-generation"
                            :required-permission :permission/metabot-other-tools}
                           (dissoc (:opts %) :request-id))
                       @calls))

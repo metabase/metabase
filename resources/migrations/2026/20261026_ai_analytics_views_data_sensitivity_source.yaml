@@ -1,5 +1,5 @@
 ## Reinstall v_ai_usage_log (v7) and v_metabot_conversations (v9) with a CASE branch for the
-## `data_sensitivity_classification` usage source, which the LLM data-sensitivity classifier writes to
+## `metadata_generation` usage source, which LLM field metadata generation runs write to
 ## ai_usage_log. v7 = v6 plus that branch; v9 = v8 plus that branch. Previous versions are never edited
 ## in place.
 ##
@@ -12,7 +12,7 @@ databaseChangeLog:
       id: y5xqna
       author: tplude
       runOnChange: true
-      comment: Reinstall v_ai_usage_log (v7) with the data_sensitivity_classification source in source_name CASE
+      comment: Reinstall v_ai_usage_log (v7) with the metadata_generation source in source_name CASE
       changes:
         - sqlFile:
             dbms: postgresql
@@ -44,7 +44,7 @@ databaseChangeLog:
       id: jbjwj6
       author: tplude
       runOnChange: true
-      comment: Reinstall v_metabot_conversations (v9) with the data_sensitivity_classification source CASE branch
+      comment: Reinstall v_metabot_conversations (v9) with the metadata_generation source CASE branch
       changes:
         - sqlFile:
             dbms: postgresql
