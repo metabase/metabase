@@ -1,6 +1,7 @@
 (ns metabase.sync.fetch-metadata-test
   (:require
    [clojure.test :refer :all]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.test :as mt])
   (:import
@@ -13,7 +14,7 @@
   [e]
   (let [attempted (atom 0)
         ;; outside the redef: the first `mt/db` creates and syncs the test DB, which must not see the failures
-        db        (mt/db)]
+        db        (lib.metadata/database (mt/metadata-provider))]
     (mt/with-dynamic-fn-redefs [fetch-metadata/table-fields-metadata (fn [_database _table]
                                                                        (swap! attempted inc)
                                                                        (throw e))]
