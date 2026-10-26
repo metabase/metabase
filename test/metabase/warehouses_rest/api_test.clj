@@ -165,7 +165,7 @@
     (testing "DB details visibility"
       (testing "Regular users should not see DB details"
         (is (= (-> (db-details)
-                   (dissoc :details :write_data_details :admin_details :initial_sync_error :schedules))
+                   (dissoc :details :write_data_details :initial_sync_error :schedules))
                (-> (mt/user-http-request :rasta :get 200 (format "database/%d" (mt/id)))
                    (dissoc :schedules :can_upload)))))
       (testing "Superusers should see DB details"
@@ -906,7 +906,7 @@
 
 (deftest ^:parallel fetch-database-metadata-test
   (testing "GET /api/database/:id/metadata"
-    (is (= (merge (dissoc (db-details) :details :write_data_details :admin_details :initial_sync_error :router_user_attribute)
+    (is (= (merge (dissoc (db-details) :details :write_data_details :initial_sync_error :router_user_attribute)
                   {:engine        "h2"
                    :name          "test-data (h2)"
                    :features      (map u/qualified-name (driver.u/features :h2 (mt/db)))
@@ -1237,7 +1237,7 @@
       (testing "Database details/settings *should not* come back for Rasta since she's not a superuser"
         (let [expected-keys (-> #{:features :native_permissions :can_upload :router_user_attribute :transforms_permissions}
                                 (into (keys (t2/select-one :model/Database :id (mt/id))))
-                                (disj :details :write_data_details :admin_details :initial_sync_error))]
+                                (disj :details :write_data_details :initial_sync_error))]
           (doseq [db (:data (mt/user-http-request :rasta :get 200 "database"))]
             (testing (format "Database %s %d %s" (:engine db) (u/the-id db) (pr-str (:name db)))
               (is (= expected-keys
@@ -3390,54 +3390,6 @@
                  (mt/user-http-request :crowberto :put 400 (format "database/%d" router-id)
                                        {:write_data_details {:host "write-host"
                                                              :write-data-connection true}}))))))))
-
-;;; ----------------------------------------- admin_details tests -----------------------------------------
-
-(deftest ^:parallel upsert-sensitive-fields-admin-details-test
-  (testing "upsert-sensitive-fields works with :admin_details key"
-    (is (= {:host "localhost"
-            :port 5432
-            :password "new-password"}
-           (#'api.database/upsert-sensitive-fields
-            {:engine :h2
-             :id (mt/id)
-             :details {:host "localhost" :port 5432 :password "main-pass"}
-             :admin_details {:host "localhost" :port 5432 :password "admin-pass"}}
-            {:host "localhost"
-             :port 5432
-             :password "new-password"}
-            :admin_details)))
-    (testing "protected passwords are replaced from original"
-      (is (= {:host "localhost"
-              :port 5432
-              :password "admin-pass"}
-             (#'api.database/upsert-sensitive-fields
-              {:engine :h2
-               :id (mt/id)
-               :details {:host "localhost" :port 5432 :password "main-pass"}
-               :admin_details {:host "localhost" :port 5432 :password "admin-pass"}}
-              {:host "localhost"
-               :port 5432
-               :password secret/protected-password}
-              :admin_details))))))
-
-(deftest get-database-admin-details-test
-  (testing "GET /api/database/:id"
-    (testing "Superusers see admin_details with sensitive fields redacted"
-      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
-                                                  :details {:host "localhost"}
-                                                  :admin_details {:host "admin-host"
-                                                                  :password "secret-admin-pass"}}]
-        (let [response (mt/user-http-request :crowberto :get 200 (format "database/%d" db-id))]
-          (is (= "admin-host" (get-in response [:admin_details :host])))
-          (is (= secret/protected-password (get-in response [:admin_details :password]))))))
-    (testing "Regular users do not see admin_details"
-      (mt/with-temp [:model/Database {db-id :id} {:engine :h2
-                                                  :details {:host "localhost"}
-                                                  :admin_details {:host "admin-host"}}]
-        (let [response (mt/user-http-request :rasta :get 200 (format "database/%d" db-id))]
-          (is (not (contains? response :admin_details)))
-          (is (not (contains? response :details))))))))
 
 (deftest update-database-preserves-overlay-details-test
   (testing "PUT /api/database/:id without write_data_details/provider_name keys"

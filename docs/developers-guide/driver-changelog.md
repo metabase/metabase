@@ -13,6 +13,12 @@ title: Driver interface changelog
 
 ## Metabase 0.65.0
 
+- The admin connection is removed: `metabase.driver.connection/with-admin-connection`,
+  `metabase.driver.connection/database-admin-details`, the `:admin` connection type,
+  `metabase.driver.common/admin-connection-option` (and its `"admin-connection"` `visible-if` marker) and
+  `metabase.driver.util/fields-hidden-for-admin-connection` are gone, and a Database no longer has `:admin_details`.
+  A driver's `normalize-db-details` normalizes only `:details` and `:write_data_details`.
+
 - `metabase.driver/disallowed-connection-parameters` `[driver]` -- new multimethod returning the names of client
   connection parameters a user may never set, whether in `:additional-options` or as a detail key. Metabase refuses
   details that set one when a connection is tested, when a connection pool is created, and when a Database is saved.

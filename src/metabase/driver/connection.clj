@@ -61,7 +61,7 @@
 
 (def connection-types
   "All valid values for [[*connection-type*]]."
-  [:default :write-data :admin :transform])
+  [:default :write-data :transform])
 
 (mr/def ::connection-type
   (into [:enum] connection-types))
@@ -72,13 +72,12 @@
 
    - `:default` — primary `:details`
    - `:write-data` — `:write-data-details` merged over `:details` (if configured)
-   - `:admin` — `:admin-details` merged over `:details` (if configured)
    - `:transform` — same details as `:write-data` (transforms write, so `:write-data-details`
      are taken into account when configured), but resolved through a separate connection pool
      whose c3p0 leak-detector tolerates transform-length runtimes. Set by
      [[with-transform-connection]] from the transform runner.
 
-   Bind via [[with-write-connection]], [[with-admin-connection]], or [[with-transform-connection]],
+   Bind via [[with-write-connection]] or [[with-transform-connection]],
    not directly."
   :default)
 
@@ -96,26 +95,6 @@
    into account (if configured) instead of only primary `:details`."
   [& body]
   `(do-with-write-connection (fn [] ~@body)))
-
-(defn do-with-admin-connection
-  "Functional core of [[with-admin-connection]]."
-  [thunk]
-  (let [prior *connection-type*]
-    (when (not= prior :admin)
-      (log/infof "Entering :admin connection scope (from %s)" prior))
-    (binding [*connection-type* :admin]
-      (thunk))))
-
-(defmacro with-admin-connection
-  "Establishes an admin-connection context for body.
-
-   [[effective-details]] calls within this scope resolve to take `:admin-details`
-   into account (if configured) instead of only primary `:details`. The admin
-   connection carries the highest-privilege credentials for a database (DDL,
-   ownership, schema management). Code that needs admin access must opt in
-   explicitly."
-  [& body]
-  `(do-with-admin-connection (fn [] ~@body)))
 
 (defn do-with-transform-connection
   "Functional core of [[with-transform-connection]]."
@@ -152,12 +131,6 @@
   [_database]
   nil)
 
-(defenterprise database-admin-details
-  "Returns the `:admin-details` for a database, or `nil` if the connection-overlays feature is not available.
-   OSS implementation always returns `nil`."
-  metabase-enterprise.connection-overlays.core
-  [_database]
-  nil)
 
 (defn- overlay-details-for-type
   "Returns the connection-type-specific details overlay for `database`, or nil if the
@@ -170,8 +143,7 @@
   (case connection-type
     :default    nil
     :write-data (database-write-data-details database)
-    :transform  (database-write-data-details database)
-    :admin      (database-admin-details database)))
+    :transform  (database-write-data-details database)))
 
 (defn- resolve-effective-type
   "Maps a requested `connection-type` plus whether an `overlay` was resolved to the effective
@@ -189,9 +161,8 @@
 
    Accepts a database (Toucan2 instance or lib/metadata). Returns nil for nil input.
 
-   By default, returns the primary `:details`. Within a [[with-write-connection]] or
-   [[with-admin-connection]] scope, takes the corresponding `:write-data-details` /
-   `:admin-details` into account (if configured). Within a [[with-transform-connection]]
+   By default, returns the primary `:details`. Within a [[with-write-connection]] scope, takes
+   `:write-data-details` into account (if configured). Within a [[with-transform-connection]]
    scope, takes `:write-data-details` into account (if configured) — transforms write, so
    they get write-data credentials when set — but resolves to a *different* pool key
    (`:transform` vs `:write-data`) so the pool properties (e.g. `unreturnedConnectionTimeout`)
@@ -216,16 +187,15 @@
 (defn details-for-exact-type
   "Returns the details map for exactly the given connection-type, with no fallback or merging.
 
-   Unlike [[effective-details]], `:write-data` and `:admin` return only their respective
-   overlay maps (possibly nil), not a merge with `:details`. Use when you need to inspect
+   Unlike [[effective-details]], `:write-data` returns only its overlay map (possibly nil), not
+   a merge with `:details`. Use when you need to inspect
    or update a specific details map without resorting to raw key access."
   [database connection-type]
   (let [database (driver.u/ensure-lib-database database)]
     (case connection-type
       :default    (:details database)
       :write-data (database-write-data-details database)
-      :transform  (:details database)
-      :admin      (database-admin-details database))))
+      :transform  (:details database))))
 
 (defn connection-telemetry-info
   "A human-readable description of the current connection context, for logging only. Prose, not a

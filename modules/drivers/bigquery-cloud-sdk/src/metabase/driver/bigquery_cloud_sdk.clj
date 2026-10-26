@@ -1212,8 +1212,8 @@
 ;; TODO: THIS METHOD SHOULD NOT BE UPDATING THE APP-DB (which it does in [convert-dataset-id-to-filters!])
 ;; Issue: https://github.com/metabase/metabase/issues/39392
 ;; This normalize is a legacy migration (OAuth -> service-account, dataset-id -> filters); it
-;; runs only against `:details` because the overlay maps (`:write-data-details`, `:admin-details`)
-;; never carry these legacy fields, and `convert-dataset-id-to-filters!` writes side effects
+;; runs only against `:details` because the overlay map (`:write-data-details`)
+;; never carries these legacy fields, and `convert-dataset-id-to-filters!` writes side effects
 ;; specific to the primary details.
 (defmethod driver/normalize-db-details :bigquery-cloud-sdk
   [_driver database]

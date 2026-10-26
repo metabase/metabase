@@ -816,7 +816,7 @@
            (t2/update! :model/Database (:id db) {:engine (u/qualified-name ::alternate-details-driver)}))))))
 
 (deftest overlay-details-are-validated-the-way-they-are-resolved-test
-  ;; `:write_data_details` and `:admin_details` are merged onto `:details` by
+  ;; `:write_data_details` is merged onto `:details` by
   ;; [[metabase.driver.connection/effective-details]] rather than used on their own, so that merge is what has to
   ;; satisfy the policy -- an overlay holding nothing but credentials repoints nothing.
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
@@ -828,7 +828,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"private or internal network address"
-             (t2/update! :model/Database (:id db) {:admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
+             (t2/update! :model/Database (:id db) {:write_data_details {:host "127.0.0.1" :user "hummingbird"}})))))))
 
 (deftest disallowed-connection-parameters-are-refused-on-save-test
   ;; like the network policy, enforced on the model so serialization import and config-file provisioning -- which

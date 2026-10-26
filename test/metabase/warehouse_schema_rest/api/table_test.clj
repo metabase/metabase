@@ -260,7 +260,7 @@
     (testing "GET api/table/:id/query_metadata?include_sensitive_fields"
       (testing "Sensitive fields are included"
         (is (= (merge
-                (update (table-defaults) :db merge {:details nil, :write_data_details nil, :admin_details nil, :initial_sync_error nil})
+                (update (table-defaults) :db merge {:details nil, :write_data_details nil, :initial_sync_error nil})
                 (t2/hydrate (t2/select-one [:model/Table :created_at :updated_at :initial_sync_status :view_count]
                                            :id (mt/id :users))
                             :collection)
@@ -481,7 +481,7 @@
       (is (= (merge
               (-> (table-defaults)
                   (dissoc :segments :field_values :metrics :measures :updated_at)
-                  (update :db merge (select-keys (mt/db) [:details :write_data_details :admin_details :initial_sync_error])))
+                  (update :db merge (select-keys (mt/db) [:details :write_data_details :initial_sync_error])))
               (t2/hydrate (t2/select-one [:model/Table :id :schema :name :created_at :initial_sync_status] :id (u/the-id table))
                           :pk_field :collection)
               {:description     "What a nice table!"

@@ -1413,10 +1413,9 @@
   update the value for `:details`. The default implementation is essentially `identity` (i.e returns `database`
   unchanged). This multimethod will only be called if `:details` is actually present in the `database` map.
 
-  Implementations should normalize `:details`, `:write-data-details`, and `:admin-details` (each if present),
-  since `:write-data-details` and `:admin-details` are merged on top of `:details` by
-  [[metabase.driver.connection/effective-details]] under their respective contexts. Un-normalized fields in
-  the overlay maps can leak through to the merged result. See [[metabase.driver.connection]] for more
+  Implementations should normalize `:details` and `:write-data-details` (each if present), since
+  `:write-data-details` is merged on top of `:details` by [[metabase.driver.connection/effective-details]] in a
+  write context. Un-normalized fields in the overlay map can leak through to the merged result. See [[metabase.driver.connection]] for more
   information."
   {:added "0.41.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
