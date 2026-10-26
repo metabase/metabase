@@ -649,3 +649,127 @@ export function withCountFilterDrilled(
     Lib.numberFilterClause({ operator: ">", column: count, values: [4939] }),
   );
 }
+
+function findAggregationOperator(
+  query: Lib.Query,
+  stageIndex: number,
+  shortName: string,
+): Lib.AggregationOperator | undefined {
+  return Lib.availableAggregationOperators(query, stageIndex).find(
+    (operator) =>
+      Lib.displayInfo(query, stageIndex, operator).shortName === shortName,
+  );
+}
+
+function findOperatorColumn(
+  query: Lib.Query,
+  stageIndex: number,
+  operator: Lib.AggregationOperator,
+  displayName: string,
+): Lib.ColumnMetadata | undefined {
+  return Lib.aggregationOperatorColumns(operator).find(
+    (column) =>
+      Lib.displayInfo(query, stageIndex, column).displayName === displayName,
+  );
+}
+
+/**
+ * Two levels of summarization, filters on every stage. Stage 0: `Total > 100`,
+ * `Sum of Total` by `Created At: Day` (daily revenue). Stage 1:
+ * `Sum of Total > 500`, then `Average of Sum of Total` by `Created At: Month`
+ * (the day re-bucketed to months). Stage 2: `Average of Sum of Total > 700`.
+ *
+ * An aggregation's output cannot be binned (no fingerprint, the backend
+ * refuses), so the second summary buckets the date instead.
+ */
+export function withTwoSummariesExample(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const total = findColumn(cleared, stageIndex, "Total");
+  const createdAt = findBreakoutColumn(cleared, stageIndex, "Created At");
+  const sum = findAggregationOperator(cleared, stageIndex, "sum");
+  const sumTotal = sum
+    ? findOperatorColumn(cleared, stageIndex, sum, "Total")
+    : undefined;
+  if (!total || !createdAt || !sum || !sumTotal) {
+    return query;
+  }
+  const rowsFiltered = Lib.filter(
+    cleared,
+    stageIndex,
+    Lib.numberFilterClause({ operator: ">", column: total, values: [100] }),
+  );
+  const daily = Lib.breakout(
+    Lib.aggregate(
+      rowsFiltered,
+      stageIndex,
+      Lib.aggregationClause(sum, sumTotal),
+    ),
+    stageIndex,
+    Lib.withTemporalBucket(
+      createdAt,
+      findTemporalBucket(rowsFiltered, stageIndex, createdAt, "day"),
+    ),
+  );
+
+  const secondStageIndex = stageIndex + 1;
+  const withSecondStage = Lib.appendStage(daily);
+  const dailySum = findFilterColumnByLongName(
+    withSecondStage,
+    secondStageIndex,
+    "Sum of Total",
+  );
+  const day = findBreakoutColumn(
+    withSecondStage,
+    secondStageIndex,
+    "Created At: Day",
+  );
+  const avg = findAggregationOperator(withSecondStage, secondStageIndex, "avg");
+  const avgDailySum = avg
+    ? findOperatorColumn(withSecondStage, secondStageIndex, avg, "Sum of Total")
+    : undefined;
+  if (!dailySum || !day || !avg || !avgDailySum) {
+    return daily;
+  }
+  const secondFiltered = Lib.filter(
+    withSecondStage,
+    secondStageIndex,
+    Lib.numberFilterClause({ operator: ">", column: dailySum, values: [500] }),
+  );
+  const monthly = Lib.breakout(
+    Lib.aggregate(
+      secondFiltered,
+      secondStageIndex,
+      Lib.aggregationClause(avg, avgDailySum),
+    ),
+    secondStageIndex,
+    Lib.withTemporalBucket(
+      day,
+      findTemporalBucket(secondFiltered, secondStageIndex, day, "month"),
+    ),
+  );
+
+  const thirdStageIndex = secondStageIndex + 1;
+  const withThirdStage = Lib.appendStage(monthly);
+  const monthlyAverage = Lib.filterableColumns(
+    withThirdStage,
+    thirdStageIndex,
+  ).find(
+    (column) =>
+      Lib.displayInfo(withThirdStage, thirdStageIndex, column).name === "avg",
+  );
+  if (!monthlyAverage) {
+    return monthly;
+  }
+  return Lib.filter(
+    withThirdStage,
+    thirdStageIndex,
+    Lib.numberFilterClause({
+      operator: ">",
+      column: monthlyAverage,
+      values: [700],
+    }),
+  );
+}

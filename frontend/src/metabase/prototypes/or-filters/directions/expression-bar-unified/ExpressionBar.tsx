@@ -403,7 +403,8 @@ export function ExpressionBar({
           className={cx(S.input, {
             [S.inputInline]: caret < tokens.length,
             [S.inputEmpty]: text.length === 0,
-            [S.inputHugging]: trailing != null && trailing !== false,
+            [S.inputHugging]:
+              caret === tokens.length && trailing != null && trailing !== false,
           })}
           // Between tokens the input hugs its text and takes no space while empty, so
           // moving the caret never shifts the tokens. The active Gap shows where it sits.
@@ -512,8 +513,14 @@ export function ExpressionBar({
         onClick={handleBarClick}
         onFocusCapture={() => setIsFocused(true)}
         onBlurCapture={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget)) {
+          const staysInBar = event.currentTarget.contains(event.relatedTarget);
+          if (!staysInBar) {
             setIsFocused(false);
+          }
+          // Tabbing from the input to a pill or the trailing zone leaves the
+          // dropdown open (only clicks close it), so close it here.
+          if (staysInBar && event.target === inputRef.current) {
+            closeDropdown();
           }
         }}
       >

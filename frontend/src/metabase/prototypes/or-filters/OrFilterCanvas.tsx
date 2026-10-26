@@ -27,24 +27,20 @@ import {
   clearFilters,
   withCountByBinnedTotal,
   withCountByCategory,
-  withCountByCategoryByMonth,
   withCountByMonth,
   withCountBySource,
   withCountByState,
   withCountFilterDrilled,
   withCountWhereByCategory,
   withCountWhereDrilled,
-  withDnfExample,
   withFilteredCountByCategoryByMonth,
   withFkFilterDrilled,
   withFourLevelsExample,
-  withNestedExample,
-  withOrExample,
-  withPillsExample,
   withPivotDrilled,
   withRawRows,
   withTwoGroupsExample,
   withTwoStagesExample,
+  withTwoSummariesExample,
   withUnderlyingRecordsDrilled,
   withZoomBinsDrilled,
   withZoomMapDrilled,
@@ -62,46 +58,15 @@ const DEFAULT_DISPLAY: CardDisplayType = "table";
 const SYNTHETIC_SHAPE_EXAMPLES: Example[] = [
   {
     get label() {
-      return t`A or B`;
-    },
-    load: withOrExample,
-  },
-  {
-    get label() {
-      return t`(A and B) or C`;
-    },
-    load: withDnfExample,
-  },
-  {
-    get label() {
-      return t`(A or B), C as two pills`;
-    },
-    load: withPillsExample,
-  },
-  {
-    get label() {
       return t`(A and B) or (C and D)`;
     },
     load: withTwoGroupsExample,
   },
   {
     get label() {
-      return t`A and B and (C or (D and E))`;
-    },
-    load: withNestedExample,
-  },
-  {
-    get label() {
       return t`A or (B and (C or (D and E)))`;
     },
     load: withFourLevelsExample,
-  },
-  {
-    get label() {
-      return t`Count by Category by Month`;
-    },
-    load: withCountByCategoryByMonth,
-    display: "bar",
   },
   {
     get label() {
@@ -112,10 +77,18 @@ const SYNTHETIC_SHAPE_EXAMPLES: Example[] = [
   },
   {
     get label() {
-      return t`Two stages, wraps`;
+      return t`1 summary`;
     },
     load: withTwoStagesExample,
     display: "bar",
+  },
+  {
+    get label() {
+      return t`Two summaries`;
+    },
+    load: withTwoSummariesExample,
+    display: "line",
+    hint: t`Stage 0: Total > 100, Sum of Total by Created At: Day. Stage 1: Sum of Total > 500, then Average of Sum of Total by Created At: Month. Stage 2: Average of Sum of Total > 700. Three stages, a filter on each; the second summary re-buckets the day to months, since an aggregation's output cannot be binned.`,
   },
 ];
 

@@ -41,7 +41,7 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
   {
     id: "expression-bar-split",
     get name() {
-      return t`Expression bar: rows bar, summary pills`;
+      return t`Expression bar: separate summaries`;
     },
     get description() {
       return t`The expression is the rows only: full "and", "or", "not" and parentheses, no summary columns in the dropdown. Filters on the summary never mix with it: they are plain AND-ed pills in a zone at the end of the bar, added through their own Σ button (aggregations only), edited by clicking, applied at once. A drill on an aggregated value lands in that zone; a draft in the expression survives it.`;
