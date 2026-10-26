@@ -48,16 +48,14 @@
        (message/msg ["Query handle not found — it may have expired; run the query again."]))))
 
 (defn- handle-for-visualization!
-  "Resolve `visualize_query`'s mutually exclusive inputs to the handle the iframe will render.
+  "Return the handle that the iframe will render for `visualize_query`.
 
-   A fresh `query` runs the representations pipeline (validate → repair → resolve, permission
-   checked) and mints a handle, so the iframe renders exactly what was resolved. A supplied
-   `query_handle` is reused as-is rather than re-minted — the stored query is unchanged, and a
-   duplicate handle would only add a row for the GC to collect.
+   Accept exactly one of `query` or `query_handle`. Validate, repair and resolve a fresh `query`,
+   check permissions and run the query processor's preprocessing check before creating a handle.
+   Reuse a supplied `query_handle` without changing the stored query.
 
-   Native is allowed through the handle path but not the fresh path: `execute_sql` mints handles
-   whose SQL is visualizable by design, while inline `query` is MBQL 5 only, matching
-   `execute_query`."
+   A fresh `query` must be MBQL 5, as in `execute_query`. A `query_handle` can also contain native
+   SQL from `execute_sql`."
   [{:keys [query query_handle prompt]} session-id]
   (let [provided (cond-> []
                    query        (conj :query)
@@ -74,7 +72,7 @@
         (v2.queries/mint-query-handle!
          session-id
          api/*current-user-id*
-         (-> (v2.queries/execute-representations-query query)
+         (-> (v2.queries/execute-representations-query query {:preprocess-check? true})
              (get-in [:structured-output :query])
              lib/prepare-for-serialization
              v2.queries/encode-serialized-query)
@@ -108,6 +106,7 @@
 
 Use this for any request to show, display, visualize, plot, chart, or present results — for example `Show me customers`, `Show me orders by month`, `Display revenue by region`, `Visualize active users over time`. Rendering the visualization IS the final answer: do not call execute_query or execute_sql afterwards to restate the numbers, and do not tell the user to change display types or open the Metabase query builder, a panel, or a sidebar — this is a lightweight inline visualization, not the full Metabase UI."
   {:name                "visualize_query"
+   :default-access      :allowed
    :scope               (v2.resources/resource-scope v2.resources/visualize-query-uri)
    ;; Not idempotent: the fresh-`query` path mints a new handle row on every call.
    :annotations         {:readOnlyHint true}
@@ -133,6 +132,7 @@ Use this for any request to show, display, visualize, plot, chart, or present re
 (registry/deftool render-drill-through
   "Render the drill-through visualization the user just navigated into. Use this — not an execute tool — when the user asks to show a result and their message carries a handle UUID; it is the exact follow-up for the phrase `Show me the result`. Pass that UUID through as query_handle without running the query yourself. Like visualize_query, this renders a lightweight inline visualization and is the final answer: do not restate the numbers with an execute tool, and do not tell the user to change display types or open a Metabase panel or sidebar."
   {:name                "render_drill_through"
+   :default-access      :allowed
    :scope               (v2.resources/resource-scope v2.resources/render-drill-through-uri)
    :annotations         {:readOnlyHint true :idempotentHint true}
    :required-extensions #{:mcp-app-ui}

@@ -1,11 +1,11 @@
-import { useCallback } from "react";
+import { type JSX, useCallback } from "react";
 import { t } from "ttag";
 
 import { Button } from "metabase/ui";
 import type { Timeline } from "metabase-types/api";
 
-import ModalFooter from "../ModalFooter";
-import ModalHeader from "../ModalHeader";
+import { ModalFooter } from "../ModalFooter";
+import { ModalHeader } from "../ModalHeader";
 
 export interface DeleteTimelineModalProps {
   timeline: Timeline;

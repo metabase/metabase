@@ -97,7 +97,7 @@ export const EventDefinitionSummary = ({
       {isDraggable && (
         <Box
           className={S.grabber}
-          c="text-tertiary"
+          c="text-disabled"
           display="flex"
           style={{ flexShrink: 0 }}
         >
@@ -113,7 +113,7 @@ export const EventDefinitionSummary = ({
       >
         <Text
           truncate
-          c={name && !isActive ? "text-primary" : "text-tertiary"}
+          c={name && !isActive ? "text-primary" : "text-disabled"}
           fw={isOver ? "bold" : undefined}
         >
           {label}

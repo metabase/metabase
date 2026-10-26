@@ -91,7 +91,7 @@ export const EventTablePicker = ({
               key={item.id}
               leftSection={<Icon name="table" />}
               rightSection={
-                <Text size="sm" c="text-tertiary" maw="8rem" truncate>
+                <Text size="sm" c="text-disabled" maw="8rem" truncate>
                   {item.db?.name}
                 </Text>
               }

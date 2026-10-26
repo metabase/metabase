@@ -273,7 +273,7 @@ const ListRow = ({ handle, children }: ListRowProps) => (
 
 /** The step's number, in the handle's place, on rows and empty slots alike. */
 const SlotNumber = ({ n }: { n: number }) => (
-  <Text size="sm" c="text-tertiary" ta="center" lh={1}>
+  <Text size="sm" c="text-disabled" ta="center" lh={1}>
     {n}
   </Text>
 );

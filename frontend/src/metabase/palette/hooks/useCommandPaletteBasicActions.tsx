@@ -16,8 +16,9 @@ import {
 } from "metabase/current-user";
 import { getHasDatabaseWithActionsEnabled } from "metabase/databases/utils/predicates";
 import { openEmbedJsWizard } from "metabase/embedding/store/embed-setup-modal";
+import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { openDiagnostics } from "metabase/redux/app";
+import { closeNavbar, openDiagnostics } from "metabase/redux/app";
 import type { ModalName } from "metabase/redux/store/modal";
 import { closeModal, setOpenModal } from "metabase/redux/ui";
 import { useNavigate } from "metabase/router";
@@ -55,6 +56,7 @@ export const BASIC_ACTION_ORDER = [
   "navigate-browse-model",
   "navigate-browse-database",
   "navigate-browse-metric",
+  "navigate-data-apps",
 ];
 
 // Small enough that it only orders actions whose relevance scores are equal,
@@ -116,6 +118,7 @@ export const useCommandPaletteBasicActions = ({
         icon: "insight",
         perform: () => {
           dispatch(closeModal());
+          dispatch(closeNavbar());
           navigate(
             Urls.newQuestion({
               mode: "notebook",
@@ -136,6 +139,7 @@ export const useCommandPaletteBasicActions = ({
         icon: "sql",
         perform: () => {
           dispatch(closeModal());
+          dispatch(closeNavbar());
           navigate(
             Urls.newQuestion({
               DEPRECATED_RAW_MBQL_type: "native",
@@ -176,6 +180,7 @@ export const useCommandPaletteBasicActions = ({
       section: "basic",
       icon: "document",
       perform: () => {
+        dispatch(closeNavbar());
         navigate(Urls.newDocument());
       },
     });
@@ -246,6 +251,15 @@ export const useCommandPaletteBasicActions = ({
           dispatch(closeModal());
           dispatch(openEmbedJsWizard());
         },
+      });
+    }
+
+    if (isAdmin && PLUGIN_DATA_APPS.isEnabled) {
+      actions.push({
+        id: "navigate-data-apps",
+        section: "basic",
+        icon: "app",
+        perform: () => navigate(Urls.dataStudioDataApps()),
       });
     }
 
@@ -334,7 +348,7 @@ export const useCommandPaletteBasicActions = ({
 
   const openActionModal = [];
 
-  if (hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
+  if (isAdmin && hasDatabaseWithActionsEnabled && hasNativeWrite && hasModels) {
     openActionModal.push({
       id: "create-action",
       name: t`New action`,
@@ -347,6 +361,7 @@ export const useCommandPaletteBasicActions = ({
     });
   }
   useRegisterActions(openActionModal, [
+    isAdmin,
     hasDatabaseWithActionsEnabled,
     hasNativeWrite,
     hasModels,

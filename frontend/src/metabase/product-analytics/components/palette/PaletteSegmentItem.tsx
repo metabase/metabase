@@ -101,7 +101,7 @@ export const PaletteSegmentItem = ({
       }}
     >
       <Group gap="sm" wrap="nowrap" p="xs">
-        <Box c="text-tertiary" display="flex" style={{ flexShrink: 0 }}>
+        <Box c="text-disabled" display="flex" style={{ flexShrink: 0 }}>
           <Icon name="grabber" size={12} />
         </Box>
         {segment.status !== "sample" && (

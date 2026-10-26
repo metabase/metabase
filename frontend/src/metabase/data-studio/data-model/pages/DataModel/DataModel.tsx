@@ -24,11 +24,14 @@ import {
 } from "metabase/metadata/components";
 import { getTableMetadataQuery } from "metabase/metadata/pages/shared/utils";
 import { getRawTableFieldId } from "metabase/metadata/utils/field";
-import { PLUGIN_LIBRARY } from "metabase/plugins";
+import {
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+  PLUGIN_LIBRARY,
+} from "metabase/plugins";
 import { useParams } from "metabase/router";
 import {
+  ActionIcon,
   Box,
-  Button,
   Flex,
   Group,
   Icon,
@@ -39,11 +42,12 @@ import {
 import * as Urls from "metabase/urls";
 
 import { trackMetadataChange } from "../../analytics";
-import { RouterTablePicker, TableSection } from "../../components";
-import type { TreePath } from "../../components/TablePicker/types";
-import { TableAttributesEditBulk } from "../../components/TableSection/components/TableAttributesEditBulk";
 
 import S from "./DataModel.module.css";
+import { RouterTablePicker } from "./TablePicker";
+import type { TreePath } from "./TablePicker/types";
+import { TableSection } from "./TableSection";
+import { TableAttributesEditBulk } from "./TableSection/TableAttributesEditBulk";
 import { COLUMN_CONFIG } from "./constants";
 import { SelectionProvider, useSelection } from "./contexts/SelectionContext";
 import type { RouteParams } from "./types";
@@ -78,7 +82,9 @@ function DataModelContent() {
     data: databasesData,
     error: databasesError,
     isLoading: isLoadingDatabases,
-  } = useListDatabasesQuery();
+  } = useListDatabasesQuery(
+    PLUGIN_FEATURE_LEVEL_PERMISSIONS.dataModelQueryProps,
+  );
   const databaseExists = databasesData?.data?.some(
     (database) => database.id === databaseId,
   );
@@ -248,22 +254,21 @@ function DataModelContent() {
               px="xl"
             >
               <DataStudioBreadcrumbs>{t`Table details`}</DataStudioBreadcrumbs>
-              {/* TODO: replace with ActionIcon (GDGT-2457) */}
-              <Button
+              <ActionIcon
                 variant="subtle"
-                color="neutral"
                 size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
                   databaseId: table?.db_id,
                   schemaName: table?.schema,
                 })}
-                leftSection={<Icon name="close" />}
                 onClick={() => {
                   closePreview();
                   resetSelection();
                 }}
-              />
+              >
+                <Icon name="close" />
+              </ActionIcon>
             </Group>
             <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>
@@ -315,10 +320,8 @@ function DataModelContent() {
               className={S.header}
             >
               <DataStudioBreadcrumbs>{t`Field details`}</DataStudioBreadcrumbs>
-              {/* TODO: replace with ActionIcon (GDGT-2457) */}
-              <Button
+              <ActionIcon
                 variant="subtle"
-                color="neutral"
                 size="sm"
                 component={ForwardRefLink}
                 to={Urls.dataStudioData({
@@ -326,9 +329,10 @@ function DataModelContent() {
                   schemaName: table?.schema,
                   tableId: table?.id,
                 })}
-                leftSection={<Icon name="close" />}
                 onClick={closePreview}
-              />
+              >
+                <Icon name="close" />
+              </ActionIcon>
             </Group>
             <ScrollArea flex={1} px="xl" type="hover">
               <LoadingAndErrorWrapper error={error} loading={isLoading}>

@@ -90,8 +90,8 @@ export function useGetTransformWarnings(transforms: Transform[] | undefined) {
   // `columnDefs` (and therefore the TanStack TreeTable's column model) stays
   // stable across `metadata` reference churn. Without this, fetching a single
   // collection (e.g. opening the edit-collection modal) recomputes `metadata`,
-  // which propagates a new column reference, remounts row cells, and tears
-  // down any modal that lives inside `CollectionRowMenu`.
+  // which propagates a new column reference, remounts row cells, and closes
+  // any open row menu.
   const warningsRef = useRef(computedWarningsByTransformId);
   if (
     warningsRef.current !== computedWarningsByTransformId &&

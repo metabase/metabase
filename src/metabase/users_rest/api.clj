@@ -380,6 +380,7 @@
    [:has_invited_second_user    :boolean]
    [:has_question_and_dashboard :boolean]
    [:has_model                  :boolean]
+   [:slack_account_status       [:maybe [:enum "active" "inactive"]]]
    [:can_write_any_collection   :boolean]
    [:sso_source                 [:maybe :keyword]]
    [:locale                     [:maybe :string]]
@@ -409,7 +410,18 @@
       maybe-add-advanced-permissions
       maybe-add-sso-source
       add-custom-homepage-info
-      add-can-write-any-collection))
+      add-can-write-any-collection
+      (assoc :slack_account_status (sso/slack-account-status api/*current-user-id*))))
+
+(api.macros/defendpoint :delete "/:id/slack" :- [:map {:closed true}
+                                                 [:status [:= 204]]
+                                                 [:body :nil]]
+  "Remove the current user's Slack Connect link."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (api/check-403 (= id api/*current-user-id*))
+  (sso/disconnect-slack-account! id)
+  api/generic-204-no-content)
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
@@ -629,6 +641,11 @@
    request]
   (users/check-self-or-superuser id)
   (api/let-404 [user (users-rest.db/active-personal-user-login-columns id)]
+    ;; admins can't give a password to a user who signs in through an enabled SSO provider; that would let them log
+    ;; in as that user while bypassing the provider.
+    (when api/*is-superuser?*
+      (api/check-404 (or (nil? (:sso_source user))
+                         (not (sso/sso-source-enabled? (:sso_source user))))))
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
@@ -647,6 +664,7 @@
                                        :mfa_auth_identity_id)]
       ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
       (auth-identity/set-password! id password {:ended-by api/*current-user-id*})
+      (events/publish-event! :event/password-changed {:object user :user-id api/*current-user-id*})
       ;; after a successful password update go ahead and offer the client a new session that they can use
       (when (= id api/*current-user-id*)
         (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking!
@@ -668,9 +686,11 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [user (api/check-404 (users-rest.db/user-active-and-type id))]
+  (let [user (api/check-404 (users-rest.db/user-active-type-and-sso-source id))]
     (api/check-404 (:is_active user))
     (api/check-404 (= :personal (:type user)))
+    (api/check-404 (or (nil? (:sso_source user))
+                       (not (sso/sso-source-enabled? (:sso_source user)))))
     (let [reset-token        (auth-identity/create-password-reset! id)
           password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
       (events/publish-event! :event/password-reset-initiated

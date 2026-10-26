@@ -14,13 +14,7 @@ export const SqlModal = ({ sql, opened, onClose }: SqlModalProps) => {
   const value = sql ?? t`SQL will appear here after the query runs.`;
 
   return (
-    <Modal
-      title={t`SQL`}
-      size="xl"
-      padding="xxl"
-      opened={opened}
-      onClose={onClose}
-    >
+    <Modal title={t`SQL`} size="xl" opened={opened} onClose={onClose}>
       <FocusTrap.InitialFocus />
       <Box pos="relative" pr="xl" pt="lg">
         <CodeEditor value={value} language="sql" readOnly />

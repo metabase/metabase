@@ -7,14 +7,14 @@
   line-height: 1.5rem;
   font-weight: bold;
   color: var(--mb-color-core-filter);
-  background-color: var(--mb-color-background-primary);
+  background-color: var(--mb-color-background_page-primary);
   border: 1px solid var(--mb-color-core-filter);
   border-radius: 0.75rem;
   cursor: pointer;
 }
 
 .addPill:hover {
-  background-color: var(--mb-color-background-hover);
+  background-color: var(--mb-color-background_surface-hover);
 }
 
 /* Sits at the end of the pills: the filter color, with a white plus. */

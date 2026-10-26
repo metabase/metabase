@@ -311,10 +311,10 @@ const PaletteSection = ({
         );
       })}
       {items.length === 0 && !isDrafting && !isLoading && (
-        <Text c="text-tertiary">{emptyMessage}</Text>
+        <Text c="text-disabled">{emptyMessage}</Text>
       )}
       {items.length > 0 && shownItems.length === 0 && (
-        <Text c="text-tertiary">{t`No segments match “${searchText.trim()}”.`}</Text>
+        <Text c="text-disabled">{t`No segments match “${searchText.trim()}”.`}</Text>
       )}
       {isDrafting && tableQuery !== undefined && (
         <EventDefinitionEditor

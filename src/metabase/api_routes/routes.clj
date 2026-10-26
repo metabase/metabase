@@ -7,6 +7,7 @@
    [metabase.agent-api.query-guards :as agent-api.query-guards]
    [metabase.ai-tracing.api]
    [metabase.analytics.api]
+   [metabase.analytics.api.metaplow-proxy]
    [metabase.analytics.api.proxy]
    [metabase.api-keys.api]
    [metabase.api.docs]
@@ -40,6 +41,7 @@
    [metabase.logger.api]
    [metabase.login-history.api]
    [metabase.mcp.callback-api]
+   [metabase.mcp.core :as mcp]
    [metabase.mcp.v2.api]
    [metabase.measures.api]
    [metabase.metabot.api]
@@ -85,6 +87,7 @@
          metabase.agent-api.api/keep-me
          metabase.ai-tracing.api/keep-me
          metabase.analytics.api/keep-me
+         metabase.analytics.api.metaplow-proxy/keep-me
          metabase.analytics.api.proxy/keep-me
          metabase.api-keys.api/keep-me
          metabase.api.util/keep-me
@@ -193,7 +196,7 @@
    "/agent"                (metabase.agent-api.api/+agent-api-enabled metabase.agent-api.api/routes)
    "/alert"                (+auth metabase.pulse.api/alert-routes)
    "/analytics"            (+auth 'metabase.analytics.api)
-   "/analytics-proxy"      (+public-exceptions 'metabase.analytics.api.proxy)
+   "/analytics-proxy"      (+public-exceptions metabase.analytics.api.proxy/routes)
    "/api-key"              (+auth 'metabase.api-keys.api)
    "/automagic-dashboards" (+auth metabase.xrays.api/automagic-dashboards-routes)
    "/bookmark"             (+auth 'metabase.bookmarks.api)
@@ -210,13 +213,14 @@
    "/database"             (+auth 'metabase.warehouses-rest.api)
    ;; The MCP Apps iframe credential is accepted for `/dataset`, whose endpoints declare no scope, so the
    ;; endpoint scope middleware cannot hold the `agent:sql:run` line here. The credential carries the minting
-   ;; token's scopes as a signed claim (unrestricted only when minted from an unrestricted session: a cookie or
-   ;; API-key session, or an `mb:full` bearer token), and the guard
-   ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL. The spec-generation
+   ;; token's scopes as a signed claim, and the guard
+   ;; spends that claim to stop a credential without `agent:sql:run` from POSTing raw SQL, and MCP's group
+   ;; policy to stop a user denied `execute_sql`. The spec-generation
    ;; wrapper keeps the guard transparent to [[metabase.api.open-api/open-api-spec]] — a bare middleware fn here
    ;; fails openapi.json generation for the whole /api tree.
    "/dataset"              (+auth ((routes.common/wrap-middleware-for-open-api-spec-generation
-                                    agent-api.query-guards/+refuse-unscoped-native-sql)
+                                    (partial agent-api.query-guards/+refuse-unscoped-native-sql
+                                             #'mcp/check-execute-sql-allowed!))
                                    (api.macros/ns-handler 'metabase.query-processor.api)))
    "/docs"                 (metabase.api.docs/make-routes #'routes)
    "/document"             (+auth metabase.documents.api/routes)
@@ -226,6 +230,7 @@
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
    "/embedding-hub"        metabase.embedding-hub.api/routes
+   "/embedding-sdk"        (+auth metabase.embedding-rest.api/sdk-routes)
    "/eval-trace"           (metabase.ai-tracing.api/+eval-capture-enabled metabase.ai-tracing.api/routes)
    "/exploration"          (+auth metabase.explorations.api/routes)
    "/field"                (+auth metabase.warehouse-schema-rest.api/field-routes)
@@ -245,6 +250,7 @@
    "/measure"              (+auth 'metabase.measures.api)
    "/metabase-mcp"         (metabase.mcp.v2.api/+mcp-enabled metabase.mcp.v2.api/handler)
    "/metabot"              metabase.metabot.api/routes
+   "/metaplow-proxy"       (+public-exceptions metabase.analytics.api.metaplow-proxy/routes)
    "/metric"               (+auth 'metabase.metrics.api)
    "/model-index"          (+auth 'metabase.indexed-entities.api)
    "/native-query-snippet" (+auth 'metabase.native-query-snippets.api)

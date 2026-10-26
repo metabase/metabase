@@ -7,7 +7,6 @@ import type {
   ComputedVisualizationSettings,
   RenderingContext,
 } from "../../../types";
-import { CHART_STYLE } from "../constants/style";
 import type { ChartLayout } from "../layout/types";
 import type { BaseCartesianChartModel } from "../model/types";
 import { getSharedEChartsOptions } from "../option";
@@ -189,7 +188,7 @@ export const getFunnelStepsOption = (
       },
       axisLabel: {
         ...getTicksDefaultOption(renderingContext),
-        margin: CHART_STYLE.axisTicksMarginY,
+        margin: renderingContext.theme.cartesian.ticks.marginY,
         formatter: (value: number) => formatCount(value, true),
       },
     },

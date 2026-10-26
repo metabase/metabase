@@ -70,7 +70,6 @@
     :model/ModerationReview
     :model/Revision
     :model/ViewLog
-    :model/Session
     :model/Collection
     :model/CollectionPermissionGraphRevision
     :model/Dashboard
@@ -163,7 +162,8 @@
     :model/TransformJobRun
     :model/TransformRun
     :model/TransformRunCancelation
-    :model/TransformDagRun]
+    :model/TransformDagRun
+    :model/McpGroupPermission]
    (when config/ee-available?
      [:model/MetabotGroupLimit
       :model/MetabotInstanceLimit
@@ -200,7 +200,7 @@
     (let [{:keys [cols vals]} (objects->columns+values target-db-type chunkk)]
       (jdbc/insert-multi! target-db-conn-spec table-name cols vals {:transaction? false}))
     (catch SQLException e
-      (log/errorf "Error inserting chunk: %s" (ex-message e))
+      (log/error (with-out-str (jdbc/print-sql-exception-chain e)))
       (throw e))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
@@ -257,6 +257,10 @@
     :model/DataPermissions
     ;; unique_perms_helper is a computed/generated column
     (map #(dissoc % :unique_perms_helper))
+
+    :model/LoginHistory
+    ;; Sessions are no longer copied, and a session deleted while dumping could leave a dangling reference (UXW-5258).
+    (map #(dissoc % :session_id))
 
     ;; else
     identity))
@@ -407,7 +411,6 @@
 (def ^:private entities-without-autoinc-ids
   "Entities that do NOT use an auto incrementing ID column."
   #{:model/Setting
-    :model/Session
     :model/ImplicitAction
     :model/FieldUserSettings
     :model/TableUserSettings

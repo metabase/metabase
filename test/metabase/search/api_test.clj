@@ -263,7 +263,6 @@
 (defmacro ^:private with-search-items-in-collection [created-items-sym search-string & body]
   `(do-with-search-items ~search-string false (fn [~created-items-sym] ~@body)))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *search-request-results-database-id*
   "Filter out all results from `search-request` that don't have this Database ID. Default: the default H2 `test-data`
   Database. Other results are filtered out so these tests can be ran from the REPL without the presence of other
@@ -963,10 +962,12 @@
               (is (= #{}
                      (into #{} (comp relevant-2 (map (juxt :name normalize)))
                            (search! "rom" :rasta))))))
-          (testing "Sandboxed users do not see indexed entities in search"
+          (testing "Sandboxed, impersonated and routed users do not see indexed entities in search"
             (mt/with-dynamic-fn-redefs [perms-util/impersonated-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
             (mt/with-dynamic-fn-redefs [perms-util/sandboxed-user? (constantly true)]
+              (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))
+            (mt/with-dynamic-fn-redefs [perms-util/routed-user? (constantly true)]
               (is (empty? (into #{} (comp relevant-1 (map :name)) (search! "fort")))))))))))
 
 (defn- archived-collection [m]
@@ -1075,7 +1076,7 @@
   (testing "You should see Tables in the search results!\n"
     (mt/with-temp [:model/Table _ {:name "RoundTable"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "RoundTable")]
+        (is (= [(assoc (default-table-search-row "RoundTable") :can_write (= user :crowberto))]
                (search-request-data user :q "RoundTable" :models "table")))))))
 
 (deftest table-test-2
@@ -1083,7 +1084,7 @@
     (mt/with-temp [:model/Table _normal {:name "Foo Visible"}
                    :model/Table _hidden {:name "Foo Hidden", :visibility_type "hidden"}]
       (do-test-users [user [:crowberto :rasta]]
-        (is (= [(default-table-search-row "Foo Visible")]
+        (is (= [(assoc (default-table-search-row "Foo Visible") :can_write (= user :crowberto))]
                (search-request-data user :q "Foo")))))))
 
 (deftest table-test-3
@@ -1091,7 +1092,7 @@
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [:model/Table _ {:name "RoundTable" :display_name lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot)]
+          (is (= [(assoc (default-table-search-row "RoundTable") :name lancelot :can_write (= user :crowberto))]
                  (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-4
@@ -1099,7 +1100,8 @@
     (let [lancelot "Lancelot's Favorite Furniture"]
       (mt/with-temp [:model/Table _ {:name "RoundTable" :description lancelot}]
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(assoc (default-table-search-row "RoundTable") :description lancelot :table_description lancelot)]
+          (is (= [(assoc (default-table-search-row "RoundTable")
+                         :description lancelot :table_description lancelot :can_write (= user :crowberto))]
                  (search-request-data user :q "Lancelot"))))))))
 
 (deftest table-test-5
@@ -1147,7 +1149,7 @@
         (perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
         (perms/set-table-permission! group-id table :perms/create-queries :query-builder)
         (do-test-users [user [:crowberto :rasta]]
-          (is (= [(default-table-search-row "RoundTable")]
+          (is (= [(assoc (default-table-search-row "RoundTable") :can_write (= user :crowberto))]
                  (binding [*search-request-results-database-id* db-id]
                    (search-request-data user :q "RoundTable")))))))))
 

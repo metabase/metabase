@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { type JSX, useCallback, useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
 
@@ -17,7 +17,15 @@ import {
   FormTextInput,
   FormTextarea,
 } from "metabase/forms";
-import { Button, Flex, Group, Icon, Stack, TimeInput } from "metabase/ui";
+import {
+  ActionIcon,
+  Button,
+  Flex,
+  Group,
+  Icon,
+  Stack,
+  TimeInput,
+} from "metabase/ui";
 import * as Errors from "metabase/utils/errors";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type {
@@ -149,16 +157,15 @@ const EventForm = ({
                       setFieldValue("timestamp", date.toISOString());
                     }}
                   />
-                  {/* TODO: replace with ActionIcon (GDGT-2457) */}
-                  <Button
+                  <ActionIcon
                     size="sm"
                     mb="sm"
                     onClick={() => setFieldValue("time_matters", false)}
                     aria-label={t`Remove time`}
                     variant="subtle"
-                    color="neutral"
-                    leftSection={<Icon name="close" />}
-                  />
+                  >
+                    <Icon name="close" />
+                  </ActionIcon>
                 </Flex>
               ) : (
                 <Button

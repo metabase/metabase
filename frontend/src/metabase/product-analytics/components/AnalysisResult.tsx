@@ -145,7 +145,7 @@ export const AnalysisResult = ({
               // transparent; this restores Mantine's bordered look.
               variant="default"
               size="lg"
-              bd="1px solid var(--mb-color-border)"
+              bd="1px solid var(--mb-color-border-neutral)"
               aria-label={displayLabel}
               aria-pressed={isDisplayOpen}
               disabled={!canToggleDisplay}

@@ -42,10 +42,12 @@ import type {
   PlainCellFormatter,
   RowIdColumnOptions,
 } from "metabase/data-grid/types";
+import { getDefaultCellBackgroundColor } from "metabase/data-grid/utils/striped-background-color";
 import { useDispatch } from "metabase/redux";
 import { setUIControls } from "metabase/redux/query-builder";
 import { Flex, type MantineTheme } from "metabase/ui";
 import { getScrollBarSize } from "metabase/utils/dom";
+import { normalizeNewLines } from "metabase/utils/formatting";
 import { memoize } from "metabase/utils/memoize";
 import { formatValue } from "metabase/value-formatting";
 import { createPlainCellFormatter } from "metabase/visualizations/lib/plain-cell-formatter";
@@ -84,7 +86,7 @@ import {
   type HeaderCellWithColumnInfoProps,
 } from "./cells/HeaderCellWithColumnInfo";
 import { MiniBarCell } from "./cells/MiniBarCell";
-import { useResetWidthsOnColumnsChange } from "./hooks/use-reset-widths-on-columns-change";
+import { useSyncColumnWidths } from "./hooks/use-sync-column-widths";
 import { getInfoPopoversDisabled } from "./utils/get-info-popovers-disabled";
 import { tableThemeToDataGridTheme } from "./utils/table-theme-to-data-grid-theme";
 
@@ -291,7 +293,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
 
           const value = tc(untranslatedValue);
 
-          return formatValue(value, {
+          const formattedValue = formatValue(value, {
             ...columnSettings,
             type: "cell",
             jsx: true,
@@ -299,6 +301,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
             clicked,
             collapseNewlines: !wrap,
           });
+
+          return wrap ? normalizeNewLines(formattedValue) : formattedValue;
         },
       );
 
@@ -451,22 +455,9 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         }
       });
 
-      const newEnabledColumns = newColumns.filter((col) => col.enabled);
-      const savedWidths = settings["table.column_widths"];
-      const newWidths =
-        Array.isArray(savedWidths) &&
-        savedWidths.length === newEnabledColumns.length
-          ? newEnabledColumns.map((c) => columnSizingMap[c.name])
-          : undefined;
-
-      const settingsUpdate = {
-        "table.columns": newColumns,
-        "table.column_widths": newWidths,
-      };
-
-      onUpdateVisualizationSettings(settingsUpdate);
+      onUpdateVisualizationSettings({ "table.columns": newColumns });
     },
-    [onUpdateVisualizationSettings, settings, columnSizingMap],
+    [onUpdateVisualizationSettings, settings],
   );
 
   const handleAddColumnButtonClick = useMemo(() => {
@@ -500,6 +491,11 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     };
   }, [isRawTable, mode, onVisualizationClick, question, isPivoted]);
 
+  const dataGridTheme: DataGridTheme = useMemo(
+    () => tableThemeToDataGridTheme(tableTheme, theme?.other?.fontSize),
+    [tableTheme, theme?.other?.fontSize],
+  );
+
   const columnsOptions: ColumnOptions<RowValues, RowValue>[] = useMemo(() => {
     return cols.map((col, columnIndex) => {
       const columnSettings = settings.column?.(col) ?? {};
@@ -510,13 +506,8 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       const isImage = columnSettings["view_as"] === "image";
       const headerVariant =
         hasColumnReordering || isDashboard ? "light" : "outline";
-      const getBackgroundColor = memoize(
-        (value: RowValue, rowIndex: number) =>
-          settings["table._cell_background_getter"]?.(
-            value,
-            rowIndex,
-            col.name,
-          ) ?? tableTheme?.cell?.backgroundColor,
+      const getBackgroundColor = memoize((value: RowValue, rowIndex: number) =>
+        settings["table._cell_background_getter"]?.(value, rowIndex, col.name),
       );
 
       const formatter = columnFormatters[columnIndex];
@@ -600,9 +591,12 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
         options.cell = ({
           getValue,
           row,
-        }: CellContext<RowValues, RowValue>) => {
+          isStriped,
+        }: CellContext<RowValues, RowValue> & { isStriped?: boolean }) => {
           const value = getValue();
-          const backgroundColor = getBackgroundColor(value, row?.index);
+          const backgroundColor =
+            getBackgroundColor(value, row?.index) ??
+            getDefaultCellBackgroundColor(dataGridTheme, isStriped);
           const columnExtent = getColumnExtent(cols, rows, columnIndex);
           const isHighlighted = highlightedCellKeys.has(
             getHighlightedTableCellKey({ rowIndex: row.index, columnIndex }),
@@ -642,7 +636,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isPivoted,
     rows,
     settings,
-    tableTheme,
+    dataGridTheme,
     isDashboard,
     tc,
     highlightedCellKeys,
@@ -722,11 +716,6 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     isDocument,
     zoomedRowIndex,
   ]);
-
-  const dataGridTheme: DataGridTheme = useMemo(
-    () => tableThemeToDataGridTheme(tableTheme, theme?.other?.fontSize),
-    [tableTheme, theme?.other?.fontSize],
-  );
 
   const dataGridStyles: DataGridStylesProps["styles"] = useMemo(() => {
     return {
@@ -826,9 +815,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
     [infoPopoversDisabled],
   );
 
-  // If the data changes we reset saved column widths as it is no longer relevant
-  // except for the case where question is converted from a model to a question and back.
-  useResetWidthsOnColumnsChange(onUpdateVisualizationSettings, data, question);
+  useSyncColumnWidths(onUpdateVisualizationSettings, data, columnWidths);
 
   const scrolledColumnRef = useRef<number | null>(null);
   useEffect(() => {
@@ -891,6 +878,7 @@ export const TableInteractiveInner = forwardRef(function TableInteractiveInner(
       >
         <DataGrid
           {...tableProps}
+          striped={settings["table.striped"]}
           styles={dataGridStyles}
           showRowsCount={isDashboard}
           formatRowsCountMessage={formatRowsCountMessage}

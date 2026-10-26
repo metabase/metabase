@@ -1,10 +1,8 @@
-import { SAMPLE_DB_ID, USERS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { USERS } from "e2e/support/cypress_data";
 import type { PortableTable } from "e2e/support/helpers";
 import type { Card } from "metabase-types/api";
 
 const { H } = cy;
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 const APP_SLUG = "synced-app";
 const APP_DISPLAY_NAME = "Synced App";
@@ -18,32 +16,12 @@ const ORDERS_TABLE: PortableTable = ["Sample Database", "PUBLIC", "ORDERS"];
 const APP_ROOT = () =>
   `${Cypress.config("projectRoot")}/e2e/support/assets/data-apps/${APP_SLUG}`;
 
-/**
- * The definition as source control holds it. `id` is the sample database's
- * ORDERS table, written from the same constant, so a snapshot change fails
- * loudly rather than silently.
- */
+/** The definition the app's typed schema holds for its saved question. */
 const DECLARATION = [
-  "import {",
-  "  aggregations,",
-  "  breakout,",
-  "  defineQuery,",
-  '} from "@metabase/embedding-sdk-react/data-app";',
-  "",
-  "const OrdersUserId = {",
-  '  type: "column" as const,',
-  `  fieldId: ${ORDERS.USER_ID},`,
-  `  tableId: ${ORDERS_ID},`,
-  '  name: "USER_ID",',
-  '  displayName: "User ID",',
-  '  jsType: "number",',
-  "};",
+  'import { defineQuery } from "@metabase/embedding-sdk-react/data-app";',
   "",
   "export const OrdersCount = defineQuery({",
-  `  savedQuestionEntityId: "${QUESTION}",`,
-  `  source: { type: "table", id: ${ORDERS_ID} },`,
-  "  aggregations: [aggregations.count()],",
-  "  breakouts: [breakout(OrdersUserId)],",
+  `  source: { type: "card", entityId: "${QUESTION}" },`,
   "});",
   "",
 ].join("\n");
@@ -68,13 +46,10 @@ const ORDERS_COUNT_QUESTION = H.dataAppRepresentations.card({
 });
 
 /**
- * What a shipped data app actually does: outside the dev preview
- * `isDataAppDev()` is false, so the SDK runs the saved question the definition
- * names, the only resource an app's viewers are permitted to read, rather than
- * the authored source. The question reaches Metabase the way it does for an
- * author: written into the app's collection files, committed, and loaded by a repository pull.
+ * An app imported from a repository runs the saved question its typed schema
+ * names, which the pull loaded into the app's collection.
  */
-describe("scenarios > data apps > resources in production", () => {
+describe("scenarios > data apps > resources from a repository", () => {
   const removeTestFiles = () =>
     cy.task("removeDataAppPaths", {
       paths: [`${APP_ROOT()}/queries`, `${APP_ROOT()}/collections`],
@@ -112,7 +87,7 @@ describe("scenarios > data apps > resources in production", () => {
         ),
     );
 
-  it("runs the saved question rather than the authored table query", () => {
+  it("runs the saved question its definition names", () => {
     publishApp().then(({ cardId }) => {
       cy.intercept("POST", "/api/dataset").as("dataset");
       H.mockDataApp(APP_SLUG, { displayName: APP_DISPLAY_NAME });
@@ -129,37 +104,6 @@ describe("scenarios > data apps > resources in production", () => {
       cy.wait("@dataset").then(({ request }) => {
         const [stage] = request.body.stages ?? [];
         expect(stage?.["source-card"], "runs the saved question").to.eq(cardId);
-        expect(stage?.["source-table"], "not the authored table").to.eq(
-          undefined,
-        );
-      });
-    });
-  });
-
-  // The swap is only safe if the saved question the author wrote returns what
-  // the definition does. The dev preview runs the definition; production runs
-  // the card. A deployed app cannot run the definition at all, so the two sides
-  // are captured separately rather than side by side.
-  it("returns the same rows from the saved question as from the authored query", () => {
-    publishApp().then(({ cardId }) => {
-      cy.request("POST", "/api/dataset", {
-        type: "query",
-        database: SAMPLE_DB_ID,
-        query: {
-          "source-table": ORDERS_ID,
-          aggregation: [["count"]],
-          breakout: [["field", ORDERS.USER_ID, null]],
-        },
-      }).then(({ body: authored }) => {
-        cy.request("POST", `/api/card/${cardId}/query`).then(
-          ({ body: published }) => {
-            expect(published.data.rows).to.deep.eq(authored.data.rows);
-            expect(
-              published.data.rows[0][1],
-              "a match on two empty results would be vacuous",
-            ).to.be.greaterThan(0);
-          },
-        );
       });
     });
   });

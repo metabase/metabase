@@ -201,7 +201,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
         flex={1}
         h="100%"
         gap={0}
-        bg="background-secondary"
+        bg="background_page-secondary"
       >
         <Stack
           gap="md"
@@ -209,8 +209,8 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
           pr="lg"
           pt="lg"
           pb="md"
-          bg="background-primary"
-          style={{ borderBottom: "1px solid var(--mb-color-border)" }}
+          bg="background_page-primary"
+          style={{ borderBottom: "1px solid var(--mb-color-border-neutral)" }}
         >
           <AnalysisTitle
             kind={kind}

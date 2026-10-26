@@ -6,17 +6,19 @@ import {
   isQuestionInput,
   isTableInput,
 } from "embedding-sdk-shared/lib/create-metabase-query/input-guards";
+import type { QuestionSchema } from "embedding-sdk-shared/lib/create-metabase-query/schema";
 import { cardApi, selectCard, selectTableQueryMetadata } from "metabase/api";
 import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
-import { isDataApp, isDataAppDev } from "metabase/embedding-sdk/config";
 import { selectMetadataProviderUnfiltered } from "metabase/metadata-store";
-import { fetchTableMetadata } from "metabase/redux/tables";
+import { fetchTableMetadataAndForeignKeys } from "metabase/redux/tables";
 import * as Lib from "metabase-lib";
 import type {
   Card,
   DatasetQuery,
+  TestBreakoutSpec,
   TestColumnSpec,
   TestExpressionSpec,
+  TestOperatorArgSpec,
   TestQuerySpec,
   TestStageSpec,
   TestStageWithSourceSpec,
@@ -24,7 +26,11 @@ import type {
 import { isObject } from "metabase-types/guards";
 
 import { loadReferencedMetricMetadata } from "./metric-metadata";
-import { validateDynamicQuery, validateQueryInput } from "./validation";
+import {
+  validateDynamicQuery,
+  validateQueryInput,
+  validateUniqueColumnNames,
+} from "./validation";
 
 export type ResolveDatasetQuery = (
   store: SdkStore,
@@ -41,62 +47,52 @@ export const resolveDatasetQuery: ResolveDatasetQuery =
       );
     }
 
-    const { sourceInput, publishedCard } = await toSourceInput(store, input);
+    const { input: sourceInput, card: sourceCard } = await resolveSourceCard(
+      store,
+      input,
+    );
 
     validateQueryInput(sourceInput);
     validateDynamicQuery(dynamicQuery);
 
-    await loadSourceMetadata(store, sourceInput, publishedCard);
+    await loadSourceMetadata(store, sourceInput, sourceCard);
 
     return resolveQueryFromLoadedMetadata(
       sourceInput,
       dynamicQuery,
       store.getState(),
-      publishedCard,
+      sourceCard,
     );
   };
 
 type SdkState = ReturnType<SdkStore["getState"]>;
 
+type ResolvedSource = {
+  input: QueryInput;
+  card?: Card;
+};
+
 /**
- * The query whose source actually runs. Outside the dev preview a published card
- * replaces the table source: the card is what grants an app's viewers permission
- * to run the query, through the collection it lives in. Its static clauses are
- * already baked into the card, so only the source and the dynamic stage remain.
+ * A card source given by its entity ID, with the card's numeric id: query
+ * metadata and the query itself address cards by numeric id.
  */
-async function toSourceInput(
+async function resolveSourceCard(
   store: SdkStore,
   input: QueryInput,
-): Promise<{ sourceInput: QueryInput; publishedCard?: Card }> {
-  // Only a data app runs published cards. In the dev preview they do not exist
-  // yet, and outside a data app they never do, so the table is what runs.
-  if (!isTableInput(input) || isDataAppDev() || !isDataApp()) {
-    return { sourceInput: input };
+): Promise<ResolvedSource> {
+  if (!isQuestionInput(input) || input.source.id !== undefined) {
+    return { input };
   }
 
-  const entityId = input.savedQuestionEntityId;
-
-  if (entityId === undefined) {
-    // An app's viewers can only read the published cards, so a table source 403s.
-    throw new Error(
-      "This query has no saved question. Set its `savedQuestionEntityId` in `defineQuery(...)` in `queries/`, run `npm run write-resources` and `npm run check-resources`, commit, and rebuild.",
-    );
-  }
-
-  const publishedCard = await fetchPublishedCard(store, entityId);
+  const card = await fetchCardByEntityId(store, input.source.entityId);
 
   return {
-    sourceInput: { source: { type: "card", id: publishedCard.id } },
-    publishedCard,
+    input: { ...input, source: { ...input.source, id: card.id } },
+    card,
   };
 }
 
-/**
- * The published card is addressed by the entity ID its resource file gives it,
- * which Metabase only knows once the repository is imported. Query metadata and
- * the query itself address cards by numeric ID.
- */
-async function fetchPublishedCard(
+async function fetchCardByEntityId(
   store: SdkStore,
   entityId: string,
 ): Promise<Card> {
@@ -110,7 +106,7 @@ async function fetchPublishedCard(
   } catch (error) {
     if (isObject(error) && error.status === 404) {
       throw new Error(
-        "This app's saved questions have not been imported. Pull the connected repository again, or check the app's sync status.",
+        `Saved question ${entityId} does not exist. Fetch the app's typed schema again to pick up its current questions.`,
       );
     }
 
@@ -118,11 +114,19 @@ async function fetchPublishedCard(
   }
 }
 
+function getQuestionId(source: QuestionSchema): number {
+  if (source.id === undefined) {
+    throw new Error(`Saved question ${source.entityId} was not resolved.`);
+  }
+
+  return source.id;
+}
+
 function resolveQueryFromLoadedMetadata(
   input: QueryInput,
   dynamicQuery: DynamicQueryInput | undefined,
   state: SdkState,
-  publishedCard: Card | undefined,
+  sourceCard: Card | undefined,
 ) {
   if (!isQueryInput(input)) {
     throw new Error(
@@ -130,22 +134,27 @@ function resolveQueryFromLoadedMetadata(
     );
   }
 
-  const databaseId =
-    publishedCard?.dataset_query?.database ?? getSourceDatabaseId(input, state);
+  const databaseId = getSourceDatabaseId(input, state, sourceCard);
   const provider = selectMetadataProviderUnfiltered(state, databaseId);
   const sourceStage = toStageSpec(input);
 
-  const datasetQuery = Lib.toJsQuery(
+  // Merged into the source stage, the dynamic clauses would run before its
+  // aggregation; as their own stage they act on its result columns.
+  const dynamicStage = dynamicQuery && toResultColumnStageSpec(dynamicQuery);
+
+  validateUniqueColumnNames(
     Lib.createTestQuery(provider, {
-      // The dynamic clauses run as their own stage rather than merging into the
-      // source stage. Merged, they would apply before the static aggregation on
-      // a table source but after it on the published card — the same app would
-      // return different numbers in the dev preview and in production.
-      stages: dynamicQuery
-        ? [sourceStage, toResultColumnStageSpec(dynamicQuery)]
-        : [sourceStage],
+      stages: dynamicStage
+        ? [withoutOrderBys(sourceStage), withoutOrderBys(dynamicStage)]
+        : [withoutOrderBys(sourceStage)],
     } satisfies TestQuerySpec),
   );
+
+  const query = Lib.createTestQuery(provider, {
+    stages: dynamicStage ? [sourceStage, dynamicStage] : [sourceStage],
+  } satisfies TestQuerySpec);
+
+  const datasetQuery = Lib.toJsQuery(query);
 
   // Lib reads the database off the metadata provider, and a user who may read a
   // card but not create queries gets none from `/api/card/:id/query_metadata` —
@@ -154,13 +163,20 @@ function resolveQueryFromLoadedMetadata(
   return { ...datasetQuery, database: databaseId };
 }
 
+function withoutOrderBys<TStage extends TestStageSpec>({
+  orderBys: _orderBys,
+  ...stage
+}: TStage) {
+  return stage;
+}
+
 function toStageSpec(input: QueryInput): TestStageWithSourceSpec {
   if (!isQuestionInput(input)) {
     return input;
   }
 
   return {
-    source: { type: "card", id: input.source.id },
+    source: { type: "card", id: getQuestionId(input.source) },
     ...toResultColumnStageSpec(input),
   };
 }
@@ -181,17 +197,19 @@ function toResultColumnStageSpec({
     ...(aggregations && {
       aggregations: aggregations.map(toResultColumnExpressionSpec),
     }),
-    ...(breakouts && { breakouts: breakouts.map(toResultColumnSpec) }),
+    ...(breakouts && { breakouts: breakouts.map(toResultBreakoutSpec) }),
     ...(orderBys && { orderBys: orderBys.map(toResultColumnSpec) }),
     ...(limit != null && { limit }),
   };
 }
 
 // A card stage exposes the saved question's result columns, which are no
-// longer joined, so the join and foreign key keys are dropped; the field ID or
-// the name still finds the column.
+// longer joined, so the join and foreign key keys are dropped. The field ID is
+// dropped too, as it differs between the instance an app is built against and
+// the one it runs on; the name finds the column.
 function toResultColumnSpec<TSpec extends TestColumnSpec>(spec: TSpec) {
   const {
+    fieldId: _fieldId,
     joinAlias: _joinAlias,
     sourceFieldId: _sourceFieldId,
     sourceFieldJoinAlias: _sourceFieldJoinAlias,
@@ -199,6 +217,14 @@ function toResultColumnSpec<TSpec extends TestColumnSpec>(spec: TSpec) {
   } = spec;
 
   return resultColumn;
+}
+
+function toResultBreakoutSpec(spec: TestBreakoutSpec): TestBreakoutSpec {
+  if (spec.type === "breakout") {
+    return { ...spec, column: toResultColumnSpec(spec.column) };
+  }
+
+  return toResultColumnSpec(spec);
 }
 
 function toResultColumnExpressionSpec(
@@ -209,29 +235,42 @@ function toResultColumnExpressionSpec(
   }
 
   if (spec.type === "operator") {
-    return { ...spec, args: spec.args?.map(toResultColumnExpressionSpec) };
+    return { ...spec, args: spec.args?.map(toResultColumnArgSpec) };
   }
 
   return spec;
 }
 
+function toResultColumnArgSpec(spec: TestOperatorArgSpec): TestOperatorArgSpec {
+  if (
+    spec.type === "segment" ||
+    spec.type === "measure" ||
+    spec.type === "metric"
+  ) {
+    return spec;
+  }
+
+  return toResultColumnExpressionSpec(spec);
+}
+
 async function loadSourceMetadata(
   store: SdkStore,
   input: QueryInput,
-  publishedCard: Card | undefined,
+  sourceCard: Card | undefined,
 ) {
-  if (publishedCard) {
-    await loadCardQueryMetadata(store, publishedCard.id);
-    return;
-  }
+  if (isQuestionInput(input)) {
+    const cardId = getQuestionId(input.source);
 
-  if (input.source.type === "card") {
-    await loadCardMetadata(store, input.source.id);
+    await (sourceCard
+      ? loadCardQueryMetadata(store, cardId)
+      : loadCardMetadata(store, cardId));
     return;
   }
 
   if (isTableInput(input)) {
-    await store.dispatch(fetchTableMetadata({ id: input.source.id }));
+    await store.dispatch(
+      fetchTableMetadataAndForeignKeys({ id: input.source.id }),
+    );
     await loadReferencedMetricMetadata(store, input);
   }
 }
@@ -254,13 +293,22 @@ function loadCardQueryMetadata(store: SdkStore, id: number) {
   );
 }
 
-function getSourceDatabaseId(input: QueryInput, state: SdkState) {
+function getSourceDatabaseId(
+  input: QueryInput,
+  state: SdkState,
+  sourceCard: Card | undefined,
+) {
   if (isTableInput(input)) {
     return getTableDatabaseId(input.source.id, state);
   }
 
   if (isQuestionInput(input)) {
-    return getCardDatabaseId(input.source.id, state);
+    const cardId = getQuestionId(input.source);
+
+    return getCardDatabaseId(
+      cardId,
+      sourceCard ?? selectCard({ id: cardId })(state).data,
+    );
   }
 
   throw new Error("Unable to find database for query source.");
@@ -278,8 +326,7 @@ function getTableDatabaseId(tableId: number, state: SdkState) {
   throw new Error(`Unable to find database for table ${tableId}.`);
 }
 
-function getCardDatabaseId(cardId: number, state: SdkState) {
-  const { data: card } = selectCard({ id: cardId })(state);
+function getCardDatabaseId(cardId: number, card: Card | undefined) {
   const databaseId = card?.dataset_query?.database;
 
   if (typeof databaseId === "number") {

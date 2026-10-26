@@ -82,7 +82,10 @@
       (is (= (sort versions)
              versions)))))
 
-(task/defjob AbandonmentEmail [_] :default)
+(task/defjob AbandonmentEmail
+  {:saved-class "metabase.app_db.custom_migrations_test.AbandonmentEmail"}
+  [_]
+  :default)
 
 (defn- table-default [table]
   (letfn [(with-timestamped [props]
@@ -3120,7 +3123,7 @@
 
 (deftest delete-data-app-drafts-test
   (testing "v65.2026-10-07T00:00:00: draft rows go with their assignments and empty collections"
-    (impl/test-migrations ["v65.2026-10-07T00:00:00"] [migrate!]
+    (impl/test-migrations ["v65.2026-10-07T00:00:00" "v65.2026-10-07T00:00:01"] [migrate!]
       (let [insert-collection! (fn [name]
                                  (t2/insert-returning-pk! :collection {:name       name
                                                                        :slug       name

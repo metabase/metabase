@@ -86,7 +86,7 @@ const getStepColor = (
   colors[getStepColorKey(index)] ??
   (view === "overTime"
     ? color(LINE_COLOR_NAMES[index % LINE_COLOR_NAMES.length])
-    : color("brand"));
+    : color("core-brand"));
 
 // Keep in sync with the planner's step labels, which `parseStepLabel` reads.
 const getStepLabel = (index: number, name: string): string =>

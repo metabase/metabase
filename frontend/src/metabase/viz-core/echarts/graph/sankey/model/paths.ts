@@ -59,14 +59,14 @@ const findColumnIndex = (cols: DatasetColumn[], name: string) => {
 // Hex drops alpha, so a translucent palette color is blended onto the background first.
 const toOpaqueHex = (paletteColor: string) => {
   const parsed = Color(paletteColor);
-  return Color(color("white")).mix(parsed.alpha(1), parsed.alpha()).hex();
+  return Color(color("core-white")).mix(parsed.alpha(1), parsed.alpha()).hex();
 };
 
 /** The palette hook for paths colors, in hex so scale shades compare equal to their ends. */
 export const getPathColors = () => ({
-  neutral: toOpaqueHex(color("text-tertiary")),
-  converted: toOpaqueHex(color("success")),
-  dropped: toOpaqueHex(color("error")),
+  neutral: toOpaqueHex(color("text-disabled")),
+  converted: toOpaqueHex(color("feedback-positive")),
+  dropped: toOpaqueHex(color("feedback-negative")),
 });
 
 const getNodeKinds = (

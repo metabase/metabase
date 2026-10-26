@@ -1,35 +1,48 @@
 (ns metabase.metabot.tools-test
   (:require
+   [clojure.edn :as edn]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
    [metabase.channel.settings :as channel.settings]
-   [metabase.entity-retrieval.core :as entity-retrieval]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
+   [metabase.metabot.test-util :as test-util]
    [metabase.metabot.tools :as agent-tools]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.construct :as construct]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.legacy :as tools.legacy]
    [metabase.metabot.tools.shared :as shared]
    [metabase.notification.models :as models.notification]
+   [metabase.permissions.core :as perms]
+   [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.query-processor :as qp]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]
+   [metabase.util.json :as json]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (deftest all-tools-test
-  (testing "profile tools are vars with required metadata"
+  (testing "every tool in every profile declares itself validly, converted or not"
     (let [tool-vars (mapcat :tools (vals @@#'profiles/*profiles))]
       (is (seq tool-vars))
       (doseq [tool-var tool-vars]
-        (is (var? tool-var))
-        (let [m (meta tool-var)]
-          (is (string? (:tool-name m)))
-          (is (some? (:schema m))))))))
+        (is (var? tool-var) "a profile names every tool as a var, whichever kind it is")
+        (testing (str tool-var)
+          (let [{:keys [name description args]} (tools.legacy/declaration-of tool-var)]
+            (is (string? name))
+            (is (string? description))
+            (is (some? args))))))))
 
-(deftest wrap-tools-with-state-carries-title-fn-test
-  (testing "a tool var's :title-fn metadata reaches the tool-def map"
-    (let [wrapped (agent-tools/wrap-tools-with-state
-                   {"search" #'agent-tools/search-tool}
-                   (atom {}) nil nil)]
-      (is (fn? (get-in wrapped ["search" :title-fn]))))))
+(deftest entries-carry-title-fn-test
+  (testing "a tool's title function reaches the entry the adapters read"
+    (let [entries (agent-tools/->entries [#'agent-tools/search-tool] (atom {}) nil nil)]
+      (is (fn? (get-in entries ["search" :title-fn]))))))
 
 (deftest filter-by-capabilities-test
   (testing "returns tools with no capability requirements when capabilities empty"
@@ -41,7 +54,7 @@
                      #'agent-tools/create-sql-query-tool]
           capabilities #{}
           result (#'profiles/filter-by-capabilities tool-vars capabilities)]
-      (is (= ["search"] (mapv #(:tool-name (meta %)) result)))))
+      (is (= ["search"] (mapv #(:name (tools.legacy/declaration-of %)) result)))))
   (testing "includes tools when capabilities are provided"
     (let [tool-vars [#'agent-tools/search-tool #'agent-tools/create-sql-query-tool #'agent-tools/create-chart-tool]
           capabilities #{:permission-write-sql-queries}
@@ -62,6 +75,20 @@
     (is (contains? tools "edit_chart"))
     (is (contains? tools "create_chart"))
     (is (contains? tools "create_dashboard_subscription"))))
+
+(deftest run-query-needs-query-execution-enabled-test
+  (testing "run_query is offered only once an admin enables query execution"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+      (is (not (contains? (tools-for-profile :internal) "run_query"))))
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (is (contains? (tools-for-profile :internal) "run_query")))))
+
+(deftest slackbot-profile-has-no-run-query-test
+  ;; Everyone in a Slack thread can read its stored tool output, so one person's rows would reach the others.
+  ;; Filter that output per reader before offering run_query there.
+  (testing "run_query is not offered in Slack even with query execution enabled"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (is (not (contains? (tools-for-profile :slackbot) "run_query"))))))
 
 (deftest ^:parallel get-tools-for-sql-profile-test
   (let [tools (tools-for-profile :sql)]
@@ -123,18 +150,24 @@
     (is (empty? tools))))
 
 (deftest ^:parallel get-tools-for-profile-metadata-test
-  (let [tools (tools-for-profile :embedding_next)]
-    (doseq [[tool-name tool-var] tools]
-      (is (var? tool-var))
-      (is (string? tool-name))
-      (is (= tool-name (:tool-name (meta tool-var))))
-      (is (some? (:schema (meta tool-var)))))))
+  (testing "a profile's registry is keyed by the name each tool declares, whether that tool is a
+           record or still an `mu/defn` var. The declaration is the source of truth either way —
+           reading `:tool-name` off the var only worked while every tool was the second kind."
+    (let [tools (tools-for-profile :embedding_next)]
+      (is (seq tools))
+      (doseq [[tool-name tool-var] tools]
+        (is (var? tool-var))
+        (is (string? tool-name))
+        (let [{declared-name :name :keys [description args]} (tools.legacy/declaration-of tool-var)]
+          (is (= tool-name declared-name))
+          (is (string? description))
+          (is (some? args)))))))
 
 (deftest search-tool-test
-  (testing "search-tool var has valid metadata"
-    (let [m (meta #'agent-tools/search-tool)]
-      (is (= "search" (:tool-name m)))
-      (is (some? (:schema m))))))
+  (testing "search declares its name and argument schema"
+    (let [declared (tools.legacy/declaration-of #'agent-tools/search-tool)]
+      (is (= "search" (:name declared)))
+      (is (some? (:args declared))))))
 
 (deftest construct-notebook-query-tool-test
   (testing "construct_notebook_query evaluates a representations query and creates a chart"
@@ -161,12 +194,12 @@
                                        :source-table ["Sample" "PUBLIC" "ORDERS"]
                                        :aggregation  [["count" {}]]}]}
               result (binding [shared/*profile-id* :nlq]
-                       (agent-tools/construct-notebook-query-tool
-                        {:reasoning     "check seats"
-                         :query         query-input
-                         :title         "Seat check"
-                         :description   "Total order count."
-                         :visualization {:chart_type "table"}}))]
+                       (test-util/call-tool agent-tools/construct-notebook-query-tool
+                                            {:reasoning     "check seats"
+                                             :query         query-input
+                                             :title         "Seat check"
+                                             :description   "Total order count."
+                                             :visualization {:chart_type "table"}}))]
           (is (= query-input @query-captured))
           (is (= "c-1" (get-in result [:structured-output :chart-id])))
           (is (= "q-1" (get-in result [:structured-output :query-id])))
@@ -175,133 +208,774 @@
           (is (= "Total order count."
                  (get-in result [:data-parts 0 :data :description]))))))))
 
-(defn- construct-tool-output-for-thrown
-  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`.
-  Returns the `:output` the LLM would see when the tool handles `e`; otherwise `e` propagates."
+(deftest construct-notebook-query-keeps-mbql5-temporal-filter-test
+  (testing "the generated_entity part carries a between filter of absolute-datetime bounds through JSON intact (BOT-1972)"
+    (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :checkins))
+                    (lib/filter (lib/between (meta/field-metadata :checkins :date)
+                                             (lib/absolute-datetime "2026-07-01" :day)
+                                             (lib/absolute-datetime "2026-07-31" :day))))]
+      (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                  (fn [_ & _]
+                                    {:structured-output {:query-id       "q-1"
+                                                         :query          query
+                                                         :result-columns []}})]
+        (let [result (binding [shared/*profile-id* :nlq]
+                       (test-util/call-tool agent-tools/construct-notebook-query-tool
+                                            {:query       {:lib/type "mbql/query" :stages []}
+                                             :title       "Check-ins in July"
+                                             :description "Check-ins during July 2026."}))
+              sent   (-> result (get-in [:data-parts 0 :data :query :query]) json/encode (json/decode true))]
+          (is (= "mbql/query" (:lib/type sent)))
+          (is (= (lib/filters query)
+                 (-> sent lib/normalize :stages first :filters))))))))
+
+(deftest construct-notebook-query-tool-show-chart-test
+  (let [construct! (fn [tool-names show-chart-arg]
+                     (let [chart-created? (atom false)]
+                       (mt/with-dynamic-fn-redefs [construct/execute-representations-query
+                                                   (fn [_ & _]
+                                                     {:structured-output {:query-id       "q-1"
+                                                                          :query          {:database 1}
+                                                                          :result-columns []}})
+                                                   create-chart-tools/create-chart
+                                                   (fn [_]
+                                                     (reset! chart-created? true)
+                                                     {:chart-id "c-1", :chart-type :table})]
+                         (let [result (binding [shared/*profile-id*  :nlq
+                                                shared/*memory-atom* (atom {:tool-names tool-names})]
+                                        (test-util/call-tool
+                                         agent-tools/construct-notebook-query-tool
+                                         (merge {:query       {:lib/type "mbql/query", :stages []}
+                                                 :title       "Seat check"
+                                                 :description "Total order count."}
+                                                show-chart-arg)))]
+                           {:chart?   @chart-created?
+                            :shown?   (boolean (seq (:data-parts result)))
+                            :query-id (get-in result [:structured-output :query-id])
+                            :run-it?  (boolean (re-find #"call `run_query` with `query_id` `q-1`"
+                                                        (:output result)))}))))]
+    (testing "with run_query offered, the query is built and the user is shown nothing"
+      (is (= {:chart? false, :shown? false, :query-id "q-1", :run-it? true}
+             (construct! #{"construct_notebook_query" "run_query"} {:show_chart false}))))
+    (testing "with run_query offered and the argument left out, the chart is shown and points at run_query"
+      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? true}
+             (construct! #{"construct_notebook_query" "run_query"} {}))))
+    (testing "without run_query the chart is shown whatever the argument says"
+      (is (= {:chart? true, :shown? true, :query-id "q-1", :run-it? false}
+             (construct! #{"construct_notebook_query"} {:show_chart false}))))))
+
+(defn- source-field-query-without-validation! [construct!]
+  (let [resolved (atom nil)]
+    (mt/with-dynamic-fn-redefs [construct/assert-source-fields-reach-their-tables! (fn [query] (reset! resolved query))]
+      (try (construct!) (catch clojure.lang.ExceptionInfo _)))
+    (is (map? @resolved))
+    @resolved))
+
+(defn- source-field-qp-control! [construct!]
+  (qp/process-query (source-field-query-without-validation! construct!)))
+
+(defn- assert-source-field-qp-failure! [construct!]
+  (let [query (source-field-query-without-validation! construct!)
+        result (try (qp/process-query query) (catch Exception e e))]
+    (is (or (instance? Exception result) (= :failed (:status result)))
+        (if (instance? Exception result) (ex-message result)
+            (str "QP accepted the rejected query: " (select-keys result [:status :row_count]))))))
+
+(deftest construct-notebook-query-tool-wrong-source-field-test
+  (let [db          (t2/select-one-fn :name :model/Database (mt/id))
+        fk          (fn [table column] [db "PUBLIC" table column])
+        venue-id    (fk "CHECKINS" "VENUE_ID")
+        venues-join {:alias      "Venues"
+                     :strategy   "left-join"
+                     :stages     [{:lib/type "mbql.stage/mbql" :source-table [db "PUBLIC" "VENUES"]}]
+                     :conditions [["=" {}
+                                   ["field" {} venue-id]
+                                   ["field" {:join-alias "Venues"} (fk "VENUES" "ID")]]]}
+        args        (fn [stage]
+                      {:query       {:lib/type "mbql/query"
+                                     :stages   [(merge {:lib/type     "mbql.stage/mbql"
+                                                        :source-table [db "PUBLIC" "CHECKINS"]
+                                                        :aggregation  [["count" {}]]}
+                                                       stage)]}
+                       :title       "Check-ins"
+                       :description "Check-ins by category."})
+        refusal     (fn [opts field]
+                      (assert-source-field-qp-failure!
+                       #(construct/execute-representations-query (:query (args {:breakout [["field" opts field]]}))))
+                      (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                                              (args {:breakout [["field" opts field]]})
+                                              #{"read_resource"}))
+        refused     (fn [& sentences]
+                      {:class :recoverable
+                       :code  :metabase.metabot.tools.recoverable.pipeline/wrong-source-field
+                       :text  (str (apply str sentences) "\n"
+                                   "Call `read_resource` with `metabase://table/<numeric id>/fields` for the source "
+                                   "table to list the available foreign-key columns.")})]
+    (mt/with-current-user (mt/user->id :rasta)
+      (testing "a field reached through a foreign key to another table is refused, naming the path that reaches it"
+        (doseq [opts [{:source-field venue-id} {:source-field venue-id :join-alias nil}]]
+          (testing (pr-str opts)
+            (is (= (refused "Field " (pr-str (fk "CATEGORIES" "NAME")) " is on table \"CATEGORIES\", but its "
+                            "`source-field` " (pr-str venue-id) " is a foreign key to table \"VENUES\", so the "
+                            "field cannot be reached through it. \"VENUES\" has a foreign key to \"CATEGORIES\": "
+                            "join \"VENUES\" explicitly on " (pr-str venue-id) ", then reference the field with "
+                            "`source-field` " (pr-str (fk "VENUES" "CATEGORY_ID")) " and `source-field-join-alias` "
+                            "set to the new join's alias.")
+                   (refusal opts (fk "CATEGORIES" "NAME")))))))
+      (testing "a source-field that is not a foreign key is refused"
+        (is (= (refused "Field " (pr-str (fk "VENUES" "NAME")) " is on table \"VENUES\", but its `source-field` "
+                        (pr-str (fk "CHECKINS" "DATE")) " is not a foreign key to that table, so the field cannot "
+                        "be reached through it. Use `source-field` " (pr-str venue-id) " to reach \"VENUES\" directly.")
+               (refusal {:source-field (fk "CHECKINS" "DATE")} (fk "VENUES" "NAME")))))
+      (testing (str "a one-hop reference builds and runs, as do the path the refusal names and a reference through "
+                    "an explicit join, whose `source-field` the query processor ignores")
+        (doseq [stage [{:breakout [["field" {:source-field venue-id} (fk "VENUES" "NAME")]]}
+                       {:joins [venues-join]
+                        :breakout [["field" {:source-field (fk "VENUES" "CATEGORY_ID") :source-field-join-alias "Venues"}
+                                    (fk "CATEGORIES" "NAME")]]}
+                       {:joins    [venues-join]
+                        :breakout [["field" {:join-alias "Venues" :source-field (fk "CHECKINS" "DATE")}
+                                    (fk "VENUES" "NAME")]]}]]
+          (testing (pr-str stage)
+            (is (seq (mt/rows (qp/process-query
+                               (get-in (test-util/call-tool agent-tools/construct-notebook-query-tool (args stage))
+                                       [:structured-output :query])))))))))
+    (testing "the table the foreign key points at is not named when the user cannot query it"
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (doseq [table [:checkins :categories]]
+          (perms/set-table-permission! (perms-group/all-users) (mt/id table) :perms/create-queries :query-builder))
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (= (refused "Field " (pr-str (fk "CATEGORIES" "NAME")) " is on table \"CATEGORIES\", but its "
+                          "`source-field` " (pr-str venue-id) " is not a foreign key to that table, so the field "
+                          "cannot be reached through it. Use a `source-field` that is a foreign key to "
+                          "\"CATEGORIES\", or join \"CATEGORIES\" explicitly and reference the field with its "
+                          "`join-alias`.")
+                 (refusal {:source-field venue-id} (fk "CATEGORIES" "NAME")))))))))
+
+(defn- join-on-field [db alias table field]
+  {:alias      alias
+   :strategy   "left-join"
+   :stages     [{:lib/type "mbql.stage/mbql" :source-table [db "PUBLIC" table]}]
+   :conditions [["=" {}
+                 field
+                 ["field" {:join-alias alias} [db "PUBLIC" table "ID"]]]]})
+
+(defn- checkins-venues-join [db]
+  (join-on-field db "Venues" "VENUES" ["field" {} [db "PUBLIC" "CHECKINS" "VENUE_ID"]]))
+
+(defn- construct-checkins-query [db stages]
+  (construct/execute-representations-query
+   {:lib/type "mbql/query"
+    :stages   (-> (mapv #(merge {:lib/type "mbql.stage/mbql"} %) stages)
+                  (assoc-in [0 :source-table] [db "PUBLIC" "CHECKINS"]))}))
+
+(deftest construct-notebook-query-summary-fields-test
+  (let [db       (t2/select-one-fn :name :model/Database (mt/id))
+        fk       (fn [table column] [db "PUBLIC" table column])
+        wrong    ["field" {:source-field (fk "CHECKINS" "VENUE_ID")} (fk "CATEGORIES" "NAME")]
+        non-fk   ["field" {:source-field (fk "CHECKINS" "DATE")} (fk "VENUES" "NAME")]
+        breakout ["field" {} (fk "CHECKINS" "VENUE_ID")]]
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [stage [{:aggregation [["count" {}]] :fields [wrong]}
+                     {:aggregation [["count" {}]] :fields [non-fk]}
+                     {:breakout [breakout] :fields [wrong]}]]
+        (testing (pr-str stage)
+          (let [build!  #(construct-checkins-query db [stage])
+                control (source-field-qp-control! build!)
+                actual  (qp/process-query (get-in (build!) [:structured-output :query]))]
+            (is (= :completed (:status control) (:status actual)))
+            (is (seq (mt/rows actual)))
+            (is (= (set (mt/rows control)) (set (mt/rows actual))))
+            (when (:aggregation stage)
+              (is (= [[1000]] (mt/rows actual))))))))))
+
+(deftest construct-notebook-query-supported-source-fields-test
+  (let [db          (t2/select-one-fn :name :model/Database (mt/id))
+        fk          (fn [table column] [db "PUBLIC" table column])
+        venue-id    (fk "CHECKINS" "VENUE_ID")
+        category-id (fk "VENUES" "CATEGORY_ID")
+        category    (fk "CATEGORIES" "NAME")
+        breakout    (fn [opts field] {:aggregation [["count" {}]] :breakout [["field" opts field]]})
+        venues-join (checkins-venues-join db)]
+    (mt/with-current-user (mt/user->id :rasta)
+      (testing "available keys work in later stages and through an explicit join"
+        (doseq [stages [[(assoc (breakout {:source-field category-id :source-field-join-alias "Other"} category)
+                                :joins [venues-join])]
+                        [(assoc (breakout {:source-field category-id :source-field-name "CATEGORY_ID"
+                                           :source-field-join-alias "Other"} category) :joins [venues-join])]
+                        [{:fields [["field" {} venue-id]]}
+                         (breakout {:source-field venue-id} (fk "VENUES" "NAME"))]
+                        [{:fields [["field" {} (fk "CHECKINS" "ID")]]}
+                         (breakout {:source-field venue-id} (fk "VENUES" "NAME"))]
+                        [(assoc (breakout {:source-field venue-id} (fk "VENUES" "NAME"))
+                                :joins [venues-join])]
+                        [(assoc (breakout {:source-field category-id :source-field-join-alias "Venues"} category)
+                                :joins [venues-join])]
+                        [(assoc (breakout {:source-field category-id} category) :joins [venues-join])]
+                        [(breakout {:source-field venue-id} (fk "VENUES" "NAME"))
+                         {:fields [["field" {:source-field venue-id} (fk "VENUES" "NAME")]]}]]]
+          (testing (pr-str stages)
+            (let [rows (mt/rows (qp/process-query (get-in (construct-checkins-query db stages) [:structured-output :query])))]
+              (is (seq rows))
+              (when (= "Other" (get-in stages [0 :breakout 0 1 :source-field-join-alias]))
+                (let [corrected (assoc-in stages [0 :breakout 0 1 :source-field-join-alias] "Venues")]
+                  (is (= (set rows) (set (mt/rows (qp/process-query
+                                                   (get-in (construct-checkins-query db corrected) [:structured-output :query])))))))))))))))
+
+(deftest construct-notebook-query-wrong-source-field-context-test
+  (let [db        (t2/select-one-fn :name :model/Database (mt/id))
+        correct   ["field" {:source-field [db "PUBLIC" "VENUES" "CATEGORY_ID"]
+                            :source-field-join-alias "Venues"}
+                   [db "PUBLIC" "CATEGORIES" "NAME"]]
+        wrong-key [db "PUBLIC" "CHECKINS" "VENUE_ID"]
+        wrong     ["field" {:source-field wrong-key} [db "PUBLIC" "CATEGORIES" "NAME"]]
+        build!    #(construct-checkins-query db [{:joins [(checkins-venues-join db)]
+                                                  :aggregation [["count" {}]] :breakout %}])]
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [control (mt/rows (source-field-qp-control! #(build! [correct])))]
+        (is (seq control))
+        (is (= (set control) (set (mt/rows (qp/process-query (get-in (build! [correct]) [:structured-output :query])))))))
+      (doseq [breakouts [[correct wrong] [wrong correct]]]
+        (assert-source-field-qp-failure! #(build! breakouts))
+        (let [error (try (build! breakouts) (catch clojure.lang.ExceptionInfo e e))]
+          (is (= :wrong-source-field (:error (ex-data error))))
+          (is (str/includes? (or (ex-message error) "") (str "but its `source-field` " (pr-str wrong-key))))
+          (is (not (str/includes? (or (ex-message error) "")
+                                  (str "but its `source-field` " (pr-str (get-in correct [1 :source-field])))))))))))
+
+(deftest construct-notebook-query-direct-source-field-hint-test
+  (let [db       (t2/select-one-fn :name :model/Database (mt/id))
+        fk       (fn [table column] [db "PUBLIC" table column])
+        user-id  (fk "CHECKINS" "USER_ID")
+        query    (fn [source-field]
+                   (construct-checkins-query
+                    db [{:aggregation [["count" {}]]
+                         :breakout    [["field" {:source-field source-field} (fk "USERS" "NAME")]]}]))]
+    (mt/with-current-user (mt/user->id :rasta)
+      (assert-source-field-qp-failure! #(query (fk "CHECKINS" "VENUE_ID")))
+      (let [e (try
+                (query (fk "CHECKINS" "VENUE_ID"))
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (= :wrong-source-field (:error (ex-data e))))
+        (is (str/includes? (or (ex-message e) "") (str "Use `source-field` " (pr-str user-id)))))
+      (testing "the direct key suggested by the hint builds and runs"
+        (is (seq (mt/rows (qp/process-query (get-in (query user-id) [:structured-output :query])))))))))
+
+(deftest construct-notebook-query-hidden-parent-key-hint-test
+  (let [db (t2/select-one-fn :name :model/Database (mt/id))]
+    (mt/with-temp [:model/Field parent {:table_id (mt/id :venues)
+                                        :name "HIDDEN_PAYLOAD"
+                                        :base_type :type/JSON
+                                        :database_type "JSON"
+                                        :visibility_type "sensitive"
+                                        :active true}]
+      (mt/with-temp-vals-in-db :model/Field (mt/id :venues :category_id) {:parent_id (:id parent)}
+        (mt/with-current-user (mt/user->id :rasta)
+          (doseq [[table key] [["CHECKINS" "VENUE_ID"] ["VENUES" "ID"]]]
+            (testing table
+              (let [build! #(construct/execute-representations-query
+                             {:lib/type "mbql/query"
+                              :stages [{:lib/type "mbql.stage/mbql"
+                                        :source-table [db "PUBLIC" table]
+                                        :aggregation [["count" {}]]
+                                        :breakout [["field" {:source-field [db "PUBLIC" table key]}
+                                                    [db "PUBLIC" "CATEGORIES" "NAME"]]]}]})
+                    error (try (build!) (catch clojure.lang.ExceptionInfo e e))]
+                (assert-source-field-qp-failure! build!)
+                (is (= :wrong-source-field (:error (ex-data error))))
+                (is (not (re-find #"HIDDEN_PAYLOAD|CATEGORY_ID" (str (ex-message error) (ex-data error)))))))))))))
+
+(defn- follow-source-field-hint! [db stage message explicit-joins]
+  (let [target (get-in stage [:breakout 0 2])]
+    (cond
+      (re-find #"Use `source-field` (\[[^\]]+\]) to reach" message)
+      (let [[_ key] (re-find #"Use `source-field` (\[[^\]]+\]) to reach" message)]
+        (assoc stage :breakout [["field" {:source-field (edn/read-string key)} target]]))
+
+      (re-find #"join \"([^\"]+)\" explicitly on (\[[^\]]+\])" message)
+      (let [[_ table key] (re-find #"join \"([^\"]+)\" explicitly on (\[[^\]]+\])" message)
+            [_ key-alias] (re-find #"set `join-alias` \"([^\"]+)\"" message)
+            [_ next-key] (re-find #"reference the field with `source-field` (\[[^\]]+\])" message)
+            join (join-on-field db "Hint" table
+                                ["field" (cond-> {} key-alias (assoc :join-alias key-alias)) (edn/read-string key)])]
+        (-> stage
+            (update :joins (fnil conj []) join)
+            (assoc :breakout [["field" (if next-key
+                                         {:source-field (edn/read-string next-key) :source-field-join-alias "Hint"}
+                                         {})
+                               target]])))
+
+      :else
+      (do
+        (is (str/includes? message "join \"CATEGORIES\" explicitly"))
+        (assoc stage :joins explicit-joins :breakout [["field" {:join-alias "Categories"} target]])))))
+
+(defn- assert-category-hint! [db source-kind source prefix-field stage explicit-joins expected-hint]
+  (let [query (fn [stage]
+                {:lib/type "mbql/query"
+                 :stages (if (= source-kind :later-stage)
+                           [(merge {:lib/type "mbql.stage/mbql" :aggregation [["count" {}]]
+                                    :breakout [["field" {} prefix-field]]} source)
+                            (assoc stage :lib/type "mbql.stage/mbql")]
+                           [(merge {:lib/type "mbql.stage/mbql"} source stage)])})
+        build! #(construct/execute-representations-query (query %))
+        expected-stage (assoc stage :joins explicit-joins
+                              :breakout [["field" {:join-alias "Categories"} (get-in stage [:breakout 0 2])]])
+        expected (qp/process-query (get-in (build! expected-stage) [:structured-output :query]))
+        error (try (build! stage) (catch clojure.lang.ExceptionInfo e e))
+        message (or (ex-message error) "")]
+    (is (= :completed (:status expected)))
+    (is (= 28 (count (mt/rows expected))))
+    (is (= :wrong-source-field (:error (ex-data error))))
+    (is (str/includes? message expected-hint))
+    (assert-source-field-qp-failure! #(build! stage))
+    (let [corrected (follow-source-field-hint! db stage message explicit-joins)
+          result (qp/process-query (get-in (build! corrected) [:structured-output :query]))]
+      (is (= :completed (:status result)))
+      (is (= 28 (count (mt/rows result))))
+      (is (= (set (mt/rows expected)) (set (mt/rows result)))))))
+
+(deftest construct-notebook-query-category-hints-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [mp (mt/metadata-provider)
+          db (t2/select-one-fn :name :model/Database (mt/id))
+          fk (fn [table field] [db "PUBLIC" table field])
+          venues (checkins-venues-join db)
+          checkins (assoc-in (join-on-field db "Checkins" "CHECKINS" ["field" {} (fk "USERS" "ID")])
+                             [:conditions 0 3 2] (fk "CHECKINS" "USER_ID"))
+          aliased-venues (assoc-in venues [:conditions 0 2 1 :join-alias] "Checkins")
+          categories #(join-on-field db "Categories" "CATEGORIES" ["field" % (fk "VENUES" "CATEGORY_ID")])
+          generic-hint "Use a `source-field` that is a foreign key to \"CATEGORIES\", or join \"CATEGORIES\" explicitly and reference the field with its `join-alias`."
+          intermediate-hint (str "then reference the field with `source-field` " (pr-str (fk "VENUES" "CATEGORY_ID"))
+                                 " and `source-field-join-alias` set to the new join's alias.")]
+      (doseq [{:keys [label table prefix-key key key-alias joins explicit-joins hint native-hint]}
+              [{:label "non-FK venue key" :table :venues :prefix-key :category_id :key (fk "VENUES" "ID")
+                :hint (str "Use `source-field` " (pr-str (fk "VENUES" "CATEGORY_ID")) " to reach \"CATEGORIES\" directly.")
+                :native-hint generic-hint
+                :explicit-joins [(categories {})]}
+               {:label "intermediate join" :table :checkins :prefix-key :venue_id :key (fk "CHECKINS" "VENUE_ID")
+                :hint intermediate-hint
+                :explicit-joins [venues (categories {:join-alias "Venues"})]}
+               {:label "explicit target join" :table :checkins :prefix-key :venue_id :key (fk "CHECKINS" "DATE")
+                :hint generic-hint
+                :explicit-joins [venues (categories {:join-alias "Venues"})]}
+               {:label "aliased intermediate join" :table :users :prefix-key :id :key (fk "CHECKINS" "VENUE_ID")
+                :hint (str "(set `join-alias` \"Checkins\" on this source key), " intermediate-hint)
+                :key-alias "Checkins" :joins [checkins]
+                :explicit-joins [checkins aliased-venues (categories {:join-alias "Venues"})]}]
+              source-kind [:table :question :model :later-stage :native-question :native-model]]
+        (testing (str label " from " source-kind)
+          (let [table-meta (lib.metadata/table mp (mt/id table))
+                table-name (:name table-meta)
+                source {:source-table [db "PUBLIC" table-name]}
+                stage (cond-> {:aggregation [["count" {}]]
+                               :breakout [["field" (cond-> {:source-field key}
+                                                     key-alias (assoc :source-field-join-alias key-alias))
+                                           (fk "CATEGORIES" "NAME")]]}
+                        (seq joins) (assoc :joins joins))
+                check! #(assert-category-hint! db source-kind % (fk table-name (:name (lib.metadata/field mp (mt/id table prefix-key))))
+                                               stage explicit-joins
+                                               (if (#{:native-question :native-model} source-kind) (or native-hint hint) hint))]
+            (if (#{:table :later-stage} source-kind)
+              (check! source)
+              (let [native? (#{:native-question :native-model} source-kind)
+                    card-query (if native?
+                                 (lib/native-query mp (str "SELECT * FROM " table-name))
+                                 (lib/with-fields (lib/query mp table-meta)
+                                   (mapv #(lib.metadata/field mp %) (distinct [(mt/id table :id) (mt/id table prefix-key)]))))
+                    result (qp/process-query card-query)]
+                (is (= :completed (:status result)))
+                (mt/with-temp [:model/Card {eid :entity_id}
+                               {:name (str label " " source-kind) :type (if (#{:model :native-model} source-kind) :model :question)
+                                :dataset_query card-query :result_metadata (get-in result [:data :cols])}]
+                  (check! {:source-card eid}))))))))))
+
+(deftest construct-notebook-query-model-source-field-hint-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [mp              (mt/metadata-provider)
+          db              (t2/select-one-fn :name :model/Database (mt/id))
+          key-id          (mt/id :checkins :venue_id)
+          original-target (t2/select-one-fn :fk_target_field_id :model/Field key-id)
+          key-path        [db "PUBLIC" "CHECKINS" "VENUE_ID"]
+          target-path     [db "PUBLIC" "VENUES" "NAME"]
+          query           (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                            [(lib.metadata/field mp key-id)])
+          result          (qp/process-query query)]
+      (is (= :completed (:status result)))
+      (mt/with-temp [:model/Card {eid :entity_id card-id :id}
+                     {:name "Stored venue key" :type :model :dataset_query query :result_metadata (get-in result [:data :cols])}]
+        (let [metadata-before (t2/select-one-fn :result_metadata :model/Card card-id)
+              build!          #(construct/execute-representations-query
+                                {:lib/type "mbql/query"
+                                 :stages [{:lib/type "mbql.stage/mbql" :source-card eid
+                                           :aggregation [["count" {}]]
+                                           :breakout [["field" {:source-field key-path} target-path]]}]})]
+          (try
+            (let [updated (mt/user-http-request :crowberto :put 200 (str "field/" key-id)
+                                                {:fk_target_field_id (mt/id :users :id)})
+                  error   (try (build!) (catch clojure.lang.ExceptionInfo e e))]
+              (is (= (mt/id :users :id) (:id (:target updated))))
+              (is (= metadata-before (t2/select-one-fn :result_metadata :model/Card card-id)))
+              (is (= :wrong-source-field (:error (ex-data error))))
+              (assert-source-field-qp-failure! build!)
+              (is (not (str/includes? (or (ex-message error) "")
+                                      (str "Use `source-field` " (pr-str key-path) " to reach \"VENUES\" directly."))))
+              (is (str/includes? (or (ex-message error) "") "join \"VENUES\" explicitly"))
+              (let [corrected (construct/execute-representations-query
+                               {:lib/type "mbql/query"
+                                :stages [{:lib/type "mbql.stage/mbql" :source-card eid
+                                          :joins [(checkins-venues-join db)] :aggregation [["count" {}]]
+                                          :breakout [["field" {:join-alias "Venues"} target-path]]}]})
+                    rows      (qp/process-query (get-in corrected [:structured-output :query]))]
+                (is (= :completed (:status rows)))
+                (is (= 100 (count (mt/rows rows))))))
+            (finally
+              (mt/user-http-request :crowberto :put 200 (str "field/" key-id)
+                                    {:fk_target_field_id original-target}))))))))
+
+(deftest construct-notebook-query-source-field-join-alias-hint-test
+  (let [db            (t2/select-one-fn :name :model/Database (mt/id))
+        fk            (fn [table column] [db "PUBLIC" table column])
+        checkins-join {:alias      "Checkins"
+                       :strategy   "left-join"
+                       :stages     [{:lib/type "mbql.stage/mbql" :source-table [db "PUBLIC" "CHECKINS"]}]
+                       :conditions [["=" {}
+                                     ["field" {} (fk "USERS" "ID")]
+                                     ["field" {:join-alias "Checkins"} (fk "CHECKINS" "USER_ID")]]]}
+        query         (fn [joins opts]
+                        (construct/execute-representations-query
+                         {:lib/type "mbql/query"
+                          :stages   [{:lib/type     "mbql.stage/mbql"
+                                      :source-table [db "PUBLIC" "USERS"]
+                                      :joins        joins
+                                      :aggregation  [["count" {}]]
+                                      :breakout     [["field" opts (fk "CATEGORIES" "NAME")]]}]}))]
+    (mt/with-current-user (mt/user->id :rasta)
+      (assert-source-field-qp-failure!
+       #(query [checkins-join] {:source-field (fk "CHECKINS" "VENUE_ID") :source-field-join-alias "Checkins"}))
+      (let [e (try
+                (query [checkins-join] {:source-field            (fk "CHECKINS" "VENUE_ID")
+                                        :source-field-join-alias "Checkins"})
+                (catch clojure.lang.ExceptionInfo e e))]
+        (is (= :wrong-source-field (:error (ex-data e))))
+        (is (str/includes? (or (ex-message e) "") "(set `join-alias` \"Checkins\" on this source key)")))
+      (testing "the suggested join runs with an explicit or inferred alias for its key"
+        (let [rows (mapv (fn [join-alias]
+                           (let [venues-join (cond-> (checkins-venues-join db)
+                                               join-alias (assoc-in [:conditions 0 2 1 :join-alias] join-alias))
+                                 result      (query [checkins-join venues-join]
+                                                    {:source-field            (fk "VENUES" "CATEGORY_ID")
+                                                     :source-field-join-alias "Venues"})]
+                             (mt/rows (qp/process-query (get-in result [:structured-output :query])))))
+                         [nil "Checkins"])]
+          (is (= 28 (count (first rows))))
+          (is (= (set (first rows)) (set (second rows)))))))))
+
+(deftest construct-notebook-query-dependent-implicit-joins-test
+  (let [db (t2/select-one-fn :name :model/Database (mt/id))
+        fk (fn [table field] [db "PUBLIC" table field])
+        build! #(construct-checkins-query
+                 db [{:aggregation [["count" {}]]
+                      :breakout [["field" {:source-field (fk "CHECKINS" "VENUE_ID")} (fk "VENUES" "NAME")]
+                                 ["field" {:source-field (fk "VENUES" "CATEGORY_ID")
+                                           :source-field-join-alias "VENUES__via__VENUE_ID"}
+                                  (fk "CATEGORIES" "NAME")]]}])]
+    (mt/with-current-user (mt/user->id :rasta)
+      (let [control (mt/rows (source-field-qp-control! build!))]
+        (is (seq control))
+        (is (= (set control) (set (mt/rows (qp/process-query (get-in (build!) [:structured-output :query]))))))))))
+
+(deftest construct-notebook-query-native-source-card-implicit-join-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (let [mp (mt/metadata-provider)
+          native (lib/native-query mp "SELECT VENUE_ID FROM CHECKINS")
+          result (qp/process-query native)
+          columns (get-in result [:data :cols])
+          db (t2/select-one-fn :name :model/Database (mt/id))]
+      (is (seq columns))
+      (is (every? (comp nil? :id) columns))
+      (mt/with-temp [:model/Card {eid :entity_id} {:name "Native venue keys" :dataset_query native :result_metadata columns}]
+        (let [build! #(construct/execute-representations-query
+                       {:lib/type "mbql/query"
+                        :stages [{:lib/type "mbql.stage/mbql" :source-card eid
+                                  :aggregation [["count" {}]]
+                                  :breakout [["field" {:source-field [db "PUBLIC" "CHECKINS" "VENUE_ID"]}
+                                              [db "PUBLIC" "VENUES" "NAME"]]]}]})
+              control (mt/rows (source-field-qp-control! build!))]
+          (is (seq control))
+          (is (= (set control) (set (mt/rows (qp/process-query (get-in (build!) [:structured-output :query])))))))))))
+
+(deftest construct-notebook-query-joined-key-propagation-test
+  (let [db     (t2/select-one-fn :name :model/Database (mt/id))
+        stages [{:fields [["field" {} [db "PUBLIC" "CHECKINS" "ID"]]]
+                 :joins  [(assoc (checkins-venues-join db) :fields "none")]}
+                {:aggregation [["count" {}]]
+                 :breakout [["field" {:source-field [db "PUBLIC" "VENUES" "CATEGORY_ID"]
+                                      :source-field-name "Venues__CATEGORY_ID"}
+                             [db "PUBLIC" "CATEGORIES" "NAME"]]]}]
+        run!   (fn []
+                 (mt/rows (qp/process-query
+                           (get-in (construct-checkins-query db stages) [:structured-output :query]))))]
+    (mt/with-current-user (mt/user->id :rasta)
+      (is (seq (run!))))))
+
+(deftest construct-notebook-query-source-card-key-propagation-test
+  (let [mp       (mt/metadata-provider)
+        db       (t2/select-one-fn :name :model/Database (mt/id))
+        raw      (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                   [(lib.metadata/field mp (mt/id :checkins :id))])
+        run!     (fn [card-eid]
+                   (get-in (construct/execute-representations-query
+                            {:lib/type "mbql/query"
+                             :stages   [{:lib/type    "mbql.stage/mbql"
+                                         :source-card card-eid
+                                         :aggregation [["count" {}]]
+                                         :breakout    [["field" {:source-field [db "PUBLIC" "CHECKINS" "VENUE_ID"]}
+                                                        [db "PUBLIC" "VENUES" "NAME"]]]}]})
+                           [:structured-output :query]))]
+    (mt/with-current-user (mt/user->id :rasta)
+      (mt/with-temp [:model/Card {card-eid :entity_id} {:name "Check-ins source" :dataset_query raw}]
+        (is (seq (mt/rows (qp/process-query (run! card-eid)))))))))
+
+(deftest construct-notebook-query-source-card-field-permissions-test
+  (let [mp (mt/metadata-provider)
+        db (t2/select-one-fn :name :model/Database (mt/id))
+        query (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                [(lib.metadata/field mp (mt/id :venues :name))])]
+    (mt/with-temp [:model/Card {card-eid :entity_id} {:name "Venue names" :dataset_query query}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :checkins) :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (let [build! #(construct/execute-representations-query
+                         {:lib/type "mbql/query"
+                          :stages [{:lib/type "mbql.stage/mbql" :source-card card-eid
+                                    :aggregation [["count" {}]]
+                                    :breakout [["field" {:source-field [db "PUBLIC" "CHECKINS" "DATE"]
+                                                         :base-type "type/Text"} "NAME"]]}]})
+                control (mt/rows (source-field-qp-control! build!))]
+            (is (seq control))
+            (is (= (set control) (set (mt/rows (qp/process-query (get-in (build!) [:structured-output :query]))))))))))))
+
+(deftest construct-notebook-query-source-card-hint-permissions-test
+  (let [mp       (mt/metadata-provider)
+        db       (t2/select-one-fn :name :model/Database (mt/id))
+        category [db "PUBLIC" "VENUES" "CATEGORY_ID"]
+        target   [db "PUBLIC" "VENUES" "NAME"]
+        query    (lib/with-fields (lib/query mp (lib.metadata/table mp (mt/id :checkins)))
+                   [(lib.metadata/field mp (mt/id :checkins :venue_id))])]
+    (mt/with-temp [:model/Card {card-eid :entity_id} {:name "Venue keys" :dataset_query query}]
+      (mt/with-no-data-perms-for-all-users!
+        (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+        (perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/create-queries :query-builder)
+        (mt/with-current-user (mt/user->id :rasta)
+          (assert-source-field-qp-failure!
+           #(construct/execute-representations-query
+             {:lib/type "mbql/query"
+              :stages [{:lib/type "mbql.stage/mbql" :source-card card-eid
+                        :aggregation [["count" {}]]
+                        :breakout [["field" {:source-field category} target]]}]}))
+          (let [e (try
+                    (construct/execute-representations-query
+                     {:lib/type "mbql/query"
+                      :stages [{:lib/type "mbql.stage/mbql" :source-card card-eid
+                                :aggregation [["count" {}]]
+                                :breakout [["field" {:source-field category} target]]}]})
+                    (catch clojure.lang.ExceptionInfo e e))]
+            (is (= :wrong-source-field (:error (ex-data e))))
+            (is (= (str "Field " (pr-str target) " is on table \"VENUES\", but its `source-field` "
+                        (pr-str category) " is not a foreign key to that table, so the field cannot be reached through it. "
+                        "Use a `source-field` that is a foreign key to \"VENUES\", or join \"VENUES\" explicitly "
+                        "and reference the field with its `join-alias`.")
+                   (ex-message e)))))))))
+
+(defn- construct-tool-failure-for-thrown
+  "Run `construct_notebook_query` with `execute-representations-query` throwing `e`, and return the
+  failure the model would see."
   [e]
-  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_ _] (throw e))]
-    (:output (binding [shared/*profile-id* :nlq]
-               (agent-tools/construct-notebook-query-tool
-                {:query       {:lib/type "mbql/query" :stages []}
-                 :title       "Seat check"
-                 :description "Total order count."})))))
+  (mt/with-dynamic-fn-redefs [construct/execute-representations-query (fn [_ & _] (throw e))]
+    (binding [shared/*profile-id* :nlq]
+      (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                              {:query       {:lib/type "mbql/query" :stages []}
+                               :title       "Seat check"
+                               :description "Total order count."}
+                              #{"read_resource" "search"}))))
 
 (deftest construct-notebook-query-tool-permission-error-test
-  (testing (str "a 403 reaches the LLM as the permission message itself: `api/read-check` throws "
-                "a bare one with no `:agent-error?`, and the user not being allowed the card they "
-                "named is not a failure to report as one")
-    (is (= "You don't have permissions to do that."
-           (construct-tool-output-for-thrown
-            (ex-info "You don't have permissions to do that." {:status-code 403})))))
-  (testing "an unexpected error propagates to the agent loop"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"something went sideways"
-                          (construct-tool-output-for-thrown
-                           (ex-info "something went sideways" {}))))))
+  (testing (str "a 403 from inside the pipeline becomes the shared not-found error. Before, "
+                "`api/read-check`'s own sentence went to the model as the tool's output, which "
+                "named no entity and offered no next step — and told the model that something it "
+                "could not see exists.")
+    (let [{:keys [class code text]}
+          (construct-tool-failure-for-thrown
+           (ex-info "You don't have permissions to do that." {:status-code 403}))]
+      (is (= :recoverable class))
+      (is (= :metabase.metabot.tools.recoverable.common/not-found code))
+      (is (str/includes? text "was not found"))
+      (is (not (str/includes? text "permission")))))
+  (testing (str "a declared pipeline code keeps the pipeline's sentence and gains its "
+                "declaration's recovery step")
+    (let [{:keys [class code text]}
+          (construct-tool-failure-for-thrown
+           (ex-info "No table found matching portable FK [\"Sample\" nil \"ORDRS\"]."
+                    {:agent-error? true :status-code 400 :error :unknown-table}))]
+      (is (= :recoverable class))
+      (is (= :metabase.metabot.tools.recoverable.pipeline/unknown-table code))
+      (is (str/includes? text "No table found matching portable FK"))
+      (is (str/includes? text "metabase://database/<numeric id>/tables"))))
+  (testing "An exception without a declared `:error` code ends the turn, even if `:agent-error?` is true."
+    (doseq [[what e] {"stamped by the pipeline, no :error code"
+                      (ex-info "No matching clause: :metabase.lib.schema/bogus" {:agent-error? true})
 
-(deftest state-dependent-tools-test
-  (testing "state-dependent-tools set contains expected tools"
-    (is (contains? @#'agent-tools/state-dependent-tools "create_chart"))
-    (is (contains? @#'agent-tools/state-dependent-tools "edit_chart"))
-    (is (contains? @#'agent-tools/state-dependent-tools "create_sql_query"))
-    (is (contains? @#'agent-tools/state-dependent-tools "edit_sql_query"))
-    (is (contains? @#'agent-tools/state-dependent-tools "replace_sql_query"))
-    (is (contains? @#'agent-tools/state-dependent-tools "construct_notebook_query"))
-    (is (contains? @#'agent-tools/state-dependent-tools "todo_write"))
-    (is (contains? @#'agent-tools/state-dependent-tools "todo_read"))
-    (is (contains? @#'agent-tools/state-dependent-tools "create_autogenerated_dashboard"))
-    (is (contains? @#'agent-tools/state-dependent-tools "document_schema_collect"))
-    (is (contains? @#'agent-tools/state-dependent-tools "document_construct_sql_chart"))
-    (is (contains? @#'agent-tools/state-dependent-tools "document_construct_model_chart"))
-    (is (contains? @#'agent-tools/state-dependent-tools "create_alert"))
-    (is (contains? @#'agent-tools/state-dependent-tools "create_dashboard_subscription"))
-    (is (contains? @#'agent-tools/state-dependent-tools "static_viz"))
-    (is (contains? @#'agent-tools/state-dependent-tools "read_resource"))))
+                      "an ordinary bug"
+                      (ex-info "something went sideways" {})}]
+      (testing what
+        (is (= {:class :unrecoverable :code :internal}
+               (construct-tool-failure-for-thrown e)))))))
 
-(deftest wrap-tools-with-state-test
-  (testing "wraps state-dependent tools with state injection"
-    (let [memory-atom (atom {:state {:queries {"q1" {:database 1}}
-                                     :charts {"c1" {:query-id "q1"}}}})
-          base-tools {"create_sql_query" #'agent-tools/create-sql-query-tool
-                      "search" #'agent-tools/search-tool}
-          wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom nil :nlq)]
-      ;; State-dependent tool should be wrapped into a tool-def map
-      (is (map? (get wrapped-tools "create_sql_query")))
-      (is (contains? (get wrapped-tools "create_sql_query") :fn))
-      (is (contains? (get wrapped-tools "create_sql_query") :doc))
-      (is (contains? (get wrapped-tools "create_sql_query") :schema))
-      ;; Non-state-dependent tool should also be a tool-def map
-      (is (map? (get wrapped-tools "search")))))
-  (testing "wrapped tools preserve original metadata"
-    (let [memory-atom (atom {:state {:queries {} :charts {}}})
-          base-tools {"create_chart" #'agent-tools/create-chart-tool}
-          wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom nil :nlq)
-          wrapped-tool (get wrapped-tools "create_chart")]
-      (is (= (:doc (meta #'agent-tools/create-chart-tool)) (:doc wrapped-tool)))
-      (is (= (:schema (meta #'agent-tools/create-chart-tool)) (:schema wrapped-tool)))))
-  (testing "wrapped function receives augmented args with state"
-    (let [memory-atom (atom {:state {:queries {"test-query" {:db 1}}
-                                     :charts {"test-chart" {:type :bar}}}})
-          wrapped (agent-tools/wrap-tools-with-state {"create_sql_query" #'agent-tools/create-sql-query-tool} memory-atom nil :nlq)
-          wrapped-fn (get-in wrapped ["create_sql_query" :fn])]
-      ;; Just verify the wrapped function is callable
-      (is (fn? wrapped-fn))))
-  (testing "non-state-dependent tools are also wrapped into tool-def maps"
-    (let [memory-atom (atom {:state {:queries {"q1" {:db 1}} :charts {}}})
-          base-tools {"search" #'agent-tools/search-tool
-                      "construct_notebook_query" #'agent-tools/construct-notebook-query-tool}
-          wrapped-tools (agent-tools/wrap-tools-with-state base-tools memory-atom nil :nlq)]
-      ;; All tools are converted to tool-def maps
-      (is (map? (get wrapped-tools "search")))
-      (is (fn? (:fn (get wrapped-tools "search"))))
-      (is (map? (get wrapped-tools "construct_notebook_query")))
-      (is (fn? (:fn (get wrapped-tools "construct_notebook_query")))))))
+(deftest construct-notebook-query-tool-malformed-clauses-test
+  (testing "the model can retry after a malformed stage or clause"
+    (let [orders   {:lib/type     "mbql.stage/mbql"
+                    :source-table [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]}
+          post-agg (assoc orders :aggregation [["count" {}]] :filters [[">" {} ["aggregation" {} 0] 1]])]
+      (mt/with-current-user (mt/user->id :rasta)
+        (doseq [[label stages] {"a number as `aggregation`"
+                                [(assoc orders :aggregation 42)]
+                                "an empty aggregation clause used in `order-by`"
+                                [(assoc orders :aggregation [[]] :order-by [["desc" {} []]])]
+                                "a number as `joins`"
+                                [(assoc orders :joins 42)]
+                                "a post-aggregation filter with a number as `order-by`"
+                                [(assoc post-agg :order-by 42)]
+                                "a post-aggregation filter with a number as `fields`"
+                                [(assoc post-agg :fields 42)]
+                                "a number as a later stage"            [orders 42]
+                                "an aggregation list as a later stage" [orders [["count" {}]]]}]
+          (testing label
+            (is (=? {:class :recoverable
+                     :code  :metabase.metabot.tools.recoverable.pipeline/invalid-representations-query
+                     :text  #"Representations query has an invalid structure\.\nInvalid at .+\. Fix the named paths\."}
+                    (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                                            {:query       {:lib/type "mbql/query" :stages stages}
+                                             :title       "Orders"
+                                             :description "Orders by count."})))))))))
+
+(deftest construct-notebook-query-tool-post-aggregation-errors-test
+  (let [source [(t2/select-one-fn :name :model/Database (mt/id)) "PUBLIC" "ORDERS"]]
+    (mt/with-current-user (mt/user->id :rasta)
+      (doseq [[error cases] {:post-agg-filter-with-trailing-clauses
+                             [{:limit 5}
+                              {:fields 42 :order-by [["desc" {} ["aggregation" {} 0]]]}
+                              {:fields 42 :limit 5}
+                              {:order-by 42 :fields [["field" {} (conj source "PRODUCT_ID")]]}
+                              {:order-by 42 :limit 5}
+                              {:order-by 42 :fields 42 :limit 5}]
+                             :post-agg-filter-needs-multi-stage
+                             [{:aggregation [["count" {}] ["count" {}]]}]}
+              clauses cases]
+        (testing (pr-str clauses)
+          (let [stage (merge {:lib/type "mbql.stage/mbql"
+                              :source-table source
+                              :aggregation [["count" {}]]
+                              :filters [[">" {} ["aggregation" {} 0] 1]]}
+                             clauses)]
+            (is (=? {:class :recoverable
+                     :code (keyword "metabase.metabot.tools.recoverable.pipeline" (name error))
+                     :text #".*MBQL 5 requires.*"}
+                    (test-util/tool-failure agent-tools/construct-notebook-query-tool
+                                            {:query {:lib/type "mbql/query" :stages [stage]}
+                                             :title "Orders" :description "Orders by count."})))))))))
+
+(mu/defn ^{:tool-name "unconverted"}
+  unconverted-tool
+  "A tool declared through its var's metadata. The real ones are converted one at a time, so the tests
+  keep their own."
+  [{:keys [text]} :- [:map {:closed true} [:text :string]]]
+  text)
+
+(deftest ->entries-test
+  (testing "an entry carries what the adapters and the system message read"
+    (let [entries (agent-tools/->entries [#'agent-tools/create-sql-query-tool
+                                          #'agent-tools/search-tool]
+                                         (atom {:state {:queries {} :charts {}}}) nil :nlq)]
+      (doseq [tool-name ["create_sql_query" "search"]]
+        (testing tool-name
+          (let [entry (get entries tool-name)]
+            (is (map? entry))
+            (is (= tool-name (:tool-name entry)))
+            (is (string? (:doc entry)))
+            (is (some? (:schema entry)))
+            (is (fn? (:fn entry))))))))
+  (testing "an unconverted tool's schema comes from its var metadata"
+    (let [entries (agent-tools/->entries [#'unconverted-tool] (atom {}) nil :nlq)
+          [_:=> [_:cat declared] _out] (:schema (get entries "unconverted"))
+          [_:=> [_:cat original] _out] (:schema (meta #'unconverted-tool))]
+      (is (= original declared))))
+  (testing "a converted tool and an unconverted one sit side by side"
+    (let [entries (agent-tools/->entries [#'unconverted-tool                      ; mu/defn var
+                                          #'agent-tools/get-timeline-details-tool] ; record
+                                         (atom {}) nil :nlq)]
+      (is (= #{"unconverted" "get_timeline_details"} (set (keys entries))))
+      (is (every? fn? (map :fn (vals entries))))))
+  (testing "the entry's :fn goes through the runtime, so it reports rather than throws"
+    (let [entries (agent-tools/->entries [#'agent-tools/search-tool] (atom {}) nil :nlq)
+          outcome ((get-in entries ["search" :fn]) {:not_an_argument true})]
+      (is (=? {:error {:class :validation :code :invalid-arguments}} outcome)))))
 
 (deftest tool-schemas-exclude-state-keys-test
   (testing "create_chart schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/create-chart-tool)
-          [_:=> [_:cat params] _out] schema]
+    (let [params (:args (tools.legacy/declaration-of #'agent-tools/create-chart-tool))]
       (is (not-any? #(= :charts_state (first %)) (rest params)))))
   (testing "edit_chart schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/edit-chart-tool)
-          [_:=> [_:cat params] _out] schema]
+    (let [params (:args (tools.legacy/declaration-of #'agent-tools/edit-chart-tool))]
       (is (not-any? #(= :queries_state (first %)) (rest params)))))
-  (testing "create_sql_query schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/create-sql-query-tool)
-          [_:=> [_:cat params] _out] schema]
-      (is (not-any? #(= :queries_state (first %)) (rest params)))
-      (is (not-any? #(= :charts_state (first %)) (rest params)))
-      (is (not-any? #(= :memory_atom (first %)) (rest params)))))
-  (testing "edit_sql_query schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/edit-sql-query-tool)
-          [_:=> [_:cat params] _out] schema]
-      (is (not-any? #(= :queries_state (first %)) (rest params)))
-      (is (not-any? #(= :charts_state (first %)) (rest params)))))
-  (testing "replace_sql_query schema does not expose state keys"
-    (let [{:keys [schema]} (meta #'agent-tools/replace-sql-query-tool)
-          [_:=> [_:cat params] _out] schema]
-      (is (not-any? #(= :queries_state (first %)) (rest params)))
-      (is (not-any? #(= :charts_state (first %)) (rest params))))))
+  (doseq [tool [agent-tools/create-sql-query-tool agent-tools/create-sql-query-code-edit-tool
+                agent-tools/edit-sql-query-tool agent-tools/replace-sql-query-tool]]
+    (testing (str (:name (tools.core/declaration tool)) " schema does not expose state keys")
+      (let [params (:args (tools.core/declaration tool))]
+        (is (not-any? #(contains? #{:queries_state :charts_state :memory_atom} (first %)) (drop 2 params)))))))
 
-(deftest slackbot-schedules-keep-their-day-test
+(deftest notification-tools-store-requested-schedules-test
   (mt/with-dynamic-fn-redefs [channel.settings/slack-configured?                  (constantly true)
                               channel.settings/slack-cached-channels-and-usernames
                               (constantly {:channels [{:display-name "#data-team" :name "data-team" :id "C123"}]})]
-    (mt/with-model-cleanup [:model/Notification :model/Pulse]
-      (mt/with-temp [:model/Card      {card-id :id} {}
-                     :model/Dashboard {dash-id :id} {}]
-        (binding [shared/*memory-atom* (atom {:context {:slack_channel_id "C123"}})]
-          (mt/with-current-user (mt/user->id :crowberto)
-            (doseq [schedule [{:frequency "weekly" :day_of_week "monday" :hour 9}
-                              {:frequency "monthly" :day_of_month "first-monday" :hour 9}]]
-              (agent-tools/create-alert-tool {:card_id card-id :send_condition "has_result" :schedule schedule})
-              (agent-tools/slackbot-create-dashboard-subscription-tool {:dashboard_id dash-id :schedule schedule}))))
-        (testing "alerts"
-          (is (= #{"0 0 9 ? * 2 *" "0 0 9 ? * 2#1 *"}
-                 (->> (models.notification/notifications-for-card card-id)
-                      (mapcat :subscriptions)
-                      (into #{} (map :cron_schedule))))))
-        (testing "dashboard subscriptions"
-          (is (= #{[:weekly "mon" nil] [:monthly "mon" :first]}
-                 (->> (t2/hydrate (t2/select :model/Pulse :dashboard_id dash-id) :channels)
-                      (mapcat :channels)
-                      (into #{} (map (juxt :schedule_type :schedule_day :schedule_frame)))))))))))
+    (mt/with-temp [:model/Card          {card-id :id}       {}
+                   :model/Dashboard     {slack-dash-id :id} {}
+                   :model/DashboardCard _                   {:dashboard_id slack-dash-id :card_id card-id}
+                   :model/Dashboard     {inapp-dash-id :id} {}
+                   :model/DashboardCard _                   {:dashboard_id inapp-dash-id :card_id card-id}]
+      (let [alert-schedules        #(->> (models.notification/notifications-for-card card-id)
+                                         (mapcat :subscriptions)
+                                         (mapv :cron_schedule))
+            subscription-schedules (fn [dash-id]
+                                     (->> (t2/hydrate (t2/select :model/Pulse :dashboard_id dash-id) :channels)
+                                          (mapcat :channels)
+                                          (mapv (juxt :schedule_type :schedule_hour :schedule_day :schedule_frame))))]
+        (mt/with-current-user (mt/user->id :crowberto)
+          (let [ctx {:memory-atom (atom {:context {:slack_channel_id "C123"}})}]
+            (doseq [[schedule expected-cron expected-subscription]
+                    [[{:frequency "hourly"}
+                      "0 0 * * * ? *" [:hourly nil nil nil]]
+                     [{:frequency "daily" :hour 9}
+                      "0 0 9 * * ? *" [:daily 9 nil nil]]
+                     [{:frequency "weekly" :day_of_week "monday" :hour 9}
+                      "0 0 9 ? * 2 *" [:weekly 9 "mon" nil]]
+                     [{:frequency "monthly" :day_of_month "first-monday" :hour 9}
+                      "0 0 9 ? * 2#1 *" [:monthly 9 "mon" :first]]]]
+              (testing (:frequency schedule)
+                (mt/with-model-cleanup [:model/Notification :model/Pulse]
+                  (doseq [[tool args stored-schedules expected]
+                          [[#'agent-tools/create-alert-tool
+                            {:card_id card-id :send_condition "has_result"}
+                            alert-schedules expected-cron]
+                           [#'agent-tools/slackbot-create-dashboard-subscription-tool
+                            {:dashboard_id slack-dash-id}
+                            #(subscription-schedules slack-dash-id) expected-subscription]
+                           [#'agent-tools/create-dashboard-subscription-tool
+                            {:dashboard_id inapp-dash-id :slack_channel "data-team"}
+                            #(subscription-schedules inapp-dash-id) expected-subscription]]]
+                    (testing (str tool)
+                      (is (=? {:output #"^Created (alert|subscription) \d+ .*"}
+                              (tools.core/call @tool (assoc args :schedule schedule) ctx)))
+                      (is (= [expected] (stored-schedules))))))))))))))

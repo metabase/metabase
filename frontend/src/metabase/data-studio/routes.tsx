@@ -2,6 +2,7 @@ import { NotFound } from "metabase/common/components/ErrorPages";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { canAccessDataModel, useUserKeyValue } from "metabase/current-user";
 import {
+  PLUGIN_DATA_APPS,
   PLUGIN_DEPENDENCIES,
   PLUGIN_LIBRARY,
   PLUGIN_SCHEMA_VIEWER,
@@ -19,11 +20,13 @@ import { getDataStudioTransformRoutes } from "metabase/transforms/routes";
 import { canAccessTransforms } from "metabase/transforms/selectors";
 import * as Urls from "metabase/urls";
 
+import { getDataStudioActionRoutes } from "./actions/routes";
 import { getDataStudioMetadataRoutes } from "./data-model/routes";
 import { getDataStudioGlossaryRoutes } from "./glossary/routes";
 import { GuidePage } from "./guide/pages/GuidePage/GuidePage";
 import { CanAccessDataModel, CanAccessDataStudio } from "./route-guards";
 import { getDataStudioSettingsRoutes } from "./settings/routes";
+import { getDataStudioSnippetRoutes } from "./snippets/routes";
 
 /**
  * The Data Studio layouts and upsell pages, in their own chunk. The route guards
@@ -63,25 +66,25 @@ const gitSyncSectionLayout = () =>
   ).then(({ GitSyncSectionLayout }) => ({ Component: GitSyncSectionLayout }));
 
 const dependenciesUpsellPage = () =>
-  import(/* webpackChunkName: "data-studio-upsells" */ "./upsells/pages").then(
-    ({ DependenciesUpsellPage }) => ({
-      Component: DependenciesUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "data-studio-upsells" */ "./upsells/pages/DependenciesUpsellPage"
+  ).then(({ DependenciesUpsellPage }) => ({
+    Component: DependenciesUpsellPage,
+  }));
 
 const libraryUpsellPage = () =>
-  import(/* webpackChunkName: "data-studio-upsells" */ "./upsells/pages").then(
-    ({ LibraryUpsellPage }) => ({
-      Component: LibraryUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "data-studio-upsells" */ "./upsells/pages/LibraryUpsellPage"
+  ).then(({ LibraryUpsellPage }) => ({
+    Component: LibraryUpsellPage,
+  }));
 
 const schemaViewerUpsellPage = () =>
-  import(/* webpackChunkName: "data-studio-upsells" */ "./upsells/pages").then(
-    ({ SchemaViewerUpsellPage }) => ({
-      Component: SchemaViewerUpsellPage,
-    }),
-  );
+  import(
+    /* webpackChunkName: "data-studio-upsells" */ "./upsells/pages/SchemaViewerUpsellPage"
+  ).then(({ SchemaViewerUpsellPage }) => ({
+    Component: SchemaViewerUpsellPage,
+  }));
 
 export function getDataStudioRoutes(IsAdmin: RouteComponent) {
   return (
@@ -94,6 +97,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
        */}
 
       {getDataStudioDependencyDiagnosticsRedirects()}
+      {getDataStudioLibraryRedirects()}
       <Route element={<CanAccessDataStudio />}>
         <Route path="data-studio" lazy={dataStudioLayout}>
           <Route index element={<DataStudioIndexRedirect />} />
@@ -107,11 +111,20 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
             {getDataStudioTransformRoutes()}
           </Route>
           {getDataStudioGlossaryRoutes()}
+          {getDataStudioSnippetRoutes()}
+          {getDataStudioActionRoutes(IsAdmin)}
+          {PLUGIN_DATA_APPS.isEnabled &&
+            PLUGIN_DATA_APPS.getDataStudioRoutes(IsAdmin)}
           {getDataStudioSettingsRoutes()}
           {PLUGIN_LIBRARY.isEnabled ? (
             PLUGIN_LIBRARY.getDataStudioLibraryRoutes(IsAdmin)
           ) : (
             <Route path="library" lazy={libraryUpsellPage} />
+          )}
+          {PLUGIN_LIBRARY.isEnabled ? (
+            PLUGIN_LIBRARY.getDataStudioDashboardRoutes()
+          ) : (
+            <Route path="dashboards" lazy={libraryUpsellPage} />
           )}
           {PLUGIN_DEPENDENCIES.isEnabled ? (
             <Route path="dependencies" lazy={dependenciesSectionLayout}>
@@ -148,6 +161,24 @@ export function getDataStudioDependencyDiagnosticsRedirects() {
       <Route
         path="data-studio/dependency-diagnostics/*"
         element={redirect(`${Urls.dependencyDiagnostics()}/*`)}
+      />
+    </>
+  );
+}
+
+/**
+ * Snippets and data actions moved out of the library into their own sections.
+ */
+export function getDataStudioLibraryRedirects() {
+  return (
+    <>
+      <Route
+        path="data-studio/library/snippets/*"
+        element={redirect(`${Urls.dataStudioSnippets()}/*`)}
+      />
+      <Route
+        path="data-studio/library/actions/*"
+        element={redirect(`${Urls.dataStudioActions()}/*`)}
       />
     </>
   );

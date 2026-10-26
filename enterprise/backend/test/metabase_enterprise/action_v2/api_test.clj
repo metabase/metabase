@@ -564,12 +564,10 @@
                                                    {:primary-key [:id]}]]
           (mt/with-temp-vals-in-db :model/Database (mt/id) {:settings {:database-enable-table-editing false}}
             (testing "execute-form should return 400 error when data editing is not enabled"
-              (is (= {:message "Data editing is not enabled."}
-                     (select-keys
-                      (mt/user-http-request :crowberto :post 400 execute-form-url
-                                            {:scope  {:table-id table-id}
-                                             :action "data-grid.row/create"})
-                      [:message])))))))
+              (is (= "Data editing is not enabled."
+                     (mt/user-http-request :crowberto :post 400 execute-form-url
+                                           {:scope  {:table-id table-id}
+                                            :action "data-grid.row/create"})))))))
       (testing "Non auto-incrementing pk"
         (action-v2.tu/with-test-tables! [table-id [(ordered-map
                                                     :id        [:int]

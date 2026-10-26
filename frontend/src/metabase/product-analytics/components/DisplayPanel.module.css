@@ -9,7 +9,7 @@
 
 /* Grabbing the edge darkens it. */
 .root:has(.handle:is(:hover, :active)) {
-  border-left-color: var(--mb-color-border-strong);
+  border-left-color: var(--mb-color-border-neutral-strong);
 }
 
 .handle {

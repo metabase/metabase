@@ -7,6 +7,7 @@
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
@@ -121,6 +122,13 @@
           (is (=? {:created_at java.time.temporal.Temporal
                    :updated_at expected-timestamp}
                   field)))))))
+
+(deftest ^:parallel current-timestamp-reads-back-unchanged-test
+  (testing "a timestamp from current-timestamp reads back from the app DB as the same text an export writes"
+    (let [now (mi/current-timestamp)]
+      (mt/with-temp [:model/Field field {:created_at now}]
+        (is (= (u.date/format now)
+               (u.date/format (t2/select-one-fn :created_at :model/Field (:id field)))))))))
 
 (defmethod mi/non-timestamped-fields :test-model/updated-at-tester [_]
   #{:non_timestamped :other})
@@ -314,3 +322,7 @@
       (let [hydrated (t2/hydrate card :can_query)]
         (is (contains? hydrated :can_query))
         (is (boolean? (:can_query hydrated)))))))
+
+(deftest ^:parallel ->integer-test
+  (testing "casts to an integer on every app DB, though MySQL and MariaDB have no INTEGER cast type"
+    (is (= 42 (:n (t2/query-one {:select [[(mi/->integer "42") :n]]}))))))

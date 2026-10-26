@@ -213,12 +213,20 @@ export interface AlertUpgradeVersion {
   id?: string;
 }
 
+export interface MajorVersionSupport {
+  major: number;
+  released: string;
+  lts: boolean;
+  eol: string;
+}
+
 export interface VersionInfo {
   nightly?: VersionInfoRecord;
   beta?: VersionInfoRecord;
   latest?: VersionInfoRecord;
   older?: VersionInfoRecord[];
   alert_upgrade_versions?: AlertUpgradeVersion[];
+  major_version_support?: MajorVersionSupport[];
 }
 
 export type LocaleData = [string, string];
@@ -744,7 +752,29 @@ export type SettingKey = keyof Settings;
 
 export type SettingValue<Key extends SettingKey = SettingKey> = Settings[Key];
 
-export type ColorSettings = Record<string, string>;
+type ColorSettingsAccentIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+export type ColorSettingsAccentKey =
+  | `accent${ColorSettingsAccentIndex}`
+  | `accent${ColorSettingsAccentIndex}-light`
+  | `accent${ColorSettingsAccentIndex}-dark`;
+
+/** Keys that the `application-colors` setting stores. */
+export type ColorSettingsKey =
+  | "brand"
+  | "filter"
+  | "summarize"
+  | ColorSettingsAccentKey;
+
+/**
+ * The raw `application-colors` setting. Its keys are not color token names:
+ * translate it with `mapWhitelabelColorsToTokens` before you use it as a `ColorPalette`.
+ */
+export type ColorSettings = Partial<Record<ColorSettingsKey, string>> & {
+  "core-brand"?: never;
+  "core-filter"?: never;
+  "core-summarize"?: never;
+};
 
 export type IllustrationSettingValue = "default" | "none" | "custom";
 export type TimeoutValue = { amount: number; unit: string };
@@ -775,6 +805,7 @@ export interface EnterpriseSettings extends Settings {
   "remote-sync-type"?: RemoteSyncType | null;
   "remote-sync-auto-import"?: boolean | null;
   "remote-sync-transforms"?: boolean | null;
+  "remote-sync-custom-collections-enabled"?: boolean | null;
   "login-page-illustration"?: IllustrationSettingValue;
   "login-page-illustration-custom"?: string;
   "landing-page-illustration"?: IllustrationSettingValue;

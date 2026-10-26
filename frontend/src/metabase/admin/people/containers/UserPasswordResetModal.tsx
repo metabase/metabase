@@ -14,13 +14,16 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { PasswordReveal } from "metabase/common/components/PasswordReveal";
 import { useToast } from "metabase/common/hooks/use-toast";
 import { useDispatch, useSelector } from "metabase/redux";
-import { Button, Flex, Modal, Text, TextInput } from "metabase/ui";
+import { Button, Modal, Text, TextInput } from "metabase/ui";
 import { generatePassword } from "metabase/utils/password";
 import MetabaseSettings from "metabase/utils/settings";
 import type { User } from "metabase-types/api";
 
 import { clearTemporaryPassword, storeTemporaryPassword } from "../people";
-import { getUserTemporaryPassword } from "../selectors";
+import {
+  getIsUserSsoSourceEnabled,
+  getUserTemporaryPassword,
+} from "../selectors";
 
 interface UserPasswordResetModalInnerProps {
   clearTemporaryPassword: () => void;
@@ -124,25 +127,44 @@ const UserPasswordResetModalInner = ({
       onClose={onClose}
       size="lg"
     >
-      <Flex direction="column" gap="xl" mt="lg">
-        <Text>{t`Are you sure you want to do this?`}</Text>
-        <Flex align="center" justify="flex-end" gap="lg">
-          <Button onClick={onClose}>{t`Cancel`}</Button>
-          <Button
-            variant="filled"
-            color="brand"
-            onClick={handleGetResetLink}
-          >{t`Get reset link`}</Button>
-          <Button
-            color="negative"
-            variant="filled"
-            onClick={handleResetConfirm}
-          >{t`Reset password`}</Button>
-        </Flex>
-      </Flex>
+      <Text>{t`Are you sure you want to do this?`}</Text>
+      <Modal.Footer>
+        <Button onClick={onClose}>{t`Cancel`}</Button>
+        <Button
+          variant="filled"
+          color="brand"
+          onClick={handleGetResetLink}
+        >{t`Get reset link`}</Button>
+        <Button
+          color="negative"
+          variant="filled"
+          onClick={handleResetConfirm}
+        >{t`Reset password`}</Button>
+      </Modal.Footer>
     </Modal>
   );
 };
+
+interface SsoUserPasswordResetModalProps {
+  user: User;
+  onClose: () => void;
+}
+
+const SsoUserPasswordResetModal = ({
+  user,
+  onClose,
+}: SsoUserPasswordResetModalProps) => (
+  <ConfirmModal
+    opened
+    title={t`Can't reset ${user.common_name}'s password`}
+    onConfirm={onClose}
+    confirmButtonProps={{ color: "brand", variant: "filled" }}
+    confirmButtonText={t`Done`}
+    closeButtonText={null}
+    onClose={onClose}
+    message={t`This user signs in with single sign-on. Manage their access through your identity provider.`}
+  />
+);
 
 interface UserPasswordResetModalProps {
   params: { userId?: string };
@@ -158,10 +180,16 @@ export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
   const temporaryPassword = useSelector((state) =>
     getUserTemporaryPassword(state, { userId }),
   );
+  const isUserSsoSourceEnabled = useSelector(
+    (state) => user != null && getIsUserSsoSourceEnabled(state, user),
+  );
 
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error}>
-      {user && (
+      {user && isUserSsoSourceEnabled && (
+        <SsoUserPasswordResetModal user={user} onClose={props.onClose} />
+      )}
+      {user && !isUserSsoSourceEnabled && (
         <UserPasswordResetModalInner
           {...props}
           clearTemporaryPassword={() =>

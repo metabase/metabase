@@ -15,15 +15,20 @@
    [metabase.permissions.models.data-permissions :as data-perms]
    [metabase.permissions.models.permissions :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
+   [metabase.queries.core :as queries]
    [metabase.query-processor.card :as qp.card]
+   [metabase.query-processor.middleware.constraints :as qp.constraints]
    [metabase.query-processor.middleware.results-metadata :as qp.results-metadata]
+   [metabase.query-processor.pivot :as qp.pivot]
    ;; asserts on the store's miscellaneous-value slot that the results-metadata middleware writes
    ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.query-processor.test-util :as qp.test-util]
+   [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -240,6 +245,37 @@
           (is (=? {:status :completed}
                   result))
           (is (= [[100]] (mt/formatted-rows [int] result))))))))
+
+(deftest pivot-card-records-average-execution-time-under-card-query-hash-test
+  (testing "Running a pivot Card records its execution time under the hash the cache strategy looks up, so a TTL
+           strategy gets a real `:avg-execution-ms` instead of 0"
+    (mt/test-driver :h2
+      (mt/with-temp [:model/Card card {:dataset_query (mt/mbql-query venues
+                                                        {:aggregation [[:count]]
+                                                         :breakout    [$category_id $price]})
+                                       :display       :pivot}]
+        (doseq [native? [false true]]
+          (testing (str "use-native-pivot-tables = " native?)
+            (mt/with-temporary-setting-values [use-native-pivot-tables native?]
+              (mt/with-dynamic-fn-redefs [qp.card/cache-strategy (constantly {:type            :ttl
+                                                                              :multiplier      10
+                                                                              :min_duration_ms 0})]
+                (let [card-query-hash (qp.util/query-hash
+                                       (qp.card/query-for-card card nil (qp.constraints/default-query-constraints) nil))]
+                  (t2/delete! :model/Query :query_hash card-query-hash)
+                  (binding [qp.util/*execute-async?*     false
+                            qp.pivot/*check-pivot-parity?* false]
+                    (is (=? {:status :completed}
+                            (mt/as-admin
+                              (qp.card/process-query-for-card
+                               card :api
+                               :make-run (fn [qp _export-format]
+                                           (fn [query info]
+                                             (qp (update query :info merge info) nil))))))))
+                  (is (some? (queries/average-execution-time-ms card-query-hash)))
+                  (is (=? {:type :ttl, :avg-execution-ms (queries/average-execution-time-ms card-query-hash)}
+                          (:cache-strategy
+                           (qp.card/query-for-card card nil (qp.constraints/default-query-constraints) nil)))))))))))))
 
 (deftest nested-query-permissions-test
   (testing "Reading a Card is not enough to run it when its source query is a Card we cannot read"

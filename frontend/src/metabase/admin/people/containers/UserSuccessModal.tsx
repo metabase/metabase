@@ -67,7 +67,6 @@ export function UserSuccessModal({ params }: UserSuccessModalProps) {
     <ConfirmModal
       opened
       title={t`${user.common_name} has been added`}
-      padding="xxl"
       onClose={handleClose}
       onConfirm={handleClose}
       closeButtonText={null}

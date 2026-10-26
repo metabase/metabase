@@ -10,12 +10,12 @@
 
 /* While the toolbar button that closes this panel is hovered. */
 .root[data-hinted="true"] {
-  border-color: var(--mb-color-border-strong);
+  border-color: var(--mb-color-border-neutral-strong);
 }
 
 /* Grabbing the edge darkens it. */
 .root:has(.handle:is(:hover, :active)) {
-  border-right-color: var(--mb-color-border-strong);
+  border-right-color: var(--mb-color-border-neutral-strong);
 }
 
 .handle {

@@ -53,11 +53,12 @@
 
 (defmethod driver/host-carrying-parameters :starburst
   [_driver]
-  ["httpProxy" "socksProxy"])
+  ["httpProxy" "socksProxy" "oauth2TokenEndpoint"])
 
 (defmethod driver/non-host-parameters :starburst
   [_driver]
-  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"])
+  ["KerberosUseCanonicalHostname" "externalAuthenticationRedirectHandlers" "hostnameInCertificate"
+   "disallowLocalRedirect"])
 
 (set! *warn-on-reflection* true)
 
@@ -78,22 +79,14 @@
                               :native-pivot-tables             true
                               :now                             true
                               :database-routing                true
-                              :connection-impersonation        true}]
+                              :connection-impersonation        true
+                              :jdbc/set-query-timeout          false
+                              :regex/lookaheads-and-lookbehinds false}]
   (defmethod driver/database-supports? [:starburst feature] [_ _ _] supported?))
 
-(defn- format-field
-  [name value]
-  (if (nil? value)
-    ""
-    (str " " name ": " value)))
-
-(defmethod driver-api/query->remark :starburst
-  [_ {{:keys [card-id dashboard-id]} :info, :as query}]
-  (str
-   (driver-api/default-query->remark query)
-   (format-field "accountID" (driver-api/site-uuid))
-   (format-field "dashboardID" dashboard-id)
-   (format-field "cardID" card-id)))
+(defmethod sql.qp/use-ctes-for-stages? :starburst
+  [_driver]
+  true)
 
 (defn- handle-execution-error-details
   [^Exception e details]
@@ -204,8 +197,10 @@
         db-type     (h2x/type-info->db-type type-info)]
     (if (and ;; AT TIME ZONE is only valid on these starburst types; if applied to something else (ex: `date`), then
          ;; an error will be thrown by the query analyzer
-         db-type
-         (re-find #"(?i)^time(?:stamp)?(?:\(\d+\))?(?: with time zone)?$" db-type)
+         (if db-type
+           (re-find #"(?i)^time(?:stamp)?(?:\(\d+\))?(?: with time zone)?$" db-type)
+           ;; the database type is lost when `expr` comes from a nested query, e.g. a custom column
+           (isa? (h2x/effective-type expr) :type/DateTimeWithTZ))
          ;; if one has already been set, don't do so again
          (not (::in-report-zone? (meta expr)))
          report-zone)
@@ -398,6 +393,7 @@
     [#"(?i)real"                              :type/Float]
     [#"(?i)double"                            :type/Float]
     [#"(?i)decimal.*"                         :type/Decimal]
+    [#"(?i)^number$"                          :type/Decimal]
     [#"(?i)varchar.*"                         :type/Text]
     [#"(?i)char.*"                            :type/Text]
     [#"(?i)json"                              :type/Text]
@@ -522,7 +518,8 @@
 
 (defmethod driver/describe-database* :starburst
   [driver database]
-  (let [{:keys [catalog schema]} (driver.conn/effective-details database)]
+  (let [{:keys [catalog schema]} (driver.conn/effective-details database)
+        catalog (u/lower-case-en catalog)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      database
@@ -918,7 +915,23 @@
    :kerberos-config-path "KerberosConfigPath"
    :kerberos-delegation "KerberosDelegation"})
 
+(defn- check-kerberos-file-paths!
+  "The keytab, config and credential-cache paths are files on the Metabase host that an admin types in, so they have
+  to be somewhere `readable-paths` allows. A credential cache may also be named by type: `FILE:`/`DIR:` name a path,
+  the others (`KEYRING:`, `MEMORY:`, `KCM:`, ...) name no file."
+  [details]
+  (doseq [k     [:kerberos-keytab-path :kerberos-config-path :kerberos-credential-cache-path]
+          :let  [v    (some-> (get details k) str str/trim)
+                 path (cond
+                        (str/blank? v)                    nil
+                        (re-find #"(?i)^(FILE|DIR):" v)   (str/replace v #"(?i)^(FILE|DIR):" "")
+                        (re-find #"^[A-Za-z]{2,}:" v)     nil
+                        :else                             v)]
+          :when path]
+    (driver-api/ensure-readable-path! path)))
+
 (defn- details->kerberos-url-params [details]
+  (check-kerberos-file-paths! details)
   (let [remove-blank-vals (fn [m] (into {} (remove (comp str/blank? val) m)))
         ks                (keys kerb-props->url-param-names)]
     (-> (select-keys details ks)

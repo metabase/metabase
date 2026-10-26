@@ -173,7 +173,7 @@ export const getConversionRows = (
 };
 
 export const getTooltipOption = (
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
   chartModel: SankeyChartModel,
 ): TooltipOption => {
   return {

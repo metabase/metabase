@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
+import type { LegendChart } from "metabase/visualizations/components/legend/plots";
 import { getTooltipOption } from "metabase/visualizations/echarts/cartesian/option/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -13,6 +14,7 @@ import {
   getCartesianChartModel,
   getCartesianChartOption,
   getChartLayout,
+  getChartModelAtHeight,
   getFunnelStepsModel,
   getFunnelStepsOption,
   getScatterPlotModel,
@@ -37,16 +39,17 @@ export function useModelsAndOption(
     timelineEvents,
     selectedTimelineEventIds = NO_SELECTED_TIMELINE_EVENT_IDS,
     onRender,
-    isFullscreen,
-    gridSize,
+    isDashboard,
   }: VisualizationProps,
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  containerSize: Pick<VisualizationProps, "width" | "height">,
 ) {
   const tc = useTranslateContent();
 
   const renderingContext = useBrowserRenderingContext({
     fontFamily,
-    isFullscreen,
+    isDashboard,
+    containerSize,
   });
 
   const seriesToRender = useMemo(
@@ -65,7 +68,7 @@ export function useModelsAndOption(
 
   const isFunnelSteps = !!settings["product_analytics.funnel_steps"];
 
-  const chartModel = useMemo(() => {
+  const baseChartModel = useMemo(() => {
     let getModel;
 
     settings["graph.x_axis.title_text"] = tc(
@@ -93,7 +96,6 @@ export function useModelsAndOption(
       Array.from(hiddenSeries),
       renderingContext,
       showWarning,
-      gridSize,
     );
 
     if (model.dimensionModel.column) {
@@ -110,9 +112,24 @@ export function useModelsAndOption(
     hiddenSeries,
     renderingContext,
     showWarning,
-    gridSize,
     tc,
   ]);
+
+  // Fold before layout: the fold decides which category labels get measured.
+  const chartModel = useMemo(
+    () => getChartModelAtHeight(baseChartModel, height, settings),
+    [baseChartModel, height, settings],
+  );
+
+  const legendChart: LegendChart = useMemo(
+    () => ({
+      chartModel: baseChartModel,
+      settings,
+      hasTimelineEvents,
+      renderingContext,
+    }),
+    [baseChartModel, settings, hasTimelineEvents, renderingContext],
+  );
 
   // With one series, the funnel steps chart draws its own step labels, so the
   // layout shouldn't reserve x-axis tick space. With several, the steps are
@@ -244,6 +261,7 @@ export function useModelsAndOption(
   return {
     chartModel,
     chartLayout,
+    legendChart,
     timelineEventsModel,
     option,
     renderingContext,

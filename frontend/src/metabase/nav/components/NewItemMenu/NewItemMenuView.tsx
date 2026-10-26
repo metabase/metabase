@@ -50,6 +50,7 @@ export const NewItemMenuView = ({
   hasDataAccess,
   hasNativeWrite,
   hasDatabaseWithJsonEngine,
+  onCloseNavbar,
 }: NewItemMenuProps) => {
   const dispatch = useDispatch();
   // Picking "Product analysis" swaps the menu for the kinds of analysis.
@@ -112,6 +113,7 @@ export const NewItemMenuView = ({
             collectionId,
             cardType: "question",
           })}
+          onClick={onCloseNavbar}
           leftSection={<Icon name="insight" />}
         >
           {t`Question`}
@@ -131,6 +133,7 @@ export const NewItemMenuView = ({
             cardType: "question",
             DEPRECATED_RAW_MBQL_databaseId: lastUsedDatabaseId || undefined,
           })}
+          onClick={onCloseNavbar}
           leftSection={<Icon name="sql" />}
         >
           {hasDatabaseWithJsonEngine ? t`Native query` : t`SQL query`}
@@ -158,6 +161,7 @@ export const NewItemMenuView = ({
         key="document"
         component={ForwardRefLink}
         to="/document/new"
+        onClick={onCloseNavbar}
         leftSection={<Icon name="document" />}
       >
         {t`Document`}
@@ -175,6 +179,7 @@ export const NewItemMenuView = ({
     dispatch,
     canWriteToCollections,
     hasNlqAccess,
+    onCloseNavbar,
   ]);
 
   if (menuItems.length === 0) {
@@ -193,6 +198,7 @@ export const NewItemMenuView = ({
                 key={kind}
                 component={ForwardRefLink}
                 to={Urls.newEventAnalysis(kind)}
+                onClick={onCloseNavbar}
                 leftSection={<Icon name={icon} />}
               >
                 {getName()}

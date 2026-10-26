@@ -8,9 +8,9 @@ import {
   type DataKey,
   EChartsTooltip,
   FUNNEL_STEPS_GHOST_SERIES_ID,
-  GOAL_LINE_SERIES_ID,
   getFunnelStepsTooltipModel,
   getTooltipBaseOption,
+  isGoalLineSeriesId,
 } from "metabase/viz-core";
 import type { CardDisplayType } from "metabase-types/api";
 
@@ -54,7 +54,7 @@ export const getTooltipOption = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
   display: CardDisplayType,
-  containerRef: React.RefObject<HTMLDivElement>,
+  containerRef: React.RefObject<HTMLDivElement | null>,
 ): TooltipOption => {
   return {
     ...getTooltipBaseOption(containerRef),
@@ -66,7 +66,7 @@ export const getTooltipOption = (
 
       const { dataIndex, seriesId } = params;
 
-      if (seriesId === GOAL_LINE_SERIES_ID) {
+      if (isGoalLineSeriesId(seriesId)) {
         return "";
       }
 

@@ -444,6 +444,83 @@
                  :has_invited_second_user (= 1 (mt/user->id :rasta))}
                 (mt/user-http-request :rasta :get 200 "user/current")))))))
 
+(deftest current-user-slack-account-test
+  (doseq [[enabled? version metadata expected-status]
+          [[true 0 nil "active"]
+           [true 2 {:signing_secret_version 2} "active"]
+           [true 2 {:signing_secret_version 1} "inactive"]
+           [true 2 nil "inactive"]
+           [false 2 {:signing_secret_version 2} "inactive"]]]
+    (testing (str "Slack enabled=" enabled? ", version=" version ", metadata=" metadata)
+      (mt/with-temporary-setting-values [slack-connect-client-id "test-client"
+                                         slack-connect-client-secret "test-secret"
+                                         slack-connect-enabled enabled?
+                                         slack-connect-signing-secret-version version]
+        (mt/with-temp [:model/User {user-id :id} {}]
+          (is (nil? (:slack_account_status (mt/user-http-request user-id :get 200 "user/current"))))
+          (mt/with-temp [:model/AuthIdentity _ {:user_id user-id
+                                                :provider "slack-connect"
+                                                :provider_id "U-LINKED"
+                                                :metadata metadata}]
+            (is (= expected-status
+                   (:slack_account_status (mt/user-http-request user-id :get 200 "user/current"))))))))))
+
+(deftest ^:parallel disconnect-slack-account-test
+  (mt/with-temp [:model/User {user-id :id} {}
+                 :model/User {other-user-id :id} {}
+                 :model/AuthIdentity {slack-identity-id :id} {:user_id user-id
+                                                              :provider "slack-connect"
+                                                              :provider_id "U-DISCONNECT"}
+                 :model/AuthIdentity {other-identity-id :id} {:user_id other-user-id
+                                                              :provider "slack-connect"
+                                                              :provider_id "U-DISCONNECT"}
+                 :model/AuthIdentity {google-identity-id :id} {:user_id user-id
+                                                               :provider "google"
+                                                               :provider_id "U-DISCONNECT"}]
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request user-id :delete 403 (str "user/" other-user-id "/slack"))))
+    (is (= "You don't have permissions to do that."
+           (mt/user-http-request :crowberto :delete 403 (str "user/" user-id "/slack"))))
+    (is (t2/exists? :model/AuthIdentity :id slack-identity-id))
+    (is (nil? (mt/user-http-request user-id :delete 204 (str "user/" user-id "/slack"))))
+    (is (not (t2/exists? :model/AuthIdentity :id slack-identity-id)))
+    (is (t2/exists? :model/AuthIdentity :id other-identity-id))
+    (is (t2/exists? :model/AuthIdentity :id google-identity-id))
+    (is (nil? (:slack_account_status (mt/user-http-request user-id :get 200 "user/current"))))
+    (is (nil? (mt/user-http-request user-id :delete 204 (str "user/" user-id "/slack"))))))
+
+(deftest ^:parallel disconnect-slack-account-revokes-slack-sessions-test
+  (let [slack-session-key (session/generate-session-key)
+        other-slack-session-key (session/generate-session-key)
+        password-session-key (session/generate-session-key)]
+    (mt/with-temp [:model/User {user-id :id} {:sso_source "slack"}
+                   :model/AuthIdentity {slack-identity-id :id} {:user_id user-id
+                                                                :provider "slack-connect"
+                                                                :provider_id "U-SLACK-SESSION"}
+                   :model/AuthIdentity {password-identity-id :id} {:user_id user-id
+                                                                   :provider "password"
+                                                                   :credentials {:password_hash "hash"
+                                                                                 :password_salt "salt"}}
+                   :model/Session {slack-session-id :id} {:id (session/generate-session-id)
+                                                          :user_id user-id
+                                                          :session_key slack-session-key
+                                                          :auth_identity_id slack-identity-id}
+                   :model/Session {other-slack-session-id :id} {:id (session/generate-session-id)
+                                                                :user_id user-id
+                                                                :session_key other-slack-session-key
+                                                                :auth_identity_id slack-identity-id}
+                   :model/Session {password-session-id :id} {:id (session/generate-session-id)
+                                                             :user_id user-id
+                                                             :session_key password-session-key
+                                                             :auth_identity_id password-identity-id}]
+      (is (nil? (client/client slack-session-key :delete 204 (str "user/" user-id "/slack"))))
+      (is (not (t2/exists? :model/Session :id slack-session-id)))
+      (is (not (t2/exists? :model/Session :id other-slack-session-id)))
+      (is (t2/exists? :model/Session :id password-session-id))
+      (is (= "Unauthenticated" (client/client slack-session-key :get 401 "user/current")))
+      (is (= "Unauthenticated" (client/client other-slack-session-key :get 401 "user/current")))
+      (is (nil? (:slack_account_status (client/client password-session-key :get 200 "user/current")))))))
+
 (deftest ^:parallel get-current-user-test-2
   (testing "GET /api/user/current"
     (testing "check that `has_question_and_dashboard` is `true`."
@@ -1760,6 +1837,60 @@
                                    {:password "whateverUP12!!"
                                     :old_password "whatever"}))))))
 
+(deftest reset-password-sso-user-not-found-test
+  (testing "PUT /api/user/:id/password as an admin for a user whose SSO provider is enabled gets a 404"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name  "User"
+                                              :email      "ssouser@test.com"
+                                              :sso_source "google"}]
+      (let [set-password! (fn [expected-status]
+                            (mt/user-http-request :crowberto :put expected-status (format "user/%d/password" user-id)
+                                                  {:password "whateverUP12!!"}))
+            password-hash (fn []
+                            (:password_hash (t2/select-one-fn :credentials :model/AuthIdentity
+                                                              :user_id user-id, :provider "password")))
+            original-hash (password-hash)]
+        (mt/with-premium-features #{}
+          (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                             google-auth-enabled   true]
+            (set-password! 404)
+            (is (= original-hash (password-hash))))
+          (testing "once the provider is disabled the admin can set a password again"
+            (set-password! 204)
+            (is (not= original-hash (password-hash)))))))))
+
+(deftest reset-password-audit-log-test
+  (testing "PUT /api/user/:id/password records who changed whose password in the audit log"
+    (mt/with-premium-features #{:audit-app}
+      (mt/with-temp [:model/User {user-id :id} {}]
+        (auth-identity/set-password! user-id "oldPASSWORD12!!")
+        (testing "when an admin sets another user's password"
+          (mt/user-http-request :crowberto :put 204 (format "user/%d/password" user-id)
+                                {:password "adminSET12!!pw"})
+          (is (= {:topic    :password-changed
+                  :user_id  (mt/user->id :crowberto)
+                  :model    "User"
+                  :model_id user-id
+                  :details  {}}
+                 (mt/latest-audit-log-entry :password-changed user-id))))
+        (testing "when a user changes their own password"
+          (mt/user-http-request user-id :put 200 (format "user/%d/password" user-id)
+                                {:password     "selfSET12!!pw"
+                                 :old_password "adminSET12!!pw"})
+          (is (= {:topic    :password-changed
+                  :user_id  user-id
+                  :model    "User"
+                  :model_id user-id
+                  :details  {}}
+                 (mt/latest-audit-log-entry :password-changed user-id)))))
+      (testing "nothing is recorded when the change is refused"
+        (mt/with-temp [:model/User {sso-user-id :id} {:sso_source "google"}]
+          (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                             google-auth-enabled   true]
+            (mt/user-http-request :crowberto :put 404 (format "user/%d/password" sso-user-id)
+                                  {:password "whateverUP12!!"})
+            (is (nil? (mt/latest-audit-log-entry :password-changed sso-user-id)))))))))
+
 (deftest reset-password-input-validation-test
   (testing "PUT /api/user/:id/password"
     (testing "Test input validations on password change"
@@ -1891,6 +2022,25 @@
         (is (=? {:end_reason "password-change", :ended_by_user_id (mt/user->id :crowberto), :key_hashed nil}
                 (t2/select-one :model/Session :id (:id session)))
             "the user's pre-existing session should be ended by the admin after the password change")))))
+
+(deftest reset-password-self-service-revokes-other-sessions-test
+  (testing "PUT /api/user/:id/password changing your own password revokes your other live sessions"
+    (mt/with-temp [:model/User user {:is_superuser false}]
+      (auth-identity/set-password! (:id user) "def")
+      (let [creds     {:username (:email user), :password "def"}
+            session-a (:id (mt/client :post 200 "session" creds))
+            session-b (:id (mt/client :post 200 "session" creds))]
+        (testing "sanity check: both sessions are usable before the password change"
+          (is (=? {:id (:id user)} (mt/client session-a :get 200 "user/current")))
+          (is (=? {:id (:id user)} (mt/client session-b :get 200 "user/current"))))
+        (let [{new-session :session_id} (mt/client session-b :put 200 (format "user/%d/password" (:id user))
+                                                   {:password "abc123!!DEF", :old_password "def"})]
+          (testing "the other session is dead"
+            (mt/client session-a :get 401 "user/current"))
+          (testing "the session that made the change is dead too — it is replaced, not kept"
+            (mt/client session-b :get 401 "user/current"))
+          (testing "the replacement session handed back by the endpoint works"
+            (is (=? {:id (:id user)} (mt/client new-session :get 200 "user/current")))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                             Deleting (Deactivating) a User -- DELETE /api/user/:id                             |
@@ -2029,6 +2179,22 @@
                                               :email "reseturl3@test.com"
                                               :is_active false}]
       (mt/user-http-request :crowberto :post 404
+                            (format "user/%d/password-reset-url" user-id)))))
+
+(deftest password-reset-url-sso-user-not-found-test
+  (testing "POST /api/user/:id/password-reset-url with a user having sso configured gets a 404"
+    (mt/with-temp [:model/User {user-id :id} {:first_name "Test"
+                                              :last_name "User"
+                                              :email "ssouser@test.com"
+                                              :sso_source "google"}]
+      (mt/with-premium-features #{}
+        (mt/with-temporary-setting-values [google-auth-client-id "pretend-client-id.apps.googleusercontent.com"
+                                           google-auth-enabled   true]
+          (mt/user-http-request :crowberto :post 404
+                                (format "user/%d/password-reset-url" user-id)))
+        (mt/user-http-request :crowberto :post 200
+                              (format "user/%d/password-reset-url" user-id)))
+      (mt/user-http-request :crowberto :post 200
                             (format "user/%d/password-reset-url" user-id)))))
 
 (deftest password-reset-url-nonexistent-user-not-found-test

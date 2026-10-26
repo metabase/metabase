@@ -65,7 +65,7 @@ const SankeyChartComponent = ({
   );
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<EChartsType>();
+  const chartRef = useRef<EChartsType>(undefined);
   const renderingContext = useBrowserRenderingContext({ fontFamily });
   const chartModel = useMemo(
     () => getSankeyChartModel(rawSeriesWithRemappings, settings),
@@ -136,6 +136,8 @@ const SankeyChartComponent = ({
           hasLegend
           isFullscreen={isFullscreen}
           isQueryBuilder={isQueryBuilder}
+          fontFamily={renderingContext.fontFamily}
+          measureText={renderingContext.measureText}
         >
           {chart}
         </LegendLayout>

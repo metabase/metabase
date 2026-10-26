@@ -4,6 +4,7 @@
    [metabase-enterprise.dependencies.native-validation :as deps.native]
    [metabase-enterprise.dependencies.schema :as deps.schema]
    [metabase-enterprise.sandbox.schema]
+   [metabase.actions.schema :as actions.schema]
    [metabase.documents.prose-mirror :as prose-mirror]
    [metabase.documents.schema :as documents.schema]
    [metabase.lib-be.core :as lib-be]
@@ -11,6 +12,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.measures.schema]
    [metabase.native-query-snippets.schema]
    [metabase.queries.schema :as queries.schema]
@@ -23,7 +25,9 @@
 
 (def ^:private Entity
   "Any dependency-tracked entity `calculate-deps` accepts. A `:dashboard` entity arrives hydrated with `:dashcards`,
-  each of those in turn hydrated with `:series`; every other entity is a plain row of its model."
+  each of those in turn hydrated with `:series`; a query `:action` arrives with the `:dataset_query` of its
+  QueryAction and an implicit one without a model with the `:table_id` of its ImplicitAction; a `:data-app` arrives
+  with the `:card_ids` and `:action_ids` of its resource collection; every other entity is a plain row of its model."
   [:or
    ::queries.schema/card
    :metabase.warehouse-schema.schema/table
@@ -33,7 +37,13 @@
    ::documents.schema/document
    :metabase-enterprise.sandbox.schema/sandbox
    :metabase.segments.schema/segment
-   :metabase.measures.schema/measure])
+   :metabase.measures.schema/measure
+   ::actions.schema/action
+   [:merge
+    :metabase-enterprise.data-apps.schema/data-app
+    [:map
+     [:card_ids   [:set ::lib.schema.id/card]]
+     [:action_ids [:set ::lib.schema.id/action]]]]])
 
 (defmulti calculate-deps*
   "Implementation multimethod for [[calculate-deps]]. Dispatches on entity-type keyword.
@@ -64,7 +74,7 @@
   (let [driver (:engine (lib.metadata/database query))
         deps   (deps.native/native-query-deps driver query)]
     ;; The deps are in #{{:table 7} ...} form and need conversion to ::deps.schema/upstream-deps form.
-    (u/group-by ffirst (comp second first) conj #{} deps)))
+    (u/group-by ffirst (comp second first) conj #{} (remove :unresolved-table deps))))
 
 (mu/defn- upstream-deps:query :- ::deps.schema/upstream-deps
   [query :- ::lib.schema/query]
@@ -83,6 +93,7 @@
 
 ;; Modified implementation of documents.models.document/document-deps
 (defn- document-deps
+  "The `[entity-type entity-id]` pairs that the smart links and card embeds of a prose-mirror `document` point at."
   [{:keys [content_type] :as document}]
   (when (= content_type prose-mirror/prose-mirror-content-type)
     (prose-mirror/collect-ast document (fn [{:keys [type attrs]}]
@@ -198,3 +209,16 @@
    :segment (or (lib/all-segment-ids definition) #{})
    :table (cond-> (into #{} (lib/all-implicitly-joined-table-ids definition))
             table_id (conj table_id))})
+
+(defmethod calculate-deps* :action
+  [_ {action-type :type, model-id :model_id, table-id :table_id, query :dataset_query}]
+  (case action-type
+    :implicit (if model-id
+                {:card #{model-id}}
+                {:table (if table-id #{table-id} #{})})
+    :query    (upstream-deps:query (lib-be/normalize-query query))))
+
+(defmethod calculate-deps* :data-app
+  [_ {card-ids :card_ids, action-ids :action_ids}]
+  {:card   card-ids
+   :action action-ids})

@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.audit-app.core :as audit]
+   [metabase.config.core :as config]
    [metabase.search.config :as search.config]
    [metabase.search.in-place.filter :as search.filter]
    [metabase.search.permissions :as search.permissions]
@@ -20,6 +21,7 @@
    :calculate-available-models?    false
    :is-sandboxed-user?             false
    :is-impersonated-user?          false
+   :is-routed-user?                false
    :enabled-transform-source-types #{"mbql"}})
 
 (deftest ^:parallel ->applicable-models-test
@@ -53,7 +55,9 @@
                      {:models #{"dashboard" "dataset" "table"}
                       :created-by #{1}})))))
     (testing "created at"
-      (is (= #{"dashboard" "table" "dataset" "document" "exploration" "collection" "database" "action" "card" "metric" "transform" "measure"}
+      (is (= (cond-> #{"dashboard" "table" "dataset" "document" "exploration" "collection" "database" "action" "card"
+                       "metric" "transform" "measure"}
+               config/ee-available? (conj "data-app"))
              (search.filter/search-context->applicable-models
               (merge default-search-ctx
                      {:created-at "past3days"}))))
@@ -387,7 +391,7 @@
 
 (deftest build-filters-indexed-entity-test
   (testing "users that are not sandboxed or impersonated can search for indexed entity"
-    (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly false)]
+    (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-impersonated-or-routed-user? (constantly false)]
       (is (= [:and
               [:or [:like [:lower :model-index-value.name] (h2x/like-substring "foo")]]
               [:= [:inline 1] [:inline 1]]]
@@ -398,7 +402,7 @@
 
 (deftest build-filters-indexed-entity-test-2
   (testing "otherwise search result is empty"
-    (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-or-impersonated-user? (constantly true)]
+    (mt/with-dynamic-fn-redefs [search.permissions/sandboxed-impersonated-or-routed-user? (constantly true)]
       (is (= [:and
               [:or [:= 0 1]]
               [:= [:inline 1] [:inline 1]]]

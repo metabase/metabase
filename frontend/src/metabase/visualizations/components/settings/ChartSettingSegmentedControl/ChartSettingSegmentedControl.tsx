@@ -1,34 +1,44 @@
 import { SegmentedControl, type SegmentedControlItem } from "metabase/ui";
-import type { ChartSettingSegmentedControlProps } from "metabase/viz-core";
+import {
+  type ChartSettingSegmentedControlOption,
+  type ChartSettingSegmentedControlProps,
+  encodeWidgetValue,
+} from "metabase/viz-core";
 
-/**
- * Setting values aren't always strings (some options are `null` for "Auto",
- * or booleans), but the control's are, so each item's value is its index.
- */
 export const ChartSettingSegmentedControl = ({
   options,
   onChange,
   value,
 }: ChartSettingSegmentedControlProps) => {
-  const data: SegmentedControlItem<string>[] = options.map((option, index) =>
-    option.icon
-      ? {
-          value: String(index),
-          icon: option.icon,
-          ariaLabel: option.name ?? String(option.value),
-          withTooltip: option.name !== undefined,
-        }
-      : { value: String(index), label: option.name },
-  );
-  const selectedIndex = options.findIndex((option) => option.value === value);
+  const handleChange = (encodedValue: string) => {
+    const option = options.find(
+      (option) => encodeWidgetValue(option.value) === encodedValue,
+    );
+    if (option) {
+      onChange(option.value);
+    }
+  };
 
   return (
     <SegmentedControl
-      data={data}
-      // An empty value matches no item, so nothing shows as selected.
-      value={selectedIndex >= 0 ? String(selectedIndex) : ""}
-      onChange={(index) => onChange(options[Number(index)].value)}
       fullWidth
+      data={options.map(getSegmentedControlItem)}
+      value={encodeWidgetValue(value)}
+      onChange={handleChange}
     />
   );
 };
+
+function getSegmentedControlItem({
+  name,
+  value,
+  icon,
+}: ChartSettingSegmentedControlOption): SegmentedControlItem<string> {
+  const encodedValue = encodeWidgetValue(value);
+
+  if (icon === undefined) {
+    return { value: encodedValue, label: name };
+  }
+
+  return { value: encodedValue, icon, ariaLabel: name };
+}

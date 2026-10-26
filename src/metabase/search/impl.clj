@@ -277,8 +277,9 @@
    [:context                             {:optional true} [:maybe :keyword]]
    [:models                                               [:maybe [:set SearchableModel]]]
    [:current-user-id                                      pos-int?]
-   [:is-impersonated-user?               {:optional true} :boolean]
-   [:is-sandboxed-user?                  {:optional true} :boolean]
+   [:is-impersonated-user?                                :boolean]
+   [:is-sandboxed-user?                                   :boolean]
+   [:is-routed-user?                                      :boolean]
    [:is-superuser?                                        :boolean]
    [:is-data-analyst?                    {:optional true} :boolean]
    [:current-user-perms                                   [:set perms/PathSchema]]
@@ -324,6 +325,7 @@
            ids
            is-impersonated-user?
            is-sandboxed-user?
+           is-routed-user?
            include-dashboard-questions?
            include-metadata?
            is-superuser?
@@ -366,6 +368,7 @@
                                                                  (fvalue :filter-items-in-personal-collection))
                         :is-impersonated-user?               is-impersonated-user?
                         :is-sandboxed-user?                  is-sandboxed-user?
+                        :is-routed-user?                     is-routed-user?
                         :is-superuser?                       is-superuser?
                         :is-data-analyst?                    (boolean is-data-analyst?)
                         :models                              models
@@ -440,8 +443,14 @@
   (check-permissions-for-model search-ctx (normalize-result result)))
 
 (defn- add-can-write [search-ctx row]
-  (if (some #(mi/instance-of? % row) [:model/Dashboard :model/Card :model/Collection])
+  (cond
+    (some #(mi/instance-of? % row) [:model/Dashboard :model/Card :model/Collection])
     (assoc row :can_write (can-write? search-ctx row))
+
+    (mi/instance-of? :model/Table row)
+    (assoc row :can_write (can-write? search-ctx (assoc row :db_id (:database_id row))))
+
+    :else
     row))
 
 (defn- normalize-result-more

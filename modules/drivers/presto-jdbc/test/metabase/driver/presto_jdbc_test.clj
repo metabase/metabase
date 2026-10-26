@@ -18,10 +18,15 @@
    [metabase.test :as mt]
    [metabase.test.data.presto-jdbc :as data.presto-jdbc]
    [metabase.test.fixtures :as fixtures]
+   [metabase.util.json :as json]
    [metabase.warehouses.core :as warehouses]
    [toucan2.core :as t2])
   (:import
-   (java.io File)))
+   (com.sun.net.httpserver HttpExchange HttpHandler HttpServer)
+   (java.io File)
+   (java.net InetSocketAddress)
+   (java.sql DriverManager SQLException)
+   (java.util Properties)))
 
 (set! *warn-on-reflection* true)
 
@@ -234,22 +239,43 @@
       (let [db-details (assoc (:details (mt/db)) :let-user-control-scheduling false)]
         (is (nil? (warehouses/test-database-connection :presto-jdbc db-details)))))))
 
-(deftest ^:parallel kerberos-properties-test
+(deftest kerberos-properties-test
   (testing "Kerberos related properties are set correctly"
-    (let [details {:host                         "presto-server"
-                   :port                         7778
-                   :catalog                      "my-catalog"
-                   :kerberos                     true
-                   :ssl                          true
-                   :kerberos-config-path         "/path/to/krb5.conf"
-                   :kerberos-principal           "alice@DOMAIN.COM"
-                   :kerberos-remote-service-name "HTTP"
-                   :kerberos-keytab-path         "/path/to/client.keytab"}
-          jdbc-spec (sql-jdbc.conn/connection-details->spec :presto-jdbc details)]
-      (is (= (str "//presto-server:7778/my-catalog?KerberosPrincipal=alice@DOMAIN.COM"
-                  "&KerberosRemoteServiceName=HTTP&KerberosKeytabPath=/path/to/client.keytab"
-                  "&KerberosConfigPath=/path/to/krb5.conf")
-             (:subname jdbc-spec))))))
+    (mt/with-temp-env-var-value! [mb-readable-paths "/path/to"]
+      (let [details {:host                         "presto-server"
+                     :port                         7778
+                     :catalog                      "my-catalog"
+                     :kerberos                     true
+                     :ssl                          true
+                     :kerberos-config-path         "/path/to/krb5.conf"
+                     :kerberos-principal           "alice@DOMAIN.COM"
+                     :kerberos-remote-service-name "HTTP"
+                     :kerberos-keytab-path         "/path/to/client.keytab"}
+            jdbc-spec (sql-jdbc.conn/connection-details->spec :presto-jdbc details)]
+        (is (= (str "//presto-server:7778/my-catalog?KerberosPrincipal=alice@DOMAIN.COM"
+                    "&KerberosRemoteServiceName=HTTP&KerberosKeytabPath=/path/to/client.keytab"
+                    "&KerberosConfigPath=/path/to/krb5.conf")
+               (:subname jdbc-spec)))))))
+
+(deftest kerberos-file-paths-must-be-readable-test
+  (testing "the Kerberos keytab, config and credential-cache paths are files on the Metabase host an admin types in, so
+            they have to be somewhere `readable-paths` allows"
+    (let [details {:host "presto-server" :port 7778 :catalog "my-catalog" :kerberos true :ssl true
+                   :kerberos-principal "alice@DOMAIN.COM"}
+          spec    #(sql-jdbc.conn/connection-details->spec :presto-jdbc (merge details %))]
+      (mt/with-temp-env-var-value! [mb-readable-paths "/allowed-dir"]
+        (doseq [extra [{:kerberos-keytab-path "/etc/krb5.keytab"}
+                       {:kerberos-config-path "/etc/krb5.conf"}
+                       {:kerberos-credential-cache-path "/tmp/../etc/krb5cc"}
+                       {:kerberos-credential-cache-path "FILE:/etc/krb5cc"}]]
+          (testing (pr-str extra)
+            (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Reading from path is disallowed" (spec extra)))))
+        (testing "paths inside an allowed directory, and credential caches that are not files, are accepted"
+          (doseq [extra [{:kerberos-keytab-path "/allowed-dir/client.keytab"
+                          :kerberos-config-path "/allowed-dir/krb5.conf"}
+                         {:kerberos-credential-cache-path "FILE:/allowed-dir/krb5cc"}
+                         {:kerberos-credential-cache-path "KEYRING:persistent:1000"}]]
+            (is (map? (spec extra)) (pr-str extra))))))))
 
 (defn- create-dummy-keystore
   "Creates and empty file for simulating a JKS."
@@ -312,3 +338,52 @@
                   (lib/native-query (mt/metadata-provider))
                   (qp/process-query)
                   (mt/rows)))))))
+
+(defn- do-with-presto-cancellation!
+  "Run `f` with a Presto HTTP endpoint that cancels after its first page of rows."
+  [f]
+  (let [server (HttpServer/create (InetSocketAddress. "127.0.0.1" 0) 0)
+        base   (str "http://127.0.0.1:" (.getPort (.getAddress server)))
+        shared {:id "canceled-query", :infoUri (str base "/info"), :warnings []}
+        page   (merge shared {:nextUri (str base "/next")
+                              :columns [{:name "x", :type "bigint", :typeSignature {:rawType "bigint", :arguments []}}]
+                              :data [[1]], :stats {:state "RUNNING"}})
+        failed (merge shared {:stats {:state "FAILED"}
+                              :error {:message "Query was canceled", :sqlState nil, :errorCode 3
+                                      :errorName "USER_CANCELED", :errorType "USER_ERROR", :retriable false}})]
+    (.createContext server "/"
+                    (reify HttpHandler
+                      (handle [_ exchange]
+                        (let [^HttpExchange exchange exchange]
+                          (.readAllBytes (.getRequestBody exchange))
+                          (if (= "DELETE" (.getRequestMethod exchange))
+                            (.sendResponseHeaders exchange 204 -1)
+                            (let [body (.getBytes ^String (json/encode (if (= "/next" (.getPath (.getRequestURI exchange)))
+                                                                         failed page)) "UTF-8")]
+                              (.set (.getResponseHeaders exchange) "Content-Type" "application/json")
+                              (.sendResponseHeaders exchange 200 (alength body))
+                              (with-open [out (.getResponseBody exchange)] (.write out body))))
+                          (.close ^HttpExchange exchange)))))
+    (.start server)
+    (try
+      (f (.getPort (.getAddress server)))
+      (finally (.stop server 0)))))
+
+(deftest presto-server-cancellation-is-qp-error-test
+  (mt/test-driver :presto-jdbc
+    (Class/forName "com.facebook.presto.jdbc.PrestoDriver")
+    (do-with-presto-cancellation!
+     (fn [port]
+       (with-open [conn (DriverManager/getConnection (str "jdbc:presto://127.0.0.1:" port)
+                                                     (doto (Properties.) (.setProperty "user" "test")))
+                   stmt (.createStatement conn)
+                   rs (.executeQuery stmt "SELECT 1 AS x")]
+         (is (.next rs))
+         (let [failure (try (.next rs) (catch SQLException e e))]
+           (is (nil? (.getSQLState ^SQLException failure)))
+           (is (= 3 (.getErrorCode ^SQLException failure)))))
+       (mt/with-temp [:model/Database db {:engine :presto-jdbc
+                                          :details {:host "127.0.0.1", :port port, :user "test", :ssl false}}]
+         (mt/with-db db
+           (is (=? {:status :failed, :error_type :qp}
+                   (qp/process-query (qp/userland-query (lib/native-query (mt/metadata-provider) "SELECT 1 AS x")))))))))))

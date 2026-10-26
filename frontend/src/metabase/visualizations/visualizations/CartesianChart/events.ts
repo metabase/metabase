@@ -33,6 +33,7 @@ import {
   type EChartsTooltipModel,
   type EChartsTooltipRow,
   INDEX_KEY,
+  IS_FOLDED_ROW_DATA_KEY,
   IS_WATERFALL_TOTAL_DATA_KEY,
   OTHER_DATA_KEY,
   type SeriesModel,
@@ -152,7 +153,14 @@ export const getEventDimensions = (
   const hasDimensionValue = sameCardDatumColumns.includes(dimensionColumn);
   const dimensions: ClickObjectDimension[] = [];
 
-  if (hasDimensionValue) {
+  if (datum[IS_FOLDED_ROW_DATA_KEY]) {
+    dimensions.push({
+      column: dimensionColumn,
+      value: (chartModel.foldedDataset ?? []).map((foldedDatum) =>
+        normalizeDimensionValue(dimensionColumn, foldedDatum[X_AXIS_DATA_KEY]),
+      ),
+    });
+  } else if (hasDimensionValue) {
     dimensions.push({
       column: dimensionColumn,
       value: normalizeDimensionValue(dimensionColumn, datum[X_AXIS_DATA_KEY]),
@@ -457,6 +465,10 @@ export const getTooltipModel = (
     return null;
   }
 
+  if (datum[IS_FOLDED_ROW_DATA_KEY]) {
+    return getFoldedRowTooltipModel(chartModel, settings, datum, hoveredSeries);
+  }
+
   const seriesStack = chartModel.stackModels.find((stackModel) =>
     stackModel.seriesKeys.includes(hoveredSeries.dataKey),
   );
@@ -491,6 +503,71 @@ export const getTooltipModel = (
     previousDatum,
     hoveredSeries,
   );
+};
+
+// The hovered series leads, as the tooltip's one full-emphasis value column.
+const getFoldedRowTooltipSeries = (
+  chartModel: BaseCartesianChartModel,
+  hoveredSeries: SeriesModel,
+): SeriesModel[] => [
+  hoveredSeries,
+  ...chartModel.seriesModels.filter(
+    (seriesModel) =>
+      seriesModel.visible && seriesModel.dataKey !== hoveredSeries.dataKey,
+  ),
+];
+
+const getFoldedRowTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  datum: Datum,
+  hoveredSeries: SeriesModel,
+): EChartsTooltipModel => {
+  const tooltipSeries = getFoldedRowTooltipSeries(chartModel, hoveredSeries);
+  const formatSeriesValues = (seriesDatum: Datum) =>
+    tooltipSeries.map(({ dataKey, column }) =>
+      String(
+        formatValueForTooltip({
+          value: seriesDatum[dataKey],
+          column,
+          settings,
+          isAlreadyScaled: true,
+        }),
+      ),
+    );
+
+  const markerColorClass = getMarkerColorClass(hoveredSeries.color);
+
+  const seriesNamesRows: EChartsTooltipRow[] =
+    tooltipSeries.length > 1
+      ? [
+          {
+            name: "",
+            isSecondary: true,
+            values: tooltipSeries.map((seriesModel) => seriesModel.name),
+          },
+        ]
+      : [];
+
+  const categoryRows: EChartsTooltipRow[] = (
+    chartModel.foldedDataset ?? []
+  ).map((foldedDatum) => ({
+    name: String(
+      formatValueForTooltip({
+        value: foldedDatum[X_AXIS_DATA_KEY],
+        column: chartModel.dimensionModel.column,
+        settings,
+      }),
+    ),
+    markerColorClass,
+    values: formatSeriesValues(foldedDatum),
+  }));
+
+  return {
+    header: String(datum[X_AXIS_DATA_KEY]),
+    rows: [...seriesNamesRows, ...categoryRows],
+    footer: { name: t`Total`, values: formatSeriesValues(datum) },
+  };
 };
 
 const getSingleSeriesTooltipModel = (
@@ -883,13 +960,10 @@ export const getOtherSeriesTooltipModel = (
 
 export const getGoalLineHoverData = (
   settings: ComputedVisualizationSettings,
-  event: EChartsSeriesMouseEvent,
+  element: EventTarget | null,
   formatGoal?: AxisFormatter,
 ) => {
-  // Unjustified type cast. FIXME
-  const element = event.event.event.target as Element;
-
-  if (element?.nodeName !== "text") {
+  if (!(element instanceof Element)) {
     return null;
   }
 
@@ -929,6 +1003,13 @@ export const getSeriesClickData = (
   }
 
   const datum = chartModel.dataset[dataIndex];
+  // Binned drills filter to a single bin, not the folded row's set of bins.
+  const isFoldedBinnedRow =
+    datum[IS_FOLDED_ROW_DATA_KEY] &&
+    chartModel.dimensionModel.column.binning_info != null;
+  if (isFoldedBinnedRow) {
+    return null;
+  }
 
   const data = getEventColumnsData(chartModel, seriesModel, datum);
   const dimensions = getEventDimensions(

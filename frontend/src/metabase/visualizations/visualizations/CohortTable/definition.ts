@@ -53,7 +53,7 @@ export const COHORT_TABLE_DEFINITION: VisualizationDefinition = {
         return t`Base color`;
       },
       widget: "color",
-      getDefault: () => color("brand"),
+      getDefault: () => color("core-brand"),
     },
     "cohort.color_scale": {
       getSection: () => t`Display`,

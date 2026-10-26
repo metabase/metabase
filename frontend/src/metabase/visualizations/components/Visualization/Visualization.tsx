@@ -4,6 +4,7 @@ import React, {
   type CSSProperties,
   type ComponentType,
   type ErrorInfo,
+  type JSX,
   PureComponent,
   type ReactNode,
   type Ref,
@@ -132,6 +133,7 @@ type VisualizationOwnProps = {
     clicked: ClickObject | null,
   ) => Record<string, unknown>;
   getHref?: () => string | undefined;
+  getCardHref?: (nextCard: SeriesCard) => string | undefined;
   gridSize?: VisualizationGridSize;
   gridUnit?: number;
   handleVisualizationClick?: (clicked: ClickObject | null) => void;
@@ -161,7 +163,6 @@ type VisualizationOwnProps = {
   replacementContent?: JSX.Element | null;
   selectedTimelineEventIds?: number[];
   settings?: VisualizationSettings;
-  autoAdjustSettings?: boolean;
   showTitle?: boolean;
   showWarnings?: boolean;
   hideLegend?: boolean;
@@ -633,7 +634,6 @@ class Visualization extends PureComponent<
   render() {
     const {
       actionButtons,
-      autoAdjustSettings,
       canToggleSeriesVisibility,
       className,
       dashboard,
@@ -645,6 +645,7 @@ class Visualization extends PureComponent<
       fontFamily,
       getExtraDataForClick,
       getHref,
+      getCardHref,
       hasColumnReordering,
       hasDevWatermark,
       headerIcon,
@@ -933,6 +934,7 @@ class Visualization extends PureComponent<
                       fontFamily={fontFamily}
                       getExtraDataForClick={getExtraDataForClick}
                       getHref={getHref}
+                      getCardHref={getCardHref}
                       gridSize={gridSize}
                       hasColumnReordering={hasColumnReordering}
                       headerIcon={hasHeader ? null : headerIcon}
@@ -967,7 +969,6 @@ class Visualization extends PureComponent<
                       selectedTimelineEventIds={selectedTimelineEventIds}
                       series={series}
                       settings={settings}
-                      autoAdjustSettings={!!autoAdjustSettings}
                       showAllLegendItems={showAllLegendItems}
                       hideLegend={hideLegend}
                       showTitle={!!showTitle}
