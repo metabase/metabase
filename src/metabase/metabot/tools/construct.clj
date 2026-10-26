@@ -661,11 +661,16 @@
   HTTP callers additionally need a status code; default representation/repair failures to
   400 so individual repair passes don't all have to repeat `:status-code 400` in ex-data.
   Existing statuses are preserved (notably permission 403s, which callers should normally
-  avoid wrapping in the first place)."
+  avoid wrapping in the first place).
+
+  An exception the pipeline did not raise as an agent error gets `:foreign-message? true`: its message comes from
+  lib, toucan2 or the database, so Metabot quotes it before the LLM reads it."
   [^clojure.lang.ExceptionInfo e]
-  (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
-        data   (cond-> base
-                 (nil? (:status-code base)) (assoc :status-code 400))]
+  (let [foreign? (not (:agent-error? (ex-data e)))
+        base     (cond-> (assoc (or (ex-data e) {}) :agent-error? true)
+                   foreign? (assoc :foreign-message? true))
+        data     (cond-> base
+                   (nil? (:status-code base)) (assoc :status-code 400))]
     (ex-info (ex-message e) data e)))
 
 (defn- not-runnable-problem

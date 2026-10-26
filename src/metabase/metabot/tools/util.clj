@@ -8,16 +8,18 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.self.core :as self.core]
    [metabase.models.interface :as mi]
    [metabase.util :as u]))
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
-   Preserves :status-code and :terminal-error? from ex-data."
+   Preserves :status-code and :terminal-error? from ex-data.
+   A message marked `:foreign-message?` is quoted by [[self.core/quoted-error-message]]."
   [e]
-  (let [{:keys [agent-error? status-code terminal-error?]} (ex-data e)]
+  (let [{:keys [agent-error? foreign-message? status-code terminal-error?]} (ex-data e)]
     (if agent-error?
-      (cond-> {:output (ex-message e)}
+      (cond-> {:output (if foreign-message? (self.core/quoted-error-message e) (ex-message e))}
         status-code     (assoc :status-code status-code)
         terminal-error? (assoc :terminal-error? true))
       (throw e))))
