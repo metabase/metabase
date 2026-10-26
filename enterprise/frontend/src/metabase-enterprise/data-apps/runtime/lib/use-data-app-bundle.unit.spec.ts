@@ -26,9 +26,11 @@ const LOADED_APP: LoadedApp = { component: () => null, providerProps: {} };
 const CSP_POLICY =
   "default-src 'none'; connect-src 'self' https://api.example.com; form-action 'none';";
 
-const getCspMetaTag = () =>
+const getCspMetaTags = () =>
   // eslint-disable-next-line testing-library/no-node-access -- meta tag isn't part of React tree
-  document.querySelector('meta[http-equiv="Content-Security-Policy"]');
+  document.querySelectorAll('meta[http-equiv="Content-Security-Policy"]');
+
+const getCspMetaTag = () => getCspMetaTags()[0] ?? null;
 
 type SetupOpts = {
   code?: string;
@@ -182,6 +184,28 @@ describe("useDataAppBundle", () => {
         window,
         [],
       );
+    });
+
+    it("does not install the same CSP policy twice when the app name changes", async () => {
+      mockedFetch.mockResolvedValue({
+        code: "BUNDLE",
+        allowedHosts: [],
+        contentSecurityPolicy: CSP_POLICY,
+      });
+
+      mockedInstantiate.mockResolvedValue(LOADED_APP);
+
+      const { rerender } = renderHook(
+        ({ name }) => useDataAppBundle(name, { embedded: true }),
+        { initialProps: { name: "sales" } },
+      );
+
+      await waitFor(() => expect(mockedInstantiate).toHaveBeenCalledTimes(1));
+
+      rerender({ name: "inventory" });
+      await waitFor(() => expect(mockedInstantiate).toHaveBeenCalledTimes(2));
+      expect(mockedFetch).toHaveBeenNthCalledWith(2, "inventory");
+      expect(getCspMetaTags()).toHaveLength(1);
     });
 
     it.each([null, "", " "])(

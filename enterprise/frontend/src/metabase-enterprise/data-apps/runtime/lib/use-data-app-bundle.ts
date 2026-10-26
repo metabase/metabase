@@ -117,12 +117,26 @@ export const useDataAppBundle = (
  * We do client-side auth first, then fetch and inject the CSP next.
  */
 function installContentSecurityPolicy(policy: string | null | undefined) {
+  const cspErrorMessage = t`Something went wrong while loading this app. Try refreshing the page.`;
+
   if (!policy?.trim()) {
     console.error("CSP is missing from the data app bundle's response.");
 
-    throw new Error(
-      t`Something went wrong while loading this app. Try refreshing the page.`,
-    );
+    throw new Error(cspErrorMessage);
+  }
+
+  const installedPolicy = document.querySelector<HTMLMetaElement>(
+    'meta[http-equiv="Content-Security-Policy"]',
+  );
+
+  if (installedPolicy) {
+    if (installedPolicy.content !== policy) {
+      console.error("A different CSP is already installed for this data app.");
+
+      throw new Error(cspErrorMessage);
+    }
+
+    return;
   }
 
   const meta = document.createElement("meta");
