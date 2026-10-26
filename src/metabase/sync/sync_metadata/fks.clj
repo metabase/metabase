@@ -13,8 +13,8 @@
    [metabase.warehouse-schema.models.table :as table]))
 
 (mu/defn- mark-fk!
-  "Updates the `fk_target_field_id` of a Field and drops its AI `semantic_type`. Returns 1 if the Field was
-  successfully updated, 0 otherwise."
+  "Updates the `fk_target_field_id` of a Field, and drops its AI `semantic_type` and its pending `semantic_type`
+  proposal. Returns 1 if the Field was successfully updated, 0 otherwise."
   [database :- i/DatabaseInstance
    metadata :- i/FKMetadataEntry]
   (if-let [field-id (sync.db/mark-fk! (:id database)
