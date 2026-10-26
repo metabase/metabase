@@ -4,14 +4,12 @@ import type { SdkEntityId } from "embedding-sdk-bundle/types/entity";
 export type SdkActionId = number | SdkEntityId;
 
 /**
- * How a data app names an action: the `defineAction` export, which is what a
- * data app must pass. `copiedActionEntityId` addresses the copy in the app's own
- * collection, the only one its viewers can read. The dev preview runs `action`
- * instead, so an app works before its resources are written.
+ * How a data app names an action: a `defineAction` definition from the app's
+ * typed schema, whose `action.id` is the entity ID of an action in the app's
+ * collection.
  */
 export type SdkActionDefinition = {
   action: { id: SdkActionId };
-  copiedActionEntityId?: SdkEntityId;
 };
 
 export type SdkActionInput = SdkActionId | SdkActionDefinition;

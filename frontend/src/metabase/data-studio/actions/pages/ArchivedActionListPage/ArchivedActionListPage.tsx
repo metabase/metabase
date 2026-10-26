@@ -168,7 +168,7 @@ function ArchivedItemMenu({
 }: ArchivedItemMenuProps) {
   const { data } = treeItem;
 
-  if (readOnly || isEmptyStateData(data)) {
+  if (readOnly || isEmptyStateData(data) || !data.can_write) {
     return null;
   }
 

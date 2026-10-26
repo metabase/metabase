@@ -135,6 +135,13 @@ describe("InfoText", () => {
       );
     });
 
+    it("shows Data app for data apps", async () => {
+      await setup({
+        model: "data-app",
+      });
+      expect(screen.getByText("Data app")).toBeInTheDocument();
+    });
+
     it("shows segment's table name", async () => {
       await setup({
         model: "segment",

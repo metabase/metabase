@@ -7,6 +7,7 @@ import type { WritebackActionBase, WritebackActionType } from "./actions";
 import type { Card, CardType } from "./card";
 import type { Collection } from "./collection";
 import type { Dashboard } from "./dashboard";
+import type { DataApp } from "./data-app";
 import type { Document } from "./document";
 import type { Measure } from "./measure";
 import type { PaginationRequest, PaginationResponse } from "./pagination";
@@ -29,6 +30,7 @@ export const DEPENDENCY_TYPES = [
   "segment",
   "measure",
   "action",
+  "data-app",
 ] as const;
 export type DependencyType = (typeof DEPENDENCY_TYPES)[number];
 
@@ -45,6 +47,7 @@ export const DEPENDENCY_GROUP_TYPES = [
   "segment",
   "measure",
   "action",
+  "data-app",
 ] as const;
 export type DependencyGroupType = (typeof DEPENDENCY_GROUP_TYPES)[number];
 
@@ -221,6 +224,15 @@ export type ActionDependencyNode = BaseDependencyNode<
   ActionDependencyNodeData
 >;
 
+// The API sends `description` and `created_at` to admins only.
+export type DataAppDependencyNodeData = Pick<DataApp, "name" | "display_name"> &
+  Partial<Pick<DataApp, "description" | "created_at">>;
+
+export type DataAppDependencyNode = BaseDependencyNode<
+  "data-app",
+  DataAppDependencyNodeData
+>;
+
 export type DependencyNode =
   | TableDependencyNode
   | TransformDependencyNode
@@ -231,7 +243,8 @@ export type DependencyNode =
   | SandboxDependencyNode
   | SegmentDependencyNode
   | MeasureDependencyNode
-  | ActionDependencyNode;
+  | ActionDependencyNode
+  | DataAppDependencyNode;
 
 export type AnalysisFindingErrorId = number;
 

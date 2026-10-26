@@ -15,6 +15,7 @@ import {
 import { useOmniPickerContext } from "../../context";
 import { useCurrentSearchScope } from "../../hooks/use-current-search-scope";
 import type { OmniPickerItem } from "../../types";
+import { shouldShowDataApps } from "../../utils";
 
 import { SearchResults, SearchScopeSelector } from "./SearchResults";
 
@@ -103,6 +104,7 @@ const useApiSearch = ({
 export const SearchResultsItemList = () => {
   const {
     models,
+    options,
     searchQuery,
     isHiddenItem,
     isDisabledItem,
@@ -110,12 +112,20 @@ export const SearchResultsItemList = () => {
     searchParams,
   } = useOmniPickerContext();
 
+  const searchableModels = useMemo(
+    () =>
+      shouldShowDataApps({ options, models })
+        ? models
+        : models.filter((model) => model !== "data-app"),
+    [options, models],
+  );
+
   const {
     data: results,
     error,
     isFetching,
   } = useApiSearch({
-    models,
+    models: searchableModels,
     searchQuery,
     searchParams,
   });

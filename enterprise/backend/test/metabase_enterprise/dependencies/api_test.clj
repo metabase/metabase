@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [medley.core :as m]
+   [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase-enterprise.dependencies.analysis-finding :as deps.analysis-finding]
    [metabase-enterprise.dependencies.api :as deps.api]
    [metabase-enterprise.dependencies.hooks :as deps.hooks]
@@ -973,6 +974,26 @@
                      (dependents :crowberto)))
               (is (= #{["action" readable-id "Create venue" [(:name readable-collection) nil]]}
                      (dependents :rasta))))))))))
+
+(deftest implicit-action-table-change-moves-its-dependency-test
+  (testing "changing the table of an implicit action without a model moves its dependency to the new table"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Action {action-id :id} {:type :implicit, :name "Create venue"}
+                     :model/ImplicitAction _ {:action_id action-id, :kind "row/create", :table_id (mt/id :venues)}]
+        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+          (let [dependents (fn [table-key]
+                             (->> (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                        :id (mt/id table-key)
+                                                        :type "table"
+                                                        :dependent-types "action")
+                                  (map :id)
+                                  set))]
+            (deps.test/synchronously-run-dependency-job!)
+            (is (contains? (dependents :venues) action-id))
+            (t2/update! :model/ImplicitAction {:action_id action-id} {:table_id (mt/id :categories)})
+            (deps.test/synchronously-run-dependency-job!)
+            (is (contains? (dependents :categories) action-id))
+            (is (not (contains? (dependents :venues) action-id)))))))))
 
 (deftest graph-measure-root-test
   (testing "GET /api/ee/dependencies/graph with measure as root node"
@@ -2917,3 +2938,124 @@
              (mt/user-http-request :rasta :get 403 "ee/dependencies/backfill-status")))
       (is (=? {:complete boolean?}
               (mt/user-http-request :crowberto :get 200 "ee/dependencies/backfill-status"))))))
+
+(defn- data-app-card
+  "A question on venues in the data app resource collection with `collection-id`."
+  [collection-id]
+  (assoc (basic-card "Bird sightings" :venues) :collection_id collection-id))
+
+(deftest ^:synchronized graph-data-app-test
+  (testing "GET /api/ee/dependencies/graph shows what a data app depends on, and counts the app as a card's dependent"
+    (mt/with-premium-features #{:dependencies :data-apps}
+      (data-apps.tu/with-published-tables! [(mt/id :venues)]
+        (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
+                       {:name "birds" :display_name "Birds" :description "Sightings" :bundle_path "birds.js"}
+                       :model/Card {card-id :id} (data-app-card collection-id)]
+          (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+            (deps.test/synchronously-run-dependency-job!)
+            (let [{:keys [nodes edges]} (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph"
+                                                              :id app-id
+                                                              :type "data-app")
+                  node (fn [node-type node-id]
+                         (m/find-first #(= [node-type node-id] ((juxt :type :id) %)) nodes))]
+              (is (=? {:data {:name "birds" :display_name "Birds" :description "Sightings"}}
+                      (node "data-app" app-id)))
+              (is (=? {:dependents_count {:data-app 1}}
+                      (node "card" card-id)))
+              (is (some? (node "table" (mt/id :venues))))
+              (is (contains? (into #{}
+                                   (map (juxt :from_entity_type :from_entity_id :to_entity_type :to_entity_id))
+                                   edges)
+                             ["data-app" app-id "card" card-id])))))))))
+
+(deftest ^:synchronized graph-data-app-dependents-test
+  (testing "GET /api/ee/dependencies/graph/dependents lists the data apps a user can read"
+    (data-apps.tu/with-published-tables! [(mt/id :venues)]
+      (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
+                     {:name "birds" :display_name "Birds" :bundle_path "birds.js" :enabled false}
+                     :model/Card {card-id :id} (data-app-card collection-id)]
+        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+          (deps.test/synchronously-run-dependency-job!)
+          (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
+          (let [dependent-ids (fn [user]
+                                (->> (mt/user-http-request user :get 200 "ee/dependencies/graph/dependents"
+                                                           :id card-id
+                                                           :type "card"
+                                                           :dependent-types "data-app")
+                                     (into #{} (map :id))))]
+            (mt/with-premium-features #{:dependencies :data-apps}
+              (testing "an admin sees every app, disabled ones too"
+                (is (= #{app-id} (dependent-ids :crowberto))))
+              (testing "a user sees the enabled apps whose collection they can read"
+                (is (= #{} (dependent-ids :rasta)))
+                (t2/update! :model/DataApp app-id {:enabled true})
+                (is (= #{app-id} (dependent-ids :rasta)))))
+            (mt/with-premium-features #{:dependencies}
+              (testing "without the data apps feature, the dependents list has no data apps, even for an admin"
+                (is (= #{} (dependent-ids :crowberto)))))))))))
+
+(deftest graph-data-app-names-only-for-non-admins-test
+  (testing "GET /api/ee/dependencies/graph gives a non-admin only a data app's names, as the data-app API does"
+    (mt/with-premium-features #{:dependencies :data-apps}
+      (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
+                     {:name "birds" :display_name "Birds" :description "Sightings" :bundle_path "birds.js"}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (perms/grant-collection-read-permissions! group-id collection-id)
+        (let [app-data (fn [user]
+                         (->> (mt/user-http-request user :get 200 "ee/dependencies/graph" :id app-id :type "data-app")
+                              :nodes
+                              (m/find-first #(= ["data-app" app-id] ((juxt :type :id) %)))
+                              :data))]
+          (is (= {:name "birds" :display_name "Birds"}
+                 (app-data :rasta)))
+          (testing "an admin also gets the description and creation time"
+            (is (=? {:description "Sightings" :created_at some?}
+                    (app-data :crowberto)))))))))
+
+(deftest graph-data-app-without-data-apps-feature-test
+  (testing "GET /api/ee/dependencies/graph refuses a data app start node without the data apps feature"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
+                     {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+                     :model/PermissionsGroup {group-id :id} {}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (perms/grant-collection-read-permissions! group-id collection-id)
+        (doseq [[description user] [["to an admin" :crowberto]
+                                    ["to a user in a group that can read the app's collection" :rasta]]]
+          (testing description
+            (is (= "You don't have permissions to do that."
+                   (mt/user-http-request user :get 403 "ee/dependencies/graph" :id app-id :type "data-app")))))))))
+
+(deftest ^:synchronized unreferenced-data-app-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced lists data apps, finds them by their display name, and sorts them
+           by location"
+    (mt/with-premium-features #{:dependencies :data-apps}
+      (mt/with-temp [:model/DataApp {app-id :id} {:name "birds" :display_name "Bird sightings unreftest" :bundle_path "birds.js"}]
+        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+          (deps.test/synchronously-run-dependency-job!)
+          (let [unreferenced (fn [& params]
+                               (->> (apply mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
+                                           :query "unreftest"
+                                           params)
+                                    :data
+                                    (into #{} (map (juxt :type :id (comp :display_name :data))))))]
+            (is (= #{["data-app" app-id "Bird sightings unreftest"]}
+                   (unreferenced :types "data-app" :sort-column "location")))
+            (testing "without a types filter"
+              (is (= #{["data-app" app-id "Bird sightings unreftest"]}
+                     (unreferenced))))))))))
+
+(deftest graph-data-app-read-check-skips-the-bundle-test
+  (testing "the graph endpoints check a data app start node without reading its bundle"
+    (mt/with-premium-features #{:dependencies :data-apps}
+      (mt/with-temp [:model/DataApp {app-id :id} {:name         "birds"
+                                                  :display_name "Birds"
+                                                  :bundle_path  "birds.js"
+                                                  :bundle       (byte-array [1 2 3])}]
+        (testing "a full row read counts"
+          (is (seq (deps.test/data-app-bundle-reads #(t2/select-one :model/DataApp app-id)))))
+        (doseq [endpoint ["ee/dependencies/graph" "ee/dependencies/graph/dependents" "ee/dependencies/graph/broken"]]
+          (testing endpoint
+            (is (= [] (deps.test/data-app-bundle-reads
+                       #(mt/user-http-request :crowberto :get 200 endpoint :id app-id :type "data-app"))))))))))

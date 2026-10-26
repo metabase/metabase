@@ -497,14 +497,14 @@
             [:= :action.archived (boolean archived?)]]})
 
 (defmethod post-process-collection-children :action
-  [_ _options _collection rows]
+  [_ _options collection rows]
   (for [row rows]
     (-> (dissoc row
                 :collection_position :display :authority_level :moderated_status :icon :personal_owner_id
                 :collection_preview :dataset_query :table_id :query_type :is_upload :namespace)
         (update :archived api/bit->boolean)
         (update :archived_directly api/bit->boolean)
-        (assoc :collection_namespace "data-actions"))))
+        (assoc :collection_namespace (some-> (:namespace collection) name)))))
 
 (defmethod post-process-collection-children :timeline
   [_ _options _collection rows]
@@ -894,8 +894,11 @@
 
 (defmethod post-process-collection-children :table
   [_ {:keys [models]} _collection rows]
-  (let [tables (map #(-> (t2/instance :model/Table %)
-                         (update :archived api/bit->boolean)) rows)]
+  (let [tables (->> (t2/hydrate (map #(-> (t2/instance :model/Table (assoc % :db_id (:database_id %) :is_published true))
+                                          (update :archived api/bit->boolean))
+                                     rows)
+                                :can_write)
+                    (map #(dissoc % :db_id :is_published)))]
     (if (contains? models :measure)
       (t2/hydrate tables :measures)
       tables)))
@@ -1154,7 +1157,7 @@
   (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
                    ;; Tables in collections are an EE feature (library)
                    (premium-features/has-feature? :library) (conj :table)
-                   (= "data-actions" (some-> collection-namespace name)) (conj :action))
+                   (contains? #{"data-actions" "data-apps"} (some-> collection-namespace name)) (conj :action))
         :let     [toucan-model       (model-name->toucan-model model-kw)
                   allowed-namespaces (collection/allowed-namespaces toucan-model)]
         :when    (or (= model-kw :collection)
@@ -1165,18 +1168,11 @@
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models created-by-id], :as options}       :- CollectionChildrenOptions]
-  (let [valid-models (for [model-kw (cond-> [:collection :dataset :metric :card :dashboard :pulse :snippet :timeline :document :exploration :transform]
-                                      ;; Tables in collections are an EE feature (library)
-                                      (premium-features/has-feature? :library) (conj :table)
-                                      (= "data-actions" (some-> collection-namespace name)) (conj :action))
+  (let [valid-models (for [model-kw (valid-collection-models collection-namespace)
                            ;; only fetch models that are specified by the `model` param; or everything if it's empty
                            :when    (or (empty? models) (contains? models model-kw))
                            ;; a creator filter drops models that don't index a creator
-                           :when    (or (nil? created-by-id) (contains? creator-filterable-models model-kw))
-                           :let     [toucan-model       (model-name->toucan-model model-kw)
-                                     allowed-namespaces (collection/allowed-namespaces toucan-model)]
-                           :when    (or (= model-kw :collection)
-                                        (contains? allowed-namespaces (keyword collection-namespace)))]
+                           :when    (or (nil? created-by-id) (contains? creator-filterable-models model-kw))]
                        model-kw)]
     (if (seq valid-models)
       (collection-children* collection valid-models (assoc options :collection-namespace collection-namespace))

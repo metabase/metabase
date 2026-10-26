@@ -10,7 +10,6 @@ import { getPlan, isProPlan, useSetting } from "metabase/settings";
 import { Box, Divider, Flex } from "metabase/ui";
 
 import { CustomVisualizationsNav } from "./CustomVisualizationsNav";
-import { DataAppsNav } from "./DataAppsNav";
 import { SettingsNavItem } from "./SettingsNavItem";
 import { UpdatesNavItem } from "./UpdatesNavItem";
 
@@ -81,8 +80,6 @@ export function SettingsNav() {
       />
       {/* do not allow users with "Settings access" permissions to access custom viz pages */}
       {isAdmin && <CustomVisualizationsNav />}
-      {/* do not allow users with "Settings access" permissions to access data apps pages */}
-      {isAdmin && <DataAppsNav />}
       <SettingsNavItem path="maps" label={t`Maps`} icon="map" />
       <SettingsNavItem
         path={!hasWhitelabel ? "whitelabel" : undefined}
