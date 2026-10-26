@@ -1836,15 +1836,16 @@
                 {["NativeQuerySnippet" snippet-id] {"Card" id}})))))
 
 (defmethod public-sharing/rendered-card-ids :model/Card
-  [_model id->surfaces]
+  [_model card-id->surfaces]
   ;; A question's anonymous reach includes the questions its filters draw value lists from.
-  (let [cards (queries.db/card-parameters-for-cards (keys id->surfaces))]
+  (let [cards (queries.db/card-parameters-for-cards (keys card-id->surfaces))]
     (public-sharing/rendered-cards
+     card-id->surfaces
      (into {} (map (fn [{:keys [id]}] [id #{id}])) cards)
      (into {}
            (map (fn [{:keys [id parameters], embedding-params :embedding_params}]
                   [id (public-sharing/value-list-card-ids-by-surface
-                       (get id->surfaces id)
+                       (get card-id->surfaces id)
                        embedding-params
                        parameters
                        parameter-card/values-source-card-ids)]))

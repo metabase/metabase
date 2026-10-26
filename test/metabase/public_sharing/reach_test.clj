@@ -1,5 +1,5 @@
 (ns metabase.public-sharing.reach-test
-  "Tests for the anonymous-reach relation, driven through the anonymous-reach endpoint."
+  "Tests for anonymous reach, driven through the anonymous-reach endpoint."
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -396,7 +396,7 @@
                                                                                         :linkType "question"
                                                                                         :targetId target-id}}}]
     (testing "a card reached only as a click-behaviour target of a public dashboard is not reachable: opening it needs
-             its own public link, and then it stands in the relation on its own account"
+             its own public link, and then it is anonymously reachable on its own account"
       (is (false? (anonymously-reachable? db-id))))))
 
 (deftest anonymously-reachable-dashboard-link-card-target-test
@@ -448,7 +448,7 @@
                                             :native   {:query "UPDATE t SET x = 1"}}}]
         (testing "a published action form on this database contributes nothing to reach"
           (is (false? (anonymously-reachable? db-id))))
-        (testing "the same database is reachable once something the relation does cover is published on it, so the
+        (testing "the same database is reachable once something anonymous reach does cover is published on it, so the
                  case above is not an inert fixture"
           (mt/with-temp [:model/Card _ {:database_id db-id
                                         :table_id    table-id
@@ -469,10 +469,10 @@
 (defn- rendered-refs
   "The questions the entity `model`/`id` renders, as `[model-name id]` pairs."
   [model id]
-  (let [{:keys [shown value-lists]} (get (public-sharing.reach/rendered-card-ids model {id #{:public-link}}) id)]
+  (let [{:keys [shown shown-indirectly]} (get (public-sharing.reach/rendered-card-ids model {id #{:public-link}}) id)]
     (into #{}
-          (map (fn [card-id] ["Card" card-id]))
-          (into shown cat (vals value-lists)))))
+          (comp cat cat (map (fn [card-id] ["Card" card-id])))
+          [(vals shown) (vals shown-indirectly)])))
 
 (defn- assert-pinned-to-containments
   "Assert that `ours`, the questions the entity `model-name`/`id` renders, are serialization's containments for it
@@ -595,3 +595,15 @@
         ;; following a smart link needs its target published in its own right
         ["Card" link-target]       :hyperlink
         ["Dashboard" link-dash-id] :hyperlink}))))
+
+(deftest document-with-unknown-content-type-test
+  (mt/with-temp
+    [:model/Database {db-id :id}       {}
+     :model/Table    {table-id :id}    {:db_id db-id}
+     :model/Document {document-id :id} {:public_uuid (str (random-uuid))}
+     :model/Card     {card-id :id}     {:database_id db-id, :table_id table-id, :document_id document-id}]
+    (embed-cards-in-document! document-id [card-id])
+    (t2/update! :model/Document document-id {:content_type "text/plain"})
+    (testing "a document whose content type reach cannot read fails loudly rather than reaching nothing"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"prose mirror content-type"
+                            (public-sharing.reach/rendered-card-ids :model/Document {document-id #{:public-link}}))))))

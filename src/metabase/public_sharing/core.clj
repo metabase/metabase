@@ -11,7 +11,7 @@
 
 (p/import-vars
  [metabase.public-sharing.reach
-  anonymously-reaching
+  anonymously-reachable-entities
   card-ids-by
   rendered-cards
   rendered-card-ids

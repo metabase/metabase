@@ -2,15 +2,9 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v66.cos3xf
+      id: cos3xf
       author: johnswanson
       comment: Index report_card.enable_embedding for the anonymous-reach query
-      preConditions:
-        - onFail: MARK_RAN
-        - not:
-            - indexExists:
-                tableName: report_card
-                indexName: idx_report_card_enable_embedding
       changes:
         - createIndex:
             tableName: report_card

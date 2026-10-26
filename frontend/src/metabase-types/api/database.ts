@@ -132,27 +132,27 @@ export interface DatabaseUsageInfo {
 /** One of the two anonymous surfaces: a public link, or a published guest embed. */
 export type AnonymousSurface = "public-link" | "guest-embed";
 
-export type AnonymouslyReachingModel = Extract<
+export type AnonymouslyReachableModel = Extract<
   CollectionItemModel,
   "card" | "dataset" | "metric" | "dashboard" | "document"
 >;
 
 /**
- * A published question, dashboard or document through which anonymous traffic can get data from a
+ * An anonymously reachable question, dashboard or document that can get data from a
  * database.
  */
-export interface AnonymouslyReachingEntity {
+export interface AnonymouslyReachableEntity {
   id: number;
-  model: AnonymouslyReachingModel;
+  model: AnonymouslyReachableModel;
   name: string;
   surfaces: AnonymousSurface[];
-  reaches_indirectly?: true;
+  reaches_indirectly: boolean;
 }
 
 /** The server caps `data`; `total` says how many there are in all. */
 export interface DatabaseAnonymousReach {
   total: number;
-  data: AnonymouslyReachingEntity[];
+  data: AnonymouslyReachableEntity[];
 }
 
 export interface GetDatabaseRequest {

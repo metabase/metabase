@@ -418,18 +418,21 @@
                   {:document (documents.test-util/cards->prose-mirror-ast [in-document])})
       (testing "each published entity reaching the database is one row, by name, saying which surfaces open it"
         (is (= {:total 3
-                :data  [{:id       question-id
-                         :model    "card"
-                         :name     "A question"
-                         :surfaces ["guest-embed" "public-link"]}
-                        {:id       dashboard-id
-                         :model    "dashboard"
-                         :name     "B dashboard"
-                         :surfaces ["guest-embed"]}
-                        {:id       document-id
-                         :model    "document"
-                         :name     "C document"
-                         :surfaces ["public-link"]}]}
+                :data  [{:id                 question-id
+                         :model              "card"
+                         :name               "A question"
+                         :surfaces           ["guest-embed" "public-link"]
+                         :reaches_indirectly false}
+                        {:id                 dashboard-id
+                         :model              "dashboard"
+                         :name               "B dashboard"
+                         :surfaces           ["guest-embed"]
+                         :reaches_indirectly false}
+                        {:id                 document-id
+                         :model              "document"
+                         :name               "C document"
+                         :surfaces           ["public-link"]
+                         :reaches_indirectly false}]}
                (anonymous-reach db-id))))
       (testing "and the question on the dashboard is not itself a row -- nothing published opens it"
         (is (not-any? #(= on-dashboard (:id %)) (:data (anonymous-reach db-id))))))))
@@ -479,10 +482,11 @@
                :name               "A filter only"
                :surfaces           ["public-link"]
                :reaches_indirectly true}
-              {:id       shows-it
-               :model    "dashboard"
-               :name     "B shows it too"
-               :surfaces ["public-link"]}]
+              {:id                 shows-it
+               :model              "dashboard"
+               :name               "B shows it too"
+               :surfaces           ["public-link"]
+               :reaches_indirectly false}]
              (:data (anonymous-reach db-id)))))))
 
 (deftest get-database-anonymous-reach-caps-rows-test
@@ -548,7 +552,7 @@
                disabled, names only the public link -- the surface that would actually stop returning data"
         (is (= [{:id                 dashboard-id
                  :model              "dashboard"
-                 :name              "Both ways"
+                 :name               "Both ways"
                  :surfaces           ["public-link"]
                  :reaches_indirectly true}]
                (:data (anonymous-reach db-id)))))

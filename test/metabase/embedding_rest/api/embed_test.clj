@@ -12,6 +12,7 @@
    [java-time.api :as t]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
    [metabase.embedding-rest.api.common :as api.embed.common]
+   [metabase.embedding.util :as embedding.util]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.parameters.chain-filter-test :as chain-filer-test]
@@ -1211,7 +1212,7 @@
 (deftest remove-embedding-params
   (testing "parameters that are not in the `embedding-params` map at all should get removed by `enabled-params`"
     (is (= []
-           (#'api.embed.common/enabled-params [{:id "_FOO_", :type :category, :slug "foo"}] {})))))
+           (embedding.util/enabled-params [{:id "_FOO_", :type :category, :slug "foo"}] {})))))
 
 (deftest make-sure-that-multiline-series-word-as-expected---4768-
   (testing "make sure that multiline series word as expected (#4768)"

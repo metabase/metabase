@@ -996,6 +996,7 @@
            app-db
            batch-processing
            models
+           parameters.schema
            premium-features
            server
            settings
@@ -3356,6 +3357,7 @@
            app-db
            collections
            database-routing
+           documents
            driver
            events
            lib

@@ -9,6 +9,7 @@
    [metabase.eid-translation.core :as eid-translation]
    [metabase.embedding-rest.db :as embedding-rest.db]
    [metabase.embedding.jwt :as embed]
+   [metabase.embedding.util :as embedding.util]
    [metabase.embedding.validation :as embedding.validation]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.models.resolution :as models.resolution]
@@ -270,24 +271,6 @@
               (map (fn [[slug value]] [(name slug) value])))
         token-params))
 
-(defn- enabled-param-slugs
-  "The set of param slugs (as keywords) from `dashboard-or-card-params` that may be exposed to embed viewers: only
-  those explicitly whitelisted as \"enabled\" in `embedding-params`. Anything else — absent from the whitelist, or
-  listed as \"disabled\" or \"locked\" — is not in the set, so it fails closed."
-  [dashboard-or-card-params embedding-params]
-  (into #{}
-        (comp (filter #(= (get embedding-params (:slug %)) "enabled"))
-              (map (comp keyword :slug)))
-        dashboard-or-card-params))
-
-(mu/defn- enabled-params
-  "Keep only the `parameters` whose slug is listed as `enabled` in the `embedding-params` whitelist, so the frontend
-  doesn't display widgets for params (`disabled`, `locked`, or unlisted) the user can't set."
-  [parameters       :- [:maybe [:sequential ::parameters.schema/parameter]]
-   embedding-params :- ms/EmbeddingParams]
-  (let [param-slugs-to-keep (enabled-param-slugs parameters embedding-params)]
-    (filter #(contains? param-slugs-to-keep (keyword (:slug %))) parameters)))
-
 (defn- remove-token-parameters
   "Removes any parameters with slugs matching keys provided in `token-params`, as these should not be exposed to the
   user."
@@ -360,7 +343,7 @@
     (-> (api.public/public-card card-id :enable-embedding? enable-embedding?)
         api.public/combine-parameters-and-template-tags
         (remove-token-parameters token-params)
-        (update :parameters enabled-params resolved-embedding-params)
+        (update :parameters embedding.util/enabled-params resolved-embedding-params)
         api.public/keep-param-fields-for-parameters
         (assoc :embedding_params resolved-embedding-params))))
 
@@ -438,7 +421,7 @@
 (defn- remove-locked-parameters
   [dashboard embedding-params]
   (let [params                  (:parameters dashboard)
-        param-slugs-to-keep    (enabled-param-slugs params embedding-params)
+        param-slugs-to-keep    (embedding.util/enabled-param-slugs params embedding-params)
         param-ids-to-keep       (set (keep (fn [{:keys [slug id]}]
                                              (when (contains? param-slugs-to-keep (keyword slug)) id))
                                            params))
@@ -475,7 +458,7 @@
         (substitute-token-parameters-in-text token-params)
         (remove-locked-parameters embedding-params)
         (remove-token-parameters token-params)
-        (update :parameters enabled-params embedding-params)
+        (update :parameters embedding.util/enabled-params embedding-params)
         api.public/keep-param-fields-for-parameters)))
 
 (defn- get-embed-dashboard-context
