@@ -18,6 +18,8 @@ The list shows each app's **Name**, **Address**, **Status**, and **Last synced**
 
 ![Data apps list](./images/data-apps-list.png)
 
+To open a live app, click the **three dots** on the app's row and select **Open app**.
+
 ## See what an app reads and writes
 
 Click an app in the list to see its details. Each app has four tabs:
@@ -48,9 +50,9 @@ New apps start live. To change an app's status:
 
 With the CLI, run `mb data-app set-enabled <slug> false` to make an app a draft, or `true` to make it live.
 
-Making an app a draft doesn't change the app. At a draft's address, people see **You don't have access to this data app**, and admins see **Data app not found**. To see a draft, preview it on its **Overview** tab.
+Making an app a draft doesn't change the app. To see a draft, preview it on its **Overview** tab.
 
-An outdated app was built for an older version of data apps. Everyone who opens it, admins too, sees **This data app is outdated**. To open it again, migrate it to the current version, then build it and sync it again.
+An outdated app was built for an older version of data apps. To open it again, ask your agent to migrate the app to the current version, then build it and upload the new bundle.
 
 ## Choose who can open an app
 
@@ -60,15 +62,15 @@ On the app's **Permissions** tab:
 2. In **Groups**, pick one or more groups.
 3. Click **Add**.
 
-You can add any group except **Administrators** and [tenant](../embedding/tenants.md) groups. People in tenants can't open data apps. If an app has no groups, only admins can open it. People who aren't in any of the app's groups see **You don't have access to this data app**.
+You can add any group except **Administrators** and [tenant](../embedding/tenants.md) groups. People in tenants can't open data apps. If an app has no groups, only admins can open it.
 
-## Check that groups can see the app's data
+### Check that groups can see the app's data
 
 Adding a group to an app lets people in that group open the app, and gives the group read access to the app's collection. It doesn't change their [data permissions](../permissions/data.md). If the **Data access** column says **Missing N tables**, people in that group don't have [Can view](../permissions/data.md#can-view-data-permission) access to some of the tables that the app's questions and actions read. The check counts the group's own access and the access everyone gets from All Users, but not access that people get from their other groups.
 
 ![Data app Permissions tab](./images/data-apps-permissions-tab.png)
 
-Metabase finds those tables with the [dependency graph](../data-modeling/tools/graph.md). Without the dependency graph, the **Data access** column can't warn you about missing tables. The graph updates in the background, so a warning can lag behind your latest edits.
+The check uses the [dependency graph](../data-modeling/tools/graph.md). Without the graph, the **Data access** column can't warn you, and since the graph updates in the background, a warning can lag behind your latest edits.
 
 To fix the group's access:
 
@@ -85,4 +87,4 @@ mb data-app delete <slug>
 
 Deleting an app also deletes its collection (with its questions and actions), its bundle, and its group access. The groups themselves stay.
 
-On a Metabase in Read-only mode, you can't delete apps, but a pull deletes an app when its files are gone from the repository.
+On a Metabase in Read-only mode, you delete apps through your repository. See [What you can change in Read-only mode](./remote-sync.md#what-you-can-change-in-read-only-mode).

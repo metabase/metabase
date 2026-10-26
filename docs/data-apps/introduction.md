@@ -11,7 +11,7 @@ Data apps let you build small internal tools on your Metabase data, like portals
 
 An app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads and writes.
 
-You describe the app, and an AI coding agent (like Claude Code or Codex) [builds it](./build.md) on a development Metabase with the [Metabase CLI](../installation-and-operation/metabase-cli.md). You then [ship the app to production](./remote-sync.md) with [Remote Sync](../installation-and-operation/remote-sync.md). Admins [manage the apps in Data Studio](./manage.md): they see what each app reads and writes, make apps live or drafts, and choose which groups can open them.
+An AI coding agent (like Claude Code or Codex) [builds the app](./build.md) on a development Metabase with the [Metabase CLI](../installation-and-operation/metabase-cli.md). You [ship it to production](./remote-sync.md) with Remote Sync, and admins [manage it in Data Studio](./manage.md).
 
 ## Requirements
 
@@ -25,8 +25,6 @@ You describe the app, and an AI coding agent (like Claude Code or Codex) [builds
 
 ## How people open data apps
 
-People in an app's groups can open a live app at its address, `/apps/<slug>`. If no app has that slug, the address shows **Data app not found**. People can also open an app from the **Data apps** section of the left navigation sidebar, which lists the live apps they can open.
+People in an app's groups can open a live app at its address, `/apps/<slug>`. People can also open an app from the **Data apps** section of the left navigation sidebar, which lists the live apps they can open.
 
 People can also find an app by searching for its name or description. Clicking the result opens the app. Search shows people only the live apps in their groups. Admins see every app.
-
-To open a live app from Data Studio, click the **three dots** on the app's row and select **Open app**.

@@ -14,11 +14,9 @@ You describe the app, and an AI coding agent (like Claude Code or Codex) builds 
 1. [Install the Metabase CLI](../installation-and-operation/metabase-cli.md#install-the-cli), and [log it in](../installation-and-operation/metabase-cli.md#authenticate-the-cli) to your development Metabase as an admin.
 2. Install the [metabase-cli skill](../installation-and-operation/metabase-cli.md#the-metabase-cli-skill) for your agent.
 
-The CLI comes with its own data app skills, so the instructions your agent reads always match the version of the CLI it runs.
-
 ## Ask your agent to build the app
 
-Metabase stores an app's built bundle, not its source code. The source code stays in the directory where your agent builds the app, and the agent needs it to change the app later. If you use Remote Sync, start your agent in a local clone of your Remote Sync repository. The agent then puts the source code in `data_apps/<slug>/`, so the code goes in the repository with the app. See [Keep an app's source code in your repository](./remote-sync.md#keep-an-apps-source-code-in-your-repository).
+If you use Remote Sync, start your agent in a local clone of your Remote Sync repository, so that the app's source code goes in the repository with the app. See [Keep an app's source code in your repository](./remote-sync.md#keep-an-apps-source-code-in-your-repository).
 
 Ask your agent to create a Metabase data app, and follow its instructions. For example:
 
@@ -26,11 +24,7 @@ Ask your agent to create a Metabase data app, and follow its instructions. For e
 Create a Metabase data app that lets people look up product info, and add, edit, or remove products.
 ```
 
-Your agent might ask for permission to run commands on your computer, like `mb data-app create`, `npm run dev`, and `npm run build`. Approve them.
-
-The agent creates the app on your Metabase, adds the questions and actions the app needs to the [app's collection](#what-a-data-app-can-read-and-write), writes the code, and uploads the built app. When it's done, it gives you the app's address, `/apps/<slug>`. Admins can open the app right away. To let other people open it, [add their groups](./manage.md#choose-who-can-open-an-app) to the app.
-
-Until an app has a bundle, its address shows **This data app isn't ready yet**. The agent uploads the bundle when it builds the app, and Remote Sync brings the bundle to each Metabase that pulls the app. A bundle can be up to 10 MiB.
+The agent creates the app on your Metabase, adds the questions and actions the app needs to the [app's collection](#what-a-data-app-can-read-and-write), writes the code, and uploads the app's bundle (the built app, up to 10 MiB). When it's done, it gives you the app's address, `/apps/<slug>`. Admins can open the app right away. To let other people open it, [add their groups](./manage.md#choose-who-can-open-an-app) to the app.
 
 ## Preview the app on your computer
 
@@ -49,6 +43,8 @@ The preview needs an admin [API key](../people-and-groups/api-keys.md). The agen
 ## Change an app later
 
 To change an app, start your agent in the app's directory (or in your Remote Sync repository), and ask for the change. The agent updates the code, builds the app again, and uploads the new version. People see the new version right away.
+
+Metabase stores only the app's bundle, not its source code, so keep the app's directory: the agent needs the source code to change the app.
 
 ## What a data app can read and write
 

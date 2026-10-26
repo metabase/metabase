@@ -9,7 +9,7 @@ summary: See the questions and actions that your data apps run, who runs them, a
 
 _Monitor > Data app analytics_
 
-The Data app analytics page logs each question and action that your [data apps](../data-apps/introduction.md) run, as well as who uses each app, what it runs, how long it takes, and what fails.
+The Data app analytics page logs each question and action that your [data apps](../data-apps/introduction.md) run: who ran it, how long it took, and whether it failed.
 
 To view the analytics:
 
@@ -29,14 +29,13 @@ Each filter above the log is labeled with its default value:
 
 ## What the log shows for each run
 
-Each row is one question or action run: when it started, who ran it, how long it took, how many rows it returned, the database it queried, and the query it ran.
+Each row is one question or action run: when it started, who ran it, how long it took, how many rows it returned, the database it queried, the query it ran, and the error message if the run failed.
 
 A few columns need more explanation:
 
 - **Identifier**: The app's slug, from its address `/apps/<slug>`.
 - **Name**: The app's display name. Empty for apps that no longer exist.
 - **Entity type**: **Question** or **Action**. The **Question** or **Action** column names the one that ran.
-- **Error**: The error message of a failed run.
 - **User agent**, **Sanitized user agent**, and **IP address**: Only show up if you turn on [`MB_ANALYTICS_PII_RETENTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_analytics_pii_retention_enabled), which is off by default.
 
 ## Build your own reports on data app activity
