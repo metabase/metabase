@@ -12,7 +12,7 @@ import { useGetIcon } from "metabase/hooks/use-icon";
 import { useUpdateMetabotMutation } from "metabase/metabot";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { useAdminSetting } from "metabase/settings";
+import { useAdminSetting, useSettingSwitch } from "metabase/settings";
 import { SettingHeader } from "metabase/settings-components";
 import {
   Box,
@@ -55,6 +55,8 @@ export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
       />
 
       <MetabotSettingsBody settingKey={enabledSettingKey}>
+        {!isEmbedMetabot && <MetabotQueryExecutionPane />}
+
         <PLUGIN_MODERATION.MetabotVerifiedContentConfigurationPane
           metabot={metabot}
         />
@@ -70,6 +72,35 @@ export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
 
         <MetabotPromptSuggestionPane metabot={metabot} />
       </MetabotSettingsBody>
+    </Stack>
+  );
+}
+
+function MetabotQueryExecutionPane() {
+  const { checked, envName, isBusy, onChange } = useSettingSwitch(
+    "metabot-query-execution-enabled?",
+  );
+  const isLocked = isBusy || envName != null;
+
+  return (
+    <Stack gap="sm">
+      <SettingHeader
+        id="metabot-query-execution"
+        title={t`Query execution`}
+        description={t`Metabot can run queries and read their results to answer questions, using the permissions of the person asking. The result rows are sent to your AI provider. This doesn't apply to Metabot in Slack or in embedded apps.`}
+      />
+      <Switch
+        label={t`Let Metabot run queries and read their results`}
+        checked={checked}
+        aria-disabled={isLocked || undefined}
+        onChange={(e) => {
+          if (!isLocked) {
+            onChange(e.target.checked);
+          }
+        }}
+        w="auto"
+      />
+      {envName != null && <Text c="text-secondary">{t`Using ${envName}`}</Text>}
     </Stack>
   );
 }
