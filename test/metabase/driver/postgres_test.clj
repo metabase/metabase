@@ -2489,7 +2489,7 @@
       (mt/dataset (mt/dataset-definition
                    "bytea_dataset"
                    [["bytea_table"
-                     [{:field-name "bytea_col", :base-type {:native "bytea"}, :effective-type :type/*}]
+                     [{:field-name "bytea_col", :base-type {:native "bytea"}, :effective-type :type/Binary}]
                      [[(hex->bytes "900000000000810074123E9DB008AB5C")]
                       [(hex->bytes "900000000000475000DE4EC0C0A920AB")]]]])
         (let [mp (mt/metadata-provider)]

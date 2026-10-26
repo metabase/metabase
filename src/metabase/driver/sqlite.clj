@@ -281,7 +281,7 @@
     [#"CHAR"      :type/Text]
     [#"TEXT"      :type/Text]
     [#"CLOB"      :type/Text]
-    [#"BLOB"      :type/*]
+    [#"BLOB"      :type/Binary]
     [#"REAL"      :type/Float]
     [#"DOUB"      :type/Float] ; codespell:ignore
     [#"FLOA"      :type/Float]

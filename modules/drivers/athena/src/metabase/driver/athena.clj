@@ -122,8 +122,8 @@
 (def ^:private db-type->base-type
   {:array                               :type/Array
    :bigint                              :type/BigInteger
-   :binary                              :type/*
-   :varbinary                           :type/*
+   :binary                              :type/Binary
+   :varbinary                           :type/Binary
    :boolean                             :type/Boolean
    :char                                :type/Text
    :date                                :type/Date

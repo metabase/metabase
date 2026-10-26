@@ -477,7 +477,7 @@
         (and (or (str/starts-with? stn "char")
                  (str/starts-with? stn "varchar")
                  (str/starts-with? stn "text"))
-             (re-find #"character set binary" stn))         :type/*
+             (re-find #"character set binary" stn))         :type/Binary
 
         (str/starts-with? stn "char")                       :type/Text
         (str/starts-with? stn "varchar")                    :type/Text
@@ -498,7 +498,7 @@
         (= stn "boolean")                   :type/Boolean
         (= stn "long")                      :type/BigInteger
         (str/starts-with? stn "decimal(")   :type/Decimal
-        (= stn "binary")                    :type/*
+        (= stn "binary")                    :type/Binary
         (= stn "date")                      :type/Date
         (= stn "timestamp")                 :type/DateTime
         (= stn "timestamptz")               :type/DateTimeWithTZ

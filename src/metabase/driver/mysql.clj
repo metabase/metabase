@@ -664,9 +664,9 @@
 (defmethod sql-jdbc.sync/database-type->base-type :mysql
   [_ database-type]
   ({:BIGINT     :type/BigInteger
-    :BINARY     :type/*
+    :BINARY     :type/Binary
     :BIT        :type/Boolean
-    :BLOB       :type/*
+    :BLOB       :type/Binary
     :CHAR       :type/Text
     :DATE       :type/Date
     :DATETIME   :type/DateTime
@@ -676,9 +676,9 @@
     :FLOAT      :type/Float
     :INT        :type/Integer
     :INTEGER    :type/Integer
-    :LONGBLOB   :type/*
+    :LONGBLOB   :type/Binary
     :LONGTEXT   :type/Text
-    :MEDIUMBLOB :type/*
+    :MEDIUMBLOB :type/Binary
     :MEDIUMINT  :type/Integer
     :MEDIUMTEXT :type/Text
     :NUMERIC    :type/Decimal
@@ -688,10 +688,10 @@
     :TEXT       :type/Text
     :TIME       :type/Time
     :TIMESTAMP  :type/DateTimeWithLocalTZ ; stored as UTC in the database
-    :TINYBLOB   :type/*
+    :TINYBLOB   :type/Binary
     :TINYINT    :type/Integer
     :TINYTEXT   :type/Text
-    :VARBINARY  :type/*
+    :VARBINARY  :type/Binary
     :VARCHAR    :type/Text
     :YEAR       :type/Integer
     :JSON       :type/JSON}

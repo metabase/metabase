@@ -6,6 +6,11 @@ title: Driver interface changelog
 
 ## Metabase 0.65.0
 
+- `:type/Binary` is a new base type for raw bytes: Postgres `bytea`, MySQL `BLOB` and `VARBINARY`, SQL Server
+  `varbinary`, and the like. Drivers should return it from `sql-jdbc.sync/database-type->base-type` for such columns
+  instead of `:type/*`. The bundled drivers already do. It derives from `:type/fingerprint-unsupported`, so sync does
+  not sample these columns.
+
 - `metabase.driver/disallowed-connection-parameters` `[driver]` -- new multimethod returning the names of client
   connection parameters a user may never set, whether in `:additional-options` or as a detail key. Metabase refuses
   details that set one when a connection is tested, when a connection pool is created, and when a Database is saved.
