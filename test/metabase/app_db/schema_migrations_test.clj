@@ -4050,8 +4050,8 @@
           (is (true? (:finished (message)))))))))
 
 (deftest field-user-settings-ai-values-migration-test
-  (testing "v65.2026-10-08T12:00:00 to 12:00:04: AI value columns and data_sensitivity_set, backfilled from data_sensitivity"
-    (impl/test-migrations ["v65.2026-10-08T12:00:00" "v65.2026-10-08T12:00:04"] [migrate!]
+  (testing "dgw4zf to bqbzvn: AI value columns and data_sensitivity_set, backfilled from data_sensitivity"
+    (impl/test-migrations ["dgw4zf" "bqbzvn"] [migrate!]
       (let [db-id         (t2/insert-returning-pk! :metabase_database {:name       "FUS AI Test DB"
                                                                        :engine     "h2"
                                                                        :created_at :%now
@@ -4093,9 +4093,9 @@
           (is (thrown? Exception (t2/query "SELECT data_sensitivity_set FROM metabase_field_user_settings"))))))))
 
 (deftest metadata-generation-tables-test
-  (testing "v65.2026-10-09T00:00:00 thru v65.2026-10-09T00:00:11: metadata_generation_run and
+  (testing "oqir62 thru zcqadm: metadata_generation_run and
            metadata_generation_proposal"
-    (impl/test-migrations ["v65.2026-10-09T00:00:00" "v65.2026-10-09T00:00:11"] [migrate!]
+    (impl/test-migrations ["oqir62" "zcqadm"] [migrate!]
       (migrate!)
       (let [user-id       (t2/insert-returning-pk! :core_user {:first_name    "Metadata"
                                                                :last_name     "Generation"
