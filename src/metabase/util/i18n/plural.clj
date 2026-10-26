@@ -5,6 +5,8 @@
    [clojure.core.memoize :as memoize]
    [instaparse.core :as insta]))
 
+(set! *warn-on-reflection* true)
+
 (def ^:private plural-form-parser
   "This is a parser for the C-like syntax used to express pluralization rules in the Plural-Forms header in
   translation files.
