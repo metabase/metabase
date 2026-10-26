@@ -15,6 +15,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
@@ -380,6 +381,11 @@
   (if-not (:lib/type database)
     (lib-be/instance->metadata database :metadata/database)
     database))
+
+(mu/defn lib-database :- ::lib.schema.metadata/database
+  "The Database with `database-id` from the application database, as the Lib metadata that connections take."
+  [database-id :- ::lib.schema.id/database]
+  (lib.metadata/database (lib-be/application-database-metadata-provider database-id)))
 
 (mu/defn supports?
   "A defensive wrapper around [[metabase.driver/database-supports?]]. It adds logging, caching, and error handling to

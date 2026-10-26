@@ -9,6 +9,7 @@
    [metabase.config.core :as config]
    [metabase.connection-pool :as connection-pool]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
@@ -67,10 +68,10 @@
           ;; a fresh database, so this builds a pool rather than finding a cached one
           (mt/with-temp [:model/Database db {:engine :h2, :details {:db (str "mem:" (mt/random-name))}}]
             (try
-              (sql-jdbc.conn/db->pooled-connection-spec db)
+              (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
               (is (empty? (c3p0-beans)))
               (finally
-                (sql-jdbc.conn/invalidate-pool-for-db! db)))))
+                (sql-jdbc.conn/invalidate-pool-for-db! (:id db))))))
         (finally
           (connection-pool/destroy-connection-pool! app-pool))))))
 

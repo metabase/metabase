@@ -9,6 +9,8 @@
    5.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
   (:require
    [metabase.database-routing.core :as database-routing]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
@@ -22,8 +24,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.tracing.core :as tracing]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
-   [metabase.warehouse-schema.models.table :as table]))
+   [metabase.util.malli :as mu]))
 
 (defn- sync-dbms-version-summary [{:keys [version] :as _step-info}]
   (if version
@@ -107,22 +108,27 @@
   "Sync the metadata for a Metabase `database`. This makes sure child Table & Field objects are synchronized.
   Subject to the `disable-auto-sync` setting; for an explicit user-requested sync use
   [[sync-db-metadata-explicit!]]."
-  [database :- i/DatabaseInstance]
-  (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
-    (sync-db-metadata!* database)))
+  [database-id :- ::lib.schema.id/database]
+  (let [database (driver.u/lib-database database-id)]
+    (sync-util/sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
+      (sync-db-metadata!* database))))
 
 (mu/defn sync-db-metadata-explicit!
   "Like [[sync-db-metadata!]], but for an explicit, user-requested sync (e.g. the Sync-now button):
   runs even when the `disable-auto-sync` setting is enabled."
-  [database :- i/DatabaseInstance]
-  (sync-util/explicit-sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
-                                     (sync-db-metadata!* database)))
+  [database-id :- ::lib.schema.id/database]
+  (let [database (driver.u/lib-database database-id)]
+    (sync-util/explicit-sync-operation :sync-metadata database (format "Sync metadata for %s" (sync-util/name-for-logging database))
+                                       (sync-db-metadata!* database))))
 
 (mu/defn sync-table-metadata!
   "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date."
-  [table :- i/TableInstance]
-  (database-routing/with-anonymous-router-access
-    (let [database (table/database table)]
-      (sync-fields/sync-fields-for-table! database table)
-      (sync-fks/sync-fks-for-table! database table)
-      (sync-indexes/maybe-sync-indexes-for-table! database table))))
+  ([table :- i/TableInstance]
+   (sync-table-metadata! (driver.u/lib-database (:db_id table)) table))
+
+  ([database :- i/DatabaseInstance
+    table    :- i/TableInstance]
+   (database-routing/with-anonymous-router-access
+     (sync-fields/sync-fields-for-table! database table)
+     (sync-fks/sync-fks-for-table! database table)
+     (sync-indexes/maybe-sync-indexes-for-table! database table))))

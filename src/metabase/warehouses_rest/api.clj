@@ -813,7 +813,7 @@
                                  :database     engine
                                  :database-id  (u/the-id <>)
                                  :source       connection_source
-                                 :dbms-version (:version (driver/dbms-version (keyword engine) <>))}))
+                                 :dbms-version (:version (driver/dbms-version (keyword engine) (driver.u/lib-database (u/the-id <>))))}))
       ;; failed to connect, return error
       (do
         (analytics/track-event! :snowplow/database
@@ -1016,7 +1016,7 @@
                                                                     write-data-details-with-secrets (assoc :write_data_details write-data-details-with-secrets))]
                                             (driver.conn/with-write-connection
                                               (warehouses/test-database-connection (or engine (:engine would-be-database))
-                                                                                   (driver.conn/effective-details would-be-database)))))
+                                                                                   (driver.conn/effective-details (driver.u/ensure-lib-database would-be-database))))))
         full-sync?                      (some-> is_full_sync boolean)
         on-demand?                      (boolean is_on_demand)]
     (if-let [conn-error (or main-conn-error write-conn-error)]
@@ -1151,8 +1151,8 @@
          (fn []
            (database-routing/with-database-routing-off
              ;; explicit, user-requested sync — runs even when `disable-auto-sync` is enabled
-             (sync/sync-db-metadata-explicit! db)
-             (sync/analyze-db-explicit! db))))
+             (sync/sync-db-metadata-explicit! (u/the-id db))
+             (sync/analyze-db-explicit! (u/the-id db)))))
         {:status :ok}))))
 
 ;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
@@ -1211,8 +1211,8 @@
         (if *rescan-values-async*
           (quick-task/submit-task!
            (fn []
-             (sync/update-field-values! db)))
-          (sync/update-field-values! db)))))
+             (sync/update-field-values! (u/the-id db))))
+          (sync/update-field-values! (u/the-id db))))))
   {:status :ok})
 
 (defn- delete-all-field-values-for-database! [database-or-id]
@@ -1255,7 +1255,7 @@
                        (perms/has-db-transforms-permission? api/*current-user-id* (:id db))
                        (and (mi/can-write? db)
                             (mi/can-read? db))))
-    (->> db
+    (->> (driver.u/lib-database (:id db))
          (driver/syncable-schemas (:engine db))
          (vec)
          (sort))))

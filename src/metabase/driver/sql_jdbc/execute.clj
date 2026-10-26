@@ -19,6 +19,7 @@
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -198,18 +199,18 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn datasource
-  "Fetch the connection pool `DataSource` associated with `db-or-id-or-spec`."
+  "Fetch the connection pool `DataSource` associated with the Lib metadata `db` of a Database."
   {:added "0.35.0"}
-  ^DataSource [db-or-id-or-spec]
-  (:datasource (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)))
+  ^DataSource [db]
+  (:datasource (sql-jdbc.conn/db->pooled-connection-spec db)))
 
 (defn datasource-with-diagnostic-info!
-  "Fetch the connection pool `DataSource` associated with `database`, while also recording diagnostic info for the
-  pool. To be used in conjunction with `sql-jdbc.execute.diagnostic/capturing-diagnostic-info`."
+  "Fetch the connection pool `DataSource` associated with the Lib metadata `db` of a Database, while also recording
+  diagnostic info for the pool. To be used in conjunction with `sql-jdbc.execute.diagnostic/capturing-diagnostic-info`."
   {:added "0.40.0"}
-  ^DataSource [driver db-or-id]
-  (let [ds (datasource db-or-id)]
-    (sql-jdbc.execute.diagnostic/record-diagnostic-info-for-pool! driver (u/the-id db-or-id) ds)
+  ^DataSource [driver db]
+  (let [ds (datasource db)]
+    (sql-jdbc.execute.diagnostic/record-diagnostic-info-for-pool! driver (u/the-id db) ds)
     ds))
 
 (defn set-time-zone-if-supported!
@@ -286,25 +287,25 @@
         ;; inside do-with-connection-with-options' own default impl; a raw jdbc spec has no DataSource
         #_{:clj-kondo/ignore [:discouraged-var]}
         (jdbc/get-connection db-or-id-or-spec)))
-    ;; otherwise this is either a Database or Database ID.
-    (if-let [old-method-impl (get-method
-                              ;; honor drivers still implementing the old connection-with-timezone
-                              #_{:clj-kondo/ignore [:deprecated-var]} sql-jdbc.execute.old/connection-with-timezone
-                              driver)]
-      ;; use the deprecated impl for `connection-with-timezone` if one exists.
-      (do
-        (log/warnf "%s is deprecated in Metabase 0.47.0. Implement %s instead."
-                   'connection-with-timezone
-                   'do-with-connection-with-options)
-        ;; for compatibility, make sure we pass it an actual Database instance.
-        (let [database (if (integer? db-or-id-or-spec)
-                         (driver-api/with-metadata-provider db-or-id-or-spec
-                           (driver-api/database (driver-api/metadata-provider)))
-                         db-or-id-or-spec)]
+    ;; otherwise this is a Database ID, or the Lib metadata of a Database.
+    (let [db (cond
+               (integer? db-or-id-or-spec)                            (driver.u/lib-database db-or-id-or-spec)
+               (= :metadata/database (:lib/type db-or-id-or-spec)) db-or-id-or-spec
+               :else (throw (ex-info (tru "Pass a Database ID or the Lib metadata of a Database, not a Database instance.")
+                                     {:database-id (u/id db-or-id-or-spec)})))]
+      (if-let [old-method-impl (get-method
+                                ;; honor drivers still implementing the old connection-with-timezone
+                                #_{:clj-kondo/ignore [:deprecated-var]} sql-jdbc.execute.old/connection-with-timezone
+                                driver)]
+        ;; use the deprecated impl for `connection-with-timezone` if one exists.
+        (do
+          (log/warnf "%s is deprecated in Metabase 0.47.0. Implement %s instead."
+                     'connection-with-timezone
+                     'do-with-connection-with-options)
           (reify DataSource
             (getConnection [_this]
-              (old-method-impl driver database session-timezone)))))
-      (datasource-with-diagnostic-info! driver db-or-id-or-spec))))
+              (old-method-impl driver db session-timezone))))
+        (datasource-with-diagnostic-info! driver db)))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic ^{:added "0.47.0"} *connection-recursion-depth*

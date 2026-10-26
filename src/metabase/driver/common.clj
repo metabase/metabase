@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [metabase.driver :as driver]
-   [metabase.driver.connection :as driver.conn]
    [metabase.premium-features.core :as premium-features]
    [metabase.settings.core :as setting]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -489,7 +488,7 @@
   ;; This allows adding support for nested-field-columns for drivers in the future and
   ;; have json-unfolding enabled by default, without
   ;; needing a migration to add the `json-unfolding=true` key to the database details.
-  (let [json-unfolding (:json-unfolding (driver.conn/effective-details database))]
+  (let [json-unfolding (:json-unfolding (:details database))]
     (if (nil? json-unfolding)
       true
       json-unfolding)))

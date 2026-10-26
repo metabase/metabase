@@ -472,7 +472,7 @@
                                                order by c_orig.id desc limit 3"
                                                    (u/the-id model))
                           tag-name         (format "#%d" (u/the-id model))]
-                      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                                      [update-query])
                       (is (= [["Winery" "Winery from cached table"]
                               ["Wine Bar" "Wine Bar from cached table"]

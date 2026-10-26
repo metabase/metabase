@@ -1,7 +1,8 @@
 (ns metabase.database-routing.core
   "The OSS namespace for database routing."
   (:require
-   [metabase.premium-features.core :refer [defenterprise]]))
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
 
 (defenterprise with-database-routing-on-fn
   "OSS Version, does nothing"
@@ -47,8 +48,8 @@
   [_db-id]
   nil)
 
-(defenterprise db-routing-enabled?
-  "Returns whether or not the given database is either a router or destination database."
+(defenterprise-schema db-routing-enabled? :- :boolean
+  "Returns whether or not the Lib metadata `db` of a Database is either a router or destination database."
   metabase-enterprise.database-routing.models
-  [_db-or-id]
+  [_db :- ::lib.schema.metadata/database]
   false)

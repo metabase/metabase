@@ -83,7 +83,7 @@
                 role               (get user-attributes role-attribute)
                 database           (if (map? database-or-id)
                                      database-or-id
-                                     (impersonation.db/database (u/the-id database-or-id)))
+                                     (driver.u/lib-database (u/the-id database-or-id)))
                 default-role       (driver.sql/default-database-role (driver.u/database->driver database) database)]
             (cond
               (nil? role)

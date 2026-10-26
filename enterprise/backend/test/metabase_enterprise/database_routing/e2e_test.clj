@@ -90,7 +90,7 @@
                        ~(wrap-destinations (rest dests) body)))))))]
     ;; Router: a normal synced DB, exactly as `with-temp-dbs!` builds one.
     `(with-temp-dbs! [~router-binding]
-       (sync/sync-database! ~router-binding)
+       (sync/sync-database! (:id ~router-binding))
        ~(wrap-destinations destinations body))))
 
 (deftest destination-databases-get-used
@@ -428,7 +428,7 @@
                       {:details (merge (:details router)
                                        (router-dataset-details driver/*driver*))})
           (let [router (t2/select-one :model/Database :id (u/the-id router))]
-            (sync/sync-database! router {:scan :schema})
+            (sync/sync-database! (:id router) {:scan :schema})
             ;; Load the physical routed warehouse only for its connection-details + name; discard the normal
             ;; `:model/Database` row `mt/dataset` registers. The destination is inserted prod-shaped below.
             (let [[routed-name routed-details]
@@ -486,7 +486,7 @@
           (t2/update! :model/Database (u/the-id router)
                       {:details (assoc (:details router) :dbname nil)})
           (let [router (t2/select-one :model/Database :id (u/the-id router))]
-            (sync/sync-database! router {:scan :schema})
+            (sync/sync-database! (:id router) {:scan :schema})
             ;; Load the physical routed warehouse only for its connection-details + name; discard the normal
             ;; `:model/Database` row `mt/dataset` registers. The destination is inserted prod-shaped below.
             (let [[routed-name routed-details]

@@ -17,6 +17,7 @@
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
@@ -41,14 +42,14 @@
 (deftest ^:parallel connection-impersonation-role-test
   (testing "Returns nil when no impersonations are in effect"
     (mt/with-test-user :rasta
-      (is (nil? (impersonation.driver/connection-impersonation-role (mt/db)))))))
+      (is (nil? (impersonation.driver/connection-impersonation-role (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest connection-impersonation-role-test-2
   (testing "Correctly fetches the impersonation when one is in effect"
     (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                    :attributes     {"impersonation_attr" "impersonation_role"}}
       (is (= "impersonation_role"
-             (impersonation.driver/connection-impersonation-role (mt/db)))))))
+             (impersonation.driver/connection-impersonation-role (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest connection-impersonation-role-test-3
   (testing "Throws exception if multiple conflicting impersonations are in effect"
@@ -60,7 +61,7 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Multiple conflicting connection impersonation policies found for current user"
-             (impersonation.driver/connection-impersonation-role (mt/db))))))))
+             (impersonation.driver/connection-impersonation-role (lib.metadata/database (mt/metadata-provider)))))))))
 
 (deftest connection-impersonation-role-test-4
   (testing "Returns nil if the permissions in another group supersede the impersonation"
@@ -69,14 +70,14 @@
       ;; `with-impersonations!` creates a new group and revokes data perms in `all users`, so if we re-grant data perms
       ;; for all users, it should supersede the impersonation policy in the new group
       (mt/with-full-data-perms-for-all-users!
-        (is (nil? (impersonation.driver/connection-impersonation-role (mt/db))))))))
+        (is (nil? (impersonation.driver/connection-impersonation-role (lib.metadata/database (mt/metadata-provider)))))))))
 
 (deftest connection-impersonation-role-test-5
   (testing "Returns nil for superuser, even if they are in a group with an impersonation policy defined"
     (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                    :attributes     {"impersonation_attr" "impersonation_role"}}
       (request/as-admin
-        (is (nil? (impersonation.driver/connection-impersonation-role (mt/db))))))))
+        (is (nil? (impersonation.driver/connection-impersonation-role (lib.metadata/database (mt/metadata-provider)))))))))
 
 (deftest connection-impersonation-role-test-6
   (testing "Does not throw an exception if passed a nil `database-or-id`"
@@ -91,7 +92,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"User does not have attribute required for connection impersonation."
-           (impersonation.driver/connection-impersonation-role (mt/db)))))))
+           (impersonation.driver/connection-impersonation-role (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest connection-impersonation-role-test-8
   (testing "Throws an exception if impersonation should be enforced, but the user's attribute is not a single string"
@@ -100,7 +101,7 @@
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"Connection impersonation attribute is invalid: role must be a single non-empty string."
-           (impersonation.driver/connection-impersonation-role (mt/db)))))))
+           (impersonation.driver/connection-impersonation-role (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest connection-impersonation-role-test-9
   (testing "Throws an exception if sandboxing policies are also defined for the current user on the DB"
@@ -112,7 +113,7 @@
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo
                  #"Conflicting sandboxing and impersonation policies found."
-                 (impersonation.driver/connection-impersonation-role (mt/db))))))))))
+                 (impersonation.driver/connection-impersonation-role (lib.metadata/database (mt/metadata-provider)))))))))))
 
 (deftest connection-impersonation-role-test-10
   (testing "Rejects a role attribute equal to the driver's default-role sentinel (case-insensitively)"
@@ -122,12 +123,12 @@
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
              #"Connection impersonation attribute is invalid: role must not be the database default role."
-             (impersonation.driver/connection-impersonation-role (mt/db)))))
+             (impersonation.driver/connection-impersonation-role (lib.metadata/database (mt/metadata-provider))))))
       (testing "but a normal role value is still returned unchanged"
         (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                        :attributes     {"impersonation_attr" "impersonation_role"}}
           (is (= "impersonation_role"
-                 (impersonation.driver/connection-impersonation-role (mt/db)))))))))
+                 (impersonation.driver/connection-impersonation-role (lib.metadata/database (mt/metadata-provider))))))))))
 
 (deftest conn-impersonation-test-postgres
   (mt/test-driver :postgres
@@ -146,7 +147,7 @@
                              "GRANT SELECT ON TABLE \"conn_impersonation_test\".PUBLIC.table_with_access TO \"impersonation.role\";"]]
             (jdbc/execute! spec [statement]))
           (mt/with-temp [:model/Database database {:engine :postgres, :details details}]
-            (mt/with-db database (sync/sync-database! database)
+            (mt/with-db database (sync/sync-database! (:id database))
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" "impersonation.role"}}
                 (is (= []
@@ -305,13 +306,13 @@
                                       {:engine  driver
                                        :name    (format "impersonation-%s-%d" (name driver) (u/the-id source-db))
                                        :details details})))]
-          (sync/sync-database! database {:scan :schema})
+          (sync/sync-database! (:id database) {:scan :schema})
           (t2/update! :model/Database :id (u/the-id database)
                       {:details (cond-> (impersonation-details driver source-db)
                                   (driver/database-supports? driver :connection-impersonation-requires-role nil)
                                   (assoc :role (impersonation-default-role driver)))})
           ;; the pools opened during sync authenticate as the granting user; tests must not inherit them
-          (driver/notify-database-updated driver database)
+          (driver/notify-database-updated driver (driver.u/lib-database (:id database)))
           (let [database (t2/select-one :model/Database :id (u/the-id database))]
             (swap! impersonation-databases assoc cache-key database)
             database)))))
@@ -396,7 +397,7 @@
                   (when (driver/database-supports? driver/*driver* :connection-impersonation-requires-role nil)
                     (t2/update! :model/Database :id (mt/id)
                                 (assoc-in (mt/db) [:details :role] (impersonation-default-role driver/*driver*))))
-                  (sync/sync-database! database {:scan :schema})
+                  (sync/sync-database! (:id database) {:scan :schema})
                   (impersonation.util-test/with-impersonations!
                     {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                      :attributes     {"impersonation_attr" role-name}}
@@ -427,7 +428,7 @@
           (let [details       (:details (mt/db))
                 password      (:password details)
                 readonly-user (u/lower-case-en (mt/random-name))
-                spec          (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+                spec          (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                 venues-table  (sql.tx/qualify-and-quote :postgres "test-data" "venues")
                 role-name     (u/lower-case-en (mt/random-name))]
             (try
@@ -448,7 +449,7 @@
                                                            :details            readonly-details
                                                            :write_data_details write-details}]
                     (mt/with-db database
-                      (sync/sync-database! database {:scan :schema})
+                      (sync/sync-database! (:id database) {:scan :schema})
                       (impersonation.util-test/with-impersonations!
                         {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                          :attributes     {"impersonation_attr" role-name}}
@@ -601,7 +602,7 @@
             (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                      :details details}]
               (mt/with-db database
-                (sync/sync-database! database {:scan :schema})
+                (sync/sync-database! (:id database) {:scan :schema})
                 (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                                :attributes     {"impersonation_attr" role-a}}
                   (is (thrown-with-msg?
@@ -613,7 +614,7 @@
             (mt/with-temp [:model/Database database {:engine driver/*driver*,
                                                      :details (merge details {:role impersonation-user})}]
               (mt/with-db database
-                (sync/sync-database! database {:scan :schema})
+                (sync/sync-database! (:id database) {:scan :schema})
                 (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                                :attributes     {"impersonation_attr" role-a}}
                   (is (= [[100]]
@@ -655,7 +656,7 @@
                                               :engine :postgres
                                               :details destination-details
                                               :name destination-db-name}]
-              (mt/with-db router-database (sync/sync-database! router-database)
+              (mt/with-db router-database (sync/sync-database! (:id router-database))
                 (testing "Database Routing OFF"
                   (testing "impersonation OFF"
                     (testing "both crowberto and rasta see all rows in the ROUTER database"
@@ -753,7 +754,7 @@
                                (format "GRANT SELECT ON TABLE \"%s\".table_with_access TO %s;" schema user)]]
               (jdbc/execute! spec statement))
             (mt/with-db database
-              (sync/sync-database! database {:scan :schema})
+              (sync/sync-database! (:id database) {:scan :schema})
               (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
                                                              :attributes     {"impersonation_attr" user}}
                 (is (= []
@@ -911,7 +912,7 @@
             (with-impersonation-db!
               (let [tables-set #(->> (driver/describe-database
                                       driver/*driver*
-                                      (t2/select-one :model/Database (mt/id)))
+                                      (driver.u/ensure-lib-database (t2/select-one :model/Database (mt/id))))
                                      :tables
                                      (into #{}))
                     default-table-set (tables-set)

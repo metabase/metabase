@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
-   [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
@@ -268,7 +267,7 @@
 (deftest sync-creates-task-run-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
     (testing "sync-operation creates a task run with type :sync"
-      (let [mock-db    (mi/instance :model/Database {:name "test" :id 999 :engine :h2})
+      (let [mock-db    {:lib/type :metadata/database :name "test" :id 999 :engine :h2}
             step-name  (mt/random-name)
             sync-steps [(sync-util/create-sync-step step-name (fn [_] {:total-tables 1}))]]
         (sync-util/sync-operation :sync-metadata mock-db "Test sync"
@@ -283,7 +282,7 @@
 (deftest analyze-creates-fingerprint-run-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
     (testing "analyze operation creates a task run with type :fingerprint"
-      (let [mock-db    (mi/instance :model/Database {:name "test" :id 998 :engine :h2})
+      (let [mock-db    {:lib/type :metadata/database :name "test" :id 998 :engine :h2}
             step-name  (mt/random-name)
             sync-steps [(sync-util/create-sync-step step-name (fn [_] {:total-tables 1}))]]
         (sync-util/sync-operation :analyze mock-db "Test analyze"
@@ -296,7 +295,7 @@
 (deftest nested-sync-operations-share-run-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
     (testing "nested sync operations don't create multiple task runs"
-      (let [mock-db     (mi/instance :model/Database {:name "test" :id 997 :engine :h2})
+      (let [mock-db     {:lib/type :metadata/database :name "test" :id 997 :engine :h2}
             outer-step  (mt/random-name)
             inner-step  (mt/random-name)
             outer-steps [(sync-util/create-sync-step outer-step
