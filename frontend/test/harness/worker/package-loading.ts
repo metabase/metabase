@@ -15,13 +15,12 @@ import { globalBaseline } from "./realm.ts";
 import { clockIsReal } from "./timers.ts";
 
 /**
- * Packages that bind to the window that is current when they load. They load
- * again for each spec file, which gets a new window. Of Testing Library only
- * user-event is one of them, because the rest binds only `screen`, which is
- * pointed at each new document instead.
+ * Packages that bind to the window that is current when they load, such as
+ * Testing Library's `screen`. They load again for each spec file, which gets a
+ * new window.
  */
 export const WINDOW_BOUND_PACKAGES =
-  /\/node_modules\/(@testing-library\/user-event|jest-canvas-mock|@emotion)\//;
+  /\/node_modules\/(@testing-library|jest-canvas-mock|@emotion)\//;
 
 // The UI packages stay loaded, and project code can still write onto a
 // package's own objects while it loads, as the popover dropdown registration

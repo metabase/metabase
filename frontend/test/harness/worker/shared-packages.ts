@@ -1,14 +1,5 @@
 // Resets for state that specs leave in packages that stay loaded: the canvas
-// mocks, Testing Library's configuration and screen, and the focus and
-// clipboard of the document.
-import { createRequire } from "node:module";
-import path from "node:path";
-
-import type * as TestingLibraryDom from "@testing-library/dom";
-import type * as TestingLibraryReact from "@testing-library/react";
-
-import { root } from "../jest-config.ts";
-
+// mocks, and the focus and clipboard of the document.
 import { currentWindow } from "./dom.ts";
 import { tryTo } from "./properties.ts";
 
@@ -23,9 +14,6 @@ type GetContext = HTMLCanvasElement["getContext"] & {
   remembersContexts?: boolean;
 };
 
-const require = createRequire(import.meta.url);
-const requireFromRoot = createRequire(path.join(root, "package.json"));
-
 // The chart library keeps one canvas context for measuring text. Its methods
 // are mocks from jest-canvas-mock, and a spec's resetAllMocks strips their
 // implementations for good. Each context's mocks are remembered as it is
@@ -34,7 +22,6 @@ const canvasMocks: Array<
   [WeakRef<MockFunction>, (...args: unknown[]) => unknown]
 > = [];
 const rememberedContexts = new WeakSet<object>();
-let testingLibraryConfig: TestingLibraryReact.Config | null = null;
 
 export function rememberCanvasMocks(): void {
   const prototype = currentWindow().HTMLCanvasElement.prototype;
@@ -69,51 +56,6 @@ export function restoreCanvasMocks(): void {
     kept += 1;
   }
   canvasMocks.length = kept;
-}
-
-/**
- * A spec that calls configure() changes the configuration of the one shared
- * copy of React Testing Library. The first call records it.
- */
-export function resetTestingLibraryConfig(): void {
-  const library: typeof TestingLibraryReact = requireFromRoot(
-    "@testing-library/react",
-  );
-  if (testingLibraryConfig === null) {
-    testingLibraryConfig = { ...library.getConfig() };
-    return;
-  }
-  const baseline = testingLibraryConfig;
-  const current = library.getConfig();
-  const changed = Object.keys(baseline).some(
-    (key) => Reflect.get(current, key) !== Reflect.get(baseline, key),
-  );
-  if (changed) {
-    library.configure({ ...baseline });
-  }
-}
-
-/**
- * Testing Library builds `screen` from document.body when it loads. The
- * package stays loaded, so its queries are bound again to the body of each
- * new window.
- */
-export function pointScreenAtNewDocument(): void {
-  for (const file of Object.keys(require.cache)) {
-    if (!file.endsWith("/@testing-library/dom/dist/screen.js")) {
-      continue;
-    }
-    const library: typeof TestingLibraryDom = require(
-      path.join(path.dirname(file), "index.js"),
-    );
-    Object.assign(
-      library.screen,
-      library.getQueriesForElement(
-        currentWindow().document.body,
-        library.queries,
-      ),
-    );
-  }
 }
 
 /**
