@@ -109,28 +109,30 @@ describe("smoothStreamEvents", () => {
     });
 
     it("flushes the reasoning buffer at once when reasoning stops being visible", async () => {
-      // The pacer reads the predicate when the delta arrives, before the
-      // first word and after it. The fourth read, before the second word, is false.
-      const VISIBLE_READ_COUNT = 3;
-      let readCount = 0;
-      const shouldPaceReasoning = () => {
-        readCount += 1;
-        return readCount <= VISIBLE_READ_COUNT;
-      };
-
-      const out = await smooth(
-        [
+      let isVisible = true;
+      const out: SSEEvent[] = [];
+      const events = smoothStreamEvents(
+        asAsyncIterable([
           {
             type: "reasoning-delta",
             id: "r1",
             delta: "one two three four five",
           },
-        ],
-        { shouldPaceReasoning },
+        ]),
+        { delayInMs: 0, shouldPaceReasoning: () => isVisible },
       );
 
+      // A user collapses the reasoning step in the middle of a delta.
+      // The test closes the reasoning after the first emitted word.
+      for await (const event of events) {
+        out.push(event);
+        isVisible = false;
+      }
+
+      // The pacer sends the rest of the buffer as one delta.
       expect(reasoningDeltas(out)).toEqual(["one ", "two three four five"]);
-      expect(setTimeout).toHaveBeenCalledTimes(1);
+      // No wait starts after the close.
+      expect(setTimeout).not.toHaveBeenCalled();
     });
 
     it("starts pacing reasoning at the next delta when it becomes visible", async () => {

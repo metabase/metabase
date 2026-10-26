@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { act, screen, waitFor } from "__support__/ui";
+import { screen, waitFor } from "__support__/ui";
 import type { SSEEvent } from "metabase/api/ai-streaming/sse-types";
 import { checkNotNull } from "metabase/utils/types";
 
@@ -26,8 +26,6 @@ const LONG_REASONING_WORD_COUNT = 1500;
 const ANSWER_ARRIVAL_TIMEOUT_MS = 5000;
 // At 10 ms per paced word, this reasoning takes about 2 s to replay.
 const OPEN_REASONING_WORD_COUNT = 200;
-// Well under the replay time above, so paced words are still missing then.
-const OPEN_REASONING_PROBE_MS = 300;
 // Well above the replay time above, so the paced stream ends inside the test.
 const OPEN_ANSWER_ARRIVAL_TIMEOUT_MS = 8000;
 
@@ -51,8 +49,6 @@ const allowMotion = () => {
     window.matchMedia = reducedMotion;
   };
 };
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const openChainAndReasoningStep = async () => {
   const header = await screen.findByTestId("metabot-chain-of-thought-header");
@@ -229,7 +225,12 @@ describe("metabot > message", () => {
       await openChainAndReasoningStep();
       pause.resolve();
 
-      await act(() => sleep(OPEN_REASONING_PROBE_MS));
+      // Wait for the first words, outside `act`. An `act` scope returns only when
+      // React has no more work, and a paced stream gives it work every 10 ms. On a
+      // slow machine it then returns only after the last word.
+      await waitFor(() => {
+        expect(renderedWordCount()).toBeGreaterThan(0);
+      });
       expect(renderedWordCount()).toBeLessThan(OPEN_REASONING_WORD_COUNT);
 
       await expectAnswerWithin(OPEN_ANSWER_ARRIVAL_TIMEOUT_MS);

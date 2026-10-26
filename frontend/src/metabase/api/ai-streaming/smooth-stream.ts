@@ -68,10 +68,10 @@ export async function* smoothStreamEvents(
   for await (const event of events) {
     // other events, and reasoning that is not paced, flush the buffered tail
     // first, to keep the order, and then pass through
-    if (
+    const isPassThrough =
       !isSmoothable(event) ||
-      (event.type === "reasoning-delta" && !shouldPaceReasoning())
-    ) {
+      (event.type === "reasoning-delta" && !shouldPaceReasoning());
+    if (isPassThrough) {
       yield* flush();
       yield event;
       continue;
