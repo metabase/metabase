@@ -5,6 +5,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
 
 (defenterprise visible-data-app-filter-select
@@ -55,6 +56,13 @@
   metabase-enterprise.data-apps.checks
   [_data-app :- ::data-apps.schema/data-app
    _query    :- ::lib-be.schema/maybe-legacy-or-internal-query]
+  nil)
+
+(defenterprise-schema check-card :- :nil
+  "Throws a 400 unless `data-app` may run the card with `card-id`; does nothing without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app :- ::data-apps.schema/data-app
+   _card-id  :- ::lib.schema.id/card]
   nil)
 
 (defn check-request

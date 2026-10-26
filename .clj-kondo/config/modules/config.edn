@@ -870,6 +870,7 @@
            api
            api-scope
            lib.be
+           lib.schema
            premium-features
            util}}
 
@@ -2238,6 +2239,7 @@
            api-scope
            api.eid-translation
            collections
+           data-apps
            events
            lib
            lib.be

@@ -7,7 +7,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
-   [metabase.util.json :as json]))
+   [metabase.util.json :as json]
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -227,6 +228,37 @@
              (data-apps.tu/with-published-tables! [(mt/id :categories)]
                (doseq [query [(with-segment categories) (with-measure categories)]]
                  (is (= "completed" (:status (run-query 202 query)))))))))))))
+
+(deftest app-card-runs-test
+  (do-with-app-card!
+   (fn [card-id _collection-id]
+     (testing "the app's card runs, pivots and exports"
+       (is (= "completed" (:status (mt/user-http-request :crowberto :post 202 (format "card/%d/query" card-id)
+                                                         as-data-app))))
+       (is (= "completed" (:status (mt/user-http-request :crowberto :post 202 (format "card/pivot/%d/query" card-id)
+                                                         as-data-app))))
+       (is (some? (mt/user-http-request :crowberto :post 200 (format "card/%d/query/csv" card-id) as-data-app))))
+     (testing "by its entity ID too"
+       (is (= "completed" (:status (mt/user-http-request :crowberto :post 202
+                                                         (format "card/%s/query"
+                                                                 (t2/select-one-fn :entity_id :model/Card :id card-id))
+                                                         as-data-app))))))))
+
+(deftest other-card-runs-are-refused-test
+  (do-with-app-card!
+   (fn [_card-id _collection-id]
+     (mt/with-temp [:model/Card {elsewhere-id :id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}]
+       (testing "a card outside the app's collection, or of no card at all, is refused alike"
+         (doseq [other-id [elsewhere-id 999999999]]
+           (is (= (error-message :cards other-id)
+                  (mt/user-http-request :crowberto :post 400 (format "card/%d/query" other-id) as-data-app)))
+           (is (= (error-message :cards other-id)
+                  (mt/user-http-request :crowberto :post 400 (format "card/pivot/%d/query" other-id) as-data-app)))
+           (is (= (error-message :cards other-id)
+                  (mt/user-http-request :crowberto :post 400 (format "card/%d/query/csv" other-id) as-data-app)))))
+       (testing "a request that is not a data app's still runs the card"
+         (is (= "completed" (:status (mt/user-http-request :crowberto :post 202
+                                                           (format "card/%d/query" elsewhere-id))))))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
