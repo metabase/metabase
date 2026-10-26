@@ -23,10 +23,11 @@ import { isProjectSource } from "./project.ts";
 import { resolveProjectFile } from "./resolve.ts";
 import { transform } from "./transform.ts";
 
-// jest's jsdom environment resolves packages with these conditions. Node would
-// use "node" and, for code it takes to be a module, "import", and so pick a
-// different build of the same package.
-const JEST_CONDITIONS = ["require", "default", "browser"];
+// jest resolves a require() with these conditions: its own, then those of the
+// jsdom environment. A package's exports pick the first key in its own order
+// that is on the list, so react-dom/server gets its "node" build before its
+// "browser" one, as under jest.
+const JEST_CONDITIONS = ["require", "node", "default", "browser"];
 
 const require = createRequire(import.meta.url);
 
