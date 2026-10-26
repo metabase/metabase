@@ -168,9 +168,10 @@
    :data {:title title}})
 
 (defn viz-part
-  "Return the `generated_entity` card data part that surfaces a query/chart result
-  to the frontend. Embeds the (legacy) `query` so the FE runs and renders the card
-  in the conversation. The caller must supply a distinct `entity-id` (card id) and
+  "Return a `generated_entity` card data part for the frontend.
+
+  The frontend runs and renders `query` in the conversation.
+  The caller must supply a distinct `entity-id` (card ID) and
   `query-id`, plus a `title`; `display` and `description` are included when present."
   [{:keys [entity-id query-id query display title description]}]
   (generated-entity-part
