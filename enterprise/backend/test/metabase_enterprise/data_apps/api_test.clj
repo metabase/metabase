@@ -384,40 +384,6 @@
                   (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled true})))
           (is (=? {:name "demo"} (mt/user-http-request :crowberto :get 200 "ee/apps/demo"))))))))
 
-(deftest sandbox-host-endpoint-test
-  (mt/with-premium-features #{:data-apps}
-    (let [resp    (mt/user-http-request-full-response :crowberto :get 200 "ee/apps/sandbox-host")
-          headers (:headers resp)]
-      (testing "serves a minimal HTML document"
-        (is (str/includes? (:body resp) "<!doctype html>"))
-        (is (str/starts-with? (get headers "Content-Type") "text/html")))
-      (testing "carries the per-document CSP that confines 'unsafe-eval' to the realm"
-        ;; This grant is why the data-app document itself can drop 'unsafe-eval'
-        ;; (see `data-app-unsafe-eval-test`), and `default-src 'none'` means the
-        ;; realm has no network of its own rather than inheriting the data-app
-        ;; document's `connect-src` (which includes the instance origin).
-        (let [csp (get headers "Content-Security-Policy")]
-          (is (some? csp))
-          (is (str/includes? csp "default-src 'none'"))
-          (is (str/includes? csp "script-src 'unsafe-eval'"))
-          (is (str/includes? csp "frame-ancestors 'self'"))
-          (testing "and the endpoint's CSP wins over the global middleware one"
-            (is (not (str/includes? csp "'nonce-"))))))
-      (testing "is framable same-origin, overriding the global X-Frame-Options"
-        (is (= "SAMEORIGIN" (get headers "X-Frame-Options"))))
-      (testing "hardening headers are present"
-        (is (= "nosniff"     (get headers "X-Content-Type-Options")))
-        (is (= "no-referrer" (get headers "Referrer-Policy")))
-        (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy"))))))
-  ;; `slug-regex` must exclude this literal, or `/apps/sandbox-host` would be
-  ;; routed as a data app named "sandbox-host" and 404.
-  (testing "the route is not shadowed by the /:slug route"
-    (mt/with-premium-features #{:data-apps}
-      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-        (create-app!)
-        (is (= 200 (:status (mt/user-http-request-full-response
-                             :crowberto :get 200 "ee/apps/sandbox-host"))))))))
-
 (deftest create-defaults-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]

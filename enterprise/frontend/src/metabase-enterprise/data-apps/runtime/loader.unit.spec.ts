@@ -122,7 +122,9 @@ describe("instantiateDataAppBundle", () => {
     await instantiate();
 
     expect(mockedCreateSandbox).toHaveBeenCalledWith(
-      expect.objectContaining({ realmHostUrl: "/api/ee/apps/sandbox-host" }),
+      expect.objectContaining({
+        realmHostUrl: "/api/ee/browser-sandboxing/sandbox-host",
+      }),
     );
   });
 
