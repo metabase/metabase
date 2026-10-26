@@ -1228,8 +1228,7 @@ describe("scenarios > embedding > full app", () => {
         H.getNotebookStep("data").findByText("Products").should("be.visible");
       });
 
-      // TODO (Kelvin 2026-10-15) unskip with EMB-2489: the semantic layer bucket counts trashed cards
-      it.skip("should not offer a semantic layer whose only content is archived", () => {
+      it("should not offer a semantic layer whose only content is archived", () => {
         cy.signInAsAdmin();
         H.unpublishTables({ table_ids: [ORDERS_ID] });
         cy.request("GET", "/api/ee/library").then(({ body }) => {
