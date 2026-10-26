@@ -112,7 +112,7 @@
           (let [response (mt/user-http-request :crowberto :get 200 (format "transform/%d" python-id))]
             (is (= "python" (:source_type response)))))))))
 
-(deftest transforms-on-a-router-test
+(deftest transforms-on-router-test
   (mt/test-drivers (mt/normal-drivers-with-feature :transforms/table)
     (mt/with-premium-features #{:transforms-basic :database-routing :hosting}
       (mt/dataset transforms-dataset/transforms-test
