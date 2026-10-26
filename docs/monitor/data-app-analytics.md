@@ -22,14 +22,14 @@ Only admins can see the page. Runs from an app's local development preview don't
 
 Each filter above the log is labeled with its default value:
 
-- **All data apps**: Pick one app. **Installed** lists your apps by name. **Removed** lists apps that are in the log but no longer exist.
+- **All data apps**: Pick one app. **Installed** lists your apps by name. **Removed** lists, by slug, apps that no longer exist but have runs in the selected time window.
 - **All entity types**: Pick **Question** or **Action** to see only that kind of run.
 - **All users**: Pick one person.
 - **Last 30 days**: Pick another time window.
 
 ## What the log shows for each run
 
-Each row is one question or action run: when it started, who ran it, how long it took, how many rows it returned, the database it queried, the query it ran, and the error message if the run failed.
+Each row is one question or action run: when it started, who ran it, how long it took, how many rows a question returned, the database it queried, the query it ran, and the error message if the run failed.
 
 A few columns need more explanation:
 

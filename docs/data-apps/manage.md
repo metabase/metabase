@@ -25,7 +25,7 @@ To open a live app, click the **three dots** on the app's row and select **Open 
 Click an app in the list to see its details. Each app has four tabs:
 
 - **Overview**: A live preview of the app, and the app's **Status**, **Address**, and **Group access**.
-- **Questions**: The questions the app reads. Click a question to see it.
+- **Questions**: The questions in the app's collection, but not its metrics. Click a question to see it.
 - **Actions**: The data actions the app uses to write data. Click an action to see its **Definition** and **Fields**.
 - **Permissions**: The groups whose people can open the app.
 
@@ -37,12 +37,6 @@ To see the questions and actions that your apps run, who runs them, and what fai
 
 ## Make an app live or a draft
 
-| Status                                    | Who can open the app                    |
-| ----------------------------------------- | --------------------------------------- |
-| **Live**                                  | Admins, and people in the app's groups. |
-| **Draft**                                 | Nobody.                                 |
-| **Live, outdated** or **Draft, outdated** | Nobody, until you migrate the app.      |
-
 New apps start live. To change an app's status:
 
 1. In the list of data apps, click the **three dots** on the app's row.
@@ -50,16 +44,14 @@ New apps start live. To change an app's status:
 
 With the CLI, run `mb data-app set-enabled <slug> false` to make an app a draft, or `true` to make it live.
 
-Making an app a draft doesn't change the app. To see a draft, preview it on its **Overview** tab.
-
-An outdated app was built for an older version of data apps. To open it again, ask your agent to migrate the app to the current version, then build it and upload the new bundle.
+Nobody can open a draft at its address, not even admins. Admins can preview a draft on its **Overview** tab.
 
 ## Choose who can open an app
 
 On the app's **Permissions** tab:
 
 1. Click **Add groups**.
-2. In **Groups**, pick one or more groups.
+2. Search for one or more groups, and select them.
 3. Click **Add**.
 
 You can add any group except **Administrators** and [tenant](../embedding/tenants.md) groups. People in tenants can't open data apps. If an app has no groups, only admins can open it.
@@ -70,7 +62,7 @@ Adding a group to an app lets people in that group open the app, and gives the g
 
 ![Data app Permissions tab](./images/data-apps-permissions-tab.png)
 
-The check uses the [dependency graph](../data-modeling/tools/graph.md). Without the graph, the **Data access** column can't warn you, and since the graph updates in the background, a warning can lag behind your latest edits.
+The check uses the [dependency graph](../data-modeling/tools/graph.md). Without the graph, the **Data access** column shows **All tables** for every group, even when a group can't see the tables. Since the graph updates in the background, a warning can also lag behind your latest edits.
 
 To fix the group's access:
 
@@ -81,7 +73,7 @@ To fix the group's access:
 
 People in an app's groups can open a live app at its address, `/apps/<slug>`. People can also open an app from the **Data apps** section of the left navigation sidebar, which lists the live apps they can open.
 
-People can also find an app by searching for its name or description. Clicking the result opens the app. Search shows people only the live apps in their groups. Admins see every app.
+People can also find an app by searching for its name or description. Clicking the result opens the app. Search shows people only the live apps in their groups. Admins see every app, drafts included, but a draft doesn't open from search.
 
 ## Delete a data app
 
@@ -91,7 +83,7 @@ Data Studio doesn't have an option to delete apps. To delete an app, ask your ag
 mb data-app delete <slug>
 ```
 
-Deleting an app also deletes its collection (with its questions and actions), its bundle, and its group access. The groups themselves stay.
+Deleting an app also deletes its collection (with its questions and actions), its bundle, and its group access.
 
 ## What you can change in Read-only mode
 

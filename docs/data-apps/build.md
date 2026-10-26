@@ -18,7 +18,7 @@ You describe the app, and an AI coding agent (like Claude Code or Codex) builds 
 - A Pro or Enterprise plan.
 - An admin account, to manage apps in Data Studio and to create apps.
 - An AI coding agent, like Claude Code or Codex.
-- Node.js (LTS version) on the computer where you build the app.
+- Node.js 22.12 or later on the computer where you build the app.
 - [Remote Sync](../installation-and-operation/remote-sync.md), to ship apps to production.
 - The tables and metrics your apps read, [published to the Library](../data-modeling/semantic-layer/published-tables.md).
 - [Actions enabled](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the databases your apps write to.
@@ -42,15 +42,9 @@ The agent creates the app on your Metabase, adds the questions and actions the a
 
 ## Preview the app on your computer
 
-The agent starts a preview of the app with `npm run dev`. The `Local:` line in the command's output shows the preview URL. Open the preview in your browser, and keep the tab open while the agent works: the agent reads the app's errors from the open preview.
+The agent starts a preview of the app at a `localhost` address on your computer. Open the preview in your browser, and keep the tab open while the agent works: the agent reads the app's errors from the open preview. To start the preview again later, ask your agent.
 
-To start the preview yourself, change into the app's directory and run:
-
-```sh
-npm run dev
-```
-
-The preview needs an admin [API key](../people-and-groups/api-keys.md). The agent creates the key on your development Metabase, writes it into a `.env.local` file that Git ignores, and deletes the key when it's done. Don't paste API keys into the chat. Since the preview uses an admin key, it shows what an admin can see, not what the app's viewers can see.
+The preview needs an admin [API key](../people-and-groups/api-keys.md). The agent creates the key on your development Metabase, writes it into a `.env.local` file that Git ignores, and deletes the key when it's done. Since the preview uses an admin key, it shows what an admin can see, not what the app's viewers can see.
 
 > **The preview changes your data:** The local preview runs the app's actions against your development Metabase's databases. Use test data when you try out adds, edits, or deletes.
 
@@ -70,9 +64,11 @@ When [Remote Sync](../installation-and-operation/remote-sync.md) is on, it alway
 
 Remote Sync doesn't sync an app's status (live or draft) or its group access, so each Metabase keeps its own. A new app starts live on your production Metabase, and only admins can open it until you add groups there.
 
+Your production Metabase also needs the Library content that the app reads, so [sync your Library](../installation-and-operation/remote-sync.md#you-choose-what-to-sync) too. And [enable actions](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the production databases that the app writes to.
+
 ### What syncs with a data app
 
-Remote Sync syncs the app's manifest, its bundle, and its collection with its questions and actions. You can't sync an app's collection on its own: the collection syncs with its app. In your repository:
+Remote Sync syncs the app's manifest, its bundle, and its collection with its questions and actions. In your repository:
 
 - `data_apps/<slug>/data_app.yaml` is the app's manifest.
 - `data_apps/<slug>/` also holds the app's bundle.
@@ -82,7 +78,7 @@ Remote Sync syncs the app's manifest, its bundle, and its collection with its qu
 
 When you start your agent in a local clone of your Remote Sync repository, the agent puts the app's source code in `data_apps/<slug>/`, next to the manifest and the bundle. Pushes from Metabase don't change your source code. Don't edit the manifest or the bundle by hand. The template's `.gitignore` keeps `node_modules/`, `build/`, and `.env.local` out of your repository.
 
-To commit the source code, ask your agent. The agent pushes your changes from Metabase, pulls the branch that Metabase pushed to, and commits and pushes the source code. Then it pulls the changes into Metabase, so that Metabase's next push doesn't conflict with the commit.
+To commit the source code, ask your agent.
 
 ### If a pull fails
 
@@ -91,16 +87,16 @@ To commit the source code, ask your agent. The agent pushes your changes from Me
 
 ## What a data app can read and write
 
-A data app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads and writes.
+A data app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads. If row and column security applies to a person on any table in a database, that person can't run the app's actions on that database.
 
 An app's collection can hold only questions, metrics, and data actions. When your agent saves an item to the collection, Metabase refuses it if it breaks one of these rules:
 
-- Questions must be built with the query builder, not SQL. They can read only [tables published to the Library](../data-modeling/semantic-layer/published-tables.md) and metrics from the Library, so they can't start from or join another saved question or model. If a question reads something else, the error names what it read.
+- Questions must be built with the query builder, not SQL. They can read only [tables published to the Library](../data-modeling/semantic-layer/published-tables.md) and metrics from the Library, so they can't start from or join another saved question or model.
 - Questions and metrics in the collection can't be archived, public, or embedded, and they can't be in a dashboard or a document.
-- Actions can be table actions, which insert, update, or delete one row of a table published to the Library, or query actions, which run SQL. Actions can't belong to a model, and they can't be archived or public. An action can refer only to questions in the app's collection, and its fields can't get their values from a question.
+- Actions can be table actions, which insert, update, or delete one row of a table published to the Library, or query actions, which run SQL. Actions can't belong to a model, and they can't be archived or public.
 
 Only admins can edit an app's collection. You can't move the app's collection, move it to the trash, or make it official.
 
 ## Let an app fetch data from other sites
 
-A data app runs in a sandbox. By default, the app can't make network requests to other sites. To let an app fetch data from a site, ask your agent to add the site's origin, like `https://api.example.com`, to the app's `allowed_hosts`. An origin that starts with `*.`, like `https://*.example.com`, matches subdomains, but not the domain itself.
+A data app runs in a sandbox. By default, the app can't make network requests to other sites. To let an app fetch data from a site, ask your agent to add the site's origin, like `https://api.example.com`, to the app's `allowed_hosts`. The app can then reach the site only with `fetch`. Other kinds of requests, like `XMLHttpRequest`, stay blocked. An origin that starts with `*.`, like `https://*.example.com`, matches subdomains, but not the domain itself.

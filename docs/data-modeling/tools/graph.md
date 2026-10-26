@@ -50,7 +50,7 @@ You can also view an item's dependencies from its page in Data Studio. Published
 
 A [data app](../../data-apps/start.md) depends on the questions and actions in its collection. To see an app's dependencies, type the app's name in the **Pick an item to see its dependencies** box. Or select **Browse all** and open the **Data apps** folder.
 
-To open a live app, click the app in the graph, and select **View this data app** in its info panel. The graph doesn't link to the questions and actions in an app's collection.
+To open an app, click the app in the graph, and click the **external link** icon in its info panel. The icon also shows for draft apps, but drafts don't open. The graph doesn't link to the questions and actions in an app's collection.
 
 ## What the dependency graph shows
 
