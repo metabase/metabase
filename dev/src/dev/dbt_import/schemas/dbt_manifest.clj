@@ -56,7 +56,6 @@
 (mr/def ::time-granularity
   "A dbt time granularity: one of the standard `:nanosecond` … `:year`, or a custom granularity from a custom calendar
   on the time spine (dbt 1.9+), which is any name the project chose."
-  ;; TODO (Cam 2026-10-26) convert this to an `:enum`
   :keyword)
 
 (mr/def ::where-filter
@@ -181,9 +180,15 @@
 
 (mr/def ::time-window
   "`count` + `granularity`, e.g. `{:count 7 :granularity \"day\"}`. Used by cumulative `window` and derived
-  `offset_window`. `granularity` stays a string because custom granularities are allowed here."
+  `offset_window`. `granularity` stays a string because custom granularities are allowed here.
+
+  `count` is deliberately not `pos-int?`. dbt parses the window from a string like `\"7 days\"` and only checks that
+  the count `isdigit()`, so a manifest can legitimately carry `count: 0`; a schema stricter than dbt's parser would
+  fail the whole run at decode time over one metric. Nothing reads `count` until QRES-5 (cumulative and derived
+  metrics); when it does, a window that makes no sense should be reported for that metric by the resolve stage, not
+  rejected here."
   [:map
-   [:count       :int] ; TODO (Cam 2026-10-22) should this be `pos-int?` or `nat-int?`
+   [:count       nat-int?]
    [:granularity :string]])
 
 (mr/def ::metric-input-measure
@@ -293,14 +298,6 @@
    [:description   [:maybe :string]]
    [:columns       [:map-of :string ::column]]])
 
-;; TODO (Cam 2026-10-22) this doesn't appear to be used anywhere
-(mr/def ::model-node
-  "A `::node` whose `resource_type` is `:model`."
-  [:and
-   ::node
-   [:map
-    [:resource_type [:= :model]]]])
-
 (mr/def ::metadata
   "`metadata`. Only v12 has been tested; v10 and v11 share this structure for the parts we read but are unverified."
   [:map
@@ -338,10 +335,3 @@
     (if-let [error (mr/explain ::manifest decoded)]
       (throw (ex-info "Invalid dbt manifest" {:errors (me/humanize error)}))
       decoded)))
-
-(defn model-nodes
-  "The `:model` entries of a coerced manifest's `nodes`, keyed by unique ID."
-  [manifest]
-  (into {}
-        (filter (fn [[_ node]] (= (:resource_type node) :model)))
-        (:nodes manifest)))
