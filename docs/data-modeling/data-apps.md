@@ -85,7 +85,12 @@ Click an app in the list to see its details. Each app has four tabs:
 - **Actions**: The data actions the app uses to write data. Click an action to see its **Definition** and **Fields**.
 - **Permissions**: The groups whose people can open the app.
 
-If your Metabase has the [dependency graph](./tools/graph.md), each question and action also has a **Dependencies** tab.
+If your Metabase has the [dependency graph](./tools/graph.md), each question and action also has a **Dependencies** tab. To see the whole app in the dependency graph:
+
+1. In Data Studio's left sidebar, click **Dependency graph**.
+2. In the **Pick an item to see its dependencies** box, type the app's name, or select **Browse all** and open the **Data apps** folder.
+
+The graph shows the app with the questions and actions in its collection, because the app depends on them.
 
 ![Data app Overview tab](./images/data-apps-overview-tab.png)
 
@@ -164,7 +169,62 @@ Deleting an app also deletes its collection (with its questions and actions), it
 
 People in an app's groups can open a live app at its address, `/apps/<slug>`. They can also open it from the **Data apps** section of the left navigation sidebar, which lists the live apps they can open.
 
+People can also find an app by searching for its name or description. Clicking the result opens the app. Search shows people only the live apps in their groups. Admins see every app.
+
 People in [tenants](../embedding/tenants.md) can't open data apps.
+
+## See data app activity in Monitor
+
+The **Data app analytics** page in Monitor logs each question and action that your data apps run. Use it to see who uses each app, what it runs, how long it takes, and what fails.
+
+Only admins can see the page.
+
+1. Click the **grid** icon in the upper right and select **Monitor**.
+2. In the left sidebar, under **AI Auditing**, click **Data app analytics**.
+
+<!-- TODO screenshot: the Data app analytics page in Monitor, with the filter bar and a few rows of question and action runs -->
+
+Runs from an app's local development preview don't show up on the page.
+
+### Filter data app activity
+
+Each filter above the log shows its default value until you change it:
+
+- **All data apps**: Pick one app. **Installed** lists your apps by name. **Removed** lists apps that are in the log but no longer exist, by their slug.
+- **All entity types**: Pick **Question** or **Action** to see only that kind of run.
+- **All users**: Pick one person.
+- **Last 30 days**: Pick another time window.
+
+If nothing matches your filters, the table shows **No activity found**. Widen the date range, or clear some filters.
+
+### What the log shows for each run
+
+The log lists the newest runs first. For each run, it shows:
+
+- **Started at**: When the run started.
+- **Identifier**: The app's slug, from its address `/apps/<slug>`.
+- **Name**: The app's display name. Empty for apps that no longer exist.
+- **User**: Who ran the question or action.
+- **Entity type**: **Question** or **Action**.
+- **Question**: The question that ran.
+- **Action**: The action that ran.
+- **Running time (s)**: How long the run took, in seconds.
+- **Result rows**: How many rows the run returned.
+- **Database**: The database the run queried.
+- **Query**: The query that ran.
+- **Metabase version**: The version of Metabase that ran it.
+- **User agent**, **Sanitized user agent**, and **IP address**: Only show up if you turn on [`MB_ANALYTICS_PII_RETENTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_analytics_pii_retention_enabled), which is off by default.
+- **Error**: The error message of a failed run.
+
+### Build your own reports on data app activity
+
+To build your own questions on this activity, click **Query this data**. It opens the query builder on the [query log](../usage-and-performance-tools/usage-analytics-reference.md#query-log), filtered to data app activity.
+
+The questions that an app reads also count as views of those questions in [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
+
+### How long Metabase keeps data app activity
+
+Metabase keeps query log rows for 720 days by default, then deletes them, so older activity drops off the page. To change the limit, set [`MB_AUDIT_MAX_RETENTION_DAYS`](../configuring-metabase/environment-variables.md#mb_audit_max_retention_days).
 
 ## Fix an app that won't open
 

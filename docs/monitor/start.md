@@ -47,6 +47,7 @@ The AI auditing tabs are only available on [Pro and Enterprise plans](https://ww
 - **[Conversations](../ai/usage-auditing.md#conversations)**: Review people's conversations with Metabot.
 - **MCP analytics**: See usage of the [Metabase MCP server](../ai/mcp.md).
 - **[CLI analytics](./cli-analytics.md)**: See which operations the [Metabase CLI](../installation-and-operation/metabase-cli.md) runs against your Metabase.
+- **[Data app analytics](../data-modeling/data-apps.md#see-data-app-activity-in-monitor)**: See the questions and actions that your [data apps](../data-modeling/data-apps.md) run. Only shows up if your plan includes data apps.
 
 ## Permissions for Monitor
 
