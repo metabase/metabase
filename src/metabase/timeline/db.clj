@@ -1,15 +1,22 @@
 (ns metabase.timeline.db
-  "Application database queries for the timeline module. Every function here is a direct Toucan 2 call with no
-  additional logic, so no other namespace in the module runs a query itself (model definitions still use `toucan2.core`)."
+  "Application database queries for the timeline module. Reads by id for parsing live in
+  [[metabase.timeline.db.fetch]]; no other namespace in the module runs a query (model definitions still use
+  `toucan2.core`). [[update-timeline-event!]] takes only a parsed `TimelineEventUpdate`, whose checks include
+  permissions. The other writes check nothing, so their callers must."
   (:require
    [malli.util :as mut]
    [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
+   ;; loads the class imported below
+   [metabase.timeline.parse]
    [metabase.timeline.schema :as timeline.schema]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [parsed-types.core :as pt]
+   [toucan2.core :as t2])
+  (:import
+   (metabase.timeline.parse TimelineEventUpdate)))
 
 (mu/defn insert-timeline!
   "Insert the Timeline `row` and return the inserted instance."
@@ -36,11 +43,6 @@
   [id :- ms/PositiveInt]
   (t2/select-one-fn :icon :model/Timeline :id id))
 
-(mu/defn timelines-by-id
-  "A map of id to Timeline for the Timelines with `ids`."
-  [ids :- [:sequential ms/PositiveInt]]
-  (t2/select-pk->fn identity :model/Timeline :id [:in ids]))
-
 (mu/defn timelines-for-collection
   "The Timelines of the Collection with `collection-id` whose archived flag is `archived`."
   [collection-id :- [:maybe ::lib.schema.id/collection]
@@ -54,7 +56,9 @@
   (t2/update! :model/Timeline id changes))
 
 (mu/defn set-timeline-events-archived!
-  "Set the archived flag of the TimelineEvents of the Timeline with `timeline-id`, returning the number updated."
+  "Set the archived flag of the TimelineEvents of the Timeline with `timeline-id`, returning the number updated. It
+  cascades an archive of the Timeline, whose write permission the caller checked; an update of an event a user
+  requests goes through a parsed `TimelineEventUpdate` and [[update-timeline-event!]]."
   [timeline-id :- ms/PositiveInt
    archived    :- :boolean]
   (t2/update! :model/TimelineEvent {:timeline_id timeline-id} {:archived archived}))
@@ -106,11 +110,13 @@
                           (when end
                             [:<= (h2x/->date :timestamp) (h2x/->date end)])]])]}))
 
-(mu/defn update-timeline-event!
-  "Apply `changes` to the TimelineEvent with `id`, returning the number updated."
-  [id      :- ms/PositiveInt
-   changes :- (mut/select-keys ::timeline.schema/timeline-event.update [:name :description :timestamp :time_matters :timezone :icon :timeline_id :archived])]
-  (t2/update! :model/TimelineEvent id changes))
+(defn update-timeline-event!
+  "Apply `event-update`, a parsed `TimelineEventUpdate`, returning the number updated. Anything else
+  throws `::pt/not-parsed`."
+  [event-update]
+  (let [{:keys [event-id new-timeline-id changes]} (pt/parsed TimelineEventUpdate event-update)]
+    (t2/update! :model/TimelineEvent event-id (cond-> changes
+                                                new-timeline-id (assoc :timeline_id new-timeline-id)))))
 
 (mu/defn delete-timeline-event!
   "Delete the TimelineEvent with `id`, returning the number deleted."

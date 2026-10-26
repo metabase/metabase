@@ -1,9 +1,10 @@
 (ns hooks.metabase.toucan.db-ns
   "Lint that application database query calls -- Toucan 2's `t2/select`, `t2/query`, `t2/insert!`, `t2/update!`,
   `t2/delete!` and friends, plus the `metabase.app-db.core` wrappers around them such as `mdb/query` and
-  `mdb/update-or-insert!` -- live in a module's `db` namespace, i.e. `metabase[-enterprise].<module>.db` (or `metabase.driver.<driver>.db` for
-  driver modules). Every other namespace in a module goes through those functions instead of talking to the
-  application database directly.
+  `mdb/update-or-insert!` -- live in a module's `db` namespace, i.e. `metabase[-enterprise].<module>.db`, or its
+  `metabase[-enterprise].<module>.db.fetch` (or `metabase.driver.<driver>.db` for driver modules). `db.fetch` holds
+  reads that a namespace `db` requires needs, so they cannot sit in `db` without a cycle. Every other namespace in a
+  module goes through those functions instead of talking to the application database directly.
 
   Registered as an `:analyze-call` hook on each of those functions in `.clj-kondo/config.edn`. The hook
   returns its input unchanged so Kondo's normal analysis of the call (arity, var usage) still runs."
@@ -20,7 +21,8 @@
     (boolean
      ;; Resolve ownership first: a nested `.db` name alone does not make a module.
      (or (when-let [module (modules/module config ns-sym)]
-           (= ns-str (str (modules/module-ns-prefix (:metabase/modules config) module) ".db")))
+           (let [db-ns (str (modules/module-ns-prefix (:metabase/modules config) module) ".db")]
+             (contains? #{db-ns (str db-ns ".fetch")} ns-str)))
          (re-matches driver-db-namespace ns-str)))))
 
 (defn- test-file?
@@ -323,7 +325,7 @@
     (let [fn-node (first (:children node))]
       (hooks/reg-finding!
        (assoc (meta fn-node)
-              :message (format "Application database query calls like `%s` must live in metabase[-enterprise].<module>.db (or metabase.driver.<driver>.db) namespaces"
+              :message (format "Application database query calls like `%s` must live in metabase[-enterprise].<module>.db or <module>.db.fetch (or metabase.driver.<driver>.db) namespaces"
                                (hooks/sexpr fn-node))
               :type :metabase/t2-query-namespace))))
   ((requiring-resolve 'hooks.metabase.warehouse-schema-overlay.table-or-field-query/lint-read) input)
