@@ -75,6 +75,25 @@
                (normalize-tables (sql-parsing/referenced-tables dialect sql)))
             (pr-str sql))))))
 
+(defn- without-sql
+  "A [[sql-parsing/parse-expression]] tree without the `:sql` each node renders itself back to, which a case file
+  need not repeat."
+  [node]
+  (cond
+    (map? node)    (into {} (map (fn [[k v]] [k (without-sql v)])) (dissoc node :sql))
+    (vector? node) (mapv without-sql node)
+    :else          node))
+
+(deftest ^:parallel parse-expression-test
+  (testing "the sqlglot tree of a bare expression, as the dbt metrics converter reads it"
+    (doseq [{:keys [name sql dialect tree error]} (cases "parse_expression")]
+      (testing name
+        (if error
+          (let [e (is (thrown? Exception (sql-parsing/parse-expression dialect sql)) (pr-str sql))]
+            (is (sql-parsing/parse-error? e) (pr-str sql))
+            (is (str/includes? (sql-parsing/parse-error-message e) error) (pr-str sql)))
+          (is (= tree (without-sql (sql-parsing/parse-expression dialect sql))) (pr-str sql)))))))
+
 ;;; ------------------------------------------------- replace-names ------------------------------------------------
 
 (deftest ^:parallel replace-names-test

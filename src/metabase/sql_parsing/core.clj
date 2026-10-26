@@ -609,6 +609,21 @@
 
 ;;;; Transpile sql
 
+(defn parse-expression
+  "Parse `sql`, a single expression with no surrounding SELECT such as `sales / target` or
+  `status = 'Shipped' AND amount > 0`, into its sqlglot tree. Each node is a map:
+
+    {:class \"Div\"                     ; the sqlglot expression class
+     :sql   \"sales / target\"          ; the node rendered back to SQL, for messages
+     :args  {:this ..., :expression ...}} ; its named children: nodes, vectors of nodes, strings, booleans, numbers
+
+  A function node also carries `:func`, its SQL name. Column names sit in an `Identifier` node's `:this`, literals in
+  a `Literal` node's `:this` as a string, with `:is_string` saying whether the SQL quoted it.
+
+  Throws a parse error (see [[parse-error?]]) when the SQL does not parse, is empty, or is more than one statement."
+  [dialect sql]
+  (protocol/parse-expression (parser) dialect sql))
+
 (defn- normalize-transpilation-result
   [result]
   (-> result

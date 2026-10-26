@@ -150,4 +150,6 @@
     (single-stmt-of-type [_ dialect sql stmt-type]
       (json/decode+kw (call "is_single_stmt_of_type" sql stmt-type dialect)))
     (transpile-sql [_ sql from-dialect to-dialect]
-      (json/decode+kw (call "transpile_sql" sql from-dialect to-dialect)))))
+      (json/decode+kw (call "transpile_sql" sql from-dialect to-dialect)))
+    (parse-expression [_ dialect sql]
+      (json/decode+kw (call "parse_expression" sql dialect)))))

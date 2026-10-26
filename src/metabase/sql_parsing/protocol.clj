@@ -36,4 +36,7 @@
     "Whether the SQL is a single statement of `stmt-type`, as a keywordized map that includes the SQL
     reconstructed from the parsed AST.")
   (transpile-sql [parser sql from-dialect to-dialect]
-    "Transpile the SQL from one dialect to another, as a keywordized result map."))
+    "Transpile the SQL from one dialect to another, as a keywordized result map.")
+  (parse-expression [parser dialect sql]
+    "Parse a single SQL expression (no surrounding SELECT) into its sqlglot tree, as a keywordized map
+    `{:class ... :sql ... :args {...}}`; see [[metabase.sql-parsing.core/parse-expression]]."))

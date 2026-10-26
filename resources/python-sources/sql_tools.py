@@ -1,3 +1,4 @@
+import enum
 import json
 import logging
 import re
@@ -2115,3 +2116,38 @@ def is_single_stmt_of_type(sql: str, stmt_type: str = "read", dialect: str = Non
     if stmt_type == "read-only" and "error" in result:
         result["reason"] = "unparseable"
     return json.dumps(result)
+
+
+def _expression_to_json(node, dialect):
+    """The sqlglot expression tree `node` as JSON-serializable data: an Expression becomes
+    {"class": ..., "sql": ..., "args": {...}} (a Func also carries "func", its SQL name), a list a list, an
+    enum member its name, and anything else (str, bool, int, None) itself. Args that are None or empty are
+    left out."""
+    if isinstance(node, exp.Expression):
+        serialized = {
+            "class": type(node).__name__,
+            "sql": node.sql(dialect=dialect),
+            "args": {
+                key: _expression_to_json(value, dialect)
+                for key, value in node.args.items()
+                if value is not None and value != []
+            },
+        }
+        if isinstance(node, exp.Func):
+            serialized["func"] = node.name if isinstance(node, exp.Anonymous) else node.sql_name()
+        return serialized
+    if isinstance(node, list):
+        return [_expression_to_json(value, dialect) for value in node]
+    if isinstance(node, enum.Enum):
+        return node.name
+    return node
+
+
+def parse_expression(sql: str, dialect: str = None) -> str:
+    """Parse `sql`, a single expression with no surrounding SELECT such as `sales / target` or
+    `status = 'Shipped' AND amount > 0`, and return its sqlglot tree as JSON (see _expression_to_json).
+    Raises ParseError when the SQL does not parse, is empty, or is more than one statement."""
+    expressions = [e for e in sqlglot.parse(sql, read=dialect) if e is not None]
+    if len(expressions) != 1:
+        raise ParseError(f"expected a single expression, got {len(expressions)} statements")
+    return json.dumps(_expression_to_json(expressions[0], dialect))

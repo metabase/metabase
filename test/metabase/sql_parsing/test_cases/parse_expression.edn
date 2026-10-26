@@ -1,0 +1,46 @@
+{:cases
+ [{:name    "arithmetic over two columns"
+   :dialect "postgres"
+   :sql     "sales / target"
+   :tree    {:class "Div"
+             :args  {:this       {:class "Column" :args {:this {:class "Identifier" :args {:this "sales" :quoted false}}}}
+                     :expression {:class "Column" :args {:this {:class "Identifier" :args {:this "target" :quoted false}}}}
+                     :typed      true
+                     :safe       false}}}
+
+  {:name    "a condition, with a doubled quote in the string unescaped"
+   :dialect "postgres"
+   :sql     "status = 'O''Reilly'"
+   :tree    {:class "EQ"
+             :args  {:this       {:class "Column" :args {:this {:class "Identifier" :args {:this "status" :quoted false}}}}
+                     :expression {:class "Literal" :args {:this "O'Reilly" :is_string true}}}}}
+
+  {:name    "a dialect-specific cast, with the type normalized"
+   :dialect "postgres"
+   :sql     "sales::numeric"
+   :tree    {:class "Cast"
+             :func  "CAST"
+             :args  {:this {:class "Column" :args {:this {:class "Identifier" :args {:this "sales" :quoted false}}}}
+                     :to   {:class "DataType" :args {:this "DECIMAL" :nested false}}}}}
+
+  {:name    "a function carries its SQL name"
+   :dialect "postgres"
+   :sql     "lower(status)"
+   :tree    {:class "Lower"
+             :func  "LOWER"
+             :args  {:this {:class "Column" :args {:this {:class "Identifier" :args {:this "status" :quoted false}}}}}}}
+
+  {:name    "nothing to parse"
+   :dialect "postgres"
+   :sql     "   "
+   :error   "expected a single expression, got 0 statements"}
+
+  {:name    "more than one statement"
+   :dialect "postgres"
+   :sql     "status = 'Shipped'; DROP TABLE orders"
+   :error   "expected a single expression, got 2 statements"}
+
+  {:name    "not SQL"
+   :dialect "postgres"
+   :sql     "distinct customer_key"
+   :error   "Invalid expression"}]}
