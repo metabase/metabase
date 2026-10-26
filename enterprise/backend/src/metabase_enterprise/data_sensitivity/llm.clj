@@ -1,9 +1,9 @@
 (ns metabase-enterprise.data-sensitivity.llm
   "The single LLM interaction of the data-sensitivity classifier: category and semantic-type enums, the system
   prompt, the user message rendered from a [[metabase-enterprise.data-sensitivity.context]] packet, the structured
-  response schema, the call, and response parsing. [[classify-packet]] splits wide tables into chunks and merges the
-  parsed entries by field name. Every call runs on one instance-wide pool of [[pool-size]] threads, so that is the
-  limit on LLM calls in flight. Nothing here catches exceptions: gate failures, malformed responses, and transport
+  response schema, the call, and response parsing. [[submit-packet]] splits wide tables into chunks and
+  [[collect-packet]] merges the parsed entries by field name. Every call runs on one instance-wide pool of
+  [[pool-size]] threads, so that is the limit on LLM calls in flight. Nothing here catches exceptions: gate failures, malformed responses, and transport
   errors propagate to the caller."
   (:require
    [clojure.string :as str]
@@ -214,16 +214,23 @@
   a display name, or a database type. Names are never capped, because the model's answer is joined to them."
   1000)
 
-(defn- capped
-  "`s` with whitespace collapsed to single spaces, cut to [[text-cap]] characters with a trailing ellipsis."
+(defn- one-line
+  "`s` with each run of whitespace, Unicode line separators included, collapsed to one space, so a value cannot
+  start a new line of the prompt. Names go through this uncapped; [[parse-response]] joins the model's answer to
+  this form of a name too."
   [s]
-  (let [s (str/replace (str s) #"\s+" " ")]
+  (str/replace (str s) #"(?U)\s+" " "))
+
+(defn- capped
+  "`s` on [[one-line]], cut to [[text-cap]] characters with a trailing ellipsis."
+  [s]
+  (let [s (one-line s)]
     (if (> (count s) text-cap)
       (str (subs s 0 (dec text-cap)) "…")
       s)))
 
 (defn- quoted [s]
-  (str "\"" (-> (str s) (str/replace "\"" "'") (str/replace #"\s+" " ")) "\""))
+  (str "\"" (-> (str s) (str/replace "\"" "'") one-line) "\""))
 
 (defn- human-set-marker [{:keys [human_set]} k]
   (when (contains? human_set k) " [human-set]"))
@@ -252,7 +259,7 @@
            cached_values sample_values] :as field}
    attributes]
   (let [values (budgeted-values (distinct (concat sample_values cached_values)))]
-    (str "- " name
+    (str "- " (one-line name)
          " (" (subs (str base_type) 1) (when database_type (str ", " (capped database_type)))
          (when semantic_type (str "; semantic: " (subs (str semantic_type) 1) (human-set-marker field :semantic_type)))
          (when (contains? (:human_set field) :display_name) (str "; display name: " (quoted (capped display_name)) " [human-set]"))
@@ -262,7 +269,7 @@
 
            (attributes :description)
            (str "; description: none" (human-set-marker field :description)))
-         (when fk_target (str "; fk -> " fk_target))
+         (when fk_target (str "; fk -> " (one-line fk_target)))
          (when-let [fp (fingerprint-fragment fingerprint)] (str "; " fp))
          (when (seq values) (str "; values: " (str/join ", " values)))
          ")")))
@@ -273,8 +280,8 @@
   (let [{:keys [name schema engine entity_type description]} table]
     (str "TABLE:\n"
          (data-block "table"
-                     (str "name: " name
-                          (when schema (str "\nschema: " schema))
+                     (str "name: " (one-line name)
+                          (when schema (str "\nschema: " (one-line schema)))
                           (when engine (str "\nengine: " (clojure.core/name engine)))
                           (when entity_type (str "\nentity type: " (subs (str entity_type) 1)))
                           (when-not (str/blank? description) (str "\ndescription: " (capped description)))))
@@ -425,8 +432,9 @@
 (mu/defn parse-response :- ::parsed
   "Turn the model's `{:fields [...]}` into one entry per input field, keyed by name. The entries may have string or
   keyword keys: the structured call keywordizes only the top-level names of the tool arguments, and nested objects
-  stay as the model wrote them. Entries naming an unknown field are counted and ignored; fields with no entry are
-  dropped. When a name appears twice the first entry wins.
+  stay as the model wrote them. An entry names a field by its name or by the [[one-line]] form of its name, as the
+  prompt renders it. Entries naming an unknown field are counted and ignored; fields with no entry are dropped. When a
+  name appears twice the first entry wins.
 
   Only the proposals of `attributes` are read. With `:data_sensitivity`, an invalid
   category drops the field and `UNSURE` abstains; without it, every entry is `:labeled`. An invalid semantic type, or
@@ -435,7 +443,8 @@
   [fields     :- [:sequential ::context/field]
    response   :- [:maybe [:map {::mr/deliberately-open true}]]
    attributes :- ::attributes]
-  (let [known        (into {} (map (juxt :name identity)) fields)
+  (let [known        (merge (into {} (map (juxt (comp one-line :name) identity)) fields)
+                            (into {} (map (juxt :name identity)) fields))
         sensitivity? (attributes :data_sensitivity)
         description? (attributes :description)
         counts       (volatile! zero-counts)
@@ -448,7 +457,7 @@
                             (not (contains? known name))
                             (do (count! :dropped-unknown) acc)
 
-                            (contains? acc name)
+                            (contains? acc (:name (get known name)))
                             acc
 
                             :else
@@ -473,7 +482,7 @@
                                                          :reasoning     reasoning}
                                                   description? (assoc :description
                                                                       (proposed-description field description count!)))]
-                              (assoc acc name
+                              (assoc acc (:name field)
                                      (cond
                                        (not sensitivity?)
                                        (assoc base :data-sensitivity nil :status :labeled)
@@ -666,14 +675,3 @@ name, gets a chunk of its own. The size
                        (map :usage calls))
      :fields   (into {} (map :fields) calls)
      :counts   (reduce (partial merge-with +) zero-counts (map :counts calls))}))
-
-(mu/defn classify-packet :- ::classification
-  "Classify every field of `packet` in chunks on the shared pool and wait for the result: a [[submit-packet]]
-  followed by a [[collect-packet]]. The first chunk failure fails the packet. A packet with no fields makes no call."
-  [packet :- ::context/packet
-   & {:as opts} :- [:maybe ::classify-options]]
-  (let [submitted (submit-packet packet opts)]
-    (try
-      (collect-packet submitted)
-      (finally
-        (cancel-packet submitted)))))

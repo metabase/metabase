@@ -4,7 +4,6 @@
    [metabase-enterprise.data-sensitivity.models.metadata-generation-proposal :as proposal]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
@@ -17,13 +16,6 @@
   "The active Table with `table-id`, or nil."
   [table-id :- ::lib.schema.id/table]
   (t2/select-one :model/Table :id table-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
-
-(mu/defn active-schema?
-  "Whether the Database with `database-id` has an active Table in `schema`."
-  [database-id :- ::lib.schema.id/database
-   schema      :- :string]
-  (t2/exists? :model/Table {:from  [(warehouse-schema-overlay/table-query)]
-                            :where [:and [:= :db_id database-id] [:= :active true] [:= :schema schema]]}))
 
 (mu/defn database
   "The Database with `database-id`, or nil."
@@ -79,21 +71,12 @@
                                                 {:from [(warehouse-schema-overlay/table-query)]})))
 
 (mu/defn active-tables
-  "The active Tables of `database-id`, restricted to `schema` when it is non-nil, ordered by schema then name."
-  [database-id :- ::lib.schema.id/database
-   schema      :- [:maybe :string]]
+  "The active Tables of `database-id`, ordered by schema then name."
+  [database-id :- ::lib.schema.id/database]
   (t2/select :model/Table
              {:from     [(warehouse-schema-overlay/table-query)]
-              :where    (cond-> [:and [:= :db_id database-id] [:= :active true]]
-                          schema (conj [:= :schema schema]))
+              :where    [:and [:= :db_id database-id] [:= :active true]]
               :order-by [[:schema :asc] [:name :asc]]}))
-
-(mu/defn commit-labels!
-  "In one transaction, set the `data_sensitivity` of every Field in `field-ids-by-label` to its label."
-  [field-ids-by-label :- [:map-of ::lib.schema.metadata/column.data-sensitivity [:sequential ::lib.schema.id/field]]]
-  (t2/with-transaction [_conn]
-    (doseq [[label field-ids] field-ids-by-label]
-      (t2/update! :model/Field :id [:in field-ids] {:data_sensitivity label}))))
 
 ;;; Metadata generation runs
 

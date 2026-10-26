@@ -7,7 +7,7 @@
 
 databaseChangeLog:
   - changeSet:
-      id: v65.2026-10-09T00:00:00
+      id: oqir62
       author: tplude
       comment: Add metadata_generation_run
       changes:
@@ -142,7 +142,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v65.2026-10-09T00:00:01
+      id: qwc142
       author: tplude
       comment: Add FK on metadata_generation_run.creator_id; SET NULL keeps the run when the user is deleted
       changes:
@@ -156,7 +156,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v65.2026-10-09T00:00:02
+      id: lwpplm
       author: tplude
       comment: At most one active metadata_generation_run per database
       changes:
@@ -167,7 +167,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v65.2026-10-09T00:00:03
+      id: ws8xgq
       author: tplude
       comment: Index metadata_generation_run by database and status
       changes:
@@ -182,7 +182,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v65.2026-10-09T00:00:04
+      id: fk17dw
       author: tplude
       comment: Index metadata_generation_run.creator_id
       changes:
@@ -195,7 +195,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v65.2026-10-09T00:00:05
+      id: w8zxtq
       author: tplude
       comment: Add metadata_generation_proposal
       changes:
@@ -296,7 +296,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v65.2026-10-09T00:00:06
+      id: g0ebym
       author: tplude
       comment: Add FK on metadata_generation_proposal.decided_by; SET NULL keeps the proposal when the user is deleted
       changes:
@@ -310,7 +310,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v65.2026-10-09T00:00:07
+      id: nbtkef
       author: tplude
       comment: One proposal per field and attribute
       changes:
@@ -321,7 +321,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v65.2026-10-09T00:00:08
+      id: he9xtk
       author: tplude
       comment: Index metadata_generation_proposal.last_run_id
       changes:
@@ -334,7 +334,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v65.2026-10-09T00:00:09
+      id: qzr7gb
       author: tplude
       comment: Add FK on metadata_generation_proposal.last_run_id; SET NULL keeps the proposal when the run is deleted
       changes:
@@ -348,7 +348,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v65.2026-10-09T00:00:10
+      id: si8rzd
       author: tplude
       comment: Index metadata_generation_proposal.table_id
       changes:
@@ -361,7 +361,7 @@ databaseChangeLog:
       rollback: # dropped with table
 
   - changeSet:
-      id: v65.2026-10-09T00:00:11
+      id: zcqadm
       author: tplude
       comment: Index metadata_generation_proposal.decided_by
       changes:
