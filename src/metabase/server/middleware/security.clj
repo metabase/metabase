@@ -354,7 +354,14 @@
                                  ;; separately from `'self'` (which stays for the host-side SDK calls).
                                  (when data-app-iframe? data-app-connect-hosts))
                   :manifest-src ["'self'"]
-                  :media-src    ["www.metabase.com"]}]
+                  :media-src    ["www.metabase.com"]
+                  :form-action  (when data-app-iframe?
+                                  ;; Restrict HTML form submissions to allowed hosts, so data apps
+                                  ;; can't submit forms to Metabase APIs using the user's session.
+                                  (if (seq data-app-connect-hosts)
+                                    data-app-connect-hosts
+                                    ["'none'"]))}
+          :when vs]
       (format "%s %s; " (name k) (str/join " " vs))))})
 
 (def ^:private csp-unsafe-char-re
@@ -393,26 +400,10 @@
 
 (defn- content-security-policy-header-with-frame-ancestors
   [frame-ancestors-mode nonce script-nonce? data-app-iframe? data-app-connect-hosts allow-blob-img?]
-  (cond-> (update (content-security-policy-header nonce script-nonce? data-app-iframe? data-app-connect-hosts
-                                                  allow-blob-img?)
-                  "Content-Security-Policy"
-                  #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode)))
-    ;; MANDATORY for data apps — do not remove/weaken. Sole barrier (no JS backstop)
-    ;; against a hostile bundle native-submitting a HOST `<form action="/api/user">`
-    ;; to provision an admin: the backend takes `:form-params` before the JSON body
-    ;; and a `:normal-cookie` session needs no anti-CSRF token, so `form-action` is
-    ;; what stops it. Restricts native submits to the app's `allowed_hosts` (any
-    ;; entry that would match the instance origin — exact or wildcard — is filtered
-    ;; out upstream by `drop-instance-origin`), or `'none'` when none are declared;
-    ;; it does not fall back to `default-src`, so it must be set explicitly.
-    ;; Client-side `onSubmit` (preventDefault) is unaffected. Covered by
-    ;; security-test/data-app-form-action-test; keep in sync if duplicated downstream.
-    data-app-iframe? (update "Content-Security-Policy"
-                             #(str % " form-action "
-                                   (if (seq data-app-connect-hosts)
-                                     (str/join " " data-app-connect-hosts)
-                                     "'none'")
-                                   ";"))))
+  (update (content-security-policy-header nonce script-nonce? data-app-iframe? data-app-connect-hosts
+                                          allow-blob-img?)
+          "Content-Security-Policy"
+          #(format "%s frame-ancestors %s;" % (frame-ancestors-value frame-ancestors-mode))))
 
 (defn- x-frame-options-header
   "Legacy `X-Frame-Options` companion to the CSP `frame-ancestors` (for browsers
@@ -635,6 +626,13 @@
   (if-let [self (site-origin)]
     (remove #(covers-instance-origin? self %) hosts)
     hosts))
+
+(defn embedded-data-app-content-security-policy
+  "CSP for embedded data apps to be installed inside the data app iframe."
+  [allowed-hosts]
+  (get (content-security-policy-header
+        nil false true (drop-instance-origin allowed-hosts) true)
+       "Content-Security-Policy"))
 
 (defn- cacheable-status?
   "Whether a response with this status may carry a far-future cache header. A 404 for a hashed

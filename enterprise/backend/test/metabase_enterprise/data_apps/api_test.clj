@@ -9,6 +9,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
+   [metabase.server.middleware.security :as security]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -424,3 +425,27 @@
         (is (str/includes? contents "type: implicit\n"))
         (is (str/includes? contents "kind: row/update"))
         (is (str/includes? contents "- VENUES"))))))
+
+(deftest bundle-policy-and-revalidation-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-temp [:model/DataApp app demo-app]
+        (let [bundle-url    (data-apps.tu/app-url app "bundle")
+              initial       (mt/user-http-request-full-response :crowberto :get 200 bundle-url)
+              policy-header "X-Metabase-Data-App-Content-Security-Policy"
+              options       {:request-options {:headers {"x-metabase-client" "data-app"}}}]
+          (testing "embedded requests receive bundle source and CSP header"
+            (let [response (mt/user-http-request-full-response :crowberto :get 200 bundle-url options)]
+              (is (str/includes? (:body response) "DEMOBUNDLE"))
+              (is (= (get-in initial [:headers policy-header]) (get-in response [:headers policy-header])))))
+          (testing "changing allowed hosts updates CSP header"
+            ;; Allowed hosts change only through a repository import, which writes the row.
+            (t2/update! :model/DataApp :id (:id app) {:allowed_hosts ["https://other.example.com"]})
+            (let [response (mt/user-http-request-full-response :crowberto :get 200 bundle-url options)]
+              (is (= (security/embedded-data-app-content-security-policy ["https://other.example.com"])
+                     (get-in response [:headers policy-header])))))
+          (testing "does not return CSP header when authorization fails or app bundle is missing"
+            (doseq [[user path status] [[:rasta bundle-url 403]
+                                        [:crowberto "ee/apps/missing/bundle" 404]]]
+              (is (nil? (get-in (mt/user-http-request-full-response user :get status path options)
+                                [:headers policy-header]))))))))))
