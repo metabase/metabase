@@ -55,4 +55,6 @@ export type FilterDirection = {
   prepareQuery?: (query: Lib.Query) => Lib.Query;
   /** Loads on open instead of the plain Orders query. */
   initialExample?: Example;
+  /** Tucked into the iteration's collapsed "Other drafts" group in the rail. */
+  draft?: boolean;
 };

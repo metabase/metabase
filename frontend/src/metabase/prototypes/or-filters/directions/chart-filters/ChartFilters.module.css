@@ -41,3 +41,54 @@
     box-shadow: inset 0 0 0 3px transparent;
   }
 }
+
+.funnelRow {
+  max-width: 48rem;
+}
+
+.funnelLabel {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.funnelTrack {
+  flex: 0 0 10rem;
+  height: 0.375rem;
+  border-radius: 999px;
+  background-color: var(--mb-color-border-neutral);
+  overflow: hidden;
+}
+
+.funnelFill {
+  height: 100%;
+  background-color: var(--mb-color-core-filter);
+  transition: width 0.2s ease-out;
+}
+
+/* Small enough to read as part of the chart's legend. */
+.thresholdCompact {
+  box-sizing: border-box;
+  gap: 0.25rem;
+  height: 1.5rem;
+  cursor: pointer;
+  padding: 0 0.375rem 0 0.5rem;
+  border-color: var(--mb-color-border-neutral);
+  color: var(--mb-color-text-primary);
+}
+
+.compactInput {
+  height: 1.25rem;
+  min-height: 1.25rem;
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-decoration: underline dashed;
+}
+
+.thresholdCompact:hover {
+  border-color: var(--mb-color-core-summarize);
+}
+
+.thresholdRemove {
+  color: var(--mb-color-text-secondary);
+}

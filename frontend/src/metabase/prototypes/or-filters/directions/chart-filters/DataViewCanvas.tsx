@@ -1,7 +1,9 @@
-import { useContext, useMemo, useState } from "react";
+import cx from "classnames";
+import { type ComponentType, useContext, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
+import { FilterPickerBody } from "metabase/querying/filters/components/FilterPicker/FilterPickerBody";
 import {
   ActionIcon,
   Box,
@@ -10,12 +12,15 @@ import {
   Icon,
   Menu,
   NumberInput,
+  Popover,
   Stack,
   Switch,
   Text,
+  UnstyledButton,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import { toFilterClause } from "../../harness/clauses";
 import type { FilterCanvasProps } from "../../types";
 import { ExpressionBar } from "../expression-bar-unified/ExpressionBar";
 
@@ -42,10 +47,13 @@ export function DataViewCanvas({
   query,
   onChange,
   heading,
-}: FilterCanvasProps) {
+  DataZone = SourceDataZone,
+}: FilterCanvasProps & { DataZone?: ComponentType<FilterCanvasProps> }) {
   const question = useQuestionHistory(query, onChange);
   const [hasLlm, setHasLlm] = useState(true);
   const isAggregated = Lib.aggregations(query, ROWS_STAGE).length > 0;
+  // A swapped-in Data zone is a plain bar, with the thresholds right under it.
+  const isCompact = DataZone !== SourceDataZone;
 
   return (
     <LlmContext.Provider value={hasLlm}>
@@ -55,23 +63,46 @@ export function DataViewCanvas({
         canGoBack={question.canGoBack}
         onBack={question.back}
         settings={
-          <Switch
-            label={t`Metabot available`}
-            checked={hasLlm}
-            onChange={(event) => setHasLlm(event.currentTarget.checked)}
-          />
+          !isCompact && (
+            <Switch
+              label={t`Metabot available`}
+              checked={hasLlm}
+              onChange={(event) => setHasLlm(event.currentTarget.checked)}
+            />
+          )
         }
       >
-        <Box pos="relative" className={S.dataZone} px="xl" py="md">
-          {question.landed === "rows" && (
-            <LandedFlash landedKey={question.landedKey} />
-          )}
-          <DataZone query={query} onChange={onChange} />
-        </Box>
+        {isCompact ? (
+          <>
+            <DataZone query={query} onChange={onChange} />
+          </>
+        ) : (
+          <Box pos="relative" className={S.dataZone} px="xl" py="md">
+            {question.landed === "rows" && (
+              <LandedFlash landedKey={question.landedKey} />
+            )}
+            <DataZone query={query} onChange={onChange} />
+          </Box>
+        )}
         <Box p="lg">
-          <QuestionChart query={query} display="bar" onPick={question.apply} />
+          <QuestionChart
+            query={query}
+            display="bar"
+            onPick={question.apply}
+            legendAccessory={
+              isCompact &&
+              isAggregated && (
+                <Box pos="relative">
+                  {question.landed === "summary" && (
+                    <LandedFlash landedKey={question.landedKey} />
+                  )}
+                  <ThresholdPills query={query} onChange={onChange} />
+                </Box>
+              )
+            }
+          />
         </Box>
-        {isAggregated && (
+        {isAggregated && !isCompact && (
           <Box pos="relative" className={S.viewZone} px="xl" py="md">
             {question.landed === "summary" && (
               <LandedFlash landedKey={question.landedKey} />
@@ -84,7 +115,7 @@ export function DataViewCanvas({
   );
 }
 
-function DataZone({ query, onChange }: FilterCanvasProps) {
+function SourceDataZone({ query, onChange }: FilterCanvasProps) {
   const hasLlm = useContext(LlmContext);
   const hasFilters = Lib.filters(query, ROWS_STAGE).length > 0;
   const [isOpen, setIsOpen] = useState(!hasFilters);
@@ -126,7 +157,7 @@ function DataZone({ query, onChange }: FilterCanvasProps) {
   );
 }
 
-function RowCount({ query }: { query: Lib.Query }) {
+export function RowCount({ query }: { query: Lib.Query }) {
   const rowsQuery = rowsOnly(query);
   const jsQuery = useMemo(
     () => Lib.toJsQuery(rowCountQuery(rowsQuery)),
@@ -210,30 +241,197 @@ function ViewZone({ query, onChange }: FilterCanvasProps) {
   );
 }
 
-type ThresholdProps = {
+/** Just the thresholds as pills and a "+" to add one: no sentence, no sort. */
+function ThresholdPills({ query, onChange }: FilterCanvasProps) {
+  const summaryQuery =
+    Lib.stageCount(query) > SUMMARY_STAGE ? query : Lib.appendStage(query);
+  const thresholds =
+    Lib.stageCount(query) > SUMMARY_STAGE
+      ? Lib.filters(query, SUMMARY_STAGE)
+      : [];
+  const handleChange = (nextQuery: Lib.Query) =>
+    onChange(Lib.dropEmptyStages(nextQuery));
+
+  return (
+    <Group gap={6} align="center" wrap="nowrap">
+      {thresholds.map((filter, index) => (
+        <CompactThreshold
+          key={index}
+          query={query}
+          filter={filter}
+          onChange={handleChange}
+        />
+      ))}
+      <AddCompactThreshold
+        summaryQuery={summaryQuery}
+        onChange={handleChange}
+      />
+    </Group>
+  );
+}
+
+type CompactThresholdProps = {
   query: Lib.Query;
   filter: Lib.FilterClause;
   onChange: (query: Lib.Query) => void;
 };
 
+/** A small pill; clicking it opens the app's own number filter with Apply. */
+function CompactThreshold({ query, filter, onChange }: CompactThresholdProps) {
+  const [isOpened, setIsOpened] = useState(false);
+  const column = Lib.numberFilterParts(query, SUMMARY_STAGE, filter)?.column;
+  const remove = () => onChange(Lib.removeClause(query, SUMMARY_STAGE, filter));
+
+  return (
+    <Popover opened={isOpened} position="bottom-start" onChange={setIsOpened}>
+      <Popover.Target>
+        <UnstyledButton
+          className={cx(S.threshold, S.thresholdCompact)}
+          onClick={() => setIsOpened(!isOpened)}
+        >
+          <Text size="xs" fw="bold" c="inherit">
+            {Lib.displayInfo(query, SUMMARY_STAGE, filter).displayName}
+          </Text>
+          <Icon
+            name="close"
+            size={10}
+            className={S.thresholdRemove}
+            aria-label={t`Remove`}
+            onClick={(event) => {
+              event.stopPropagation();
+              remove();
+            }}
+          />
+        </UnstyledButton>
+      </Popover.Target>
+      <Popover.Dropdown>
+        {column && (
+          <FilterPickerBody
+            query={query}
+            stageIndex={SUMMARY_STAGE}
+            column={column}
+            filter={filter}
+            onChange={(clause) => {
+              onChange(
+                Lib.replaceClause(
+                  query,
+                  SUMMARY_STAGE,
+                  filter,
+                  toFilterClause(query, SUMMARY_STAGE, clause),
+                ),
+              );
+              setIsOpened(false);
+            }}
+          />
+        )}
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
+type AddCompactThresholdProps = {
+  summaryQuery: Lib.Query;
+  onChange: (query: Lib.Query) => void;
+};
+
+/** "+": pick a measure, then set its number in the app's filter picker. */
+function AddCompactThreshold({
+  summaryQuery,
+  onChange,
+}: AddCompactThresholdProps) {
+  const [isOpened, setIsOpened] = useState(false);
+  const [column, setColumn] = useState<Lib.ColumnMetadata>();
+  const measures = getMeasures(summaryQuery);
+  const close = () => {
+    setIsOpened(false);
+    setColumn(undefined);
+  };
+
+  return (
+    <Popover
+      opened={isOpened}
+      position="bottom-start"
+      onChange={(opened) => (opened ? setIsOpened(true) : close())}
+    >
+      <Popover.Target>
+        <ActionIcon
+          size="sm"
+          variant="subtle"
+          c="text-secondary"
+          aria-label={t`Add a filter on the summary`}
+          onClick={() => (isOpened ? close() : setIsOpened(true))}
+        >
+          <Icon name="add" size={12} />
+        </ActionIcon>
+      </Popover.Target>
+      <Popover.Dropdown>
+        {column ? (
+          <FilterPickerBody
+            query={summaryQuery}
+            stageIndex={SUMMARY_STAGE}
+            column={column}
+            isNew
+            onBack={() => setColumn(undefined)}
+            onChange={(clause) => {
+              onChange(
+                Lib.filter(
+                  summaryQuery,
+                  SUMMARY_STAGE,
+                  toFilterClause(summaryQuery, SUMMARY_STAGE, clause),
+                ),
+              );
+              close();
+            }}
+          />
+        ) : (
+          <Stack gap={0} p="sm" miw={200}>
+            {measures.map((measure, index) => (
+              <Button
+                key={index}
+                variant="subtle"
+                justify="flex-start"
+                onClick={() => setColumn(measure)}
+              >
+                {
+                  Lib.displayInfo(summaryQuery, SUMMARY_STAGE, measure)
+                    .displayName
+                }
+              </Button>
+            ))}
+          </Stack>
+        )}
+      </Popover.Dropdown>
+    </Popover>
+  );
+}
+
+type ThresholdProps = {
+  query: Lib.Query;
+  isCompact?: boolean;
+  filter: Lib.FilterClause;
+  onChange: (query: Lib.Query) => void;
+};
+
 /** A summary filter as a phrase with its number editable in place. */
-function Threshold({ query, filter, onChange }: ThresholdProps) {
+function Threshold({ query, filter, isCompact, onChange }: ThresholdProps) {
   const parts = Lib.numberFilterParts(query, SUMMARY_STAGE, filter);
   const phrase = parts ? OPERATOR_PHRASES[parts.operator]?.() : undefined;
   const value = parts?.values[0];
   const remove = () => onChange(Lib.removeClause(query, SUMMARY_STAGE, filter));
 
   return (
-    <Box className={S.threshold}>
+    <Box className={cx(S.threshold, { [S.thresholdCompact]: isCompact })}>
       {parts && phrase && typeof value === "number" ? (
         <>
-          <Text size="sm">
+          <Text size={isCompact ? "xs" : "sm"}>
             {Lib.displayInfo(query, SUMMARY_STAGE, parts.column).displayName}{" "}
             {phrase}
           </Text>
           <NumberInput
             size="xs"
-            w={100}
+            w={isCompact ? 56 : 100}
+            variant={isCompact ? "unstyled" : undefined}
+            classNames={isCompact ? { input: S.compactInput } : undefined}
             value={value}
             thousandSeparator=","
             hideControls
@@ -252,17 +450,17 @@ function Threshold({ query, filter, onChange }: ThresholdProps) {
           />
         </>
       ) : (
-        <Text size="sm">
+        <Text size={isCompact ? "xs" : "sm"}>
           {Lib.displayInfo(query, SUMMARY_STAGE, filter).displayName}
         </Text>
       )}
       <ActionIcon
-        size="sm"
+        size={isCompact ? "xs" : "sm"}
         variant="subtle"
         aria-label={t`Remove`}
         onClick={remove}
       >
-        <Icon name="close" size={12} />
+        <Icon name="close" size={isCompact ? 10 : 12} />
       </ActionIcon>
     </Box>
   );
@@ -270,34 +468,39 @@ function Threshold({ query, filter, onChange }: ThresholdProps) {
 
 type AddThresholdProps = {
   summaryQuery: Lib.Query;
+  isCompact?: boolean;
   onChange: (query: Lib.Query) => void;
 };
 
 /** Only measures are offered: a filter on a breakout belongs to the rows. */
-function AddThreshold({ summaryQuery, onChange }: AddThresholdProps) {
-  const aggregationNames = new Set(
-    Lib.returnedColumns(summaryQuery, ROWS_STAGE)
-      .map((column) => Lib.displayInfo(summaryQuery, ROWS_STAGE, column))
-      .filter((info) => info.isAggregation)
-      .map((info) => info.name),
-  );
-  const measures = Lib.filterableColumns(summaryQuery, SUMMARY_STAGE).filter(
-    (column) =>
-      aggregationNames.has(
-        Lib.displayInfo(summaryQuery, SUMMARY_STAGE, column).name,
-      ),
-  );
+function AddThreshold({
+  summaryQuery,
+  isCompact,
+  onChange,
+}: AddThresholdProps) {
+  const measures = getMeasures(summaryQuery);
 
   return (
     <Menu position="bottom-start">
       <Menu.Target>
-        <Button
-          size="compact-sm"
-          variant="subtle"
-          leftSection={<Icon name="add" />}
-        >
-          {t`Only show where…`}
-        </Button>
+        {isCompact ? (
+          <ActionIcon
+            size="sm"
+            variant="subtle"
+            c="text-secondary"
+            aria-label={t`Add a filter on the summary`}
+          >
+            <Icon name="add" size={12} />
+          </ActionIcon>
+        ) : (
+          <Button
+            size="compact-sm"
+            variant="subtle"
+            leftSection={<Icon name="add" />}
+          >
+            {t`Only show where…`}
+          </Button>
+        )}
       </Menu.Target>
       <Menu.Dropdown>
         {measures.map((column, index) => (
@@ -322,5 +525,19 @@ function AddThreshold({ summaryQuery, onChange }: AddThresholdProps) {
         ))}
       </Menu.Dropdown>
     </Menu>
+  );
+}
+
+function getMeasures(summaryQuery: Lib.Query): Lib.ColumnMetadata[] {
+  const aggregationNames = new Set(
+    Lib.returnedColumns(summaryQuery, ROWS_STAGE)
+      .map((column) => Lib.displayInfo(summaryQuery, ROWS_STAGE, column))
+      .filter((info) => info.isAggregation)
+      .map((info) => info.name),
+  );
+  return Lib.filterableColumns(summaryQuery, SUMMARY_STAGE).filter((column) =>
+    aggregationNames.has(
+      Lib.displayInfo(summaryQuery, SUMMARY_STAGE, column).name,
+    ),
   );
 }

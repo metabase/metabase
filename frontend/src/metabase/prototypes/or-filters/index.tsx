@@ -33,6 +33,7 @@ function toPrototype(
       return direction.description;
     },
     iteration,
+    draft: direction.draft,
     Component: function OrFilterPrototype() {
       return <OrFilterCanvas direction={direction} />;
     },

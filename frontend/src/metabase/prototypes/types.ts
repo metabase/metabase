@@ -9,5 +9,7 @@ export type PrototypeDefinition = {
   description: string;
   /** Absent for reference pages that sit above the iterations in the rail. */
   iteration?: PrototypeIteration;
+  /** Tucked into the iteration's collapsed "Other drafts" group in the rail. */
+  draft?: boolean;
   Component: ComponentType;
 };

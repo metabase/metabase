@@ -48,6 +48,15 @@ function describeClause(
   return Lib.displayInfo(query, stageIndex, clause).displayName;
 }
 
+/** One filter, nested groups folded one level sooner, for a short label. */
+export function describeFilter(
+  query: Lib.Query,
+  stageIndex: number,
+  clause: Lib.FilterClause,
+): string {
+  return describeClause(query, stageIndex, clause, 1);
+}
+
 /** Every filter on the stage, top-level ANDs separated by " · ". */
 export function describeFilters(query: Lib.Query, stageIndex: number): string {
   return Lib.filters(query, stageIndex)

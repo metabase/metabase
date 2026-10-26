@@ -25,7 +25,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import { getFilterLabel, toFilterClause } from "../../harness/clauses";
 import { Token as TokenPill } from "../or-pills/Token";
@@ -662,6 +662,20 @@ function TokenView({
   );
 }
 
+/** Row filters only say "before" once there is a summary to be before. */
+function getStageTitle(
+  query: Lib.Query,
+  stageIndex: number,
+  isSummary: boolean,
+): string | undefined {
+  if (isSummary) {
+    return t`Applies after summarizing`;
+  }
+  return Lib.aggregations(query, stageIndex).length > 0
+    ? t`Applies before summarizing`
+    : undefined;
+}
+
 type FilterTokenViewProps = {
   query: Lib.Query;
   stageIndex: number;
@@ -705,7 +719,7 @@ export function FilterTokenView({
             { [S.summaryToken]: isSummary },
             className,
           )}
-          title={isSummary ? t`Applies after summarizing` : undefined}
+          title={getStageTitle(query, stageIndex, isSummary)}
         >
           <TokenPill
             onClick={() => setIsOpened((opened) => !opened)}

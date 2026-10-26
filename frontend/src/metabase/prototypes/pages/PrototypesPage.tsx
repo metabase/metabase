@@ -39,7 +39,10 @@ export function PrototypesPage() {
   );
 
   const iteration3 = directions.filter(
-    (candidate) => candidate.iteration === 3,
+    (candidate) => candidate.iteration === 3 && !candidate.draft,
+  );
+  const iteration3Drafts = directions.filter(
+    (candidate) => candidate.iteration === 3 && candidate.draft,
   );
 
   return (
@@ -87,6 +90,19 @@ export function PrototypesPage() {
 
         <Text fw="bold" px="sm">{t`Iteration 3`}</Text>
         <PrototypeLinks prototypes={iteration3} activeId={prototype?.id} />
+        {iteration3Drafts.length > 0 && (
+          <NavLink
+            label={t`Other drafts`}
+            childrenOffset="sm"
+            defaultOpened={false}
+          >
+            <PrototypeLinks
+              prototypes={iteration3Drafts}
+              activeId={prototype?.id}
+              mt="xs"
+            />
+          </NavLink>
+        )}
       </Stack>
 
       <Box flex={1} p="lg" style={{ overflow: "auto" }}>

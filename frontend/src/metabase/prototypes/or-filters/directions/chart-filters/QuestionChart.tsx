@@ -1,4 +1,11 @@
-import { useMemo, useState } from "react";
+import {
+  type ReactNode,
+  type RefObject,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { t } from "ttag";
 
 import { useGetAdhocQueryQuery } from "metabase/api";
@@ -7,7 +14,11 @@ import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
 import { Box, Loader, Menu, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
-import type { CardDisplayType, RawSeries } from "metabase-types/api";
+import type {
+  CardDisplayType,
+  DatasetColumn,
+  RawSeries,
+} from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
 import { FILTER_DRILLS_CLICK_MODE } from "../../harness/drillMode";
@@ -36,6 +47,12 @@ type QuestionChartProps = {
   onPick: (query: Lib.Query, target: DrillOptionTarget) => void;
   /** Today's popover produced a new query. */
   onLegacyDrill?: (query: Lib.Query) => void;
+  /** The query a picked option applies to, when the chart shows a different one. */
+  pickQuery?: Lib.Query;
+  /** A table's column header was clicked. */
+  onHeaderClick?: (column: DatasetColumn, element: Element) => void;
+  /** Sits right after the legend's last item; under the chart when there is no legend. */
+  legendAccessory?: ReactNode;
 };
 
 type OpenMenu = { model: DrillMenuModel; x: number; y: number };
@@ -51,11 +68,16 @@ export function QuestionChart({
   hasNewMenu = true,
   onPick,
   onLegacyDrill,
+  pickQuery = query,
+  onHeaderClick,
+  legendAccessory,
 }: QuestionChartProps) {
   const metadataProvider = useMetadataProviderUnfiltered(Lib.databaseID(query));
   const jsQuery = useMemo(() => Lib.toJsQuery(query), [query]);
   const result = useGetAdhocQueryQuery({ ...jsQuery, ignore_error: true });
   const [menu, setMenu] = useState<OpenMenu>();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const legendEnd = useLegendEnd(containerRef, legendAccessory != null);
 
   const isAggregated = Lib.aggregations(query, 0).length > 0;
   const effectiveDisplay = isAggregated ? display : "table";
@@ -79,6 +101,15 @@ export function QuestionChart({
   }, [result.data, jsQuery, effectiveDisplay]);
 
   const handleClick = (clicked: Lib.ClickObject | null) => {
+    if (
+      onHeaderClick &&
+      clicked?.column &&
+      clicked.element &&
+      clicked.value === undefined
+    ) {
+      onHeaderClick(clicked.column, clicked.element);
+      return;
+    }
     const event = clicked?.event;
     const model = clicked
       ? getDrillMenu({ query, clicked, groupCount, markNoun })
@@ -98,48 +129,126 @@ export function QuestionChart({
         : undefined;
 
   return (
-    <Box
-      h={CHART_HEIGHT}
-      pos="relative"
-      style={{
-        opacity: result.isFetching ? 0.5 : 1,
-        transition: "opacity 150ms",
-      }}
-    >
-      {errorMessage && (
-        <Text c="feedback-negative">{String(errorMessage)}</Text>
-      )}
-      {rawSeries ? (
-        <Visualization
-          queryBuilderMode="dataset"
-          rawSeries={rawSeries}
-          mode={FILTER_DRILLS_CLICK_MODE}
-          handleVisualizationClick={
-            hasNewMenu && isAggregated ? handleClick : undefined
-          }
-          onChangeCardAndRun={({ nextCard }) =>
-            onLegacyDrill?.(
-              Lib.fromJsQuery(metadataProvider, nextCard.dataset_query),
-            )
-          }
-        />
-      ) : (
-        result.isFetching && <Loader />
-      )}
-      {menu && (
-        <DrillMenu
-          menu={menu}
-          query={query}
-          markNoun={markNoun}
-          onClose={() => setMenu(undefined)}
-          onPick={(option) => {
-            setMenu(undefined);
-            onPick(option.apply(query), option.target);
-          }}
-        />
-      )}
-    </Box>
+    <>
+      {legendAccessory && !legendEnd && <Box mb="sm">{legendAccessory}</Box>}
+      <Box
+        ref={containerRef}
+        h={CHART_HEIGHT}
+        pos="relative"
+        style={{
+          opacity: result.isFetching ? 0.5 : 1,
+          transition: "opacity 150ms",
+        }}
+      >
+        {errorMessage && (
+          <Text c="feedback-negative">{String(errorMessage)}</Text>
+        )}
+        {rawSeries ? (
+          <Visualization
+            queryBuilderMode="dataset"
+            rawSeries={rawSeries}
+            mode={FILTER_DRILLS_CLICK_MODE}
+            handleVisualizationClick={
+              hasNewMenu && isAggregated ? handleClick : undefined
+            }
+            onChangeCardAndRun={({ nextCard }) =>
+              onLegacyDrill?.(
+                Lib.fromJsQuery(metadataProvider, nextCard.dataset_query),
+              )
+            }
+          />
+        ) : (
+          result.isFetching && <Loader />
+        )}
+        {legendAccessory && legendEnd && (
+          <Box
+            pos="absolute"
+            left={legendEnd.left + LEGEND_ACCESSORY_GAP}
+            top={legendEnd.top}
+            style={{ transform: "translateY(-50%)", zIndex: 1 }}
+          >
+            {legendAccessory}
+          </Box>
+        )}
+        {menu && (
+          <DrillMenu
+            menu={menu}
+            query={query}
+            markNoun={markNoun}
+            onClose={() => setMenu(undefined)}
+            onPick={(option) => {
+              setMenu(undefined);
+              onPick(option.apply(pickQuery), option.target);
+            }}
+          />
+        )}
+      </Box>
+    </>
   );
+}
+
+const LEGEND_ACCESSORY_GAP = 12;
+
+type LegendEnd = { left: number; top: number };
+
+/**
+ * Where the chart's legend ends, relative to the container, kept up to date as
+ * the chart re-renders. The legend row is moved above the chart, left-aligned,
+ * so the accessory reads as the legend's last entry.
+ */
+function useLegendEnd(
+  containerRef: RefObject<HTMLDivElement>,
+
+  isEnabled: boolean,
+): LegendEnd | undefined {
+  const [legendEnd, setLegendEnd] = useState<LegendEnd>();
+
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container || !isEnabled) {
+      return;
+    }
+    const update = () => {
+      const items = container.querySelectorAll('[data-testid="legend-item"]');
+      const lastItem = items[items.length - 1];
+      if (!lastItem) {
+        setLegendEnd(undefined);
+        return;
+      }
+      const legendRow =
+        lastItem.closest<HTMLElement>('[data-testid="legend-horizontal"]') ??
+        lastItem.parentElement;
+      if (legendRow) {
+        Object.assign(legendRow.style, {
+          order: "-1",
+          justifyContent: "flex-start",
+          marginTop: "0",
+          marginBottom: "0.75rem",
+        });
+      }
+      const containerRect = container.getBoundingClientRect();
+      const itemRect = lastItem.getBoundingClientRect();
+      const left = Math.round(itemRect.right - containerRect.left);
+      const top = Math.round(
+        itemRect.top - containerRect.top + itemRect.height / 2,
+      );
+      setLegendEnd((previous) =>
+        previous?.left === left && previous.top === top
+          ? previous
+          : { left, top },
+      );
+    };
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(container, { childList: true, subtree: true });
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [containerRef, isEnabled]);
+
+  return legendEnd;
 }
 
 type DrillMenuProps = {

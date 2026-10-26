@@ -26,6 +26,8 @@ type SummaryPillsProps = {
   query: Lib.Query;
   stageIndex: number;
   onChange: (query: Lib.Query) => void;
+  /** Leads the zone once it holds a filter, e.g. "after summarizing". */
+  label?: string;
 };
 
 /** An aggregation the zone can filter on, with the summary stage its filter lives on. */
@@ -86,6 +88,7 @@ export function SummaryPills({
   query,
   stageIndex,
   onChange,
+  label,
 }: SummaryPillsProps) {
   const compactReading = useContext(CompactReadingContext);
   const { summaries, filters, columns } = useSummaryFilters(query, stageIndex);
@@ -100,6 +103,11 @@ export function SummaryPills({
 
   return (
     <Group ref={zoneRef} gap="xs" wrap="wrap" className={S.summaryZone}>
+      {label && filters.length > 0 && (
+        <Text size="sm" c="text-secondary">
+          {label}
+        </Text>
+      )}
       {filters.map(({ summary, filter }, index) => (
         <FilterTokenView
           key={index}
