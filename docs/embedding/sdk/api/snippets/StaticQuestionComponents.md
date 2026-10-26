@@ -25,7 +25,7 @@ Uses question context for breakout functionality.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -62,7 +62,7 @@ Dropdown button for the Breakout component.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -99,7 +99,7 @@ Automatically updates to show recommended visualization types for the current da
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -133,7 +133,7 @@ Detailed chart type selection interface with recommended visualization options.
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -169,7 +169,7 @@ Provides a UI widget for downloading data in different formats (`CSV`, `XLSX`, `
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -206,7 +206,7 @@ Provides a button that contains a dropdown that shows the `DownloadWidget`.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -242,7 +242,7 @@ Displays current filters as badges with an "Add another filter" option.
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -278,7 +278,7 @@ A dropdown button for the Filter component.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -316,7 +316,7 @@ Uses question context for settings.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -353,7 +353,7 @@ Dropdown button that contains the QuestionSettings component.
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -385,9 +385,9 @@ The main visualization component that renders the question results as a chart, t
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                                                                                                                                                                                                                                                              | Description |
-| :-------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | :---------- |
-| `props`   | \{ `className?`: `string`; `style?`: [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L2579); \} & \{ `height?`: `Height`\<`string` \| `number`\>; `width?`: `Width`\<`string` \| `number`\>; \} & \{ \} |             |
+| Parameter | Type                                                                                                                                                                                                                                                            | Description |
+| :-------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------- |
+| `props`   | \{ `className?`: `string`; `style?`: [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L2571); \} & \{ `height?`: `Height`\<`string` \| `number`\>; `width?`: `Width`\<`string` \| `number`\>; \} & \{ \} |             |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -395,7 +395,7 @@ The main visualization component that renders the question results as a chart, t
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -431,7 +431,7 @@ Button to run the current query. Only appears when automatic reruns are turned o
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -468,7 +468,7 @@ Button to reset question modifications. Only appears when there are unsaved chan
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -495,7 +495,7 @@ Parameters list for SQL questions
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -521,7 +521,7 @@ Uses question context for summarization functionality.
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 ---
 
@@ -557,7 +557,7 @@ Dropdown button for the Summarize component.
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `null`
 
 ---
@@ -590,11 +590,11 @@ Displays a title based on the question's state. Shows:
 
 <!-- [<snippet parameters>] -->
 
-| Parameter          | Type                                                                                                                                                                                      | Description                                            |
-| :----------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------- |
-| `props`            | \{ `className?`: `string`; `style?`: [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L2579); \} |                                                        |
-| `props.className?` | `string`                                                                                                                                                                                  | A custom class name to be added to the root element.   |
-| `props.style?`     | [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/index.d.ts#L2579)                                          | A custom style object to be added to the root element. |
+| Parameter          | Type                                                                                                                                                    | Description                                            |
+| :----------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------ | :----------------------------------------------------- |
+| `props`            | \{ `className?`: `string`; `style?`: [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L2571); \} |                                                        |
+| `props.className?` | `string`                                                                                                                                                | A custom class name to be added to the root element.   |
+| `props.style?`     | [`CSSProperties`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L2571)                                          | A custom style object to be added to the root element. |
 
 <!-- [<endsnippet parameters>] -->
 
@@ -602,7 +602,7 @@ Displays a title based on the question's state. Shows:
 
 <!-- [<snippet returns>] -->
 
-\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+\| [`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 \| `undefined`
 
 <!-- [<endsnippet returns>] -->
@@ -627,6 +627,6 @@ AlertsButton: () => Element;
 
 <!-- [<snippet returns>] -->
 
-[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/0b728411cd1dfb4bd26992bb35a73cf8edaa22e7/types/react/jsx-runtime.d.ts#L6)
+[`Element`](https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/react/index.d.ts#L4239)
 
 <!-- [<endsnippet returns>] -->
