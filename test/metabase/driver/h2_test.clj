@@ -351,6 +351,18 @@
                       "CREATE OR REPLACE TRIGGER MY_SPECIAL_TRIG BEFORE SELECT ON INFORMATION_SCHEMA.Users AS '';"
                       "SELECT * FROM INFORMATION_SCHEMA.Users;"]))))
 
+(deftest ^:parallel check-read-only-error-type-test
+  (testing "the refusal is typed :invalid-query, so callers report it as a query error, not an internal one"
+    (is (= :invalid-query
+           (:type (ex-data (try
+                             (mt/with-metadata-provider (mt/id)
+                               (#'h2/check-read-only-statements
+                                {:database 1
+                                 :type     :native
+                                 :native   {:query "delete venues"}}))
+                             (catch clojure.lang.ExceptionInfo e
+                               e))))))))
+
 (deftest ^:parallel unsupported-functions-detection-test
   (let [hits #'h2/unsupported-functions-in-query]
     (testing "unsupported built-in functions are detected regardless of statement type, casing, or comments"

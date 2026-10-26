@@ -1,6 +1,7 @@
 (ns metabase.metabot.tools.document
   "Document-generation specific tool wrappers."
   (:require
+   [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.table-utils :as table-utils]
    [metabase.metabot.tools.construct :as construct-tools]
@@ -9,6 +10,7 @@
    [metabase.metabot.tools.sql.common :as sql.common]
    [metabase.metabot.tools.sql.create :as create-sql-query-tools]
    [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.util.i18n :refer [tru]]
    [metabase.warehouses.core :as warehouses]))
 
@@ -128,12 +130,17 @@
                    [:chart_type chart-type-enum]]]])
 
 (defn- check-query!
-  "Validate one row of `query`, throwing [[sql.common/query-failed!]] if it fails."
+  "Validate one row of `query`.
+
+  When the caller may see the failure, such as a database rejection, throw [[sql.common/query-failed!]] with its
+  message. Rethrow any other failure, such as an app DB error, unchanged."
   [query]
   (try
     (qp/process-query (assoc query :constraints {:max-results 1 :max-results-bare-rows 1}))
     (catch Exception e
-      (sql.common/query-failed! {:error-message (ex-message e)}))))
+      (if (query-execution/caller-facing-failure? (qp.catch-exceptions/exception-response e))
+        (sql.common/query-failed! {:error-message (ex-message e)})
+        (throw e)))))
 
 (defrecord DocumentConstructSqlChartTool []
   tools/Tool

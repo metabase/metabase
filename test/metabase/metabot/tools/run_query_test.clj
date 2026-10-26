@@ -1124,29 +1124,18 @@
                :error  {:class :recoverable, :code ::run-query/query-timed-out}}
               (run-tool! {"q1" (venues-count)} {:query_id "q1"}))))))
 
-(defn- reject-app-db-lookup
-  "Throw an app DB lookup error without leaving the surrounding transaction aborted."
-  [& _]
-  (t2/with-transaction [_conn]
-    (t2/query ["SELECT no_such_column FROM metabase_field"])))
-
-(def ^:private internal-failure
-  "What the model reads when a call fails inside Metabase. The turn ends there, and the user gets the generic error."
-  {:output "This call failed and the user was shown the error (:internal). Don't retry it."
-   :error  {:class :unrecoverable, :code :internal}})
-
 (deftest run-query-failure-inside-metabase-test
   (testing "a failure inside Metabase is an internal error, not an error in the model's query"
     (testing "when an app DB lookup fails while the query runs, and the log gets the detail"
       (let [query (venues-count)]
         (mt/with-log-messages-for-level [messages [metabase.metabot.tools.runtime :error]]
-          (mt/with-dynamic-fn-redefs [lib-be.db/columns reject-app-db-lookup]
-            (is (= internal-failure (run-tool! {"q1" query} {:query_id "q1"}))))
+          (mt/with-dynamic-fn-redefs [lib-be.db/columns mut/reject-app-db-lookup]
+            (is (= mut/internal-failure (run-tool! {"q1" query} {:query_id "q1"}))))
           (is (some #(re-find #"(?i)no_such_column" (str (some-> (:e %) ex-message))) (messages))))))
     (testing "when an app DB lookup fails while its SQL compiles"
       (let [query (venues-sql)]
-        (mt/with-dynamic-fn-redefs [qp.compile/compile reject-app-db-lookup]
-          (is (= internal-failure (run-sql-tool! {"q1" query} {:query_id "q1"}))))))))
+        (mt/with-dynamic-fn-redefs [qp.compile/compile mut/reject-app-db-lookup]
+          (is (= mut/internal-failure (run-sql-tool! {"q1" query} {:query_id "q1"}))))))))
 
 (def ^:private run-query-profiles
   "The profiles that offer `run_query`."
@@ -1193,9 +1182,9 @@
     (doseq [profile run-query-profiles]
       (testing profile
         (testing "a run that fails inside Metabase ends the turn, and the user gets the generic error"
-          (binding [qp.pipeline/*execute* reject-app-db-lookup]
+          (binding [qp.pipeline/*execute* mut/reject-app-db-lookup]
             (is (= {:llm-calls 1
-                    :result    internal-failure
+                    :result    mut/internal-failure
                     :text      "Something went wrong."
                     :finish    :terminal-error}
                    (run-turn! profile sql)))))
