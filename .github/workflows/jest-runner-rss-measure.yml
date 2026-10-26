@@ -1,0 +1,51 @@
+name: Jest runner worker replacement measurement
+
+on:
+  push:
+    branches:
+      - jest-runner-rss-measure
+
+jobs:
+  measure:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build cljs
+        run: bun run build-pure:cljs
+      # Each limit twice on this machine, the second half in reverse order.
+      # jest's cache is cleared before each run, as in a PR job.
+      - name: Measure worker replacement limits
+        run: |
+          echo -e "shard\tlimit_mb\twall_s\tworkers_started\tgc_s\tmajor_gc_s\tmax_rss_mb\ttests" > rss-times.tsv
+          for limit in 1500 1000 700 2400 2400 700 1000 1500; do
+            heap=1536
+            if [ "$limit" = 2400 ]; then heap=3072; fi
+            node_modules/.bin/jest --clearCache > /dev/null
+            log="run-$limit-$RANDOM.log"
+            start=$(date +%s.%N)
+            NT_FILE_LOG=1 NT_MAX_RSS_MB=$limit NT_HEAP_MB=$heap node_modules/.bin/jest --ignoreProjects ci-scripts --silent --shard=${{ matrix.shard }}/2 --runner ./frontend/test/harness/jest-runner.ts > "$log" 2>&1 || true
+            end=$(date +%s.%N)
+            stats=$(grep '^\[file\]' "$log" | awk '{
+                for (i = 2; i <= NF; i++) { split($i, kv, "="); v[kv[1]] = kv[2] }
+                pids[v["pid"]] = 1; gc += v["gc"]; major += v["major"]; if (v["rss"] > rss) rss = v["rss"]
+              } END { n = 0; for (p in pids) n++; printf "%d\t%.1f\t%.1f\t%d", n, gc / 1000, major / 1000, rss }')
+            tests=$(grep -E "^Tests:" "$log" | sed 's/Tests: *//')
+            printf "%s\t%s\t%.1f\t%s\t%s\n" "${{ matrix.shard }}" "$limit" "$(echo "$end - $start" | bc)" "$stats" "$tests" | tee -a rss-times.tsv
+          done
+          cat rss-times.tsv >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: rss-measure-${{ matrix.shard }}
+          path: |
+            rss-times.tsv
+            run-*.log
