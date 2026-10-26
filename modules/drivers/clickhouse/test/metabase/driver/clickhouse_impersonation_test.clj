@@ -45,16 +45,13 @@
        :clickhouse spec nil
        (fn [^java.sql.Connection conn]
          (driver/set-role! :clickhouse conn default-role)
-         (fn [^java.sql.Connection conn]
-           (driver/set-role! :clickhouse conn default-role)
-           (with-open [stmt (.prepareStatement conn "SELECT * FROM `metabase_test_role_db`.`some_table` ORDER BY i ASC;")
-                       rset (.executeQuery stmt)]
-             (is (true? (.next rset)))
-             (is (= 42 (.getInt rset 1)))
-             (is (true? (.next rset)))
-             (is (= 144 (.getInt rset 1)))
-             (is (false? (.next rset)))))))
-      (is true))))
+         (with-open [stmt (.prepareStatement conn "SELECT * FROM `metabase_test_role_db`.`some_table` ORDER BY i ASC;")
+                     rset (.executeQuery stmt)]
+           (is (true? (.next rset)))
+           (is (= 42 (.getInt rset 1)))
+           (is (true? (.next rset)))
+           (is (= 144 (.getInt rset 1)))
+           (is (false? (.next rset)))))))))
 
 (defn- set-role-throws-test!
   [details-map]
@@ -220,4 +217,4 @@
             (with-ssh-tunnel! (assoc tunnel-details :tunnel-pass "wrong-password")
               (is (thrown-with-msg?
                    org.apache.sshd.common.SshException #"No more authentication methods available"
-                   (count (mt/rows (qp/process-query (mt/mbql-query venues)))))))))))))
+                   (mt/rows (qp/process-query (mt/mbql-query venues))))))))))))

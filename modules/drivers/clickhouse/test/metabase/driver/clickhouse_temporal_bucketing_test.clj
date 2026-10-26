@@ -30,158 +30,158 @@
 (deftest clickhouse-temporal-bucketing-server-tz
   (mt/test-driver :clickhouse
     (mt/dataset temporal_bucketing_db
-      (defn- start-of-year! [unit]
-        (->> {:breakout [[:field %start_of_year {:temporal-unit unit}]]}
-             (mt/run-mbql-query temporal_bucketing_server_tz)
-             mt/rows))
-      (defn- mid-year! [unit]
-        (->> {:breakout [[:field %mid_of_year {:temporal-unit unit}]]}
-             (mt/run-mbql-query temporal_bucketing_server_tz)
-             mt/rows))
-      (defn- end-of-year! [unit]
-        (->> {:breakout [[:field %end_of_year {:temporal-unit unit}]]}
-             (mt/run-mbql-query temporal_bucketing_server_tz)
-             mt/rows))
-      (testing "truncate to"
-        (testing "minute"
-          (is (= [["2022-06-20T06:32:00Z"]]
-                 (mid-year! :minute))))
-        (testing "hour"
-          (is (= [["2022-06-20T06:00:00Z"]]
-                 (mid-year! :hour))))
-        (testing "day"
-          (is (= [["2022-06-20T00:00:00Z"]]
-                 (mid-year! :day))))
-        (testing "month"
-          (is (= [["2022-06-01T00:00:00Z"]]
-                 (mid-year! :month))))
-        (testing "quarter"
-          (is (= [["2022-04-01T00:00:00Z"]]
-                 (mid-year! :quarter))))
-        (testing "year"
-          (is (= [["2022-01-01T00:00:00Z"]]
-                 (mid-year! :year)))))
-      (testing "extract"
-        (testing "minute of hour"
-          (is (= [[0]]
-                 (start-of-year! :minute-of-hour)))
-          (is (= [[32]]
-                 (mid-year! :minute-of-hour)))
-          (is (= [[59]]
-                 (end-of-year! :minute-of-hour))))
-        (testing "hour of day"
-          (is (= [[0]]
-                 (start-of-year! :hour-of-day)))
-          (is (= [[6]]
-                 (mid-year! :hour-of-day)))
-          (is (= [[23]]
-                 (end-of-year! :hour-of-day))))
-        (testing "day of month"
-          (is (= [[1]]
-                 (start-of-year! :day-of-month)))
-          (is (= [[20]]
-                 (mid-year! :day-of-month)))
-          (is (= [[31]]
-                 (end-of-year! :day-of-month))))
-        (testing "day of year"
-          (is (= [[1]]
-                 (start-of-year! :day-of-year)))
-          (is (= [[171]]
-                 (mid-year! :day-of-year)))
-          (is (= [[365]]
-                 (end-of-year! :day-of-year))))
-        (testing "month of year"
-          (is (= [[1]]
-                 (start-of-year! :month-of-year)))
-          (is (= [[6]]
-                 (mid-year! :month-of-year)))
-          (is (= [[12]]
-                 (end-of-year! :month-of-year))))
-        (testing "quarter of year"
-          (is (= [[1]]
-                 (start-of-year! :quarter-of-year)))
-          (is (= [[2]]
-                 (mid-year! :quarter-of-year)))
-          (is (= [[4]]
-                 (end-of-year! :quarter-of-year))))))))
+      (let [start-of-year! (fn [unit]
+                             (->> {:breakout [[:field %start_of_year {:temporal-unit unit}]]}
+                                  (mt/run-mbql-query temporal_bucketing_server_tz)
+                                  mt/rows))
+            mid-year!      (fn [unit]
+                             (->> {:breakout [[:field %mid_of_year {:temporal-unit unit}]]}
+                                  (mt/run-mbql-query temporal_bucketing_server_tz)
+                                  mt/rows))
+            end-of-year!   (fn [unit]
+                             (->> {:breakout [[:field %end_of_year {:temporal-unit unit}]]}
+                                  (mt/run-mbql-query temporal_bucketing_server_tz)
+                                  mt/rows))]
+        (testing "truncate to"
+          (testing "minute"
+            (is (= [["2022-06-20T06:32:00Z"]]
+                   (mid-year! :minute))))
+          (testing "hour"
+            (is (= [["2022-06-20T06:00:00Z"]]
+                   (mid-year! :hour))))
+          (testing "day"
+            (is (= [["2022-06-20T00:00:00Z"]]
+                   (mid-year! :day))))
+          (testing "month"
+            (is (= [["2022-06-01T00:00:00Z"]]
+                   (mid-year! :month))))
+          (testing "quarter"
+            (is (= [["2022-04-01T00:00:00Z"]]
+                   (mid-year! :quarter))))
+          (testing "year"
+            (is (= [["2022-01-01T00:00:00Z"]]
+                   (mid-year! :year)))))
+        (testing "extract"
+          (testing "minute of hour"
+            (is (= [[0]]
+                   (start-of-year! :minute-of-hour)))
+            (is (= [[32]]
+                   (mid-year! :minute-of-hour)))
+            (is (= [[59]]
+                   (end-of-year! :minute-of-hour))))
+          (testing "hour of day"
+            (is (= [[0]]
+                   (start-of-year! :hour-of-day)))
+            (is (= [[6]]
+                   (mid-year! :hour-of-day)))
+            (is (= [[23]]
+                   (end-of-year! :hour-of-day))))
+          (testing "day of month"
+            (is (= [[1]]
+                   (start-of-year! :day-of-month)))
+            (is (= [[20]]
+                   (mid-year! :day-of-month)))
+            (is (= [[31]]
+                   (end-of-year! :day-of-month))))
+          (testing "day of year"
+            (is (= [[1]]
+                   (start-of-year! :day-of-year)))
+            (is (= [[171]]
+                   (mid-year! :day-of-year)))
+            (is (= [[365]]
+                   (end-of-year! :day-of-year))))
+          (testing "month of year"
+            (is (= [[1]]
+                   (start-of-year! :month-of-year)))
+            (is (= [[6]]
+                   (mid-year! :month-of-year)))
+            (is (= [[12]]
+                   (end-of-year! :month-of-year))))
+          (testing "quarter of year"
+            (is (= [[1]]
+                   (start-of-year! :quarter-of-year)))
+            (is (= [[2]]
+                   (mid-year! :quarter-of-year)))
+            (is (= [[4]]
+                   (end-of-year! :quarter-of-year)))))))))
 
 (deftest clickhouse-temporal-bucketing-column-tz
   (mt/test-driver :clickhouse
     (mt/dataset temporal_bucketing_db
-      (defn- start-of-year! [unit]
-        (->> {:breakout [[:field %start_of_year {:temporal-unit unit}]]}
-             (mt/run-mbql-query temporal_bucketing_column_tz)
-             mt/rows))
-      (defn- mid-year! [unit]
-        (->> {:breakout [[:field %mid_of_year {:temporal-unit unit}]]}
-             (mt/run-mbql-query temporal_bucketing_column_tz)
-             mt/rows))
-      (defn- end-of-year! [unit]
-        (->> {:breakout [[:field %end_of_year {:temporal-unit unit}]]}
-             (mt/run-mbql-query temporal_bucketing_column_tz)
-             mt/rows))
-      (testing "truncate to"
-        (testing "minute"
-          (is (= [["2022-06-20T13:32:00Z"]]
-                 (mid-year! :minute))))
-        (testing "hour"
-          (is (= [["2022-06-20T13:00:00Z"]]
-                 (mid-year! :hour))))
-        (testing "day"
-          (is (= [["2022-06-20T07:00:00Z"]]
-                 (mid-year! :day))))
-        (testing "month"
-          (is (= [["2022-06-01T00:00:00Z"]]
-                 (mid-year! :month))))
-        (testing "quarter"
-          (is (= [["2022-04-01T00:00:00Z"]]
-                 (mid-year! :quarter))))
-        (testing "year"
-          (is (= [["2022-01-01T00:00:00Z"]]
-                 (mid-year! :year)))))
-      (testing "extract"
-        (testing "minute of hour"
-          (is (= [[0]]
-                 (start-of-year! :minute-of-hour)))
-          (is (= [[32]]
-                 (mid-year! :minute-of-hour)))
-          (is (= [[59]]
-                 (end-of-year! :minute-of-hour))))
-        (testing "hour of day"
-          (is (= [[0]]
-                 (start-of-year! :hour-of-day)))
-          (is (= [[6]]
-                 (mid-year! :hour-of-day)))
-          (is (= [[23]]
-                 (end-of-year! :hour-of-day))))
-        (testing "day of month"
-          (is (= [[1]]
-                 (start-of-year! :day-of-month)))
-          (is (= [[20]]
-                 (mid-year! :day-of-month)))
-          (is (= [[31]]
-                 (end-of-year! :day-of-month))))
-        (testing "day of year"
-          (is (= [[1]]
-                 (start-of-year! :day-of-year)))
-          (is (= [[171]]
-                 (mid-year! :day-of-year)))
-          (is (= [[365]]
-                 (end-of-year! :day-of-year))))
-        (testing "month of year"
-          (is (= [[1]]
-                 (start-of-year! :month-of-year)))
-          (is (= [[6]]
-                 (mid-year! :month-of-year)))
-          (is (= [[12]]
-                 (end-of-year! :month-of-year))))
-        (testing "quarter of year"
-          (is (= [[1]]
-                 (start-of-year! :quarter-of-year)))
-          (is (= [[2]]
-                 (mid-year! :quarter-of-year)))
-          (is (= [[4]]
-                 (end-of-year! :quarter-of-year))))))))
+      (let [start-of-year! (fn [unit]
+                             (->> {:breakout [[:field %start_of_year {:temporal-unit unit}]]}
+                                  (mt/run-mbql-query temporal_bucketing_column_tz)
+                                  mt/rows))
+            mid-year!      (fn [unit]
+                             (->> {:breakout [[:field %mid_of_year {:temporal-unit unit}]]}
+                                  (mt/run-mbql-query temporal_bucketing_column_tz)
+                                  mt/rows))
+            end-of-year!   (fn [unit]
+                             (->> {:breakout [[:field %end_of_year {:temporal-unit unit}]]}
+                                  (mt/run-mbql-query temporal_bucketing_column_tz)
+                                  mt/rows))]
+        (testing "truncate to"
+          (testing "minute"
+            (is (= [["2022-06-20T13:32:00Z"]]
+                   (mid-year! :minute))))
+          (testing "hour"
+            (is (= [["2022-06-20T13:00:00Z"]]
+                   (mid-year! :hour))))
+          (testing "day"
+            (is (= [["2022-06-20T07:00:00Z"]]
+                   (mid-year! :day))))
+          (testing "month"
+            (is (= [["2022-06-01T00:00:00Z"]]
+                   (mid-year! :month))))
+          (testing "quarter"
+            (is (= [["2022-04-01T00:00:00Z"]]
+                   (mid-year! :quarter))))
+          (testing "year"
+            (is (= [["2022-01-01T00:00:00Z"]]
+                   (mid-year! :year)))))
+        (testing "extract"
+          (testing "minute of hour"
+            (is (= [[0]]
+                   (start-of-year! :minute-of-hour)))
+            (is (= [[32]]
+                   (mid-year! :minute-of-hour)))
+            (is (= [[59]]
+                   (end-of-year! :minute-of-hour))))
+          (testing "hour of day"
+            (is (= [[0]]
+                   (start-of-year! :hour-of-day)))
+            (is (= [[6]]
+                   (mid-year! :hour-of-day)))
+            (is (= [[23]]
+                   (end-of-year! :hour-of-day))))
+          (testing "day of month"
+            (is (= [[1]]
+                   (start-of-year! :day-of-month)))
+            (is (= [[20]]
+                   (mid-year! :day-of-month)))
+            (is (= [[31]]
+                   (end-of-year! :day-of-month))))
+          (testing "day of year"
+            (is (= [[1]]
+                   (start-of-year! :day-of-year)))
+            (is (= [[171]]
+                   (mid-year! :day-of-year)))
+            (is (= [[365]]
+                   (end-of-year! :day-of-year))))
+          (testing "month of year"
+            (is (= [[1]]
+                   (start-of-year! :month-of-year)))
+            (is (= [[6]]
+                   (mid-year! :month-of-year)))
+            (is (= [[12]]
+                   (end-of-year! :month-of-year))))
+          (testing "quarter of year"
+            (is (= [[1]]
+                   (start-of-year! :quarter-of-year)))
+            (is (= [[2]]
+                   (mid-year! :quarter-of-year)))
+            (is (= [[4]]
+                   (end-of-year! :quarter-of-year)))))))))
 
 (deftest clickhouse-uses-report-timezone-bucketing-source-query-test
   (mt/test-driver :clickhouse

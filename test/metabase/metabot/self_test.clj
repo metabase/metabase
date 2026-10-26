@@ -1812,11 +1812,10 @@
                                     (let [_acc (rf init {:type :start :messageId "m1"})]
                                       (throw (ex-info "mid-stream boom" {:status 500}))))))]
         (mt/with-log-level [metabase.metabot.self :fatal]
-          (let [seen       (atom [])
-                collect-rf (fn ([acc] acc) ([acc x] (swap! seen conj x) acc))]
+          (let [seen (atom [])]
             (is (thrown-with-msg?
                  clojure.lang.ExceptionInfo #"mid-stream boom"
-                 (reduce collect-rf nil (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))))
+                 (run! #(swap! seen conj %) (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))))
             (is (= 1 (count (filter #(= :start (:type %)) @seen)))
                 "the :start part reaches the consumer exactly once, not once per retry attempt")))))))
 
@@ -1834,8 +1833,7 @@
                                          (reduce rf init (test-util/mock-llm-response [{:type :start :id "m1"}]))))))]
           (mt/with-log-level [metabase.metabot.self :fatal]
             (let [seen (atom [])]
-              (reduce (fn [acc x] (swap! seen conj x) acc) nil
-                      (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))
+              (run! #(swap! seen conj %) (self/call-llm "openrouter/test-model" nil [] {} {:tag "metabot_agent"}))
               (is (= 3 @calls) "retries until the pre-emission failures clear")
               (is (= 1 (count (filter #(= :start (:type %)) @seen)))))))))))
 

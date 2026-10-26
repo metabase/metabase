@@ -46,7 +46,10 @@
    [metabase.util.encryption-test :as encryption-test]
    [metabase.util.json :as json]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (liquibase Scope)
+   (liquibase.changelog ChangeLogHistoryServiceFactory)))
 
 (set! *warn-on-reflection* true)
 
@@ -3353,7 +3356,7 @@
                                          :orderexecuted (+ last-order i 1)
                                          :exectype      "EXECUTED"})
                                       v59-ids))
-        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
+        (.resetAll ^ChangeLogHistoryServiceFactory (.getSingleton (Scope/getCurrentScope) ChangeLogHistoryServiceFactory))
         (migrate!)
         (testing "the stale v59 rows are gone and the existing column is adopted"
           (is (empty? (t2/select clog :id [:in v59-ids])))
@@ -3594,7 +3597,7 @@
                                          :exectype      "EXECUTED"})
                                       suffixes))
         ;; Liquibase caches the ran-changeset list per connection; drop it so the precondition sees the rows above.
-        (.resetAll (liquibase.changelog.ChangeLogHistoryServiceFactory/getInstance))
+        (.resetAll ^ChangeLogHistoryServiceFactory (.getSingleton (Scope/getCurrentScope) ChangeLogHistoryServiceFactory))
         (migrate!)
         (is (= (repeat 4 "MARK_RAN")
                (map #(t2/select-one-fn :exectype clog :id (str "v64.2026-09-11" %)) suffixes)))

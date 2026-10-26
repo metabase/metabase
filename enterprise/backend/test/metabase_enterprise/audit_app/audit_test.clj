@@ -40,9 +40,10 @@
     (finally
       (mbc/ensure-audit-db-installed!))))
 
-(defmacro with-audit-db-restoration! [& body]
+(defmacro with-audit-db-restoration!
   "Calls `ensure-audit-db-installed!` before and after `body` to ensure that the audit DB is installed and then
   restored if necessary. Also disables audit content loading if it is already loaded."
+  [& body]
   `(do-with-audit-db-restoration! (fn [] ~@body)))
 
 (deftest audit-db-installation-test
@@ -171,7 +172,7 @@
         resource "migrations/instance_analytics_views"
         entries  [["users/v1/postgres-users.sql"           "select 1;"]
                   ["dashboards/v1/postgres-dashboards.sql" "select 2;"]]
-        jar-url  (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))
+        jar-url  (.toURL (java.net.URI. (format "jar:%s!/%s" (.toUri jar-path) resource)))
         expected (hash (sort-by first (mapv (fn [[rel sql]] [rel sql]) entries)))]
     (try
       (with-open [out (-> jar-path
@@ -203,7 +204,7 @@
                            (.putNextEntry out (JarEntry. (str resource "/" rel)))
                            (.write out (.getBytes ^String sql StandardCharsets/UTF_8))
                            (.closeEntry out)))
-                       [jar-path (java.net.URL. (format "jar:%s!/%s" (.toUri jar-path) resource))]))
+                       [jar-path (.toURL (java.net.URI. (format "jar:%s!/%s" (.toUri jar-path) resource)))]))
           [jar-a url-a] (make-jar [["a.sql" "select 1;"]])
           [jar-b url-b] (make-jar [["b.sql" "select 1;"]])]
       (try

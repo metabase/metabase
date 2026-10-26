@@ -607,10 +607,10 @@
                                    "a SQL question"                             sql-card
                                    "a notebook question over a SQL question"    over-sql-card
                                    "a SQL question Metabot saved, edited since" edited-sql-card}
-                  run!            [run-sql-off-tool! run-sql-tool!]]
+                  tool!           [run-sql-off-tool! run-sql-tool!]]
             (testing shape
               (is (=? {:structured-output {:returned 1, :truncated? false}}
-                      (run! {"q1" (card-query card-id)} {:query_id "q1"}))))))
+                      (tool! {"q1" (card-query card-id)} {:query_id "q1"}))))))
         (testing "a user without native query permission can read a saved SQL question"
           (mt/with-no-data-perms-for-all-users!
             (perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
@@ -645,9 +645,9 @@
                         (run-sql-tool! {"q1" (card-query metabot-write-card)} {:query_id "q1"}))))
               (is (false? @ran?)))))
         (testing "SQL Metabot saved under a question the user can't read gets the permission refusal"
-          (doseq [run! [run-sql-off-tool! run-sql-tool!]]
+          (doseq [tool! [run-sql-off-tool! run-sql-tool!]]
             (is (= no-permission
-                   (run! {"q1" (card-query over-hidden-sql)} {:query_id "q1"})))))
+                   (tool! {"q1" (card-query over-hidden-sql)} {:query_id "q1"})))))
         (testing "SQL that references a question the user can't read is refused before it is compiled"
           (let [tag (str "#" hidden-metabot-sql)]
             (is (= no-permission
