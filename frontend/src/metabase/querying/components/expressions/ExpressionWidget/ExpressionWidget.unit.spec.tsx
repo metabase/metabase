@@ -13,7 +13,7 @@ import { ExpressionWidgetHeader } from "./ExpressionWidgetHeader";
 
 describe("ExpressionWidget", () => {
   it("should render proper controls", async () => {
-    setup();
+    await setup();
     expect(
       await screen.findByTestId("custom-expression-query-editor"),
     ).toBeInTheDocument();
@@ -21,8 +21,8 @@ describe("ExpressionWidget", () => {
     expect(screen.getByText("Done")).toBeInTheDocument();
   });
 
-  it("should not render Name field", () => {
-    setup();
+  it("should not render Name field", async () => {
+    await setup();
 
     expect(screen.queryByText("Name")).not.toBeInTheDocument();
   });
@@ -50,7 +50,7 @@ describe("ExpressionWidget", () => {
   it(`should render interactive header if it is passed`, async () => {
     const mockTitle = "Some Title";
     const onClose = jest.fn();
-    setup({
+    await setup({
       header: <ExpressionWidgetHeader title={mockTitle} onBack={onClose} />,
       onClose,
     });
@@ -64,8 +64,8 @@ describe("ExpressionWidget", () => {
   });
 
   describe("withName = true", () => {
-    it("should render Name field", () => {
-      setup({ withName: true });
+    it("should render Name field", async () => {
+      await setup({ withName: true });
 
       expect(screen.getByTestId("expression-name")).toBeInTheDocument();
     });
