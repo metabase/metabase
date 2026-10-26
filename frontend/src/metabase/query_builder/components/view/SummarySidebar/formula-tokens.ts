@@ -8,6 +8,8 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 
+import { getMBQLName } from "metabase/querying/expressions";
+
 import S from "./SummarySidebar.module.css";
 
 // one class per distinct column in a formula, cycling like spreadsheet range colors
@@ -54,12 +56,22 @@ function buildFormulaTokens(view: EditorView): FormulaTokens {
   const decorations = new RangeSetBuilder<Decoration>();
   const atomicRanges = new RangeSetBuilder<Decoration>();
   const colorIndexByColumn = new Map<string, number>();
-  const { doc } = view.state;
+  const { doc, selection } = view.state;
+  const caret = selection.main;
 
   syntaxTree(view.state).iterate({
     enter: (node) => {
       const add = (mark: Decoration) =>
         decorations.add(node.from, node.to, mark);
+      // a token that behaves as one unit: arrows skip it, backspace deletes it. Not while the
+      // caret is inside it, as it is while typing one, so it can still be edited a character at a time
+      const addAtomic = () => {
+        const hasCaretInside =
+          caret.empty && caret.head > node.from && caret.head < node.to;
+        if (!hasCaretInside) {
+          atomicRanges.add(node.from, node.to, atomicMark);
+        }
+      };
 
       switch (node.name) {
         case "Field": {
@@ -72,15 +84,19 @@ function buildFormulaTokens(view: EditorView): FormulaTokens {
             colorIndexByColumn.get(columnKey) ?? colorIndexByColumn.size;
           colorIndexByColumn.set(columnKey, colorIndex);
           add(columnMarks[colorIndex % columnMarks.length]);
-          // a complete reference behaves as one token: arrows skip it, backspace deletes it
+          // only a complete reference: closing brackets are auto-inserted while typing one
           if (text.endsWith("]")) {
-            atomicRanges.add(node.from, node.to, atomicMark);
+            addAtomic();
           }
           return false;
         }
         case "Identifier":
           if (node.node.parent?.name === "CallExpression") {
             add(functionMark);
+          }
+          // a function's name, even once its parentheses are deleted
+          if (getMBQLName(doc.sliceString(node.from, node.to)) != null) {
+            addAtomic();
           }
           return false;
         case "Number":
@@ -112,8 +128,8 @@ function buildFormulaTokens(view: EditorView): FormulaTokens {
 
 /**
  * Spreadsheet-style token styling for custom expressions: each distinct column reference gets
- * its own color and acts as a single token, and functions, literals, and operators are styled
- * apart from each other.
+ * its own color, column references and function names act as single tokens, and functions,
+ * literals, and operators are styled apart from each other.
  */
 export function formulaTokens(): Extension {
   const plugin = ViewPlugin.fromClass(
@@ -127,6 +143,7 @@ export function formulaTokens(): Extension {
       update(update: ViewUpdate) {
         if (
           update.docChanged ||
+          update.selectionSet ||
           update.viewportChanged ||
           syntaxTree(update.startState) !== syntaxTree(update.state)
         ) {

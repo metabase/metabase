@@ -1,7 +1,13 @@
 import type { EditorView } from "@codemirror/view";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import cx from "classnames";
-import { type MouseEvent, type ReactNode, useRef, useState } from "react";
+import {
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import { t } from "ttag";
 
@@ -92,6 +98,14 @@ export function SummaryWells({
   onChange,
 }: SummaryWellsProps) {
   const formulaBarSlot = useFormulaBarSlot();
+  const wellsRef = useRef<HTMLDivElement>(null);
+
+  // the summary opens ready to type into its first well
+  useEffect(() => {
+    wellsRef.current
+      ?.querySelector<HTMLElement>(`[data-well-field="values"]`)
+      ?.focus();
+  }, []);
   const databaseId = Lib.databaseID(base.query);
   const { data: database } = useGetDatabaseQuery(
     databaseId != null ? { id: databaseId } : skipToken,
@@ -162,12 +176,71 @@ export function SummaryWells({
     source: string,
     name: string,
   ) => openFormula({ kind: "new", key: Date.now(), wellId, source, name });
-  // a double-click's first click already opened this formula; don't reopen it on the second
+  // a formula already open, by a double-click's first click or otherwise, isn't reopened, which
+  // would discard what's typed; the bar takes focus instead
   const handleEditFormula = (itemId: string) => {
     if (activeFormula?.kind === "edit" && activeFormula.itemId === itemId) {
+      focusFormulaBar();
       return;
     }
     openFormula({ kind: "edit", key: Date.now(), itemId });
+  };
+
+  const focusWellField = (wellId: SummaryWellId) =>
+    wellsRef.current
+      ?.querySelector<HTMLElement>(`[data-well-field="${wellId}"]`)
+      ?.focus();
+
+  /**
+   * Tab and Shift+Tab step through a well's formulas, then its field, opening each formula in the
+   * bar with the caret at its end. `fromItemId` is the formula in the bar, or `null` for the
+   * field. Returns whether focus moved; past the first formula, or forward from the field, the
+   * browser's order takes over.
+   */
+  const stepThroughFormulas = (
+    fromDefinition: SummaryDefinition,
+    wellId: SummaryWellId,
+    fromItemId: string | null,
+    direction: "backward" | "forward",
+  ): boolean => {
+    const itemIds = getFormulaItemIds(
+      fromDefinition,
+      wellId,
+      canWriteValueFormula,
+    );
+    const fromIndex =
+      fromItemId == null ? itemIds.length : itemIds.indexOf(fromItemId);
+    const toIndex = direction === "backward" ? fromIndex - 1 : fromIndex + 1;
+    if (fromIndex < 0 || toIndex < 0 || toIndex > itemIds.length) {
+      return false;
+    }
+    if (toIndex === itemIds.length) {
+      focusWellField(wellId);
+      setActiveFormula(null);
+      return true;
+    }
+    handleEditFormula(itemIds[toIndex]);
+    return true;
+  };
+
+  // commits the formula in the bar if it was changed, then steps from it
+  const handleFormulaBarNavigate = (
+    direction: "backward" | "forward",
+    expression: SummaryExpression | null,
+  ): boolean => {
+    if (formulaEdit == null) {
+      return false;
+    }
+    const { itemId } = formulaEdit;
+    const nextDefinition =
+      expression != null
+        ? replaceWithExpression(definition, itemId, expression)
+        : definition;
+    if (nextDefinition !== definition) {
+      onChange(nextDefinition);
+    }
+    const wellId = getItemWellId(nextDefinition, itemId);
+    return stepThroughFormulas(nextDefinition, wellId, itemId, direction);
   };
 
   const [renamingItemId, setRenamingItemId] = useState<string | null>(null);
@@ -186,8 +259,18 @@ export function SummaryWells({
     onRename: (name) => handleRename(itemId, name),
     onCancelRename: () => setRenamingItemId(null),
   });
-  const handleCloseFormula = () => {
+  // focus goes back to the formula's well before the bar closes, so the bar doesn't drop it on the
+  // page as it collapses
+  const closeFormula = () => {
     pendingInputRef.current = null;
+    const wellId = getActiveFormulaWellId(
+      definition,
+      activeFormula,
+      formulaEdit,
+    );
+    if (wellId != null) {
+      focusWellField(wellId);
+    }
     setActiveFormula(null);
   };
 
@@ -204,7 +287,7 @@ export function SummaryWells({
         replaceWithExpression(definition, formulaEdit.itemId, expression),
       );
     }
-    setActiveFormula(null);
+    closeFormula();
   };
 
   const focusFormulaBar = () =>
@@ -228,13 +311,16 @@ export function SummaryWells({
         handleStartFormula(wellId, source, name)
       }
       formulaInput={getFormulaInput(wellId)}
+      onShiftTab={() =>
+        stepThroughFormulas(definition, wellId, null, "backward")
+      }
     >
       {items}
       {activeFormula?.kind === "new" && activeFormula.wellId === wellId && (
         <PlaceholderChip
           label={draftName || t`New formula`}
           onFocus={focusFormulaBar}
-          onRemove={handleCloseFormula}
+          onRemove={closeFormula}
         />
       )}
     </SummaryWellInput>
@@ -256,7 +342,7 @@ export function SummaryWells({
           onEditorCreate={handleEditorCreate}
           onNameChange={setDraftName}
           onSubmit={handleCommitFormula}
-          onCancel={handleCloseFormula}
+          onCancel={closeFormula}
         />
       );
     }
@@ -272,7 +358,8 @@ export function SummaryWells({
           initialName={formulaEdit.name}
           submitLabel={t`Update`}
           onSubmit={handleCommitFormula}
-          onCancel={handleCloseFormula}
+          onCancel={closeFormula}
+          onNavigate={handleFormulaBarNavigate}
         />
       );
     }
@@ -306,7 +393,7 @@ export function SummaryWells({
     });
 
   return (
-    <Box className={S.wells} data-testid="summary-wells">
+    <Box ref={wellsRef} className={S.wells} data-testid="summary-wells">
       <SummaryWell
         wellId="values"
         title={isPivot ? t`Values` : t`Summarize by`}
@@ -473,6 +560,41 @@ function getItemExpression(
   }
   const value = definition.values.find(({ id }) => id === itemId);
   return value?.type === "expression" ? value.expression : null;
+}
+
+/** The well of the formula open in the bar, or `null` when none is, or the edited item is gone. */
+function getActiveFormulaWellId(
+  definition: SummaryDefinition,
+  activeFormula: ActiveFormula | null,
+  formulaEdit: SummaryFormulaEdit | null,
+): SummaryWellId | null {
+  if (activeFormula?.kind === "new") {
+    return activeFormula.wellId;
+  }
+  return formulaEdit != null
+    ? getItemWellId(definition, formulaEdit.itemId)
+    : null;
+}
+
+/**
+ * A well's items that open in the formula bar, in order: every value but metrics, which aren't
+ * formulas, and the custom columns among the groupings.
+ */
+function getFormulaItemIds(
+  definition: SummaryDefinition,
+  wellId: SummaryWellId,
+  canWriteValueFormula: boolean,
+): string[] {
+  if (wellId === "values") {
+    return canWriteValueFormula
+      ? definition.values
+          .filter((value) => value.type !== "metric")
+          .map(({ id }) => id)
+      : [];
+  }
+  return definition[wellId]
+    .filter((dimension) => "expression" in dimension)
+    .map(({ id }) => id);
 }
 
 function getItemWellId(
@@ -798,6 +920,7 @@ function ValueChip({
         wellId="values"
         itemId={value.id}
         label={label}
+        isEditing={isEditing}
         onRemove={onRemove}
       >
         <Icon name={value.type === "metric" ? "metric" : "sum"} size={12} />

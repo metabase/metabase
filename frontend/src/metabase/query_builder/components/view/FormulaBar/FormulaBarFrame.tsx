@@ -19,50 +19,55 @@ const FORMULA_BAR_FRAME_TRANSITION_MS = 150;
  * or pointer events, until the frame has collapsed over it.
  */
 export function FormulaBarFrame({ children }: { children: ReactNode }) {
-  const [closingBar, setClosingBar] = useState<ReactNode>(null);
+  const isOpen = children != null;
+  // the bar last open, still shown while the frame collapses over it
+  const [lastBar, setLastBar] = useState<ReactNode>(children);
+  const [isClosing, setIsClosing] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
-  const previousChildrenRef = useRef(children);
-  // outlives the renders the close itself causes; only reopening or unmounting cancels it
-  const closeTimeoutRef = useRef<number | undefined>();
 
-  // before paint, so the bar never blinks out ahead of the collapse
+  // updated while rendering rather than in an effect, so the closing bar is the open bar's own
+  // element and keeps its instance: a remounted editor would show its initial text and refocus
+  if (isOpen && children !== lastBar) {
+    setLastBar(children);
+    setIsClosing(false);
+  } else if (!isOpen && lastBar != null && !isClosing) {
+    setIsClosing(true);
+  }
+
+  // before paint, so focus never stays in a bar that's going away
   useLayoutEffect(() => {
-    const previousChildren = previousChildrenRef.current;
-    previousChildrenRef.current = children;
-    if (children != null) {
-      window.clearTimeout(closeTimeoutRef.current);
-      setClosingBar(null);
-      return;
-    }
-    if (previousChildren == null) {
-      return;
-    }
     const { activeElement } = document;
     if (
+      isClosing &&
       activeElement instanceof HTMLElement &&
       contentRef.current?.contains(activeElement)
     ) {
       activeElement.blur();
     }
-    setClosingBar(previousChildren);
-    window.clearTimeout(closeTimeoutRef.current);
-    closeTimeoutRef.current = window.setTimeout(
-      () => setClosingBar(null),
-      FORMULA_BAR_FRAME_TRANSITION_MS,
-    );
-  }, [children]);
+  }, [isClosing]);
 
-  useEffect(() => () => window.clearTimeout(closeTimeoutRef.current), []);
+  // only reopening or unmounting cancels the collapse, not the renders that happen during it
+  useEffect(() => {
+    if (!isClosing) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setIsClosing(false);
+      setLastBar(null);
+    }, FORMULA_BAR_FRAME_TRANSITION_MS);
+    return () => window.clearTimeout(timeoutId);
+  }, [isClosing]);
 
-  const isOpen = children != null;
   return (
     <Box className={S.frame} data-open={isOpen || undefined}>
       <Box
         ref={contentRef}
         className={S.frameContent}
         aria-hidden={!isOpen || undefined}
+        // nothing in a closing bar can take focus
+        inert={!isOpen || undefined}
       >
-        {children ?? closingBar}
+        {children ?? lastBar}
       </Box>
     </Box>
   );

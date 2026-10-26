@@ -1,6 +1,6 @@
 import { completionStatus } from "@codemirror/autocomplete";
 import { EditorState, Prec } from "@codemirror/state";
-import { type EditorView, keymap } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import cx from "classnames";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
@@ -11,12 +11,14 @@ import { getTooltipPosition } from "metabase/querying/components/expressions/Edi
 import { Tooltip as ExpressionTooltip } from "metabase/querying/components/expressions/Editor/Tooltip";
 import { useCustomTooltip } from "metabase/querying/components/expressions/Editor/custom-tooltip";
 import { useExtensions } from "metabase/querying/components/expressions/Editor/extensions";
+import { hasActiveSnippet } from "metabase/querying/components/expressions/Editor/utils";
 import { diagnoseAndCompile, format } from "metabase/querying/expressions";
 import { ActionIcon, Box, Flex, Icon, Text, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { Database } from "metabase-types/api";
 
 import S from "./SummarySidebar.module.css";
+import { parenPairDeletion } from "./formula-parens";
 import { formulaTokens } from "./formula-tokens";
 import type { SummaryBase, SummaryExpression } from "./types";
 import { getDefaultFormulaName } from "./utils";
@@ -53,6 +55,16 @@ type SummaryFormulaEditorProps = {
   onSubmit: (expression: SummaryExpression) => void;
   /** Esc, the cancel button, or `/` in an empty formula. */
   onCancel: () => void;
+  /**
+   * Tab and Shift+Tab, unless they're picking a suggestion or moving between a function's
+   * arguments: move to another formula, committing this one first if it was changed (`null` when
+   * it wasn't), and return whether focus moved; when it didn't, as from the first formula, Tab
+   * keeps its default behavior. A changed formula that doesn't compile shows its error instead.
+   */
+  onNavigate?: (
+    direction: "backward" | "forward",
+    expression: SummaryExpression | null,
+  ) => boolean;
 };
 
 /**
@@ -73,6 +85,7 @@ export function SummaryFormulaEditor({
   onNameChange,
   onSubmit,
   onCancel,
+  onNavigate,
 }: SummaryFormulaEditorProps) {
   const { query, stageIndex } = base;
   const [source, setSource] = useState(initialSource);
@@ -158,10 +171,11 @@ export function SummaryFormulaEditor({
     setErrorMessage(null);
   }, []);
 
-  const handleSubmit = () => {
+  /** The formula as an expression, or `null` after showing why it isn't one. */
+  const compileFormula = (): SummaryExpression | null => {
     const formula = source.trim();
     if (formula.length === 0) {
-      return;
+      return null;
     }
     const { error, expressionClause } = diagnoseAndCompile({
       source: formula,
@@ -174,12 +188,72 @@ export function SummaryFormulaEditor({
     });
     if (error || expressionClause == null) {
       setErrorMessage(error?.message ?? t`This formula isn't valid.`);
-      return;
+      return null;
     }
-    onSubmit({ name: formulaName, clause: expressionClause });
+    return { name: formulaName, clause: expressionClause };
   };
 
-  const handlers = useLatest({ submit: handleSubmit, cancel: onCancel });
+  const handleSubmit = () => {
+    const expression = compileFormula();
+    if (expression != null) {
+      onSubmit(expression);
+    }
+  };
+
+  /** Whether Tab was handled here: focus moved, or a formula that doesn't compile kept it. */
+  const handleNavigate = (direction: "backward" | "forward"): boolean => {
+    if (onNavigate == null) {
+      return false;
+    }
+    if (!hasTypedRef.current) {
+      return onNavigate(direction, null);
+    }
+    const expression = compileFormula();
+    return expression == null || onNavigate(direction, expression);
+  };
+
+  const handlers = useLatest({
+    submit: handleSubmit,
+    cancel: onCancel,
+    navigate: handleNavigate,
+  });
+
+  // a DOM handler rather than a keymap, because the editor's own Tab keymap (snippet fields,
+  // suggestions, then indenting) always handles Tab, and DOM handlers run before any keymap.
+  // Tab on an empty formula closes it, like Esc
+  const tabNavigation = useMemo(
+    () =>
+      Prec.highest(
+        EditorView.domEventHandlers({
+          keydown: (event, view) => {
+            const isPlainTab =
+              event.key === "Tab" &&
+              !event.altKey &&
+              !event.ctrlKey &&
+              !event.metaKey;
+            const isTabInUse =
+              completionStatus(view.state) === "active" ||
+              hasActiveSnippet(view.state);
+            if (!isPlainTab || isTabInUse) {
+              return false;
+            }
+            if (view.state.doc.toString().trim().length === 0) {
+              event.preventDefault();
+              handlers.current.cancel();
+              return true;
+            }
+            const hasNavigated = handlers.current.navigate(
+              event.shiftKey ? "backward" : "forward",
+            );
+            if (hasNavigated) {
+              event.preventDefault();
+            }
+            return hasNavigated;
+          },
+        }),
+      ),
+    [handlers],
+  );
 
   const formulaKeymap = useMemo(() => {
     const isCompleting = (view: EditorView) =>
@@ -250,7 +324,14 @@ export function SummaryFormulaEditor({
     availableColumns,
     availableMetrics,
     database,
-    extensions: [completionTooltip, formulaKeymap, singleLine, tokens],
+    extensions: [
+      completionTooltip,
+      formulaKeymap,
+      tabNavigation,
+      singleLine,
+      tokens,
+      parenPairDeletion,
+    ],
   });
 
   return (

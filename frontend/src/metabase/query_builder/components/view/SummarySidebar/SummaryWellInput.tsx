@@ -97,6 +97,8 @@ type SummaryWellInputProps = {
   /** Opens a new formula for this well in the formula bar, from `=`, Custom, or an AI draft that doesn't compile. */
   onStartFormula: (source: string, name: string) => void;
   formulaInput: PendingFormulaInput;
+  /** Shift+Tab out of the field; returns whether it moved focus, so the browser shouldn't. */
+  onShiftTab: () => boolean;
 };
 
 /**
@@ -122,6 +124,7 @@ export function SummaryWellInput({
   onChange,
   onStartFormula,
   formulaInput,
+  onShiftTab,
 }: SummaryWellInputProps) {
   const canWriteFormula =
     database != null &&
@@ -140,6 +143,7 @@ export function SummaryWellInput({
       onChange={onChange}
       onStartFormula={(source, name = "") => onStartFormula(source, name)}
       formulaInput={formulaInput}
+      onShiftTab={onShiftTab}
     >
       {children}
     </SummaryWellSearch>
@@ -235,6 +239,7 @@ type SummaryWellSearchProps = {
   onChange: (definition: SummaryDefinition) => void;
   onStartFormula: (source: string, name?: string) => void;
   formulaInput: PendingFormulaInput;
+  onShiftTab: () => boolean;
 };
 
 /** Where the AI draft for the typed text is: not asked for, on its way, or failed with a message. */
@@ -253,6 +258,7 @@ function SummaryWellSearch({
   onChange,
   onStartFormula,
   formulaInput,
+  onShiftTab,
 }: SummaryWellSearchProps) {
   const [suggestFormula] = useSuggestSummaryFormulaMutation();
   const [generateState, setGenerateState] = useState<GenerateState>({
@@ -380,6 +386,16 @@ function SummaryWellSearch({
 
   // like any pills input, Backspace in an empty field takes off the last chip
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (
+      event.key === "Tab" &&
+      event.shiftKey &&
+      !formulaInput.isPending() &&
+      onShiftTab()
+    ) {
+      event.preventDefault();
+      combobox.closeDropdown();
+      return;
+    }
     const lastItem = wellItems[wellItems.length - 1];
     if (
       event.key === "Backspace" &&
@@ -423,6 +439,7 @@ function SummaryWellSearch({
                 isValues ? t`Add a value by name` : t`Add a grouping by name`
               }
               data-testid={`summary-well-input-${wellId}`}
+              data-well-field={wellId}
               onChange={(event) =>
                 handleSearchChange(event.currentTarget.value)
               }

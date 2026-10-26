@@ -584,9 +584,13 @@
   min-width: 0;
   padding: 0.5rem 0.75rem calc(0.5rem - 1px) 0;
 
+  /* the caret at the start of a line sits just left of the text, where the scroller would clip it,
+     so the scroller reaches 2px further left without moving the text */
   :global(.cm-scroller) {
     max-height: calc(5 * var(--formula-bar-line-height));
     overflow-y: auto;
+    margin-left: -2px;
+    padding-left: 2px;
   }
 
   :global(.cm-editor) {
