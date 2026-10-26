@@ -102,7 +102,7 @@ export function LibraryPicker({
 
 // Only Data and Metrics hold data sources. Empty subfolders inside them are left
 // out by `buildCollectionTree`, in `SavedEntityPicker.tsx`.
-function getLibraryFolders(
+export function getLibraryFolders(
   children: Collection[],
   { canSelectMetric }: { canSelectMetric: boolean },
 ) {
