@@ -16,6 +16,10 @@ For detailed guidance on writing and reviewing code and documentation, see the s
 
 - **clj-nrepl-eval** - This is another good mechanism for running Clojure code on an nrepl server.
 
+### Application database
+
+- **[app-db-migrations](.claude/skills/app-db-migrations/SKILL.md)** - Add, test, run and roll back application-database (Liquibase) migrations: version-less changesets, lint rules, dev rollback by deployment
+
 ## TypeScript
 
 - **[typescript-write](.claude/skills/typescript-write/SKILL.md)** - TypeScript/JavaScript development and best practices

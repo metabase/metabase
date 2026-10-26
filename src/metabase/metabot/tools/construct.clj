@@ -556,7 +556,7 @@
                                 {:inline?   (shared/inline-viz-capable?)
                                  :entity-id (:chart-id chart-result)
                                  :query-id  (:query-id structured)
-                                 :query     (links/->legacy-mbql (:query structured))
+                                 :query     (links/->frontend-query (:query structured))
                                  :display   chart-type
                                  :title     title
                                  :link      results-url})]
