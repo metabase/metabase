@@ -53,11 +53,7 @@
 
     :def-in-def
     {;; these tests check `defsetting` itself
-     metabase.settings.models.setting-test true
-     ;; TODO (Chris 2026-10-26) -- three metric-reference tests sit inside another `deftest` and never run.
-     ;; Unnested, they fail, because `::lib.schema.measure/definition` reports every stage error as the generic one.
-     ;; Fix the messages, unnest the tests, and drop this entry.
-     metabase.measures.models.measure-test true}
+     metabase.settings.models.setting-test true}
     ;; this test checks `defsetting` in another namespace
     :wrong-ns-form {metabase.settings.models.setting-test true}})
 
