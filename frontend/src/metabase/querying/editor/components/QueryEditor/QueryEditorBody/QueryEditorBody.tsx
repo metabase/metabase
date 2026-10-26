@@ -7,6 +7,7 @@ import type { OmniPickerItem } from "metabase/common/components/Pickers";
 import { ResizeHandle } from "metabase/common/components/ResizeHandle";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
 import { Notebook } from "metabase/querying/notebook/components/Notebook";
+import { RefreshButton } from "metabase/querying/notebook/components/Notebook/RefreshButton";
 import type { QueryModalType } from "metabase/redux/store";
 import { useSetting } from "metabase/settings";
 import { Box } from "metabase/ui";
@@ -243,6 +244,17 @@ export function QueryEditorBody({
           runQuestionQuery={onRunQuery}
           dataPickerOptions={dataPickerOptions}
         />
+        {!readOnly && !hideRunButton ? (
+          <Box p="md" pos="absolute" right={0} bottom={0}>
+            <RefreshButton
+              isRunning={isRunning}
+              isRunnable={isRunnable}
+              isResultDirty={isResultDirty}
+              runQuery={onRunQuery}
+              cancelQuery={onCancelQuery}
+            />
+          </Box>
+        ) : null}
       </Box>
     </ResizableBox>
   );
