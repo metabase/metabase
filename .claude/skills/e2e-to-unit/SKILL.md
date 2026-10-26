@@ -47,6 +47,7 @@ Do not inflate the keep bucket to look balanced. A spec where every `it()` must 
    - Does it click at coordinates, drag, or hit-test rendered chart output?
    - Does it navigate across screens or depend on the URL round-trip being honored by the server?
    - Does it only read the DOM after a known API response and assert on text, visibility, aria state, or a querystring?
+   - Which edition, token feature, or non-default setting does the `beforeEach` put it under? `H.activateToken`, `H.updateSetting` and a non-admin login are inputs the unit test has to reproduce, not harness detail. Write them in the Why column.
 3. For each bucket-3 candidate, find the home of the unit test:
    - Grep `frontend/src` and `enterprise/frontend/src` for the `data-testid`, aria label, or visible text the e2e test anchors on. The component that owns the anchor is the subject.
    - Prefer the smallest component whose props or store state contain the behavior.
@@ -81,6 +82,7 @@ If any assertion in the e2e `it()` depended on a server decision (permissions, `
 
 - Grep `test/` and `enterprise/backend/test/` for an existing Clojure test of that decision.
 - If none exists, add one and run it with `./bin/test-agent :only '[the.ns-test/the-test]'`.
+- Prove the test you cite pins the decision. Break the thing it is supposed to protect and watch it go red, the same way you break a unit test. A test that derives both sides of its comparison from one source pins nothing: `session/api-test/properties-test` compares the settings endpoint's keys against the same registry the endpoint reads, so changing a setting's `:visibility` moves both sides together and it stays green. Citing a test like that in the PR is worse than citing none, because it closes the question.
 
 The unit test then asserts the frontend's reaction to that decision through a mocked response.
 
@@ -102,6 +104,8 @@ Call jest directly. `bun run test-unit-keep-cljs <path>` runs the whole suite, b
 If the run fails on missing `metabase-lib` or cljs output, run `bun run build:cljs` once and retry.
 
 Then invert the input the e2e test varied (flip the mocked flag, remove the mocked item, change the role) and run again. The test must fail. Restore the input. A unit test that passes both ways did not move any coverage.
+
+Invert the input the **e2e test set**, not the one your fixture happened to default to. If the e2e ran under a token, a renamed application, a non-default setting or a non-admin user, the unit test has to set the same thing, otherwise there is no input to invert and the product could hardcode the default and stay green. A replacement that asserts `About Metabase` does not cover an e2e test that asserted `About New Test Co`.
 
 Inverting one input proves that test is not vacuous. It does not prove the branch kept the coverage it deleted. Run `verify.ts` for that, and read its rows by the rules in [Reading the verify report](#reading-the-verify-report).
 
@@ -129,7 +133,8 @@ Describe the end state, in this shape:
 - which layer the e2e test was actually exercising, and why that layer does not need a browser;
 - what the new unit test asserts, and which backend test covers the server half if there was one;
 - the CI seconds the removed tests cost, from `timings.json`;
-- every open row from `verify.ts` that you did not act on, with which of the three reasons applies.
+- every open row from `verify.ts` that you did not act on, with which of the three reasons applies;
+- the three questions in [What the report cannot see](#what-the-report-cannot-see), each with the test that answers it. A clean report is not an answer to any of them.
 
 ## Reading the verify report
 
@@ -141,7 +146,33 @@ Describe the end state, in this shape:
 4. **`unmeasured` is not `caught`.** It says the run reached no verdict. Treat it as open.
 5. **Judge the run before you read the rows.** Count `over --max-mutants`, `excluded`, and the size of the confirm pass. A run that could not reach the code proves nothing about that code.
 
-### Worked example
+### What the report cannot see
+
+A function with no row is not a function with no risk. Three classes never reach the report at all, and they are exactly where a migration breaks:
+
+1. **Boot functions.** Anything 20% or more of the e2e suite fires is dropped from scope. Shared selectors and plugin initialization live there. `getApplicationName` and `initializePlugin` have never appeared in a report.
+2. **Code that is not TypeScript.** A Clojure setting's `:visibility`, a validation message, a status code. The runner mutates TS and runs Jest, so none of it exists for the tool.
+3. **Constructs with no mutant.** The kinds cover returns, branches, JSX and calls. An assignment statement has none, so `PLUGIN_SELECTORS.x = y`, and every other plugin slot registration, is invisible.
+
+One more class produces a row that lies: **a fixture that never varies the input**. Mutation asks whether an assertion notices a change in behavior. It cannot ask whether your fixture is interesting. A spec rendered with the default application name cannot be killed by any mutant on the whitelabel name path, because every mutant yields the same string.
+
+So a clean report does not close these three questions. Answer them by hand, per moved test:
+
+- **Which flag, edition, setting or role did the e2e test vary?** Your unit test must vary the same one. See [step 4](#4-run-it-then-prove-it-is-not-vacuous).
+- **Which plugin slot did the behavior cross?** If the e2e ran with `H.activateToken`, something registered a slot in an `index.ts`. Some unit test must call `setupEnterpriseOnlyPlugin` and assert through the real slot. A `jest.spyOn` over that slot replaces the seam you are trying to cover, so it can never fail for the right reason.
+- **Does the backend test you cited fail when you change the thing?** See [step 2](#2-keep-the-server-half).
+
+### Worked example: three gaps behind a clean report
+
+The whitelabel migration came back with no row claiming lost coverage, and the illustration wiring came back `caught` through the real plugin slots. A reviewer still found three gaps, one per class above:
+
+- The replacement for `About <app>` asserted `About Metabase` with no application name set, so `AppSwitcher.tsx` could hardcode that string and stay green. `getApplicationName` is boot-filtered and had no row to read.
+- "The logo shows while signed out" was credited to a backend test that cannot fail for that reason. The real assertion is one line on the setting's `:visibility`.
+- Four of five whitelabel plugin slots were covered by accident, because the illustration specs initialize the plugin. The loading message slot was not, and no mutant reaches an assignment, so nothing said so. The tell was a row that was absent, not a row that was red.
+
+Read the report for which functions are missing from it, not only for which rows are green.
+
+### Worked example: a coarse mutant
 
 `SecurityCenterPage.unit.spec.tsx` replaces the hook `useSecurityAdvisories` with a stub, so the hook lost its coverage when the e2e tests went. A new spec asserted `data` and `lastCheckedAt`, and the row turned `caught`.
 
