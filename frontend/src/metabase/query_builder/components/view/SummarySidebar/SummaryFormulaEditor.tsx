@@ -2,7 +2,7 @@ import { completionStatus } from "@codemirror/autocomplete";
 import { EditorState, Prec } from "@codemirror/state";
 import { type EditorView, keymap } from "@codemirror/view";
 import cx from "classnames";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "react-use";
 import { t } from "ttag";
 
@@ -25,6 +25,14 @@ import { getDefaultFormulaName } from "./utils";
 const singleLine = /* #__PURE__ */ EditorState.transactionFilter.of(
   (transaction) => (transaction.newDoc.lines > 1 ? [] : transaction),
 );
+
+// a module constant: CodeMirror reconfigures itself whenever it gets a new basicSetup object
+const BASIC_SETUP = {
+  lineNumbers: false,
+  foldGutter: false,
+  highlightActiveLine: false,
+  highlightActiveLineGutter: false,
+};
 
 type SummaryFormulaEditorProps = {
   base: SummaryBase;
@@ -141,6 +149,15 @@ export function SummaryFormulaEditor({
     moveCaretToEndIfPendingRef.current(viewRef.current);
   }, [source, moveCaretToEndIfPendingRef]);
 
+  // stable, since CodeMirror reconfigures itself whenever its onChange changes, and the
+  // completion tooltip rerenders this on every editor update
+  const handleSourceChange = useCallback((value: string) => {
+    hasTypedRef.current = true;
+    setHasTyped(true);
+    setSource(value);
+    setErrorMessage(null);
+  }, []);
+
   const handleSubmit = () => {
     const formula = source.trim();
     if (formula.length === 0) {
@@ -246,12 +263,7 @@ export function SummaryFormulaEditor({
       <Icon name="function" className={S.formulaBarFx} aria-hidden />
       <CodeMirror
         className={S.formulaEditor}
-        basicSetup={{
-          lineNumbers: false,
-          foldGutter: false,
-          highlightActiveLine: false,
-          highlightActiveLineGutter: false,
-        }}
+        basicSetup={BASIC_SETUP}
         extensions={extensions}
         value={source}
         placeholder={
@@ -268,12 +280,7 @@ export function SummaryFormulaEditor({
           onEditorCreate?.(view);
           moveCaretToEndIfPending(view);
         }}
-        onChange={(value) => {
-          hasTypedRef.current = true;
-          setHasTyped(true);
-          setSource(value);
-          setErrorMessage(null);
-        }}
+        onChange={handleSourceChange}
       />
       {completionTooltipPortal}
       {errorMessage && (
