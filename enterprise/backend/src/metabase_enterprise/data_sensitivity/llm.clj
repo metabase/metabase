@@ -1,9 +1,9 @@
 (ns metabase-enterprise.data-sensitivity.llm
   "The single LLM interaction of the data-sensitivity classifier: category and semantic-type enums, the system
   prompt, the user message rendered from a [[metabase-enterprise.data-sensitivity.context]] packet, the structured
-  response schema, the call, and response parsing. [[classify-packet]] splits wide tables into chunks and merges the
-  parsed entries by field name. Every call runs on one instance-wide pool of [[pool-size]] threads, so that is the
-  limit on LLM calls in flight. Nothing here catches exceptions: gate failures, malformed responses, and transport
+  response schema, the call, and response parsing. [[submit-packet]] splits wide tables into chunks and
+  [[collect-packet]] merges the parsed entries by field name. Every call runs on one instance-wide pool of
+  [[pool-size]] threads, so that is the limit on LLM calls in flight. Nothing here catches exceptions: gate failures, malformed responses, and transport
   errors propagate to the caller."
   (:require
    [clojure.string :as str]
@@ -666,14 +666,3 @@ name, gets a chunk of its own. The size
                        (map :usage calls))
      :fields   (into {} (map :fields) calls)
      :counts   (reduce (partial merge-with +) zero-counts (map :counts calls))}))
-
-(mu/defn classify-packet :- ::classification
-  "Classify every field of `packet` in chunks on the shared pool and wait for the result: a [[submit-packet]]
-  followed by a [[collect-packet]]. The first chunk failure fails the packet. A packet with no fields makes no call."
-  [packet :- ::context/packet
-   & {:as opts} :- [:maybe ::classify-options]]
-  (let [submitted (submit-packet packet opts)]
-    (try
-      (collect-packet submitted)
-      (finally
-        (cancel-packet submitted)))))
