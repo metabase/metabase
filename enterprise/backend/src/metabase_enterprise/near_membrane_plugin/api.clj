@@ -1,6 +1,6 @@
 (ns metabase-enterprise.near-membrane-plugin.api
   "Static evaluator document shared by custom viz and data apps.
-   Requires a feature token from either feature."
+   Requires enabled custom viz or a data apps feature token."
   (:require
    [metabase.api.macros :as api.macros]
    [metabase.premium-features.core :as premium-features]))
@@ -48,10 +48,10 @@
   "Serve a minimal HTML document used as the iframe `src` for the near-membrane
    sandbox. The response carries a per-document `Content-Security-Policy` that permits
    `'unsafe-eval'` only inside this iframe, so the main Metabase document keeps its strict
-   nonce-based CSP. 404s unless either feature token is present and the request passes the
-   fetch-metadata gate (see [[donor-load-allowed?]])."
+   nonce-based CSP. 404s unless custom viz is enabled or the data apps feature token is present,
+   and the request passes the fetch-metadata gate (see [[donor-load-allowed?]])."
   [_route-params _query-params _body request]
-  (if-not (and (or (premium-features/has-feature? :custom-viz)
+  (if-not (and (or (premium-features/enable-custom-viz?)
                    (premium-features/has-feature? :data-apps))
                (donor-load-allowed? request))
     {:status  404

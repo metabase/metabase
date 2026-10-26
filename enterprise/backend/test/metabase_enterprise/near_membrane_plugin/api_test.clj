@@ -16,33 +16,44 @@
 (deftest sandbox-host-endpoint-test
   (testing "GET /sandbox-host returns minimal HTML with a per-document CSP"
     (mt/with-premium-features #{:custom-viz}
-      (let [resp (mt/user-http-request-full-response
-                  :rasta :get 200 "ee/near-membrane-plugin/sandbox-host")
-            headers (:headers resp)]
-        (testing "the body is exactly the inert donor document (pinned: this endpoint is unauthed, nothing may be added to it)"
-          (is (= inert-donor-doc (:body resp))))
-        (testing "response is served as HTML"
-          (is (str/starts-with? (get headers "Content-Type") "text/html")))
-        (testing "the CSP is exactly the per-document sandbox policy (pinned)"
-          (is (= "default-src 'none'; script-src 'unsafe-eval'; form-action 'none'; frame-ancestors *;"
-                 (get headers "Content-Security-Policy"))))
-        (testing "no X-Frame-Options is served (frame-ancestors is the framing policy, so EAJS customer pages can frame it)"
-          (is (nil? (get headers "X-Frame-Options"))))
-        (testing "hardening headers are present"
-          (is (= "nosniff"     (get headers "X-Content-Type-Options")))
-          (is (= "no-referrer" (get headers "Referrer-Policy")))
-          (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))
-          ;; no-store, not public: the gate's 200-vs-404 depends on headers/session a
-          ;; URL-keyed shared cache can't see, so a cached 200 must never be replayable.
-          (is (= "no-store" (get headers "Cache-Control"))))))))
+      (mt/with-temporary-setting-values [csp-img-enabled true
+                                         custom-viz-enabled true]
+        (let [resp (mt/user-http-request-full-response
+                    :rasta :get 200 "ee/near-membrane-plugin/sandbox-host")
+              headers (:headers resp)]
+          (testing "the body is exactly the inert donor document (pinned: this endpoint is unauthed, nothing may be added to it)"
+            (is (= inert-donor-doc (:body resp))))
+          (testing "response is served as HTML"
+            (is (str/starts-with? (get headers "Content-Type") "text/html")))
+          (testing "the CSP is exactly the per-document sandbox policy (pinned)"
+            (is (= "default-src 'none'; script-src 'unsafe-eval'; form-action 'none'; frame-ancestors *;"
+                   (get headers "Content-Security-Policy"))))
+          (testing "no X-Frame-Options is served (frame-ancestors is the framing policy, so EAJS customer pages can frame it)"
+            (is (nil? (get headers "X-Frame-Options"))))
+          (testing "hardening headers are present"
+            (is (= "nosniff"     (get headers "X-Content-Type-Options")))
+            (is (= "no-referrer" (get headers "Referrer-Policy")))
+            (is (= "same-origin" (get headers "Cross-Origin-Resource-Policy")))
+            ;; no-store, not public: the gate's 200-vs-404 depends on headers/session a
+            ;; URL-keyed shared cache can't see, so a cached 200 must never be replayable.
+            (is (= "no-store" (get headers "Cache-Control")))))))))
 
-(deftest sandbox-host-feature-settings-test
-  (doseq [features [#{:custom-viz} #{:data-apps} #{:custom-viz :data-apps}]]
-    (testing (str "feature tokens: " features)
-      (mt/with-premium-features features
-        (mt/with-temporary-setting-values [custom-viz-enabled false
-                                           enable-embedding-modular false]
-          (mt/user-http-request-full-response :rasta :get 200 "ee/near-membrane-plugin/sandbox-host"))))))
+(deftest sandbox-host-custom-viz-disabled-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-temporary-setting-values [custom-viz-enabled false]
+      (mt/user-http-request-full-response :rasta :get 404 "ee/near-membrane-plugin/sandbox-host"))))
+
+(deftest sandbox-host-data-apps-without-custom-viz-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-temporary-setting-values [custom-viz-enabled false
+                                       enable-embedding-modular false]
+      (mt/user-http-request-full-response :rasta :get 200 "ee/near-membrane-plugin/sandbox-host"))))
+
+(deftest sandbox-host-data-apps-with-custom-viz-disabled-test
+  (mt/with-premium-features #{:custom-viz :data-apps}
+    (mt/with-temporary-setting-values [custom-viz-enabled false
+                                       enable-embedding-modular false]
+      (mt/user-http-request-full-response :rasta :get 200 "ee/near-membrane-plugin/sandbox-host"))))
 
 (deftest sandbox-host-requires-feature-test
   (mt/with-premium-features #{}
@@ -68,7 +79,7 @@
   ;; The whole gate in one table. Every 200 also pins the body: the donor is reachable without
   ;; authentication and its response carries an eval-permitting CSP, so it must ALWAYS be this
   ;; exact empty document. Never add content, data, or anything request-dependent to it.
-  (mt/with-premium-features #{:custom-viz}
+  (mt/with-premium-features #{:data-apps}
     (doseq [{:keys [description expected-status] :as scenario}
             [{:description     "an unauthed browser-attested same-origin iframe navigation is served (the EAJS path)"
               :sec-fetch-site  "same-origin"
