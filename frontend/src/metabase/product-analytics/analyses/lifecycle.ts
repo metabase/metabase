@@ -12,7 +12,10 @@ import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
 import type { Granularity, LifecycleStateName, Period } from "../spec/types";
 import { pointString } from "../sql/analyses/base";
-import { FIRST_SEEN_EXTRA_COLUMN } from "../sql/analyses/lifecycle";
+import {
+  FIRST_SEEN_EXTRA_COLUMN,
+  LIFECYCLE_VALUE_COLUMN,
+} from "../sql/analyses/lifecycle";
 import { grainTitle } from "../sql/compile/grain";
 
 import {
@@ -104,12 +107,6 @@ const getStateDescription = (
   }
 };
 
-/** First seen only says when a person started, so other counting uses the first period in range. */
-const getFirstSeenColumn = (settings: LifecycleSettings): string | null =>
-  settings.counting === "person"
-    ? settings["lifecycle.first_seen_column"]
-    : null;
-
 // granularity's units exclude "hour" here; isValid enforces it.
 const getPeriod = (granularity: Granularity): Period =>
   granularity === "hour" ? "day" : granularity;
@@ -118,6 +115,7 @@ const { breakout_view: breakoutView, ...common } = commonSettings({
   granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
   breakout: true,
   canPivot: true,
+  grains: ["person", "session", "event"],
 });
 
 const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
@@ -146,14 +144,12 @@ const SETTINGS: AnalysisSettingDefinitions<LifecycleSettings> = {
         : null,
     isValid: (value, context) =>
       value === null || isDateColumnInTable(context.table, value),
-    // getHidden: (_context, settings) => settings.counting !== "person",
     // this is hidden like the column role settings - should maybe be configured one time per table rather than per analysis
     getHidden: () => true,
     getProps: (context) => ({
       columns: getDateColumnOptions(context.table),
       isRequired: false,
     }),
-    readDependencies: ["counting"],
   }),
   "lifecycle.shown": withWidgetProps({
     getTitle: () => t`Groups to show`,
@@ -205,18 +201,21 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
     }
     return ready({
       ...getCommonSpec("lifecycle", settings),
+      // Only people come back, so counting picks what the bars add up.
+      grain: "person",
       breakout: getBreakoutSpec(settings.breakout, events),
       lifecycle: {
         // Empty means any event counts as being active.
         active: active === null ? undefined : { flag: events.flagFor(active) },
         period: getPeriod(settings.granularity),
-        hasFirstSeen: getFirstSeenColumn(settings) !== null,
+        hasFirstSeen: settings["lifecycle.first_seen_column"] !== null,
+        counted: settings.counting,
       },
       output: { lifecycleShown: settings["lifecycle.shown"] },
     });
   },
   getExtraColumns: (settings, context) => {
-    const column = getFirstSeenColumn(settings);
+    const column = settings["lifecycle.first_seen_column"];
     return [
       ...(column !== null
         ? [{ as: FIRST_SEEN_EXTRA_COLUMN, column, from: "events" as const }]
@@ -229,7 +228,7 @@ export const LIFECYCLE_CONFIG: AnalysisConfig<"lifecycle"> = {
     // The states already stack, so each group gets a chart of its own.
     ...(settings.breakout !== null ? getChartPerGroupSettings() : {}),
     "graph.dimensions": ["period", "state"],
-    "graph.metrics": ["actors"],
+    "graph.metrics": [LIFECYCLE_VALUE_COLUMN],
     "stackable.stack_type": "stacked",
     // Went quiet isn't part of the week's active count, so totals invite the wrong sum.
     "graph.tooltip_show_stack_totals": false,

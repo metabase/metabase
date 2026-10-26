@@ -3,9 +3,13 @@ import { t } from "ttag";
 import { color } from "metabase/ui/colors";
 import type { VisualizationSettings } from "metabase-types/api";
 
+import { AVG_EVENTS_COLUMN, AVG_SESSIONS_COLUMN } from "../sql/analyses/base";
+
 import type { ColorSlot, DisplayColors } from "./types";
 
 const SERIES_COLOR_NAME = "accent0";
+
+const columnKey = (column: string): string => JSON.stringify(["name", column]);
 
 /**
  * A metric in the one color product analytics charts share, rather than one
@@ -64,6 +68,49 @@ export const getConversionColumnSettings = (
   column: string,
 ): Pick<VisualizationSettings, "column_settings"> => ({
   column_settings: {
-    [JSON.stringify(["name", column])]: CONVERSION_COLUMN_FORMAT,
+    [columnKey(column)]: CONVERSION_COLUMN_FORMAT,
+  },
+});
+
+/** A column a tooltip shows beside the chart's own values. */
+export type TooltipColumn = {
+  name: string;
+  title: string;
+};
+
+/**
+ * The planner's average events and sessions, under the titles for what
+ * they're per. Sessions only with a session column; without one they're 0.
+ */
+export const getActivityTooltipColumns = ({
+  hasSessions,
+  eventsTitle,
+  sessionsTitle,
+}: {
+  hasSessions: boolean;
+  eventsTitle: string;
+  sessionsTitle: string;
+}): TooltipColumn[] => [
+  { name: AVG_EVENTS_COLUMN, title: eventsTitle },
+  ...(hasSessions ? [{ name: AVG_SESSIONS_COLUMN, title: sessionsTitle }] : []),
+];
+
+const TOOLTIP_COLUMN_FORMAT = { decimals: 1 } as const;
+
+/** Adds `columns` to a chart's tooltip, keeping its own column settings. */
+export const withTooltipColumns = (
+  settings: VisualizationSettings,
+  columns: TooltipColumn[],
+): VisualizationSettings => ({
+  ...settings,
+  "graph.tooltip_columns": columns.map(({ name }) => columnKey(name)),
+  column_settings: {
+    ...settings.column_settings,
+    ...Object.fromEntries(
+      columns.map(({ name, title }) => [
+        columnKey(name),
+        { ...TOOLTIP_COLUMN_FORMAT, column_title: title },
+      ]),
+    ),
   },
 });

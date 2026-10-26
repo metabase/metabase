@@ -1,8 +1,13 @@
-import type { AnalysisSpec, LifecycleSpec } from "../../spec/types";
+import type { AnalysisSpec, Grain, LifecycleSpec } from "../../spec/types";
 import { INTERVAL, dateTimeLit, lit } from "../compile/dialect";
 import type { DrillPoint, QueryPlan } from "../compose";
 
-import { pointString, scopedEvents, startOf } from "./base";
+import {
+  SESSION_EXTRA_COLUMN,
+  pointString,
+  scopedEvents,
+  startOf,
+} from "./base";
 import {
   BREAKOUT_COLUMN,
   breakoutDeps,
@@ -14,26 +19,45 @@ import {
 } from "./breakout";
 import { IN_RANGE_FLAG } from "./lookback";
 
+/** The chart's value column: people, or their sessions or events, by state. */
+export const LIFECYCLE_VALUE_COLUMN = "value";
+
 /** The `events_base` column with when each actor was first seen, when the spec has one. */
 export const FIRST_SEEN_EXTRA_COLUMN = "first_seen";
 
 /** What lifecycle reads from `events_base` beyond each event's actor and time. */
 const lifecycleEventColumns = (
   lifecycle: LifecycleSpec,
-): { as: string; sql: string }[] =>
-  lifecycle.hasFirstSeen
+): { as: string; sql: string }[] => [
+  ...(lifecycle.hasFirstSeen
     ? [{ as: FIRST_SEEN_EXTRA_COLUMN, sql: FIRST_SEEN_EXTRA_COLUMN }]
-    : [];
+    : []),
+  ...(lifecycle.counted === "session" ? [SESSION_EXTRA_COLUMN] : []),
+];
+
+/** What an actor adds to their state's bar in a period. */
+const countedSql = (counted: Grain): string => {
+  switch (counted) {
+    case "person":
+      return "1";
+    case "session":
+      return "uniqExact(session)";
+    case "event":
+      return "count()";
+  }
+};
 
 /**
  * Aggregates over an actor's events in a period: whether any of them is in
- * the date range, and when the actor was first seen.
+ * the date range, when the actor was first seen, and what they add to the
+ * bars as `amount`.
  */
 const lifecyclePeriodColumns = (lifecycle: LifecycleSpec): string[] => [
   `max(${IN_RANGE_FLAG}) AS in_range`,
   ...(lifecycle.hasFirstSeen
     ? [`min(${FIRST_SEEN_EXTRA_COLUMN}) AS first_seen_at`]
     : []),
+  `${countedSql(lifecycle.counted)} AS amount`,
 ];
 
 /**
@@ -104,12 +128,13 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
     note: "each active period in the range, compared against the actor's previous one",
     deps: ["actor_periods"],
     body: [
-      "SELECT actor, period, state",
+      "SELECT actor, period, state, amount",
       "FROM (",
       "  SELECT",
       "    actor,",
       "    period,",
       "    in_range,",
+      "    amount,",
       lifecycleStateColumns(lifecycle)
         .map((column) => `    ${column}`)
         .join("\n"),
@@ -124,10 +149,11 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
   // rows with an explicit frame, and gives the zero date, not NULL, after the
   // actor's last period.
   const wentQuiet = [
-    "SELECT actor, period FROM (",
+    "SELECT actor, period, amount FROM (",
     "  SELECT",
     "    actor,",
     "    period,",
+    "    amount,",
     "    leadInFrame(period) OVER (PARTITION BY actor ORDER BY period",
     "      ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS next_period",
     "  FROM actor_periods",
@@ -145,7 +171,7 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
       ...breakoutSelect(spec),
       // Not aliased `period`: ClickHouse would read the alias in WHERE.
       `  period + INTERVAL ${step} AS quiet_period,`,
-      "  count() AS actors",
+      "  sum(amount) AS amount",
       `FROM ${withBreakout(spec, `(\n${wentQuiet.map((line) => `  ${line}`).join("\n")}\n)`)}`,
       `GROUP BY ${breakoutGroupBy(spec)}quiet_period`,
     ].join("\n"),
@@ -179,15 +205,15 @@ export const planLifecycle = (spec: AnalysisSpec): QueryPlan => {
   return {
     ctes: [...base.ctes, periods, rangePeriods, classified, quiet],
     select: [
-      `SELECT ${breakoutGroupBy(spec)}period, state, actors FROM (`,
-      `  SELECT ${breakoutGroupBy(spec)}period, state, count() AS actors`,
+      `SELECT ${breakoutGroupBy(spec)}period, state, ${LIFECYCLE_VALUE_COLUMN} FROM (`,
+      `  SELECT ${breakoutGroupBy(spec)}period, state, sum(amount) AS ${LIFECYCLE_VALUE_COLUMN}`,
       `  FROM ${withBreakout(spec, "classified")}`,
       wanted.length
         ? `  WHERE state IN (${wanted.map((s) => `'${s}'`).join(", ")})`
         : "  WHERE 0",
       `  GROUP BY ${breakoutGroupBy(spec)}period, state`,
       "  UNION ALL",
-      `  SELECT ${breakoutGroupBy(spec)}quiet_period AS period, 'dormant' AS state, -actors AS actors`,
+      `  SELECT ${breakoutGroupBy(spec)}quiet_period AS period, 'dormant' AS state, -amount AS ${LIFECYCLE_VALUE_COLUMN}`,
       `  FROM went_quiet${shown.includes("dormant") ? "" : "\n  WHERE 0"}`,
       ")",
       `ORDER BY ${[...breakoutOrderBy(spec), "period", "state"].join(", ")}`,

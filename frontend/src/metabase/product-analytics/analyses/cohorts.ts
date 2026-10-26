@@ -19,7 +19,11 @@ import {
   getBreakoutSeriesSettings,
   getBreakoutSpec,
 } from "./breakout";
-import { commonSettings } from "./common-settings";
+import { commonSettings, hasSessionColumn } from "./common-settings";
+import {
+  getActivityTooltipColumns,
+  withTooltipColumns,
+} from "./series-settings";
 import {
   getCommonSpec,
   getEventDefinitionProps,
@@ -90,6 +94,7 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
   ...commonSettings({
     granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
     breakout: true,
+    grains: ["person"],
   }),
   "cohorts.start": withWidgetProps({
     getTitle: () => t`What marks the start of a cohort?`,
@@ -138,7 +143,7 @@ const SETTINGS: AnalysisSettingDefinitions<CohortsSettings> = {
     getProps: () => ({
       data: [
         { label: t`Percentages`, value: "percent" as const },
-        { label: t`Count of people`, value: "counts" as const },
+        { label: t`Count`, value: "counts" as const },
       ],
       w: "100%",
     }),
@@ -255,13 +260,25 @@ export const COHORTS_CONFIG: AnalysisConfig<"cohorts"> = {
     // Counts by date stack into active people per period, by the cohort they started in.
     return view.xAxis === "date" && !view.isPercent ? "area" : "line";
   },
-  getVizSettings: (settings) =>
-    isTable(settings)
-      ? getCohortTableSettings(getView(settings))
-      : {
-          ...getRetentionCurvesSettings(getView(settings)),
-          ...getBreakoutSeriesSettings(settings.breakout),
-        },
+  getVizSettings: (settings) => {
+    const tooltipColumns = getActivityTooltipColumns({
+      hasSessions: hasSessionColumn(settings),
+      eventsTitle: t`Events per returning person`,
+      sessionsTitle: t`Sessions per returning person`,
+    });
+    return isTable(settings)
+      ? {
+          ...getCohortTableSettings(getView(settings)),
+          "cohort.tooltip_columns": tooltipColumns,
+        }
+      : withTooltipColumns(
+          {
+            ...getRetentionCurvesSettings(getView(settings)),
+            ...getBreakoutSeriesSettings(settings.breakout),
+          },
+          tooltipColumns,
+        );
+  },
   describePoint: (settings, point) => {
     const offset = pointString(point.offset);
     if (offset === null) {

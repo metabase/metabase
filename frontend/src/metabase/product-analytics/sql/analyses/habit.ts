@@ -3,7 +3,15 @@ import { dateTimeLit, num } from "../compile/dialect";
 import { grainLabel } from "../compile/grain";
 import type { DrillPoint, QueryPlan } from "../compose";
 
-import { type BaseBlock, pointString, scopedEvents, startOf } from "./base";
+import {
+  AVG_EVENTS_COLUMN,
+  AVG_SESSIONS_COLUMN,
+  type BaseBlock,
+  SESSION_EXTRA_COLUMN,
+  pointString,
+  scopedEvents,
+  startOf,
+} from "./base";
 import {
   BREAKOUT_COLUMN,
   breakoutDeps,
@@ -45,7 +53,9 @@ const planRatio = (
       "SELECT",
       `  ${startOf(unit)} AS active_period,`,
       "  actor,",
-      `  max(${IN_RANGE_FLAG}) AS in_range`,
+      `  max(${IN_RANGE_FLAG}) AS in_range,`,
+      "  count() AS events,",
+      "  uniqExact(session) AS sessions",
       "FROM scoped_events",
       "GROUP BY active_period, actor",
     ].join("\n"),
@@ -62,7 +72,9 @@ const planRatio = (
       ...breakoutSelect(spec),
       `  active_period + ${ADD_PERIODS[unit]}(periods_later) AS ${unit},`,
       `  uniqExactIf(actor, periods_later = 0 AND in_range = 1) AS ${active},`,
-      "  uniqExact(actor) AS mau",
+      "  uniqExact(actor) AS mau,",
+      `  sumIf(events, periods_later = 0 AND in_range = 1) / nullIf(${active}, 0) AS ${AVG_EVENTS_COLUMN},`,
+      `  sumIf(sessions, periods_later = 0 AND in_range = 1) / nullIf(${active}, 0) AS ${AVG_SESSIONS_COLUMN}`,
       `FROM ${withBreakout(spec, "actor_periods")}`,
       `ARRAY JOIN range(${windowPeriods}) AS periods_later`,
       `GROUP BY ${breakoutGroupBy(spec)}${unit}`,
@@ -90,7 +102,9 @@ const planRatio = (
       `  ${unit},`,
       `  ${active},`,
       "  mau,",
-      `  round(${active} / mau, 4) AS ratio`,
+      `  round(${active} / mau, 4) AS ratio,`,
+      `  ${AVG_EVENTS_COLUMN},`,
+      `  ${AVG_SESSIONS_COLUMN}`,
       "FROM period_actives",
       `ORDER BY ${[...breakoutOrderBy(spec), unit].join(", ")}`,
     ].join("\n"),
@@ -104,7 +118,7 @@ export const planHabit = (spec: AnalysisSpec): QueryPlan => {
     return { ctes: [], select: "SELECT 1", warnings: [] };
   }
 
-  const base = scopedEvents(spec, habit.active);
+  const base = scopedEvents(spec, habit.active, [SESSION_EXTRA_COLUMN]);
   if (habit.measure === "ratio") {
     return planRatio(spec, habit, base);
   }
@@ -112,12 +126,14 @@ export const planHabit = (spec: AnalysisSpec): QueryPlan => {
   const people = grainLabel(spec.grain);
   const counts = {
     name: "active_periods",
-    note: `how many distinct ${habit.subPeriod}s each ${spec.grain} was active in`,
+    note: `how many distinct ${habit.subPeriod}s each ${spec.grain} was active in, and their events and sessions`,
     deps: ["scoped_events"],
     body: [
       "SELECT",
       "  actor,",
-      `  uniqExact(${startOf(habit.subPeriod)}) AS periods`,
+      `  uniqExact(${startOf(habit.subPeriod)}) AS periods,`,
+      "  count() AS events,",
+      "  uniqExact(session) AS sessions",
       "FROM scoped_events",
       "GROUP BY actor",
     ].join("\n"),
@@ -142,8 +158,10 @@ export const planHabit = (spec: AnalysisSpec): QueryPlan => {
       ...breakoutSelect(spec),
       "  periods,",
       habit.percent
-        ? `  round(count() / sum(count()) OVER (${groupWindow}), 4) AS ${people}`
-        : `  count() AS ${people}`,
+        ? `  round(count() / sum(count()) OVER (${groupWindow}), 4) AS ${people},`
+        : `  count() AS ${people},`,
+      `  sum(events) / sum(periods) AS ${AVG_EVENTS_COLUMN},`,
+      `  sum(sessions) / sum(periods) AS ${AVG_SESSIONS_COLUMN}`,
       `FROM ${withBreakout(spec, "active_periods")}`,
       `GROUP BY ${breakoutGroupBy(spec)}periods`,
       `ORDER BY ${[...breakoutOrderBy(spec), "periods"].join(", ")}`,

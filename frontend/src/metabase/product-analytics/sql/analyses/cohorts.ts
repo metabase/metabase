@@ -3,7 +3,14 @@ import { dateTimeLit, lit, num } from "../compile/dialect";
 import { flagSql } from "../compile/flag";
 import type { Cte, DrillPoint, QueryPlan } from "../compose";
 
-import { pointString, scopedEvents, startOf } from "./base";
+import {
+  AVG_EVENTS_COLUMN,
+  AVG_SESSIONS_COLUMN,
+  SESSION_EXTRA_COLUMN,
+  pointString,
+  scopedEvents,
+  startOf,
+} from "./base";
 import {
   BREAKOUT_COLUMN,
   BREAKOUT_VALUE_COLUMN,
@@ -53,6 +60,7 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
       as: "is_return",
       sql: cohorts.return !== undefined ? flagSql(cohorts.return.flag) : "1",
     },
+    SESSION_EXTRA_COLUMN,
   ]);
   warnings.push(...base.warnings);
 
@@ -123,17 +131,18 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
   const lastPeriod = `(SELECT max(${startOf(period, "ts")}) FROM scoped_events)`;
   ctes.push({
     name: "offsets",
-    note: `how many ${period}s after their start each actor came back, and how many the date range can show`,
+    note: `how many ${period}s after their start each actor came back, in which sessions, and how many the date range can show`,
     deps: ["scoped_events", "starts"],
     body: [
       "SELECT",
       "  s.cohort AS cohort,",
       "  s.actor AS actor,",
       `  groupArray(dateDiff('${period}', s.started, ${startOf(period, "e.ts")})) AS came_back,`,
+      `  groupArray((dateDiff('${period}', s.started, ${startOf(period, "e.ts")}), e.session)) AS return_sessions,`,
       `  max(dateDiff('${period}', s.started, ${startOf(period, "e.ts")})) AS furthest,`,
       `  dateDiff('${period}', s.started, ${lastPeriod}) AS observable`,
       "FROM starts AS s",
-      "LEFT JOIN (SELECT actor, ts FROM scoped_events WHERE is_return) AS e",
+      "LEFT JOIN (SELECT actor, ts, session FROM scoped_events WHERE is_return) AS e",
       "  ON e.actor = s.actor",
       "GROUP BY cohort, actor, s.started",
     ].join("\n"),
@@ -144,6 +153,7 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
       ? "has(came_back, offset)"
       : "furthest >= offset";
 
+  const cameBackInPeriod = "nullIf(countIf(has(came_back, offset)), 0)";
   const percent = spec.output.cohortsDisplay !== "counts";
   const isAverage = !isGrouped && spec.output.cohortsLines === "average";
   const groupColumns = isAverage ? [] : ["cohort"];
@@ -194,8 +204,11 @@ export const planCohorts = (spec: AnalysisSpec): QueryPlan => {
       // cohort.
       "  uniqExact(actor) AS cohort_size,",
       percent
-        ? `  round(uniqExactIf(actor, ${matched}) / nullIf(uniqExact(actor), 0), 4) AS value`
-        : `  uniqExactIf(actor, ${matched}) AS value`,
+        ? `  round(uniqExactIf(actor, ${matched}) / nullIf(uniqExact(actor), 0), 4) AS value,`
+        : `  uniqExactIf(actor, ${matched}) AS value,`,
+      // Per person who came back in the period itself, whatever the return rule.
+      `  sum(countEqual(came_back, offset)) / ${cameBackInPeriod} AS ${AVG_EVENTS_COLUMN},`,
+      `  sum(length(arrayDistinct(arrayFilter(r -> r.1 = offset, return_sessions)))) / ${cameBackInPeriod} AS ${AVG_SESSIONS_COLUMN}`,
       "FROM offsets",
       offsetJoin,
       `GROUP BY ${[...groupColumns, "offset"].join(", ")}`,

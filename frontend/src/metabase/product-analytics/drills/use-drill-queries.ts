@@ -72,7 +72,8 @@ export const useDrillQueries = ({
   const metadataProvider = useMetadataProvider(table?.db_id ?? null);
   const dispatch = useDispatch();
   const columns = useMemo(() => getColumnRoles(settings), [settings]);
-  const grain = settings.counting;
+  // The spec's grain is who's behind a point, even where counting picks the measure.
+  const grain = spec?.grain ?? settings.counting;
 
   // Each request keeps its own subscription until it settles: ad-hoc results
   // are evicted as soon as nothing subscribes, and a lazy query hook only

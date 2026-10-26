@@ -20,6 +20,7 @@ import type {
   LifecycleStateName,
   OutputSpec,
   PathsSpec,
+  PathsVisit,
 } from "../spec/types";
 import type { DrillPoint } from "../sql/compose";
 
@@ -78,12 +79,13 @@ export type PathsSettings = CommonSettings & {
   "paths.end": EventDefinition | null;
   "paths.steps": number;
   "paths.included": EventDefinition[];
-  "paths.session_gap_minutes": number;
+  "paths.visit": PathsVisit["kind"];
+  /** How long a break ends a visit, when visits aren't sessions. */
+  "paths.inactivity": Duration;
   "paths.merge_repeats": boolean;
   "paths.hide_noisy_events": boolean;
   "paths.max_nodes": number;
   "paths.min_volume": number;
-  "paths.edge_metric": NonNullable<OutputSpec["pathsEdgeMetric"]>;
 };
 
 /** Whether a chart shows counts or each count's share of a total. */

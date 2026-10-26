@@ -97,6 +97,7 @@ const { breakout_view: breakoutView, ...common } = commonSettings({
   granularity: { units: ["day", "week", "month"], defaultUnit: "week" },
   breakout: true,
   canPivot: true,
+  grains: ["person", "session"],
 });
 
 const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {

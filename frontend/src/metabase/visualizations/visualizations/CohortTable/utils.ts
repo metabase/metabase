@@ -7,9 +7,11 @@ import * as Lib from "metabase-lib";
 import type { DatasetData, RowValue } from "metabase-types/api";
 
 import type {
+  CohortCellDetail,
   CohortColumnName,
   CohortPeriod,
   CohortRow,
+  CohortTooltipColumn,
   CohortValueFormat,
 } from "./types";
 
@@ -22,6 +24,17 @@ export const toPeriod = (value: unknown): CohortPeriod =>
 
 export const toValueFormat = (value: unknown): CohortValueFormat =>
   VALUE_FORMATS.find((format) => format === value) ?? "percent";
+
+const isTooltipColumn = (value: unknown): value is CohortTooltipColumn =>
+  typeof value === "object" &&
+  value !== null &&
+  "name" in value &&
+  "title" in value &&
+  typeof value.name === "string" &&
+  typeof value.title === "string";
+
+export const toTooltipColumns = (value: unknown): CohortTooltipColumn[] =>
+  Array.isArray(value) ? value.filter(isTooltipColumn) : [];
 
 const toNumber = (value: RowValue): number =>
   typeof value === "number" ? value : Number(value ?? 0);
@@ -43,8 +56,15 @@ const getColumnIndexes = (
 };
 
 /** Groups the planner's (cohort, offset) rows into one row per cohort. */
-export const pivotCohorts = (data: DatasetData): CohortRow[] => {
+export const pivotCohorts = (
+  data: DatasetData,
+  tooltipColumns: readonly CohortTooltipColumn[] = [],
+): CohortRow[] => {
   const index = getColumnIndexes(data);
+  const tooltipIndexes = tooltipColumns.map((column) => ({
+    title: column.title,
+    index: data.cols.findIndex((col) => col.name === column.name),
+  }));
   const byKey = new Map<string, CohortRow>();
   for (const row of data.rows) {
     const key = toKey(row[index.cohort]);
@@ -52,8 +72,18 @@ export const pivotCohorts = (data: DatasetData): CohortRow[] => {
       key,
       size: toNumber(row[index.cohort_size]),
       values: new Map<number, number>(),
+      details: new Map<number, CohortCellDetail[]>(),
     };
-    cohort.values.set(toNumber(row[index.offset]), toNumber(row[index.value]));
+    const offset = toNumber(row[index.offset]);
+    cohort.values.set(offset, toNumber(row[index.value]));
+    // A missing value, like an average over nobody, leaves its line out.
+    cohort.details.set(
+      offset,
+      tooltipIndexes.flatMap(({ title, index }) => {
+        const value = row[index];
+        return typeof value === "number" ? [{ title, value }] : [];
+      }),
+    );
     byKey.set(key, cohort);
   }
   return [...byKey.values()];
@@ -90,6 +120,9 @@ export const formatPeriodHeader = (period: CohortPeriod, offset: number) => {
   return c("{0} is a time unit such as Week, {1} is how many of them")
     .t`${unit} ${offset}`;
 };
+
+export const formatDetailValue = (value: number): string =>
+  new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value);
 
 export const formatCellValue = (
   value: number,

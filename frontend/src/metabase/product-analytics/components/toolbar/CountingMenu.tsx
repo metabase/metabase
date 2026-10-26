@@ -43,6 +43,8 @@ const getOptionLabel = (grain: Grain): string => {
 
 type CountingMenuProps = SettingWidgetProps<Grain> & {
   options?: Grain[];
+  /** Until a table is picked, there's nothing to count. */
+  isDisabled?: boolean;
 };
 
 /**
@@ -53,6 +55,7 @@ export const CountingMenu = ({
   value,
   onChange,
   options = [],
+  isDisabled = false,
 }: CountingMenuProps) => {
   const { hovering, onPeopleSegment } = useSegmentDrag();
   const { isActive, dropProps } = useSegmentDropTarget({
@@ -61,22 +64,36 @@ export const CountingMenu = ({
   });
   const isHinted = isActive || (hovering !== null && isPeopleSegment(hovering));
 
+  const hasChoice = options.length > 1;
+  const button = (
+    <Button
+      className={S.button}
+      variant="default"
+      leftSection={<Icon name={GRAIN_ICONS[value]} />}
+      disabled={isDisabled}
+      data-hinted={isHinted}
+      data-static={!hasChoice}
+      {...dropProps}
+    >
+      {getButtonLabel(value)}
+    </Button>
+  );
+
+  // With one option there's nothing to pick, but it still takes a dropped segment.
+  if (!hasChoice) {
+    return button;
+  }
+
   return (
     <Menu>
-      <Menu.Target>
-        <Button
-          className={S.button}
-          variant="default"
-          leftSection={<Icon name={GRAIN_ICONS[value]} />}
-          data-hinted={isHinted}
-          {...dropProps}
-        >
-          {getButtonLabel(value)}
-        </Button>
-      </Menu.Target>
+      <Menu.Target>{button}</Menu.Target>
       <Menu.Dropdown>
         {options.map((grain) => (
-          <Menu.Item key={grain} onClick={() => onChange(grain)}>
+          <Menu.Item
+            key={grain}
+            leftSection={<Icon name={GRAIN_ICONS[grain]} />}
+            onClick={() => onChange(grain)}
+          >
             {getOptionLabel(grain)}
           </Menu.Item>
         ))}

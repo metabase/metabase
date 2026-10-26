@@ -84,6 +84,14 @@ export interface FunnelSpec {
   allowRetry: boolean;
 }
 
+/**
+ * What a path runs within: a session, or a stretch of activity that a break
+ * of `gap` ends. Breaks also split a session when sessions are counted.
+ */
+export type PathsVisit =
+  | { kind: "session" }
+  | { kind: "inactivity"; gap: Duration };
+
 export interface PathsSpec {
   direction: "from" | "to" | "between";
   /** Null: paths start at the first step of each visit. Unused for "to". */
@@ -92,7 +100,7 @@ export interface PathsSpec {
   end: FlagRef | null;
   steps: number;
   included: FlagRef[];
-  sessionGapMinutes: number;
+  visit: PathsVisit;
   mergeRepeats: boolean;
   /** Drops steps that make up an outsized share of all events. */
   hideNoisyEvents: boolean;
@@ -126,6 +134,8 @@ export interface LifecycleSpec {
    * period in the date range.
    */
   hasFirstSeen: boolean;
+  /** What the bars add up: the people in each state, or their sessions or events. */
+  counted: Grain;
 }
 
 /** A group of people segment members, of the people outside one, or of everyone. */
@@ -161,7 +171,6 @@ export interface OutputSpec {
   /** A row per cohort, or one row for all of them together. */
   cohortsLines?: "each" | "average";
   lifecycleShown?: LifecycleStateName[];
-  pathsEdgeMetric?: "people" | "events";
 }
 
 export interface AnalysisSpec {

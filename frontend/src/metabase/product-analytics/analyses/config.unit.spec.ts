@@ -111,6 +111,14 @@ const EVENT_TABLE = createMockTable({
   ],
 });
 
+const SESSION_TABLE = createMockTable({
+  ...EVENT_TABLE,
+  fields: [
+    ...(EVENT_TABLE.fields ?? []),
+    createMockField({ id: 9, name: "session_id", base_type: "type/Text" }),
+  ],
+});
+
 const USERS_TABLE = createMockTable({
   id: 20,
   fields: [
@@ -227,13 +235,81 @@ describe("analysis settings", () => {
 
   it("only offers counting by columns the table has", () => {
     const { computed, getProps } = setup({
-      kind: "funnel",
+      kind: "lifecycle",
       table: EVENT_TABLE,
       stored: { counting: "session" },
     });
 
-    expect(getProps("counting")).toEqual({ options: ["person", "event"] });
+    expect(getProps("counting")).toEqual({
+      options: ["person", "event"],
+      isDisabled: false,
+    });
     expect(computed.counting).toBe("person");
+  });
+
+  it.each([
+    { kind: "funnel", options: ["person", "session"] },
+    { kind: "paths", options: ["session", "person"] },
+    { kind: "habit", options: ["person"] },
+    { kind: "lifecycle", options: ["person", "session", "event"] },
+    { kind: "cohorts", options: ["person"] },
+  ] as const)("offers $kind counting by $options", ({ kind, options }) => {
+    const { computed, getProps } = setup({ kind, table: SESSION_TABLE });
+
+    expect(getProps("counting")).toEqual({ options, isDisabled: false });
+    expect(computed.counting).toBe(options[0]);
+  });
+
+  it("disables counting until a table is picked", () => {
+    expect(setup({ kind: "funnel" }).getProps("counting")).toMatchObject({
+      isDisabled: true,
+    });
+  });
+
+  it("drops a stored counting the analysis doesn't offer", () => {
+    const { computed } = setup({
+      kind: "funnel",
+      table: SESSION_TABLE,
+      stored: { counting: "event" },
+    });
+
+    expect(computed.counting).toBe("person");
+  });
+
+  describe("lifecycle counting", () => {
+    it.each(["person", "session", "event"] as const)(
+      "follows people, adding up their %s",
+      (counting) => {
+        const { specResult } = setup({
+          kind: "lifecycle",
+          table: SESSION_TABLE,
+          stored: { counting },
+        });
+        const spec = getReadySpec(specResult);
+
+        expect(spec.grain).toBe("person");
+        expect(spec.lifecycle?.counted).toBe(counting);
+      },
+    );
+
+    it("shows the sessions dormant people had the period before as negative", () => {
+      const { specResult, allocation } = setup({
+        kind: "lifecycle",
+        table: SESSION_TABLE,
+        stored: { counting: "session" },
+      });
+      const built = buildSql(getReadySpec(specResult), "SELECT 1", {
+        columns: PLANNER_COLUMNS,
+        flags: allocation.events.map(({ flag }) => flag),
+        extraColumns: [],
+      });
+      const getCte = (name: string) =>
+        built.ctes.find((cte) => cte.name === name)?.body ?? "";
+
+      expect(getCte("actor_periods")).toContain("uniqExact(session) AS amount");
+      expect(getCte("went_quiet")).toContain("sum(amount) AS amount");
+      expect(built.sql).toContain("-amount AS value");
+    });
   });
 
   it("picks column role defaults from the table", () => {
@@ -387,6 +463,9 @@ describe("analysis settings", () => {
       expect(config.getVizSettings(computed, {})).toEqual({
         "cohort.period": "week",
         "cohort.value_format": "counts",
+        "cohort.tooltip_columns": [
+          { name: "avg_events", title: "Events per returning person" },
+        ],
       });
       expect(isHidden("cohorts.lines")).toBe(true);
       expect(isHidden("cohorts.x_axis")).toBe(true);
@@ -506,6 +585,96 @@ describe("analysis settings", () => {
         "offset",
         "cohort",
       ]);
+    });
+  });
+
+  it("adds each bar's events and sessions per active day to the habit tooltip", () => {
+    const { computed } = setup({ kind: "habit", table: SESSION_TABLE });
+    const settings = getAnalysisConfig("habit").getVizSettings(computed, {});
+
+    expect(settings["graph.tooltip_columns"]).toEqual([
+      '["name","avg_events"]',
+      '["name","avg_sessions"]',
+    ]);
+    expect(settings.column_settings?.['["name","avg_sessions"]']).toEqual({
+      decimals: 1,
+      column_title: "Sessions per active day",
+    });
+  });
+
+  describe("paths visits", () => {
+    const getVisitsSql = (stored: StoredSettings, table: Table) => {
+      const { specResult, allocation } = setup({
+        kind: "paths",
+        stored,
+        table,
+      });
+      const built = buildSql(getReadySpec(specResult), "SELECT 1", {
+        columns: PLANNER_COLUMNS,
+        flags: allocation.events.map(({ flag }) => flag),
+        extraColumns: [],
+      });
+      return {
+        visits: built.ctes.find(({ name }) => name === "visits")?.body ?? "",
+        sql: built.sql,
+      };
+    };
+
+    it("counts sessions, each one a visit, when the table has sessions", () => {
+      const { computed, isHidden, specResult } = setup({
+        kind: "paths",
+        table: SESSION_TABLE,
+      });
+      const { visits, sql } = getVisitsSql({}, SESSION_TABLE);
+
+      expect(computed.counting).toBe("session");
+      expect(isHidden("paths.visit")).toBe(false);
+      expect(isHidden("paths.inactivity")).toBe(true);
+      expect(getReadySpec(specResult).paths?.visit).toEqual({
+        kind: "session",
+      });
+      expect(visits).toContain("0 AS visit");
+      expect(sql).toContain("count() AS weight");
+    });
+
+    it("splits sessions at breaks in activity, counting each piece", () => {
+      const { visits, sql } = getVisitsSql(
+        {
+          "paths.visit": "inactivity",
+          "paths.inactivity": { value: 2, unit: "hour" },
+        },
+        SESSION_TABLE,
+      );
+
+      expect(visits).toContain("ts) > 7200");
+      expect(sql).toContain("count() AS weight");
+    });
+
+    it("follows people through their sessions", () => {
+      const { visits, sql } = getVisitsSql(
+        { counting: "person" },
+        SESSION_TABLE,
+      );
+
+      expect(visits).toContain("session AS visit");
+      expect(sql).toContain("session_id AS session");
+      expect(sql).toContain("uniqExact(actor) AS weight");
+    });
+
+    it("ends visits at a break in activity without a session column", () => {
+      const { computed, isHidden, specResult } = setup({
+        kind: "paths",
+        table: EVENT_TABLE,
+        stored: { "paths.visit": "session" },
+      });
+
+      expect(computed.counting).toBe("person");
+      expect(isHidden("paths.visit")).toBe(true);
+      expect(isHidden("paths.inactivity")).toBe(false);
+      expect(getReadySpec(specResult).paths?.visit).toEqual({
+        kind: "inactivity",
+        gap: { value: 30, unit: "minute" },
+      });
     });
   });
 

@@ -18,13 +18,16 @@ import {
   getBreakoutSpec,
   getStackedGroupsSettings,
 } from "./breakout";
-import { commonSettings } from "./common-settings";
+import { commonSettings, hasSessionColumn } from "./common-settings";
 import {
   SERIES_COLOR_KEY,
+  type TooltipColumn,
+  getActivityTooltipColumns,
   getAxisTitleSettings,
   getConversionColumnSettings,
   getSeriesColorSlot,
   getSeriesSettings,
+  withTooltipColumns,
 } from "./series-settings";
 import {
   getCommonSpec,
@@ -62,6 +65,7 @@ const { breakout_view: breakoutView, ...common } = commonSettings({
   granularity: { units: ["day", "week"], defaultUnit: "day" },
   breakout: true,
   canPivot: true,
+  grains: ["person"],
 });
 
 const SETTINGS: AnalysisSettingDefinitions<HabitSettings> = {
@@ -150,6 +154,20 @@ const getHabitSeriesSettings = (
         ...getSeriesSettings(metric, title, pickedColor),
       };
 
+/** Both views average over each person's active days, or weeks. */
+const getHabitTooltipColumns = (settings: HabitSettings): TooltipColumn[] => {
+  const isWeekly = toSubPeriod(settings.granularity) === "week";
+  return getActivityTooltipColumns({
+    hasSessions: hasSessionColumn(settings),
+    eventsTitle: isWeekly
+      ? t`Events per active week`
+      : t`Events per active day`,
+    sessionsTitle: isWeekly
+      ? t`Sessions per active week`
+      : t`Sessions per active day`,
+  });
+};
+
 export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
   kind: "habit",
   get name() {
@@ -206,44 +224,48 @@ export const HABIT_CONFIG: AnalysisConfig<"habit"> = {
         const people = grainLabel(settings.counting);
         const peopleTitle = grainTitle(settings.counting);
         const isPercent = settings["habit.values"] === "percent";
-        return {
-          "graph.metrics": [people],
-          ...getHabitSeriesSettings(
-            settings,
-            "periods",
-            people,
-            peopleTitle,
-            pickedColor,
-          ),
-          ...(settings.breakout !== null ? getStackedGroupsSettings() : {}),
-          ...(isPercent ? getConversionColumnSettings(people) : {}),
-          ...getAxisTitleSettings({
-            x:
-              toSubPeriod(settings.granularity) === "week"
-                ? t`Weeks active`
-                : t`Days active`,
-            y: isPercent ? getPercentLabel(settings) : peopleTitle,
-          }),
-        };
+        const isWeekly = toSubPeriod(settings.granularity) === "week";
+        return withTooltipColumns(
+          {
+            "graph.metrics": [people],
+            ...getHabitSeriesSettings(
+              settings,
+              "periods",
+              people,
+              peopleTitle,
+              pickedColor,
+            ),
+            ...(settings.breakout !== null ? getStackedGroupsSettings() : {}),
+            ...(isPercent ? getConversionColumnSettings(people) : {}),
+            ...getAxisTitleSettings({
+              x: isWeekly ? t`Weeks active` : t`Days active`,
+              y: isPercent ? getPercentLabel(settings) : peopleTitle,
+            }),
+          },
+          getHabitTooltipColumns(settings),
+        );
       }
       case "ratio": {
         const subPeriod = toSubPeriod(settings.granularity);
         const title = ratioName(settings.granularity);
-        return {
-          "graph.metrics": ["ratio"],
-          ...getHabitSeriesSettings(
-            settings,
-            subPeriod,
-            "ratio",
-            title,
-            pickedColor,
-          ),
-          ...getConversionColumnSettings("ratio"),
-          ...getAxisTitleSettings({
-            x: Lib.describeTemporalUnit(subPeriod),
-            y: title,
-          }),
-        };
+        return withTooltipColumns(
+          {
+            "graph.metrics": ["ratio"],
+            ...getHabitSeriesSettings(
+              settings,
+              subPeriod,
+              "ratio",
+              title,
+              pickedColor,
+            ),
+            ...getConversionColumnSettings("ratio"),
+            ...getAxisTitleSettings({
+              x: Lib.describeTemporalUnit(subPeriod),
+              y: title,
+            }),
+          },
+          getHabitTooltipColumns(settings),
+        );
       }
     }
   },

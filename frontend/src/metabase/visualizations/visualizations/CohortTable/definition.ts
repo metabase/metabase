@@ -47,6 +47,9 @@ export const COHORT_TABLE_DEFINITION: VisualizationDefinition = {
     "cohort.value_format": {
       getDefault: () => "percent",
     },
+    "cohort.tooltip_columns": {
+      getDefault: () => [],
+    },
     "cohort.color": {
       getSection: () => t`Display`,
       get title() {

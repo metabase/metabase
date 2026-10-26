@@ -4,6 +4,19 @@ import { flagSql } from "../compile/flag";
 import { compileGrain } from "../compile/grain";
 import type { Cte } from "../compose";
 
+/** Each event's session as `session`, for planners whose actor is the person. */
+export const SESSION_EXTRA_COLUMN = {
+  as: "session",
+  sql: compileGrain("session"),
+};
+
+/**
+ * Averages a planner adds for the tooltips: events and sessions per actor in
+ * each point, such as per person who came back in a period.
+ */
+export const AVG_EVENTS_COLUMN = "avg_events";
+export const AVG_SESSIONS_COLUMN = "avg_sessions";
+
 import { actorBreakoutsCte, breakoutEventColumns } from "./breakout";
 import { IN_RANGE_FLAG, getLookbackDays } from "./lookback";
 

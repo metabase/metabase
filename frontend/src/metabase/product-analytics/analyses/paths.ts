@@ -2,11 +2,12 @@ import { t } from "ttag";
 
 import { SegmentedControl } from "metabase/ui";
 
+import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
 import { EventDefinitionWidget } from "../components/settings/EventDefinitionWidget";
 import { NumberStepperWidget } from "../components/settings/NumberStepperWidget";
 import { withWidgetProps } from "../settings/with-widget-props";
-import type { Grain } from "../spec/types";
+import type { Grain, PathsVisit, TimeUnit } from "../spec/types";
 import { parseStepLabel } from "../sql/analyses/base";
 import { BREAKOUT_COLUMN } from "../sql/analyses/breakout";
 
@@ -15,7 +16,7 @@ import {
   getBreakoutExtraColumns,
   getBreakoutSpec,
 } from "./breakout";
-import { commonSettings } from "./common-settings";
+import { commonSettings, hasSessionColumn } from "./common-settings";
 import {
   getCommonSpec,
   getEventDefinitionProps,
@@ -24,6 +25,7 @@ import {
   isEventDefinitionList,
   isOneOf,
   isOptionalEventDefinition,
+  isPositiveDuration,
   isPositiveInteger,
   ready,
 } from "./setting-helpers";
@@ -38,10 +40,16 @@ const DIRECTIONS: readonly PathsSettings["paths.direction"][] = [
   "to",
   "between",
 ];
-const EDGE_METRICS: readonly PathsSettings["paths.edge_metric"][] = [
-  "people",
-  "events",
+const VISITS: readonly PathsSettings["paths.visit"][] = [
+  "session",
+  "inactivity",
 ];
+const INACTIVITY_UNITS: TimeUnit[] = ["minute", "hour", "day"];
+
+const getVisitSpec = (settings: PathsSettings): PathsVisit =>
+  settings["paths.visit"] === "session"
+    ? { kind: "session" }
+    : { kind: "inactivity", gap: settings["paths.inactivity"] };
 
 const getMinVolumeTitle = (grain: Grain): string => {
   switch (grain) {
@@ -55,7 +63,12 @@ const getMinVolumeTitle = (grain: Grain): string => {
 };
 
 const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
-  ...commonSettings({ granularity: null, breakout: true }),
+  // Each session is one path, so the flows add up; a person can take several.
+  ...commonSettings({
+    granularity: null,
+    breakout: true,
+    grains: ["session", "person"],
+  }),
   "paths.direction": {
     getTitle: () => t`View the path that's…`,
     getSection: () => "setup",
@@ -111,26 +124,35 @@ const SETTINGS: AnalysisSettingDefinitions<PathsSettings> = {
     isValid: (value) => isEventDefinitionList(value),
     getProps: getEventDefinitionProps,
   }),
-  "paths.session_gap_minutes": {
-    getTitle: () => t`How many minutes of inactivity results in a new visit?`,
-    getSection: () => "advanced",
-    widget: NumberStepperWidget,
-    getDefault: () => 30,
-    isValid: (value) => isPositiveInteger(value),
-  },
-  "paths.edge_metric": withWidgetProps({
-    getTitle: () => t`What line thickness should represent`,
+  "paths.visit": withWidgetProps({
+    getTitle: () => t`What counts as a visit?`,
     getSection: () => "advanced",
     widget: SegmentedControl,
-    getDefault: () => "people",
-    isValid: (value) => isOneOf(EDGE_METRICS, value),
+    // Without a session column, a break in activity is the only way to end a visit.
+    getDefault: (_context, settings) =>
+      hasSessionColumn(settings) ? "session" : "inactivity",
+    isValid: (value, _context, settings) =>
+      isOneOf(VISITS, value) &&
+      (value !== "session" || hasSessionColumn(settings)),
+    getHidden: (_context, settings) => !hasSessionColumn(settings),
     getProps: () => ({
       data: [
-        { label: t`People`, value: "people" as const },
-        { label: t`Events`, value: "events" as const },
+        { label: t`A session`, value: "session" as const },
+        { label: t`A period of activity`, value: "inactivity" as const },
       ],
       w: "100%",
     }),
+    readDependencies: ["columns.session"],
+  }),
+  "paths.inactivity": withWidgetProps({
+    getTitle: () => t`How much inactivity starts a new visit?`,
+    getSection: () => "advanced",
+    widget: DurationWidget,
+    getDefault: () => ({ value: 30, unit: "minute" }),
+    isValid: (value) => isPositiveDuration(value),
+    getHidden: (_context, settings) => settings["paths.visit"] === "session",
+    getProps: () => ({ units: INACTIVITY_UNITS }),
+    readDependencies: ["paths.visit"],
   }),
   "paths.merge_repeats": {
     getTitle: () => t`Merge repeats of the same step`,
@@ -203,14 +225,14 @@ export const PATHS_CONFIG: AnalysisConfig<"paths"> = {
         included: settings["paths.included"].map((event) => ({
           flag: events.flagFor(event),
         })),
-        sessionGapMinutes: settings["paths.session_gap_minutes"],
+        visit: getVisitSpec(settings),
         mergeRepeats: settings["paths.merge_repeats"],
         hideNoisyEvents: settings["paths.hide_noisy_events"],
         maxNodes: settings["paths.max_nodes"],
         minVolume: settings["paths.min_volume"],
       },
       ...getPageviewSpec(settings, events),
-      output: { pathsEdgeMetric: settings["paths.edge_metric"] },
+      output: {},
     });
   },
   getExtraColumns: ({ breakout }, context) =>

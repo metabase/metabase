@@ -16,12 +16,14 @@ import type { CohortRow as CohortRowData } from "./types";
 import {
   formatCellValue,
   formatCohortLabel,
+  formatDetailValue,
   formatPeriodHeader,
   getCellColors,
   isDateCohort,
   isFuturePeriod,
   pivotCohorts,
   toPeriod,
+  toTooltipColumns,
   toValueFormat,
 } from "./utils";
 
@@ -30,6 +32,7 @@ const CohortTableComponent = ({
   settings,
   onVisualizationClick,
   visualizationIsClickable,
+  onHoverChange,
 }: VisualizationProps) => {
   const [{ data }] = rawSeries;
   const period = toPeriod(settings["cohort.period"]);
@@ -38,9 +41,13 @@ const CohortTableComponent = ({
   const isColumnScale = settings["cohort.color_scale"] === "column";
   const showInitialCount = settings["cohort.initial_count"] !== "hide";
   const isCompact = settings["cohort.density"] === "compact";
+  const tooltipColumns = useMemo(
+    () => toTooltipColumns(settings["cohort.tooltip_columns"]),
+    [settings],
+  );
 
   const { cohorts, offsets, tableMax, columnMaxes, showYear } = useMemo(() => {
-    const cohorts = pivotCohorts(data);
+    const cohorts = pivotCohorts(data, tooltipColumns);
     const offsets = [
       ...new Set(cohorts.flatMap((cohort) => [...cohort.values.keys()])),
     ].sort((a, b) => a - b);
@@ -61,7 +68,7 @@ const CohortTableComponent = ({
       ),
       showYear: years.size > 1,
     };
-  }, [data, valueFormat]);
+  }, [data, valueFormat, tooltipColumns]);
   const maxes = isColumnScale ? columnMaxes : offsets.map(() => tableMax);
   const leadColumns = showInitialCount ? "auto auto" : "auto";
 
@@ -106,6 +113,36 @@ const CohortTableComponent = ({
     }
   };
 
+  // The cell's cohort and period with its value, then the tooltip columns.
+  const handleCellHover = (
+    cohort: CohortRowData,
+    label: string,
+    offset: number,
+    event: MouseEvent<HTMLDivElement>,
+  ) => {
+    const value = cohort.values.get(offset);
+    if (value === undefined) {
+      return;
+    }
+    const details = cohort.details.get(offset) ?? [];
+    onHoverChange?.({
+      element: event.currentTarget,
+      data: [
+        { key: t`Cohort`, value: label, col: null },
+        {
+          key: formatPeriodHeader(period, offset),
+          value: formatCellValue(value, valueFormat),
+          col: null,
+        },
+        ...details.map((detail) => ({
+          key: detail.title,
+          value: formatDetailValue(detail.value),
+          col: null,
+        })),
+      ],
+    });
+  };
+
   return (
     // The scroller is absolutely positioned so the grid adds nothing to the
     // card's height: the card keeps its size and the grid scrolls inside it.
@@ -132,25 +169,32 @@ const CohortTableComponent = ({
               </div>
             ))}
           </div>
-          {cohorts.map((cohort) => (
-            <CohortRow
-              key={cohort.key}
-              label={formatCohortLabel(cohort.key, period, { showYear })}
-              size={showInitialCount ? cohort.size : null}
-              cells={offsets.map((offset) =>
-                isFuturePeriod(cohort.key, offset, period)
-                  ? null
-                  : (cohort.values.get(offset) ?? null),
-              )}
-              maxes={maxes}
-              valueFormat={valueFormat}
-              baseColor={baseColor}
-              isCellClickable={(index) => isClickable(cohort, offsets[index])}
-              onCellClick={(index, event) =>
-                handleCellClick(cohort, offsets[index], event)
-              }
-            />
-          ))}
+          {cohorts.map((cohort) => {
+            const label = formatCohortLabel(cohort.key, period, { showYear });
+            return (
+              <CohortRow
+                key={cohort.key}
+                label={label}
+                size={showInitialCount ? cohort.size : null}
+                cells={offsets.map((offset) =>
+                  isFuturePeriod(cohort.key, offset, period)
+                    ? null
+                    : (cohort.values.get(offset) ?? null),
+                )}
+                maxes={maxes}
+                valueFormat={valueFormat}
+                baseColor={baseColor}
+                isCellClickable={(index) => isClickable(cohort, offsets[index])}
+                onCellClick={(index, event) =>
+                  handleCellClick(cohort, offsets[index], event)
+                }
+                onCellHover={(index, event) =>
+                  handleCellHover(cohort, label, offsets[index], event)
+                }
+                onCellLeave={() => onHoverChange?.(null)}
+              />
+            );
+          })}
         </Box>
       </Box>
     </Box>
@@ -170,6 +214,8 @@ type CohortRowProps = {
   /** By the cell's index among the period columns. */
   isCellClickable: (index: number) => boolean;
   onCellClick: (index: number, event: MouseEvent<HTMLDivElement>) => void;
+  onCellHover: (index: number, event: MouseEvent<HTMLDivElement>) => void;
+  onCellLeave: () => void;
 };
 
 const CohortRow = ({
@@ -181,6 +227,8 @@ const CohortRow = ({
   baseColor,
   isCellClickable,
   onCellClick,
+  onCellHover,
+  onCellLeave,
 }: CohortRowProps) => (
   <>
     <div className={S.frozen}>
@@ -210,6 +258,8 @@ const CohortRow = ({
           onClick={
             isClickable ? (event) => onCellClick(offset, event) : undefined
           }
+          onMouseEnter={(event) => onCellHover(offset, event)}
+          onMouseLeave={onCellLeave}
         >
           {formatCellValue(value, valueFormat)}
         </div>

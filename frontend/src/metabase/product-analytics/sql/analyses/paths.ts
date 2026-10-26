@@ -1,9 +1,10 @@
-import type { AnalysisSpec, PathsSpec } from "../../spec/types";
+import type { AnalysisSpec, PathsSpec, PathsVisit } from "../../spec/types";
+import { seconds } from "../compile/actorPredicate";
 import { lit } from "../compile/dialect";
 import { flagSql } from "../compile/flag";
 import type { Cte, DrillPoint, QueryPlan } from "../compose";
 
-import { pointString, scopedEvents } from "./base";
+import { SESSION_EXTRA_COLUMN, pointString, scopedEvents } from "./base";
 import {
   BREAKOUT_COLUMN,
   breakoutDrillCondition,
@@ -100,6 +101,58 @@ const getBoundsBody = (
   }
 };
 
+const VISIT_COLUMNS = [
+  "  actor,",
+  "  ts,",
+  "  step_name,",
+  "  is_start,",
+  "  is_end,",
+];
+const PATH_EVENTS_WHERE = "WHERE is_step OR is_start OR is_end";
+
+/** Tags `scoped_events` with the visit each event is in, as `visit`. */
+const visitsCte = (spec: AnalysisSpec, visit: PathsVisit): Cte => {
+  if (visit.kind === "session") {
+    const isSessionActor = spec.grain === "session";
+    return {
+      name: "visits",
+      note: isSessionActor
+        ? "each session's events, as one visit"
+        : "each event tagged with its session as the visit",
+      deps: ["scoped_events"],
+      body: [
+        "SELECT",
+        ...VISIT_COLUMNS,
+        `  ${isSessionActor ? "0" : "session"} AS visit`,
+        "FROM scoped_events",
+        PATH_EVENTS_WHERE,
+      ].join("\n"),
+    };
+  }
+  const indent = (line: string) => `  ${line}`;
+  return {
+    name: "visits",
+    note: `each event tagged with a visit — a break longer than ${visit.gap.value} ${visit.gap.unit}s starts a new one`,
+    deps: ["scoped_events"],
+    body: [
+      "SELECT",
+      ...VISIT_COLUMNS,
+      "  sum(new_visit) OVER (PARTITION BY actor ORDER BY ts",
+      "    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS visit",
+      "FROM (",
+      "  SELECT",
+      ...VISIT_COLUMNS.map(indent),
+      "    if(row_number() OVER (PARTITION BY actor ORDER BY ts) = 1",
+      `       OR dateDiff('second', lagInFrame(ts, 1, ts) OVER (PARTITION BY actor ORDER BY ts`,
+      `         ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), ts) > ${seconds(visit.gap)},`,
+      "       1, 0) AS new_visit",
+      "  FROM scoped_events",
+      indent(PATH_EVENTS_WHERE),
+      ")",
+    ].join("\n"),
+  };
+};
+
 /** The steps a path shows after its first, at most. */
 export const getPathDepth = (paths: PathsSpec): number =>
   Math.min(paths.steps, 8);
@@ -113,7 +166,6 @@ const pathWindowCtes = (
   paths: PathsSpec,
 ): { ctes: Cte[]; warnings: string[] } => {
   const warnings: string[] = [];
-  const gap = paths.sessionGapMinutes * 60;
 
   const isStep = paths.included.length
     ? paths.included.map((ref) => flagSql(ref.flag)).join("\n     OR ")
@@ -127,41 +179,15 @@ const pathWindowCtes = (
     { as: "is_start", sql: start !== null ? flagSql(start.flag) : "0" },
     { as: "is_end", sql: end !== null ? flagSql(end.flag) : "0" },
     { as: "step_name", sql: stepNameSql(spec) },
+    ...(paths.visit.kind === "session" && spec.grain !== "session"
+      ? [SESSION_EXTRA_COLUMN]
+      : []),
   ]);
   warnings.push(...base.warnings);
 
   const ctes: Cte[] = [...base.ctes];
 
-  ctes.push({
-    name: "visits",
-    note: `each event tagged with a visit — a gap longer than ${paths.sessionGapMinutes} minutes starts a new one`,
-    deps: ["scoped_events"],
-    body: [
-      "SELECT",
-      "  actor,",
-      "  ts,",
-      "  step_name,",
-      "  is_start,",
-      "  is_end,",
-      "  sum(new_visit) OVER (PARTITION BY actor ORDER BY ts",
-      "    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS visit",
-      "FROM (",
-      "  SELECT",
-      "    actor,",
-      "    ts,",
-      "    step_name,",
-      "    is_start,",
-      "    is_end,",
-      "    if(row_number() OVER (PARTITION BY actor ORDER BY ts) = 1",
-      `       OR dateDiff('second', lagInFrame(ts, 1, ts) OVER (PARTITION BY actor ORDER BY ts`,
-      "         ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING), ts) > " +
-        `${gap},`,
-      "       1, 0) AS new_visit",
-      "  FROM scoped_events",
-      "  WHERE is_step OR is_start OR is_end",
-      ")",
-    ].join("\n"),
-  });
+  ctes.push(visitsCte(spec, paths.visit));
 
   if (paths.hideNoisyEvents) {
     ctes.push({
@@ -257,8 +283,9 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
     ].join("\n"),
   });
 
-  const volume =
-    spec.output.pathsEdgeMetric === "events" ? "count()" : "uniqExact(actor)";
+  // `numbered` has a row per visit per step, so counting sessions counts
+  // visits: each is one path, and a node's flows add up to it.
+  const volume = spec.grain === "session" ? "count()" : "uniqExact(actor)";
 
   ctes.push({
     name: "kept_steps",
@@ -359,9 +386,6 @@ export const planPaths = (spec: AnalysisSpec): QueryPlan => {
       `GROUP BY ${breakoutGroupBy(spec)}step, source, target, ${PATHS_COLUMNS.sourceLabel}, ${PATHS_COLUMNS.targetLabel}, ${PATHS_COLUMNS.targetKind}`,
       "ORDER BY step, weight DESC",
     ].join("\n"),
-    warnings: [
-      ...warnings,
-      "Visits are re-derived here from the gap setting rather than using session_id or visit_id.",
-    ],
+    warnings,
   };
 };

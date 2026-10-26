@@ -32,8 +32,6 @@ import type {
   CommonSettings,
 } from "./types";
 
-const GRAINS: readonly Grain[] = ["person", "session", "event"];
-
 type ColumnRoleKey = `columns.${ColumnRole}`;
 
 export const getColumnRoles = (settings: ColumnRoleSettings): ColumnRoles => ({
@@ -72,6 +70,10 @@ const isCountable = (
   grain: Grain,
   settings: Partial<ColumnRoleSettings>,
 ): boolean => typeof settings[COLUMN_FOR_GRAIN[grain]] === "string";
+
+export const hasSessionColumn = (
+  settings: Partial<ColumnRoleSettings>,
+): boolean => isCountable("session", settings);
 
 type GranularityOptions = {
   units: Granularity[];
@@ -127,11 +129,14 @@ export const commonSettings = ({
   granularity,
   breakout = false,
   canPivot = false,
+  grains,
 }: {
   granularity: GranularityOptions | null;
   breakout?: boolean;
   /** Whether a breakout can show as a pivot table, as well as a chart. */
   canPivot?: boolean;
+  /** What the analysis can count, the default first when it has a column. */
+  grains: readonly Grain[];
 }): AnalysisSettingDefinitions<CommonSettings> => ({
   date_range: {
     getSection: () => "toolbar",
@@ -143,11 +148,14 @@ export const commonSettings = ({
   counting: {
     getSection: () => "toolbar",
     widget: CountingMenu,
-    getDefault: () => "person",
+    // The person column is required, so people are always countable.
+    getDefault: (_context, settings) =>
+      grains.find((grain) => isCountable(grain, settings)) ?? "person",
     isValid: (value, _context, settings) =>
-      isOneOf(GRAINS, value) && isCountable(value, settings),
-    getProps: (_context, settings) => ({
-      options: GRAINS.filter((grain) => isCountable(grain, settings)),
+      isOneOf(grains, value) && isCountable(value, settings),
+    getProps: (context, settings) => ({
+      options: grains.filter((grain) => isCountable(grain, settings)),
+      isDisabled: context.table === undefined,
     }),
     readDependencies: ["columns.person", "columns.session", "columns.event_id"],
   },

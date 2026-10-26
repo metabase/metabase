@@ -400,7 +400,8 @@ const getAdditionalTooltipRowsData = (
     .map((data) => {
       return {
         isSecondary: true,
-        name: data.key,
+        name:
+          (data.col && settings.column?.(data.col)?.column_title) || data.key,
         values: [
           formatValueForTooltip({
             value: data.value,
