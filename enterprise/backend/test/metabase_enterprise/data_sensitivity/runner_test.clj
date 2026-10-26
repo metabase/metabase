@@ -263,6 +263,37 @@
                         ["ds_a" :semantic_type]    ["type/Email" :pending run-3]}
                        (table-proposals (:id table))))))))))))
 
+(deftest record-table-keeps-proposal-of-concurrently-applied-row-test
+  (testing "a run records its proposal for a field whose old proposal row an apply deletes during the upsert"
+    (mt/with-temp [:model/Database                db    {}
+                   :model/Table                   table {:db_id (:id db) :name "ds_race" :active true}
+                   :model/Field                   field {:table_id (:id table) :name "ds_a" :base_type :type/Text}
+                   :model/MetadataGenerationRun   run   {:database_id (:id db) :scope {:type :database}
+                                                         :attributes [:description] :total_tables 1
+                                                         :status :running}
+                   :model/MetadataGenerationProposal old {:table_id (:id table) :field_id (:id field)
+                                                          :attribute :description :proposed_value "old"
+                                                          :status :pending}]
+      (let [select (mt/original-fn #'t2/select)]
+        (mt/with-dynamic-fn-redefs [t2/select (fn [model & args]
+                                                (let [result (apply select model args)]
+                                                  (when (= [:model/MetadataGenerationProposal :id :field_id :attribute]
+                                                           model)
+                                                    (t2/delete! :model/MetadataGenerationProposal :id (:id old)))
+                                                  result))]
+          (is (true? (ds.db/record-table! (:id run) {:done_tables 1}
+                                          {:table_id   (:id table)
+                                           :attributes #{:description}
+                                           :proposals  [{:last_run_id    (:id run)
+                                                         :table_id       (:id table)
+                                                         :field_id       (:id field)
+                                                         :attribute      :description
+                                                         :proposed_value "new"
+                                                         :confidence     :high
+                                                         :reasoning      "r"}]})))))
+      (is (= {["ds_a" :description] ["new" :pending (:id run)]}
+             (table-proposals (:id table)))))))
+
 (deftest table-scoped-run-keeps-other-tables-test
   (do-with-temp-tables
    2
