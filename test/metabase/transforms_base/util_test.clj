@@ -2,8 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
@@ -71,23 +71,20 @@
               :transform-message
               some?)))))
 
-(deftest throw-if-db-routing-enabled!-oss-test
-  (testing "on OSS (no :database-routing premium feature) the check is a no-op"
-    (mt/with-premium-features #{}
-      (is (nil? (transforms-base.u/throw-if-db-routing-enabled!
-                 {:name "OSS transform"}
-                 (lib.metadata/database (mt/metadata-provider)))))))
-  (when config/ee-available?
-    (testing "with :database-routing premium feature enabled, the check throws on a routing-enabled database"
-      (mt/with-premium-features #{:database-routing}
-        (mt/with-temp [:model/DatabaseRouter _ {:database_id    (mt/id)
-                                                :user_attribute "db_name"}]
-          (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
-               #".*database routing turned on"
-               (transforms-base.u/throw-if-db-routing-enabled!
-                {:name "Routing transform"}
-                (lib.metadata/database (mt/metadata-provider))))))))))
+(deftest throw-if-destination!-test
+  (testing "a router runs transforms, but its destinations don't"
+    (mt/with-temp [:model/Database destination {:engine             :h2
+                                                :router_database_id (mt/id)
+                                                :details            (:details (mt/db))}]
+      (is (nil? (transforms-base.u/throw-if-destination!
+                 {:name "Router transform"}
+                 (lib.metadata/database (mt/metadata-provider)))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #".*is a routing destination"
+           (transforms-base.u/throw-if-destination!
+            {:name "Destination transform"}
+            (driver.u/lib-database (:id destination))))))))
 
 (deftest activate-table-syncs-despite-disable-auto-sync-test
   (testing "disable-auto-sync gates *automatic* syncs only; a transform finalizing its"

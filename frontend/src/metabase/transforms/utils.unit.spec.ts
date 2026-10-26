@@ -56,22 +56,13 @@ describe("validateDatabase", () => {
       message: "Transforms can't be enabled on the Usage Analytics database.",
     },
     {
-      label: "database with router_user_attribute",
-      database: createMockDatabase({
-        router_user_attribute: "attr",
-        features: ["transforms/table"],
-      }),
-      isValid: false,
-      message: "Transforms can't be enabled when database routing is enabled.",
-    },
-    {
       label: "database with router_database_id",
       database: createMockDatabase({
         router_database_id: 2,
         features: ["transforms/table"],
       }),
       isValid: false,
-      message: "Transforms can't be enabled when database routing is enabled.",
+      message: "Transforms can't be enabled on destination databases.",
     },
     {
       label: "database without transforms/table feature",

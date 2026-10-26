@@ -9,7 +9,6 @@ import { DataActionsSection } from "./DataActionsSection";
 function ModelActionSectionWrapper({
   hasDataActionsEnabled: initialValue,
   onToggleDataActionsEnabled: onChange,
-  disabled,
 }: DataActionsSectionProps) {
   const [isEnabled, setEnabled] = useState(initialValue);
 
@@ -22,7 +21,6 @@ function ModelActionSectionWrapper({
     <DataActionsSection
       hasDataActionsEnabled={isEnabled}
       onToggleDataActionsEnabled={handleChange}
-      disabled={disabled}
     />
   );
 }
@@ -30,13 +28,11 @@ function ModelActionSectionWrapper({
 function setup({
   hasDataActionsEnabled = false,
   onToggleDataActionsEnabled = jest.fn(),
-  disabled = false,
 }: Partial<DataActionsSectionProps>) {
   render(
     <ModelActionSectionWrapper
       hasDataActionsEnabled={hasDataActionsEnabled}
       onToggleDataActionsEnabled={onToggleDataActionsEnabled}
-      disabled={disabled}
     />,
   );
 
@@ -62,11 +58,6 @@ describe("DataActionsSection", () => {
 
     await waitFor(() => expect(toggle).not.toBeChecked());
     expect(onToggleDataActionsEnabled).toHaveBeenLastCalledWith(false);
-  });
-
-  it("should not allow toggling actions if section is disabled", async () => {
-    const { toggle } = setup({ disabled: true });
-    expect(toggle).toBeDisabled();
   });
 
   it("should handle errors while toggling actions", async () => {

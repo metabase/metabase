@@ -15,10 +15,7 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.util :as u]
-   [metabase.util.i18n :as i18n]
-   [metabase.util.malli :as mu])
-  (:import
-   (clojure.lang ExceptionInfo)))
+   [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
@@ -41,25 +38,9 @@
                    {:table table-id}))
             (lib/all-source-table-ids query)))))
 
-(defn- database-routing-error-ex-data [^Throwable e]
-  (when e
-    (if (:database-routing-enabled (ex-data e))
-      (ex-data e)
-      (recur (.getCause e)))))
-
 (defmethod transforms-base.i/table-dependencies :query
   [transform]
-  (try
-    (query-table-dependencies transform)
-    (catch ExceptionInfo e
-      (if-some [data (database-routing-error-ex-data e)]
-        (let [message (i18n/trs "Failed to run transform because the database {0} has database routing turned on. Running transforms on databases with db routing enabled is not supported." (:database-name data))]
-          (throw (ex-info message
-                          {:metabase.transforms.jobs/transform-failure true
-                           :metabase.transforms.jobs/failures [{:metabase.transforms.jobs/transform transform
-                                                                :metabase.transforms.jobs/message message}]}
-                          e)))
-        (throw e)))))
+  (query-table-dependencies transform))
 
 ;;; ------------------------------------------------- Ordering Logic -------------------------------------------------
 
@@ -150,7 +131,7 @@
 
   Per-transform `table-dependencies` failures are caught and treated as no dependencies, with
   the failing id captured in `:failed`. The ordering is a best-effort scheduling hint —
-  execution-time checks (e.g. `throw-if-db-routing-enabled!`) are the source of truth for
+  execution-time checks (e.g. `throw-if-destination!`) are the source of truth for
   whether a transform can actually run. This means a single broken transform anywhere in the
   system can never poison the scheduler: it will simply be treated as a leaf in the closure
   (or skipped entirely if no caller depends on it), and any actual problem with running it

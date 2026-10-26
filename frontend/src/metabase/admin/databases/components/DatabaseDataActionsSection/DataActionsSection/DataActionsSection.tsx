@@ -2,20 +2,18 @@ import { useState } from "react";
 import { t } from "ttag";
 
 import { findErrorMessage } from "metabase/api/utils/errors";
-import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
+import { Box, Flex, Switch } from "metabase/ui";
 
 import { Description, Error, Label } from "../../DatabaseFeatureComponents";
 
 export interface DataActionsSectionProps {
   hasDataActionsEnabled: boolean;
   onToggleDataActionsEnabled: (enabled: boolean) => Promise<void>;
-  disabled: boolean;
 }
 
 export function DataActionsSection({
   hasDataActionsEnabled,
   onToggleDataActionsEnabled,
-  disabled,
 }: DataActionsSectionProps) {
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +37,6 @@ export function DataActionsSection({
             onChange={(e) =>
               handleToggleDataActionsEnabled(e.currentTarget.checked)
             }
-            disabled={disabled}
           />
         </Box>
       </Flex>
@@ -49,18 +46,6 @@ export function DataActionsSection({
           {t`Allow data actions that use this database to be run. Actions are able to read, write, and possibly delete data.`}
         </Description>
       </Box>
-      {disabled && (
-        <Box>
-          <Alert
-            size="compact"
-            variant="light"
-            icon={<Icon name="info" />}
-            mb="lg"
-          >
-            {t`Data actions can't be enabled when database routing is enabled.`}
-          </Alert>
-        </Box>
-      )}
     </div>
   );
 }

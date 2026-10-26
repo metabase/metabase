@@ -89,10 +89,10 @@ export function validateDatabase(database: Database): DatabaseValidationResult {
       message: t`Transforms can't be enabled on the Usage Analytics database.`,
     };
   }
-  if (database.router_user_attribute || database.router_database_id) {
+  if (database.router_database_id) {
     return {
       isValid: false,
-      message: t`Transforms can't be enabled when database routing is enabled.`,
+      message: t`Transforms can't be enabled on destination databases.`,
     };
   }
   if (!hasFeature(database, "transforms/table")) {

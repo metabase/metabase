@@ -289,14 +289,8 @@ describe("admin > database > database routing", () => {
       setupModelPersistence();
       visitDatabaseAdminPage(WRITABLE_DB_ID);
 
-      cy.log("should be disabled if data actions is enabled");
+      cy.log("should not be disabled if data actions are enabled");
       cy.findByLabelText("Data actions").should("be.checked");
-      assertDbRoutingDisabled(
-        "Database routing can't be enabled if data actions are enabled.",
-      );
-
-      cy.findByLabelText("Data actions").parent("label").click();
-
       assertDbRoutingNotDisabled();
 
       cy.log("should be disabled if model persistence is enabled");
@@ -317,8 +311,8 @@ describe("admin > database > database routing", () => {
 
       cy.log("should be disabled if table editing is enabled");
       // Table editing must be the only active conflict here: the routing
-      // section shows a single message, and data actions, model persistence,
-      // and uploads all take precedence over table editing.
+      // section shows a single message, and model persistence and uploads
+      // take precedence over table editing.
       tableEditingSection()
         .findByLabelText("Editable tables")
         .should("not.be.checked")
@@ -454,7 +448,7 @@ describe("admin > database > database routing", () => {
         disableModelActionsViaApi(WRITABLE_DB_ID);
       });
 
-      it("should not be possible to enable model persistence, data actions, table editing, or uploads when database routing is enabled", () => {
+      it("should not be possible to enable model persistence, table editing, or uploads when database routing is enabled", () => {
         cy.log("setup");
         enableGlobalModelPersistence();
         configureDbRoutingViaAPI({
@@ -477,16 +471,11 @@ describe("admin > database > database routing", () => {
         });
 
         cy.log(
-          "should not be possible to enable data actions when database routing is enabled",
+          "should be possible to enable data actions when database routing is enabled",
         );
-        dataActionsSection().within(() => {
-          cy.findByLabelText("Data actions").should("be.disabled");
-          cy.findByText(
-            "Data actions can't be enabled when database routing is enabled.",
-          )
-            .scrollIntoView()
-            .should("be.visible");
-        });
+        dataActionsSection()
+          .findByLabelText("Data actions")
+          .should("be.enabled");
 
         cy.log(
           "should not be possible to enable table editing when database routing is enabled",

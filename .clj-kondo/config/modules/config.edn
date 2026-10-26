@@ -3022,7 +3022,6 @@
            app-db
            channel
            collections
-           database-routing
            driver
            events
            lib
@@ -3080,7 +3079,6 @@
                     :model/Transform
                     :model/TransformRun}
    :uses #{app-db
-           database-routing
            dependencies
            driver
            events

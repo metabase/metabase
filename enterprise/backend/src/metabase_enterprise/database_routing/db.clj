@@ -30,11 +30,6 @@
             ::warehouses.schema/database.update]]
   (t2/insert-returning-instances! :model/Database rows))
 
-(mu/defn transform-exists-for-source-database?
-  "Whether a Transform reads from the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Transform :source_database_id database-id))
-
 (mu/defn router-exists?
   "Whether the Database with `database-id` is a router."
   [database-id :- ::lib.schema.id/database]

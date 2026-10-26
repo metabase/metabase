@@ -150,7 +150,7 @@ describe("DatabaseRoutingSection", () => {
     expect(screen.getByRole("link", { name: /Add/ })).toBeInTheDocument();
   });
 
-  it("should show a warning when writable connection is enabled", () => {
+  it("should allow routing when a writable connection is enabled", () => {
     setup({
       database: createMockDatabase({
         engine: "postgres",
@@ -160,9 +160,7 @@ describe("DatabaseRoutingSection", () => {
     });
 
     expect(
-      screen.getByText(
-        "Database routing can't be enabled when a Writable Connection is enabled.",
-      ),
-    ).toBeInTheDocument();
+      screen.queryByText(/Database routing can't be enabled/),
+    ).not.toBeInTheDocument();
   });
 });

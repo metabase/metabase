@@ -2,40 +2,21 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import {
-  hasActionsEnabled,
-  hasTableEditingEnabled,
-  hasWritableConnectionDetails,
-} from "metabase/common/utils/database";
+import { hasTableEditingEnabled } from "metabase/common/utils/database";
 import { hasFeature } from "metabase/databases";
 import { Text } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
-export const getDisabledFeatureMessage = (
-  database: Database,
-  { hasTransforms = false }: { hasTransforms?: boolean } = {},
-) => {
+export const getDisabledFeatureMessage = (database: Database) => {
   return match({
-    hasActionsEnabled: hasActionsEnabled(database),
     hasTableEditingEnabled: hasTableEditingEnabled(database),
     isPersisted: hasFeature(database, "persist-models-enabled"),
     isUploadDb: database.uploads_enabled,
     supportsRouting: !!database.features?.includes("database-routing"),
-    hasWritableConnection: hasWritableConnectionDetails(database),
-    hasTransforms,
   })
     .with(
       { supportsRouting: false },
       () => t`Database routing is not supported for this database type.`,
-    )
-    .with(
-      { hasActionsEnabled: true, isPersisted: true },
-      () =>
-        t`Database routing can't be enabled if data actions and model persistence are enabled.`,
-    )
-    .with(
-      { hasActionsEnabled: true },
-      () => t`Database routing can't be enabled if data actions are enabled.`,
     )
     .with(
       { isPersisted: true },
@@ -48,17 +29,8 @@ export const getDisabledFeatureMessage = (
         t`Database routing can't be enabled if uploads are enabled for this database.`,
     )
     .with(
-      { hasWritableConnection: true },
-      () =>
-        t`Database routing can't be enabled when a Writable Connection is enabled.`,
-    )
-    .with(
       { hasTableEditingEnabled: true },
       () => t`Database routing can't be enabled when table editing is enabled.`,
-    )
-    .with(
-      { hasTransforms: true },
-      () => t`Database routing can't be enabled when transforms exist.`,
     )
     .otherwise(() => undefined);
 };

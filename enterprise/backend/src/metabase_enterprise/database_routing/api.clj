@@ -112,11 +112,8 @@
     (api/check-404 db)
     (api/check-400 (not (:router_database_id db)) "Cannot make a destination database a router database")
     (api/check-400 (not (:uploads_enabled db)) "Cannot enable database routing for a database with uploads enabled")
-    (api/check-400 (not (:write_data_details db)) "Cannot enable database routing for a database with a write connection configured")
-    (api/check-400 (not (database-routing.db/transform-exists-for-source-database? id)) "Cannot enable database routing for a database with transforms")
     (setting/with-database db
-      (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")
-      (api/check-400 (not (setting/get :database-enable-actions)) "Cannot enable database routing for a database with actions enabled")))
+      (api/check-400 (not (setting/get :persist-models-enabled)) "Cannot enable database routing for a database with model persistence enabled")))
   (if (nil? user_attribute)
     ;; delete the DatabaseRouter
     (delete-router! id)
