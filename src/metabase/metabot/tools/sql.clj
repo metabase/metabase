@@ -103,7 +103,7 @@
            :instructions instr
            :data-parts [(streaming/viz-part {:entity-id (str (random-uuid))
                                              :query-id  query-id
-                                             :query     (links/->legacy-mbql query)
+                                             :query     (links/->frontend-query query)
                                              :title     title})]})
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
@@ -181,7 +181,7 @@
                           (code-edit-part buffer-id query-content)
                           (streaming/viz-part {:entity-id (str (random-uuid))
                                                :query-id  query-id
-                                               :query     (links/->legacy-mbql query)
+                                               :query     (links/->frontend-query query)
                                                :title     title}))]})
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
@@ -230,7 +230,7 @@
                           (code-edit-part buffer-id query-content)
                           (streaming/viz-part {:entity-id (str (random-uuid))
                                                :query-id  query-id
-                                               :query     (links/->legacy-mbql query)
+                                               :query     (links/->frontend-query query)
                                                :title     title}))]})
         (let [instr (instructions/sql-validation-error-instructions dialect error-message)]
           {:output (format-validation-error-output instr)
