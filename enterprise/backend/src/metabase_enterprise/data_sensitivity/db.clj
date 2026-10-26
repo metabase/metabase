@@ -137,24 +137,29 @@
 (defn- upsert-table-proposals!
   "Make the proposals of `table_id` for `attributes` the ones in `proposals`: a new proposal replaces the pending or
   rejected row of its field and attribute, and a row that `proposals` does not have is deleted. Rows of other tables
-  and other attributes do not change."
+  and other attributes do not change. When an apply deletes an existing row before its update, the new proposal is
+  inserted."
   [{:keys [table_id attributes proposals]}]
   (let [existing (into {}
                        (map (juxt (juxt :field_id :attribute) :id))
                        (t2/select [:model/MetadataGenerationProposal :id :field_id :attribute]
                                   :table_id table_id :attribute [:in attributes]))
         by-key   (into {} (map (juxt (juxt :field_id :attribute) identity)) proposals)
-        gone     (vec (keep (fn [[k id]] (when-not (by-key k) id)) existing))
-        inserts  (vec (remove #(existing ((juxt :field_id :attribute) %)) proposals))]
+        gone     (vec (keep (fn [[k id]] (when-not (by-key k) id)) existing))]
     (when (seq gone)
       (t2/delete! :model/MetadataGenerationProposal :id [:in gone]))
-    (doseq [[k id] existing
-            :let [p (by-key k)]
-            :when p]
-      (t2/update! :model/MetadataGenerationProposal id
-                  (assoc (select-keys p [:last_run_id :proposed_value :confidence :reasoning])
-                         :status :pending :decided_by nil :decided_at nil)))
-    (when (seq inserts)
+    (when-let [inserts (not-empty
+                        (into []
+                              (filter (fn [p]
+                                        (let [id (existing ((juxt :field_id :attribute) p))]
+                                          (or (nil? id)
+                                              (zero? (t2/update! :model/MetadataGenerationProposal id
+                                                                 (assoc (select-keys p [:last_run_id :proposed_value
+                                                                                        :confidence :reasoning])
+                                                                        :status :pending
+                                                                        :decided_by nil
+                                                                        :decided_at nil)))))))
+                              proposals))]
       (t2/insert! :model/MetadataGenerationProposal inserts))))
 
 (mu/defn record-table! :- :boolean
