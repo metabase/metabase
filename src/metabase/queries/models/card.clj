@@ -1095,7 +1095,8 @@
   (check-timeline-visibility-permissions! card *copy-source-card*)
   ;; a public Document shows its cards' goals to anyone, so a copy into one doesn't inherit its source's references
   (check-new-goal-references! (:visualization_settings card)
-                              (when-not (some-> (:document_id card) queries.db/public-document?)
+                              (when (and *copy-source-card*
+                                         (not (some-> (:document_id card) queries.db/public-document?)))
                                 (:visualization_settings *copy-source-card*)))
   (u/prog1
     (-> card
