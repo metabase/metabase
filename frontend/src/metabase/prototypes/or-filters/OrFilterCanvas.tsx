@@ -50,19 +50,12 @@ import {
   withZoomMapDrilled,
   withZoomTimeDrilled,
 } from "./harness/examples";
+import { type SavedQuestion, getHeading } from "./harness/heading";
+import { REALISTIC_EXAMPLES } from "./harness/realisticExamples";
 import { useOrdersQuery } from "./harness/useOrdersQuery";
-import type { FilterDirection } from "./types";
+import type { Example, FilterDirection } from "./types";
 
 const STAGE_INDEX = 0;
-
-type Example = {
-  label: string;
-  load: (query: Lib.Query, stageIndex: number) => Lib.Query;
-  /** How the results render once loaded; defaults to a table. */
-  display?: CardDisplayType;
-  /** What to click in the results and what the drill writes; shown as a tooltip. */
-  hint?: string;
-};
 
 const DEFAULT_DISPLAY: CardDisplayType = "table";
 
@@ -391,11 +384,23 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
   const [query, setQuery] = useState<Lib.Query>();
   const [display, setDisplay] = useState<CardDisplayType>(DEFAULT_DISPLAY);
   const [compactReading, setCompactReading] = useState(false);
+  const [saved, setSaved] = useState<SavedQuestion>();
   const [areFiltersHidden, setAreFiltersHidden] = useState(false);
 
   useEffect(() => {
     if (baseQuery && !query) {
-      setQuery(direction.prepareQuery?.(baseQuery) ?? baseQuery);
+      const { initialExample } = direction;
+      if (initialExample) {
+        const loaded = initialExample.load(baseQuery, STAGE_INDEX);
+        setQuery(loaded);
+        setSaved(
+          initialExample.title
+            ? { title: initialExample.title, query: loaded }
+            : undefined,
+        );
+      } else {
+        setQuery(direction.prepareQuery?.(baseQuery) ?? baseQuery);
+      }
     }
   }, [baseQuery, query, direction]);
 
@@ -406,10 +411,13 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
     return isLoading ? <Loader /> : null;
   }
 
-  const loadExample = ({ load, display: exampleDisplay }: Example) => {
-    setQuery(load(baseQuery ?? query, STAGE_INDEX));
+  const loadExample = ({ load, title, display: exampleDisplay }: Example) => {
+    const loaded = load(baseQuery ?? query, STAGE_INDEX);
+    setQuery(loaded);
+    setSaved(title ? { title, query: loaded } : undefined);
     setDisplay(exampleDisplay ?? DEFAULT_DISPLAY);
   };
+  const heading = getHeading(query, saved);
 
   const hasCompactReading =
     direction.id === "expression-bar-inline-2" ||
@@ -430,6 +438,11 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
                 <Text c="text-secondary">{direction.description}</Text>
               </Box>
 
+              <ExampleRow
+                label={t`Realistic questions`}
+                examples={REALISTIC_EXAMPLES}
+                onLoad={loadExample}
+              />
               <ExampleRow
                 label={t`Synthetic shapes`}
                 examples={SYNTHETIC_SHAPE_EXAMPLES}
@@ -452,6 +465,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
                   onClick={() => {
                     if (baseQuery) {
                       setQuery(baseQuery);
+                      setSaved(undefined);
                       setDisplay(DEFAULT_DISPLAY);
                     }
                   }}
@@ -487,12 +501,17 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
         )}
 
         {direction.Canvas ? (
-          <direction.Canvas query={query} onChange={setQuery} />
+          <direction.Canvas
+            query={query}
+            onChange={setQuery}
+            heading={heading}
+          />
         ) : (
           <>
             <Stack gap="sm">
               <Title order={3}>{t`Chill mode`}</Title>
               <ChillFrame
+                heading={saved ? heading : undefined}
                 isHidden={direction.canHideFilters && areFiltersHidden}
                 filterButton={
                   direction.canHideFilters ? (

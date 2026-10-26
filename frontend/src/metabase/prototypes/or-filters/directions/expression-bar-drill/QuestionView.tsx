@@ -5,21 +5,13 @@ import { useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
 import { defaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
-import {
-  ActionIcon,
-  Box,
-  Group,
-  Icon,
-  Loader,
-  Paper,
-  Text,
-  Title,
-} from "metabase/ui";
+import { ActionIcon, Box, Group, Icon, Loader, Paper, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import type { RawSeries } from "metabase-types/api";
 import { createMockCard } from "metabase-types/api/mocks";
 
+import { QuestionTitle } from "../../harness/QuestionTitle";
 import type { FilterCanvasProps } from "../../types";
 import S from "../expression-bar-2/ExpressionBar.module.css";
 
@@ -82,6 +74,7 @@ type QuestionViewProps = FilterCanvasProps & {
 export function QuestionView({
   query,
   onChange,
+  heading,
   Bar = ExpressionBar,
 }: QuestionViewProps) {
   const [history, setHistory] = useState<Lib.Query[]>([]);
@@ -114,14 +107,9 @@ export function QuestionView({
               <Icon name="arrow_left" />
             </ActionIcon>
           )}
-          <Box>
-            <Text size="sm" fw="bold" c="text-secondary">
-              {t`Sample Database / Orders`}
-            </Text>
-            <Title order={3} fz="1.25rem">
-              {Lib.suggestedName(query)}
-            </Title>
-          </Box>
+          <QuestionTitle
+            heading={heading ?? { title: Lib.suggestedName(query) }}
+          />
         </Group>
       </Group>
 

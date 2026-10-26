@@ -1,6 +1,9 @@
 import type { ComponentType } from "react";
 
 import type * as Lib from "metabase-lib";
+import type { CardDisplayType } from "metabase-types/api";
+
+import type { QuestionHeading } from "./harness/heading";
 
 export type FilterUiVariant = "chill" | "notebook";
 
@@ -19,6 +22,20 @@ export type FilterUiProps = {
 export type FilterCanvasProps = {
   query: Lib.Query;
   onChange: (query: Lib.Query) => void;
+  /** The header's title; defaults to the query's generated name. */
+  heading?: QuestionHeading;
+};
+
+/** A canned query the harness can load from its examples row. */
+export type Example = {
+  label: string;
+  /** The name it would be saved under; the question's title while it is unchanged. */
+  title?: string;
+  load: (query: Lib.Query, stageIndex: number) => Lib.Query;
+  /** How the results render once loaded; defaults to a table. */
+  display?: CardDisplayType;
+  /** What to click in the results and what the drill writes; shown as a tooltip. */
+  hint?: string;
 };
 
 export type FilterDirection = {
@@ -36,4 +53,6 @@ export type FilterDirection = {
   NotebookCanvas?: ComponentType<FilterCanvasProps>;
   /** Turns the plain Orders query into the direction's starting query. */
   prepareQuery?: (query: Lib.Query) => Lib.Query;
+  /** Loads on open instead of the plain Orders query. */
+  initialExample?: Example;
 };

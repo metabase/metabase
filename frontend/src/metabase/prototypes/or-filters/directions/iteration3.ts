@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
+import { REALISTIC_EXAMPLES } from "../harness/realisticExamples";
 import type { FilterDirection } from "../types";
 
+import { DataViewCanvas } from "./chart-filters/DataViewCanvas";
+import { DrillMenuCanvas } from "./chart-filters/DrillMenuCanvas";
 import { ExpressionBarNotebook as UnifiedExpressionBarNotebook } from "./expression-bar-unified/ExpressionBarNotebook";
 import {
   ExpressionBarSplitPrototype,
@@ -46,5 +49,29 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
     Component: ExpressionBarSplitPrototype,
     NotebookCanvas: UnifiedExpressionBarNotebook,
     canHideFilters: true,
+  },
+  {
+    id: "data-view-zones",
+    get name() {
+      return t`Data and View zones`;
+    },
+    get description() {
+      return t`Two kinds of filter, two places, two looks. "Data" on top is where the rows come from: a source chip named by Metabot (or, without it, mechanically: "Orders where …", structural "any of / all of" otherwise), with the full and/or/not expression behind it. "View" under the chart is a sentence: what is summarized, "only where" thresholds on measures (always AND-ed, numbers edited in place), sort and limit. Only measures can be thresholds: a filter on a breakout column is a row filter. Click the chart: row filters flash into Data, thresholds into View. Toggle "Metabot available" to see the fallbacks.`;
+    },
+    Component: ExpressionBarSplitPrototype,
+    Canvas: DataViewCanvas,
+    initialExample: REALISTIC_EXAMPLES[0],
+  },
+  {
+    id: "drill-menu",
+    get name() {
+      return t`Revised drill-throughs`;
+    },
+    get description() {
+      return t`The "rows bar, summary pills" layout with the chart's click menu rebuilt. The menu says what you clicked ("Gizmo · March 2025", "Count: 523"), and every option names its value: "Only Gizmo", "Everything except Gizmo", "Only Gizmo in March 2025", "Add Widget" when a category is already picked. Never a bare = ≠ < > on a bar. The measure only offers "Only bars at 523 or more / or less", and only when there are 5+ bars. Hover an option to preview how many rows or bars it leaves. Switch "New click menu" off to compare with today's popover.`;
+    },
+    Component: ExpressionBarSplitPrototype,
+    Canvas: DrillMenuCanvas,
+    initialExample: REALISTIC_EXAMPLES[0],
   },
 ];
