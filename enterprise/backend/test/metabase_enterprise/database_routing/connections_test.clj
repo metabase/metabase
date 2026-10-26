@@ -256,3 +256,16 @@
                                       (mt/with-current-user (mt/user->id :crowberto)
                                         (transforms.execute/execute! transform {:run-method :manual}))))
                 (is (empty? (query-h2 router-db "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) = 'routed_out'")))))))))))
+
+(deftest routed-admins-set-router-write-connection-test
+  (testing "a routed admin's new write details for a router are tested against the router, not refused"
+    (mt/with-premium-features #{:database-routing :writable-connection}
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (met/with-user-attributes! :crowberto {"db_name" "destination-db-1"}
+          (e2e/with-routing-setup! [router-db [[_dest-1 "destination-db-1"]]]
+            (let [router-id (u/the-id router-db)]
+              (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}]
+                (mt/user-http-request :crowberto :put 200 (str "database/" router-id)
+                                      {:write_data_details {:write-data-connection true}})
+                (is (= {:write-data-connection true}
+                       (t2/select-one-fn :write_data_details :model/Database router-id)))))))))))
