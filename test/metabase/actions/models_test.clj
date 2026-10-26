@@ -286,7 +286,7 @@
                        "GRANT ALL ON \"DEFAULT_UUID\" TO GUEST;"
                        "GRANT ALL ON \"REQUIRED_UUID\" TO GUEST;"]]
       (jdbc/execute! one-off-dbs/*conn* [statement]))
-    (sync/sync-database! (mt/db))
+    (sync/sync-database! (mt/id))
     (testing "make sure we synced the fields correctly"
       (is (= [{:database_is_auto_increment false
                :database_required          false
@@ -339,7 +339,7 @@
                        "CREATE TABLE \"FOO\" (\"id\" IDENTITY PRIMARY KEY, \"toggle\" BOOLEAN);"
                        "GRANT ALL ON \"FOO\" TO GUEST;"]]
       (jdbc/execute! one-off-dbs/*conn* [statement]))
-    (sync/sync-database! (mt/db))
+    (sync/sync-database! (mt/id))
     (mt/with-actions-enabled
       (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query foo)}]
         (let [action-data         {:type     :implicit
@@ -360,7 +360,7 @@
                        "CREATE TABLE \"FOO\" (\"id\" IDENTITY PRIMARY KEY, \"name\" TEXT);"
                        "GRANT ALL ON \"FOO\" TO GUEST;"]]
       (jdbc/execute! one-off-dbs/*conn* [statement]))
-    (sync/sync-database! (mt/db))
+    (sync/sync-database! (mt/id))
     (mt/with-actions-enabled
       (mt/with-actions [{model-id :id} {:type :model, :dataset_query (mt/mbql-query foo)}]
         (let [action-data {:type     :implicit
@@ -369,7 +369,7 @@
                            :model_id model-id}
               action-id   (action/insert! action-data)
               exec!       #(do (jdbc/execute! one-off-dbs/*conn* [%])
-                               (sync/sync-database! (mt/db)))]
+                               (sync/sync-database! (mt/id)))]
           (testing "if a column type is varied the parameter types are updated on select-action"
             (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" BIGINT;")
             (is (= [["name" :number]] (map (juxt :id :type) (:parameters (action/select-action action-id)))))
@@ -377,7 +377,7 @@
               (let [action (action/select-action action-id)]
                 (action/update! (assoc action :name "create foo2") action)
                 (exec! "ALTER TABLE \"FOO\" ALTER COLUMN \"name\" TEXT;")
-                (sync/sync-database! (mt/db))
+                (sync/sync-database! (mt/id))
                 (is (= [["name" :text]] (map (juxt :id :type) (:parameters (action/select-action action-id))))))))
           (testing "if a column added, the model column set is used, not the table"
             (exec! "ALTER TABLE \"FOO\" ADD COLUMN \"name2\" BIGINT;")

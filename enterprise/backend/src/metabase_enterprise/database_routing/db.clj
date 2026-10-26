@@ -12,16 +12,6 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
-(mu/defn database-name
-  "The name of the Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/select-one-fn :name :model/Database database-id))
-
-(mu/defn destination-database?
-  "Whether the Database with `database-id` is a routing destination."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id :router_database_id [:not= nil]))
-
 (mu/defn destination-database-id
   "The ID of the destination Database of the router with `router-database-id` named `database-name`, or nil."
   [router-database-id :- ::lib.schema.id/database

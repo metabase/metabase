@@ -18,7 +18,7 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.util :as u]
+   [metabase.driver.util :as driver.u]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.performance :as perf])
@@ -104,16 +104,6 @@
    db-or-id-or-spec
    options
    (fn [^java.sql.Connection conn]
-     (when-let [db (cond
-                     ;; id?
-                     (integer? db-or-id-or-spec)
-                     (driver-api/with-metadata-provider db-or-id-or-spec
-                       (driver-api/database (driver-api/metadata-provider)))
-                     ;; db?
-                     (u/id db-or-id-or-spec)     db-or-id-or-spec
-                     ;; otherwise it's a spec and we can't get the db
-                     :else nil)]
-       (sql-jdbc.execute/set-role-if-supported! driver conn db))
      (when-not (sql-jdbc.execute/recursive-connection?)
        (let [^com.clickhouse.jdbc.ConnectionImpl clickhouse-conn (.unwrap conn com.clickhouse.jdbc.ConnectionImpl)
              query-settings (new QuerySettings)]
@@ -472,7 +462,7 @@
 
 (defmethod driver/rename-table! :clickhouse
   [_driver db-id old-table-name new-table-name]
-  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
       (let [sql (format "RENAME TABLE %s TO %s" (quote-name old-table-name) (quote-name new-table-name))]
         (.execute stmt sql)))))

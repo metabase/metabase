@@ -298,7 +298,7 @@
                          "INSERT INTO \"test_table\" (\"id\", \"filter_col\") VALUES (1, 'value1'), (2, 'value2');"]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
       ;; Sync the database to pick up the new table
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (let [table-id        (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_table")
             filter-field-id (t2/select-one-fn :id :model/Field :table_id table-id :name "filter_col")
             ;; Step 2: Create a card with a filter on filter_col
@@ -357,7 +357,7 @@
           (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" DROP COLUMN \"filter_col\";"])
           ;; Step 5: Re-sync the database. The sync-end event will detect the stale analysis
           ;; (because analyzed_at < field.updated_at) and mark it for re-analysis.
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/id))
           ;; Verify the field is now inactive
           (testing "Field is marked inactive after sync"
             (is (false? (t2/select-one-fn :active :model/Field :id filter-field-id))))
@@ -400,7 +400,7 @@
                                       (fn [db-id]
                                         (u/prog1 (original-deps-check db-id)
                                           (swap! db-deps-checked conj [db-id <>])))]
-            (sync/sync-database! (mt/db)))
+            (sync/sync-database! (mt/id)))
           (testing "sync doesn't update tables or fields that haven't changed"
             (let [table-after        (into {} (t2/select-one :model/Table :id table-id))
                   filter-field-after (into {} (t2/select-one :model/Field :id filter-field-id))]

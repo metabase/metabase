@@ -60,13 +60,13 @@
 (def ^:private text-type      ::upload-types/text)
 
 (defn- local-infile-on? []
-  (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+  (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
               (jdbc/query "show global variables like 'local_infile'")
               first
               :value)))
 
 (defn- set-local-infile! [on?]
-  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) (str "set global local_infile = " (if on? 1 0))))
+  (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider))) (str "set global local_infile = " (if on? 1 0))))
 
 (defn- do-with-mysql-local-infile-on
   [thunk]
@@ -124,10 +124,10 @@
   (let [table-name  (ddl.i/format-name driver/*driver* table-name)
         schema-name (or (some->> schema-name (ddl.i/format-name driver/*driver*))
                         (sql.tx/session-schema driver/*driver*))
-        table       (sync-tables/create-or-reactivate-table! database {:name table-name :schema schema-name})]
+        table       (sync-tables/create-or-reactivate-table! (driver.u/lib-database (:id database)) {:name table-name :schema schema-name})]
     (t2/update! :model/Table (:id table) {:is_upload true})
     (binding [upload/*auxiliary-sync-steps* :synchronous]
-      (#'upload/scan-and-sync-table! database table))
+      (#'upload/scan-and-sync-table! table))
     (t2/select-one :model/Table (:id table))))
 
 (defn- tmp-file [prefix extension]
@@ -448,7 +448,7 @@
           :table-prefix      "uploaded_magic_"}
          (constantly nil)))
       (is (not (some #(re-find #"uploaded_magic_" (:name % ""))
-                     (driver/describe-database driver/*driver* (mt/db))))))))
+                     (driver/describe-database driver/*driver* (lib.metadata/database (mt/metadata-provider)))))))))
 
 (deftest create-from-csv-display-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1132,7 +1132,7 @@
     (mt/test-drivers [:mysql]
       (do-with-mysql-local-infile-on
        (fn []
-         (is (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+         (is (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                          (jdbc/query "show global variables like 'local_infile'")
                          first
                          :value)))))))
@@ -1140,7 +1140,7 @@
     (mt/test-drivers [:mysql]
       (do-with-mysql-local-infile-off
        (fn []
-         (is (= "OFF" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+         (is (= "OFF" (-> (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                           (jdbc/query "show global variables like 'local_infile'")
                           first
                           :value))))))))
@@ -2678,14 +2678,14 @@
                                         :write-data
                                         :default))]
           (try
-            (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+            (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
             (testing "write pool does not exist before upload create"
               (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
             (with-upload-table! [_table (create-from-csv-and-sync-with-defaults!)]
               (testing "write pool is created during upload create"
                 (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
             (finally
-              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))))
 
 (deftest upload-delete-creates-write-pool-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc, :+features [:uploads]})
@@ -2699,11 +2699,11 @@
                                         :default))]
           (try
             (let [table (create-upload-table!)]
-              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
               (testing "write pool does not exist before upload delete"
                 (is (not (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
               (upload/delete-upload! table)
               (testing "write pool is created during upload delete"
                 (is (contains? @@#'sql-jdbc.conn/pool-cache-key->connection-pool write-cache-key))))
             (finally
-              (sql-jdbc.conn/invalidate-pool-for-db! (mt/db)))))))))
+              (sql-jdbc.conn/invalidate-pool-for-db! (mt/id)))))))))

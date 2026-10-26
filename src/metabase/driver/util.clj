@@ -8,12 +8,14 @@
    [metabase.app-db.core :as mdb]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :as premium-features]
    [metabase.query-processor.error-type :as qp.error-type]
    ;; the legacy QP pipeline still conveys the metadata provider via the ambient store; no MBQL 5 path yet
@@ -348,7 +350,8 @@
   how long the driver may take -- callers bound it at whatever granularity suits them."
   [driver feature database]
   (try
-    (driver/database-supports? driver feature database)
+    (database-routing/with-anonymous-router-access
+      (driver/database-supports? driver feature database))
     (catch Throwable e
       (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
       false)))
@@ -376,6 +379,11 @@
   (if-not (:lib/type database)
     (lib-be/instance->metadata database :metadata/database)
     database))
+
+(mu/defn lib-database :- ::lib.schema.metadata/database
+  "The Database with `database-id` from the application database, as the Lib metadata that connections take."
+  [database-id :- ::lib.schema.id/database]
+  (lib.metadata/database (lib-be/application-database-metadata-provider database-id)))
 
 (mu/defn supports?
   "A defensive wrapper around [[metabase.driver/database-supports?]]. It adds logging, caching, and error handling to

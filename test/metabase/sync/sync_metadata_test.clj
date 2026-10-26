@@ -1,6 +1,7 @@
 (ns metabase.sync.sync-metadata-test
   (:require
    [clojure.test :refer :all]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.sync-metadata :as sync-metadata]
    [metabase.sync.sync-metadata.fields :as sync-fields]
@@ -44,7 +45,7 @@
       (mt/with-temp [:model/Database db {:initial_sync_status "incomplete"}]
         (mt/with-dynamic-fn-redefs [fetch-metadata/db-metadata (fn [_] (throw (ex-info "boom" {})))]
           (is (thrown? Throwable
-                       (#'sync-metadata/sync-db-metadata!* db))))
+                       (#'sync-metadata/sync-db-metadata!* (driver.u/lib-database (:id db))))))
         (is (= "aborted"
                (t2/select-one-fn :initial_sync_status :model/Database (:id db))))))))
 
@@ -59,6 +60,6 @@
                                         (throw (doto (java.sql.SQLSyntaxErrorException.
                                                       "Unknown column 'generation_expression' in 'field list'")
                                                  (.setStackTrace (into-array StackTraceElement [])))))]
-            (#'sync-metadata/sync-db-metadata!* (t2/select-one :model/Database :id (mt/id))))
+            (#'sync-metadata/sync-db-metadata!* (driver.u/lib-database (mt/id))))
           (is (= "aborted"
                  (t2/select-one-fn :initial_sync_status :model/Database (mt/id)))))))))

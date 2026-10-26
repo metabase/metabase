@@ -604,7 +604,7 @@
            (with-test-db-name
              (format "INSERT INTO `v4_test_data.%s` (ts, dt) VALUES (TIMESTAMP \"2020-01-01 00:00:00 UTC\", DATETIME \"2020-01-01 00:00:00\")"
                      table-name)))
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/id))
           (f table-name)
           (finally
             (bigquery.tx/execute! (with-test-db-name "DROP TABLE IF EXISTS `v4_test_data.%s`") table-name)))))))

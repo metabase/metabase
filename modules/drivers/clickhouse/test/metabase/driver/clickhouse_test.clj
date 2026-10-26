@@ -13,6 +13,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
@@ -319,7 +320,7 @@
       [:model/Database db
        {:engine  :clickhouse
         :details (mt/dbdef->connection-details :clickhouse :db {:database-name "default"})}]
-      (let [version (driver/dbms-version :clickhouse db)]
+      (let [version (driver/dbms-version :clickhouse (driver.u/ensure-lib-database db))]
         (is (number? (get-in version [:semantic-version :major])))
         (is (number? (get-in version [:semantic-version :minor])))
         (is (string? (get    version :version)))))))
@@ -343,7 +344,7 @@
 
 (deftest ^:synchronized clickhouse-session-timezone-does-not-leak-across-borrows-test
   (mt/test-driver :clickhouse
-    (sql-jdbc.conn/invalidate-pool-for-db! (mt/db))
+    (sql-jdbc.conn/invalidate-pool-for-db! (mt/id))
     (let [underlying-conn-ids (atom [])
           observe (fn [opts]
                     (sql-jdbc.execute/do-with-connection-with-options
@@ -422,34 +423,29 @@
             :clickhouse
             {})))))
 
-(deftest ^:parallel clickhouse-tls
+(deftest clickhouse-tls
   (mt/test-driver :clickhouse
-    (let [working-dir (System/getProperty "user.dir")
-          cert-path (str working-dir "/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/certificates/ca.crt")
-          additional-options (str "sslrootcert=" cert-path)]
+    (let [working-dir        (System/getProperty "user.dir")
+          cert-path          (str working-dir "/modules/drivers/clickhouse/.docker/clickhouse/single_node_tls/certificates/ca.crt")
+          additional-options (str "sslrootcert=" cert-path)
+          timezone           (fn [details]
+                               (mt/with-temp [:model/Database {db-id :id} {:engine :clickhouse :details details}]
+                                 (driver/db-default-timezone :clickhouse (driver.u/lib-database db-id))))]
       (testing "simple connection with a single database"
         (is (= "UTC"
-               (driver/db-default-timezone
-                :clickhouse
-                (sql-jdbc.conn/connection-details->spec
-                 :clickhouse
-                 {:ssl true
-                  :host "server.clickhouseconnect.test"
-                  :port 8443
-                  :additional-options additional-options})))))
+               (timezone {:ssl                true
+                          :host               "server.clickhouseconnect.test"
+                          :port               8443
+                          :additional-options additional-options}))))
       (testing "connection with multiple databases"
         (is (= "UTC"
-               (driver/db-default-timezone
-                :clickhouse
-                (sql-jdbc.conn/connection-details->spec
-                 :clickhouse
-                 {:ssl true
-                  :host "server.clickhouseconnect.test"
-                  :port 8443
-                  :enable-multiple-db true
-                  :db-filters-patterns "default, system"
-                  :db-filters-type "inclusion"
-                  :additional-options additional-options}))))))))
+               (timezone {:ssl                 true
+                          :host                "server.clickhouseconnect.test"
+                          :port                8443
+                          :enable-multiple-db  true
+                          :db-filters-patterns "default, system"
+                          :db-filters-type     "inclusion"
+                          :additional-options  additional-options})))))))
 
 (deftest ^:parallel clickhouse-nippy
   (mt/test-driver :clickhouse
@@ -531,7 +527,7 @@
           (driver/insert-into! :clickhouse (:id db) table [:id :name] [[42 "Bob"] [43 "Alice"]])
           (is (= #{{:id 42, :name "Bob"}
                    {:id 43, :name "Alice"}}
-                 (set (sql-jdbc/query :clickhouse db {:select [:*] :from [table]}))))
+                 (set (sql-jdbc/query :clickhouse (driver.u/ensure-lib-database db) {:select [:*] :from [table]}))))
           (finally
             (driver/drop-table! :clickhouse (:id db) table)))))))
 
@@ -751,7 +747,7 @@
                      (is (= [[1 " Luke Skywalker"]
                              [2 " Darth Vader"]]
                             (query-model)))
-                     (sync/sync-database! db {:scan :schema})
+                     (sync/sync-database! (:id db) {:scan :schema})
                      (is (= [[1 " Luke Skywalker"]
                              [2 " Darth Vader"]]
                             (query-model))))))))

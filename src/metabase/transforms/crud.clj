@@ -36,7 +36,7 @@
                    (deferred-tru "Cannot run transforms on audit databases."))
     (api/check-400 (every? (fn [feature] (driver.u/supports? (:engine database) feature database)) features)
                    (deferred-tru "The database does not support the requested transform features."))
-    (api/check-400 (not (database-routing/db-routing-enabled? database))
+    (api/check-400 (not (database-routing/db-routing-enabled? (driver.u/lib-database (:id database))))
                    (deferred-tru "Transforms are not supported on databases with DB routing enabled."))))
 
 (defn check-feature-enabled!
@@ -131,7 +131,8 @@
   "The index methods the target db's driver can create on `transform`'s target table, or nil when none are available."
   [transform]
   (when-let [db-id (transforms-base.i/target-db-id transform)]
-    (when-let [database (transforms.db/database db-id)]
+    (when-let [database (when (transforms.db/database-exists? db-id)
+                          (driver.u/lib-database db-id))]
       (let [methods (try
                       (driver/supported-index-methods (:engine database) database)
                       (catch Throwable e

@@ -95,7 +95,8 @@
     (when (and cancelled? (cancelled?))
       (throw (ex-info "Transform cancelled before start" {:status :cancelled})))
     (let [db (get-in source [:query :database])
-          {driver :engine :as database} (when db (transforms-base.db/database db))
+          {driver :engine :as database} (when (and db (transforms-base.db/database-exists? db))
+                                          (driver.u/lib-database db))
           _ (when-not database
               (throw (ex-info "Source database for this transform has been deleted."
                               {:transform-id (:id transform)

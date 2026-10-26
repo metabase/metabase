@@ -16,8 +16,10 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.test :as qp]
@@ -118,7 +120,7 @@
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :h2
     (is (= (t/zone-id "Z")
-           (-> (driver/db-default-timezone :h2 (mt/db))
+           (-> (driver/db-default-timezone :h2 (lib.metadata/database (mt/metadata-provider)))
                t/zone-id
                .normalized)))))
 
@@ -239,7 +241,7 @@
 
 (deftest ^:parallel check-action-commands-test
   (mt/test-driver :h2
-    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
+    (are [query] (= true (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (lib.metadata/database (mt/metadata-provider)) query)))
       "select 1"
       "update venues set name = 'bill'"
       "delete venues"
@@ -259,7 +261,7 @@
       "insert into venues (name) values ('bill')"
       "create table venues"
       "alter table venues add column address varchar(255)")
-    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (mt/id) query)))
+    (are [query] (= false (#'h2/every-command-allowed-for-actions? (#'h2/classify-query (lib.metadata/database (mt/metadata-provider)) query)))
       "select * from venues; update venues set name = 'stomp';
        CREATE ALIAS EXEC AS 'String shellexec(String cmd) throws java.io.IOException {Runtime.getRuntime().exec(cmd);return \"y4tacker\";}';
        EXEC ('open -a Calculator.app')"
@@ -398,7 +400,7 @@
     (testing "`syncable-schemas` should return schemas that should be synced"
       (mt/with-empty-db
         (is (= #{"PUBLIC"}
-               (driver/syncable-schemas driver/*driver* (mt/db))))))))
+               (driver/syncable-schemas driver/*driver* (lib.metadata/database (mt/metadata-provider)))))))))
 
 (deftest syncable-audit-db-test
   (mt/test-driver :h2
@@ -411,7 +413,7 @@
           (testing "spec obtained from audit db has no connection string, and that works OK."
             (let [audit-db-id (t2/select-one-fn :id 'Database :is_audit true)]
               (is (= audit-db-expected-id audit-db-id))
-              (let [audit-db-pooled-spec (sql-jdbc.conn/db->pooled-connection-spec audit-db-id)]
+              (let [audit-db-pooled-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database audit-db-id))]
                 (is (= "com.mchange.v2.c3p0.PoolBackedDataSource" (pr-str (type (:datasource audit-db-pooled-spec)))))
                 (let [spec (sql-jdbc.conn/connection-details->spec :h2 audit-db-pooled-spec)]
                   (is (= #{:classname :subprotocol :subname :datasource}

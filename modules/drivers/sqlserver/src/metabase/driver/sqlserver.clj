@@ -1305,7 +1305,7 @@
 
 (defmethod driver/rename-table! :sqlserver
   [_driver db-id old-table-name new-table-name]
-  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
     (with-open [stmt (.createStatement ^java.sql.Connection (:connection conn))]
       (let [sql (format "EXEC sp_rename %s, %s;"
                         (sql.u/quote-literal (name old-table-name) :ansi)

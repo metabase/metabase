@@ -200,7 +200,7 @@
       (select-keys [:values :human_readable_values])))
 
 (defn- sync-and-find-values! [db field-values-id]
-  (sync/sync-database! db)
+  (sync/sync-database! (:id (t2/select-one :model/Database (u/the-id db))))
   (find-values field-values-id))
 
 (deftest implicit-deduplication-test
@@ -456,7 +456,7 @@
                                           :is_full_sync true
                                           :details      "{\"db\": \"mem:temp\"}"}]
          ;; Sync the database so we have the new table and it's fields
-         (sync/sync-database! db)
+         (sync/sync-database! (:id db))
          (let [table-id        (t2/select-one-fn :id :model/Table :db_id (u/the-id db) :name "FOO")
                field-id        (t2/select-one-fn :id :model/Field :table_id table-id :name "CATEGORY_ID")
                ;; Manually activate Field values since they are not created during sync (#53387)

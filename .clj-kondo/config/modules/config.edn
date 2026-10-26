@@ -856,7 +856,7 @@
   database-routing
   {:team "UX West"
    :api  #{metabase.database-routing.core}
-   :uses #{premium-features}}
+   :uses #{lib.schema premium-features}}
 
   documents
   {:team "UX West"
@@ -921,6 +921,7 @@
            appearance
            audit-app
            auth-provider
+           database-routing
            events
            lib
            lib.be
@@ -2711,7 +2712,6 @@
            driver
            events
            interestingness
-           lib.be
            lib.metadata
            lib.schema
            models
@@ -2957,6 +2957,7 @@
    :ns-prefix "metabase.indexes-rest"
    :api #{metabase.indexes-rest.api}
    :uses #{api
+           driver
            lib.schema
            transforms.base
            transforms.indexes
@@ -3268,6 +3269,7 @@
            app-db
            audit-app
            collections
+           database-routing
            driver
            lib
            lib.be
@@ -3694,7 +3696,6 @@
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
-           database-routing
            driver
            events
            lib.metadata
@@ -4035,7 +4036,7 @@
            warehouses.schema
            enterprise/permissions.sandbox}
    :model-exports #{:model/ConnectionImpersonation}
-   :model-imports #{:model/DataPermissions :model/Database :model/PermissionsGroupMembership}}
+   :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
 
   enterprise/permissions.sandbox
   {:team "UX West"
