@@ -45,6 +45,20 @@
   ["proxy_password" "proxy_port" "proxy_type" "proxy_user" "server_time_zone" "server_version"
    "socket_tcp_nodelay" "use_server_time_zone" "use_server_time_zone_for_dates"])
 
+(defmethod driver/file-path-parameters :clickhouse
+  [_driver]
+  {"sslrootcert"   :read
+   "sslcert"       :read
+   "ssl_key"       :read
+   "ssl_key_store" :read
+   "trust_store"   :read
+   ;; read by the bundled v1 client, which `clickhouse.jdbc.v1=true` switches to
+   "sslkey"        :read})
+
+(defmethod driver/non-file-path-parameters :clickhouse
+  [_driver]
+  ["clickhouse_setting_log_comment" "ignore_unknown_config_key" "key_store_password" "key_store_type"])
+
 (defn- quote-schema [s] (sql.u/quote-name :clickhouse :schema s))
 
 (defmethod driver/prettify-native-form :clickhouse
