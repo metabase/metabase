@@ -28,14 +28,14 @@
   [:and
    table-condition
    [:= :active true]
-   [:not= :visibility_type "retired"]
+   [:not-in :visibility_type ["retired" "sensitive" "hidden"]]
    [:= :nfc_path nil]
    [:= :parent_id nil]])
 
 (mu/defn active-fields
-  "The active, non-retired, top-level Fields of `table-id`, ordered by position then id. Hidden and sensitive fields
-  are included. JSON child fields are excluded: SQL unfolding sets only `nfc_path`, Mongo sets `nfc_path` and
-  `parent_id`."
+  "The active, top-level Fields of `table-id` whose `visibility_type`, as users see it, is not retired, sensitive or
+  hidden, ordered by position then id. Sync, FieldValues and Metabot also skip the values of sensitive and hidden
+  fields. JSON child fields are excluded: SQL unfolding sets only `nfc_path`, Mongo sets `nfc_path` and `parent_id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Field
              {:from     [(warehouse-schema-overlay/field-query)]
@@ -71,11 +71,12 @@
                                                 {:from [(warehouse-schema-overlay/table-query)]})))
 
 (mu/defn active-tables
-  "The active Tables of `database-id`, ordered by schema then name."
+  "The active Tables of `database-id` with no `visibility_type` as users see it, as sync selects them, ordered by
+  schema then name."
   [database-id :- ::lib.schema.id/database]
   (t2/select :model/Table
              {:from     [(warehouse-schema-overlay/table-query)]
-              :where    [:and [:= :db_id database-id] [:= :active true]]
+              :where    [:and [:= :db_id database-id] [:= :active true] [:= :visibility_type nil]]
               :order-by [[:schema :asc] [:name :asc]]}))
 
 ;;; Metadata generation runs
@@ -137,24 +138,29 @@
 (defn- upsert-table-proposals!
   "Make the proposals of `table_id` for `attributes` the ones in `proposals`: a new proposal replaces the pending or
   rejected row of its field and attribute, and a row that `proposals` does not have is deleted. Rows of other tables
-  and other attributes do not change."
+  and other attributes do not change. When an apply deletes an existing row before its update, the new proposal is
+  inserted."
   [{:keys [table_id attributes proposals]}]
   (let [existing (into {}
                        (map (juxt (juxt :field_id :attribute) :id))
                        (t2/select [:model/MetadataGenerationProposal :id :field_id :attribute]
                                   :table_id table_id :attribute [:in attributes]))
         by-key   (into {} (map (juxt (juxt :field_id :attribute) identity)) proposals)
-        gone     (vec (keep (fn [[k id]] (when-not (by-key k) id)) existing))
-        inserts  (vec (remove #(existing ((juxt :field_id :attribute) %)) proposals))]
+        gone     (vec (keep (fn [[k id]] (when-not (by-key k) id)) existing))]
     (when (seq gone)
       (t2/delete! :model/MetadataGenerationProposal :id [:in gone]))
-    (doseq [[k id] existing
-            :let [p (by-key k)]
-            :when p]
-      (t2/update! :model/MetadataGenerationProposal id
-                  (assoc (select-keys p [:last_run_id :proposed_value :confidence :reasoning])
-                         :status :pending :decided_by nil :decided_at nil)))
-    (when (seq inserts)
+    (when-let [inserts (not-empty
+                        (into []
+                              (filter (fn [p]
+                                        (let [id (existing ((juxt :field_id :attribute) p))]
+                                          (or (nil? id)
+                                              (zero? (t2/update! :model/MetadataGenerationProposal id
+                                                                 (assoc (select-keys p [:last_run_id :proposed_value
+                                                                                        :confidence :reasoning])
+                                                                        :status :pending
+                                                                        :decided_by nil
+                                                                        :decided_at nil)))))))
+                              proposals))]
       (t2/insert! :model/MetadataGenerationProposal inserts))))
 
 (mu/defn record-table! :- :boolean

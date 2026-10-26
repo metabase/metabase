@@ -28,22 +28,62 @@
   (table-packet table :include-values? false))
 
 (deftest field-selection-test
-  (mt/with-temp [:model/Field hidden  {:table_id (mt/id :people) :name "hidden_f" :base_type :type/Text
-                                       :visibility_type :hidden :position 100}
-                 :model/Field retired {:table_id (mt/id :people) :name "retired_f" :base_type :type/Text
-                                       :visibility_type :retired :position 101}
-                 :model/Field inact   {:table_id (mt/id :people) :name "inactive_f" :base_type :type/Text
-                                       :active false :position 102}]
+  (mt/with-temp [:model/Field details   {:table_id (mt/id :people) :name "details_f" :base_type :type/Text
+                                         :visibility_type :details-only :position 99}
+                 :model/Field hidden    {:table_id (mt/id :people) :name "hidden_f" :base_type :type/Text
+                                         :visibility_type :hidden :position 100}
+                 :model/Field sensitive {:table_id (mt/id :people) :name "sensitive_f" :base_type :type/Text
+                                         :visibility_type :sensitive :position 103}
+                 :model/Field retired   {:table_id (mt/id :people) :name "retired_f" :base_type :type/Text
+                                         :visibility_type :retired :position 101}
+                 :model/Field inact     {:table_id (mt/id :people) :name "inactive_f" :base_type :type/Text
+                                         :active false :position 102}
+                 :model/Field user-sens {:table_id (mt/id :people) :name "user_sensitive_f" :base_type :type/Text
+                                         :position 104}]
+    (field-user-settings/upsert-user-settings user-sens {:visibility_type :sensitive})
     (let [packet (schema-only-packet (people-table))
           ids    (into #{} (map :id) (:fields packet))]
-      (testing "hidden fields are included"
-        (is (contains? ids (:id hidden))))
-      (testing "retired and inactive fields are excluded"
+      (testing "details-only fields are included"
+        (is (contains? ids (:id details))))
+      (testing "hidden, sensitive, retired and inactive fields are excluded"
+        (is (not (contains? ids (:id hidden))))
+        (is (not (contains? ids (:id sensitive))))
         (is (not (contains? ids (:id retired))))
         (is (not (contains? ids (:id inact)))))
+      (testing "a field a user set to sensitive is excluded"
+        (is (not (contains? ids (:id user-sens)))))
       (testing "fields are ordered by position then id"
         (is (= (sort-by (juxt :position :id) (:fields packet))
                (:fields packet)))))))
+
+(deftest sensitive-field-values-excluded-test
+  (mt/with-temp [:model/Field {sensitive-id :id} {:table_id (mt/id :people) :name "sensitive_f" :base_type :type/Text
+                                                  :visibility_type :sensitive :position 100}
+                 :model/FieldValues _ {:field_id sensitive-id :type :full :values ["sensitive-cached-marker"]}
+                 :model/Field {hidden-id :id} {:table_id (mt/id :people) :name "hidden_f" :base_type :type/Text
+                                               :visibility_type :hidden :position 101}
+                 :model/FieldValues _ {:field_id hidden-id :type :full :values ["hidden-cached-marker"]}
+                 :model/Field {normal-id :id} {:table_id (mt/id :people) :name "normal_f" :base_type :type/Text
+                                               :position 102}
+                 :model/FieldValues _ {:field_id normal-id :type :full :values ["normal-cached-marker"]}]
+    (let [sampled-ids (atom nil)
+          packet      (with-redefs [driver/table-rows-sample
+                                    (fn [_ _ fields _ _]
+                                      (reset! sampled-ids (set (map :id fields)))
+                                      [(mapv #(str (:name %) "-sampled-marker") fields)])]
+                        (table-packet (people-table)))]
+      (testing "sensitive and hidden fields and their values are not in the packet"
+        (is (nil? (field-by-name packet "sensitive_f")))
+        (is (nil? (field-by-name packet "hidden_f")))
+        (doseq [marker ["sensitive-cached-marker" "sensitive_f-sampled-marker"
+                        "hidden-cached-marker" "hidden_f-sampled-marker"]]
+          (is (not (str/includes? (pr-str packet) marker)))))
+      (testing "the row sample does not select sensitive or hidden fields"
+        (is (not (contains? @sampled-ids sensitive-id)))
+        (is (not (contains? @sampled-ids hidden-id))))
+      (testing "a normal field in the same packet keeps its cached and sampled values"
+        (is (= ["normal-cached-marker"] (:cached_values (field-by-name packet "normal_f"))))
+        (is (= ["normal_f-sampled-marker"] (:sample_values (field-by-name packet "normal_f"))))))))
 
 (deftest json-child-fields-excluded-test
   (mt/with-temp [:model/Field sql-parent  {:table_id (mt/id :people) :name "payload" :base_type :type/JSON

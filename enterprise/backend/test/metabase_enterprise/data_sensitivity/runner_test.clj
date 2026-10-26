@@ -263,6 +263,37 @@
                         ["ds_a" :semantic_type]    ["type/Email" :pending run-3]}
                        (table-proposals (:id table))))))))))))
 
+(deftest record-table-keeps-proposal-of-concurrently-applied-row-test
+  (testing "a run records its proposal for a field whose old proposal row an apply deletes during the upsert"
+    (mt/with-temp [:model/Database                db    {}
+                   :model/Table                   table {:db_id (:id db) :name "ds_race" :active true}
+                   :model/Field                   field {:table_id (:id table) :name "ds_a" :base_type :type/Text}
+                   :model/MetadataGenerationRun   run   {:database_id (:id db) :scope {:type :database}
+                                                         :attributes [:description] :total_tables 1
+                                                         :status :running}
+                   :model/MetadataGenerationProposal old {:table_id (:id table) :field_id (:id field)
+                                                          :attribute :description :proposed_value "old"
+                                                          :status :pending}]
+      (let [select (mt/original-fn #'t2/select)]
+        (mt/with-dynamic-fn-redefs [t2/select (fn [model & args]
+                                                (let [result (apply select model args)]
+                                                  (when (= [:model/MetadataGenerationProposal :id :field_id :attribute]
+                                                           model)
+                                                    (t2/delete! :model/MetadataGenerationProposal :id (:id old)))
+                                                  result))]
+          (is (true? (ds.db/record-table! (:id run) {:done_tables 1}
+                                          {:table_id   (:id table)
+                                           :attributes #{:description}
+                                           :proposals  [{:last_run_id    (:id run)
+                                                         :table_id       (:id table)
+                                                         :field_id       (:id field)
+                                                         :attribute      :description
+                                                         :proposed_value "new"
+                                                         :confidence     :high
+                                                         :reasoning      "r"}]})))))
+      (is (= {["ds_a" :description] ["new" :pending (:id run)]}
+             (table-proposals (:id table)))))))
+
 (deftest table-scoped-run-keeps-other-tables-test
   (do-with-temp-tables
    2
@@ -401,6 +432,36 @@
           (t2/update! :model/Table (:id (second tables)) {:active false})
           (testing "retry-failed is a 400 when no failed table is still active"
             (is (= 400 (:status-code (try (runner/retry-failed! db ended (mt/user->id :crowberto))
+                                          (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))))))
+
+(deftest hidden-tables-and-fields-skipped-test
+  (do-with-temp-tables
+   4
+   (fn [db [t0 t1 t2' t3]]
+     (t2/update! :model/Table (:id t1) {:visibility_type :hidden})
+     (t2/insert! :model/TableUserSettings {:table_id (:id t2') :visibility_type :cruft})
+     (t2/insert! :model/Field {:table_id (:id t3) :name "ds_03_sensitive" :base_type :type/Text
+                               :database_type "TEXT" :visibility_type :sensitive})
+     (t2/insert! :model/Field {:table_id (:id t3) :name "ds_03_hidden" :base_type :type/Text
+                               :database_type "TEXT" :visibility_type :hidden})
+     (testing "the estimate counts visible tables and their fields that are not sensitive or hidden"
+       (is (=? {:table_count 2 :field_count 2}
+               (runner/estimate db {:attributes [:data_sensitivity]}))))
+     (let [prompts (atom [])]
+       (ds.tu/do-with-llm!
+        (fn [& [_model messages :as args]]
+          (swap! prompts conj (:content (last messages)))
+          (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args))
+        (fn []
+          (testing "a database run skips tables hidden on the table or by a user"
+            (let [ended (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))]
+              (is (=? {:status :succeeded :total_tables 2} ended))
+              (is (= #{(:id t0) (:id t3)} (set (map :table_id (suggestions (:id ended))))))))
+          (testing "the prompt holds no sensitive or hidden field"
+            (is (not-any? #(str/includes? % "ds_03_sensitive") @prompts))
+            (is (not-any? #(str/includes? % "ds_03_hidden") @prompts)))
+          (testing "a run that names a hidden table is a 400"
+            (is (= 400 (:status-code (try (start! db {:table_ids [(:id t1)]})
                                           (catch clojure.lang.ExceptionInfo e (ex-data e)))))))))))))
 
 (deftest failed-table-usage-test
