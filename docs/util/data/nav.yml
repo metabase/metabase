@@ -119,6 +119,18 @@ categories:
           - name: "Actions on dashboards"
             url: "dashboards/actions"
 
+      - name: "Data apps"
+        url: "data-apps/start"
+        pages:
+          - name: "Overview"
+            url: "data-apps/introduction"
+          - name: "Build a data app"
+            url: "data-apps/build"
+          - name: "Manage data apps"
+            url: "data-apps/manage"
+          - name: "Ship data apps with Remote Sync"
+            url: "data-apps/remote-sync"
+
       - name: "Documents"
         url: "documents/start"
         pages:
@@ -235,8 +247,6 @@ categories:
             url: "data-modeling/tools/graph"
           - name: "Replace data sources"
             url: "data-modeling/tools/replace-data-sources"
-      - name: "Data apps"
-        url: "data-modeling/data-apps"
       - name: "Editable tables"
         url: "data-modeling/editable-tables"
       - name: "Models"

@@ -29,7 +29,7 @@ The dependency graph tracks the relationships between Metabase entities:
 - [Metrics](../../data-modeling/semantic-layer/metrics.md)
 - [Dashboards](../../dashboards/introduction.md)
 - [Documents](../../documents/introduction.md)
-- [Data apps](../data-apps.md)
+- [Data apps](../../data-apps/introduction.md)
 
 Dependency graph will also show the dependencies of Metabase entities on the tables that serve as data sources for those entities.
 
@@ -37,7 +37,7 @@ To see foreign key relationships between tables, see the [Schema viewer](schema-
 
 ### Data apps in the dependency graph
 
-A [data app](../data-apps.md) depends on the questions and actions in its collection. To see an app's dependencies, [open the dependency graph](#viewing-the-dependency-graph), and type the app's name in the **Pick an item to see its dependencies** box. Or select **Browse all** and open the **Data apps** folder.
+A [data app](../../data-apps/introduction.md) depends on the questions and actions in its collection. To see an app's dependencies, [open the dependency graph](#viewing-the-dependency-graph), and type the app's name in the **Pick an item to see its dependencies** box. Or select **Browse all** and open the **Data apps** folder.
 
 To open a live app, click the app in the graph, and select **View this data app** in its info panel. The graph doesn't link to the questions and actions in an app's collection, and it doesn't show the **Find and replace** button for those questions.
 

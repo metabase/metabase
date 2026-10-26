@@ -9,7 +9,7 @@ summary: See the questions and actions that your data apps run, who runs them, a
 
 _Monitor > Data app analytics_
 
-The Data app analytics page logs each question and action that your [data apps](../data-modeling/data-apps.md) run, as well as who uses each app, what it runs, how long it takes, and what fails.
+The Data app analytics page logs each question and action that your [data apps](../data-apps/introduction.md) run, as well as who uses each app, what it runs, how long it takes, and what fails.
 
 To view the analytics:
 
