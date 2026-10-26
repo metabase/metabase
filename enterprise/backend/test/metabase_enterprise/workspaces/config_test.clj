@@ -6,7 +6,8 @@
    [metabase-enterprise.workspaces.test-util :as workspaces.tu]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -83,8 +84,75 @@
     (testing "tunnel on with SSH-key auth: only the key and its passphrase ship"
       (is (= {:tunnel-private-key "tunnel-key" :tunnel-private-key-passphrase "tunnel-key-pass"}
              (select-keys (details-for {:tunnel-enabled true :tunnel-auth-option "ssh-key"}) (keys tunnel-secrets)))))
-    (testing ":secret properties never reach the config as values; the Secret table keeps them"
+    (testing "the client key's :secret properties never reach the config as values; the Secret table keeps them"
       (is (= {} (select-keys (details-for {:tunnel-enabled true}) (keys ssl-secrets)))))))
+
+(deftest build-workspace-config-carries-ssl-root-cert-value-test
+  (testing "the SSL root cert ships as its value; the parent's Secret id would not resolve in the child"
+    (let [root-cert "-----BEGIN CERTIFICATE-----\nMIIBroot\n-----END CERTIFICATE-----\n"]
+      (mt/with-temp [:model/Database {db-id :id}
+                     {:name    "Cert DW" :engine :postgres
+                      :details {:host                    "h" :port 5432 :user "admin"
+                                :ssl                     true
+                                :ssl-mode                "verify-full"
+                                :ssl-root-cert-options   "uploaded"
+                                :ssl-root-cert-value     root-cert
+                                :ssl-client-cert-options "uploaded"
+                                :ssl-client-cert-value   "client-cert"}}
+                     :model/Workspace {ws-id :id} {:name "certs" :creator_id (mt/user->id :crowberto)}
+                     :model/WorkspaceDatabase _
+                     {:workspace_id     ws-id :database_id db-id
+                      :database_details {:user "iso" :password "iso-pass"}
+                      :output_namespace "iso" :input_schemas ["public"] :status :provisioned}]
+        (let [stored  (t2/select-one-fn :details :model/Database db-id)
+              details (->> (config/build-workspace-config ws-id) :config :databases
+                           (some #(when (= "Cert DW" (:name %)) (:details %))))]
+          (testing "precondition: the parent stores both certs as Secrets"
+            (is (int? (:ssl-root-cert-id stored)))
+            (is (int? (:ssl-client-cert-id stored))))
+          (is (= {:ssl-root-cert-options "uploaded" :ssl-root-cert-value root-cert}
+                 (select-keys details [:ssl-root-cert-id :ssl-root-cert-options :ssl-root-cert-value])))
+          (testing "the client cert is left as is (MBC10-87)"
+            (is (= (:ssl-client-cert-id stored) (:ssl-client-cert-id details)))
+            (is (not (contains? details :ssl-client-cert-value)))))))))
+
+(defn- with-cert-workspace
+  "Run `f` with the id of a provisioned workspace over a Postgres database named \"Cert DW\" with `details`."
+  [details f]
+  (mt/with-temp [:model/Database {db-id :id} {:name "Cert DW" :engine :postgres :details details}
+                 :model/Workspace {ws-id :id} {:name "certs" :creator_id (mt/user->id :crowberto)}
+                 :model/WorkspaceDatabase _
+                 {:workspace_id     ws-id :database_id db-id
+                  :database_details {:user "iso" :password "iso-pass"}
+                  :output_namespace "iso" :input_schemas ["public"] :status :provisioned}]
+    (f ws-id)))
+
+(deftest build-workspace-config-drops-unresolvable-ssl-root-cert-id-test
+  (testing "a root cert id with no Secret behind it is dropped: in the child it could name an unrelated Secret"
+    (with-cert-workspace
+      {:host "h" :port 5432 :ssl true :ssl-mode "verify-full" :ssl-root-cert-id Integer/MAX_VALUE}
+      (fn [ws-id]
+        (let [details (->> (config/build-workspace-config ws-id) :config :databases
+                           (some #(when (= "Cert DW" (:name %)) (:details %))))]
+          (is (= {:host "h" :ssl-mode "verify-full"} (select-keys details [:host :ssl-mode])))
+          (is (= {} (select-keys details [:ssl-root-cert-id :ssl-root-cert-options :ssl-root-cert-value]))))))))
+
+(deftest build-workspace-config-unreadable-ssl-root-cert-test
+  (testing "a root cert the parent can't read is a 409 naming the database, not an opaque 500"
+    ;; A local-file root cert is refused on hosted instances, so run as self-hosted.
+    (mt/with-premium-features #{}
+      (with-cert-workspace
+        {:host "h" :port 5432 :ssl true :ssl-mode "verify-full"
+         :ssl-root-cert-options "local" :ssl-root-cert-path "/nonexistent/fe103/root.crt"}
+        (fn [ws-id]
+          (is (=? {:status-code 409}
+                  (try
+                    (config/build-workspace-config ws-id)
+                    nil
+                    (catch clojure.lang.ExceptionInfo e
+                      (is (= "The SSL root certificate of database \"Cert DW\" can't be read on this instance"
+                             (ex-message e)))
+                      (ex-data e))))))))))
 
 (deftest build-workspace-config-three-slot-engine-test
   (when (workspaces.tu/driver-loadable? :sqlserver)

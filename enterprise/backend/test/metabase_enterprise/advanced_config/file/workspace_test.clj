@@ -5,10 +5,16 @@
    [clojure.test :refer [deftest is testing use-fixtures]]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
    [metabase-enterprise.advanced-config.file.workspace :as advanced-config.file.workspace]
+   [metabase-enterprise.advanced-config.settings :as advanced-config.settings]
    [metabase-enterprise.workspaces.core :as ws]
+   [metabase.driver.settings :as driver.settings]
+   [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util.yaml :as yaml])
+   [metabase.util.json :as json]
+   [metabase.util.quick-task :as quick-task]
+   [metabase.util.yaml :as yaml]
+   [toucan2.core :as t2])
   (:import
    (clojure.lang ExceptionInfo)))
 
@@ -349,3 +355,77 @@
         (reset! (lock-atom) false)
         (advanced-config.file.workspace/apply-workspace-section! (workspace-section "ws-test-db"))
         (is (false? (ws/workspace-locked-by-config?)))))))
+
+(defn- metadata-file-config
+  "A config.yml whose `databases` section creates `db-name` against the test-data H2 database and whose `workspace`
+  section points at the load document at `path`."
+  [db-name path]
+  {:version 1
+   :config  {:databases [{:name    db-name
+                          :engine  "h2"
+                          :details (:details (mt/db))}]
+             :workspace {:name          "New workspace"
+                         :metadata_file path
+                         :databases     {(keyword db-name) {:input_schemas ["PUBLIC"]
+                                                            :output        {:schema "mb__isolation_1"}}}}}})
+
+(def ^:private one-table-document
+  {:databases [{:name   "ws-load-db"
+                :tables [{:schema       "PUBLIC"
+                          :name         "VENUES"
+                          :display_name "Places"
+                          :fields       [{:name "ID" :display_name "ID" :base_type "type/BigInteger"
+                                          :database_type "BIGINT" :position 0 :database_position 0
+                                          :semantic_type "type/PK" :visibility_type "normal"}]}]}]})
+
+(defn- initialize-with-metadata-file!
+  "Run `initialize!` on [[metadata-file-config]], recording the databases a sync was started for. Returns their ids."
+  [path]
+  (let [synced (atom #{})]
+    (mt/with-dynamic-fn-redefs [sync/sync-database! (fn [database & _] (swap! synced conj (:id database)) nil)]
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (advanced-config.file/initialize! (metadata-file-config "ws-load-db" path)))
+      ;; syncs run on the quick-task thread
+      @(quick-task/submit-task! (constantly nil)))
+    @synced))
+
+(deftest metadata-file-loads-the-database-instead-of-syncing-it-test
+  (mt/with-premium-features #{:config-text-file :workspaces}
+    (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+      (mt/with-temp-file [path "load-metadata.json"]
+        (spit path (json/encode one-table-document))
+        (try
+          (is (= #{} (initialize-with-metadata-file! path))
+              "no initial sync races the load")
+          (is (false? (advanced-config.settings/config-from-file-sync-databases)))
+          (let [db (t2/select-one :model/Database :name "ws-load-db")]
+            (is (= "complete" (:initial_sync_status db)))
+            (is (= ["VENUES"] (t2/select-fn-vec :name :model/Table :db_id (:id db)))))
+          (finally
+            (t2/delete! :model/Database :name "ws-load-db")))))))
+
+(deftest malformed-metadata-file-leaves-the-database-to-sync-test
+  (mt/with-premium-features #{:config-text-file :workspaces}
+    (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+      (mt/with-temp-file [path "load-metadata.json"]
+        (spit path "{not json")
+        (try
+          (let [db-id-synced (initialize-with-metadata-file! path)
+                db           (t2/select-one :model/Database :name "ws-load-db")]
+            (is (= #{(:id db)} db-id-synced))
+            (is (zero? (t2/count :model/Table :db_id (:id db)))))
+          (finally
+            (t2/delete! :model/Database :name "ws-load-db")))))))
+
+(deftest metadata-file-without-the-workspaces-feature-keeps-syncs-on-test
+  (testing "a config the token doesn't allow throws before it turns config-file syncs off"
+    (mt/with-premium-features #{:config-text-file}
+      (mt/with-temporary-setting-values [config-from-file-sync-databases true]
+        (try
+          (binding [driver.settings/*allow-testing-h2-connections* true]
+            (is (thrown-with-msg? ExceptionInfo #"Workspaces"
+                                  (advanced-config.file/initialize!
+                                   (metadata-file-config "ws-load-db" "/nonexistent/load-metadata.json")))))
+          (is (true? (advanced-config.settings/config-from-file-sync-databases)))
+          (finally
+            (t2/delete! :model/Database :name "ws-load-db")))))))

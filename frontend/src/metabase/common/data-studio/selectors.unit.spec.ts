@@ -17,14 +17,17 @@ const { isWithinIframe } = jest.requireMock("metabase/utils/iframe");
 const setup = ({
   user,
   tokenFeatures = {},
+  allowDataStudioInIframe = false,
 }: {
   user: Partial<User>;
   tokenFeatures?: Partial<TokenFeatures>;
+  allowDataStudioInIframe?: boolean;
 }) =>
   createMockState({
     currentUser: createMockUser(user),
     settings: mockSettings({
       "token-features": createMockTokenFeatures(tokenFeatures),
+      "allow-data-studio-in-iframe": allowDataStudioInIframe,
     }),
   });
 
@@ -42,6 +45,16 @@ describe("canAccessDataStudio", () => {
     });
 
     expect(canAccessDataStudio(state)).toBe(false);
+  });
+
+  it("returns true in an iframe when allow-data-studio-in-iframe is on", () => {
+    isWithinIframe.mockReturnValue(true);
+    const state = setup({
+      user: { is_superuser: true },
+      allowDataStudioInIframe: true,
+    });
+
+    expect(canAccessDataStudio(state)).toBe(true);
   });
 
   it("returns true when user is admin and the feature is present", () => {

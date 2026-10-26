@@ -8,6 +8,7 @@
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sample-data.core :as sample-data]
+   [metabase.secrets.core :as secrets]
    [metabase.util.yaml :as yaml]))
 
 (comment metabase-enterprise.workspaces.models.workspace-database/keep-me)
@@ -104,6 +105,30 @@
       :else
       details)))
 
+(defn- inline-ssl-root-cert
+  "Replace `:ssl-root-cert-id` with the certificate itself. `:secret` connection properties keep only the id of their
+   Secret row in `:details`, and the parent's Secret ids don't resolve in the child's app DB. The child's config-file
+   import stores an inlined `-value` as a new Secret of its own. Only the root certificate is inlined: it is public,
+   while the client certificate and key stay behind MBC10-87.
+
+   The id is dropped even when it doesn't resolve on the parent: in the child it could name an unrelated Secret, and
+   the child would trust those bytes. A certificate that can't be read (e.g. a missing local file) is a 409 naming the
+   database rather than an opaque 500."
+  [db details]
+  (if-not (:ssl-root-cert-id details)
+    details
+    (let [root-cert (try
+                      (secrets/value-as-string (:engine db) details "ssl-root-cert")
+                      (catch Exception e
+                        (throw (ex-info (format "The SSL root certificate of database %s can't be read on this instance"
+                                                (pr-str (:name db)))
+                                        {:status-code 409
+                                         :database_id (:id db)}
+                                        e))))]
+      (cond-> (dissoc details :ssl-root-cert-id)
+        root-cert (assoc :ssl-root-cert-options "uploaded"
+                         :ssl-root-cert-value   root-cert)))))
+
 (defn- database-entry [wsd db]
   {:name    (:name db)
    :engine  (:engine db)
@@ -111,11 +136,12 @@
    ;; cache_field_values_schedule / metadata_sync_schedule columns — and infer-db-schedules
    ;; asserts those columns are present whenever user-control scheduling is on. Without
    ;; this override the round-trip blows up for any DB whose source details opted in.
-   :details (drop-unused-tunnel-secrets
-             (merge (apply dissoc (:details db) parent-login-keys)
-                    (:database_details wsd)
-                    (schema-filter-entries db wsd)
-                    {:let-user-control-scheduling false}))})
+   :details (->> (merge (:details db)
+                        (:database_details wsd)
+                        (schema-filter-entries db wsd)
+                        {:let-user-control-scheduling false})
+                 drop-unused-tunnel-secrets
+                 (inline-ssl-root-cert db))})
 
 (defn- expand-output
   "Expand a driver-opaque `output_namespace` string into the `{:db ?, :schema ?}`

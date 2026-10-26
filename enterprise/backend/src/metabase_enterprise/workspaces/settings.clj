@@ -25,3 +25,12 @@
   :export?    false
   :audit      :never
   :doc        false)
+
+(defsetting allow-data-studio-in-iframe
+  (deferred-tru "Whether Data Studio opens inside an iframe. Off by default, so an embedding host cannot show it. A workspace instance that MB Code shows in a pane turns it on, through `MB_ALLOW_DATA_STUDIO_IN_IFRAME` or a config.yml `settings:` entry.")
+  :type       :boolean
+  :default    false
+  :visibility :authenticated
+  :export?    false
+  :audit      :getter
+  :doc        false)

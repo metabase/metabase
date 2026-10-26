@@ -8,6 +8,7 @@
    [metabase-enterprise.workspaces.config :as ws.config]
    [metabase-enterprise.workspaces.core :as ws]
    [metabase-enterprise.workspaces.db :as ws.db]
+   [metabase-enterprise.workspaces.load-metadata :as ws.load-metadata]
    [metabase-enterprise.workspaces.metadata :as ws.metadata]
    [metabase-enterprise.workspaces.models.workspace-database :as workspace-database]
    [metabase.api.common :as api]
@@ -171,6 +172,16 @@
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
   (api/write-check :model/Workspace id)
   (ws.metadata/build-workspace-metadata id))
+
+;;; ------------------------------------------ Load metadata download ---------------------------------------------
+
+(api.macros/defendpoint :get "/:id/load-metadata" :- ::ws.load-metadata/load-document
+  "The document a session Metabase for this workspace creates its Tables and Fields from instead of running its
+  initial sync: the workspace databases' tables in the input schemas, hidden ones included, and their top-level
+  fields, with this instance's curated values. Rows refer to each other by name, never by this instance's ids."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (api/write-check :model/Workspace id)
+  (ws.load-metadata/build-load-metadata id))
 
 ;;; ------------------------------------------- Config download --------------------------------------------------
 

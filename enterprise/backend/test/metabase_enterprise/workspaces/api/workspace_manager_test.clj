@@ -161,6 +161,22 @@
       (testing "404 for a missing workspace"
         (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/config")))))
 
+(deftest download-config-unreadable-ssl-root-cert-test
+  (testing "GET /:id/config answers 409 naming the database when its SSL root certificate can't be read"
+    (mt/with-temp [:model/Database {db-id :id} {:name    "Cert DW" :engine :postgres
+                                                :details {:ssl                   true
+                                                          :ssl-root-cert-options "local"
+                                                          :ssl-root-cert-path    "/nonexistent/fe103/root.crt"}}
+                   :model/Workspace {ws-id :id} {:name "Cert WS"}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {}
+                                               :output_namespace ""
+                                               :input_schemas    ["public"]
+                                               :status           :provisioned}]
+      (is (= "The SSL root certificate of database \"Cert DW\" can't be read on this instance"
+             (mt/user-http-request :crowberto :get 409 (str "ee/workspace-manager/" ws-id "/config")))))))
+
 (deftest download-metadata-endpoint-test
   (testing "GET /:id/metadata returns table_metadata.json for the workspace's input schemas"
     (mt/with-temp [:model/Database {db-id :id} {:name "Meta DW" :engine :postgres :details {}}
@@ -220,6 +236,71 @@
       (testing "404 for a missing workspace"
         (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/metadata")))))
 
+(deftest download-load-metadata-endpoint-test
+  (testing "GET /:id/load-metadata returns the document a session Metabase loads instead of syncing"
+    (mt/with-temp [:model/Database {db-id :id} {:name "Load DW" :engine :postgres :details {}}
+                   :model/Table {orders-id :id} {:db_id db-id :schema "shop" :name "orders" :display_name "Orders"}
+                   :model/Table {people-id :id} {:db_id db-id :schema "shop" :name "people" :display_name "People"}
+                   :model/Table _ {:db_id db-id :schema "shop" :name "gone" :active false}
+                   :model/Table {audit-id :id} {:db_id db-id :schema "shop" :name "audit_log" :display_name "Audit Log"}
+                   :model/Table _ {:db_id db-id :schema "staging" :name "orders_raw"}
+                   :model/Field {people-pk :id} {:table_id people-id :name "id" :display_name "ID"
+                                                 :base_type :type/BigInteger :database_type "int8"
+                                                 :semantic_type :type/PK :position 0 :database_position 0}
+                   :model/Field {fk-id :id} {:table_id orders-id :name "person_id" :display_name "Person ID"
+                                             :base_type :type/BigInteger :database_type "int8"
+                                             :position 0 :database_position 0}
+                   :model/Field {card-id :id} {:table_id orders-id :name "card_number" :display_name "Card Number"
+                                               :base_type :type/Text :database_type "text"
+                                               :position 1 :database_position 1}
+                   :model/Field {json-id :id} {:table_id orders-id :name "payload" :display_name "Payload"
+                                               :base_type :type/Structured :database_type "jsonb"
+                                               :position 2 :database_position 2}
+                   :model/Field _ {:table_id orders-id :name "payload → sku" :display_name "Payload SKU"
+                                   :base_type :type/Text :database_type "text" :parent_id json-id
+                                   :position 3 :database_position 3}
+                   :model/Field _ {:table_id orders-id :name "dropped" :base_type :type/Text :database_type "text"
+                                   :active false :position 4 :database_position 4}
+                   :model/Field _ {:table_id audit-id :name "id" :display_name "ID" :base_type :type/Integer
+                                   :database_type "int4" :position 0 :database_position 0}
+                   :model/Workspace {ws-id :id} {:name "Load WS"}
+                   :model/WorkspaceDatabase _ {:workspace_id     ws-id
+                                               :database_id      db-id
+                                               :database_details {}
+                                               :output_namespace ""
+                                               :input_schemas    ["shop"]
+                                               :status           :provisioned}]
+      ;; curated as a user would, through the user-settings tables
+      (t2/insert! :model/TableUserSettings {:table_id orders-id :description "One row per order"})
+      (t2/insert! :model/TableUserSettings {:table_id audit-id :visibility_type :hidden})
+      (t2/insert! :model/FieldUserSettings {:field_id fk-id :semantic_type :type/FK :fk_target_field_id people-pk
+                                            :description "Who placed the order" :display_name "Buyer"})
+      (t2/insert! :model/FieldUserSettings {:field_id card-id :visibility_type :sensitive})
+      (is (= {:databases
+              [{:name   "Load DW"
+                :tables [{:schema "shop" :name "audit_log" :display_name "Audit Log" :visibility_type "hidden"
+                          :fields [{:name "id" :display_name "ID" :base_type "type/Integer" :database_type "int4"
+                                    :position 0 :database_position 0 :visibility_type "normal"}]}
+                         {:schema "shop" :name "orders" :display_name "Orders" :description "One row per order"
+                          :fields [{:name "person_id" :display_name "Buyer" :base_type "type/BigInteger"
+                                    :database_type "int8" :position 0 :database_position 0
+                                    :semantic_type "type/FK" :description "Who placed the order"
+                                    :visibility_type "normal"
+                                    :fk_target {:schema "shop" :table "people" :field "id"}}
+                                   {:name "card_number" :display_name "Card Number" :base_type "type/Text"
+                                    :database_type "text" :position 1 :database_position 1
+                                    :visibility_type "sensitive"}
+                                   {:name "payload" :display_name "Payload" :base_type "type/Structured"
+                                    :database_type "jsonb" :position 2 :database_position 2
+                                    :visibility_type "normal"}]}
+                         {:schema "shop" :name "people" :display_name "People"
+                          :fields [{:name "id" :display_name "ID" :base_type "type/BigInteger" :database_type "int8"
+                                    :position 0 :database_position 0 :semantic_type "type/PK"
+                                    :visibility_type "normal"}]}]}]}
+             (mt/user-http-request :crowberto :get 200 (str "ee/workspace-manager/" ws-id "/load-metadata"))))
+      (testing "404 for a missing workspace"
+        (mt/user-http-request :crowberto :get 404 "ee/workspace-manager/13371337/load-metadata")))))
+
 (defmacro ^:private with-data-analyst [& body]
   `(perms.test-util/with-data-analyst-role! (mt/user->id :rasta) ~@body))
 
@@ -234,4 +315,5 @@
         (mt/user-http-request :rasta :put 403 (str "ee/workspace-manager/" ws-id) {:name "Nope"})
         (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/" ws-id "/config"))
         (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/" ws-id "/metadata"))
+        (mt/user-http-request :rasta :get 403 (str "ee/workspace-manager/" ws-id "/load-metadata"))
         (mt/user-http-request :rasta :delete 403 (str "ee/workspace-manager/" ws-id))))))
