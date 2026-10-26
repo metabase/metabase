@@ -1,0 +1,52 @@
+name: Jest runner worker memory measurement
+
+on:
+  push:
+    branches:
+      - jest-runner-mem-measure
+
+jobs:
+  measure:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 150
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build cljs
+        run: bun run build-pure:cljs
+      # Each pair of replacement limit and heap cap twice on this machine, the
+      # second half in reverse order. jest's cache is cleared before each run.
+      - name: Measure worker memory settings
+        run: |
+          free -m | tee -a "$GITHUB_STEP_SUMMARY"
+          echo -e "shard\tlimit_mb\theap_mb\twall_s\tworkers_started\tgc_s\tmajor_gc_s\tmax_rss_mb\ttests" > mem-times.tsv
+          for pair in 1500:1536 1500:3072 2400:3072 3500:4096 3500:4096 2400:3072 1500:3072 1500:1536; do
+            limit=${pair%:*}
+            heap=${pair#*:}
+            node_modules/.bin/jest --clearCache > /dev/null
+            log="run-$limit-$heap-$RANDOM.log"
+            start=$(date +%s.%N)
+            NT_FILE_LOG=1 NT_MAX_RSS_MB=$limit NT_HEAP_MB=$heap node_modules/.bin/jest --ignoreProjects ci-scripts --silent --shard=${{ matrix.shard }}/2 --runner ./frontend/test/harness/jest-runner.ts > "$log" 2>&1 || true
+            end=$(date +%s.%N)
+            stats=$(grep '^\[file\]' "$log" | awk '{
+                for (i = 2; i <= NF; i++) { split($i, kv, "="); v[kv[1]] = kv[2] }
+                pids[v["pid"]] = 1; gc += v["gc"]; major += v["major"]; if (v["rss"] > rss) rss = v["rss"]
+              } END { n = 0; for (p in pids) n++; printf "%d\t%.1f\t%.1f\t%d", n, gc / 1000, major / 1000, rss }')
+            tests=$(grep -E "^Tests:" "$log" | sed 's/Tests: *//')
+            printf "%s\t%s\t%s\t%.1f\t%s\t%s\n" "${{ matrix.shard }}" "$limit" "$heap" "$(echo "$end - $start" | bc)" "$stats" "$tests" | tee -a mem-times.tsv
+          done
+          cat mem-times.tsv >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: mem-measure-${{ matrix.shard }}
+          path: |
+            mem-times.tsv
+            run-*.log
