@@ -212,7 +212,7 @@
 
 (deftest data-app-unsafe-eval-test
   ;; Near-Membrane needs `eval` to run the app bundle, but it runs it inside a realm
-  ;; iframe served from `/api/ee/apps/sandbox-host`, which carries the grant in its own
+  ;; iframe served from `/api/ee/browser-sandboxing/sandbox-host`, which carries the grant in its own
   ;; CSP. Granting it on the data-app document too would hand `eval`/`Function` to
   ;; anything running there — including guest code that escaped the membrane.
   (testing "the data-app document does not get 'unsafe-eval'"

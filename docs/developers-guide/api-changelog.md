@@ -32,6 +32,9 @@ title: API changelog
   access, it saved the subscription in that collection. It stored a `collection_position` for any caller who passed
   these checks. `PUT` accepted a new `collection_position`.
 
+- The sandbox host used by custom visualizations and data apps is now at
+  `GET /api/ee/browser-sandboxing/sandbox-host`, replacing `GET /api/ee/custom-viz-plugin/sandbox-host`.
+
 ## Metabase 0.65.0
 
 - `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with
