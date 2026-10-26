@@ -560,6 +560,18 @@ describe("DataSourceSelector", () => {
       expect(screen.getByText("Accounting")).toBeInTheDocument();
       expect(screen.queryByText("Payments")).not.toBeInTheDocument();
     });
+
+    it("should show an empty state, not the tables, when only models are allowed and there are none", async () => {
+      setup({ ...setupOpts, entityTypes: ["model"] });
+
+      expect(
+        await screen.findByText(
+          "To pick some data, you'll need to add some first",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+    });
   });
 
   describe("both models and tables are available", () => {
@@ -1004,6 +1016,22 @@ describe("DataSourceSelector", () => {
 
       expect(await screen.findByText("Orders")).toBeInTheDocument();
       expect(screen.queryByText("Library")).not.toBeInTheDocument();
+    });
+
+    it("should show an empty state, not the tables, when only the Library is allowed and it has nothing to pick from", async () => {
+      setup({
+        ...setupOpts,
+        libraryCollection: LIBRARY_COLLECTION_WITH_ONLY_DASHBOARDS,
+        entityTypes: ["semantic-layer"],
+      });
+
+      expect(
+        await screen.findByText(
+          "To pick some data, you'll need to add some first",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("Sample Database")).not.toBeInTheDocument();
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
     });
 
     it("should not offer a Library with only metrics when joining", async () => {

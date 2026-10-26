@@ -639,7 +639,7 @@ export class UnconnectedDataSelector extends Component<
         // query source is a table
         await this.switchToStep(SCHEMA_STEP);
       }
-    } else if (!this.hasUsableSavedEntities()) {
+    } else if (this.props.canSelectTable && !this.hasUsableSavedEntities()) {
       await this.switchToStep(DATABASE_STEP);
     } else {
       await this.switchToStep(DATA_BUCKET_STEP);
@@ -1053,11 +1053,16 @@ export class UnconnectedDataSelector extends Component<
     const currentDatabaseId = canChangeDatabase ? null : selectedDatabaseId;
     const selectedSource = getSelectedSource(selectedCardId, selectedTable);
 
+    const hasNothingToPick =
+      activeStep === DATA_BUCKET_STEP &&
+      !this.props.canSelectTable &&
+      !this.hasUsableSavedEntities();
+
     if (this.isSearchLoading()) {
       return <LoadingAndErrorWrapper loading />;
     }
 
-    if (this.hasDataAccess()) {
+    if (this.hasDataAccess() && !hasNothingToPick) {
       if (activeStep === LIBRARY_STEP && libraryCollection) {
         return (
           <LibraryPicker
