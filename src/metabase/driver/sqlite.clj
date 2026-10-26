@@ -71,7 +71,8 @@
                               :database-routing                       true
                               :describe-default-expr                  true
                               :describe-is-nullable                   true
-                              :describe-is-generated                  true}]
+                              :describe-is-generated                  true
+                              :stage-ctes                             true}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
 
 ;; Every SQLite3 file starts with "SQLite Format 3"
@@ -337,10 +338,6 @@
   [:strftime (h2x/literal format-str) expr])
 
 ;; See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html).
-
-(defmethod sql.qp/use-ctes-for-stages? :sqlite
-  [_driver]
-  true)
 
 ;; SQLite stores datetimes as text and the QP wraps datetime literals in `DATETIME(...)` (space-separated),
 ;; so raw column reads (T-separated) don't compare equal to those literals. Wrap only when we can

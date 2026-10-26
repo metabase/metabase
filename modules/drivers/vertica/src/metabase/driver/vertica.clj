@@ -53,7 +53,8 @@
                               :percentile-aggregations          false
                               :regex/lookaheads-and-lookbehinds false
                               :test/jvm-timezone-setting        false
-                              :uuid-type                        true}]
+                              :uuid-type                        true
+                              :stage-ctes                       true}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))
 
 (defmethod driver/db-start-of-week :vertica
@@ -114,10 +115,6 @@
 (defmethod sql.qp/current-datetime-honeysql-form :vertica
   [_driver]
   (h2x/with-database-type-info [:current_timestamp [:inline 6]] "timestamptz"))
-
-(defmethod sql.qp/use-ctes-for-stages? :vertica
-  [_driver]
-  true)
 
 ;; Vertica's `GROUPING()` is single-arg only. `GROUPING_ID(a, b, ...)` is its multi-arg counterpart.
 (defmethod sql.pivot/pivot-grouping-hsql :vertica

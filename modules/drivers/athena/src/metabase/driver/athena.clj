@@ -57,7 +57,8 @@
                               :nested-fields                    false
                               :regex/lookaheads-and-lookbehinds false
                               :test/jvm-timezone-setting        false
-                              :uuid-type                        true}]
+                              :uuid-type                        true
+                              :stage-ctes                       true}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 (defmethod driver/database-supports? [:athena :schemas]
@@ -171,10 +172,6 @@
             s))))
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/OTHER]) driver rs rsmeta i)))
-
-(defmethod sql.qp/use-ctes-for-stages? :athena
-  [_driver]
-  true)
 
 (defmethod sql.qp/->honeysql [:athena ::sql.qp/cast-to-text]
   [driver [_ _opts expr]]

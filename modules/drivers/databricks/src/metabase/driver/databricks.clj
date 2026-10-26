@@ -64,7 +64,8 @@
                               :nested-queries                  true
                               :set-timezone                    true
                               :standard-deviation-aggregations true
-                              :test/jvm-timezone-setting       false}]
+                              :test/jvm-timezone-setting       false
+                              :stage-ctes                      true}]
   (defmethod driver/database-supports? [:databricks feature] [_driver _feature _db] supported?))
 
 (defmethod sql-jdbc.sync/database-type->base-type :databricks
@@ -113,10 +114,6 @@
 (defn- split-catalog+schema
   [schema]
   (str/split schema #"\."))
-
-(defmethod sql.qp/use-ctes-for-stages? :databricks
-  [_driver]
-  true)
 
 (defmethod sql.qp/->honeysql [:databricks ::h2x/identifier]
   [_driver [tag identifier-type components :as _identifier]]

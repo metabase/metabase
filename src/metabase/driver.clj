@@ -1061,7 +1061,18 @@
     ;; (filters/joins/expressions) once and emits every breakout combination in a single query, rather
     ;; than a query per combination? Drivers that opt in must supply a `:pivot` clause compiler that
     ;; emits the `pivot-grouping` column alongside the breakouts and aggregations.
-    :native-pivot-tables})
+    :native-pivot-tables
+    ;;
+    ;; Does this database compile the stages of a multi-stage query to CTEs instead of nested subselects? Only
+    ;; true if the database accepts a `WITH` clause everywhere Metabase might put a compiled query, not just at the
+    ;; top level of a statement:
+    ;;
+    ;; * inside the parens of a `JOIN`, since a multi-stage join source compiles to `JOIN (WITH ... SELECT ...) AS j`
+    ;; * as the body of another CTE, since a native first stage compiles to `WITH __mb_stage_0 AS (<native SQL>) ...`
+    ;;   and that native SQL may itself start with `WITH`
+    ;; * inside a subquery, e.g. a card referenced from a native query via `{{#123}}` or a metadata probe
+    ;; * after `CREATE TABLE ... AS` and `INSERT INTO ...`, for transforms and persisted models
+    :stage-ctes})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

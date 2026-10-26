@@ -1002,10 +1002,6 @@
       new-form
       ((get-method ->temporal-type :default) target-type original-form))))
 
-(defmethod sql.qp/use-ctes-for-stages? :bigquery-cloud-sdk
-  [_driver]
-  true)
-
 (defmethod sql.qp/add-interval-honeysql-form :bigquery-cloud-sdk
   [_ hsql-form amount unit]
   ;; `timestamp_add()` doesn't support month/quarter/year, `add-interval-form` casts it to

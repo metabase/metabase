@@ -128,7 +128,8 @@
                               :transforms/accurate-rows-affected      false
                               :transforms/python                      true
                               :transforms/table                       true
-                              :transforms/testing                     false}]
+                              :transforms/testing                     false
+                              :stage-ctes                             true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
 (mu/defn- quote-schema ^String [s :- :string] (sql.u/quote-name :snowflake :schema s))
@@ -633,10 +634,6 @@
   ;; Snowflake's `ALTER COLUMN` can widen a type (e.g. VARCHAR length, NUMBER precision) but never convert
   ;; to a different one, so no promotions are possible
   {})
-
-(defmethod sql.qp/use-ctes-for-stages? :snowflake
-  [_driver]
-  true)
 
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])

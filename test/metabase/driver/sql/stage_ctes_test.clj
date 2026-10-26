@@ -9,7 +9,6 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase.driver :as driver]
-   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -116,9 +115,8 @@
         filter-and-order-counts)))
 
 (deftest ^:parallel multi-stage-questions-test
-  (mt/test-drivers (mt/normal-driver-select {:+fns [#(and (isa? driver/hierarchy % :sql)
-                                                          (sql.qp/use-ctes-for-stages? %))]
-                                             :+features [:nested-queries :left-join :native-parameter-card-reference]})
+  (mt/test-drivers (mt/normal-driver-select {:+features [:stage-ctes :nested-queries :left-join
+                                                         :native-parameter-card-reference]})
     (let [mp         (qp.test-util/metadata-provider-with-cards-for-queries
                       [(lib/limit (multi-stage-query (mt/metadata-provider)) 100)
                        (lib/native-query (mt/metadata-provider) "WITH n AS (SELECT 1 AS x) SELECT x FROM n")])

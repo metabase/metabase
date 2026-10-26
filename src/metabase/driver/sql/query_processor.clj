@@ -2239,32 +2239,6 @@
       driver-api/add-alias-info
       :stages))
 
-(defmulti use-ctes-for-stages?
-  "Whether to compile the stages of a multi-stage query with CTEs instead of nested subselects, e.g.
-
-    WITH \"__mb_stage_0\" AS (SELECT \"a\", \"b\" FROM \"t\" WHERE \"b\" = 1)
-    SELECT \"a\", COUNT(*) FROM \"__mb_stage_0\" AS \"__mb_source\" GROUP BY \"a\"
-
-  instead of
-
-    SELECT \"a\", COUNT(*) FROM (SELECT \"a\", \"b\" FROM \"t\" WHERE \"b\" = 1) AS \"__mb_source\" GROUP BY \"a\"
-
-  Default is `false`. A driver should only opt in if its database accepts a `WITH` clause everywhere Metabase might
-  put a compiled query, not just at the top level of a statement:
-
-  * inside the parens of a `JOIN`, since a multi-stage join source compiles to `JOIN (WITH ... SELECT ...) AS j`
-  * as the body of another CTE, since a native first stage compiles to `WITH __mb_stage_0 AS (<native SQL>) ...` and
-    that native SQL may itself start with `WITH`
-  * inside a subquery, e.g. a card referenced from a native query via `{{#123}}` or a metadata probe
-  * after `CREATE TABLE ... AS` and `INSERT INTO ...`, for transforms and persisted models"
-  {:added "0.65.0", :arglists '([driver])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
-(defmethod use-ctes-for-stages? :sql
-  [_driver]
-  false)
-
 (defn- desired-col-alias-ident [col]
   (h2x/identifier :field (:lib/desired-column-alias col)))
 
@@ -2352,8 +2326,9 @@
 
 (defn- stages->honeysql [driver stages level]
   (let [stages (mapv #(assoc % ::cte-level level) stages)]
-    (if (and (use-ctes-for-stages? driver)
-             (> (count stages) 1))
+    (if (and (> (count stages) 1)
+             (driver-api/initialized?)
+             (driver/database-supports? driver :stage-ctes (driver-api/database (driver-api/metadata-provider))))
       (stages->honeysql-ctes driver stages level)
       (stages->honeysql-subselects driver stages))))
 
