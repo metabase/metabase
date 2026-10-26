@@ -1,5 +1,5 @@
-import CollectionPermissionsModalBase from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { skipToken, useListCollectionsQuery } from "metabase/api";
+import { CollectionPermissionsModal as CollectionPermissionsModalBase } from "metabase/permissions";
 import type { CollectionPermissionsModalProps } from "metabase/plugins";
 import { Modal } from "metabase/ui";
 

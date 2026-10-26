@@ -107,10 +107,10 @@
             (is (= "console.log(1)" (bundle-text imported)))
             (testing "new app starts enabled, like one created through the API"
               (is (true? (:enabled imported))))
-            (testing "the import links the collection the manifest names without importing group assignments"
+            (testing "the import links the collection the manifest names without importing group access"
               (is (=? {:entity_id collection-entity-id :namespace :data-apps}
                       (t2/select-one :model/Collection :id (:resource_collection_id imported))))
-              (is (not (t2/exists? :model/DataAppGroupAssignment :data_app_id (:id imported)))))))))))
+              (is (empty? (group-access/assigned-groups imported))))))))))
 
 (deftest import-refuses-a-manifest-that-names-another-collection-test
   (mt/with-premium-features #{:data-apps}
@@ -150,8 +150,7 @@
                      :enabled                false
                      :resource_collection_id (:resource_collection_id app)}
                     updated))
-            (is (t2/exists? :model/DataAppGroupAssignment
-                            :data_app_id (:id app) :permission_group_id (:id group)))
+            (is (= [(:id group)] (mapv :id (group-access/assigned-groups updated))))
             (is (= "console.log(2)" (bundle-text updated)))
             (is (not= (:bundle_hash app) (:bundle_hash updated)))))))))
 

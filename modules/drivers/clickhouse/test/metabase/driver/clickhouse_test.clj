@@ -396,7 +396,7 @@
              :user "bob"
              :password "qaz"
              :ssl true
-             :custom_http_params "select_sequential_consistency=1,max_threads=42,allow_experimental_analyzer=0"})
+             :custom_http_params "select_sequential_consistency=1,join_use_nulls=1,max_threads=42,allow_experimental_analyzer=0"})
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {:host "myclickhouse"
@@ -514,7 +514,7 @@
         (is (true? (driver/can-connect? :clickhouse details)))
         (is (= "//localhost:8123/default?clickhouse_setting_max_threads=5&max_block_size=50"
                (:subname spec)))
-        (is (= "select_sequential_consistency=1,max_result_rows=10,max_columns_to_read=20"
+        (is (= "select_sequential_consistency=1,join_use_nulls=1,max_result_rows=10,max_columns_to_read=20"
                (:custom_http_params spec)))
         (is (= {:max_threads 5
                 :max_block_size 65409 ;; unknown key is ignored
