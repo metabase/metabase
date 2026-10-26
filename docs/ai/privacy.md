@@ -9,22 +9,49 @@ AI in Metabase is optional.
 
 If you do use AI (which you can set up in [AI settings](./settings.md)), we need to send some data outside of your Metabase. This page covers what gets sent, and to whom.
 
-## Data sent to the Metabase AI service
+## Data sent to the Metabase AI Service
 
-When using the Metabase AI service, we don't send the _results_ of your queries to a third-party AI provider, and we don't look at them ourselves.
+When using the Metabase AI service, the data we send includes:
 
-What we send:
-
-- Your prompts.
+- Your prompts and the earlier messages in the conversation.
 - Metadata (like table and field names), so Metabot knows what to query.
 - A sampling of field values from your database. For example, if you ask Metabot to "Filter everyone from Wisconsin," it might check the values in the state field to see how the data is stored (like "WI" vs "Wisconsin"). See [syncs](../databases/sync-scan.md).
-- For chart analysis, AI won't see the raw timeseries data, but it does see some metrics derived from that data (like slopes, series correlations, etc). AI may also see some categorical values. For example, if a question breaks out orders over time by a product category, the AI could see the category values ("Gadgets", "Widgets", etc).
+- For chart analysis, metrics derived from the chart's data (like slopes and series correlations), and some categorical values. For example, if a question breaks out orders over time by a product category, the AI could see the category values ("Gadgets", "Widgets", etc).
+- Query results, if query execution is turned on for Metabot.
 
-We, Metabase the company, also collect some of this metadata to gauge usage and improve the AI integration.
+How Metabase the company processes this data is covered by your agreement with Metabase. Only Metabase Cloud customers have access to the Metabase AI Service.
+
+## Metabot sends query results to the AI provider when it runs queries
+
+When query execution is on, Metabot can run queries and read their results, so it can answer with actual values from your data. Metabase sends those results to the AI provider.
+
+Metabot can run queries on your behalf, like the queries it builds or the question you're looking at. These can include SQL queries.
+
+For each query Metabot runs, Metabase sends part of the result to the AI provider, like the column names and a limited number of rows. Metabot can run many queries in one conversation.
+
+If a query fails, Metabase also sends your database's error message. Error messages can include values from your data.
+
+### Metabot reads results in line with your data permissions
+
+Metabot runs queries as you, with your data permissions, including [row and column security](../permissions/row-and-column-security.md). Metabot can only read query results that you have permission to see.
+
+### Query results are stored with the conversation
+
+Metabase stores the query results that Metabot reads as part of the conversation, in your Metabase application database.
+
+Admins can review stored conversations, including query results, in [AI usage auditing](./usage-auditing.md).
+
+By default, your Metabase instance keeps stored conversations for a limited time. On self-hosted Metabase, you can change how long with [`MB_AI_USAGE_MAX_RETENTION_DAYS`](../configuring-metabase/environment-variables.md#mb_ai_usage_max_retention_days).
+
+### Turn query execution on or off
+
+Admins control whether Metabot can run queries in [AI settings](./settings.md).
+
+When query execution is off, Metabot doesn't run queries to read their results, but it can still build queries and charts for you. Other features on this page, like chart analysis, can still send values from your data.
 
 ## Data sent to your own AI provider
 
-If you're using your own API key, everything listed above is sent to your selected AI provider. Review your provider's data handling and privacy policies.
+If you're using your own API key, everything listed above is sent to your selected AI provider, including query results when Metabot can run queries. Your provider's data handling, retention, and privacy policies apply to that data. Review them before you turn on query execution.
 
 ## Data sent to the MCP client
 
@@ -32,11 +59,13 @@ When using the [MCP server](./mcp.md), query _results_ are sent to the connected
 
 ## Data sent when submitting feedback
 
-If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses) on a Metabot response, the context for that conversation, including metadata and your prompts, might be sent to Metabase the company, and may contain sensitive data.
+If you [submit feedback](./metabot.md#giving-feedback-on-metabot-responses) on a Metabot response, the context for that conversation, including metadata, your prompts, and any query results that Metabot read, might be sent to Metabase the company, and may contain sensitive data.
 
 ## Further reading
 
 - [AI settings](./settings.md)
 - [Using Metabot](./metabot.md)
+- [AI usage auditing](./usage-auditing.md)
 - [MCP server](./mcp.md)
+- [Row and column security](../permissions/row-and-column-security.md)
 - [Privacy and GDPR](../installation-and-operation/privacy.md)
