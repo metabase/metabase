@@ -19,6 +19,7 @@ export * from "./metabot";
 export * from "./metrics";
 export * from "./misc";
 export * from "./monitor";
+export * from "./near-membrane";
 export * from "./models";
 export * from "./modelToUrl";
 export {
