@@ -1,10 +1,15 @@
-Linter that validates the Liquibase migrations file against a spec. This lets us check and enforce additional
-constraints for the `000_migrations.yaml` file (e.g. make sure you're not using duplicate migration IDs, or including
-more than one change in a single `changeSet`).
+Linter that validates every Liquibase changelog file under `resources/migrations/` against a spec. This lets us check
+and enforce additional constraints (e.g. make sure you're not using duplicate migration IDs, or including more than
+one change in a single `changeSet`), plus the file-layout rules:
+
+- `resources/migrations/<year>/<yyyymmdd>_<name>.yaml` -- the current layout: version-less ids (lower-case letters,
+  digits and underscores, at least one letter, no leading `v`, no ISO date/timestamp like the old
+  `vNN.2024-03-18T16:00:00` ids). The version a changeset ships in is decided by the branch it is merged into.
+- `0NN_update_migrations.yaml` -- the older per-release layout, whose ids carry the major (`vNN.…`).
 
 Older/existing migrations are validated with a less-strict spec; newer ones use a stricter spec that enforces some
-additional constraints. Migrations 172 and newer use the stricter spec. The less-strict specs are in `x.unstrict`
-namespaces while equivalent stricter ones are in `x.strict` namespaces.
+additional constraints. The less-strict specs are in `x.unstrict` namespaces while equivalent stricter ones are in
+`x.strict` namespaces.
 
 Run the linter with
 
