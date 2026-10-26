@@ -1,5 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupActionsEndpoints,
   setupCollectionByIdEndpoint,
@@ -9,6 +10,7 @@ import {
   setupDatabasesEndpoints,
   setupGroupsEndpoint,
 } from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
   mockGetBoundingClientRect,
@@ -17,11 +19,16 @@ import {
   within,
 } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { Database, WritebackAction } from "metabase-types/api";
+import type {
+  Database,
+  EnterpriseSettings,
+  WritebackAction,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockDatabase,
   createMockQueryAction,
+  createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
 
@@ -31,6 +38,7 @@ type SetupOpts = {
   databases?: Database[];
   actions?: WritebackAction[];
   isAdmin?: boolean;
+  remoteSyncType?: EnterpriseSettings["remote-sync-type"];
 };
 
 const ACTIONS_DATABASE = createMockDatabase({
@@ -42,6 +50,7 @@ function setup({
   databases = [ACTIONS_DATABASE],
   actions = [],
   isAdmin = true,
+  remoteSyncType,
 }: SetupOpts) {
   setupDatabasesEndpoints(databases);
   setupActionsEndpoints(actions);
@@ -55,11 +64,23 @@ function setup({
     ],
   });
 
+  const state = createMockState({
+    settings: mockSettings({
+      "remote-sync-type": remoteSyncType,
+      "remote-sync-enabled": remoteSyncType != null,
+      "token-features": createMockTokenFeatures({
+        remote_sync: remoteSyncType != null,
+      }),
+    }),
+    currentUser: createMockUser({ is_superuser: isAdmin }),
+  });
+  if (remoteSyncType != null) {
+    setupEnterpriseOnlyPlugin("remote_sync");
+  }
+
   renderWithProviders(<Route path="/" element={<ActionListPage />} />, {
     withRouter: true,
-    storeInitialState: createMockState({
-      currentUser: createMockUser({ is_superuser: isAdmin }),
-    }),
+    storeInitialState: state,
   });
 }
 
@@ -148,24 +169,27 @@ describe("ActionListPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("opens the permissions of the data actions root from the page menu", async () => {
-    setupGroupsEndpoint([]);
-    setupCollectionPermissionsGraphEndpoint({ revision: 1, groups: {} });
-    setup({});
+  it.each([undefined, "read-only"] as const)(
+    "opens the permissions of the data actions root from the page menu with remote sync %s",
+    async (remoteSyncType) => {
+      setupGroupsEndpoint([]);
+      setupCollectionPermissionsGraphEndpoint({ revision: 1, groups: {} });
+      setup({ remoteSyncType });
 
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Data action options" }),
-    );
-    await userEvent.click(
-      screen.getByRole("menuitem", { name: /Change permissions/ }),
-    );
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Data action options" }),
+      );
+      await userEvent.click(
+        screen.getByRole("menuitem", { name: /Change permissions/ }),
+      );
 
-    expect(
-      await within(screen.getByRole("dialog")).findByRole("heading", {
-        name: "Permissions for Root",
-      }),
-    ).toBeInTheDocument();
-  });
+      expect(
+        await within(screen.getByRole("dialog")).findByRole("heading", {
+          name: "Permissions for Root",
+        }),
+      ).toBeInTheDocument();
+    },
+  );
 
   it("does not offer non-admins to change the permissions of data actions", async () => {
     setup({ isAdmin: false });

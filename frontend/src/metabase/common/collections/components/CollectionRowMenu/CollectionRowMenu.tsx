@@ -46,13 +46,17 @@ export function CollectionRowMenu({
   const showPermissionsOption = isAdmin && hasPermissionsModal;
 
   const isRoot = isRootCollection(collection);
-
-  if (!collection.can_write || remoteSyncReadOnly) {
-    return null;
-  }
+  const canEdit = collection.can_write && !remoteSyncReadOnly;
 
   if (collection.archived) {
-    return <UnarchiveCollectionButton collection={collection} />;
+    return canEdit ? (
+      <UnarchiveCollectionButton collection={collection} />
+    ) : null;
+  }
+
+  const showEditOptions = canEdit && !isRoot;
+  if (!showEditOptions && !showPermissionsOption) {
+    return null;
   }
 
   const optionsLabel = match(collection.namespace)
@@ -78,7 +82,7 @@ export function CollectionRowMenu({
           </Tooltip>
         </Menu.Target>
         <Menu.Dropdown>
-          {!isRoot && (
+          {showEditOptions && (
             <Menu.Item
               leftSection={<Icon name="pencil" />}
               onClick={() => onOpenModal({ type: "edit", collection })}
@@ -94,7 +98,7 @@ export function CollectionRowMenu({
               {t`Change permissions`}
             </Menu.Item>
           )}
-          {!isRoot && (
+          {showEditOptions && (
             <Menu.Item
               leftSection={<Icon name="archive" />}
               onClick={() =>
