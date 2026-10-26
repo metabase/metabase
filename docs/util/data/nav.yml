@@ -492,6 +492,8 @@ categories:
             url: "usage-and-performance-tools/usage-analytics"
           - name: "API key usage"
             url: "monitor/api-key-usage"
+          - name: "Data app analytics"
+            url: "monitor/data-app-analytics"
           - name: "Admin tools"
             url: "monitor/erroring-questions"
           - name: "Panopticon"

@@ -205,4 +205,4 @@ To see the questions and actions that your apps run, who runs them, and what fai
 
 - **You don't have access to this data app**: The person isn't in any of the app's groups, or the app is a draft. To give them access, [add one of their groups](#choose-who-can-open-an-app) to the app, and make sure the app is live.
 - **Data app not found**: No app has that slug, or the app is a draft and you're an admin. To see a draft, preview it on its **Overview** tab.
-- **This data app isn't ready yet**: The app has no bundle yet. Build the app and push its bundle, or wait for Remote Sync to pull it.
+- **This data app isn't ready yet**: The app has no bundle yet. Build the app and [upload its bundle](#build-an-app-with-the-metabase-cli), or wait for Remote Sync to pull it.
