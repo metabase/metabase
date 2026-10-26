@@ -123,7 +123,7 @@
 (defn- tables-in-scope
   "The active tables of `database-id` that `scope` names, ordered by schema then name."
   [database-id {scope-type :type :keys [schemas table_ids]}]
-  (let [tables (db/active-tables database-id nil)]
+  (let [tables (db/active-tables database-id)]
     (vec (case scope-type
            :database tables
            :schemas  (filter (comp (set schemas) :schema) tables)
@@ -571,7 +571,7 @@
    creator-id :- ms/PositiveInt]
   (when (run/active-statuses (:status run))
     (throw (core/bad-request (tru "The run has not ended."))))
-  (let [active    (set (map :id (db/active-tables (:id database) nil)))
+  (let [active    (set (map :id (db/active-tables (:id database))))
         table-ids (into [] (comp (map :table_id) (distinct) (filter active)) (:table_errors run))]
     (when (empty? table-ids)
       (throw (core/bad-request (tru "The run has no failed tables that are still active."))))
