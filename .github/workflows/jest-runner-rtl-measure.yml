@@ -1,0 +1,39 @@
+name: Jest runner Testing Library reload measurement
+
+on:
+  push:
+    branches:
+      - jest-runner-rtl-measure
+
+jobs:
+  measure:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build cljs
+        run: bun run build-pure:cljs
+      # Testing Library kept loaded (current) against loaded again for each
+      # file, in turn on this machine. jest's cache is cleared before each run.
+      - name: Measure keeping Testing Library loaded
+        run: |
+          echo -e "shard\tvariant\twall_s\ttests" > rtl-times.tsv
+          for variant in current reload reload current; do
+            node_modules/.bin/jest --clearCache > /dev/null
+            reload=""
+            if [ "$variant" = reload ]; then reload=1; fi
+            start=$(date +%s.%N)
+            NT_RELOAD_TESTING_LIBRARY=$reload node_modules/.bin/jest --ignoreProjects ci-scripts --silent --shard=${{ matrix.shard }}/2 --runner ./frontend/test/harness/jest-runner.ts > "run-$variant.log" 2>&1 || true
+            end=$(date +%s.%N)
+            tests=$(grep -E "^Tests:" "run-$variant.log" | sed 's/Tests: *//')
+            printf "%s\t%s\t%.1f\t%s\n" "${{ matrix.shard }}" "$variant" "$(echo "$end - $start" | bc)" "$tests" | tee -a rtl-times.tsv
+          done
+          cat rtl-times.tsv >> "$GITHUB_STEP_SUMMARY"

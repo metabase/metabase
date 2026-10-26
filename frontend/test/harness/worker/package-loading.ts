@@ -20,8 +20,9 @@ import { clockIsReal } from "./timers.ts";
  * user-event is one of them, because the rest binds only `screen`, which is
  * pointed at each new document instead.
  */
-export const WINDOW_BOUND_PACKAGES =
-  /\/node_modules\/(@testing-library\/user-event|jest-canvas-mock|@emotion)\//;
+export const WINDOW_BOUND_PACKAGES = process.env.NT_RELOAD_TESTING_LIBRARY
+  ? /\/node_modules\/(@testing-library|jest-canvas-mock|@emotion)\//
+  : /\/node_modules\/(@testing-library\/user-event|jest-canvas-mock|@emotion)\//;
 
 // The UI packages stay loaded, and project code can still write onto a
 // package's own objects while it loads, as the popover dropdown registration

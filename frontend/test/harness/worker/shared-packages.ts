@@ -76,6 +76,7 @@ export function restoreCanvasMocks(): void {
  * copy of React Testing Library. The first call records it.
  */
 export function resetTestingLibraryConfig(): void {
+  if (process.env.NT_RELOAD_TESTING_LIBRARY) return;
   const library: typeof TestingLibraryReact = requireFromRoot(
     "@testing-library/react",
   );
@@ -99,6 +100,7 @@ export function resetTestingLibraryConfig(): void {
  * new window.
  */
 export function pointScreenAtNewDocument(): void {
+  if (process.env.NT_RELOAD_TESTING_LIBRARY) return;
   for (const file of Object.keys(require.cache)) {
     if (!file.endsWith("/@testing-library/dom/dist/screen.js")) {
       continue;
