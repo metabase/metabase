@@ -37,8 +37,10 @@
 ;;; ------------------------------------------------------------- MBQL -------------------------------------------------------------
 
 (mu/defn- field-clause :- vector?
+  "A portable `:field` clause. The base type is left out when the manifest did not declare one; the instance fills it
+  in when the import binds the field."
   [{field-ref :ref, :keys [base-type]} :- ::resolved/field]
-  [:field {:base-type base-type} field-ref])
+  [:field (cond-> {} base-type (assoc :base-type base-type)) field-ref])
 
 (mu/defn- percentile-fraction :- number?
   "dbt writes the percentile as a fraction (`0.95`); tolerate a percentage (`95`) too."

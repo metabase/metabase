@@ -64,7 +64,9 @@ The config's `:databases` is the only mapping the manifest cannot supply: the ke
 knows it (`node_relation.database` in the manifest), the value is the name of the Metabase Database it is connected
 as. `:driver` picks whose `database-type->base-type` turns the project's declared column types into Metabase base
 types. `:base-types` overrides that for types the driver does not know and `:collection-name` renames the target
-collection; both are optional.
+collection; both are optional. A column the project does not document, or documents without a `data_type`, is emitted
+without a base type: the instance supplies it when the import binds the field, and a column that does not exist in the
+warehouse fails there.
 
 `convert!` returns a report: `:converted` lists each metric with its `entity_id` and file, and `:unsupported` lists
 every metric that could not be converted with the reason. Nothing is silently dropped. Entity IDs are derived from

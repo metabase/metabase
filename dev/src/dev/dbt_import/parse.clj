@@ -7,7 +7,7 @@
 
   * a nil `expr` on an entity, dimension or measure means the name is the column;
   * a measure without `agg_time_dimension` inherits the semantic model's default;
-  * a metric's `label` falls back to its name;
+  * a metric's `label` falls back to its name when missing or blank;
   * `filter` and `fill_nulls_with` may sit on the metric or on its input measure, and either counts.
 
   Only simple metrics are parsed. Anything else is reported in `:unsupported` with a reason."
@@ -34,18 +34,29 @@
    :schema   schema_name
    :table    alias})
 
+(mu/defn- source-node :- [:maybe ::dbt-manifest/node]
+  "The node a semantic model is built on: of the nodes it depends on, the one (model, seed or snapshot) whose
+  database, schema and alias match `node_relation`, or failing that the first one the manifest has."
+  [manifest                            :- ::dbt-manifest/manifest
+   {:keys [node_relation depends_on]}  :- ::dbt-manifest/semantic-model]
+  (let [nodes          (keep #(get-in manifest [:nodes %]) (:nodes depends_on))
+        same-relation? (fn [{:keys [database schema alias]}]
+                         (= [database schema alias]
+                            [(:database node_relation) (:schema_name node_relation) (:alias node_relation)]))]
+    (or (first (filter same-relation? nodes))
+        (first nodes))))
+
 (mu/defn- parse-columns :- [:map-of :string ::ir/column]
-  "Column metadata from the model node a semantic model is built on, keyed by column name. Empty when the manifest
-  has no such node."
-  [manifest                 :- ::dbt-manifest/manifest
-   {:keys [depends_on]}     :- ::dbt-manifest/semantic-model]
-  (let [node-id (first (filter #(str/starts-with? % "model.") (:nodes depends_on)))]
-    (into {}
-          (map (fn [[column-name {:keys [data_type description]}]]
-                 [column-name {:name        column-name
-                               :data-type   data_type
-                               :description description}]))
-          (get-in manifest [:nodes node-id :columns]))))
+  "Column metadata from the node a semantic model is built on (see [[source-node]]), keyed by column name. Empty when
+  the manifest has no such node."
+  [manifest       :- ::dbt-manifest/manifest
+   semantic-model :- ::dbt-manifest/semantic-model]
+  (into {}
+        (map (fn [[column-name {:keys [data_type description]}]]
+               [column-name {:name        column-name
+                             :data-type   data_type
+                             :description description}]))
+        (:columns (source-node manifest semantic-model))))
 
 (mu/defn- parse-entity :- ::ir/entity
   [{entity-name :name, :keys [type expr label description]} :- ::dbt-manifest/entity]
@@ -156,7 +167,7 @@
     (merge aggregation
            {:name              metric-name
             :unique-id         unique_id
-            :label             (or label metric-name)
+            :label             (if (str/blank? label) metric-name label)
             :description       description
             :semantic-model    (:name semantic-model)
             :measure           (:name measure)

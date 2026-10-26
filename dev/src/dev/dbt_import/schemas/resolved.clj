@@ -44,10 +44,11 @@
   [:tuple :string :string :string :string])
 
 (mr/def ::field
-  "A resolved column: its portable ref and Metabase base type."
+  "A resolved column: its portable ref and Metabase base type. The base type is nil when the project does not declare
+  the column's `data_type` (or the column at all); the instance supplies it when the import binds the field."
   [:map
    [:ref       ::field-ref]
-   [:base-type ::lib.schema.common/base-type]])
+   [:base-type [:maybe ::lib.schema.common/base-type]]])
 
 (mr/def ::metric
   "An IR metric whose source table and aggregated column are resolved. `field` is nil when the aggregation is over
