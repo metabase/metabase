@@ -38,7 +38,7 @@
   com.fasterxml.jackson.dataformat/jackson-dataformat-smile {:mvn/version "2.21.7"} ; pinned: cheshire pulls 2.21.1
   com.fasterxml.woodstox/woodstox-core      {:mvn/version "7.1.1"}              ; trans dep of commons-codec
                                                                                 ; Detect the charset in uploaded CSV files
-  com.github.albfernandez/juniversalchardet {:mvn/version "2.5.0"}
+  com.github.albfernandez/juniversalchardet {:mvn/version "2.5.2"}
   com.github.blagerweij/liquibase-sessionlock {:mvn/version "1.6.9"}            ; session lock for liquibase migrations
   com.github.jknack/handlebars              {:mvn/version "4.5.3"}              ; templating engine
   com.github.oliyh/martian-clj-http         {:mvn/version "0.2.1"}             ; openapi client
