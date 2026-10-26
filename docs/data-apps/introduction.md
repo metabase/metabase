@@ -5,17 +5,19 @@ summary: Data apps are React apps that Metabase serves on top of your Library. A
 
 # Introduction to data apps
 
+![An example data app: a sales overview of a storefront](./images/example-data-app.webp)
+
 {% include plans-blockquote.html feature="Data apps" is_plural=true %}
 
 Data apps let you build small internal tools on your Metabase data, like portals, review queues, and forms, without standing up a separate app and backend. An app reads questions and metrics built on your [Library](../data-modeling/semantic-layer/library.md), and writes data through data actions that insert, update, or delete rows.
 
-An app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads and writes.
+A data app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads and writes.
 
-An AI coding agent (like Claude Code or Codex) [builds the app](./build.md) on a development Metabase with the [Metabase CLI](../installation-and-operation/metabase-cli.md). You [ship it to production](./remote-sync.md) with Remote Sync, and admins [manage it in Data Studio](./manage.md).
+An AI coding agent (like Claude Code or Codex) [builds the app](./build.md) on a development Metabase with the [Metabase CLI](../installation-and-operation/metabase-cli.md). You [ship it to production](./build.md#ship-the-app-to-production-with-remote-sync) with Remote Sync, and admins [manage it in Data Studio](./manage.md).
 
 ## Requirements
 
-- A plan that includes data apps. Without it, Data Studio doesn't show the **Data apps** tab.
+- A Pro or Enterprise plan
 - An admin account, to manage apps in Data Studio and to create apps.
 - An AI coding agent, like Claude Code or Codex.
 - Node.js (LTS version) on the computer where you build the app.

@@ -1,13 +1,27 @@
 ---
 title: Build a data app
-summary: Have an AI coding agent build a data app on your development Metabase with the Metabase CLI, preview it, and change it later.
+summary: Have an AI coding agent build a data app on your development Metabase with the Metabase CLI, preview it, change it later, and ship it to production with Remote Sync.
 ---
 
 # Build a data app
 
+![An example data app: a sales overview of a storefront](./images/example-data-app.webp)
+
 {% include plans-blockquote.html feature="Data apps" is_plural=true %}
 
-You describe the app, and an AI coding agent (like Claude Code or Codex) builds it on a development Metabase with the [Metabase CLI](../installation-and-operation/metabase-cli.md). Before you start, check the [requirements](./introduction.md#requirements).
+Data apps let you build small internal tools on your Metabase data, like portals, review queues, and forms, without standing up a separate app and backend. An app reads questions and metrics built on your [Library](../data-modeling/semantic-layer/library.md), and writes data through data actions that insert, update, or delete rows.
+
+You describe the app, and an AI coding agent (like Claude Code or Codex) builds it on a development Metabase with the [Metabase CLI](../installation-and-operation/metabase-cli.md). You [ship it to production](#ship-the-app-to-production-with-remote-sync) with Remote Sync, and admins [manage it in Data Studio](./manage.md).
+
+## Requirements
+
+- A Pro or Enterprise plan.
+- An admin account, to manage apps in Data Studio and to create apps.
+- An AI coding agent, like Claude Code or Codex.
+- Node.js (LTS version) on the computer where you build the app.
+- [Remote Sync](../installation-and-operation/remote-sync.md), to ship apps to production.
+- The tables and metrics your apps read, [published to the Library](../data-modeling/semantic-layer/published-tables.md).
+- [Actions enabled](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the databases your apps write to.
 
 ## Set up your agent
 
@@ -16,7 +30,7 @@ You describe the app, and an AI coding agent (like Claude Code or Codex) builds 
 
 ## Ask your agent to build the app
 
-If you use Remote Sync, start your agent in a local clone of your Remote Sync repository, so that the app's source code goes in the repository with the app. See [Keep an app's source code in your repository](./remote-sync.md#keep-an-apps-source-code-in-your-repository).
+If you use Remote Sync, start your agent in a local clone of your Remote Sync repository, so that the app's source code goes in the repository with the app. See [Keep an app's source code in your repository](#keep-an-apps-source-code-in-your-repository).
 
 Ask your agent to create a Metabase data app, and follow its instructions. For example:
 
@@ -45,6 +59,35 @@ The preview needs an admin [API key](../people-and-groups/api-keys.md). The agen
 To change an app, start your agent in the app's directory (or in your Remote Sync repository), and ask for the change. The agent updates the code, builds the app again, and uploads the new version. People see the new version right away.
 
 Metabase stores only the app's bundle, not its source code, so keep the app's directory: the agent needs the source code to change the app.
+
+## Ship the app to production with Remote Sync
+
+When [Remote Sync](../installation-and-operation/remote-sync.md) is on, it always syncs your data apps. To ship an app:
+
+1. On your development Metabase (in Read-write mode), [push your changes](../installation-and-operation/remote-sync.md#pushing-changes-to-git).
+2. On your production Metabase (in Read-only mode), [pull the changes](../installation-and-operation/remote-sync.md#pulling-changes-from-git).
+3. On your production Metabase, [add groups](./manage.md#choose-who-can-open-an-app) to the app.
+
+Remote Sync doesn't sync an app's status (live or draft) or its group access, so each Metabase keeps its own. A new app starts live on your production Metabase, and only admins can open it until you add groups there.
+
+### What syncs with a data app
+
+Remote Sync syncs the app's manifest, its bundle, and its collection with its questions and actions. You can't sync an app's collection on its own: the collection syncs with its app. In your repository:
+
+- `data_apps/<slug>/data_app.yaml` is the app's manifest.
+- `data_apps/<slug>/` also holds the app's bundle.
+- `collections/data_apps/` holds the app's collection.
+
+### Keep an app's source code in your repository
+
+When you start your agent in a local clone of your Remote Sync repository, the agent puts the app's source code in `data_apps/<slug>/`, next to the manifest and the bundle. Pushes from Metabase don't change your source code. Don't edit the manifest or the bundle by hand. The template's `.gitignore` keeps `node_modules/`, `build/`, and `.env.local` out of your repository.
+
+To commit the source code, ask your agent. The agent pushes your changes from Metabase, pulls the branch that Metabase pushed to, and commits and pushes the source code. Then it pulls the changes into Metabase, so that Metabase's next push doesn't conflict with the commit.
+
+### If a pull fails
+
+- **A data app named "`<slug>`" already exists on this instance**: Another app on that Metabase already uses the slug. Give the app in the repository another slug, or switch that Metabase to Read-write mode and [delete the other app](./manage.md#delete-a-data-app).
+- **Bundle file "`<path>`" not found**: The app's bundle isn't in the repository at the path that the app's manifest names.
 
 ## What a data app can read and write
 

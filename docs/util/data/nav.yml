@@ -128,8 +128,6 @@ categories:
             url: "data-apps/build"
           - name: "Manage data apps"
             url: "data-apps/manage"
-          - name: "Ship data apps with Remote Sync"
-            url: "data-apps/remote-sync"
 
       - name: "Documents"
         url: "documents/start"
