@@ -9,8 +9,6 @@ _Data Studio > Data apps_
 
 {% include plans-blockquote.html feature="Data apps" is_plural=true %}
 
-<!-- TODO(writer): confirm which plans include the data-apps feature. The blockquote assumes Pro and Enterprise. -->
-
 A data app is a React app that Metabase serves at `/apps/<slug>`. Data apps let you build small internal tools on your Metabase data, like portals, review queues, and forms, without standing up a separate app and backend. An app reads questions and metrics built on your [Library](./semantic-layer/library.md), and writes data through data actions that insert, update, or delete rows.
 
 An app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads and writes.
@@ -48,6 +46,8 @@ Log the CLI in to your development Metabase as an admin. Then:
    ```
 
    Replace `<major>` with your Metabase's major version, like `66` for Metabase 1.66.x. The template otherwise installs the latest SDK, which might not build against your Metabase.
+
+   If you use Remote Sync, scaffold the app in your repository instead. See [Keep an app's source code in your repository](#keep-an-apps-source-code-in-your-repository).
 
 3. Add the questions the app reads, and the data actions it uses to write data, to the app's collection. See [What a data app can read and write](#what-a-data-app-can-read-and-write).
 4. In the app's directory, generate the app's typed schema:
@@ -171,6 +171,19 @@ Remote Sync syncs the app's manifest, its bundle, and its collection with its qu
 - `collections/data_apps/` holds the app's collection.
 
 Remote Sync doesn't sync the app's status (live or draft) or its group access. Each Metabase keeps its own, so set them on each Metabase.
+
+### Keep an app's source code in your repository
+
+Metabase stores an app's built bundle, not its source code. To keep the source code with the app, scaffold the app into `data_apps/<slug>/` in a local clone of your repository. The scaffold command needs an empty directory, so scaffold the app before you push it from Metabase for the first time.
+
+Pushes from Metabase write the app's `data_app.yaml` and bundle to that directory, and leave your source code alone. Don't edit those two files by hand. The template's `.gitignore` keeps `node_modules/`, `build/`, and `.env.local` out of your repository.
+
+To commit the source code:
+
+1. On your development Metabase, [push your changes](../installation-and-operation/remote-sync.md#pushing-changes-to-git).
+2. In your local clone, pull the branch that Metabase pushed to.
+3. Commit the app's source code in `data_apps/<slug>/`, and push it.
+4. On your development Metabase, [pull the changes](../installation-and-operation/remote-sync.md#pulling-changes-from-git), so that its next push doesn't conflict with your commit.
 
 ### If a pull fails
 
