@@ -38,7 +38,7 @@ import {
   activateSuggestion,
   useSuggestions,
 } from "./FilterSearchDropdown";
-import { CompactReadingContext } from "./settings";
+import { CompactReadingContext, type SummaryPlacement } from "./settings";
 import { useSummaryStage } from "./summary";
 import {
   CLOSE_PAREN,
@@ -74,7 +74,7 @@ type ExpressionBarProps = {
    * `"end"` to append it as the last AND-ed conjunct wherever the caret is,
    * so the summary filters always form the tail of the expression.
    */
-  summaryPlacement?: "caret" | "end";
+  summaryPlacement?: SummaryPlacement;
   /** Rendered inside the bar after the tokens, e.g. a separate summary-filter zone. */
   trailing?: ReactNode;
   placeholder?: string;

@@ -1,3 +1,5 @@
+import { useContext } from "react";
+
 import { NotebookCell } from "metabase/querying/notebook/components/NotebookCell";
 import { Group } from "metabase/ui";
 
@@ -6,9 +8,10 @@ import type { FilterUiProps } from "../../types";
 import { ExpressionBar } from "./ExpressionBar";
 import { SummaryMenu } from "./SummaryMenu";
 import { SummaryPills } from "./SummaryPills";
+import { type SummaryPlacement, SummaryPlacementContext } from "./settings";
 
 type UnifiedBarProps = FilterUiProps & {
-  summaryPlacement?: "caret" | "end";
+  summaryPlacement?: SummaryPlacement;
   /** `"pills"` keeps the summary out of the expression: a pill zone after it, with its own button. */
   summaryUi?: "inline" | "pills" | "menu";
 };
@@ -64,13 +67,13 @@ function UnifiedBar({
   return <NotebookCell color="core-filter">{bar}</NotebookCell>;
 }
 
+/**
+ * The harness picks where a summary filter lands (`SummaryPlacementContext`):
+ * at the caret, where mixing it with row filters is an error, or at the end.
+ */
 export function ExpressionBarUnifiedPrototype(props: FilterUiProps) {
-  return <UnifiedBar {...props} />;
-}
-
-/** Variant: a picked filter on the summary always lands at the end, AND-ed on. */
-export function ExpressionBarUnifiedTailPrototype(props: FilterUiProps) {
-  return <UnifiedBar {...props} summaryPlacement="end" />;
+  const summaryPlacement = useContext(SummaryPlacementContext);
+  return <UnifiedBar {...props} summaryPlacement={summaryPlacement} />;
 }
 
 /** Variant: the expression is the rows only; filters on the summary are pills after it. */
