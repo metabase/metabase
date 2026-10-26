@@ -1,10 +1,11 @@
 (ns metabase-enterprise.data-sensitivity.llm
-  "The single LLM interaction of the data-sensitivity classifier: category and semantic-type enums, the system
-  prompt, the user message rendered from a [[metabase-enterprise.data-sensitivity.context]] packet, the structured
-  response schema, the call, and response parsing. [[submit-packet]] splits wide tables into chunks and
-  [[collect-packet]] merges the parsed entries by field name. Every call runs on one instance-wide pool of
-  [[pool-size]] threads, so that is the limit on LLM calls in flight. Nothing here catches exceptions: gate failures, malformed responses, and transport
-  errors propagate to the caller."
+  "The LLM call of metadata generation, which proposes data-sensitivity categories, semantic types and descriptions:
+  category and semantic-type enums, the system prompt, the user message rendered from a
+  [[metabase-enterprise.data-sensitivity.context]] packet, the structured response schema, the call, and response
+  parsing. [[submit-packet]] splits wide tables into chunks and [[collect-packet]] merges the parsed entries by field
+  name. Every call runs on one instance-wide pool of [[pool-size]] threads, so that is the limit on LLM calls in
+  flight. Nothing here catches exceptions: gate failures, malformed responses, and transport errors propagate to the
+  caller."
   (:require
    [clojure.string :as str]
    [com.climate.claypoole :as cp]

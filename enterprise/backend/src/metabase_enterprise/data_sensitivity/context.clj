@@ -1,5 +1,5 @@
 (ns metabase-enterprise.data-sensitivity.context
-  "Builds the per-table packet the LLM data-sensitivity classifier consumes: app-DB metadata for every active field
+  "Builds the per-table packet that the metadata generation LLM call consumes: app-DB metadata for every active field
   of a table plus, when `:include-values?` is true, cached FieldValues and a small warehouse row sample. The row
   sample is the only warehouse query; a failure there is recorded under `[:sample :error]` and the packet still
   builds so a broken connection degrades to schema-only classification. A cancel during the sample throws an
