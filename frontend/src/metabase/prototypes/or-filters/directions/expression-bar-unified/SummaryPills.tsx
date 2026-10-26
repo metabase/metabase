@@ -29,30 +29,29 @@ type SummaryPillsProps = {
 };
 
 /** An aggregation the zone can filter on, with the summary stage its filter lives on. */
-type SummaryColumn = {
+export type SummaryColumn = {
   summary: SummaryStage;
   column: Lib.ColumnMetadata;
 };
 
+/** A filter on a summary, with the stage it lives on. */
+export type SummaryFilter = {
+  summary: SummaryStage;
+  filter: Lib.FilterClause;
+};
+
 /**
- * The filters on the summaries as a separate zone after the expression:
- * plain AND-ed pills, one summary stage after another, added through their
- * own button, applied at once. Renders nothing while the stage has no summary.
+ * What a summary-filter UI works with: the summary stages after `stageIndex`,
+ * their filters in stage order, and the aggregations they can filter on.
  */
-export function SummaryPills({
-  query,
-  stageIndex,
-  onChange,
-}: SummaryPillsProps) {
-  const compactReading = useContext(CompactReadingContext);
+export function useSummaryFilters(query: Lib.Query, stageIndex: number) {
   const summaries = useSummaryStages(query, stageIndex);
   const filters = useMemo(
     () =>
       summaries.flatMap((summary) =>
-        Lib.filters(summary.query, summary.stageIndex).map((filter) => ({
-          summary,
-          filter,
-        })),
+        Lib.filters(summary.query, summary.stageIndex).map(
+          (filter): SummaryFilter => ({ summary, filter }),
+        ),
       ),
     [summaries],
   );
@@ -67,14 +66,37 @@ export function SummaryPills({
       ),
     [summaries],
   );
-  const zoneRef = useSummaryZonePlacement();
+  return { summaries, filters, columns };
+}
+
+/** Applies a change to a summary stage at once, dropping a stage left empty. */
+export function commitSummaryQuery(
+  nextQuery: Lib.Query,
+  onChange: (query: Lib.Query) => void,
+) {
+  onChange(Lib.dropEmptyStages(nextQuery));
+}
+
+/**
+ * The filters on the summaries as a separate zone after the expression:
+ * plain AND-ed pills, one summary stage after another, added through their
+ * own button, applied at once. Renders nothing while the stage has no summary.
+ */
+export function SummaryPills({
+  query,
+  stageIndex,
+  onChange,
+}: SummaryPillsProps) {
+  const compactReading = useContext(CompactReadingContext);
+  const { summaries, filters, columns } = useSummaryFilters(query, stageIndex);
+  const zoneRef = useSummaryZonePlacement<HTMLDivElement>();
 
   if (summaries.length === 0) {
     return null;
   }
 
   const commit = (nextQuery: Lib.Query) =>
-    onChange(Lib.dropEmptyStages(nextQuery));
+    commitSummaryQuery(nextQuery, onChange);
 
   return (
     <Group ref={zoneRef} gap="xs" wrap="wrap" className={S.summaryZone}>
@@ -104,7 +126,7 @@ export function SummaryPills({
       <AddSummaryFilter
         columns={columns}
         summaryCount={summaries.length}
-        isFirst={filters.length === 0}
+        label={filters.length === 0 ? t`Filter the summary` : undefined}
         onAdd={({ summary }, filterable) =>
           commit(Lib.filter(summary.query, summary.stageIndex, filterable))
         }
@@ -119,8 +141,8 @@ export function SummaryPills({
  * wrapped token. CSS cannot tell the two apart, so the zone is measured in
  * its right-aligned state after every render and bar resize.
  */
-function useSummaryZonePlacement() {
-  const zoneRef = useRef<HTMLDivElement>(null);
+export function useSummaryZonePlacement<T extends HTMLElement>() {
+  const zoneRef = useRef<T>(null);
   useLayoutEffect(() => {
     const zone = zoneRef.current;
     const bar = zone?.parentElement;
@@ -148,31 +170,30 @@ type AddSummaryFilterProps = {
   columns: SummaryColumn[];
   /** How many summaries the columns come from; above one, each column says which. */
   summaryCount: number;
-  isFirst: boolean;
+  /** The button's text; without one it is a bare Σ+ icon. */
+  label?: string;
+  /** Inside another popover: renders the picker within it, so clicks there do not close the parent. */
+  isNested?: boolean;
   onAdd: (column: SummaryColumn, filterable: Lib.Filterable) => void;
 };
 
 /** A button that opens the summaries' aggregations, then the picked column's filter widget. */
-function AddSummaryFilter({
+export function AddSummaryFilter({
   columns,
   summaryCount,
-  isFirst,
+  label,
+  isNested = false,
   onAdd,
 }: AddSummaryFilterProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const [column, setColumn] = useState<SummaryColumn>();
-
-  const close = () => {
-    setIsOpened(false);
-    setColumn(undefined);
-  };
 
   return (
     <Popover
       opened={isOpened}
       position="bottom-start"
       transitionProps={{ duration: 0 }}
-      onChange={(opened) => !opened && close()}
+      withinPortal={!isNested}
+      onChange={setIsOpened}
     >
       <Popover.Target>
         <Button
@@ -180,64 +201,82 @@ function AddSummaryFilter({
           variant="subtle"
           className={S.summaryAddButton}
           leftSection={<Icon name="sum" size={12} />}
-          rightSection={isFirst ? undefined : <Icon name="add" size={10} />}
+          rightSection={label ? undefined : <Icon name="add" size={10} />}
           onClick={() => setIsOpened((opened) => !opened)}
         >
-          {isFirst ? t`Filter the summary` : undefined}
+          {label}
         </Button>
       </Popover.Target>
-      <Popover.Dropdown p={0} style={{ overflow: "visible" }}>
-        {column ? (
-          <FilterPickerBody
-            query={column.summary.query}
-            stageIndex={column.summary.stageIndex}
-            column={column.column}
-            isNew
-            onChange={(filterable) => {
-              onAdd(column, filterable);
-              close();
-            }}
-            onBack={() => setColumn(undefined)}
-          />
-        ) : (
-          <Stack gap={0} py="xs" miw={280}>
-            <Text size="xs" c="text-secondary" px="sm" py="xs">
-              {t`Applies after summarizing`}
-            </Text>
-            {columns.map((candidate, index) => (
-              <UnstyledButton
-                key={index}
-                className={S.suggestion}
-                onClick={() => setColumn(candidate)}
-              >
-                <Icon
-                  name="sum"
-                  size={18}
-                  className={S.suggestionSummaryIcon}
-                />
-                <Text fw="bold" className={S.suggestionTitle}>
-                  {
-                    Lib.displayInfo(
-                      candidate.summary.query,
-                      candidate.summary.stageIndex,
-                      candidate.column,
-                    ).longDisplayName
-                  }
-                </Text>
-                {summaryCount > 1 && (
-                  <Text
-                    size="sm"
-                    c="text-secondary"
-                    className={S.suggestionHint}
-                  >
-                    {t`summary ${candidate.summary.stageIndex}`}
-                  </Text>
-                )}
-              </UnstyledButton>
-            ))}
-          </Stack>
-        )}
-      </Popover.Dropdown>
+      <AddSummaryFilterDropdown
+        columns={columns}
+        summaryCount={summaryCount}
+        onAdd={(column, filterable) => {
+          onAdd(column, filterable);
+          setIsOpened(false);
+        }}
+      />
     </Popover>
+  );
+}
+
+type AddSummaryFilterDropdownProps = Pick<
+  AddSummaryFilterProps,
+  "columns" | "summaryCount" | "onAdd"
+>;
+
+/**
+ * The dropdown of a popover that adds a filter on a summary: the aggregations,
+ * then the picked one's filter widget. The picked column resets with the
+ * popover, which unmounts its dropdown when closed.
+ */
+export function AddSummaryFilterDropdown({
+  columns,
+  summaryCount,
+  onAdd,
+}: AddSummaryFilterDropdownProps) {
+  const [column, setColumn] = useState<SummaryColumn>();
+
+  return (
+    <Popover.Dropdown p={0} style={{ overflow: "visible" }}>
+      {column ? (
+        <FilterPickerBody
+          query={column.summary.query}
+          stageIndex={column.summary.stageIndex}
+          column={column.column}
+          isNew
+          onChange={(filterable) => onAdd(column, filterable)}
+          onBack={() => setColumn(undefined)}
+        />
+      ) : (
+        <Stack gap={0} py="xs" miw={280}>
+          <Text size="xs" c="text-secondary" px="sm" py="xs">
+            {t`Applies after summarizing`}
+          </Text>
+          {columns.map((candidate, index) => (
+            <UnstyledButton
+              key={index}
+              className={S.suggestion}
+              onClick={() => setColumn(candidate)}
+            >
+              <Icon name="sum" size={18} className={S.suggestionSummaryIcon} />
+              <Text fw="bold" className={S.suggestionTitle}>
+                {
+                  Lib.displayInfo(
+                    candidate.summary.query,
+                    candidate.summary.stageIndex,
+                    candidate.column,
+                  ).longDisplayName
+                }
+              </Text>
+              {summaryCount > 1 && (
+                <Text size="sm" c="text-secondary" className={S.suggestionHint}>
+                  {t`summary ${candidate.summary.stageIndex}`}
+                </Text>
+              )}
+            </UnstyledButton>
+          ))}
+        </Stack>
+      )}
+    </Popover.Dropdown>
   );
 }

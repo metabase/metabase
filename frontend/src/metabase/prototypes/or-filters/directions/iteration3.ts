@@ -8,6 +8,7 @@ import { DrillMenuCanvas } from "./chart-filters/DrillMenuCanvas";
 import { ExpressionBarNotebook as UnifiedExpressionBarNotebook } from "./expression-bar-unified/ExpressionBarNotebook";
 import {
   ExpressionBarSplitPrototype,
+  ExpressionBarSummaryMenuPrototype,
   ExpressionBarUnifiedPrototype,
   ExpressionBarUnifiedTailPrototype,
 } from "./expression-bar-unified/ExpressionBarPrototype";
@@ -47,6 +48,18 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
       return t`The expression is the rows only: full "and", "or", "not" and parentheses, no summary columns in the dropdown. Filters on the summary never mix with it: they are plain AND-ed pills in a zone at the end of the bar, added through their own Σ button (aggregations only), edited by clicking, applied at once. A drill on an aggregated value lands in that zone; a draft in the expression survives it.`;
     },
     Component: ExpressionBarSplitPrototype,
+    NotebookCanvas: UnifiedExpressionBarNotebook,
+    canHideFilters: true,
+  },
+  {
+    id: "expression-bar-summary-menu",
+    get name() {
+      return t`Expression bar: summary button`;
+    },
+    get description() {
+      return t`Like "separate summaries", but the summary's filters are folded away into a split button at the right of the bar, shown only while the query summarizes, after the query builder's Filter button. "Summary filters" adds one straight from the aggregations; the count beside it opens the existing ones as pills, one per line, editable and removable, with a button to add another. A drill on an aggregated value lands there and bumps the count.`;
+    },
+    Component: ExpressionBarSummaryMenuPrototype,
     NotebookCanvas: UnifiedExpressionBarNotebook,
     canHideFilters: true,
   },

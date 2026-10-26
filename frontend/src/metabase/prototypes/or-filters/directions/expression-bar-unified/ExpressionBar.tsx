@@ -669,6 +669,8 @@ type FilterTokenViewProps = {
   compact: boolean;
   clause: Lib.FilterClause;
   className?: string;
+  /** Inside another popover: renders the editor within it, so clicks there do not close the parent. */
+  isNested?: boolean;
   onReplace: (filterable: Lib.Filterable) => void;
   onRemove: () => void;
 };
@@ -680,6 +682,7 @@ export function FilterTokenView({
   clause,
   compact,
   className,
+  isNested = false,
   onReplace,
   onRemove,
 }: FilterTokenViewProps) {
@@ -691,6 +694,7 @@ export function FilterTokenView({
       opened={isOpened}
       position="bottom-start"
       transitionProps={{ duration: 0 }}
+      withinPortal={!isNested}
       onChange={setIsOpened}
     >
       <Popover.Target>
