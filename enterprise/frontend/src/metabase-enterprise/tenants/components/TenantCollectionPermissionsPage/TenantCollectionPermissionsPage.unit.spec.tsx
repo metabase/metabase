@@ -11,7 +11,11 @@ import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { CollectionPermissions } from "metabase-types/api";
+import type {
+  CollectionId,
+  CollectionPermission,
+  CollectionPermissions,
+} from "metabase-types/api";
 import {
   createMockCollection,
   createMockTokenFeatures,
@@ -54,18 +58,25 @@ const GROUPS = [
   TENANT_GROUP,
 ];
 
+const SHARED_COLLECTION_ID = 100;
+
 const SHARED_COLLECTION = createMockCollection({
-  id: 100,
+  id: SHARED_COLLECTION_ID,
   name: "Shared reports",
   namespace: "shared-tenant-collection",
   children: [],
 });
 
+const VIEW_EVERYWHERE: Partial<Record<CollectionId, CollectionPermission>> = {
+  root: "read",
+  [SHARED_COLLECTION_ID]: "read",
+};
+
 const ROOT_PERMISSIONS: CollectionPermissions = {
-  [ALL_INTERNAL_USERS.id]: { root: "read", [SHARED_COLLECTION.id]: "read" },
-  [INTERNAL_GROUP.id]: { root: "read", [SHARED_COLLECTION.id]: "read" },
-  [ALL_TENANT_USERS.id]: { root: "read", [SHARED_COLLECTION.id]: "read" },
-  [TENANT_GROUP.id]: { root: "read", [SHARED_COLLECTION.id]: "read" },
+  [ALL_INTERNAL_USERS.id]: VIEW_EVERYWHERE,
+  [INTERNAL_GROUP.id]: VIEW_EVERYWHERE,
+  [ALL_TENANT_USERS.id]: VIEW_EVERYWHERE,
+  [TENANT_GROUP.id]: VIEW_EVERYWHERE,
 };
 
 const SETTINGS_STATE = mockSettings({

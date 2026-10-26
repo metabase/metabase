@@ -4,7 +4,7 @@ import { mockSettings } from "__support__/settings";
 import { createMockAdminState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
-import type { TenantId, User } from "metabase-types/api";
+import type { User } from "metabase-types/api";
 import {
   createMockTokenFeatures,
   createMockUser,
@@ -25,7 +25,7 @@ beforeAll(() => {
 });
 
 interface SetupOpts {
-  tenantId?: TenantId | null;
+  tenantId?: User["tenant_id"];
   temporaryPassword?: string;
 }
 

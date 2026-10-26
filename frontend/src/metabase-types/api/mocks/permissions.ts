@@ -1,8 +1,8 @@
 import {
   DataPermission,
-  type DatabasePermissions,
   DataPermissionValue,
   type Database,
+  type DatabasePermissions,
   type Group,
   type GroupId,
   type GroupsPermissions,
