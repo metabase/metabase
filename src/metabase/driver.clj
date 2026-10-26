@@ -1227,6 +1227,13 @@
   behavior accordingly."
   false)
 
+#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
+(def ^:dynamic ^{:added "0.65.0"} *compile-nested-query*
+  "Whether the query being compiled will be put inside another query as a subquery, e.g. a card that a native query
+  references. Drivers whose databases do not accept every SQL form inside a subquery can look at this value in their
+  implementation of [[metabase.driver/mbql->native]] and compile the query differently."
+  false)
+
 (defmulti splice-parameters-into-native-query
   "Deprecated and unused in 0.51.0+; multimethod declaration left here so drivers implementing it can still compile
   until we remove this method completely in 0.54.0 or later.

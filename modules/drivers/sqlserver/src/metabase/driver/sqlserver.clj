@@ -700,6 +700,14 @@
     ;; formats. Not great.
     [:convert [:raw "datetime2"] formatted 20]))
 
+(defmethod sql.qp/use-ctes-for-stages? :sqlserver
+  [_driver]
+  true)
+
+(defmethod sql.qp/nested-ctes? :sqlserver
+  [_driver]
+  false)
+
 (defmethod sql.qp/apply-top-level-clause [:sqlserver :limit]
   [_driver _top-level-clause honeysql-form {value :limit}]
   (-> honeysql-form
@@ -1289,11 +1297,22 @@
          (finally
            (.setPrepareMethod sqlserver-conn prepare-method)))))))
 
+(defn- starts-with-cte?
+  [sql]
+  (boolean (re-find #"(?is)^\s*(?:(?:--[^\n]*\n|/\*.*?\*/)\s*)*WITH\b" sql)))
+
 (defmethod driver/compile-insert :sqlserver
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query
-        ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
-    [(format "INSERT INTO %s %s" table-name sql-query) sql-params]))
+        ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))
+        insert-sql         (format "INSERT INTO %s %s" table-name sql-query)]
+    ;; SQL Server does not accept `INSERT INTO t WITH ...`. The `WITH` clause must come before `INSERT`.
+    [(or (when (starts-with-cte? sql-query)
+           (let [{:keys [status transpiled-sql]} (sql-tools/transpile-sql insert-sql "tsql" "tsql")]
+             (when (= status :success)
+               transpiled-sql)))
+         insert-sql)
+     sql-params]))
 
 (defmethod driver/run-transform! [:sqlserver :table-incremental]
   [driver transform-details opts]
