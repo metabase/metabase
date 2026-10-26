@@ -31,7 +31,8 @@
   (partial #'mw.session/merge-current-user-info mcp.http-handler/options))
 
 (def ^:private oauth-token->token-scopes
-  (partial #'mw.session/oauth-token->token-scopes oauth-server/full-access-scope))
+  (let [{:keys [full-access-scope mcp-scopes]} (:oauth-bearer mcp.http-handler/options)]
+    (partial #'mw.session/oauth-token->token-scopes full-access-scope mcp-scopes)))
 
 (defn- bearer-request [token]
   {:headers {"authorization" (str "Bearer " token)}})
@@ -61,13 +62,19 @@
   (testing "a token carrying the full-access scope maps to the unrestricted sentinel (general REST reachable)"
     (is (= #{::scope/unrestricted}
            (oauth-token->token-scopes #{oauth-server/full-access-scope}))))
-  (testing "GHY-4942: the other scopes it was granted ride along, since MCP ignores the sentinel and gates on them"
-    (is (= #{::scope/unrestricted "agent:sql:run"}
-           (oauth-token->token-scopes #{oauth-server/full-access-scope "agent:sql:run"}))))
-  (testing "any narrower scope set is passed through verbatim (only opted-in agent endpoints reachable)"
+  (testing "the other REST scopes it was granted ride along"
+    (is (= #{::scope/unrestricted "agent:query:execute"}
+           (oauth-token->token-scopes #{oauth-server/full-access-scope "agent:query:execute"}))))
+  (testing "any narrower REST scope set is passed through verbatim (only opted-in agent endpoints reachable)"
     (is (= #{"agent:query:execute"}
            (oauth-token->token-scopes #{"agent:query:execute"})))
-    (is (= #{} (oauth-token->token-scopes #{})))))
+    (is (= #{} (oauth-token->token-scopes #{}))))
+  (testing "GHY-4969: a token holding any MCP scope is an MCP token, so it keeps only its MCP scopes"
+    (is (= #{"agent:sql:run" "agent:content:read"}
+           (oauth-token->token-scopes #{"agent:sql:run" "agent:content:read" "agent:query:execute"})))
+    (testing "and `mb:full` next to an MCP scope never becomes the unrestricted sentinel"
+      (is (= #{"agent:sql:run"}
+             (oauth-token->token-scopes #{oauth-server/full-access-scope "agent:sql:run"}))))))
 
 (deftest token-scopes-satisfy-scope-middleware-test
   (testing "the full-access mapping passes endpoints that declare no :scope; a narrow one is rejected"
@@ -80,7 +87,9 @@
                                 (fn [e] (deliver p e)))
                        @p))]
       (is (= 200 (reached (oauth-token->token-scopes #{oauth-server/full-access-scope}))))
-      (is (= 403 (reached (oauth-token->token-scopes #{"agent:query:execute"})))))))
+      (is (= 403 (reached (oauth-token->token-scopes #{"agent:query:execute"}))))
+      (testing "GHY-4969: an MCP token holding `mb:full` cannot reach the general REST API"
+        (is (= 403 (reached (oauth-token->token-scopes #{oauth-server/full-access-scope "agent:sql:run"}))))))))
 
 ;;; -------------------------------------------- end-to-end bridge (DB-backed) ----------------------------------------
 

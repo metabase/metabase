@@ -7,15 +7,16 @@ import {
   useListActionsQuery,
   useListDatabasesQuery,
 } from "metabase/api";
-import { useSetArchive } from "metabase/archive/hooks";
 import { Link } from "metabase/common/components/Link";
 import { useConfirmation } from "metabase/common/hooks/use-confirmation";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
 import { ActionIcon, Alert, Button, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { parseTimestamp } from "metabase/utils/time-dayjs";
 import type Question from "metabase-lib/v1/Question";
 import {
-  canArchiveAction,
+  canDeleteAction,
   canEditAction,
   canRunAction,
 } from "metabase-lib/v1/actions/utils";
@@ -52,18 +53,13 @@ function ModelActionDetails({ model }: Props) {
     (action: WritebackAction) => deleteAction(action.id),
     [deleteAction],
   );
-  const archive = useSetArchive();
-  const onArchiveAction = useCallback(
-    (action: WritebackAction) =>
-      archive({ id: action.id, model: "action" }, true),
-    [archive],
-  );
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
 
   const database = model.database();
   const hasActionsEnabled = database != null && database.hasActionsEnabled();
-  const canWrite = model.canWriteActions();
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canWrite = isAdmin && model.canWriteActions();
   const supportsImplicitActions = model.supportsImplicitActions();
 
   const actionsSorted = useMemo(
@@ -103,13 +99,13 @@ function ModelActionDetails({ model }: Props) {
             actionUrl={actionUrl}
             canRun={canRunAction(action, databases)}
             canEdit={canEditAction(action, model)}
-            canArchive={canArchiveAction(action, model)}
-            onArchive={onArchiveAction}
+            canDelete={canDeleteAction(action, model)}
+            onDelete={onDeleteAction}
           />
         </li>
       );
     },
-    [model, databases, onArchiveAction],
+    [model, databases, onDeleteAction],
   );
 
   const newActionUrl = Urls.newAction(model.card());

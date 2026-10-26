@@ -457,7 +457,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               },
 
               // MODELS
-              ...toRouteObjects(getModelRoutes()),
+              ...toRouteObjects(getModelRoutes(IsAdmin)),
 
               {
                 path: "/model",

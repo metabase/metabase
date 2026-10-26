@@ -4,11 +4,18 @@ import fetchMock from "fetch-mock";
 import { screen, waitFor, within } from "__support__/ui";
 import * as Analytics from "metabase/analytics";
 import {
+  createMockCollection,
+  createMockDatabase,
   createMockRecentCollectionItem,
   createMockRecentTableItem,
+  createMockSearchResult,
 } from "metabase-types/api/mocks";
 
 import { type CommonSetupProps, commonSetup } from "./setup";
+
+const ACTIONS_DATABASE = createMockDatabase({
+  settings: { "database-enable-actions": true },
+});
 
 const setup = (props: CommonSetupProps = {}) =>
   commonSetup({ ...props, isEE: false });
@@ -128,6 +135,43 @@ describe("PaletteResults", () => {
     ).toBeInTheDocument();
   });
 
+  it("should link a data app search result to its app", async () => {
+    setup({
+      query: "Link",
+      searchItems: [
+        createMockSearchResult({
+          id: 7,
+          model: "data-app",
+          name: "Link Test",
+          data_app_slug: "link-test",
+        }),
+      ],
+    });
+
+    expect(
+      await screen.findByRole("link", { name: "Link Test" }),
+    ).toHaveAttribute("href", "/apps/link-test");
+  });
+
+  it("should label a data app search result as a data app, not by a collection", async () => {
+    setup({
+      query: "Link",
+      searchItems: [
+        createMockSearchResult({
+          id: 7,
+          model: "data-app",
+          name: "Link Test",
+          collection: createMockCollection({ name: "Shorebirds" }),
+          data_app_slug: "link-test",
+        }),
+      ],
+    });
+
+    const option = await screen.findByRole("option", { name: "Link Test" });
+    expect(option).toHaveTextContent("Data app");
+    expect(option).not.toHaveTextContent("Shorebirds");
+  });
+
   it("should display collections that search results are from", async () => {
     setup({
       query: "ques",
@@ -234,6 +278,27 @@ describe("PaletteResults", () => {
       await screen.findByText(`Search Metabase's docs for "new embed"`),
     ).toBeInTheDocument();
     expect(screen.queryByText("New embed")).not.toBeInTheDocument();
+  });
+
+  it("should offer the New action action to admins", async () => {
+    setup({
+      query: "new action",
+      isAdmin: true,
+      databases: [ACTIONS_DATABASE],
+    });
+    expect(await screen.findByText("New action")).toBeInTheDocument();
+  });
+
+  it("should not offer the New action action to non-admins", async () => {
+    setup({
+      query: "new action",
+      isAdmin: false,
+      databases: [ACTIONS_DATABASE],
+    });
+    expect(
+      await screen.findByText(`Search Metabase's docs for "new action"`),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("New action")).not.toBeInTheDocument();
   });
 
   it("should start a new metric", async () => {

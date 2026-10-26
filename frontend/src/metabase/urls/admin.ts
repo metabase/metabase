@@ -4,6 +4,7 @@ import type {
   CustomVizPluginId,
   DatabaseId,
   FieldId,
+  GroupId,
   SchemaName,
   SegmentId,
   TableId,
@@ -54,6 +55,10 @@ export function unsubscribeUser(user: Pick<BaseUser, "id" | "tenant_id">) {
   return isInternalUser(user)
     ? `/admin/people/${user.id}/unsubscribe`
     : `${getTenantsBasePath()}/people/${user.id}/unsubscribe`;
+}
+
+export function adminGroup(groupId: GroupId) {
+  return `/admin/people/groups/${groupId}`;
 }
 
 // TODO: move to EE urls

@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -7,6 +8,8 @@ import {
   type CollectionRowModalState,
 } from "metabase/common/collections/components/CollectionRowModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import type { OmniPickerTableItem } from "metabase/common/components/Pickers";
+import { getUserIsAdmin } from "metabase/current-user";
 import { LibraryTreePage } from "metabase/data-studio/common/components/LibraryTreePage";
 import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-handling";
 import type { TreeItem } from "metabase/data-studio/common/types";
@@ -15,11 +18,13 @@ import {
   isCollectionData,
   openNewCollectionModal,
 } from "metabase/data-studio/common/utils";
-import { PLUGIN_LIBRARY, PLUGIN_REMOTE_SYNC } from "metabase/plugins";
+import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
+import { useNavigate } from "metabase/router";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { ImplicitActionTablePickerModal } from "../../components/ImplicitActionTablePickerModal";
 import {
   ACTION_COLLECTION_NAMESPACES,
   ACTION_COLLECTION_PICKER_OPTIONS,
@@ -40,10 +45,10 @@ export function ActionListPage() {
     isLoading: isLoadingDatabases,
     error: databasesError,
   } = useActionDatabases();
-  const canCreate = canCreateActions(databases);
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canCreate = isAdmin && canCreateActions(databases);
   const {
     tree,
-    rootCollection,
     isLoading: isLoadingActions,
     error: actionsError,
   } = useBuildActionTree({
@@ -81,9 +86,6 @@ export function ActionListPage() {
             to: Urls.dataStudioArchivedActions(),
           },
         ],
-        permissionsCollection: PLUGIN_LIBRARY.isEnabled
-          ? rootCollection
-          : undefined,
         onOpenModal: setCollectionModal,
       }}
       renderRowMenu={renderRowMenu}
@@ -111,6 +113,9 @@ function ActionRowMenu({ item: { data }, onOpenModal }: ActionRowMenuProps) {
 
 function ActionsCreateMenu() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [isPickerOpened, { open: openPicker, close: closePicker }] =
+    useDisclosure();
 
   const handleNewCollectionClick = useCallback(() => {
     dispatch(
@@ -122,26 +127,50 @@ function ActionsCreateMenu() {
     );
   }, [dispatch]);
 
+  const handleTableChange = useCallback(
+    (table: OmniPickerTableItem) => {
+      closePicker();
+      navigate(Urls.newDataStudioImplicitAction(table.id));
+    },
+    [closePicker, navigate],
+  );
+
   return (
-    <Menu position="bottom-end">
-      <Menu.Target>
-        <Button size="lg" leftSection={<Icon name="add" />}>{t`New`}</Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item
-          component={ForwardRefLink}
-          to={Urls.newDataStudioAction()}
-          leftSection={<FixedSizeIcon name="bolt" />}
-        >
-          {t`Action`}
-        </Menu.Item>
-        <Menu.Item
-          leftSection={<FixedSizeIcon name="folder" />}
-          onClick={handleNewCollectionClick}
-        >
-          {t`Collection`}
-        </Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
+    <>
+      <Menu position="bottom-end">
+        <Menu.Target>
+          <Button size="lg" leftSection={<Icon name="add" />}>{t`New`}</Button>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Label>{t`Create your action with…`}</Menu.Label>
+          <Menu.Item
+            leftSection={<FixedSizeIcon name="table2" />}
+            onClick={openPicker}
+          >
+            {t`Table`}
+          </Menu.Item>
+          <Menu.Item
+            component={ForwardRefLink}
+            to={Urls.newDataStudioAction()}
+            leftSection={<FixedSizeIcon name="sql" />}
+          >
+            {t`SQL query`}
+          </Menu.Item>
+          <Menu.Divider />
+          <Menu.Item
+            leftSection={<FixedSizeIcon name="folder" />}
+            onClick={handleNewCollectionClick}
+          >
+            {t`Collection`}
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+      {isPickerOpened && (
+        <ImplicitActionTablePickerModal
+          onChange={handleTableChange}
+          onClose={closePicker}
+        />
+      )}
+    </>
   );
 }
