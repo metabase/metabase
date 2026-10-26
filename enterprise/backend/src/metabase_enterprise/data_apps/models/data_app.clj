@@ -126,8 +126,10 @@
   ([_model pk]
    (and (premium-features/has-feature? :data-apps)
         (or api/*is-superuser?*
-            (and (some? api/*current-user-id*)
-                 (data-apps.db/readable-data-app? api/*current-user-id* pk))))))
+            (let [{:keys [enabled resource_collection_id]} (data-apps.db/data-app pk)]
+              (and (true? enabled)
+                   (some? resource_collection_id)
+                   (mi/can-read? :model/Collection resource_collection_id)))))))
 
 (defmethod mi/can-write? :model/DataApp
   ([_instance]   api/*is-superuser?*)

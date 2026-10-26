@@ -14,7 +14,10 @@ export function DataAppsNavbarSection({
 }: {
   onItemSelect: () => void;
 }) {
-  const { data: dataApps = [] } = useListDataAppsQuery({ available: true });
+  const { data: allDataApps = [] } = useListDataAppsQuery();
+  const dataApps = allDataApps.filter(
+    (dataApp) => dataApp.enabled && !dataApp.outdated,
+  );
 
   if (dataApps.length === 0) {
     return null;
