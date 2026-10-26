@@ -1286,465 +1286,6 @@
           "$ref" : "#/components/schemas/metabase-enterprise.action-v2.api.api-action-expression"
         } ]
       },
-      "metabase-enterprise.data-apps.query-definition.aggregation" : {
-        "anyOf" : [ {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.aggregation-expression"
-        }, {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.named-aggregation"
-        }, {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.measure"
-        }, {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.metric"
-        } ]
-      },
-      "metabase-enterprise.data-apps.query-definition.aggregation-expression" : {
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.column"
-        }, {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.literal-expression"
-        }, {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.aggregation-operator-expression"
-        } ]
-      },
-      "metabase-enterprise.data-apps.query-definition.aggregation-operator-expression" : {
-        "description" : "An aggregation can be named; a filter or a nested argument can't, so `name` is refused there rather than dropped.",
-        "type" : "object",
-        "properties" : {
-          "args" : {
-            "default" : [ ],
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.expression"
-            }
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "operator" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.operator"
-          },
-          "type" : {
-            "const" : "operator"
-          }
-        },
-        "required" : [ "type", "operator" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.binning" : {
-        "oneOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "strategy" : {
-              "const" : "default"
-            }
-          },
-          "required" : [ "strategy" ],
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "num-bins" : {
-              "type" : "integer",
-              "minimum" : 1
-            },
-            "strategy" : {
-              "const" : "num-bins"
-            }
-          },
-          "required" : [ "strategy", "num-bins" ],
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "bin-width" : {
-              "$ref" : "#/components/schemas/metabase.lib.schema.common.positive-number"
-            },
-            "strategy" : {
-              "const" : "bin-width"
-            }
-          },
-          "required" : [ "strategy", "bin-width" ],
-          "additionalProperties" : false
-        } ]
-      },
-      "metabase-enterprise.data-apps.query-definition.breakout" : {
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.column-with-binning"
-        }, {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.named-breakout"
-        } ]
-      },
-      "metabase-enterprise.data-apps.query-definition.column" : {
-        "type" : "object",
-        "properties" : {
-          "field-id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "source-field-id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "const" : "column"
-          }
-        },
-        "required" : [ "type", "name" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.column-with-binning" : {
-        "type" : "object",
-        "properties" : {
-          "binning" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.binning"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "field-id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "source-field-id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "const" : "column"
-          },
-          "unit" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "type", "name" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.expression" : {
-        "oneOf" : [ {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.column"
-        }, {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.literal-expression"
-        }, {
-          "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.operator-expression"
-        } ]
-      },
-      "metabase-enterprise.data-apps.query-definition.literal-expression" : {
-        "type" : "object",
-        "properties" : {
-          "type" : {
-            "const" : "literal"
-          },
-          "value" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.literal.literal"
-          }
-        },
-        "required" : [ "type", "value" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.measure" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.measure"
-          },
-          "type" : {
-            "const" : "measure"
-          }
-        },
-        "required" : [ "type", "id" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.metric" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.metric"
-          },
-          "type" : {
-            "const" : "metric"
-          }
-        },
-        "required" : [ "type", "id" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.named-aggregation" : {
-        "description" : "A measure or a metric whose result column is named, as `aggregations.measure` and `aggregations.metric` name it.",
-        "type" : "object",
-        "properties" : {
-          "name" : {
-            "type" : "string"
-          },
-          "value" : {
-            "anyOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.measure"
-            }, {
-              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.metric"
-            } ]
-          }
-        },
-        "required" : [ "name", "value" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.named-breakout" : {
-        "description" : "A breakout whose result column is named, as `breakout(field, { name })` names it.",
-        "type" : "object",
-        "properties" : {
-          "column" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.column-with-binning"
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "type" : {
-            "const" : "breakout"
-          }
-        },
-        "required" : [ "type", "name", "column" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.operator" : {
-        "type" : "string"
-      },
-      "metabase-enterprise.data-apps.query-definition.operator-expression" : {
-        "type" : "object",
-        "properties" : {
-          "args" : {
-            "default" : [ ],
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.expression"
-            }
-          },
-          "operator" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.operator"
-          },
-          "type" : {
-            "const" : "operator"
-          }
-        },
-        "required" : [ "type", "operator" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.order-by" : {
-        "type" : "object",
-        "properties" : {
-          "binning" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.binning"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "direction" : {
-            "oneOf" : [ {
-              "type" : "string",
-              "enum" : [ "asc", "desc" ]
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "field-id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "type" : "string"
-          },
-          "source-field-id" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.id.field"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "type" : {
-            "const" : "column"
-          },
-          "unit" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "type", "name" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.query-definition" : {
-        "type" : "object",
-        "properties" : {
-          "stages" : {
-            "type" : "array",
-            "items" : {
-              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.stage"
-            },
-            "minItems" : 1,
-            "maxItems" : 1
-          }
-        },
-        "required" : [ "stages" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.segment" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.segment"
-          },
-          "type" : {
-            "const" : "segment"
-          }
-        },
-        "required" : [ "type", "id" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.stage" : {
-        "type" : "object",
-        "properties" : {
-          "aggregations" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.aggregation"
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "breakouts" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.breakout"
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "fields" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.column"
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "filters" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "anyOf" : [ {
-                  "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.expression"
-                }, {
-                  "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.segment"
-                } ]
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "limit" : {
-            "oneOf" : [ {
-              "type" : "number"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "order-bys" : {
-            "oneOf" : [ {
-              "type" : "array",
-              "items" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.order-by"
-              }
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "source" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.table-source"
-          }
-        },
-        "required" : [ "source" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.table-source" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
-          },
-          "type" : {
-            "const" : "table"
-          }
-        },
-        "required" : [ "type", "id" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.query-definition.temporal-bucket" : {
-        "type" : "object",
-        "properties" : {
-          "unit" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase.lib.schema.temporal-bucketing.unit"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.schema.action" : {
-        "description" : "An action without a model a data app runs, with the entity ID and collection of its copy.",
-        "type" : "object",
-        "properties" : {
-          "action_id" : {
-            "description" : "value must be an integer greater than zero.",
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "collection_id" : {
-            "description" : "String must be a valid 21-character NanoID string.",
-            "type" : "string",
-            "pattern" : "^[A-Za-z0-9_\\-]{21}$"
-          },
-          "entity_id" : {
-            "description" : "String must be a valid 21-character NanoID string.",
-            "type" : "string",
-            "pattern" : "^[A-Za-z0-9_\\-]{21}$"
-          }
-        },
-        "required" : [ "action_id", "entity_id", "collection_id" ],
-        "additionalProperties" : false
-      },
       "metabase-enterprise.data-apps.schema.allowed-host" : {
         "description" : "An origin a data app's sandboxed bundle may fetch: scheme, host with an optional `*.` subdomain wildcard, and an\n   optional port.",
         "type" : "string",
@@ -1756,69 +1297,6 @@
         "items" : {
           "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-host"
         }
-      },
-      "metabase-enterprise.data-apps.schema.app-files" : {
-        "description" : "A data app's files, each at its path from the repository root.",
-        "type" : "object",
-        "properties" : {
-          "files" : {
-            "type" : "array",
-            "items" : {
-              "type" : "object",
-              "properties" : {
-                "path" : {
-                  "type" : "string"
-                },
-                "yaml" : {
-                  "type" : "string"
-                }
-              },
-              "required" : [ "path", "yaml" ],
-              "additionalProperties" : false
-            }
-          }
-        },
-        "required" : [ "files" ],
-        "additionalProperties" : false
-      },
-      "metabase-enterprise.data-apps.schema.app-request" : {
-        "description" : "What a data app's files are generated from. An existing app passes the entity IDs of its `data_app.yaml` and of its\n  collection, so its files keep them.",
-        "type" : "object",
-        "properties" : {
-          "collection_id" : {
-            "oneOf" : [ {
-              "description" : "String must be a valid 21-character NanoID string.",
-              "type" : "string",
-              "pattern" : "^[A-Za-z0-9_\\-]{21}$"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "description" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
-          },
-          "entity_id" : {
-            "oneOf" : [ {
-              "description" : "String must be a valid 21-character NanoID string.",
-              "type" : "string",
-              "pattern" : "^[A-Za-z0-9_\\-]{21}$"
-            }, {
-              "type" : "null"
-            } ]
-          },
-          "name" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
-          },
-          "slug" : {
-            "oneOf" : [ {
-              "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.slug"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        },
-        "required" : [ "name" ],
-        "additionalProperties" : false
       },
       "metabase-enterprise.data-apps.schema.bundle-path" : {
         "description" : "The path of a data app's bundle, relative to the app's directory and inside it.",
@@ -1843,56 +1321,6 @@
         "description" : "A data app's display name.",
         "type" : "string",
         "minLength" : 1
-      },
-      "metabase-enterprise.data-apps.schema.file" : {
-        "description" : "A serialization file in the folder of the app's collection, or the error that stops it.",
-        "anyOf" : [ {
-          "type" : "object",
-          "properties" : {
-            "file" : {
-              "type" : "string"
-            },
-            "yaml" : {
-              "type" : "string"
-            }
-          },
-          "required" : [ "file", "yaml" ],
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "error" : {
-              "type" : "string"
-            }
-          },
-          "required" : [ "error" ],
-          "additionalProperties" : false
-        } ]
-      },
-      "metabase-enterprise.data-apps.schema.query" : {
-        "description" : "A data app `defineQuery` definition, with the name, entity ID and collection of the saved question that holds it.",
-        "type" : "object",
-        "properties" : {
-          "collection_id" : {
-            "description" : "String must be a valid 21-character NanoID string.",
-            "type" : "string",
-            "pattern" : "^[A-Za-z0-9_\\-]{21}$"
-          },
-          "entity_id" : {
-            "description" : "String must be a valid 21-character NanoID string.",
-            "type" : "string",
-            "pattern" : "^[A-Za-z0-9_\\-]{21}$"
-          },
-          "name" : {
-            "type" : "string",
-            "minLength" : 1
-          },
-          "query" : {
-            "$ref" : "#/components/schemas/metabase-enterprise.data-apps.query-definition.query-definition"
-          }
-        },
-        "required" : [ "name", "query", "entity_id", "collection_id" ],
-        "additionalProperties" : false
       },
       "metabase-enterprise.data-apps.schema.slug" : {
         "description" : "A data app's slug: lowercase letters and numbers separated by single dashes, at most 100 characters.",
@@ -2243,6 +1671,43 @@
         },
         "required" : [ "id", "type", "data", "dependents_count" ]
       },
+      "metabase-enterprise.dependencies.api.data-app-entity" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "object",
+            "properties" : {
+              "created_at" : { },
+              "description" : { },
+              "display_name" : { },
+              "name" : { }
+            }
+          },
+          "dependents_count" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.usages"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "dependents_errors" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.dependent-error"
+            },
+            "uniqueItems" : true
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "type" : {
+            "const" : "data-app"
+          }
+        },
+        "required" : [ "id", "type", "data", "dependents_count" ]
+      },
       "metabase-enterprise.dependencies.api.dependent-error" : {
         "description" : "One entry of `::base-entity`'s `:dependents_errors`: either the slim `{:type :detail}` shape\n  [[normalize-finding-error]] produces for an entity's own errors (`node-errors`), or the raw AnalysisFindingError row\n  `node-downstream-errors` keeps so callers can tell which downstream entity each error belongs to.",
         "anyOf" : [ {
@@ -2311,6 +1776,8 @@
           "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.measure-entity"
         }, {
           "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.action-entity"
+        }, {
+          "$ref" : "#/components/schemas/metabase-enterprise.dependencies.api.data-app-entity"
         } ]
       },
       "metabase-enterprise.dependencies.api.graph-response" : {
@@ -2617,7 +2084,7 @@
       },
       "metabase-enterprise.dependencies.dependency-types.dependency-types" : {
         "type" : "string",
-        "enum" : [ "transform", "table", "snippet", "dashboard", "sandbox", "measure", "card", "document", "segment", "action" ]
+        "enum" : [ "transform", "table", "snippet", "dashboard", "sandbox", "measure", "card", "document", "segment", "action", "data-app" ]
       },
       "metabase-enterprise.dependencies.dependency-types.entity-id" : {
         "type" : "integer",
@@ -4210,6 +3677,85 @@
           "additionalProperties" : false
         } ]
       },
+      "metabase-enterprise.transform-testing.schema..transform-test-run.response" : {
+        "description" : "A persisted execution of a transform test.",
+        "type" : "object",
+        "properties" : {
+          "end_time" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "format" : "date-time"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "initiated_by" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "initiated_by_user" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "last_heartbeat" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "start_time" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.run-status"
+          },
+          "transform_test_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "transform_test_id", "initiated_by", "start_time", "end_time", "status", "last_heartbeat", "initiated_by_user" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema..transform-test-runs.response" : {
+        "description" : "A page of transform test runs.",
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test-run.response"
+            }
+          },
+          "limit" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "offset" : {
+            "type" : "integer"
+          },
+          "total" : {
+            "type" : "integer"
+          }
+        },
+        "required" : [ "data", "limit", "offset", "total" ],
+        "additionalProperties" : false
+      },
       "metabase-enterprise.transform-testing.schema..transform-test.create" : {
         "description" : "What a client sends to create a transform test.",
         "type" : "object",
@@ -4235,6 +3781,59 @@
           }
         },
         "required" : [ "transform_id", "name", "inputs", "expectations" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema..transform-test.response" : {
+        "description" : "A saved transform test: the transform it covers, the inputs that stand in for its source\n  tables, and the expectations checked against its output.",
+        "type" : "object",
+        "properties" : {
+          "entity_id" : {
+            "type" : "string"
+          },
+          "last_run" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.transform-test-run"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "expectations" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.expectations"
+          },
+          "transform_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.transform"
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "updated_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "created_at" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "inputs" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.inputs"
+          },
+          "creator_id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "description" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "entity_id", "transform_id", "creator_id", "name", "description", "inputs", "expectations", "created_at", "updated_at", "last_run" ],
         "additionalProperties" : false
       },
       "metabase-enterprise.transform-testing.schema..transform-test.update" : {
@@ -4435,6 +4034,11 @@
         "required" : [ "status", "expectations", "tables" ],
         "additionalProperties" : false
       },
+      "metabase-enterprise.transform-testing.schema.run-status" : {
+        "description" : "The persisted lifecycle state of a transform test run.",
+        "type" : "string",
+        "enum" : [ "started", "passed", "failed", "error", "timeout" ]
+      },
       "metabase-enterprise.transform-testing.schema.sql-data" : {
         "description" : "Test data returned by a SQL query run against the transform's source database.",
         "type" : "object",
@@ -4516,6 +4120,89 @@
           }
         },
         "required" : [ "id", "entity_id", "transform_id", "creator_id", "name", "description", "inputs", "expectations", "created_at", "updated_at" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema.transform-test-run" : {
+        "description" : "A persisted execution of a transform test.",
+        "type" : "object",
+        "properties" : {
+          "end_time" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "format" : "date-time"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "description" : "value must be an integer greater than zero.",
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "initiated_by" : {
+            "oneOf" : [ {
+              "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "last_heartbeat" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "start_time" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "status" : {
+            "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.run-status"
+          },
+          "transform_test_id" : {
+            "oneOf" : [ {
+              "description" : "value must be an integer greater than zero.",
+              "type" : "integer",
+              "minimum" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "transform_test_id", "initiated_by", "start_time", "end_time", "status", "last_heartbeat" ],
+        "additionalProperties" : false
+      },
+      "metabase-enterprise.transform-testing.schema.user" : {
+        "description" : "The user who started a run.",
+        "type" : "object",
+        "properties" : {
+          "common_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "first_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "id" : {
+            "$ref" : "#/components/schemas/metabase.lib.schema.id.user"
+          },
+          "last_name" : {
+            "oneOf" : [ {
+              "type" : "string"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        },
+        "required" : [ "id", "email", "first_name", "last_name" ],
         "additionalProperties" : false
       },
       "metabase-enterprise.transforms-inspector.schema..lens-params.request" : {
@@ -5069,9 +4756,9 @@
             "archived" : {
               "type" : "boolean"
             },
-            "database_id" : {
+            "table_id" : {
               "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
               }, {
                 "type" : "null"
               } ]
@@ -5079,82 +4766,6 @@
             "kind" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.actions.schema..implicit-action.kind"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "collection_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "model_id" : {
-              "type" : "integer",
-              "minimum" : 1
-            },
-            "parameters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "archived_directly" : {
-              "type" : "boolean"
-            },
-            "description" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "required" : [ "name", "type", "model_id" ],
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "visualization_settings" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "dataset_query" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-empty-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameter_mappings" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "archived" : {
-              "type" : "boolean"
-            },
-            "database_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
               }, {
                 "type" : "null"
               } ]
@@ -5231,9 +4842,81 @@
             "archived" : {
               "type" : "boolean"
             },
-            "database_id" : {
+            "collection_id" : {
               "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.type"
+            },
+            "model_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "parameters" : {
+              "oneOf" : [ {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
+                }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "archived_directly" : {
+              "type" : "boolean"
+            },
+            "description" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "required" : [ "name", "type" ],
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "visualization_settings" : {
+              "oneOf" : [ {
+                "description" : "Value must be a map.",
+                "type" : "object",
+                "properties" : { }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "dataset_query" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-empty-query"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "parameter_mappings" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "archived" : {
+              "type" : "boolean"
+            },
+            "table_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
               }, {
                 "type" : "null"
               } ]
@@ -5471,9 +5154,9 @@
             "archived" : {
               "type" : "boolean"
             },
-            "database_id" : {
+            "table_id" : {
               "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
               }, {
                 "type" : "null"
               } ]
@@ -5481,84 +5164,6 @@
             "kind" : {
               "oneOf" : [ {
                 "$ref" : "#/components/schemas/metabase.actions.schema..implicit-action.kind"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "collection_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "type" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.type"
-            },
-            "model_id" : {
-              "type" : "integer",
-              "minimum" : 1
-            },
-            "parameters" : {
-              "oneOf" : [ {
-                "type" : "array",
-                "items" : {
-                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
-                }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "archived_directly" : {
-              "type" : "boolean"
-            },
-            "description" : {
-              "oneOf" : [ {
-                "type" : "string"
-              }, {
-                "type" : "null"
-              } ]
-            }
-          },
-          "additionalProperties" : false
-        }, {
-          "type" : "object",
-          "properties" : {
-            "visualization_settings" : {
-              "oneOf" : [ {
-                "description" : "Value must be a map.",
-                "type" : "object",
-                "properties" : { }
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "dataset_query" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-empty-query"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "parameter_mappings" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
-              }, {
-                "type" : "null"
-              } ]
-            },
-            "id" : {
-              "$ref" : "#/components/schemas/metabase.actions.schema.id"
-            },
-            "name" : {
-              "type" : "string"
-            },
-            "archived" : {
-              "type" : "boolean"
-            },
-            "database_id" : {
-              "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
               }, {
                 "type" : "null"
               } ]
@@ -5637,9 +5242,83 @@
             "archived" : {
               "type" : "boolean"
             },
-            "database_id" : {
+            "collection_id" : {
               "oneOf" : [ {
-                "$ref" : "#/components/schemas/metabase.lib.schema.id.database"
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.collection"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "type" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.type"
+            },
+            "model_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "parameters" : {
+              "oneOf" : [ {
+                "type" : "array",
+                "items" : {
+                  "$ref" : "#/components/schemas/metabase.actions.schema..action.parameter"
+                }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "archived_directly" : {
+              "type" : "boolean"
+            },
+            "description" : {
+              "oneOf" : [ {
+                "type" : "string"
+              }, {
+                "type" : "null"
+              } ]
+            }
+          },
+          "additionalProperties" : false
+        }, {
+          "type" : "object",
+          "properties" : {
+            "visualization_settings" : {
+              "oneOf" : [ {
+                "description" : "Value must be a map.",
+                "type" : "object",
+                "properties" : { }
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "dataset_query" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib-be.schema.maybe-legacy-or-empty-query"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "parameter_mappings" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.parameters.schema.parameter-mappings"
+              }, {
+                "type" : "null"
+              } ]
+            },
+            "id" : {
+              "$ref" : "#/components/schemas/metabase.actions.schema.id"
+            },
+            "name" : {
+              "type" : "string"
+            },
+            "archived" : {
+              "type" : "boolean"
+            },
+            "table_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
               }, {
                 "type" : "null"
               } ]
@@ -5777,6 +5456,13 @@
               } ]
             },
             "updated_at" : { },
+            "table_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "legacy_query" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -5815,8 +5501,11 @@
               } ]
             },
             "model_id" : {
-              "type" : "integer",
-              "minimum" : 1
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.card"
+              }, {
+                "type" : "null"
+              } ]
             },
             "parameters" : {
               "oneOf" : [ {
@@ -6071,6 +5760,13 @@
               } ]
             },
             "updated_at" : { },
+            "table_id" : {
+              "oneOf" : [ {
+                "$ref" : "#/components/schemas/metabase.lib.schema.id.table"
+              }, {
+                "type" : "null"
+              } ]
+            },
             "legacy_query" : {
               "oneOf" : [ {
                 "type" : "string"
@@ -15170,11 +14866,6 @@
         "type" : "integer",
         "minimum" : 1
       },
-      "metabase.lib.schema.id.metric" : {
-        "description" : "Valid Metric ID (metrics are Cards with type :metric)",
-        "type" : "integer",
-        "minimum" : 1
-      },
       "metabase.lib.schema.id.pulse" : {
         "description" : "Valid Pulse ID",
         "type" : "integer",
@@ -22664,6 +22355,13 @@
           "default_database_id" : {
             "oneOf" : [ {
               "type" : "integer"
+            }, {
+              "type" : "null"
+            } ]
+          },
+          "in_host_app" : {
+            "oneOf" : [ {
+              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
@@ -32747,1016 +32445,6 @@
         "tags" : [ "/api/api-key" ]
       }
     },
-    "/api/apps" : {
-      "get" : {
-        "operationId" : "get-api-apps",
-        "summary" : "GET /api/apps",
-        "description" : "List the data apps. Pass `available=true` to return only enabled apps. An outdated app is never\n   available, and otherwise listed only to superusers, who see it badged.",
-        "parameters" : [ {
-          "in" : "query",
-          "name" : "available",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "anyOf" : [ {
-                      "type" : "object",
-                      "properties" : {
-                        "enabled" : {
-                          "type" : "boolean"
-                        },
-                        "id" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        },
-                        "name" : {
-                          "type" : "string",
-                          "minLength" : 1
-                        },
-                        "updated_at" : { },
-                        "display_name" : {
-                          "type" : "string",
-                          "minLength" : 1
-                        },
-                        "version" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        },
-                        "created_at" : { },
-                        "bundle_hash" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "allowed_hosts" : {
-                          "type" : "array",
-                          "items" : {
-                            "type" : "string"
-                          }
-                        },
-                        "outdated" : {
-                          "type" : "boolean"
-                        },
-                        "resource_collection_id" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        },
-                        "description" : {
-                          "oneOf" : [ {
-                            "type" : "string"
-                          }, {
-                            "type" : "null"
-                          } ]
-                        },
-                        "bundle_path" : {
-                          "type" : "string",
-                          "minLength" : 1
-                        }
-                      },
-                      "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
-                    }, {
-                      "type" : "object",
-                      "properties" : {
-                        "display_name" : {
-                          "type" : "string",
-                          "minLength" : 1
-                        },
-                        "name" : {
-                          "type" : "string",
-                          "minLength" : 1
-                        },
-                        "resource_collection_id" : {
-                          "description" : "value must be an integer greater than zero.",
-                          "type" : "integer",
-                          "minimum" : 1
-                        }
-                      },
-                      "required" : [ "name", "display_name", "resource_collection_id" ],
-                      "additionalProperties" : false
-                    } ]
-                  }
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      },
-      "post" : {
-        "operationId" : "post-api-apps",
-        "summary" : "POST /api/apps",
-        "description" : "Create a data app from its manifest fields and bundle.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "enabled" : {
-                      "type" : "boolean"
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : { },
-                    "display_name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "version" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "created_at" : { },
-                    "bundle_hash" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "allowed_hosts" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "string"
-                      }
-                    },
-                    "outdated" : {
-                      "type" : "boolean"
-                    },
-                    "resource_collection_id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "description" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "bundle_path" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "allowed_hosts" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-hosts"
-                  },
-                  "bundle" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-text"
-                  },
-                  "bundle_path" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-path"
-                  },
-                  "description" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
-                  },
-                  "display_name" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
-                  },
-                  "name" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.slug"
-                  },
-                  "version" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.version"
-                  }
-                },
-                "required" : [ "name", "display_name", "bundle_path", "bundle" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/generate/app" : {
-      "post" : {
-        "operationId" : "post-api-apps-generate-app",
-        "summary" : "POST /api/apps/generate/app",
-        "description" : "A data app's `data_app.yaml` and its collection's file, each at its path from the repository root and with the\n  YAML a remote-sync export writes. An existing app passes its `entity_id` and `collection_id` to keep them; a new app\n  gets new entity IDs. For superusers: the files are written into the app's repository, which only an admin works\n  with.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.app-files"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.app-request"
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/generate/resources" : {
-      "post" : {
-        "operationId" : "post-api-apps-generate-resources",
-        "summary" : "POST /api/apps/generate/resources",
-        "description" : "The files of a data app's collection, each a file name in the collection's folder and the YAML a remote-sync\n  export writes: the saved question of each `defineQuery` definition in `queries`, the copy of each action without a\n  model in `actions`, and the copies of the metrics the queries aggregate. Each item answers on its own, with its file\n  or the error that stops it. For superusers: the files are written into the app's repository, which only an admin\n  works with.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "actions" : {
-                      "type" : "array",
-                      "items" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.file"
-                      }
-                    },
-                    "metrics" : {
-                      "type" : "array",
-                      "items" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.file"
-                      }
-                    },
-                    "queries" : {
-                      "type" : "array",
-                      "items" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.file"
-                      }
-                    }
-                  },
-                  "required" : [ "queries", "actions", "metrics" ],
-                  "additionalProperties" : false
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "actions" : {
-                    "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.action"
-                      }
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "queries" : {
-                    "oneOf" : [ {
-                      "type" : "array",
-                      "items" : {
-                        "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.query"
-                      }
-                    }, {
-                      "type" : "null"
-                    } ]
-                  }
-                },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/generate/schemas" : {
-      "get" : {
-        "operationId" : "get-api-apps-generate-schemas",
-        "summary" : "GET /api/apps/generate/schemas",
-        "description" : "The TypeScript module a data app's definitions are written against: the root libraries' tables and metrics, and\n  the query actions that belong to no model. For superusers: a data app's author builds from it, and only an admin\n  works with an app's repository.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/repo-status" : {
-      "get" : {
-        "operationId" : "get-api-apps-repo-status",
-        "summary" : "GET /api/apps/repo-status",
-        "description" : "Status of the connected repository as it relates to data apps. Data apps are\n   pulled by the remote-sync import (manual \"Pull changes\", auto-import, or\n   startup); the connection is configured on the remote-sync settings page.",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "configured" : {
-                      "type" : "boolean"
-                    },
-                    "url" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    }
-                  },
-                  "required" : [ "configured", "url" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/sandbox-host" : {
-      "get" : {
-        "operationId" : "get-api-apps-sandbox-host",
-        "summary" : "GET /api/apps/sandbox-host",
-        "description" : "Serve the document used as the `src` of the Near-Membrane realm iframe, carrying a\n   per-document CSP that confines `'unsafe-eval'` to that realm. See [[sandbox-host-csp]].",
-        "parameters" : [ ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/{slug}" : {
-      "put" : {
-        "operationId" : "put-api-apps-slug",
-        "summary" : "PUT /api/apps/{slug}",
-        "description" : "Update a data app's manifest fields or bundle, or enable or disable it. Disabled apps are not served.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "object",
-                  "properties" : {
-                    "enabled" : {
-                      "type" : "boolean"
-                    },
-                    "id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "updated_at" : { },
-                    "display_name" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    },
-                    "version" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "created_at" : { },
-                    "bundle_hash" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "allowed_hosts" : {
-                      "type" : "array",
-                      "items" : {
-                        "type" : "string"
-                      }
-                    },
-                    "outdated" : {
-                      "type" : "boolean"
-                    },
-                    "resource_collection_id" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "description" : {
-                      "oneOf" : [ {
-                        "type" : "string"
-                      }, {
-                        "type" : "null"
-                      } ]
-                    },
-                    "bundle_path" : {
-                      "type" : "string",
-                      "minLength" : 1
-                    }
-                  },
-                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "allowed_hosts" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-hosts"
-                  },
-                  "bundle" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-text"
-                  },
-                  "bundle_path" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-path"
-                  },
-                  "description" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
-                  },
-                  "display_name" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
-                  },
-                  "enabled" : {
-                    "type" : "boolean"
-                  },
-                  "version" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.version"
-                  }
-                },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      },
-      "delete" : {
-        "operationId" : "delete-api-apps-slug",
-        "summary" : "DELETE /api/apps/{slug}",
-        "description" : "Delete a data app, its bundle, its collection, and its group assignments.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      },
-      "get" : {
-        "operationId" : "get-api-apps-slug",
-        "summary" : "GET /api/apps/{slug}",
-        "description" : "Fetch metadata for a single enabled data app by its slug.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "anyOf" : [ {
-                    "type" : "object",
-                    "properties" : {
-                      "enabled" : {
-                        "type" : "boolean"
-                      },
-                      "id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "name" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      },
-                      "updated_at" : { },
-                      "display_name" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      },
-                      "version" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "created_at" : { },
-                      "bundle_hash" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      },
-                      "allowed_hosts" : {
-                        "type" : "array",
-                        "items" : {
-                          "type" : "string"
-                        }
-                      },
-                      "outdated" : {
-                        "type" : "boolean"
-                      },
-                      "resource_collection_id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "description" : {
-                        "oneOf" : [ {
-                          "type" : "string"
-                        }, {
-                          "type" : "null"
-                        } ]
-                      },
-                      "bundle_path" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      }
-                    },
-                    "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
-                  }, {
-                    "type" : "object",
-                    "properties" : {
-                      "display_name" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      },
-                      "name" : {
-                        "type" : "string",
-                        "minLength" : 1
-                      },
-                      "resource_collection_id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      }
-                    },
-                    "required" : [ "name", "display_name", "resource_collection_id" ],
-                    "additionalProperties" : false
-                  } ]
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/{slug}/bundle" : {
-      "get" : {
-        "operationId" : "get-api-apps-slug-bundle",
-        "summary" : "GET /api/apps/{slug}/bundle",
-        "description" : "Serve the cached JS bundle for a single enabled data app by slug. Honors\n   `If-None-Match` against the content-hash ETag with a 304.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : { }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : { },
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/{slug}/group-permission-warnings" : {
-      "get" : {
-        "operationId" : "get-api-apps-slug-group-permission-warnings",
-        "summary" : "GET /api/apps/{slug}/group-permission-warnings",
-        "description" : "Return missing table access for groups already assigned to this app.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "type" : "object",
-                    "properties" : {
-                      "group_id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "missing_tables" : {
-                        "type" : "array",
-                        "items" : {
-                          "type" : "object",
-                          "properties" : {
-                            "database_id" : {
-                              "description" : "value must be an integer greater than zero.",
-                              "type" : "integer",
-                              "minimum" : 1
-                            },
-                            "database_name" : {
-                              "type" : "string"
-                            },
-                            "id" : {
-                              "description" : "value must be an integer greater than zero.",
-                              "type" : "integer",
-                              "minimum" : 1
-                            },
-                            "name" : {
-                              "type" : "string"
-                            },
-                            "schema" : {
-                              "oneOf" : [ {
-                                "type" : "string"
-                              }, {
-                                "type" : "null"
-                              } ]
-                            }
-                          },
-                          "required" : [ "id", "name", "schema", "database_id", "database_name" ]
-                        }
-                      }
-                    },
-                    "required" : [ "group_id", "missing_tables" ]
-                  }
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/{slug}/groups" : {
-      "get" : {
-        "operationId" : "get-api-apps-slug-groups",
-        "summary" : "GET /api/apps/{slug}/groups",
-        "description" : "List the groups assigned to a data app.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "type" : "object",
-                    "properties" : {
-                      "id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "member_count" : {
-                        "description" : "value must be an integer greater or equal to than zero.",
-                        "type" : "integer",
-                        "minimum" : 0
-                      },
-                      "name" : {
-                        "type" : "string"
-                      }
-                    },
-                    "required" : [ "id", "name", "member_count" ]
-                  }
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      },
-      "post" : {
-        "operationId" : "post-api-apps-slug-groups",
-        "summary" : "POST /api/apps/{slug}/groups",
-        "description" : "Assign a batch of internal groups atomically.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "array",
-                  "items" : {
-                    "type" : "object",
-                    "properties" : {
-                      "id" : {
-                        "description" : "value must be an integer greater than zero.",
-                        "type" : "integer",
-                        "minimum" : 1
-                      },
-                      "member_count" : {
-                        "description" : "value must be an integer greater or equal to than zero.",
-                        "type" : "integer",
-                        "minimum" : 0
-                      },
-                      "name" : {
-                        "type" : "string"
-                      }
-                    },
-                    "required" : [ "id", "name", "member_count" ]
-                  }
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "requestBody" : {
-          "content" : {
-            "application/json" : {
-              "schema" : {
-                "type" : "object",
-                "properties" : {
-                  "group_ids" : {
-                    "type" : "array",
-                    "items" : {
-                      "description" : "value must be an integer greater than zero.",
-                      "type" : "integer",
-                      "minimum" : 1
-                    },
-                    "minItems" : 1,
-                    "maxItems" : 100
-                  }
-                },
-                "required" : [ "group_ids" ],
-                "additionalProperties" : false
-              }
-            }
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
-    "/api/apps/{slug}/groups/{group-id}" : {
-      "delete" : {
-        "operationId" : "delete-api-apps-slug-groups-group-id",
-        "summary" : "DELETE /api/apps/{slug}/groups/{group-id}",
-        "description" : "Remove a group's assignment and collection access.",
-        "parameters" : [ {
-          "in" : "path",
-          "name" : "slug",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "minLength" : 1
-          }
-        }, {
-          "in" : "path",
-          "name" : "group-id",
-          "required" : true,
-          "schema" : {
-            "type" : "integer",
-            "minimum" : 1
-          },
-          "description" : "value must be an integer greater than zero."
-        } ],
-        "responses" : {
-          "2XX" : {
-            "description" : "Successful response",
-            "content" : {
-              "application/json" : {
-                "schema" : {
-                  "type" : "null"
-                }
-              }
-            }
-          },
-          "4XX" : {
-            "description" : "Client error response"
-          },
-          "5XX" : {
-            "description" : "Server error response"
-          }
-        },
-        "tags" : [ "/api/apps" ]
-      }
-    },
     "/api/automagic-dashboards/database/{id}/candidates" : {
       "get" : {
         "operationId" : "get-api-automagic-dashboards-database-id-candidates",
@@ -40760,7 +39448,7 @@
       "get" : {
         "operationId" : "get-api-database",
         "summary" : "GET /api/database",
-        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible\n    tables the current user can read), matching the per-DB `/api/database/:id/schemas`\n    response. Lets clients avoid N round-trips when populating a database/schema picker.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those\n    permissions to non-admins requires Enterprise Edition code and the advanced-permissions feature; without both,\n    this is admin-only.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `include_stubs` includes stub DBs, which serialization creates for missing databases. Default: `false`.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  * `can-write-metadata` will only include DBs for which the current user has data model editing permissions\n    for at least one table in the database. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
+        "description" : "Fetch all `Databases`.\n\n  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.\n\n  * `include=schemas` hydrates a `:schemas` list on each DB (only schemas with visible\n    tables the current user can read), matching the per-DB `/api/database/:id/schemas`\n    response. Lets clients avoid N round-trips when populating a database/schema picker.\n\n  * `saved` means we should include the saved questions virtual database. Default: `false`.\n\n  * `include_editable_data_model` will only include DBs for which the current user has data model editing\n    permissions. (If `include=tables`, this also applies to the list of tables in each DB). Granting those\n    permissions to non-admins requires Enterprise Edition code and the advanced-permissions feature; without both,\n    this is admin-only.\n\n  * `exclude_uneditable_details` will only include DBs for which the current user can edit the DB details. Has no\n    effect unless Enterprise Edition code is available and the advanced-permissions feature is enabled.\n\n  * `include_only_uploadable` will only include DBs into which Metabase can insert new data.\n\n  * `include_stubs` includes stub DBs, which serialization creates for missing databases. Default: `false`.\n\n  * `can-query` will only include DBs for which the current user has query permissions. Default: `false`.\n\n  Independently of these flags, the implementation of [[metabase.models.interface/to-json]] for `:model/Database` in\n  [[metabase.warehouses.models.database]] uses the implementation of [[metabase.models.interface/can-write?]] for\n  `:model/Database` in [[metabase.warehouses.models.database]] to exclude the `details` field, if the requesting user\n  lacks permission to change the database details.",
         "parameters" : [ {
           "in" : "query",
           "name" : "saved",
@@ -40831,17 +39519,6 @@
               "description" : "value must be an integer greater than zero.",
               "type" : "integer",
               "minimum" : 1
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "can-write-metadata",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
             }, {
               "type" : "null"
             } ]
@@ -41591,7 +40268,7 @@
       "get" : {
         "operationId" : "get-api-database-id-metadata",
         "summary" : "GET /api/database/{id}/metadata",
-        "description" : "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.\n  By default only non-hidden tables and fields are returned. Passing include_hidden=true includes them.\n\n  Passing include_editable_data_model will only return tables for which the current user has data model editing\n  permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the\n  advanced-permissions feature; without both, this is admin-only. In addition, if the user has no data access for the\n  DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata.",
+        "description" : "Get metadata about a `Database`, including all of its `Tables` and `Fields`. Returns DB, fields, and field values.\n  By default only non-hidden tables are returned. Passing include_hidden=true includes them.\n\n  Passing include_sensitive_fields=true includes fields with visibility_type sensitive, for tables whose data model the\n  current user can edit.\n\n  Passing include_editable_data_model will only return tables for which the current user has data model editing\n  permissions. Granting data model permissions to non-admins requires Enterprise Edition code and a token with the\n  advanced-permissions feature; without both, this is admin-only. In addition, if the user has no data access for the\n  DB (aka block permissions), it will return only the DB name, ID and tables, with no additional metadata.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -41604,6 +40281,18 @@
         }, {
           "in" : "query",
           "name" : "include_hidden",
+          "required" : false,
+          "schema" : {
+            "default" : false,
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "include_sensitive_fields",
           "required" : false,
           "schema" : {
             "default" : false,
@@ -41697,7 +40386,7 @@
       "get" : {
         "operationId" : "get-api-database-id-schema",
         "summary" : "GET /api/database/{id}/schema",
-        "description" : "Return a list of Tables for a Database whose schema is the `schema` query parameter, or `nil` or an\n  empty string when no `schema` is given. Unlike the `/:id/schema/:schema` route, the query parameter\n  supports schema names containing slashes, which are rejected at the HTTP layer when percent-encoded in\n  the URL path (#77353).\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query\n  - `can-write-metadata=true` - filter to only tables the user can edit metadata for",
+        "description" : "Return a list of Tables for a Database whose schema is the `schema` query parameter, or `nil` or an\n  empty string when no `schema` is given. Unlike the `/:id/schema/:schema` route, the query parameter\n  supports schema names containing slashes, which are rejected at the HTTP layer when percent-encoded in\n  the URL path (#77353).\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -41755,17 +40444,6 @@
           }
         }, {
           "in" : "query",
-          "name" : "can-write-metadata",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
           "name" : "include_measures",
           "required" : false,
           "schema" : {
@@ -41794,7 +40472,7 @@
       "get" : {
         "operationId" : "get-api-database-id-schema-schema",
         "summary" : "GET /api/database/{id}/schema/{schema}",
-        "description" : "Returns a list of Tables for the given Database `id` and `schema`.\n\n  Schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer when\n  percent-encoded in the URL path; pass those as the `schema` query parameter of `GET /:id/schema/`\n  instead (#77353).\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query\n  - `can-write-metadata=true` - filter to only tables the user can edit metadata for",
+        "description" : "Returns a list of Tables for the given Database `id` and `schema`.\n\n  Schema names containing slashes, backslashes, or percent signs are rejected at the HTTP layer when\n  percent-encoded in the URL path; pass those as the `schema` query parameter of `GET /:id/schema/`\n  instead (#77353).\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can query",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -41849,17 +40527,6 @@
           }
         }, {
           "in" : "query",
-          "name" : "can-write-metadata",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
           "name" : "include_measures",
           "required" : false,
           "schema" : {
@@ -41888,7 +40555,7 @@
       "get" : {
         "operationId" : "get-api-database-id-schemas",
         "summary" : "GET /api/database/{id}/schemas",
-        "description" : "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.\n\n  Optional filters:\n  - `can-query=true` - filter to only schemas containing tables the user can query\n  - `can-write-metadata=true` - filter to only schemas containing tables the user can edit metadata for",
+        "description" : "Returns a list of all the schemas with tables found for the database `id`. Excludes schemas with no tables.\n\n  Optional filters:\n  - `can-query=true` - filter to only schemas containing tables the user can query",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -41925,17 +40592,6 @@
         }, {
           "in" : "query",
           "name" : "can-query",
-          "required" : false,
-          "schema" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          }
-        }, {
-          "in" : "query",
-          "name" : "can-write-metadata",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -44535,6 +43191,1011 @@
           }
         },
         "tags" : [ "/api/ee/ai-controls/usage" ]
+      }
+    },
+    "/api/ee/apps" : {
+      "get" : {
+        "operationId" : "get-api-ee-apps",
+        "summary" : "GET /api/ee/apps",
+        "description" : "List the data apps. Pass `available=true` to return only enabled apps. Disabled and outdated apps are listed only\n  to superusers, who see them badged, and never as available.",
+        "parameters" : [ {
+          "in" : "query",
+          "name" : "available",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "boolean"
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "anyOf" : [ {
+                      "type" : "object",
+                      "properties" : {
+                        "enabled" : {
+                          "type" : "boolean"
+                        },
+                        "id" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "name" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        },
+                        "updated_at" : { },
+                        "display_name" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        },
+                        "version" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "created_at" : { },
+                        "bundle_hash" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "allowed_hosts" : {
+                          "type" : "array",
+                          "items" : {
+                            "type" : "string"
+                          }
+                        },
+                        "outdated" : {
+                          "type" : "boolean"
+                        },
+                        "resource_collection_id" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "description" : {
+                          "oneOf" : [ {
+                            "type" : "string"
+                          }, {
+                            "type" : "null"
+                          } ]
+                        },
+                        "bundle_path" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      },
+                      "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                    }, {
+                      "type" : "object",
+                      "properties" : {
+                        "display_name" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        },
+                        "id" : {
+                          "description" : "value must be an integer greater than zero.",
+                          "type" : "integer",
+                          "minimum" : 1
+                        },
+                        "name" : {
+                          "type" : "string",
+                          "minLength" : 1
+                        }
+                      },
+                      "required" : [ "id", "name", "display_name" ],
+                      "additionalProperties" : false
+                    } ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      },
+      "post" : {
+        "operationId" : "post-api-ee-apps",
+        "summary" : "POST /api/ee/apps",
+        "description" : "Create a data app with its resource collection and an empty bundle. It is enabled unless the request says\n  otherwise.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : { },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "version" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "allowed_hosts" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "outdated" : {
+                      "type" : "boolean"
+                    },
+                    "resource_collection_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "bundle_path" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "allowed_hosts" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-hosts"
+                  },
+                  "bundle_path" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-path"
+                  },
+                  "description" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
+                  },
+                  "display_name" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
+                  },
+                  "enabled" : {
+                    "type" : "boolean"
+                  },
+                  "name" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.slug"
+                  },
+                  "version" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.version"
+                  }
+                },
+                "required" : [ "name" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      }
+    },
+    "/api/ee/apps/repo-status" : {
+      "get" : {
+        "operationId" : "get-api-ee-apps-repo-status",
+        "summary" : "GET /api/ee/apps/repo-status",
+        "description" : "Status of the connected repository as it relates to data apps. Data apps are\n   pulled by the remote-sync import (manual \"Pull changes\", auto-import, or\n   startup); the connection is configured on the remote-sync settings page.",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "configured" : {
+                      "type" : "boolean"
+                    },
+                    "url" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    }
+                  },
+                  "required" : [ "configured", "url" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      }
+    },
+    "/api/ee/apps/sandbox-host" : {
+      "get" : {
+        "operationId" : "get-api-ee-apps-sandbox-host",
+        "summary" : "GET /api/ee/apps/sandbox-host",
+        "description" : "Serve the document used as the `src` of the Near-Membrane realm iframe, carrying a\n   per-document CSP that confines `'unsafe-eval'` to that realm. See [[sandbox-host-csp]].",
+        "parameters" : [ ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      }
+    },
+    "/api/ee/apps/{slug}" : {
+      "put" : {
+        "operationId" : "put-api-ee-apps-slug",
+        "summary" : "PUT /api/ee/apps/{slug}",
+        "description" : "Update a data app's manifest fields, or enable or disable it. A disabled app is served to superusers only.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : { },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "version" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "allowed_hosts" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "outdated" : {
+                      "type" : "boolean"
+                    },
+                    "resource_collection_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "bundle_path" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "allowed_hosts" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.allowed-hosts"
+                  },
+                  "bundle_path" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-path"
+                  },
+                  "description" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.description"
+                  },
+                  "display_name" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.display-name"
+                  },
+                  "enabled" : {
+                    "type" : "boolean"
+                  },
+                  "version" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.version"
+                  }
+                },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      },
+      "delete" : {
+        "operationId" : "delete-api-ee-apps-slug",
+        "summary" : "DELETE /api/ee/apps/{slug}",
+        "description" : "Delete a data app, its bundle, its collection, and its group assignments.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      },
+      "get" : {
+        "operationId" : "get-api-ee-apps-slug",
+        "summary" : "GET /api/ee/apps/{slug}",
+        "description" : "Fetch metadata for a single data app by its slug, disabled ones to superusers only.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "anyOf" : [ {
+                    "type" : "object",
+                    "properties" : {
+                      "enabled" : {
+                        "type" : "boolean"
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "updated_at" : { },
+                      "display_name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "version" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "created_at" : { },
+                      "bundle_hash" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "allowed_hosts" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "string"
+                        }
+                      },
+                      "outdated" : {
+                        "type" : "boolean"
+                      },
+                      "resource_collection_id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "description" : {
+                        "oneOf" : [ {
+                          "type" : "string"
+                        }, {
+                          "type" : "null"
+                        } ]
+                      },
+                      "bundle_path" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    },
+                    "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                  }, {
+                    "type" : "object",
+                    "properties" : {
+                      "display_name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      },
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "name" : {
+                        "type" : "string",
+                        "minLength" : 1
+                      }
+                    },
+                    "required" : [ "id", "name", "display_name" ],
+                    "additionalProperties" : false
+                  } ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      }
+    },
+    "/api/ee/apps/{slug}/bundle" : {
+      "put" : {
+        "operationId" : "put-api-ee-apps-slug-bundle",
+        "summary" : "PUT /api/ee/apps/{slug}/bundle",
+        "description" : "Replace a data app's bundle.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "object",
+                  "properties" : {
+                    "enabled" : {
+                      "type" : "boolean"
+                    },
+                    "id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "updated_at" : { },
+                    "display_name" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    },
+                    "version" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "created_at" : { },
+                    "bundle_hash" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "allowed_hosts" : {
+                      "type" : "array",
+                      "items" : {
+                        "type" : "string"
+                      }
+                    },
+                    "outdated" : {
+                      "type" : "boolean"
+                    },
+                    "resource_collection_id" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "description" : {
+                      "oneOf" : [ {
+                        "type" : "string"
+                      }, {
+                        "type" : "null"
+                      } ]
+                    },
+                    "bundle_path" : {
+                      "type" : "string",
+                      "minLength" : 1
+                    }
+                  },
+                  "required" : [ "id", "name", "display_name", "description", "version", "outdated", "bundle_path", "enabled", "allowed_hosts", "resource_collection_id", "bundle_hash", "created_at", "updated_at" ]
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "bundle" : {
+                    "$ref" : "#/components/schemas/metabase-enterprise.data-apps.schema.bundle-text"
+                  }
+                },
+                "required" : [ "bundle" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      },
+      "get" : {
+        "operationId" : "get-api-ee-apps-slug-bundle",
+        "summary" : "GET /api/ee/apps/{slug}/bundle",
+        "description" : "Serve the cached JS bundle for a single data app by slug, disabled ones to superusers only. Honors\n   `If-None-Match` against the content-hash ETag with a 304.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : { },
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      }
+    },
+    "/api/ee/apps/{slug}/group-permission-warnings" : {
+      "get" : {
+        "operationId" : "get-api-ee-apps-slug-group-permission-warnings",
+        "summary" : "GET /api/ee/apps/{slug}/group-permission-warnings",
+        "description" : "Return missing table access for groups already assigned to this app.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "group_id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "missing_tables" : {
+                        "type" : "array",
+                        "items" : {
+                          "type" : "object",
+                          "properties" : {
+                            "database_id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            },
+                            "database_name" : {
+                              "type" : "string"
+                            },
+                            "id" : {
+                              "description" : "value must be an integer greater than zero.",
+                              "type" : "integer",
+                              "minimum" : 1
+                            },
+                            "name" : {
+                              "type" : "string"
+                            },
+                            "schema" : {
+                              "oneOf" : [ {
+                                "type" : "string"
+                              }, {
+                                "type" : "null"
+                              } ]
+                            }
+                          },
+                          "required" : [ "id", "name", "schema", "database_id", "database_name" ]
+                        }
+                      }
+                    },
+                    "required" : [ "group_id", "missing_tables" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      }
+    },
+    "/api/ee/apps/{slug}/groups" : {
+      "get" : {
+        "operationId" : "get-api-ee-apps-slug-groups",
+        "summary" : "GET /api/ee/apps/{slug}/groups",
+        "description" : "List the groups assigned to a data app.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "member_count" : {
+                        "description" : "value must be an integer greater or equal to than zero.",
+                        "type" : "integer",
+                        "minimum" : 0
+                      },
+                      "name" : {
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "id", "name", "member_count" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      },
+      "post" : {
+        "operationId" : "post-api-ee-apps-slug-groups",
+        "summary" : "POST /api/ee/apps/{slug}/groups",
+        "description" : "Assign a batch of internal groups atomically.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "id" : {
+                        "description" : "value must be an integer greater than zero.",
+                        "type" : "integer",
+                        "minimum" : 1
+                      },
+                      "member_count" : {
+                        "description" : "value must be an integer greater or equal to than zero.",
+                        "type" : "integer",
+                        "minimum" : 0
+                      },
+                      "name" : {
+                        "type" : "string"
+                      }
+                    },
+                    "required" : [ "id", "name", "member_count" ]
+                  }
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "type" : "object",
+                "properties" : {
+                  "group_ids" : {
+                    "type" : "array",
+                    "items" : {
+                      "description" : "value must be an integer greater than zero.",
+                      "type" : "integer",
+                      "minimum" : 1
+                    },
+                    "minItems" : 1,
+                    "maxItems" : 100
+                  }
+                },
+                "required" : [ "group_ids" ],
+                "additionalProperties" : false
+              }
+            }
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      }
+    },
+    "/api/ee/apps/{slug}/groups/{group-id}" : {
+      "delete" : {
+        "operationId" : "delete-api-ee-apps-slug-groups-group-id",
+        "summary" : "DELETE /api/ee/apps/{slug}/groups/{group-id}",
+        "description" : "Remove a group's assignment and collection access.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        }, {
+          "in" : "path",
+          "name" : "group-id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "null"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
+      }
+    },
+    "/api/ee/apps/{slug}/typed-schema" : {
+      "get" : {
+        "operationId" : "get-api-ee-apps-slug-typed-schema",
+        "summary" : "GET /api/ee/apps/{slug}/typed-schema",
+        "description" : "Return the TypeScript module of the data app's queries and actions: a `defineQuery` call for each question and metric\n  and a `defineAction` call for each action in the app's collection, addressed by entity ID. Superusers only.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "slug",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : { }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/apps" ]
       }
     },
     "/api/ee/audit-app/analytics-dev/export" : {
@@ -53607,7 +53268,7 @@
       "get" : {
         "operationId" : "get-api-ee-transform-test",
         "summary" : "GET /api/ee/transform-test",
-        "description" : "List the transform tests, optionally only those of one transform.",
+        "description" : "List the transform tests with their newest runs, optionally only those of one transform.",
         "parameters" : [ {
           "in" : "query",
           "name" : "transform-id",
@@ -53630,7 +53291,7 @@
                 "schema" : {
                   "type" : "array",
                   "items" : {
-                    "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.transform-test"
+                    "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test.response"
                   }
                 }
               }
@@ -53684,7 +53345,7 @@
       "get" : {
         "operationId" : "get-api-ee-transform-test-id",
         "summary" : "GET /api/ee/transform-test/{id}",
-        "description" : "Get a transform test.",
+        "description" : "Get a transform test with its newest run.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
@@ -53701,7 +53362,7 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.transform-test"
+                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test.response"
                 }
               }
             }
@@ -53794,6 +53455,78 @@
       }
     },
     "/api/ee/transform-test/{id}/run" : {
+      "get" : {
+        "operationId" : "get-api-ee-transform-test-id-run",
+        "summary" : "GET /api/ee/transform-test/{id}/run",
+        "description" : "List the runs of a transform test, newest first.",
+        "parameters" : [ {
+          "in" : "path",
+          "name" : "id",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "minimum" : 1
+          },
+          "description" : "value must be an integer greater than zero."
+        }, {
+          "in" : "query",
+          "name" : "statuses",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "array",
+              "items" : {
+                "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema.run-status"
+              }
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "start-time",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        }, {
+          "in" : "query",
+          "name" : "end-time",
+          "required" : false,
+          "schema" : {
+            "oneOf" : [ {
+              "type" : "string",
+              "minLength" : 1
+            }, {
+              "type" : "null"
+            } ]
+          }
+        } ],
+        "responses" : {
+          "2XX" : {
+            "description" : "Successful response",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/metabase-enterprise.transform-testing.schema..transform-test-runs.response"
+                }
+              }
+            }
+          },
+          "4XX" : {
+            "description" : "Client error response"
+          },
+          "5XX" : {
+            "description" : "Server error response"
+          }
+        },
+        "tags" : [ "/api/ee/transform-test" ]
+      },
       "post" : {
         "operationId" : "post-api-ee-transform-test-id-run",
         "summary" : "POST /api/ee/transform-test/{id}/run",
@@ -67431,7 +67164,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "exploration", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "segment", "collection", "measure", "transform", "document", "database", "data-app", "action", "indexed-entity", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -67560,7 +67293,7 @@
           "required" : true,
           "schema" : {
             "type" : "string",
-            "enum" : [ "dashboard", "table", "exploration", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
+            "enum" : [ "dashboard", "table", "exploration", "dataset", "segment", "collection", "measure", "transform", "document", "database", "data-app", "action", "indexed-entity", "metric", "card" ]
           }
         }, {
           "in" : "query",
@@ -67782,7 +67515,7 @@
               "type" : "array",
               "items" : {
                 "type" : "string",
-                "enum" : [ "dashboard", "table", "exploration", "dataset", "segment", "collection", "measure", "transform", "document", "database", "action", "indexed-entity", "metric", "card" ]
+                "enum" : [ "dashboard", "table", "exploration", "dataset", "segment", "collection", "measure", "transform", "document", "database", "data-app", "action", "indexed-entity", "metric", "card" ]
               }
             }, {
               "type" : "null"
@@ -69543,7 +69276,7 @@
       "get" : {
         "operationId" : "get-api-table",
         "summary" : "GET /api/table",
-        "description" : "Get all `Tables`.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can execute queries against\n  - `can-write=true` - filter to only tables the user can edit metadata for",
+        "description" : "Get all `Tables`.\n\n  Optional filters:\n  - `can-query=true` - filter to only tables the user can execute queries against\n  - `include-editable-data-model=true` - filter to only tables the user can edit the data model of, instead of the\n    tables the user can read",
         "parameters" : [ {
           "in" : "query",
           "name" : "visibility-type",
@@ -69614,7 +69347,7 @@
           }
         }, {
           "in" : "query",
-          "name" : "can-write",
+          "name" : "include-editable-data-model",
           "required" : false,
           "schema" : {
             "oneOf" : [ {
@@ -70236,7 +69969,7 @@
       "get" : {
         "operationId" : "get-api-table-id-query_metadata",
         "summary" : "GET /api/table/{id}/query_metadata",
-        "description" : "Get metadata about a `Table` useful for running queries.\n   Returns DB, fields, field FKs, and field values.\n\n   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`\n   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.\n\n   Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's\n   data model, while `false` checks that they have data access perms for the table. Defaults to `false`.\n\n   These options are provided for use in the Admin Edit Metadata page.",
+        "description" : "Get metadata about a `Table` useful for running queries.\n   Returns DB, fields, field FKs, and field values.\n\n   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`.\n   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response if the current user has\n   data model editing permissions for the table. Defaults to `false`.\n\n   Passing `include_editable_data_model=true` will check that the current user has data model editing permissions for\n   the table, even when Remote Sync makes the table read-only, while `false` checks that they can read the table.\n   Defaults to `false`.\n\n   The response includes `can_write`, which is false when the user cannot edit the table's metadata right now.\n\n   These options are provided for use in the data model pages.",
         "parameters" : [ {
           "in" : "path",
           "name" : "id",
