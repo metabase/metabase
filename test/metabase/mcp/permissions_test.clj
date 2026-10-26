@@ -12,8 +12,9 @@
    [metabase.mcp.v2.message :as message]
    [metabase.mcp.v2.registry :as registry]
    [metabase.mcp.v2.resources :as v2.resources]
-   [metabase.mcp.v2.test-util]
-   [metabase.test :as mt]))
+   [metabase.mcp.v2.test-util :as v2.tu]
+   [metabase.test :as mt]
+   [metabase.test.http-client :as client]))
 
 (set! *warn-on-reflection* true)
 
@@ -95,7 +96,7 @@
         (is (not= (registry/tools-hash)
                   (binding [api/*current-user-id* nil] (registry/tools-hash)))))
       (testing "tools/call refuses the denied tool and names the fix"
-        (let [{:keys [error]} (registry/call-tool nil nil "test_echo" {})]
+        (let [{:keys [error]} (registry/call-tool v2.tu/all-scopes nil "test_echo" {})]
           (is (= common/error-code-invalid-request (:code error)))
           (is (= (str "Tool \"test_echo\" is not enabled for your groups. "
                       "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")
@@ -107,39 +108,45 @@
                                 "Tool \"test_echo\" is not enabled for your groups."))))
       (testing "tools/call refuses the tool denied by default"
         (is (= common/error-code-invalid-request
-               (get-in (registry/call-tool nil nil "test_off_by_default" {}) [:error :code])))))))
+               (get-in (registry/call-tool v2.tu/all-scopes nil "test_off_by_default" {}) [:error :code])))))))
 
 (deftest ^:parallel allowed-tool-dispatches-test
   (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly [{"test_off_by_default" "yes"}])]
     (mt/with-current-user (mt/user->id :rasta)
       (testing "a tool at its default allowed dispatches"
         (is (= {:ok true :message "pong"}
-               (get-in (registry/call-tool nil nil "test_echo" {}) [:result :structuredContent]))))
+               (get-in (registry/call-tool v2.tu/all-scopes nil "test_echo" {}) [:result :structuredContent]))))
       (testing "an explicit yes lists and dispatches a tool denied by default"
         (is (contains? (listed-tool-names) "test_off_by_default"))
         (is (= {:ok true}
-               (get-in (registry/call-tool nil nil "test_off_by_default" {}) [:result :structuredContent])))))))
+               (get-in (registry/call-tool v2.tu/all-scopes nil "test_off_by_default" {}) [:result :structuredContent])))))))
 
 (deftest ^:parallel disabled-policy-hides-every-tool-test
   (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly no-access-policy)]
     (mt/with-current-user (mt/user->id :rasta)
       (is (empty? (listed-tool-names)))
       (is (= common/error-code-invalid-request
-             (get-in (registry/call-tool nil nil "test_echo" {}) [:error :code]))))))
+             (get-in (registry/call-tool v2.tu/all-scopes nil "test_echo" {}) [:error :code]))))))
 
-(deftest ^:parallel initialize-is-refused-when-mcp-is-disabled-test
+(deftest initialize-is-refused-when-mcp-is-disabled-test
   (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly no-access-policy)]
-    (let [initialize {:jsonrpc "2.0" :method "initialize" :params {} :id 1}]
+    (let [initialize (fn [user expected-status]
+                       (v2.tu/do-with-bearer-token!
+                        user v2.tu/all-scopes
+                        (fn [headers]
+                          (:body (client/client-full-response :post expected-status "metabase-mcp"
+                                                              {:request-options {:headers headers}}
+                                                              {:jsonrpc "2.0" :method "initialize" :params {} :id 1})))))]
       (testing "the handshake names the fix instead of handing out an empty tool list"
         (is (= {:jsonrpc "2.0"
                 :id      1
                 :error   {:code    common/error-code-invalid-request
                           :message (str "MCP access is not enabled for your account. "
                                         "Ask an administrator to enable it under Admin > AI > Usage controls > MCP tools access.")}}
-               (mt/user-http-request :rasta :post 403 "metabase-mcp" initialize))))
+               (initialize :rasta 403))))
       (testing "a superuser still connects"
         (is (=? {:result {:protocolVersion string?}}
-                (mt/user-http-request :crowberto :post 200 "metabase-mcp" initialize)))))))
+                (initialize :crowberto 200)))))))
 
 (deftest ^:parallel app-only-tool-follows-the-ui-tools-test
   (mt/with-current-user (mt/user->id :rasta)
@@ -152,10 +159,10 @@
                                                                            "render_drill_through" "no"}])]
         (is (not (contains? (listed-tool-names) "refresh_ui_credential")))
         (is (= common/error-code-invalid-request
-               (get-in (registry/call-tool nil nil "refresh_ui_credential" {}) [:error :code])))))))
+               (get-in (registry/call-tool v2.tu/all-scopes nil "refresh_ui_credential" {}) [:error :code])))))))
 
 (deftest ^:parallel resources-read-is-refused-when-mcp-is-disabled-test
-  (let [read-fields #(#'v2.api/handle-resources-read 1 {:uri v2.resources/fields-catalog-uri} nil nil)]
+  (let [read-fields #(#'v2.api/handle-resources-read 1 {:uri v2.resources/fields-catalog-uri} nil v2.tu/all-scopes)]
     (mt/with-dynamic-fn-redefs [mcp.perms/effective-policy (constantly no-access-policy)]
       (testing "a session opened before an admin turned MCP off reads nothing"
         (mt/with-current-user (mt/user->id :rasta)

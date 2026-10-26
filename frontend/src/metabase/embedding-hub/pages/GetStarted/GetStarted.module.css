@@ -5,7 +5,7 @@
   border-radius: 50%;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--mb-color-border);
+  border: 1px solid var(--mb-color-border-neutral);
 }
 
 .interactiveCard {
@@ -15,7 +15,7 @@
 }
 
 .interactiveCard:hover {
-  border-color: var(--mb-color-brand);
+  border-color: var(--mb-color-core-brand);
 }
 
 /*

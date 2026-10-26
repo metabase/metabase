@@ -1,8 +1,0 @@
-.button {
-  color: var(--mb-color-text-primary);
-  transition: color 200ms;
-
-  &:hover {
-    color: var(--mb-color-core-filter);
-  }
-}

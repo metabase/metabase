@@ -26,7 +26,7 @@ export function SnippetDescriptionSection({
     if (error) {
       sendToast({
         message: t`Failed to update snippet description`,
-        icon: "warning",
+        variant: "negative",
       });
     } else {
       sendToast({

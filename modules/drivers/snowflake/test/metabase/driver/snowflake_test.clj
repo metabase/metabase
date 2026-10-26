@@ -25,6 +25,7 @@
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -32,7 +33,7 @@
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.test-util.notebook-helpers :as notebook-helpers]
    [metabase.query-processor.compile :as qp.compile]
-   ^{:clj-kondo/ignore [:deprecated-namespace :discouraged-namespace]} [metabase.query-processor.store :as qp.store]
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test :as qp]
    [metabase.secrets.core :as secret]
    [metabase.sync.core :as sync]
@@ -60,6 +61,7 @@
    (java.io StringWriter)
    (java.security KeyFactory)
    (java.security.spec PKCS8EncodedKeySpec)
+   (net.snowflake.client.internal.jdbc SnowflakeConnectString)
    (org.bouncycastle.openssl PKCS8Generator)
    (org.bouncycastle.openssl.jcajce JcaPEMWriter JcaPKCS8Generator JceOpenSSLPKCS8EncryptorBuilder)))
 
@@ -171,6 +173,17 @@
   (is (= "\"alma\"" (#'driver.snowflake/quote-name "alma")))
   (is (= "\"Al\"\"aba\"\"Ma\"" (#'driver.snowflake/quote-name "Al\"aba\"Ma"))))
 
+(defn- put-get-as-the-client-reads-it
+  "The `enablePutGet` value the Snowflake client resolves `spec` to, asking its own parser. `clojure.java.jdbc` hands
+  it the URL built from `:subname` and every other spec key as a connection property."
+  [spec]
+  (let [url   (str "jdbc:" (:subprotocol spec) ":" (:subname spec))
+        props (java.util.Properties.)]
+    (doseq [[k v] (dissoc spec :classname :subprotocol :subname)
+            :when (some? v)]
+      (.setProperty props (name k) (str v)))
+    (get (.getParameters (SnowflakeConnectString/parse url props)) "ENABLEPUTGET")))
+
 (deftest ^:parallel connection-details->spec-test
   (let [details {:role nil
                  :warehouse "COMPUTE_WH"
@@ -215,6 +228,11 @@
         (let [spec (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :additional-options opts))]
           (is (= "false" (:enablePutGet spec)))
           (is (not (re-find #"(?i)enablePutGet" (str (:subname spec))))))))
+    (testing "...including through a detail key in another casing, which the client would read in place of ours"
+      (doseq [k ["Enableputget" "eNableputget" "ENablePutGet" "enableputget" "ENABLEPUTGET" " enablePutGet "]]
+        (testing (pr-str k)
+          (is (= "false" (put-get-as-the-client-reads-it
+                          (sql-jdbc.conn/connection-details->spec :snowflake (assoc details (keyword k) "true"))))))))
     (testing "additional options wins over top-level schema"
       ;; https://github.com/metabase/metabase/issues/65493
       (let [details (assoc details :schema "BAD" :additional-options "schema=GOOD")
@@ -344,6 +362,28 @@
       (is (not (contains? spec :private_key_file)))
       (is (nil? (:connection-uri spec))))))
 
+(deftest ^:parallel connection-details->spec-explicit-auth-mode-test
+  (testing "an explicit :auth-mode wins over stale credentials of the previous method"
+    (let [details {:account             "acct.us-east-2.aws"
+                   :warehouse           "COMPUTE_WH"
+                   :db                  "TESTDB"
+                   :user                "SERVICE_USER"
+                   :password            "passwd"
+                   :private-key-options "uploaded"
+                   :private-key-value   (mt/bytes->base64-data-uri (u/string-to-bytes "pk"))}]
+      (testing "key-pair"
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :snowflake
+                    (assoc details :auth-mode "key-pair" :use-password true))]
+          (is (not (contains? spec :password)))
+          (is (some? (:private_key_file spec)))))
+      (testing "password"
+        (let [spec (sql-jdbc.conn/connection-details->spec
+                    :snowflake
+                    (assoc details :auth-mode "password" :use-password false))]
+          (is (= "passwd" (:password spec)))
+          (is (not (contains? spec :private_key_file))))))))
+
 (deftest ^:parallel connection-details->spec-wif-role-as-property-test
   (testing "under WIF, :role is in the JDBC properties map"
     (let [spec (sql-jdbc.conn/connection-details->spec
@@ -371,6 +411,21 @@
       {:auth-mode "wif"      :wif-token "jwt"}
       {:auth-mode "password" :password  "abc"}
       {:auth-mode "key-pair" :private-key-value "xxx"})))
+
+(deftest ^:parallel normalize-details-use-password-follows-auth-mode-test
+  (testing ":use-password follows an explicit :auth-mode"
+    (are [in expected] (= expected (:use-password (#'driver.snowflake/normalize-details in)))
+      {:auth-mode "key-pair" :use-password true  :password "abc" :private-key-id 1} false
+      {:auth-mode "key-pair" :password "abc"}                                       false
+      {:auth-mode "password" :use-password false :password "abc" :private-key-id 1} true
+      {:auth-mode "password" :password "abc" :private-key-id 1}                     true))
+  (testing "the selected method is tried first when the details are migrated"
+    (are [in expected] (= expected (-> (driver/db-details-to-test-and-migrate
+                                        :snowflake
+                                        (#'driver.snowflake/normalize-details in))
+                                       first meta :auth))
+      {:auth-mode "key-pair" :use-password true  :password "abc" :private-key-id 1} :private-key-id
+      {:auth-mode "password" :use-password false :password "abc" :private-key-id 1} :password)))
 
 (deftest ^:parallel db-details-to-test-and-migrate-wif-test
   (testing "WIF-only details are unambiguous — no candidates returned"
@@ -1075,7 +1130,7 @@
   (mt/test-driver
     :snowflake
     ;; the test DB authenticates with a private key, so give it a password to switch away from
-    (let [details (assoc (:details (mt/db)) :password "test-password" :use-password true)
+    (let [details (assoc (:details (mt/db)) :password "test-password" :use-password true :auth-mode "password")
           pk-key "testing"]
       (is (=?
            {:user some?
@@ -1092,12 +1147,12 @@
            {:user some?
             :password :hawk/key-not-present
             :private_key_file some?}
-           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :password nil :private-key-value pk-key))))
+           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :password nil :auth-mode "key-pair" :private-key-value pk-key))))
       (is (=?
            {:user some?
             :password :hawk/key-not-present
             :private_key_file some?}
-           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :private-key-value pk-key)))))))
+           (sql-jdbc.conn/connection-details->spec :snowflake (assoc details :use-password false :auth-mode "key-pair" :private-key-value pk-key)))))))
 
 (deftest can-connect-test
   (let [pk-key (mt/format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
@@ -2214,3 +2269,57 @@
                           (t/zone-offset "+02:00"))              "2026-07-08 01:02:03.123456789 +0200"
       "not temporal"                                             "not temporal"
       42                                                         42)))
+
+(deftest url-valued-connection-parameters-honor-network-policy-test
+  ;; the client connects to these instead of (or as well as) the account host, so a value naming an internal host has
+  ;; to be refused like the account host itself would be
+  (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]
+    (let [check! #(driver.u/validate-connection-hosts! :snowflake {:account "acct" :db "db" :user "u" :password "p"
+                                                                   :additional-options %})
+          refusal #(try (check! %) nil (catch clojure.lang.ExceptionInfo e (ex-data e)))]
+      (testing "an internal host is refused whichever parameter names it"
+        (doseq [opts ["authenticator=OAUTH_CLIENT_CREDENTIALS&oauthTokenRequestUrl=http://localhost:18078/steal"
+                      "oauthAuthorizationUrl=http://localhost/authorize"
+                      "serverURL=https://localhost/"
+                      "authenticator=https://localhost/"
+                      "AUTHENTICATOR=http://localhost:8080/okta"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "the client percent-decodes names and values, so an encoded one is refused like the plain one"
+        (doseq [opts ["serverURL=https%3A%2F%2Flocalhost%2F"
+                      "useProxy=true&proxy%48ost=localhost"
+                      "useProxy=true&proxyHost=%6Cocalhost"
+                      "authenticator=https%3A%2F%2Flocalhost%2F"
+                      "authenticat%6Fr=https://localhost/"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "every `authenticator` is checked when one is given more than once"
+        (doseq [opts ["authenticator=SNOWFLAKE_JWT&authenticator=https://localhost/"
+                      "authenticator=https://localhost/&authenticator=SNOWFLAKE_JWT"]]
+          (is (=? {:status-code 400} (refusal opts))
+              (str "should be refused: " opts))))
+      (testing "an `authenticator` naming a flow rather than a URL is not treated as a host"
+        (doseq [opts [nil
+                      "authenticator=SNOWFLAKE_JWT"
+                      "authenticator=OAUTH_CLIENT_CREDENTIALS"
+                      "authenticator=externalbrowser"
+                      "authenticator=SNOWFLAKE%5FJWT"]]
+          (is (nil? (check! opts))
+              (str "should be allowed: " opts))))
+      (testing "an `authenticator` detail key reaches the client as a connection property too, in any case"
+        (doseq [k [:authenticator :AUTHENTICATOR :Authenticator]]
+          (is (=? {:status-code 400}
+                  (try (driver.u/validate-connection-hosts! :snowflake {:account "acct" :db "db" :user "u" :password "p"
+                                                                        k "https://localhost/"
+                                                                        :additional-options "authenticator=SNOWFLAKE_JWT"})
+                       nil
+                       (catch clojure.lang.ExceptionInfo e (ex-data e))))
+              (str "should be refused: " k)))))))
+
+(deftest authenticator-values-read-connection-uri-test
+  ;; private-key auth moves the connection string from `:subname` into `:connection-uri`
+  (testing "an `authenticator` in `:connection-uri` is found as well as one in `:subname`"
+    (doseq [k [:subname :connection-uri]]
+      (is (= ["https://localhost/"]
+             (#'driver.snowflake/authenticator-values {k "//acct.snowflakecomputing.com/?authenticator=https://localhost/"}))
+          (str "should be found in " k)))))

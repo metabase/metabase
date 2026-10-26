@@ -1,5 +1,6 @@
 import {
   type CSSProperties,
+  type ComponentProps,
   type FocusEvent,
   Fragment,
   type ReactNode,
@@ -17,7 +18,7 @@ import { t } from "ttag";
 
 import ZIndex from "metabase/css/core/z-index.module.css";
 import { useDispatch, useSelector } from "metabase/redux";
-import type { Undo } from "metabase/redux/store/undo";
+import type { Undo, UndoVariant } from "metabase/redux/store/undo";
 import {
   dismissUndo,
   pauseUndo,
@@ -34,6 +35,7 @@ import {
   Progress,
   Stack,
 } from "metabase/ui";
+import type { ColorName } from "metabase/ui/colors/types";
 import { isFocusVisible } from "metabase/utils/dom";
 import { capitalize, inflect } from "metabase/utils/formatting";
 
@@ -115,11 +117,14 @@ function UndoToast({
     }
   };
 
+  const variant = undo.variant ?? "neutral";
+  const isColored = variant !== "neutral";
   const dark = undo.dark ?? true;
   const noBorder = undo.showProgress;
-  const pausedProgressColor = dark
-    ? "tooltip-text-secondary"
-    : "background_page-tertiary-inverse";
+  const pausedProgressColor =
+    dark && !isColored
+      ? "tooltip-text-secondary"
+      : "background_page-tertiary-inverse";
 
   return (
     <Card
@@ -127,13 +132,14 @@ function UndoToast({
       data-testid="toast-undo"
       role="status"
       className={S.toast}
+      data-variant={variant}
       data-paused={undo.pausedAt != null || undefined}
       onMouseEnter={() => updateInteraction({ isHovered: true })}
       onMouseLeave={() => updateInteraction({ isHovered: false })}
       onFocus={handleFocus}
       onBlur={handleBlur}
-      bg={dark ? "tooltip-background" : "background_page-primary"}
-      c={dark ? "tooltip-text" : "text-primary"}
+      bg={getToastBackground(variant, dark)}
+      c={dark && !isColored ? "tooltip-text" : "text-primary"}
       withBorder={!noBorder}
       radius="sm"
       p="lg"
@@ -168,7 +174,10 @@ function UndoToast({
             <Icon
               className={S.messageIcon}
               name={undo.icon}
-              c={undo.iconColor ?? "tooltip-text"}
+              c={
+                undo.iconColor ??
+                (isColored ? `feedback-${variant}-strong` : "tooltip-text")
+              }
               mr="sm"
               flex="0 0 auto"
             />
@@ -182,20 +191,10 @@ function UndoToast({
           )}
         </Flex>
         <Flex className={S.controls} align="center" gap="sm" flex="0 0 auto">
-          {undo.actions && undo.actions.length > 0 && (
-            <Button
-              className={S.actionButton}
-              variant={dark ? "on-dark-primary" : "default"}
-              size="sm"
-              onClick={onUndo}
-            >
-              {undo.actionLabel ?? t`Undo`}
-            </Button>
-          )}
           {undo.extraAction && (
             <Button
               className={S.actionButton}
-              variant={dark ? "on-dark-secondary" : "default"}
+              variant={dark && !isColored ? "on-dark-secondary" : "default"}
               size="sm"
               onClick={() => {
                 undo.extraAction?.action();
@@ -207,10 +206,24 @@ function UndoToast({
               {undo.extraAction.label}
             </Button>
           )}
+          {undo.actions && undo.actions.length > 0 && (
+            <Button
+              className={S.actionButton}
+              variant={getPrimaryButtonVariant(variant, dark)}
+              color={isColored ? variant : undefined}
+              size="sm"
+              onClick={onUndo}
+            >
+              {undo.actionLabel ?? t`Undo`}
+            </Button>
+          )}
           {undo.canDismiss && (
             <Icon
               className={S.dismissIcon}
-              color={undo.dismissIconColor || "tooltip-text"}
+              color={
+                undo.dismissIconColor ||
+                (isColored ? "text-primary" : "tooltip-text")
+              }
               name="close"
               onClick={onDismiss}
               ml="sm"
@@ -220,6 +233,20 @@ function UndoToast({
       </Flex>
     </Card>
   );
+}
+
+function getToastBackground(variant: UndoVariant, dark: boolean): ColorName {
+  if (variant !== "neutral") {
+    return "background_surface-primary";
+  }
+  return dark ? "tooltip-background" : "background_page-primary";
+}
+
+function getPrimaryButtonVariant(variant: UndoVariant, dark: boolean) {
+  if (variant !== "neutral") {
+    return "filled";
+  }
+  return dark ? "on-dark-primary" : "default";
 }
 
 export function UndoListing() {
@@ -245,7 +272,7 @@ document.body.appendChild(target);
 // so disable them for altogether.
 const Group = "Cypress" in window ? MockGroup : TransitionGroup;
 
-function MockGroup({ children }: { children: ReactNode }) {
+function MockGroup({ children }: ComponentProps<typeof TransitionGroup>) {
   return <Fragment>{children}</Fragment>;
 }
 

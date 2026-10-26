@@ -30,7 +30,7 @@ Supported models:
 | Claude Fable 5    | `claude-fable-5`             | 1,000,000               |
 | Claude Fable 5.1  | `claude-fable-5-1`           | 1,000,000               |
 | Claude Haiku 4.5  | `claude-haiku-4-5-20251001`  | 200,000                 |
-| Claude Opus 4.1   | `claude-opus-4-1-20250805`   | 200,000                 |
+| Claude Haiku 5.5  | `claude-haiku-5-5`           | 1,000,000               |
 | Claude Opus 4.5   | `claude-opus-4-5-20251101`   | 200,000                 |
 | Claude Opus 4.6   | `claude-opus-4-6`            | 1,000,000               |
 | Claude Opus 4.7   | `claude-opus-4-7`            | 1,000,000               |
@@ -85,7 +85,6 @@ Supported models:
 | Claude Fable 5         | `anthropic/claude-fable-5`        | 1,000,000               |
 | Claude Fable 5.1       | `anthropic/claude-fable-5.1`      | 1,000,000               |
 | Claude Haiku 4.5       | `anthropic/claude-haiku-4.5`      | 200,000                 |
-| Claude Opus 4.1        | `anthropic/claude-opus-4.1`       | 200,000                 |
 | Claude Opus 4.5        | `anthropic/claude-opus-4.5`       | 200,000                 |
 | Claude Opus 4.6        | `anthropic/claude-opus-4.6`       | 1,000,000               |
 | Claude Opus 4.7        | `anthropic/claude-opus-4.7`       | 1,000,000               |
@@ -97,6 +96,7 @@ Supported models:
 | DeepSeek V4 Flash 0731 | `deepseek/deepseek-v4-flash-0731` | 1,048,576               |
 | DeepSeek V4 Pro 0423   | `deepseek/deepseek-v4-pro`        | 1,048,576               |
 | DeepSeek V4 Pro 0813   | `deepseek/deepseek-v4-pro-0813`   | 1,048,575               |
+| Gemini 3.8 Flash       | `google/gemini-3.8-flash`         | 1,048,576               |
 | Mistral Medium 3.5     | `mistralai/mistral-medium-3-5`    | 262,144                 |
 | Kimi K3                | `moonshotai/kimi-k3`              | 1,048,576               |
 | GPT-5.4                | `openai/gpt-5.4`                  | 922,000                 |
@@ -110,6 +110,7 @@ Supported models:
 | Qwen3.8 Max 0902       | `qwen/qwen3.8-max-0902`           | 1,000,000               |
 | GLM-5.2                | `z-ai/glm-5.2`                    | 1,048,576               |
 | GLM-5.3                | `z-ai/glm-5.3`                    | 1,048,576               |
+| GLM-5.3-Flash          | `z-ai/glm-5.3-flash`              | 1,048,575               |
 
 Credentials:
 
@@ -141,10 +142,11 @@ Credentials:
 
 Supported models:
 
-| Model   | Model ID  | Context window (tokens) |
-| ------- | --------- | ----------------------- |
-| GLM-5.2 | `glm-5.2` | 1,048,576               |
-| GLM-5.3 | `glm-5.3` | 1,048,576               |
+| Model         | Model ID        | Context window (tokens) |
+| ------------- | --------------- | ----------------------- |
+| GLM-5.2       | `glm-5.2`       | 1,048,576               |
+| GLM-5.3       | `glm-5.3`       | 1,048,576               |
+| GLM-5.3-Flash | `glm-5.3-flash` | 1,048,576               |
 
 Credentials:
 
@@ -177,10 +179,10 @@ Credentials:
 
 Supported models:
 
-| Model           | Model ID          |
-| --------------- | ----------------- |
-| DeepSeek Flash  | `deepseek-flash`  |
-| DeepSeek V4 Pro | `deepseek-v4-pro` |
+| Model           | Model ID          | Context window (tokens) |
+| --------------- | ----------------- | ----------------------- |
+| DeepSeek Flash  | `deepseek-flash`  | 1,048,576               |
+| DeepSeek V4 Pro | `deepseek-v4-pro` | 1,048,576               |
 
 Credentials:
 
@@ -212,20 +214,22 @@ Credentials:
 
 Supported models:
 
-| Model             | Model ID                              |
-| ----------------- | ------------------------------------- |
-| Claude Fable 5    | `anthropic/claude-fable-5`            |
-| Claude Fable 5.1  | `anthropic/claude-fable-5-1`          |
-| Claude Haiku 4.5  | `anthropic/claude-haiku-4-5@20251001` |
-| Claude Opus 4.6   | `anthropic/claude-opus-4-6`           |
-| Claude Opus 5     | `anthropic/claude-opus-5`             |
-| Claude Opus 5.5   | `anthropic/claude-opus-5-5`           |
-| Claude Sonnet 4.6 | `anthropic/claude-sonnet-4-6`         |
-| Claude Sonnet 5   | `anthropic/claude-sonnet-5`           |
-| Claude Sonnet 5.5 | `anthropic/claude-sonnet-5-5`         |
-| Gemini 3.5 Flash  | `google/gemini-3.5-flash`             |
-| Gemini 3.6 Flash  | `google/gemini-3.6-flash`             |
-| Gemini 3.7 Flash  | `google/gemini-3.7-flash`             |
+| Model             | Model ID                      |
+| ----------------- | ----------------------------- |
+| Claude Fable 5    | `anthropic/claude-fable-5`    |
+| Claude Fable 5.1  | `anthropic/claude-fable-5-1`  |
+| Claude Haiku 4.5  | `anthropic/claude-haiku-4-5`  |
+| Claude Haiku 5.5  | `anthropic/claude-haiku-5-5`  |
+| Claude Opus 4.6   | `anthropic/claude-opus-4-6`   |
+| Claude Opus 5     | `anthropic/claude-opus-5`     |
+| Claude Opus 5.5   | `anthropic/claude-opus-5-5`   |
+| Claude Sonnet 4.6 | `anthropic/claude-sonnet-4-6` |
+| Claude Sonnet 5   | `anthropic/claude-sonnet-5`   |
+| Claude Sonnet 5.5 | `anthropic/claude-sonnet-5-5` |
+| Gemini 3.5 Flash  | `google/gemini-3.5-flash`     |
+| Gemini 3.6 Flash  | `google/gemini-3.6-flash`     |
+| Gemini 3.7 Flash  | `google/gemini-3.7-flash`     |
+| Gemini 3.8 Flash  | `google/gemini-3.8-flash`     |
 
 Credentials:
 
@@ -279,6 +283,7 @@ Supported models:
 | Claude Fable 5       | `anthropic.claude-fable-5`    | 1,000,000               |
 | Claude Fable 5.1     | `anthropic.claude-fable-5-1`  | 1,000,000               |
 | Claude Haiku 4.5     | `anthropic.claude-haiku-4-5`  | 200,000                 |
+| Claude Haiku 5.5     | `anthropic.claude-haiku-5-5`  | 1,000,000               |
 | Claude Opus 4.7      | `anthropic.claude-opus-4-7`   | 1,000,000               |
 | Claude Opus 4.8      | `anthropic.claude-opus-4-8`   | 1,000,000               |
 | Claude Opus 5        | `anthropic.claude-opus-5`     | 1,000,000               |
@@ -385,6 +390,45 @@ Credentials:
 ### Context window
 
 Ollama can load a model with a smaller context window than the model supports. Metabot needs at least 16,384 tokens, and Metabase checks the window when you connect. See Ollama's documentation on [context length](https://docs.ollama.com/context-length).
+
+## OpenAI-compatible API
+
+- Provider key: `openai-compatible`
+
+Supported models:
+
+Whichever model your server serves. Metabase runs the one you enter in **Model ID**.
+
+Credentials:
+
+- **API base URL** (required). Any server that implements OpenAI's Chat Completions API with tool calling. Enter the URL that comes before /chat/completions. You can also set it with the environment variable `MB_LLM_OPENAI_COMPATIBLE_API_BASE_URL`.
+- **API key**. Only needed if your server asks for one. You can also set it with the environment variable `MB_LLM_OPENAI_COMPATIBLE_API_KEY`.
+- **Model ID** (required). The model to run, exactly as your server names it.
+
+### What connecting checks
+
+When you connect, Metabase sends the model a few short test requests. The model has to call a tool, call a tool when the request requires one (`tool_choice` set to `required`), and return its reasoning separately from its answer. If the server's `/models` list gives the model's context window, as `max_model_len` or `context_length`, it has to be at least 16,384 tokens. If a check fails, Metabase doesn't save the connection and tells you which check failed.
+
+The checks only test what Metabot needs to run. Metabase doesn't benchmark these models, so how well Metabot works depends on the model you choose. Models that need their reasoning sent back with every request can fail partway through a conversation, because Metabase doesn't send it back to them.
+
+### Servers this connection has been tried with
+
+- xAI, `https://api.x.ai/v1`, with `grok-4.3`: connects, and Metabot answers questions on it.
+- OpenRouter, `https://openrouter.ai/api/v1`, with `anthropic/claude-haiku-4.5`: passed the checks when tried. OpenRouter sends each request to one of the providers that serve a model, so a model can pass the checks on one try and fail them on the next, as `openai/gpt-oss-120b` did.
+- DeepSeek, `https://api.deepseek.com/v1`, with `deepseek-v4-pro`: doesn't connect. In thinking mode, DeepSeek rejects requests that require a tool call, so the forced tool call check fails.
+
+### API base URL examples
+
+Enter the URL that comes before `/chat/completions`. These examples show the format, and weren't tried:
+
+- Scaleway: `https://api.scaleway.ai/v1`
+- A vLLM, llama.cpp, or LM Studio server: `http://<host>:<port>/v1`
+
+On a self-hosted Metabase, a server on your private network or on the same machine as Metabase needs [`MB_LLM_ALLOWED_NETWORKS`](../configuring-metabase/environment-variables.md#mb_llm_allowed_networks).
+
+### Set the model with environment variables
+
+If you configure this connection with environment variables, it has no **Model ID**. Set `MB_LLM_METABOT_PROVIDER` to `openai-compatible/` followed by the model ID instead, like `openai-compatible/gpt-oss-120b`.
 
 ## Metabase AI service
 

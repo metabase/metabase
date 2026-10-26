@@ -19,8 +19,8 @@ import type { DataReferenceSlot } from "./types";
 
 export interface ActionCreatorProps {
   modelId?: CardId;
-  /** Whether the model accepts new actions, i.e. `Question.canWriteActions`. */
-  canWriteModelActions?: boolean;
+  canCreateActions?: boolean;
+  canWriteAction?: boolean;
   /**
    * Whether the creator is mounted as its own route. A routed creator guards
    * leaving with `LeaveRouteConfirmModal`; an inline one only has `beforeunload`.
@@ -34,7 +34,8 @@ export interface ActionCreatorProps {
 
 export function ActionCreator({
   modelId,
-  canWriteModelActions = false,
+  canCreateActions = false,
+  canWriteAction = false,
   isRouted,
   dataReference,
   onSubmit,
@@ -62,7 +63,7 @@ export function ActionCreator({
   const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
   const [isSaveModalShown, setShowSaveModal] = useState(false);
 
-  const isEditable = isNew || canWriteModelActions;
+  const isEditable = isSavedAction(action) ? canWriteAction : canCreateActions;
 
   const showUnsavedChangesWarning =
     isEditable && isDirty && !isCallbackScheduled;
@@ -70,14 +71,17 @@ export function ActionCreator({
   useBeforeUnload(!isRouted && showUnsavedChangesWarning);
 
   const handleCreate = async (values: CreateActionFormValues) => {
-    if (action.type !== "query") {
+    if (action.type !== "query" || action.dataset_query == null) {
       return; // only query action creation is supported now
     }
+    const { dataset_query } = action;
 
     try {
       const createdAction = await createAction({
         ...action,
         ...values,
+        type: "query",
+        dataset_query,
         visualization_settings: formSettings,
       }).unwrap();
 
@@ -91,7 +95,7 @@ export function ActionCreator({
         onClose?.();
       });
     } catch (_error) {
-      sendToast({ icon: "warning", message: t`Failed to create action` });
+      sendToast({ variant: "negative", message: t`Failed to create action` });
     }
   };
 
@@ -113,7 +117,7 @@ export function ActionCreator({
         onClose?.();
       });
     } catch (_error) {
-      sendToast({ icon: "warning", message: t`Failed to update action` });
+      sendToast({ variant: "negative", message: t`Failed to update action` });
     }
   };
 
@@ -149,6 +153,7 @@ export function ActionCreator({
         {renderEditorBody({ isEditable })}
       </ActionCreatorView>
       <Modal
+        density="relaxed"
         opened={isSaveModalShown}
         title={t`New Action`}
         onClose={handleCloseNewActionModal}

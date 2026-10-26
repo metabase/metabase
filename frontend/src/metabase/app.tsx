@@ -44,8 +44,9 @@ import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { captureClickModifierKeys } from "metabase/urls";
 import { setBasename } from "metabase/utils/basename";
+import { applyDocumentLocales } from "metabase/utils/boot-locale";
 import { captureConsoleErrors } from "metabase/utils/errors";
-import { initMetaplow } from "metabase/utils/metaplow";
+import { getCollectorHostUrl, initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import { PERFORMANCE_MARKS, markOnce } from "metabase/utils/performance-marks";
 import MetabaseSettings from "metabase/utils/settings";
@@ -78,11 +79,15 @@ function isLocationChangeAction(
   return isAction(action) && action.type === LOCATION_CHANGE;
 }
 
-function _init(
+async function _init(
   reducers: Parameters<typeof getStore>[0],
   getRoutes: (store: Store) => RouteObject[],
   callback?: (store: Store) => void,
 ) {
+  // The catalogues are already in the page as installed chunks, so this resolves
+  // without a request. Rendering before it would paint the app in English.
+  await applyDocumentLocales();
+
   // Initialize distributed tracing if enabled via MB_TRACING_ENABLED.
   // Uses bootstrap data so it's available before the first API call.
   const extraMiddlewares: Middleware[] = [];
@@ -109,6 +114,7 @@ function _init(
 
   createSnowplowTracker(() => getUserId(store.getState()));
   initMetaplow({
+    hostUrl: getCollectorHostUrl(),
     getUserId: () => getUserId(store.getState()),
   });
 
@@ -134,7 +140,7 @@ function _init(
                 <RouterProvider
                   routes={routes}
                   onLocationChange={mirrorLocation}
-                  hydrateFallback={<DelayedLoadingSpinner />}
+                  loadingFallback={<DelayedLoadingSpinner />}
                 />
               </MetabotProvider>
             </AppThemeProvider>

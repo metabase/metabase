@@ -16,6 +16,5 @@
                      (hooks/token-node 'defn)
                      fn-name
                      fn-tail))))
-                 (with-meta (meta node))
-                 hooks.common/add-lsp-ignore-unused-public-var-metadata)]
+                 (with-meta (meta node)))]
     {:node node}))

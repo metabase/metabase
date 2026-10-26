@@ -1,7 +1,4 @@
-import {
-  type LibrarySection,
-  getItemSection,
-} from "metabase/data-studio/common/hooks/use-library-bulk-selection";
+import type { CollectionRowModalState } from "metabase/common/collections/components/CollectionRowModal";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   isCollectionData,
@@ -10,19 +7,21 @@ import {
 } from "metabase/data-studio/common/utils";
 import { PLUGIN_LIBRARY } from "metabase/plugins";
 import { TableMoreMenu } from "metabase-enterprise/data-studio/library/tables/components/TableHeader/TableMoreMenu";
-import type { CollectionId } from "metabase-types/api";
+import type { TableModalState } from "metabase-enterprise/data-studio/library/tables/components/TableModal";
 
 import { LibraryCollectionRowMenu } from "../LibraryCollectionRowMenu";
 
 type ActionCellProps = {
   treeItem: TreeItem;
-  refreshSection: (
-    section: LibrarySection,
-    collectionIds: CollectionId[],
-  ) => void;
+  onOpenCollectionModal: (modal: CollectionRowModalState) => void;
+  onOpenTableModal: (modal: TableModalState) => void;
 };
 
-export function ActionCell({ treeItem, refreshSection }: ActionCellProps) {
+export function ActionCell({
+  treeItem,
+  onOpenCollectionModal,
+  onOpenTableModal,
+}: ActionCellProps) {
   const { data, children } = treeItem;
 
   if (isEmptyStateData(data)) {
@@ -30,15 +29,10 @@ export function ActionCell({ treeItem, refreshSection }: ActionCellProps) {
   }
 
   if (isTableData(data)) {
-    return (
-      <TableMoreMenu
-        table={data}
-        onMoved={(collectionIds) => refreshSection("data", collectionIds)}
-      />
-    );
+    return <TableMoreMenu table={data} onOpenModal={onOpenTableModal} />;
   }
 
-  if (!isCollectionData(data) || data.model !== "collection") {
+  if (!isCollectionData(data)) {
     return null;
   }
 
@@ -46,16 +40,12 @@ export function ActionCell({ treeItem, refreshSection }: ActionCellProps) {
     PLUGIN_LIBRARY.isLibrarySubCollectionType(data.type) &&
     !data.is_library_root;
 
-  const section = getItemSection(treeItem);
-
-  if (isLibraryCollection && section != null) {
+  if (isLibraryCollection) {
     return (
       <LibraryCollectionRowMenu
         childCount={children?.length ?? 0}
         collection={data}
-        refreshCollections={(collectionIds) =>
-          refreshSection(section, collectionIds)
-        }
+        onOpenModal={onOpenCollectionModal}
       />
     );
   }

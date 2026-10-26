@@ -75,7 +75,6 @@ describe("metabot > feedback", () => {
     expect(feedbackEndpoint.calls()).toHaveLength(1);
     const body = await feedbackEndpoint.calls()[0].request?.json();
     expect(body).toEqual({
-      metabot_id: expect.any(Number),
       message_id: agentRequestBody.assistant_message_id,
       positive: false,
       freeform_feedback: "",
@@ -142,7 +141,6 @@ describe("metabot > feedback", () => {
     expect(feedbackEndpoint.calls()).toHaveLength(1);
     const body = await feedbackEndpoint.calls()[0].request?.json();
     expect(body).toEqual({
-      metabot_id: expect.any(Number),
       message_id: agentRequestBody.assistant_message_id,
       positive: true,
       freeform_feedback: "",

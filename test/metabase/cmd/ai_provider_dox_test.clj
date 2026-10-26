@@ -191,7 +191,9 @@
     (is (str/includes? (#'ai-provider-dox/models-markdown (registry-entry "google"))
                        "| Model "))
     (is (str/includes? (#'ai-provider-dox/models-markdown (registry-entry "vllm"))
-                       "whichever models your vLLM server has available")))
+                       "whichever models your vLLM server has available"))
+    (is (= "Whichever model your server serves. Metabase runs the one you enter in **Model ID**."
+           (#'ai-provider-dox/models-markdown (registry-entry "openai-compatible")))))
   (testing "Azure explains that the model comes from the deployment instead, naming the fields by their labels"
     ;; answer first: the block sits under a "Supported models:" label, so it leads with what you get rather than
     ;; with the catalog it hasn't got

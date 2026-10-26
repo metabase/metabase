@@ -2,6 +2,7 @@ import type { MetabaseCard } from "metabase/embedding-sdk/types/question";
 
 import type { UseMetabaseQueryObjectResult } from "..";
 import {
+  aggregations,
   breakout,
   count,
   filter,
@@ -19,28 +20,46 @@ import { TEST_SCHEMA } from "./fixtures";
 type OrdersTable = (typeof TEST_SCHEMA)["tables"]["orders"];
 
 const revenueQuery = defineQuery({
-  savedQuestionEntityId: "revenueQuestionEntity",
   source: TEST_SCHEMA.tables.orders,
   limit: 10,
 });
 
-const _savedQuestionEntityId: "revenueQuestionEntity" =
-  revenueQuery.savedQuestionEntityId;
 const _queryLimit: 10 = revenueQuery.limit;
 
-const CreateOrder = defineAction({
-  copiedActionEntityId: "createOrderCopyEntity",
-  action: TEST_SCHEMA.actions.createOrder,
+const ordersQuestionQuery = defineQuery({
+  source: {
+    type: "card",
+    entityId: "ordersQuestionEntity1",
+    columns: TEST_SCHEMA.questions.ordersQuestion.columns,
+  },
 });
 
-const _copiedActionEntityId: "createOrderCopyEntity" =
-  CreateOrder.copiedActionEntityId;
-const _sourceActionId: 51 = CreateOrder.action.id;
+const _questionEntityId: "ordersQuestionEntity1" =
+  ordersQuestionQuery.source.entityId;
 
-// A definition is valid before its copy is written.
+const CreateOrder = defineAction({
+  action: { ...TEST_SCHEMA.actions.createOrder, id: "createOrderEntity" },
+});
+
+const _actionEntityId: "createOrderEntity" = CreateOrder.action.id;
+
 const UpdateOrder = defineAction({
   action: TEST_SCHEMA.actions.updateOrder,
 });
+
+function CardQueryFixtures() {
+  const { data } = useMetabaseQuery(ordersQuestionQuery);
+  const _status: string | null | undefined = data?.rows[0]?.STATUS;
+  const _amount: number | null | undefined = data?.rows[0]?.AMOUNT;
+
+  const grouped = useMetabaseQuery(ordersQuestionQuery, {
+    aggregations: [count()],
+    breakouts: [{ type: "column", name: "STATUS" }],
+  });
+  const _groupedStatus: string | null | undefined =
+    grouped.data?.rows[0]?.STATUS;
+  const _groupedCount: number | null | undefined = grouped.data?.rows[0]?.count;
+}
 
 // --------
 // Compile-time contracts that must pass type-checking.
@@ -65,6 +84,84 @@ const hookResult = {} as UseMetabaseQueryObjectResult;
 const _validHookResultCard = {
   query: hookResult.query,
 } satisfies MetabaseCard;
+
+const groupedOrders = TEST_SCHEMA.tables.orders;
+const groupedCreatedMonth = breakout(groupedOrders.fields.createdAt, {
+  unit: "month",
+  name: "created_month",
+});
+const groupedTotal = aggregations.sum(groupedOrders.fields.amount, {
+  name: "total",
+});
+const groupedQuery = {
+  source: groupedOrders,
+  aggregations: [
+    count(),
+    groupedTotal,
+    aggregations.max(groupedOrders.fields.amount),
+  ],
+  breakouts: [groupedCreatedMonth, groupedOrders.fields.status],
+} as const;
+
+defineQuery({
+  ...groupedQuery,
+  orderBys: [
+    orderBy(groupedCreatedMonth, "desc"),
+    orderBy(groupedTotal, "desc"),
+    orderBy(count()),
+    orderBy(groupedOrders.fields.status),
+    { type: "column", name: "created_month" },
+    { type: "column", name: "STATUS" },
+    { type: "column", name: "total" },
+    { type: "column", name: "count" },
+    { type: "column", name: "max" },
+  ],
+});
+
+defineQuery({
+  source: groupedOrders,
+  aggregations: [aggregations.distinct(groupedOrders.fields.status)],
+  orderBys: [{ type: "column", name: "count" }],
+});
+
+defineQuery({
+  source: groupedOrders,
+  aggregations: [
+    { type: "operator", operator: "sum", args: [groupedOrders.fields.amount] },
+    {
+      type: "operator",
+      operator: "avg",
+      args: [groupedOrders.fields.amount],
+      name: "average",
+    },
+  ],
+  orderBys: [
+    { type: "column", name: "sum" },
+    { type: "column", name: "average" },
+  ],
+});
+
+defineQuery({
+  source: groupedOrders,
+  aggregations: [
+    groupedOrders.measures.revenue,
+    aggregations.measure(groupedOrders.measures.revenue, { name: "revenue" }),
+  ],
+  orderBys: [
+    { type: "column", name: "count" },
+    { type: "column", name: "revenue" },
+  ],
+});
+
+const plainOrdersQuery = defineQuery({ source: groupedOrders });
+const pickedOrdersQuery = defineQuery({
+  source: groupedOrders,
+  fields: [groupedOrders.fields.id, groupedOrders.fields.createdAt],
+});
+const aggregatedOrdersQuery = defineQuery({
+  source: groupedOrders,
+  aggregations: [count(), groupedTotal],
+});
 
 function ValidTypeFixtures() {
   // A definition types `execute` and `result` on its own, no generics written.
@@ -156,6 +253,43 @@ function ValidTypeFixtures() {
   void namedCountValue;
   void namedSumValue;
 
+  const namedMeasureResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [
+        aggregations.measure(TEST_SCHEMA.tables.orders.measures.revenue, {
+          name: "revenue",
+        }),
+        count(),
+      ],
+    }),
+  );
+
+  const namedMeasureValue: number | null | undefined =
+    namedMeasureResult.data?.rows[0]?.revenue;
+
+  void namedMeasureValue;
+
+  const createdMonth = breakout(TEST_SCHEMA.tables.orders.fields.createdAt, {
+    unit: "month",
+    name: "created_month",
+  });
+
+  const namedBreakoutResult = useMetabaseQuery(
+    defineQuery({
+      source: TEST_SCHEMA.tables.orders,
+      aggregations: [count()],
+      breakouts: [createdMonth],
+      orderBys: [orderBy(createdMonth, "desc")],
+    }),
+    { orderBys: [orderBy(createdMonth, "asc")] },
+  );
+
+  const namedBreakoutValue: string | Date | null | undefined =
+    namedBreakoutResult.data?.rows[0]?.created_month;
+
+  void namedBreakoutValue;
+
   const groupedMetricResult = useMetabaseQuery(
     defineQuery<OrdersTable>({
       source: TEST_SCHEMA.tables.orders,
@@ -190,10 +324,9 @@ function ValidTypeFixtures() {
     }),
   );
 
-  // A static query published as a card, with dynamic clauses layered on top.
+  // A table query with dynamic clauses layered on top.
   const staticQuery = defineQuery({
     source: TEST_SCHEMA.tables.orders,
-    savedQuestionEntityId: "ordersQuestionEntity1",
   });
 
   const dynamicResult = useMetabaseQuery(staticQuery, {
@@ -220,7 +353,104 @@ function ValidTypeFixtures() {
 
   useMetabaseQueryObject(staticQuery, { limit: 10 });
 
+  const groupedStaticQuery = defineQuery(groupedQuery);
+
+  useMetabaseQuery(groupedStaticQuery, {
+    orderBys: [
+      orderBy(groupedCreatedMonth, "asc"),
+      { type: "column", name: "total" },
+    ],
+  });
+
+  useMetabaseQuery(groupedStaticQuery, {
+    aggregations: [count()],
+    breakouts: [{ ...groupedOrders.fields.status }],
+    orderBys: [{ type: "column", name: "count" }],
+  });
+
+  useMetabaseQuery(plainOrdersQuery, {
+    filters: [filter({ type: "column", name: "STATUS" }, "contains", "p")],
+  });
+
+  useMetabaseQueryObject(groupedStaticQuery, {
+    filters: [filter({ type: "column", name: "created_month" }, "not-null")],
+    orderBys: [{ type: "column", name: "total", direction: "desc" }],
+  });
+
+  useMetabaseQuery(pickedOrdersQuery, {
+    filters: [
+      filter({ type: "column", name: "CREATED_AT" }, "time-interval", [
+        -24,
+        "month",
+      ]),
+    ],
+  });
+
+  useMetabaseQuery(aggregatedOrdersQuery, {
+    filters: [filter({ type: "column", name: "total" }, ">", 1)],
+  });
+
+  useMetabaseQuery(groupedStaticQuery, {
+    filters: [
+      filter({ type: "column", name: "created_month" }, "not-null"),
+      filter({ type: "column", name: "STATUS" }, "=", "paid"),
+    ],
+  });
+
+  const regroupedPlainResult = useMetabaseQuery(plainOrdersQuery, {
+    aggregations: [count()],
+    breakouts: [{ type: "column", name: "STATUS" }],
+  });
+
+  const regroupedStatus: string | null | undefined =
+    regroupedPlainResult.data?.rows[0]?.STATUS;
+  const regroupedCount: number | null | undefined =
+    regroupedPlainResult.data?.rows[0]?.count;
+
+  void [regroupedStatus, regroupedCount];
+
+  const regroupedResult = useMetabaseQuery(groupedStaticQuery, {
+    aggregations: [
+      aggregations.sum({ type: "column", name: "total" }),
+      aggregations.max({ type: "column", name: "total" }),
+      aggregations.distinct(
+        { type: "column", name: "STATUS" },
+        { name: "statuses" },
+      ),
+    ],
+    breakouts: [
+      { type: "column", name: "created_month" },
+      breakout(
+        { type: "column", name: "created_month" },
+        { unit: "year", name: "created_year" },
+      ),
+    ],
+  });
+
+  const regroupedMonth: string | Date | null | undefined =
+    regroupedResult.data?.rows[0]?.created_month;
+  const regroupedYear: string | Date | null | undefined =
+    regroupedResult.data?.rows[0]?.created_year;
+  const regroupedSum: number | null | undefined =
+    regroupedResult.data?.rows[0]?.sum;
+
+  void [regroupedMonth, regroupedYear, regroupedSum];
+
   return null;
 }
 
 void ValidTypeFixtures;
+
+for (const numBins of [10, 50, 100] as const) {
+  const binnedAmount = breakout(TEST_SCHEMA.tables.orders.fields.amount, {
+    binning: { strategy: "num-bins", numBins },
+  });
+
+  defineQuery({
+    source: TEST_SCHEMA.tables.orders,
+    aggregations: [count()],
+    breakouts: [binnedAmount],
+    orderBys: [orderBy(binnedAmount, "asc")],
+  });
+}
+void CardQueryFixtures;

@@ -7,9 +7,7 @@
    [java-time.api :as t]
    [metabase-enterprise.remote-sync.db :as remote-sync.db]
    [metabase.task.core :as task]
-   [metabase.util.log :as log])
-  (:import
-   (org.quartz DisallowConcurrentExecution)))
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -38,9 +36,11 @@
   []
   (trim-remote-sync-tasks!))
 
-(task/defjob ^{DisallowConcurrentExecution true
-               :doc "Clean up old records from remote_sync_task table"}
-  RemoteSyncTableCleanup [_ctx]
+(task/defjob RemoteSyncTableCleanup
+  "Clean up old records from remote_sync_task table"
+  {:saved-class "metabase_enterprise.remote_sync.task.table_cleanup.RemoteSyncTableCleanup"
+   :concurrent? false}
+  [_ctx]
   (trim-tables!))
 
 (defmethod task/init! ::RemoteSyncTableCleanup

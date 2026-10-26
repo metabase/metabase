@@ -217,7 +217,7 @@ function setup({
           step={step}
           stageIndex={step.stageIndex}
           query={query}
-          color="core-brand"
+          color="background_surface-brand-strong"
           isLastOpened={false}
           readOnly={readOnly}
           reportTimezone="UTC"

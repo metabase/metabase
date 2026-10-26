@@ -1,5 +1,4 @@
 import { useClipboard } from "@mantine/hooks";
-import cx from "classnames";
 import { useMemo } from "react";
 import { match } from "ts-pattern";
 import { jt, t } from "ttag";
@@ -246,12 +245,13 @@ const NavigateToDataPart = ({ type, path }: { type: string; path: string }) => (
       <Text fw="bold">{formatPartType(type)}</Text>
     </Flex>
     <ActionIcon
+      variant="subtle"
       component={ForwardRefLink}
       to={path}
       target="_blank"
-      h="sm"
+      size="sm"
       aria-label={t`Visit`}
-      className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
+      className={Styles.agentPartActions}
     >
       <Icon name="external" size="1rem" />
     </ActionIcon>
@@ -292,9 +292,10 @@ const DataPartJsonCard = ({
           <Text fw="bold">{formatPartType(type)}</Text>
         </Flex>
         <ActionIcon
-          h="sm"
+          variant="subtle"
+          size="sm"
           onClick={() => clipboard.copy(formatted)}
-          className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
+          className={Styles.agentPartActions}
         >
           <Icon name="copy" size="1rem" />
         </ActionIcon>
@@ -357,9 +358,10 @@ const CodeEditDataPart = ({
           </Badge>
         </Flex>
         <ActionIcon
-          h="sm"
+          variant="subtle"
+          size="sm"
           onClick={() => clipboard.copy(value.value)}
-          className={cx(Styles.agentPartActions, Styles.agentPartActionIcon)}
+          className={Styles.agentPartActions}
         >
           <Icon name="copy" size="1rem" />
         </ActionIcon>

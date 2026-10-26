@@ -11,8 +11,8 @@ import type {
   NativeQuestionDetails,
   QuestionDetails,
 } from "e2e/support/helpers";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { METAKEY } from "metabase/utils/browser";
+import { DataPermissionValue } from "metabase-types/api/permissions";
 
 const {
   ORDERS,

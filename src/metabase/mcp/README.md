@@ -46,7 +46,9 @@ The flow for a first-time connection:
 3. The user is redirected to Metabase to log in and approve the connection.
 4. The client receives an access token scoped to the user's Metabase permissions.
 
-Browser-based sessions (cookie auth) are also supported and receive unrestricted scopes.
+MCP accepts only an OAuth access token. On the MCP paths the session middleware ignores session cookies and API
+keys, so such a request gets the same 401 discovery challenge as a request with no credential. An `mb:full` token
+holds no MCP scope, so it can connect but call no scoped tool.
 
 ### Scopes
 
@@ -54,24 +56,28 @@ Access tokens are scoped to limit what tools a client can use:
 
 | Scope | Tools it grants |
 | ----- | --------------- |
-| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search` |
+| `agent:content:read` | `browse_collection`, `browse_data`, `get_content`, `get_parameter_values`, `glossary`, `learn`, `search`, and the `catalog://metabase/fields` data resource (see [Resources](#resources)) |
 | `agent:content:write` | `bookmark_content`, `collection_write`, `dashboard_write`, `document_write`, `duplicate_content`, `measure_write`, `metric_write`, `question_write`, `segment_write` |
 | `agent:delivery:write` | `alert_write`, `subscription_write` |
 | `agent:query:run` | `execute_query`, `refresh_ui_credential`, `render_drill_through`, `run_saved_question`, `visualize_query` |
 | `agent:sql:run` | `execute_sql` |
-| `agent:resource:read` | No tools: it gates reading the `catalog://metabase/fields` data resource (see [Resources](#resources)). |
 
-Wildcard patterns (e.g. `agent:*`) match any scope with that prefix.
+A tool matches only the exact scope in the table. A wildcard such as `*` or `agent:*`, and the `::unrestricted`
+sentinel, are not MCP scopes, so they grant no tool.
 
-Clients start with a baseline. The protected-resource metadata's `scopes_supported` and the `scope` of the 401
-challenge both list only `agent:content:read agent:query:run agent:resource:read`: a fresh connection can read,
-query, and chart. Writes (`agent:content:write`), raw SQL (`agent:sql:run`), and alerts and subscriptions
-(`agent:delivery:write`) need a step-up. The surface still accepts every scope in the table, and the authorization
-server metadata still advertises all of them.
+These scopes gate the MCP surface only. No REST endpoint may declare one as its `:scope`, so a new token issued to an
+MCP client grants nothing on the REST API.
 
-`agent:query:run` is in the baseline so that charts never need a step-up. Claude Desktop retries a tool after a
-step-up over a session that doesn't declare MCP Apps support, so a stepped-up `visualize_query` is refused and its
-chart never embeds.
+The protected-resource metadata's `scopes_supported` and the `scope` of the 401 challenge both list every scope in
+the table, so a fresh connection asks for all of them. Some clients do not step up after a 403: a manual reconnect
+from Claude's connector settings registers a new client and asks for exactly what these list. When they listed only
+the baseline, that reconnect never offered writes, raw SQL, or delivery, and the user had no way to grant them
+(ENG-11089). The authorization server metadata advertises all of them too.
+
+The baseline (`agent:content:read agent:query:run`) is locked on the consent screen: when a client requests one of
+these, the user cannot untick it. `agent:query:run` is in the baseline so that charts never need a step-up. Claude
+Desktop retries a tool after a step-up over a session that doesn't declare MCP Apps support, so a stepped-up
+`visualize_query` is refused and its chart never embeds.
 
 A tool call or data resource read the token lacks a scope for is refused with HTTP 403 and a
 `WWW-Authenticate: Bearer error="insufficient_scope"` challenge whose `scope` lists the v2 scopes the token already
@@ -153,7 +159,7 @@ clients can fetch supplementary content by URI without inflating tool descriptio
 | ------------ | ----- | ----------- |
 | `ui://metabase/visualize-query.html` | `agent:query:run` (UI credential only) | The MCP Apps iframe shell `visualize_query` points a capable client at. |
 | `ui://metabase/render-drill-through.html` | `agent:query:run` (UI credential only) | The shell `render_drill_through` points at. |
-| `catalog://metabase/fields` | `agent:resource:read` | The dot-paths each content type accepts in `fields` arguments. |
+| `catalog://metabase/fields` | `agent:content:read` | The dot-paths each content type accepts in `fields` arguments. |
 
 Every resource is listed whatever the token's scopes. A data resource, such as the fields catalog, is read only by a
 token holding its scope; otherwise the read gets the 403 `insufficient_scope` challenge described under
@@ -197,8 +203,8 @@ The implementation lives in these files:
 - **[`v2/registry.clj`](v2/registry.clj)** - The v2 tool registry. Tools self-register via `deftool`; the registry
   checks scopes, validates arguments, dispatches calls, and records usage.
 
-- **[`scope.clj`](scope.clj)** - Scope matching logic. Supports exact matches, wildcard patterns, and the
-  `::unrestricted` sentinel for session-based auth.
+- **[`scope.clj`](scope.clj)** - Scope matching logic. Exact matches only: wildcards, nil scopes, and the
+  `::unrestricted` sentinel match nothing.
 
 ### Request flow
 
@@ -206,7 +212,7 @@ The implementation lives in these files:
 MCP client
   -> POST /api/metabase-mcp (JSON-RPC)
   -> Origin + session validation
-  -> Auth: OAuth bearer token or browser session
+  -> Auth: OAuth bearer token
   -> Scope check against requested tool
   -> Synthetic request to Agent API endpoint
   -> Response materialized as MCP content

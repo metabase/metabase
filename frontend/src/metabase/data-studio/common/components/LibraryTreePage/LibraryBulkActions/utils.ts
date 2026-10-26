@@ -3,12 +3,6 @@ import { match } from "ts-pattern";
 import type { ArchivableItem } from "metabase/archive/hooks";
 import type { MovableItem } from "metabase/common/hooks";
 import type { SelectedItem } from "metabase/data-studio/common/hooks/use-library-bulk-selection";
-import type { CollectionId } from "metabase-types/api";
-
-export type LibraryItemUpdateResult = {
-  failedCount: number;
-  affectedCollectionIds: CollectionId[];
-};
 
 // Snippet-section folders map to `snippet-collection`; all others to `collection`.
 export function selectedItemToMovable(item: SelectedItem): MovableItem {
@@ -66,32 +60,10 @@ export function selectedItemToArchivable(item: SelectedItem): ArchivableItem {
     .exhaustive();
 }
 
-// Returns the touched collections so the caller can refresh subcollections held
-// in local state; RTK tags already refresh the subscribed section-root lists.
 export async function runLibraryItemUpdates(
   items: SelectedItem[],
   applyToItem: (item: SelectedItem) => Promise<unknown>,
-  destinationId: CollectionId | null,
-): Promise<LibraryItemUpdateResult> {
+): Promise<number> {
   const results = await Promise.allSettled(items.map(applyToItem));
-  return {
-    failedCount: results.filter((r) => r.status === "rejected").length,
-    affectedCollectionIds: getAffectedCollectionIds(items, destinationId),
-  };
-}
-
-export function getAffectedCollectionIds(
-  items: SelectedItem[],
-  destinationId: CollectionId | null,
-): CollectionId[] {
-  const ids = new Set<CollectionId>();
-  if (destinationId != null) {
-    ids.add(destinationId);
-  }
-  for (const item of items) {
-    if (item.sourceCollectionId != null) {
-      ids.add(item.sourceCollectionId);
-    }
-  }
-  return [...ids];
+  return results.filter((result) => result.status === "rejected").length;
 }

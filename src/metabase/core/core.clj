@@ -16,7 +16,6 @@
    [metabase.driver.mysql]
    [metabase.driver.postgres]
    [metabase.embedding.settings :as embed.settings]
-   [metabase.embeddings.startup :as embeddings.startup]
    [metabase.events.core :as events]
    [metabase.initialization-status.core :as init-status]
    [metabase.llm.startup :as llm.startup]
@@ -28,6 +27,7 @@
    [metabase.plugins.core :as plugins]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.sample-data.core :as sample-data]
+   [metabase.search.embeddings.startup :as embeddings.startup]
    [metabase.server.core :as server]
    [metabase.settings.core :as setting]
    [metabase.setup.core :as setup]
@@ -65,7 +65,7 @@
         (str "Metabase Enterprise Edition extensions are PRESENT."
              "\n\n"
              "Usage of Metabase Enterprise Edition features are subject to the Metabase Commercial License."
-             "See https://www.metabase.com/license/commercial/ for details.")
+             "See https://www.metabase.com/license/commercial for details.")
         "Metabase Enterprise Edition extensions are NOT PRESENT.")))
 
 ;;; --------------------------------------------------- Info Metric---------------------------------------------------
@@ -289,7 +289,7 @@
     (when (config/config-bool :mb-jetty-join)
       (.join (server/instance)))
     (catch Throwable e
-      (log/errorf "Metabase Initialization FAILED: %s" (ex-message e))
+      (log/error e "Metabase Initialization FAILED")
       (System/exit 1))))
 
 (defn- run-cmd [cmd init-fn args]

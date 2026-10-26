@@ -294,7 +294,7 @@ describe("scenarios > question > offset", () => {
     H.visualize();
 
     H.echartsContainer().within(() => {
-      cy.contains("January 2027").should("be.visible");
+      cy.contains("April 2027").should("be.visible");
     });
     verifyLineChart({
       xAxis: "Created At: Month",

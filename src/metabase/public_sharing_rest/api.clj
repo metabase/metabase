@@ -501,9 +501,10 @@
   (public-sharing.validation/check-public-sharing-enabled)
   (let [dashboard-id (api/check-404 (public-sharing/public-uuid->id :model/Dashboard uuid))]
     (api/check-404 (public-sharing-rest.db/dashcard-id-in-dashboard dashcard-id dashboard-id))
-    (actions/fetch-values
-     (api/check-404 (actions/dashcard->action dashcard-id))
-     parameters)))
+    (request/with-current-user nil
+      (actions/fetch-values
+       (api/check-404 (actions/dashcard->action dashcard-id))
+       parameters))))
 
 (def ^:private dashcard-execution-throttle (throttle/make-throttler :dashcard-id :attempts-threshold 5000))
 

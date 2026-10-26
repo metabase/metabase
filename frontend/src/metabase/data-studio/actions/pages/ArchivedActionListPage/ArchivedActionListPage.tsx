@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useUpdateActionMutation } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
-import { CollectionRowMenu } from "metabase/common/collections/components/CollectionRowMenu";
+import { UnarchiveCollectionButton } from "metabase/common/collections/components/UnarchiveCollectionButton";
 import { Link } from "metabase/common/components/Link";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { DataStudioBreadcrumbs } from "metabase/common/data-studio/components/DataStudioBreadcrumbs";
@@ -168,17 +168,18 @@ function ArchivedItemMenu({
 }: ArchivedItemMenuProps) {
   const { data } = treeItem;
 
-  if (readOnly || isEmptyStateData(data)) {
+  if (readOnly || isEmptyStateData(data) || !data.can_write) {
     return null;
   }
 
   if (isCollectionData(data)) {
-    return <CollectionRowMenu collection={data} />;
+    return <UnarchiveCollectionButton collection={data} />;
   }
 
   return (
     <Tooltip label={t`Unarchive action`}>
       <ActionIcon
+        variant="subtle"
         aria-label={t`Unarchive action`}
         size="md"
         onClick={(event) => {
