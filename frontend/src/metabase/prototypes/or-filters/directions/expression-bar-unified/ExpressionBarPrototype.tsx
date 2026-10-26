@@ -42,7 +42,7 @@ function UnifiedBar({
           />
         )
       }
-      hasInlineActions
+      actionsPlacement={summaryUi === "pills" ? "below" : "inline"}
     />
   );
 

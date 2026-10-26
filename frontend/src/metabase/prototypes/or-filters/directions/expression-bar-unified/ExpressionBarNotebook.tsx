@@ -153,7 +153,7 @@ function ExpressionFilterStep({
               query={step.query}
               stageIndex={step.stageIndex}
               onChange={updateQuery}
-              hasInlineActions
+              actionsPlacement="inline"
             />
           </NotebookCell>
         </Box>

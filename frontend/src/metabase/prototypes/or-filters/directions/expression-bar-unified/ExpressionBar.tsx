@@ -80,8 +80,12 @@ type ExpressionBarProps = {
   placeholder?: string;
   /** Extra class on the bar box. */
   className?: string;
-  /** Cancel/Apply live inside the bar instead of a trailing "+" button. */
-  hasInlineActions?: boolean;
+  /**
+   * Where Cancel/Apply go while the draft is dirty: inside the bar, or in
+   * the status row below it so a trailing zone keeps the bar's right edge.
+   * Without it the bar ends with a "+" button that opens the full picker.
+   */
+  actionsPlacement?: "inline" | "below";
   /** Renders Cancel/Apply elsewhere, e.g. in a modal footer. */
   renderActions?: (actions: {
     canApply: boolean;
@@ -106,7 +110,7 @@ export function ExpressionBar({
   trailing,
   placeholder = t`Type a column, "and", "or", "("…`,
   className,
-  hasInlineActions = false,
+  actionsPlacement,
   renderActions,
 }: ExpressionBarProps) {
   const compactReading = useContext(CompactReadingContext);
@@ -485,7 +489,7 @@ export function ExpressionBar({
       ? t`Press Enter to apply`
       : undefined;
 
-  const inlineActions = isDirty && (
+  const actions = isDirty && (
     <Group gap="xs" ml="auto">
       <Button size="compact-sm" variant="subtle" onClick={revert}>
         {t`Cancel`}
@@ -515,9 +519,8 @@ export function ExpressionBar({
       >
         {stream}
         {trailing}
-        {hasInlineActions ? (
-          inlineActions
-        ) : (
+        {actionsPlacement === "inline" && actions}
+        {actionsPlacement == null && (
           <ActionIcon
             size="sm"
             variant="subtle"
@@ -537,6 +540,7 @@ export function ExpressionBar({
         <Text size="sm" c={parsed.ok ? "text-secondary" : "feedback-negative"}>
           {statusMessage}
         </Text>
+        {actionsPlacement === "below" && actions}
         {renderActions?.({
           canApply: parsed.ok,
           apply: commit,
