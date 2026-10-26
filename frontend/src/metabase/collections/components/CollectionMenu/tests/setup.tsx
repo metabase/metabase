@@ -34,6 +34,10 @@ export interface SetupOpts {
   moveToDashboard?: boolean;
   numberOfCollectionItems?: number;
   numberOfStaleItems?: number;
+  /**
+   * The badges that the user has already seen in the collection menu.
+   */
+  seenBadges?: string[];
 }
 
 export const setup = ({
@@ -45,6 +49,7 @@ export const setup = ({
   moveToDashboard = false,
   numberOfCollectionItems = 10,
   numberOfStaleItems = 0,
+  seenBadges = [],
 }: SetupOpts) => {
   // We need a mock to get the total number of items in a collection, but we don't need to
   // access the data - only the total
@@ -55,7 +60,7 @@ export const setup = ({
   setupUserKeyValueEndpoints({
     namespace: "indicator-menu",
     key: "collection-menu",
-    value: [],
+    value: seenBadges,
   });
 
   setupUserKeyValueEndpoints({
