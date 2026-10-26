@@ -118,6 +118,13 @@
                         (#'appearance.settings/parsed-illustration setting-key reloaded)))
         (is (identical? reloaded (first (get @cache setting-key))))))))
 
+(deftest site-name-description-interpolates-application-name-test
+  (testing "the site-name description follows the whitelabeled application name (metabase#17043)"
+    (mt/with-premium-features #{:whitelabel}
+      (mt/with-temporary-setting-values [application-name "New Test Co"]
+        (is (= "The name used for this instance of New Test Co."
+               (str ((:description (setting/resolve-setting :site-name))))))))))
+
 (deftest help-link-setting-test
   (mt/discard-setting-changes [help-link]
     (mt/with-premium-features #{:whitelabel}
