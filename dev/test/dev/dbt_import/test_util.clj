@@ -3,13 +3,15 @@
 
   [[build-manifest]] makes a small manifest in the shape `dbt parse` writes (manifest v12, dbt 1.12): one model node,
   one semantic model and one metric `m` (sum of `sales`), tweaked per test. [[convert]] runs it through the whole
-  pipeline (`decode-manifest` → `parse` → `resolve` → `emit/aggregation-clause`); [[aggregation]] and [[unsupported]]
-  pick out the clause the metric converted to, or the reason it did not, for an `is` to compare against."
+  pipeline ([[dbt-manifest/decode-manifest]] → [[parse/parse-manifest]] → [[resolve/resolve-manifest]] →
+  [[emit/dataset-query]]); [[aggregation]], [[filters]] and [[unsupported]] pick out the clause the metric converted
+  to, its filters, or the reason it did not, for an `is` to compare against."
   (:require
    [dev.dbt-import.emit :as emit]
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.resolve :as resolve]
    [dev.dbt-import.schemas.dbt-manifest :as dbt-manifest]
+   [medley.core :as m]
    [metabase.util.json :as json])
   (:import
    (java.nio.file Files)
@@ -28,12 +30,13 @@
 (def sm-id "semantic_model.p.fact_sales")
 
 (defn fld
-  "Portable `:field` clause for `column` on `public.fact_sales`. A nil `base-type` leaves it out, which is what the
-  converter emits for a column whose type the manifest does not declare."
+  "The `:field` clause serdes writes for `column` on `public.fact_sales`. A nil `base-type` means a column whose type the
+  manifest does not declare, which the converter types as `:type/*` for the instance to fill in."
   ([column base-type]
    (fld "public" "fact_sales" column base-type))
   ([schema table column base-type]
-   [:field (cond-> {} base-type (assoc :base-type base-type)) [db schema table column]]))
+   (let [base-type (or base-type :type/*)]
+     [:field {:base-type base-type, :effective-type base-type} [db schema table column]])))
 
 (def pg-columns
   "Columns of `fact_sales`: name, declared Postgres `data_type`, the base type Postgres sync gives it, and a coarse
@@ -58,10 +61,12 @@
    ["created_at"    "timestamp"                :type/DateTime            :temporal]
    ["created_at_tz" "timestamp with time zone" :type/DateTimeWithLocalTZ :temporal]
    ["shift_time"    "time"                     :type/Time                :temporal]
-   ["blob"          "bytea"                    :type/*                   :binary]])
+   ["blob"          "bytea"                    :type/Binary              :binary]])
 
 (def ^:private base-columns
-  (into {"fact_sales_key" "integer"} (map (fn [[column-name data-type]] [column-name data-type])) pg-columns))
+  (into {"fact_sales_key" "integer", "order_key" "text"}
+        (map (fn [[column-name data-type]] [column-name data-type]))
+        pg-columns))
 
 (defn- column-map
   "`columns` (name → data_type) as a node's `columns` map. A data type of `::remove` drops the column."
@@ -112,11 +117,24 @@
    :defaults       {:agg_time_dimension "date_day"}
    :primary_entity nil
    :entities       [{:name "fact_sales_key", :type "primary", :description nil, :label nil, :role nil, :expr nil}
-                    {:name "customer", :type "foreign", :description nil, :label nil, :role nil, :expr "customer_key"}]
+                    {:name "customer", :type "foreign", :description nil, :label nil, :role nil, :expr "customer_key"}
+                    {:name "order", :type "foreign", :description nil, :label nil, :role nil, :expr "order_key"}]
    :dimensions     [{:name "date_day", :type "time", :description nil, :label nil, :is_partition false
                      :type_params {:time_granularity "day", :validity_params nil}, :expr nil}
+                    {:name "created_at", :type "time", :description nil, :label nil, :is_partition false
+                     :type_params {:time_granularity "day", :validity_params nil}, :expr nil}
+                    ;; a time dimension whose expr is SQL, which cannot be bucketed
+                    {:name "next_day", :type "time", :description nil, :label nil, :is_partition false
+                     :type_params {:time_granularity "day", :validity_params nil}, :expr "date_day + 1"}
                     {:name "status", :type "categorical", :description nil, :label nil, :is_partition false
-                     :type_params nil, :expr nil}]
+                     :type_params nil, :expr nil}
+                    {:name "amount", :type "categorical", :description nil, :label nil, :is_partition false
+                     :type_params nil, :expr nil}
+                    {:name "is_returned", :type "categorical", :description nil, :label nil, :is_partition false
+                     :type_params nil, :expr nil}
+                    ;; a dimension whose expr is SQL, as the flexanalytics project's is_cancelled_order is
+                    {:name "is_big_sale", :type "categorical", :description nil, :label nil, :is_partition false
+                     :type_params nil, :expr "case when sales > 100 then 1 else 0 end"}]
    :measures       measures
    :depends_on     {:macros [], :nodes [model-id]}
    :config         {:enabled true, :group nil, :meta {}}})
@@ -188,17 +206,19 @@
 
 (defn convert
   "Run the manifest [[build-manifest]] makes from `tweaks` through the whole pipeline and describe what happened to its
-  metric (`m`, unless `:metric-name` says otherwise): `{:aggregation clause, :source-table ref}` when it converted,
-  `{:unsupported reason}` when it was reported. `:config` is merged over [[default-config]]. A failure of the whole
-  run throws, as it does in the converter."
+  metric (`m`, unless `:metric-name` says otherwise): `{:aggregation clause, :filters clauses, :source-table ref}` when
+  it converted, `{:unsupported reason}` when it was reported. `:config` is merged over [[default-config]]. A failure of
+  the whole run throws, as it does in the converter."
   [{:keys [config metric-name] :as tweaks}]
   (let [config      (merge default-config config)
         metric-name (or metric-name (get-in tweaks [:metric :name]) "m")
         resolved    (resolve-manifest-map config (build-manifest tweaks))]
-    (if-let [converted (first (filter #(= metric-name (-> % :metric :name)) (:metrics resolved)))]
-      {:aggregation  (emit/aggregation-clause converted)
-       :source-table (:source-table converted)}
-      (if-let [unsupported (first (filter #(= metric-name (:name %)) (:unsupported resolved)))]
+    (if-let [converted (m/find-first #(= metric-name (-> % :metric :name)) (:metrics resolved))]
+      (let [stage (-> (emit/dataset-query converted) :stages first)]
+        {:aggregation  (first (:aggregation stage))
+         :filters      (:filters stage [])
+         :source-table (:source-table stage)})
+      (if-let [unsupported (m/find-first #(= metric-name (:name %)) (:unsupported resolved))]
         {:unsupported (:reason unsupported)}
         (throw (ex-info (format "metric %s was neither converted nor reported" (pr-str metric-name))
                         {:resolved resolved}))))))
@@ -212,13 +232,22 @@
       (:aggregation result)
       result)))
 
+(defn filters
+  "The filter clauses of the query the metric [[convert]] builds from `tweaks` converts to, in order. When it is
+  reported instead, the `{:unsupported reason}` map, so a failing `is` shows the reason."
+  [tweaks]
+  (let [result (convert tweaks)]
+    (if (contains? result :filters)
+      (:filters result)
+      result)))
+
 (defn unsupported
   "The reason the metric [[convert]] builds from `tweaks` is reported as unsupported. When it converts instead, a
-  string saying what to, so a failing `re-find` shows the clause."
+  string saying what to, so a failing `re-find` shows the query."
   [tweaks]
   (let [result (convert tweaks)]
     (or (:unsupported result)
-        (str "converted to " (pr-str (:aggregation result))))))
+        (str "converted to " (pr-str (dissoc result :source-table))))))
 
 (defn metrics-manifest
   "A manifest whose metrics all sum `sales` and differ only in `label` (and description). Metric names are m0, m1, …"

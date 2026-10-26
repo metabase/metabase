@@ -5,6 +5,7 @@
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.schemas.ir :as ir]
    [dev.dbt-import.test-util :as tu :refer [fld]]
+   [medley.core :as m]
    [metabase.util.malli.registry :as mr])
   (:import
    (clojure.lang ExceptionInfo)))
@@ -21,7 +22,7 @@
   (parse/read-manifest flexanalytics-manifest-filename))
 
 (defn- metric-named [parsed metric-name]
-  (first (filter (comp #{metric-name} :name) (:metrics parsed))))
+  (m/find-first (comp #{metric-name} :name) (:metrics parsed)))
 
 (deftest ^:parallel parse-semantic-model-test
   (let [manifest (flexanalytics-manifest)

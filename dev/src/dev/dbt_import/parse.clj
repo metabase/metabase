@@ -17,6 +17,7 @@
    [clojure.string :as str]
    [dev.dbt-import.schemas.dbt-manifest :as dbt-manifest]
    [dev.dbt-import.schemas.ir :as ir]
+   [medley.core :as m]
    [metabase.util :as u]
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]))
@@ -29,10 +30,10 @@
       dbt-manifest/decode-manifest))
 
 (mu/defn- parse-relation :- ::ir/relation
-  [{:keys [database schema_name alias]} :- ::dbt-manifest/node-relation]
+  [{:keys [database schema_name], table-alias :alias} :- ::dbt-manifest/node-relation]
   {:database database
    :schema   schema_name
-   :table    alias})
+   :table    table-alias})
 
 (mu/defn- source-node :- [:maybe ::dbt-manifest/node]
   "The node a semantic model is built on: of the nodes it depends on, the one (model, seed or snapshot) whose
@@ -40,10 +41,10 @@
   [manifest                            :- ::dbt-manifest/manifest
    {:keys [node_relation depends_on]}  :- ::dbt-manifest/semantic-model]
   (let [nodes          (keep #(get-in manifest [:nodes %]) (:nodes depends_on))
-        same-relation? (fn [{:keys [database schema alias]}]
-                         (= [database schema alias]
+        same-relation? (fn [{:keys [database schema], table-alias :alias}]
+                         (= [database schema table-alias]
                             [(:database node_relation) (:schema_name node_relation) (:alias node_relation)]))]
-    (or (first (filter same-relation? nodes))
+    (or (m/find-first same-relation? nodes)
         (first nodes))))
 
 (mu/defn- parse-columns :- [:map-of :string ::ir/column]
@@ -59,17 +60,17 @@
         (:columns (source-node manifest semantic-model))))
 
 (mu/defn- parse-entity :- ::ir/entity
-  [{entity-name :name, :keys [type expr label description]} :- ::dbt-manifest/entity]
+  [{entity-name :name, entity-type :type, :keys [expr label description]} :- ::dbt-manifest/entity]
   {:name        entity-name
-   :type        type
+   :type        entity-type
    :expr        (or expr entity-name)
    :label       label
    :description description})
 
 (mu/defn- parse-dimension :- ::ir/dimension
-  [{dimension-name :name, :keys [type expr label description type_params]} :- ::dbt-manifest/dimension]
+  [{dimension-name :name, dimension-type :type, :keys [expr label description type_params]} :- ::dbt-manifest/dimension]
   {:name        dimension-name
-   :type        type
+   :type        dimension-type
    :expr        (or expr dimension-name)
    :granularity (:time_granularity type_params)
    :label       label
@@ -91,7 +92,7 @@
 (mu/defn parse-semantic-model :- ::ir/semantic-model
   "Parse one manifest semantic model. Needs the whole `manifest` to look up the model node that holds column types."
   [manifest :- ::dbt-manifest/manifest
-   {model-name :name, :keys [unique_id label description node_relation defaults entities dimensions measures]
+   {model-name :name, :keys [unique_id label description node_relation defaults primary_entity entities dimensions measures]
     :as        semantic-model}
    :- ::dbt-manifest/semantic-model]
   (let [default-agg-time-dimension (:agg_time_dimension defaults)]
@@ -102,6 +103,9 @@
      :relation                   (parse-relation node_relation)
      :columns                    (parse-columns manifest semantic-model)
      :default-agg-time-dimension default-agg-time-dimension
+     ;; `primary_entity` is for a model with no entity of type primary; otherwise that entity is it
+     :primary-entity             (or primary_entity
+                                     (some #(when (= :primary (:type %)) (:name %)) entities))
      :entities                   (mapv parse-entity entities)
      :dimensions                 (mapv parse-dimension dimensions)
      :measures                   (u/index-by :name (map #(parse-measure default-agg-time-dimension %) measures))}))
@@ -141,7 +145,7 @@
     (not= metric-type :simple)
     (unsupported metric (format "metric type %s is not supported yet (QRES-5)" (name metric-type)))
 
-    :let [semantic-model-id (first (filter #(str/starts-with? % "semantic_model.") (:nodes depends_on)))
+    :let [semantic-model-id (m/find-first #(str/starts-with? % "semantic_model.") (:nodes depends_on))
           semantic-model    (get semantic-models semantic-model-id)]
 
     (not semantic-model)
@@ -183,7 +187,7 @@
   [manifest :- ::dbt-manifest/manifest]
   (let [semantic-models                   (update-vals (:semantic_models manifest)
                                                        #(parse-semantic-model manifest %))
-        {metrics false, unsupported true} (->> (vals (:metrics manifest))
+        {metrics false, unsupported-metrics true} (->> (vals (:metrics manifest))
                                                (sort-by :name)
                                                (map #(parse-metric semantic-models %))
                                                (group-by #(contains? % :reason)))]
@@ -192,7 +196,7 @@
                        :project (-> manifest :metadata :project_name)}
      :semantic-models (u/index-by :name (vals semantic-models))
      :metrics         (vec metrics)
-     :unsupported     (vec unsupported)}))
+     :unsupported     (vec unsupported-metrics)}))
 
 (mu/defn parse-manifest-file :- ::ir/manifest
   "[[read-manifest]] then [[parse-manifest]]."
