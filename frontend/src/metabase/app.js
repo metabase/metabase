@@ -46,7 +46,7 @@ import { PortalContainer } from "metabase/ui";
 import { EmotionCacheProvider } from "metabase/ui/components/theme/EmotionCacheProvider";
 import { getBasename, setBasename } from "metabase/utils/basename";
 import { captureConsoleErrors } from "metabase/utils/errors";
-import { initMetaplow } from "metabase/utils/metaplow";
+import { getCollectorHostUrl, initMetaplow } from "metabase/utils/metaplow";
 import { initTracing, rotateTraceId } from "metabase/utils/otel";
 import MetabaseSettings from "metabase/utils/settings";
 import { registerVisualizations } from "metabase/visualizations/register";
@@ -72,6 +72,7 @@ function _init(reducers, getRoutes, callback) {
 
   createSnowplowTracker(() => getUserId(store.getState()));
   initMetaplow({
+    hostUrl: getCollectorHostUrl(),
     getUserId: () => getUserId(store.getState()),
   });
 
