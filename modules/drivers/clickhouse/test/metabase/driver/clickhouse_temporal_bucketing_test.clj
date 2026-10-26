@@ -30,18 +30,18 @@
 (deftest clickhouse-temporal-bucketing-server-tz
   (mt/test-driver :clickhouse
     (mt/dataset temporal_bucketing_db
-      (let [start-of-year! (fn [unit]
-                             (->> {:breakout [[:field %start_of_year {:temporal-unit unit}]]}
-                                  (mt/run-mbql-query temporal_bucketing_server_tz)
-                                  mt/rows))
-            mid-year!      (fn [unit]
-                             (->> {:breakout [[:field %mid_of_year {:temporal-unit unit}]]}
-                                  (mt/run-mbql-query temporal_bucketing_server_tz)
-                                  mt/rows))
-            end-of-year!   (fn [unit]
-                             (->> {:breakout [[:field %end_of_year {:temporal-unit unit}]]}
-                                  (mt/run-mbql-query temporal_bucketing_server_tz)
-                                  mt/rows))]
+      (letfn [(start-of-year! [unit]
+                (->> {:breakout [[:field %start_of_year {:temporal-unit unit}]]}
+                     (mt/run-mbql-query temporal_bucketing_server_tz)
+                     mt/rows))
+              (mid-year! [unit]
+                (->> {:breakout [[:field %mid_of_year {:temporal-unit unit}]]}
+                     (mt/run-mbql-query temporal_bucketing_server_tz)
+                     mt/rows))
+              (end-of-year! [unit]
+                (->> {:breakout [[:field %end_of_year {:temporal-unit unit}]]}
+                     (mt/run-mbql-query temporal_bucketing_server_tz)
+                     mt/rows))]
         (testing "truncate to"
           (testing "minute"
             (is (= [["2022-06-20T06:32:00Z"]]
@@ -108,18 +108,18 @@
 (deftest clickhouse-temporal-bucketing-column-tz
   (mt/test-driver :clickhouse
     (mt/dataset temporal_bucketing_db
-      (let [start-of-year! (fn [unit]
-                             (->> {:breakout [[:field %start_of_year {:temporal-unit unit}]]}
-                                  (mt/run-mbql-query temporal_bucketing_column_tz)
-                                  mt/rows))
-            mid-year!      (fn [unit]
-                             (->> {:breakout [[:field %mid_of_year {:temporal-unit unit}]]}
-                                  (mt/run-mbql-query temporal_bucketing_column_tz)
-                                  mt/rows))
-            end-of-year!   (fn [unit]
-                             (->> {:breakout [[:field %end_of_year {:temporal-unit unit}]]}
-                                  (mt/run-mbql-query temporal_bucketing_column_tz)
-                                  mt/rows))]
+      (letfn [(start-of-year! [unit]
+                (->> {:breakout [[:field %start_of_year {:temporal-unit unit}]]}
+                     (mt/run-mbql-query temporal_bucketing_column_tz)
+                     mt/rows))
+              (mid-year! [unit]
+                (->> {:breakout [[:field %mid_of_year {:temporal-unit unit}]]}
+                     (mt/run-mbql-query temporal_bucketing_column_tz)
+                     mt/rows))
+              (end-of-year! [unit]
+                (->> {:breakout [[:field %end_of_year {:temporal-unit unit}]]}
+                     (mt/run-mbql-query temporal_bucketing_column_tz)
+                     mt/rows))]
         (testing "truncate to"
           (testing "minute"
             (is (= [["2022-06-20T13:32:00Z"]]

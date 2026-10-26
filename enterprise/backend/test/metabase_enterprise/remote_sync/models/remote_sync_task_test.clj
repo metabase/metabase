@@ -677,7 +677,7 @@
           report! (rst/make-progress-reporter 1 {:throttle-ms 10000
                                                  :now-fn      (fn [] @now)
                                                  :write-fn    (fn [f] (swap! writes conj f))})]
-      (report! 0.33 {:force? true})         ; boundary — always writes
+      (report! 0.33 {:force? true})          ; boundary — always writes
       (report! 0.40)                         ; 0ms since last throttled anchor set by forced write -> throttled out
       (reset! now 5000)  (report! 0.50)      ; 5s < 10s -> throttled out
       (reset! now 10000) (report! 0.60)      ; 10s -> writes
