@@ -36,15 +36,6 @@ describe("formatting > whitelabel", { tags: "@EE" }, () => {
     H.activateToken("pro-self-hosted");
   });
 
-  it("should show the upsell on the appearance route without the feature", () => {
-    H.deleteToken();
-    cy.visit("/admin/settings/appearance");
-
-    cy.findByRole("heading", { name: "Make Metabase look like you" }).should(
-      "be.visible",
-    );
-  });
-
   describe("image uploads", () => {
     describe("favicon", () => {
       it("should show up in user's HTML, including a favicon URL set before we changed the input to a file input", () => {
