@@ -84,11 +84,6 @@
         (lib/order-by (col (lib/orderable-columns query) "count"))
         (lib/limit 5))))
 
-(defn- born-after-1970
-  "Keeps only people born after 1970-01-01. ClickHouse test data stores dates before 1970 as 1970-01-01."
-  [query birth-date]
-  (lib/filter query (lib/> birth-date "1970-01-01")))
-
 (defn- query-joining-card
   "People joined to Card 1 on source, count by birth year and creation year, then a filter on the count."
   [mp]
@@ -98,7 +93,7 @@
         query (lib/join query (lib/join-clause card [(lib/= (field :people :source)
                                                             (col (lib/join-condition-rhs-columns query card nil nil) "source"))]))]
     (-> query
-        (born-after-1970 (field :people :birth_date))
+        (lib/filter (lib/> (field :people :birth_date) "1970-01-01"))
         (lib/aggregate (lib/count))
         (lib/breakout (lib/with-temporal-bucket (field :people :birth_date) :year))
         (lib/breakout (lib/with-temporal-bucket (field :people :created_at) :year))
@@ -114,7 +109,7 @@
         people (join-alias query)
         column #(col (lib/breakoutable-columns query) % people)]
     (-> query
-        (born-after-1970 (col (lib/filterable-columns query) "birth_date" people))
+        (lib/filter (lib/> (col (lib/filterable-columns query) "birth_date" people) "1970-01-01"))
         (lib/aggregate (lib/count))
         (lib/breakout (lib/with-temporal-bucket (column "birth_date") :year))
         (lib/breakout (lib/with-temporal-bucket (column "created_at") :year))
