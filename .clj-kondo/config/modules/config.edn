@@ -3941,6 +3941,7 @@
            remote-sync
            search
            serialization
+           server
            settings
            system
            util
