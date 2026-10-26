@@ -6,6 +6,7 @@
    [metabase.analytics.sdk :as sdk]
    [metabase.config.core :as config]
    [metabase.dashboards-rest.api-test :as api.dashboard-test]
+   [metabase.data-apps.core :as data-apps]
    [metabase.embedding-rest.api.embed-test :as embed-test]
    [metabase.events.core :as events]
    [metabase.permissions.models.data-permissions :as data-perms]
@@ -366,27 +367,29 @@
                    :model/Card preview   {:name          "Bird sightings preview"
                                           :type          :question
                                           :dataset_query (mt/mbql-query venues {:limit 1})}]
-      (let [data-app-headers  {"x-metabase-client"            "data-app"
-                               "x-metabase-client-identifier" "bird-watch"}
-            read-as-data-app! (fn [card extra-headers]
-                                (mt/user-http-request
-                                 :crowberto :post 202 "dataset"
-                                 {:request-options {:headers (merge data-app-headers extra-headers)}}
-                                 {:database (mt/id)
-                                  :type     :query
-                                  :query    {:source-table (str "card__" (u/id card))}}))]
-        (testing "A question a published data app reads through POST /api/dataset is recorded from the request headers"
-          (read-as-data-app! published {})
-          (is (partial= {:user_id                     (mt/user->id :crowberto)
-                         :model                       "card"
-                         :model_id                    (u/id published)
-                         :context                     :question
-                         :embedding_client            "data-app"
-                         :embedding_client_identifier "bird-watch"}
-                        (latest-view (mt/user->id :crowberto) (u/id published)))))
-        (testing "A data app's dev preview reading a question is not recorded"
-          (read-as-data-app! preview {"x-metabase-embedded-preview" "true"})
-          (is (nil? (latest-view (mt/user->id :crowberto) (u/id preview)))))))))
+      (mt/with-dynamic-fn-redefs [data-apps/request-data-app (constantly {})
+                                  data-apps/check-query      (constantly nil)]
+        (let [data-app-headers  {"x-metabase-client"            "data-app"
+                                 "x-metabase-client-identifier" "bird-watch"}
+              read-as-data-app! (fn [card extra-headers]
+                                  (mt/user-http-request
+                                   :crowberto :post 202 "dataset"
+                                   {:request-options {:headers (merge data-app-headers extra-headers)}}
+                                   {:database (mt/id)
+                                    :type     :query
+                                    :query    {:source-table (str "card__" (u/id card))}}))]
+          (testing "A question a published data app reads through POST /api/dataset is recorded from the request headers"
+            (read-as-data-app! published {})
+            (is (partial= {:user_id                     (mt/user->id :crowberto)
+                           :model                       "card"
+                           :model_id                    (u/id published)
+                           :context                     :question
+                           :embedding_client            "data-app"
+                           :embedding_client_identifier "bird-watch"}
+                          (latest-view (mt/user->id :crowberto) (u/id published)))))
+          (testing "A data app's dev preview reading a question is not recorded"
+            (read-as-data-app! preview {"x-metabase-embedded-preview" "true"})
+            (is (nil? (latest-view (mt/user->id :crowberto) (u/id preview))))))))))
 
 (deftest get-dashboard-view-log-test
   (mt/with-premium-features #{:audit-app}

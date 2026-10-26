@@ -6,6 +6,7 @@
   this namespace covers the request -> `query_execution` row contract."
   (:require
    [clojure.test :refer [deftest is testing]]
+   [metabase.data-apps.core :as data-apps]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
@@ -23,22 +24,24 @@
 
 (deftest query-execution-embedding-client-test
   (mt/with-temporary-setting-values [synchronous-batch-updates true]
-    (testing "the embedding client and identifier of the request are persisted on the QueryExecution row"
-      (mt/user-http-request :crowberto :post 202 "dataset"
-                            {:request-options
-                             {:headers {"x-metabase-client"            "data-app"
-                                        "x-metabase-client-identifier" "sales"}}}
-                            (venues-query 1))
-      (is (=? {:embedding_client            "data-app"
-               :embedding_client_identifier "sales"}
-              (latest-query-execution "data-app"))))
-    (testing "a dev data app (preview header) is persisted as the data-app-preview client"
-      (mt/user-http-request :crowberto :post 202 "dataset"
-                            {:request-options
-                             {:headers {"x-metabase-client"            "data-app"
-                                        "x-metabase-client-identifier" "sales"
-                                        "x-metabase-embedded-preview"  "true"}}}
-                            (venues-query 2))
-      (is (=? {:embedding_client            "data-app-preview"
-               :embedding_client_identifier "sales"}
-              (latest-query-execution "data-app-preview"))))))
+    (mt/with-dynamic-fn-redefs [data-apps/request-data-app (constantly {})
+                                data-apps/check-query      (constantly nil)]
+      (testing "the embedding client and identifier of the request are persisted on the QueryExecution row"
+        (mt/user-http-request :crowberto :post 202 "dataset"
+                              {:request-options
+                               {:headers {"x-metabase-client"            "data-app"
+                                          "x-metabase-client-identifier" "sales"}}}
+                              (venues-query 1))
+        (is (=? {:embedding_client            "data-app"
+                 :embedding_client_identifier "sales"}
+                (latest-query-execution "data-app"))))
+      (testing "a dev data app (preview header) is persisted as the data-app-preview client"
+        (mt/user-http-request :crowberto :post 202 "dataset"
+                              {:request-options
+                               {:headers {"x-metabase-client"            "data-app"
+                                          "x-metabase-client-identifier" "sales"
+                                          "x-metabase-embedded-preview"  "true"}}}
+                              (venues-query 2))
+        (is (=? {:embedding_client            "data-app-preview"
+                 :embedding_client_identifier "sales"}
+                (latest-query-execution "data-app-preview")))))))
