@@ -27,6 +27,12 @@
     (is (= :human (warehouse-schema-overlay/field-value-source {:semantic_type_set true :ai_semantic_type :type/Email}
                                                                :semantic_type nil)))
     (is (= :human (warehouse-schema-overlay/field-value-source {:display_name "X"} :display_name "X")))
+    (is (= :human (warehouse-schema-overlay/field-value-source {:data_sensitivity     :PII
+                                                                :data_sensitivity_set false
+                                                                :ai_data_sensitivity  :PHI}
+                                                               :data_sensitivity :PUBLIC)))
+    (is (= :ai (warehouse-schema-overlay/field-value-source {:description "kept" :ai_description "AI"}
+                                                            :description "kept")))
     (is (= :human (warehouse-schema-overlay/field-value-source {:effective_type :type/DateTime}
                                                                :coercion_strategy nil)))))
 

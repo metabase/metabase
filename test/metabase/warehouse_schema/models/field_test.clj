@@ -325,7 +325,20 @@
       (is (nil? (:data_sensitivity (warehouse-schema.db/field field-id))))
       (testing "and unset-user-settings! shows the Field's label again"
         (field-user-settings/unset-user-settings! field [:data_sensitivity])
-        (is (= :PII (:data_sensitivity (warehouse-schema.db/field field-id))))))))
+        (is (= :PII (:data_sensitivity (warehouse-schema.db/field field-id)))))))
+  (testing "a user label with data_sensitivity_set false, as an older node writes it, is the human value"
+    (mt/with-temp [:model/Field {field-id :id :as field} {:data_sensitivity :PUBLIC}]
+      (t2/insert! :model/FieldUserSettings {:field_id             field-id
+                                            :data_sensitivity     :PII
+                                            :data_sensitivity_set false
+                                            :ai_data_sensitivity  :PHI})
+      (is (=? {:data_sensitivity :PII :data_sensitivity_set false}
+              (t2/select-one :model/FieldUserSettings :field_id field-id)))
+      (is (= :PII (:data_sensitivity (warehouse-schema.db/field field-id))))
+      (is (= :human (:data_sensitivity_source (t2/hydrate field :data_sensitivity_source))))))
+  (testing "the Field's own label alone is the deterministic source"
+    (mt/with-temp [:model/Field field {:data_sensitivity :PUBLIC}]
+      (is (= :deterministic (:data_sensitivity_source (t2/hydrate field :data_sensitivity_source)))))))
 
 (deftest field-user-settings-read-test
   (mt/with-temp [:model/Field {edited-id :id :as edited} {:display_name      "Sync Name"
