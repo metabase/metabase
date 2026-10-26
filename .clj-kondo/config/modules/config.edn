@@ -822,6 +822,7 @@
    :api  #{metabase.dashboards-rest.api}
    :uses #{actions
            analytics
+           analytics.interface
            api
            api-scope
            api.eid-translation
