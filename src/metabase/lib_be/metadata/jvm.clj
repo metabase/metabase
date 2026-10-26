@@ -23,7 +23,6 @@
    [metabase.util.malli.registry :as mr]
    [metabase.util.memoize :as u.memo]
    [metabase.util.performance :as perf :refer [get-in]]
-   [metabase.util.snake-hating-map :as u.snake-hating-map]
    [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [methodical.core :as methodical]
    [potemkin :as p]
@@ -151,7 +150,6 @@
         (assoc :lib/type metadata-type)
         (drop-undeclared-columns metadata-type)
         normalize
-        u.snake-hating-map/snake-hating-map
         (vary-meta assoc :metabase/toucan-instance instance))))
 
 ;;;

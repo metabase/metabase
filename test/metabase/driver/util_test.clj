@@ -18,8 +18,7 @@
    [metabase.startup.core :as startup]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.util :as u]
-   [metabase.util.snake-hating-map :as snake-hating-map])
+   [metabase.util :as u])
   (:import
    (javax.net.ssl SSLSocketFactory)))
 
@@ -865,11 +864,9 @@
           (is (= exempt? (driver.u/network-exempt-warehouse? {:is_attached_dwh true})))
           (is (false? (driver.u/network-exempt-warehouse? {:is_attached_dwh false})))
           (is (false? (driver.u/network-exempt-warehouse? {:name "ordinary"}))))
-        (testing "a Lib metadata database carries it in kebab-case, in a map that throws on snake_case lookups"
-          (is (= exempt? (driver.u/network-exempt-warehouse?
-                          (snake-hating-map/snake-hating-map {:lib/type :metadata/database, :is-attached-dwh true}))))
-          (is (false? (driver.u/network-exempt-warehouse?
-                       (snake-hating-map/snake-hating-map {:lib/type :metadata/database, :name "ordinary"})))))))
+        (testing "a Lib metadata database carries it in kebab-case"
+          (is (= exempt? (driver.u/network-exempt-warehouse? {:lib/type :metadata/database, :is-attached-dwh true})))
+          (is (false? (driver.u/network-exempt-warehouse? {:lib/type :metadata/database, :name "ordinary"}))))))
     (mt/with-premium-features #{}
       (is (false? (driver.u/network-exempt-warehouse? {:is_attached_dwh true}))))))
 
