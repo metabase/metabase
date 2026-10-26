@@ -38,7 +38,9 @@ function applyClickActionsPlugin(
   );
 
   if (Array.isArray(actionsOrActionObject)) {
-    return actionsOrActionObject;
+    // mapQuestionClickActions is published as returning MetabaseClickAction, a name plus arbitrary fields.
+    // The popover renders what comes back, so the actions rejoin the ClickAction union here.
+    return actionsOrActionObject as ClickAction[];
   }
 
   if ("onClick" in actionsOrActionObject) {
