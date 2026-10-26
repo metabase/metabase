@@ -6,13 +6,13 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useSet } from "react-use";
 
 import { isWebkit } from "metabase/utils/browser";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import { DataPointsVisiblePopover } from "metabase/visualizations/components/DataPointsVisiblePopover/DataPointsVisiblePopover";
 import { ResponsiveEChartsRenderer } from "metabase/visualizations/components/EChartsRenderer";
 import { LegendCaption } from "metabase/visualizations/components/legend/LegendCaption";
+import { useLegendHiddenSeries } from "metabase/visualizations/hooks/use-legend-hidden-series";
 import { useTimelineEvents } from "metabase/visualizations/hooks/use-timeline-events";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
@@ -24,6 +24,7 @@ import { useChartEvents } from "metabase/visualizations/visualizations/Cartesian
 import {
   type TimelineEventGroup,
   getLegendItems,
+  isRowChartSeries,
   useCartesianChartSeriesColorsClasses,
   useCloseTooltipOnScroll,
 } from "metabase/viz-core";
@@ -39,8 +40,6 @@ function CartesianChartInner(props: VisualizationProps) {
   // The width and height from props reflect the dimensions of the entire container which includes legend,
   // however, for correct ECharts option calculation we need to use the dimensions of the chart viewport
   const [chartSize, setChartSize] = useState({ width: 0, height: 0 });
-
-  const [hiddenSeries, { toggle: toggleSeriesVisibility }] = useSet<string>();
 
   const {
     showAllLegendItems,
@@ -84,7 +83,16 @@ function CartesianChartInner(props: VisualizationProps) {
     [originalSettings, outerHeight, outerWidth, isMobile, gridSize],
   );
 
-  const { timelineEvents } = useTimelineEvents({ ...props, settings });
+  const [hiddenSeries, toggleSeriesVisibility] = useLegendHiddenSeries<string>(
+    settings["legend.position"],
+  );
+
+  // Row charts don't offer timeline events (UXW-4833).
+  const { timelineEvents } = useTimelineEvents({
+    ...props,
+    settings,
+    skip: isRowChartSeries(rawSeries),
+  });
 
   const [hoveredTimelineEventGroup, setHoveredTimelineEventGroup] =
     useState<TimelineEventGroup | null>(null);
@@ -92,6 +100,7 @@ function CartesianChartInner(props: VisualizationProps) {
   const {
     chartModel,
     chartLayout,
+    legendChart,
     timelineEventsModel,
     option,
     renderingContext,
@@ -109,7 +118,7 @@ function CartesianChartInner(props: VisualizationProps) {
   );
   useChartDebug({ isQueryBuilder, rawSeries, option, chartModel });
 
-  const chartRef = useRef<EChartsType>();
+  const chartRef = useRef<EChartsType>(undefined);
   // Mirror the ECharts instance into state so that effects depending on it
   // (e.g. brush setup) re-run once it becomes available. The renderer renders
   // nothing until ExplicitSize has measured it, which it does a tick after
@@ -172,16 +181,17 @@ function CartesianChartInner(props: VisualizationProps) {
     return null;
   }, [props.hovered, props.highlighted, rawSeries, chartModel]);
 
-  const { onSelectSeries, onOpenQuestion, eventHandlers } = useChartEvents(
-    chartRef,
-    containerRef,
-    chartModel,
-    option,
-    renderingContext,
-    hovered,
-    props,
-    chartInstance,
-  );
+  const { onSelectSeries, getSeriesHref, onOpenQuestion, eventHandlers } =
+    useChartEvents(
+      chartRef,
+      containerRef,
+      chartModel,
+      option,
+      renderingContext,
+      hovered,
+      props,
+      chartInstance,
+    );
 
   const handleResize = useCallback((width: number, height: number) => {
     setChartSize({ width, height });
@@ -240,6 +250,7 @@ function CartesianChartInner(props: VisualizationProps) {
       <CartesianChartLegendLayout
         isReversed={settings["legend.is_reversed"]}
         hasLegend={hasLegend}
+        legendPosition={settings["legend.position"]}
         alwaysVisible={isVisualizer}
         items={legendItems}
         actionButtons={!showTitle ? actionButtons : undefined}
@@ -249,14 +260,14 @@ function CartesianChartInner(props: VisualizationProps) {
         fontFamily={renderingContext.fontFamily}
         measureText={renderingContext.measureText}
         onSelectSeries={onSelectSeries}
+        getSeriesHref={getSeriesHref}
         onToggleSeriesVisibility={
           canToggleSeriesVisibility ? handleToggleSeriesVisibility : undefined
         }
         onHoverChange={onHoverChange}
         width={outerWidth}
         height={outerHeight}
-        chartHeight={chartSize.height || undefined}
-        indent={chartLayout.padding.left - chartLayout.padding.right}
+        chart={legendChart}
       >
         <ResponsiveEChartsRenderer
           ref={containerRef}

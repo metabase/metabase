@@ -55,8 +55,6 @@ function convertQuestionToAction(
     // Unjustified type cast. FIXME
     dataset_query: cleanQuestion.datasetQuery() as NativeDatasetQuery,
     // Unjustified type cast. FIXME
-    database_id: question.databaseId() as DatabaseId,
-    // Unjustified type cast. FIXME
     parameters: parameters as WritebackParameter[],
     visualization_settings: formSettings,
   };

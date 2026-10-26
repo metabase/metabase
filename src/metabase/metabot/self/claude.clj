@@ -255,12 +255,16 @@
                                                 :name  (:function part)
                                                 :input (or (:arguments part) {})}]}
                        :tool-output {:role    "user"
-                                     :content [{:type        "tool_result"
-                                                :tool_use_id (:id part)
-                                                :content     (or (get-in part [:result :output])
-                                                                 (when-let [err (:error part)]
-                                                                   (str "Error: " (:message err)))
-                                                                 (pr-str (:result part)))}]}
+                                     :content [(cond-> {:type        "tool_result"
+                                                        :tool_use_id (:id part)
+                                                        :content     (or (get-in part [:result :output])
+                                                                         (pr-str (:result part)))}
+                                                 ;; A failed call is marked as one. Without this the
+                                                 ;; model reads the failure text as an ordinary
+                                                 ;; result, and the thinking panel shows the step as
+                                                 ;; having worked.
+                                                 (get-in part [:result :error])
+                                                 (assoc :is_error true))]}
                        ;; User messages pass through
                        {:role    (name (or (:role part) "user"))
                         :content (:content part)}))))
@@ -360,6 +364,7 @@
    "claude-sonnet-5"            {:display-name "Claude Sonnet 5"   :context-window 1000000}
    "claude-sonnet-4-6"          {:display-name "Claude Sonnet 4.6" :context-window 1000000}
    "claude-sonnet-4-5-20250929" {:display-name "Claude Sonnet 4.5" :context-window  200000}
+   "claude-haiku-5-5"           {:display-name "Claude Haiku 5.5"  :context-window 1000000}
    "claude-haiku-4-5-20251001"  {:display-name "Claude Haiku 4.5"  :context-window  200000}})
 
 (mu/defn list-models :- adapter/ModelListing
@@ -380,47 +385,79 @@
   [model]
   (str/replace-first (u/lower-case-en (str model)) #"^anthropic\." ""))
 
+(def ^:private undated-aliases
+  "Undated alias → dated id, for every dated row of [[supported-models]].
+
+    \"claude-haiku-4-5\" => \"claude-haiku-4-5-20251001\"
+
+  Before the 4.6 generation, \"the alias is a convenience pointer that resolves to the dated ID\":
+  https://platform.claude.com/docs/en/about-claude/models/overview"
+  (into {}
+        (keep (fn [id]
+                (when-let [[_ alias] (re-matches #"(.+)-\d{8}" id)]
+                  [alias id])))
+        (keys supported-models)))
+
+(defn- supported-model-id
+  "The [[supported-models]] key that describes `model`, which may be vendor-prefixed or an undated alias."
+  [model]
+  (let [id (strip-vendor-prefix model)]
+    (if (contains? supported-models id)
+      id
+      (get undated-aliases id id))))
+
 (mu/defn context-window-tokens :- [:maybe :int]
   "The input context window for `model`, or nil when it isn't one we know."
   [model :- [:maybe :string]]
-  (get-in supported-models [(strip-vendor-prefix model) :context-window]))
+  (get-in supported-models [(supported-model-id model) :context-window]))
 
 (defn- claude-model-version
-  "`[family major minor]` for a Claude opus/sonnet/fable/mythos model id, or nil.
+  "`[family major minor]` for a Claude opus/sonnet/haiku/fable/mythos model id, or nil.
   The minor version is one or two digits, so a date suffix doesn't read as one: `claude-opus-5-20261005` is 5.0."
   [model]
   ;; the minor version accepts both separators: canonical ids are hyphenated (claude-opus-4-8)
   ;; but Azure admins name deployments freely, and the dotted display-name spelling
   ;; (claude-opus-4.8) is the norm for the GPT family next to it
-  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet|fable|mythos)-(\d+)(?:[-.](\d{1,2})(?!\d))?"
+  (when-let [[_ family major minor] (re-find #"^claude-(opus|sonnet|haiku|fable|mythos)-(\d+)(?:[-.](\d{1,2})(?!\d))?"
                                              (strip-vendor-prefix model))]
     [family (parse-long major) (or (some-> minor parse-long) 0)]))
 
-(defn- model-current-gen?
-  "Current-generation Claude (Fable, Mythos, Opus >=4.7, Sonnet >=5): no sampling params;
-  thinking streams via `display: summarized`."
+(defn model-current-gen?
+  "Whether `model` is current-generation Claude: Fable, Mythos, Opus >=4.7, Sonnet >=5 or Haiku >=5.
+  These take no sampling params, and their thinking streams via `display: summarized`.
+  Accepts a bare id, a Bedrock `anthropic.` id or an Azure deployment name."
   [model]
   (or (str/starts-with? (strip-vendor-prefix model) "claude-fable")
       (when-let [[family major minor] (claude-model-version model)]
         (case family
           ("fable" "mythos") true
           "opus"             (or (> major 4) (and (= major 4) (>= minor 7)))
-          "sonnet"           (>= major 5)))))
+          ("sonnet" "haiku") (>= major 5)))))
 
 (defn- model-supports-temperature?
-  "Whether `model` accepts an explicit `temperature` parameter. Sampling params
-  were removed starting with Claude Opus 4.7 and Sonnet 5."
+  "Whether `model` accepts an explicit `temperature` parameter: current-generation models
+  (see [[model-current-gen?]]) reject sampling params."
   [model]
   (not (model-current-gen? model)))
 
+(def ^:private first-version-rejecting-forced-tool-choice
+  "The first `[major minor]` of each Claude family that rejects a forced `tool_choice`:
+  https://platform.claude.com/docs/en/api/errors#forced-tool-use-not-supported
+  A family missing here accepts one in every version, as Haiku 4.5 and 5.5 do:
+  https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools#forcing-tool-use"
+  {"opus"   [5 5]
+   "sonnet" [5 5]
+   "fable"  [5 1]
+   "mythos" [5 1]})
+
 (defn- model-supports-forced-tool-choice?
-  "Whether `model` accepts a forced `tool_choice` (`any`, or a named tool). Opus and Sonnet reject one from 5.5 on,
-  Fable and Mythos from 5.1 on: https://platform.claude.com/docs/en/api/errors#forced-tool-use-not-supported"
+  "Whether `model` accepts a forced `tool_choice` (`any`, or a named tool).
+  True for a model id that isn't a recognizable Claude version."
   [model]
-  (if-let [[family major minor] (claude-model-version model)]
-    (let [first-rejecting-minor (if (#{"fable" "mythos"} family) 1 5)]
-      (or (< major 5) (and (= major 5) (< minor first-rejecting-minor))))
-    true))
+  (let [[family major minor] (claude-model-version model)
+        first-rejecting      (get first-version-rejecting-forced-tool-choice family)]
+    (or (nil? first-rejecting)
+        (neg? (compare [major minor] first-rejecting)))))
 
 (def ^:private unforced-structured-output-token-floor
   "Smallest `max_tokens` for structured output on a model that can't be forced to call the tool.

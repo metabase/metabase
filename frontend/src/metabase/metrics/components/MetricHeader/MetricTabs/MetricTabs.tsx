@@ -49,10 +49,11 @@ function getTabs(
   hasDimensions: boolean,
   canSeeDependencies: boolean,
 ): PillTab[] {
+  const aboutUrl = urls.about(card.id);
   const tabs: PillTab[] = [
     {
       label: t`About`,
-      to: urls.about(card.id),
+      to: aboutUrl,
     },
   ];
 
@@ -89,5 +90,16 @@ function getTabs(
     to: urls.history(card.id),
   });
 
-  return tabs;
+  return tabs.map((tab) => ({
+    ...tab,
+    isSelected: (pathname) => stripMetricSlug(pathname, aboutUrl) === tab.to,
+  }));
+}
+
+function stripMetricSlug(pathname: string, metricUrl: string): string {
+  if (!pathname.startsWith(`${metricUrl}-`)) {
+    return pathname;
+  }
+
+  return `${metricUrl}${pathname.slice(metricUrl.length).replace(/^-[^/]+/, "")}`;
 }

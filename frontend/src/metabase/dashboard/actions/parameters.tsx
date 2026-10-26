@@ -947,16 +947,17 @@ export const setParameterFilteringParameters = createThunkAction(
 
 export const setParameterValue = createThunkAction(
   SET_PARAMETER_VALUE,
-  (parameterId: ParameterId, value: unknown) => (_dispatch, getState) => {
-    const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
-    const isValueEmpty = isParameterValueEmpty(value);
+  (parameterId: ParameterId, value: ParameterValuesMap[ParameterId]) =>
+    (_dispatch, getState) => {
+      const isSettingDraftParameterValues = !getIsAutoApplyFilters(getState());
+      const isValueEmpty = isParameterValueEmpty(value);
 
-    return {
-      id: parameterId,
-      value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
-      isDraft: isSettingDraftParameterValues,
-    };
-  },
+      return {
+        id: parameterId,
+        value: isValueEmpty ? PULSE_PARAM_EMPTY : value,
+        isDraft: isSettingDraftParameterValues,
+      };
+    },
 );
 
 // Auto-apply filters
@@ -1200,11 +1201,12 @@ export const setParameterValuesFromQueryParams =
     dispatch(setParameterValues(parameterValues));
   };
 
-export const TOGGLE_AUTO_APPLY_FILTERS =
-  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
-export const toggleAutoApplyFilters = createThunkAction(
-  TOGGLE_AUTO_APPLY_FILTERS,
-  (isEnabled: boolean) => (dispatch, getState) => {
+/**
+ * Turns auto-apply filters on or off for the loaded dashboard without saving
+ * it, applying the pending filter values first.
+ */
+export const setAutoApplyFilters =
+  (isEnabled: boolean) => (dispatch: Dispatch, getState: GetState) => {
     const dashboardId = getDashboardId(getState());
 
     if (dashboardId) {
@@ -1215,6 +1217,18 @@ export const toggleAutoApplyFilters = createThunkAction(
           attributes: { auto_apply_filters: isEnabled },
         }),
       );
+    }
+  };
+
+export const TOGGLE_AUTO_APPLY_FILTERS =
+  "metabase/dashboard/TOGGLE_AUTO_APPLY_FILTERS";
+export const toggleAutoApplyFilters = createThunkAction(
+  TOGGLE_AUTO_APPLY_FILTERS,
+  (isEnabled: boolean) => (dispatch, getState) => {
+    const dashboardId = getDashboardId(getState());
+
+    if (dashboardId) {
+      dispatch(setAutoApplyFilters(isEnabled));
       dispatch(updateDashboard({ attributeNames: ["auto_apply_filters"] }));
       if (!isEnabled) {
         trackAutoApplyFiltersDisabled(dashboardId);

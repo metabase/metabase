@@ -16,10 +16,14 @@ describe("getCurrentTab", () => {
     ${"/data-studio/library/metrics/456"}          | ${"library"}
     ${"/data-studio/library/metrics/456/overview"} | ${"library"}
     ${"/data-studio/library/tables/42"}            | ${"library"}
+    ${"/data-studio/dashboards"}                   | ${"dashboards"}
+    ${"/data-studio/dashboards/7/contents"}        | ${"dashboards"}
     ${"/data-studio/snippets"}                     | ${"snippets"}
     ${"/data-studio/snippets/12"}                  | ${"snippets"}
     ${"/data-studio/actions"}                      | ${"actions"}
     ${"/data-studio/actions/34/run"}               | ${"actions"}
+    ${"/data-studio/apps"}                         | ${"data-apps"}
+    ${"/data-studio/apps/sales/actions/3/fields"}  | ${"data-apps"}
     ${"/data-studio/transforms/runs"}              | ${"transforms"}
     ${"/data-studio/transforms/runs?page=2"}       | ${"transforms"}
     ${"/data-studio/transforms"}                   | ${"transforms"}

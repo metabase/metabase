@@ -25,9 +25,6 @@
     :model/FieldValues
     :model/FieldUserSettings
     :model/TableUserSettings
-    ;; OsiAiContext is identified by the entity it describes (entity_type + the entity's portable ref); its
-    ;; serdes path nests under that entity, so it has no generated entity_id.
-    :model/OsiAiContext
     ;; Settings have human-selected unique names.
     :model/Setting})
 
@@ -40,6 +37,7 @@
     :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
+    :model/AnalysisFindingStatus
     :model/ApiKey
     :model/ApiKeyUsageLog
     :model/AuthIdentity
@@ -57,13 +55,13 @@
     :model/ContentDiagnosticsFinding
     :model/ContentTranslation
     :model/DashboardBookmark
-    :model/DataAppGroupAssignment
     :model/DataComplexityScore
     :model/DataPermissions
     :model/DatabaseRouter
     :model/Dependency
     :model/DependencyStatus
     :model/DocumentBookmark
+    :model/EmbeddingSdkReact18Host
     :model/Exploration
     :model/ExplorationBookmark
     :model/ExplorationQuery
@@ -124,6 +122,7 @@
     :model/ReplacementRun
     :model/RemoteSyncObject
     :model/RemoteSyncTask
+    :model/ResultMetadataStatus
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata

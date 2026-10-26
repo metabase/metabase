@@ -141,7 +141,7 @@
               ["./bin/mage start-db postgres latest --port 5555" "start postgres on a custom port"]]
    :requires [[mage.start-db :as start-db]]
    :arg-schema [:tuple
-                [:enum :postgres :mysql :mariadb :mongo :clickhouse :sqlserver :oracle]
+                [:enum :postgres :mysql :mariadb :mongo :clickhouse :sqlserver :oracle :starburst]
                 [:enum :oldest :latest]]
    :options [["-p" "--port PORT" "Override the default host port for the container" :parse-fn Integer/parseInt]]
    :db-info      {:postgres   {:ports {:oldest 5432  :latest 5433}  :eol-url "https://endoflife.date/api/postgres.json"}
@@ -151,6 +151,7 @@
                   :sqlserver  {:ports {:oldest 1433 :latest 1434}   :eol-url "https://endoflife.date/api/mssqlserver.json"}
                   :oracle     {:ports {:oldest 1521 :latest 1522}   :eol-url "https://endoflife.date/api/oracle-database.json"}
                   ;; some databases aren't on endoflife.date
+                  :starburst  {:ports {:oldest 8084 :latest 8085}   :eol-url nil}
                   :clickhouse {:ports {:oldest 8124 :latest 8123}   :eol-url nil}}
    :usage-fn start-db/usage
    :task (task!
@@ -181,12 +182,11 @@
              (lint-migrations-file/-main))}
 
   new-migration
-  {:doc "Create a new directory-based migration file (v60+)"
+  {:doc "Create a new version-less migration file in the current year's directory"
    :requires [[mage.new-migration :as new-migration]]
-   :examples [["./bin/mage new-migration 60 mq_indexes" "Create resources/migrations/060/20260905_mq_indexes.yaml"]]
+   :examples [["./bin/mage new-migration mq_indexes" "Create resources/migrations/2026/20261012_mq_indexes.yaml with a random changeset id"]]
    :arg-schema [:tuple
-                [:int {:name "version" :description "Major version number (e.g., 60)"}]
-                [:string {:name "description" :description "Lowercase alphanumeric/underscore name (e.g., mq_indexes)"}]]
+                [:string {:name "description" :description "Lowercase alphanumeric/underscore name for the file (e.g., mq_indexes)"}]]
    :task (task! (new-migration/new-migration parsed))}
 
   jar-download
@@ -367,6 +367,27 @@
    :requires [[dev.kondo-ratchet] [mage.kondo-ratchet]]
    :task (task! (dev.kondo-ratchet/fix! (assoc (:options parsed) :attribute mage.kondo-ratchet/attribute-occurrences!)))}
 
+  kondo-ratchets-history
+  {:doc "Report which commits and pull requests shrank, grew and introduced ratchet budgets."
+   :examples [["./bin/mage kondo-ratchets-history" "Summarize the last 7 days"]
+              ["./bin/mage kondo-ratchets-history --days 30" "Summarize the last 30 days"]
+              ["./bin/mage kondo-ratchets-history --all" "Summarize every change since the first ratchet"]
+              ["./bin/mage kondo-ratchets-history --html ratchets.html" "Write a page with every week, every month and all time"]
+              ["./bin/mage kondo-ratchets-history 57e0ad66ea5" "Summarize every change after that commit"]
+              ["./bin/mage kondo-ratchets-history --pardon 78082 --why \"the stricter hook flagged requires that already existed\"" "Count the budget raises in PR 78082 against nobody"]
+              ["./bin/mage kondo-ratchets-history --confirm 8d5db3195d" "Keep counting that commit's raises as growth"]
+              ["./bin/mage kondo-ratchets-history --recount 79531 --why \"the same ignores, named per linter\"" "Count none of a commit's changes: it only changed how suppressions are counted"]]
+   :options [["-d" "--days DAYS" "Days to look back (default 7)" :parse-fn parse-long]
+             ["-a" "--all" "Look back to the first ratchet"]
+             ["-o" "--html FILE" "Write a single-file HTML page covering every week, every month and all time"]
+             [nil "--pardon COMMIT" "Count a commit's budget raises against nobody; takes a commit or PR number"]
+             [nil "--confirm COMMIT" "Keep a questioned commit's raises as growth"]
+             [nil "--recount COMMIT" "Count none of a commit's changes: it only changed how suppressions are counted"]
+             ["-w" "--why REASON" "The reason for a verdict; a pardon or a recount needs one"]]
+   :arg-schema [:or [:tuple] [:tuple [:string {:name "commit" :description "Summarize the changes after this commit; not with --days or --all"}]]]
+   :requires [[mage.kondo-ratchets-history]]
+   :task (task! (mage.kondo-ratchets-history/history parsed))}
+
   kondo-redundant-ignores
   {:doc "Report inline kondo ignores that are no longer necessary (slow: full kondo run)."
    :examples [["./bin/mage kondo-redundant-ignores" "Scan the backend tree for removable ignores"]
@@ -398,6 +419,24 @@
                "Generate resolve-as XML configuration and install it in your global editor configuration"]]
    :requires [[mage.cursive-resolve-as :as cursive-resolve-as]]
    :task (task! (cursive-resolve-as/do-it))}
+
+  generate-docs
+  {:doc "Regenerate the docs that are built from source. The backend suite runs every Clojure generator in one JVM."
+   :examples [["./bin/mage generate-docs" "Regenerate every generated doc"]
+              ["./bin/mage generate-docs backend" "Environment variables, config template, API, AI providers, MCP tools, and CLI commands"]
+              ["./bin/mage generate-docs usage-analytics" "Usage analytics reference"]
+              ["./bin/mage generate-docs embedding-sdk" "Embedding SDK reference (builds the SDK package first)"]
+              ["./bin/mage generate-docs embedding-eajs" "Modular embedding (EAJS) reference"]]
+   :options [["-d" "--dir DIR" "Absolute path of the Metabase checkout to generate the docs in. Defaults to this checkout."]]
+   :arg-schema [:or
+                [:tuple]
+                [:tuple [:enum {:name "suite"}
+                         "backend"
+                         "usage-analytics"
+                         "embedding-sdk"
+                         "embedding-eajs"]]]
+   :requires [[mage.generate-docs :as generate-docs]]
+   :task (task! (generate-docs/run! (first (:arguments parsed)) (:options parsed)))}
 
   analytics:setup
   {:doc "Set up usage analytics development mode"

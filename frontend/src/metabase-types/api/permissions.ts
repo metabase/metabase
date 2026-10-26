@@ -20,6 +20,16 @@ export enum DataPermission {
   COLLECTIONS = "collections",
 }
 
+export enum DataPermissionType {
+  ACCESS = "access",
+  NATIVE = "native",
+  DETAILS = "details",
+  DOWNLOAD = "download",
+  DATA_MODEL = "data-model",
+  TRANSFORMS = "transforms",
+  COLLECTIONS = "collections",
+}
+
 export enum DataPermissionValue {
   BLOCKED = "blocked",
   CONTROLLED = "controlled",

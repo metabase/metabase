@@ -9,7 +9,7 @@ import { ExplicitSize } from "metabase/common/components/ExplicitSize";
 import {
   type OmniPickerItem,
   type OmniPickerQuestionItem,
-  isInDbTree,
+  isInCollectionTree,
 } from "metabase/common/components/Pickers";
 import {
   QuestionPickerModal,
@@ -392,7 +392,7 @@ class DashboardGridInner extends Component<
     const shouldDisableItem = (item: OmniPickerItem) => {
       // don't allow adding items that are already saved in a different dashboard
       // proably only applicable to search and recents
-      if (!isInDbTree(item) && item.dashboard_id) {
+      if (isInCollectionTree(item) && item.dashboard_id) {
         if (item.dashboard_id !== dashboard.id) {
           return true;
         }

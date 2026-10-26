@@ -7,7 +7,6 @@
   `toucan2.core` itself."
   (:require
    [clojure.set :as set]
-   [honey.sql :as sql]
    [metabase.app-db.core :as app-db]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util :as u]
@@ -562,53 +561,6 @@
                [:= :t.active true]
                [:= :t.visibility_type nil]]})
 
-(defn- fk-target-changed-clause
-  "Honey SQL clause true when the Field's `fk_target_field_id` is not already `pk-id-expr`."
-  [pk-id-expr]
-  [:or
-   [:= :f.fk_target_field_id nil]
-   [:not= :f.fk_target_field_id pk-id-expr]])
-
-(defn- mark-fk-statement
-  "`[sql & params]` updating the `fk_target_field_id` of the Field at `[fk-table-schema fk-table-name
-  fk-column-name]` in the Database with `db-id` to the id of the Field at `[pk-table-schema pk-table-name
-  pk-column-name]`, unless it already points there, per the application DB's dialect."
-  [db-id fk-table-schema fk-table-name fk-column-name pk-table-schema pk-table-name pk-column-name]
-  (let [fk-field-id-query (fk-field-id-subquery db-id fk-table-schema fk-table-name fk-column-name)
-        pk-field-id-query (fk-field-id-subquery db-id pk-table-schema pk-table-name pk-column-name)
-        q (case (app-db/db-type)
-            :mysql
-            {:update [(t2/table-name :model/Field) :f]
-             :join   [[fk-field-id-query :fk] [:= :fk.id :f.id]
-                      [pk-field-id-query :pk]
-                      (fk-target-changed-clause :pk.id)]
-             :set    {:fk_target_field_id :pk.id
-                      ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
-                      :has_field_values   [:case [:= :has_field_values "auto-list"] nil :else :has_field_values]
-                      :semantic_type      "type/FK"}}
-            :postgres
-            {:update [(t2/table-name :model/Field) :f]
-             :from   [[fk-field-id-query :fk]]
-             :join   [[pk-field-id-query :pk] true]
-             :set    {:fk_target_field_id :pk.id
-                      ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
-                      :has_field_values   [:case [:= :has_field_values "auto-list"] nil :else :has_field_values]
-                      :semantic_type      "type/FK"}
-             :where  [:and
-                      [:= :fk.id :f.id]
-                      (fk-target-changed-clause :pk.id)]}
-            :h2
-            {:update [(t2/table-name :model/Field) :f]
-             :set    {:fk_target_field_id pk-field-id-query
-                      ;; We need to reset has_field_values when it is auto-list as FKs should not be marked as such
-                      :has_field_values   [:case [:= :has_field_values "auto-list"] nil :else :has_field_values]
-                      :semantic_type      "type/FK"}
-             :where  [:and
-                      [:= :f.id fk-field-id-query]
-                      [:not= pk-field-id-query nil]
-                      (fk-target-changed-clause pk-field-id-query)]})]
-    (sql/format q :dialect (app-db/quoting-style (app-db/db-type)))))
-
 (mu/defn mark-fk!
   "Set the `fk_target_field_id` of the Field at `[fk-table-schema fk-table-name fk-column-name]` in the Database with
   `db-id` to the id of the Field at `[pk-table-schema pk-table-name pk-column-name]`, unless it already points there.
@@ -620,10 +572,15 @@
    pk-table-schema  :- [:maybe :string]
    pk-table-name    :- :string
    pk-column-name   :- :string]
-  (t2/query-one (mark-fk-statement db-id fk-table-schema fk-table-name fk-column-name
-                                   pk-table-schema pk-table-name pk-column-name)))
-
-;;; ------------------------------------------ Field data sensitivity ------------------------------------------
+  (let [fk-id (:id (t2/query-one (fk-field-id-subquery db-id fk-table-schema fk-table-name fk-column-name)))
+        pk-id (:id (t2/query-one (fk-field-id-subquery db-id pk-table-schema pk-table-name pk-column-name)))
+        field (when (and fk-id pk-id)
+                (t2/select-one [:model/Field :id :fk_target_field_id :has_field_values] :id fk-id
+                               {:from [(warehouse-schema-overlay/field-query {:user-settings? false})]}))]
+    (if (and field (not= pk-id (:fk_target_field_id field)))
+      (t2/update! :model/Field fk-id (cond-> {:fk_target_field_id pk-id :semantic_type :type/FK}
+                                       (= :auto-list (:has_field_values field)) (assoc :has_field_values nil)))
+      0)))
 
 (defn- data-sensitivity-to-scan-clause
   "Honey SQL clause matching Fields the data-sensitivity classifier still has to scan: unlabeled ones, plus those it

@@ -2,9 +2,13 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.entity-retrieval.core :as cs.core]
+   [metabase.api-scope.core :as api-scope]
+   [metabase.metabot.scope :as scope]
+   [metabase.metabot.tools :as metabot.tools]
+   [metabase.metabot.tools.core :as tools.core]
    [metabase.metabot.tools.entity-retrieval :as entity-retrieval]
    [metabase.metabot.tools.search :as tools.search]
+   [metabase.search.entity-retrieval.core :as cs.core]
    [metabase.test :as mt]))
 
 (set! *warn-on-reflection* true)
@@ -18,6 +22,19 @@
   `(mt/with-dynamic-fn-redefs [cs.core/search-unfiltered ~search-fn]
      ~@body))
 
+(defn- retrieve
+  "Call `retrieve_library_entities` with `args`."
+  [args]
+  (tools.core/handle entity-retrieval/retrieve-library-entities-tool args {}))
+
+(defn- invoke
+  "Call `retrieve_library_entities` with `args` the way the agent loop does. Return the result, or
+  `{:output <the text the model reads> :error {:class :code}}` when the call fails."
+  [args]
+  (let [entries (binding [scope/*current-user-scope* api-scope/unrestricted]
+                  (metabot.tools/->entries [#'metabot.tools/retrieve-library-entities-tool] (atom {}) nil :nlq))]
+    ((:fn (get entries "retrieve_library_entities")) args)))
+
 (deftest tool-shape-oss-fallback-test
   (testing "without the library-retrieval feature the tool returns the standard empty result shape"
     ;; Pin the feature off so the defenterprise call takes its OSS fallback regardless of any ambient
@@ -28,8 +45,7 @@
                                    :data        []
                                    :total_count 0
                                    :weak_match  false}}
-              (entity-retrieval/retrieve-library-entities-tool
-               {:user_search_prompt "revenue per region"}))))))
+              (retrieve {:user_search_prompt "revenue per region"}))))))
 
 (deftest similarity-helper-test
   (let [similarity (var-get #'entity-retrieval/similarity)]
@@ -75,8 +91,7 @@
                          :doc_text sentinel
                          :score    {:total_score 0.9
                                     :scores [{:name :similarity :score 0.9}]}}]
-              search!  #(entity-retrieval/retrieve-library-entities-tool
-                         {:user_search_prompt "secret"})]
+              search!  #(retrieve {:user_search_prompt "secret"})]
           (with-unfiltered-search (fn [_ _] raw)
             (mt/with-dynamic-fn-redefs
               [cs.core/library-entity-keys (constantly #{["model" secret-id]})]
@@ -199,5 +214,13 @@
   (testing "a failing library search propagates to the agent loop, which reports the call as failed"
     (with-unfiltered-search (fn [_ _] (throw (ex-info "Embedding service unavailable" {})))
       (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Embedding service unavailable"
-                            (entity-retrieval/retrieve-library-entities-tool
-                             {:user_search_prompt "revenue per region"}))))))
+                            (retrieve {:user_search_prompt "revenue per region"}))))))
+
+(deftest ^:parallel blank-search-prompt-test
+  (testing "a blank prompt goes back to the model before anything is searched"
+    (with-unfiltered-search (fn [_ _] (throw (ex-info "searched" {})))
+      (doseq [prompt ["" "  "]]
+        (is (= {:output (str "`user_search_prompt` is blank. Set it to a full sentence that describes the data the "
+                             "user wants.")
+                :error  {:class :recoverable :code ::entity-retrieval/blank-search-prompt}}
+               (invoke {:user_search_prompt prompt})))))))

@@ -5,7 +5,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.util.malli :as mu]))
 
 (deftest ^:parallel find-bad-refs-with-source-table-test
   (testing "invalid query of a table returns error with table as source"
@@ -213,6 +214,14 @@
                   :source-entity-type :card
                   :source-entity-id   card-id}}
                (lib/find-bad-refs-with-source query-on-deleted-card)))))))
+
+(deftest ^:parallel find-bad-refs-with-source-malformed-source-id-test
+  (testing "a malformed `:source-card` id (unchecked in prod) is reported without a source (GHY-4956)"
+    (let [query (assoc-in (lib/query meta/metadata-provider (meta/table-metadata :products))
+                          [:stages 0] {:lib/type :mbql.stage/mbql, :source-card "card__1"})]
+      (is (= #{{:type :missing-card}}
+             (mu/disable-enforcement
+               (lib/find-bad-refs-with-source query)))))))
 
 (deftest ^:parallel find-bad-refs-with-source-multi-stage-test
   (testing "invalid query referencing previous stage has no source"

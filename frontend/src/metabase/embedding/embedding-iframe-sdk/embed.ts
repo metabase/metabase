@@ -1,4 +1,7 @@
-import type { SqlParameterValues } from "embedding-sdk-bundle/types";
+import type {
+  NavigatedEntityParameters,
+  SqlParameterValues,
+} from "embedding-sdk-bundle/types";
 import { MetabaseError, SSO_NOT_ALLOWED } from "embedding-sdk-shared/errors";
 import * as MetabaseErrors from "embedding-sdk-shared/errors";
 import type { ParameterValues } from "metabase/embedding-sdk/types/dashboard";
@@ -496,6 +499,14 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
         new CustomEvent("sql-parameters-change", { detail: message.data }),
       );
     }
+
+    if (message.type === "metabase.embed.navigatedEntityParametersChange") {
+      this.dispatchEvent(
+        new CustomEvent("navigated-entity-parameters-change", {
+          detail: message.data,
+        }),
+      );
+    }
   };
 
   sendMessage<Message extends SdkIframeEmbedMessage>(
@@ -663,7 +674,7 @@ export abstract class MetabaseEmbedElement<T extends string[] = string[]>
     return data.jwt;
   }
 
-  // `parameters` and `sqlParameters` are JS properties whose value
+  // `parameters`, `sqlParameters` and `navigatedEntityParameters` are JS properties whose value
   // lives in the element's attribute of the same name. Reading the
   // property parses the attribute as JSON; writing the property
   // serializes the value back into the attribute. So setting the
@@ -797,6 +808,7 @@ export const MetabaseDashboardElement = createCustomElement(
     "parameters",
     "hidden-parameters",
     "enable-entity-navigation",
+    "navigated-entity-parameters",
   ],
   (Base) =>
     class extends Base {
@@ -805,6 +817,20 @@ export const MetabaseDashboardElement = createCustomElement(
       }
       set parameters(values: ParameterValues | undefined) {
         this._writeJsonProperty("parameters", "parameters", values);
+      }
+      get navigatedEntityParameters(): NavigatedEntityParameters | undefined {
+        return this._readJsonAttribute<NavigatedEntityParameters>(
+          "navigated-entity-parameters",
+        );
+      }
+      set navigatedEntityParameters(
+        values: NavigatedEntityParameters | undefined,
+      ) {
+        this._writeJsonProperty(
+          "navigatedEntityParameters",
+          "navigated-entity-parameters",
+          values,
+        );
       }
     },
 );

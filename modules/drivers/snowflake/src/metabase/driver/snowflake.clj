@@ -2,7 +2,6 @@
   "Snowflake Driver."
   (:refer-clojure :exclude [some select-keys not-empty mapv])
   (:require
-   [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -419,14 +418,13 @@
     password                                               "password"))
 
 (defn- resolve-credentials
-  "Set the JDBC credential properties. WIF is explicit (:auth-mode must be `\"wif\"`), because it has
-  no field-based signal to infer from. Otherwise re-derive password vs key-pair from the current
-  details so callers that only tweak :use-password / :password / :private-key-* don't have to keep
-  :auth-mode in sync."
+  "Set the JDBC credential properties. An explicit `:auth-mode` is preferred, because some can't be
+   inferred from other keys in the details (e.g. WIF), and because the details can have credential
+   keys from previous auth methods. Without an explicit `:auth-mode`, infer password vs key-pair
+   from the current details."
   [{:keys [auth-mode] :as details}]
-  (case (or (when (= "wif" auth-mode) "wif")
+  (case (or (#{"wif" "password" "key-pair"} auth-mode)
             (infer-auth-mode details)
-            auth-mode
             "key-pair")
     "wif"      (resolve-wif-credentials details)
     "password" (-> details (dissoc :private-key) resolve-private-key)
@@ -636,6 +634,10 @@
   ;; to a different one, so no promotions are possible
   {})
 
+(defmethod sql.qp/use-ctes-for-stages? :snowflake
+  [_driver]
+  true)
+
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :seconds]      [_ _ expr] [:to_timestamp_tz expr])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :milliseconds] [_ _ expr] [:to_timestamp_tz expr 3])
 (defmethod sql.qp/unix-timestamp->honeysql [:snowflake :microseconds] [_ _ expr] [:to_timestamp_tz expr 6])
@@ -670,7 +672,7 @@
   [expr]
   (let [report-timezone (driver-api/report-timezone-id-if-supported)]
     (if (and report-timezone
-             (= (h2x/database-type expr) "timestamptz"))
+             (h2x/database-or-effective-type-isa? expr "timestamptz" :type/DateTimeWithLocalTZ))
       [:to_timestamp_ltz expr]
       expr)))
 
@@ -1195,7 +1197,11 @@
     ;; :details' :auth-mode during the merge in effective-details.
     (and (not (contains? details :auth-mode))
          (some? (infer-auth-mode details)))
-    (as-> d (assoc d :auth-mode (infer-auth-mode d)))))
+    (as-> d (assoc d :auth-mode (infer-auth-mode d)))
+
+    ;; Keep `:use-password` in sync with an explicit `:auth-mode`
+    (#{"password" "key-pair"} (:auth-mode details))
+    (assoc :use-password (= "password" (:auth-mode details)))))
 
 (defmethod driver/normalize-db-details :snowflake
   [_ database]
@@ -1226,19 +1232,19 @@
   (str sql "\n\n-- " remark))
 
 (defmethod driver-api/query->remark :snowflake
-  [_ {{:keys [context executed-by card-id pulse-id dashboard-id query-hash]} :info,
-      query-type :type,
-      database-id :database}]
-  (json/encode {:client      "Metabase"
-                :context     context
-                :queryType   query-type
-                :userId      executed-by
-                :pulseId     pulse-id
-                :cardId      card-id
-                :dashboardId dashboard-id
-                :databaseId  database-id
-                :queryHash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
-                :serverId    (driver-api/site-uuid)}))
+  [_ {query-type :type, :as query}]
+  (let [{:keys [context user-id pulse-id card-id dashboard-id database-id query-hash account-id]}
+        (driver-api/query->remark-data query)]
+    (json/encode {:client      "Metabase"
+                  :context     context
+                  :queryType   query-type
+                  :userId      user-id
+                  :pulseId     pulse-id
+                  :cardId      card-id
+                  :dashboardId dashboard-id
+                  :databaseId  database-id
+                  :queryHash   query-hash
+                  :serverId    account-id})))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 

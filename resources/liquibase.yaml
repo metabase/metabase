@@ -42,6 +42,19 @@ databaseChangeLog:
       name: boolean.type
       value: bit(1)
       dbms: mysql,mariadb
+  # entity_id columns compare byte by byte, so every app DB orders serialized entities alike
+  - property:
+      name: entity_id.type
+      value: char(21) COLLATE "C"
+      dbms: postgresql
+  - property:
+      name: entity_id.type
+      value: char(21) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
+      dbms: mysql,mariadb
+  - property:
+      name: entity_id.type
+      value: char(21)
+      dbms: h2
 
   - objectQuotingStrategy: QUOTE_ALL_OBJECTS
 

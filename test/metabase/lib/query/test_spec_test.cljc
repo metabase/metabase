@@ -161,6 +161,29 @@
                 (meta/id :venues :price)]]
               (lib/breakouts query))))))
 
+(deftest ^:parallel test-query-with-preset-bin-counts-test
+  (doseq [num-bins [10 50 100]]
+    (let [column {:type :column :name "PRICE" :binning {:strategy :num-bins :num-bins num-bins}}
+          query  (lib.query.test-spec/test-query
+                  meta/metadata-provider
+                  {:stages [{:source    {:type :table :id (meta/id :venues)}
+                             :breakouts [column]
+                             :order-bys [(assoc column :direction :asc)]}]})
+          binned [:field {:binning {:strategy :num-bins :num-bins num-bins}} (meta/id :venues :price)]]
+      (is (=? [binned] (lib/breakouts query)))
+      (is (=? [[:asc {} binned]] (lib/order-bys query))))))
+
+(deftest ^:parallel test-query-unsupported-bin-count-message-test
+  (doseq [clause [:breakouts :order-bys]]
+    (testing (name clause)
+      (is (thrown-with-msg?
+           #?(:clj Exception :cljs js/Error)
+           #"^Unsupported bin count 20\. Supported counts for this field are 10, 50, and 100\.$"
+           (lib.query.test-spec/test-query
+            meta/metadata-provider
+            {:stages [{:source {:type :table :id (meta/id :venues)}
+                       clause  [{:type :column :name "PRICE" :binning {:strategy :num-bins :num-bins 20}}]}]}))))))
+
 (deftest ^:parallel test-query-with-bin-width-breakout-test
   (testing "test-query adds breakouts with bin width binning"
     (let [query (lib.query.test-spec/test-query
@@ -1576,3 +1599,25 @@
                            meta/metadata-provider
                            {:stages [{:source {:type :table :id (meta/id :orders)}
                                       :fields [column]}]})))))))
+
+(def ^:private metadata-provider-with-segment-and-measure
+  (lib.tu/mock-metadata-provider
+   metadata-provider-with-measure
+   {:segments [{:id         1
+                :name       "Expensive"
+                :table-id   (meta/id :venues)
+                :definition (-> (lib/query meta/metadata-provider (meta/table-metadata :venues))
+                                (lib/filter (lib/> (meta/field-metadata :venues :price) 2)))}]}))
+
+(deftest ^:parallel test-query-operator-with-segment-and-measure-args-test
+  (testing "an operator's args can be segments and measures"
+    (is (=? [[:count-where {} [:segment {} 1]]
+             [:+ {} 1 [:measure {} 1]]]
+            (lib/aggregations
+             (lib.query.test-spec/test-query
+              metadata-provider-with-segment-and-measure
+              {:stages [{:source       {:type :table :id (meta/id :venues)}
+                         :aggregations [{:type :operator :operator :count-where
+                                         :args [{:type :segment :id 1}]}
+                                        {:type :operator :operator :+
+                                         :args [{:type :literal :value 1} {:type :measure :id 1}]}]}]}))))))

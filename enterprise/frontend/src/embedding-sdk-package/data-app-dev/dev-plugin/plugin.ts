@@ -17,6 +17,14 @@ import {
   resolveDataAppVirtualId,
 } from "./virtual-modules";
 
+const BUNDLED_DIRECTORY = "src";
+
+const isBundledFile = (root: string, file: string) => {
+  const [topDirectory] = path.relative(root, file).split(path.sep);
+
+  return topDirectory === BUNDLED_DIRECTORY;
+};
+
 export function dataAppSandboxDevPlugin(
   appSlug: string,
   allowedHosts: string[],
@@ -56,8 +64,6 @@ export function dataAppSandboxDevPlugin(
         }),
       );
 
-      const srcDir = `${path.sep}src${path.sep}`;
-
       server.watcher.on("all", async (_event, file) => {
         if (path.basename(file) === DATA_APP_MANIFEST_FILE_NAME) {
           server.ws.send({
@@ -68,7 +74,7 @@ export function dataAppSandboxDevPlugin(
           return;
         }
 
-        if (file.includes(srcDir) && (await bundle.rebuild())) {
+        if (isBundledFile(root, file) && (await bundle.rebuild())) {
           server.ws.send({ type: "custom", event: DATA_APP_REBUILT_EVENT });
         }
       });

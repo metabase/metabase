@@ -43,10 +43,18 @@
   []
   (:conversation-id (current-memory)))
 
-(defn current-queries-state
-  "Returns the current queries state map from agent memory."
+(defn request-canceled-chan
+  "The channel that receives a value when the current turn's request is canceled, or nil when the turn has none."
   []
-  (get-in (current-memory) [:state :queries] {}))
+  (:request-canceled-chan (current-memory)))
+
+(defn current-queries-state
+  "Returns the current queries state map from agent memory.
+  Reads the memory in `memory-atom`, which a tool gets in its ctx, or else the bound [[*memory-atom*]]."
+  ([]
+   (current-queries-state *memory-atom*))
+  ([memory-atom]
+   (get-in (some-> memory-atom deref) [:state :queries] {})))
 
 (defn current-charts-state
   "Returns the current charts state map from agent memory."

@@ -228,13 +228,10 @@
                                "All Metabase features may not work properly when using an unsupported version."
                                "\n********************************************************************************\n"))))))))
 
-(def ^:private disallowed-additional-opts #"(?:allowLocalInfile|allowLoadLocalInfile|allowLoadLocalInfileInPath|allowUrlInLocalInfile|autoDeserialize|serverRSAPublicKeyFile)")
-
-(defmethod driver/validate-db-details! :mysql
-  [_driver details]
-  (sql-jdbc/reject-dangerous-additional-options! details)
-  (when-let [match (some->> (:additional-options details) (re-find disallowed-additional-opts))]
-    (throw (ex-info "Potentially dangerous keys in additional options" {:disallowed-key match}))))
+(defmethod driver/disallowed-connection-parameters :mysql
+  [driver]
+  (into ((get-method driver/disallowed-connection-parameters :sql-jdbc) driver)
+        ["allowLocalInfile" "allowLoadLocalInfile" "allowUrlInLocalInfile" "autoDeserialize" "serverRSAPublicKeyFile" "allowLoadLocalInfileInPath"]))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -303,6 +300,14 @@
 (defmethod sql.qp/add-interval-honeysql-form :mysql
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
+
+(defmethod sql.qp/use-ctes-for-stages? :mysql
+  [_driver]
+  ;; MySQL before 8.0 has no CTEs. All supported MariaDB versions have them.
+  (let [db (when (driver-api/initialized?)
+             (driver-api/database (driver-api/metadata-provider)))]
+    (not (and (mysql? db)
+              (some-> db :dbms-version :semantic-version first (< 8))))))
 
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
@@ -1312,6 +1317,14 @@
                        (when (seq table-names) [:in :a.table_name table-names])]
                :order-by [:a.table_name]}
               :dialect (sql.qp/quote-style driver)))
+
+(def ^:private ^:const mariadb-json-table-field-error-code 4176)
+
+(defmethod sql-jdbc.execute/impl-error-in-query? :mysql
+  [driver ^SQLException e]
+  (or ((get-method sql-jdbc.execute/impl-error-in-query? :sql-jdbc) driver e)
+      (and (= "HY000" (.getSQLState e))
+           (= mariadb-json-table-field-error-code (.getErrorCode e)))))
 
 (defmethod sql-jdbc/impl-query-canceled? :mysql [_ ^SQLException e]
   ;; ok to hardcode driver name here because this function only supports app DB types

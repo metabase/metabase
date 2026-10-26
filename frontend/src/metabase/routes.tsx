@@ -2,7 +2,6 @@ import type { Store, ThunkDispatch, UnknownAction } from "@reduxjs/toolkit";
 
 import { App } from "metabase/AppComponent";
 import { getAccountRoutes } from "metabase/account/routes";
-import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
 import { getRoutes as getAdminRoutes } from "metabase/admin/routes";
 import { ForgotPassword } from "metabase/auth/components/ForgotPassword";
 import { Login } from "metabase/auth/components/Login";
@@ -27,6 +26,7 @@ import { getMetricRoutes } from "metabase/metrics/routes";
 import NewModelOptions from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { getMonitorRedirects, getMonitorRoutes } from "metabase/monitor/routes";
+import { CollectionPermissionsModal } from "metabase/permissions";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_DATA_APPS,
@@ -90,8 +90,10 @@ export function LegacyBrowseRedirect() {
  * them is visited.
  *
  * A `lazy` route makes that first navigation asynchronous: the router resolves
- * the module before it commits the location. It resolves the route in place, so
- * every later navigation to the query builder is synchronous again.
+ * the module before it commits the location, or gives up waiting for it and
+ * shows a spinner in the page's place (see `withChunkFallback`). It resolves the
+ * route in place, so every later navigation to the query builder is synchronous
+ * again.
  */
 const queryBuilder = () =>
   loadQueryBuilder().then(({ QueryBuilder }) => ({ Component: QueryBuilder }));
@@ -457,7 +459,7 @@ export const getRoutes = (store: AppStore): RouteObject[] => [
               },
 
               // MODELS
-              ...toRouteObjects(getModelRoutes()),
+              ...toRouteObjects(getModelRoutes(IsAdmin)),
 
               {
                 path: "/model",

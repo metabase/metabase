@@ -3,6 +3,8 @@ import { USERS } from "e2e/support/cypress_data";
 import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import { onlyOn } from "e2e/support/helpers/e2e-skip-test-helpers";
 
+const QUERY_VALUE = "42";
+
 const PERMISSIONS = {
   curate: ["admin", "nodata"],
   view: ["readonly"],
@@ -11,7 +13,7 @@ const PERMISSIONS = {
 
 const questionDetails = {
   name: "Q1",
-  native: { query: "SELECT  '42' as ANSWER" },
+  native: { query: `SELECT  '${QUERY_VALUE}' as ANSWER` },
   display: "scalar",
 };
 
@@ -44,6 +46,9 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 cy.signIn(user);
 
                 H.visitDashboard(dashboard_id);
+                cy.findByTestId("scalar-value")
+                  .should("have.text", QUERY_VALUE)
+                  .and("be.visible");
                 assertOnRequest("getDashboard");
               });
 
@@ -67,6 +72,9 @@ describe("managing dashboard from the dashboard's edit menu", () => {
               assertOnRequest("getDashboard");
 
               cy.reload();
+              cy.findByTestId("scalar-value")
+                .should("have.text", QUERY_VALUE)
+                .and("be.visible");
               assertOnRequest("getDashboard");
               cy.findByDisplayValue(`${dashboardName}1`);
               H.openDashboardInfoSidebar();
@@ -199,7 +207,10 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                   cy.findByTestId("collection-picker-button").click();
                 });
 
-                H.entityPickerModal().findByText("New collection").click();
+                H.entityPickerModal()
+                  .findByText("New collection")
+                  .should("be.visible")
+                  .click();
                 const NEW_COLLECTION = "Foo Collection";
                 H.collectionOnTheGoModal().within(() => {
                   cy.findByPlaceholderText("My new collection").type(
@@ -338,10 +349,8 @@ describe("managing dashboard from the dashboard's edit menu", () => {
   });
 });
 
-function assertOnRequest(xhr_alias) {
-  cy.wait("@" + xhr_alias).then((xhr) => {
-    expect(xhr.status).not.to.eq(403);
-  });
+function assertOnRequest(alias) {
+  cy.wait(`@${alias}`).its("response.statusCode").should("not.eq", 403);
   cy.findByText("Sorry, you don’t have permission to see that.").should(
     "not.exist",
   );

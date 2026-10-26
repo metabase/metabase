@@ -1,4 +1,10 @@
-import { type ChangeEventHandler, useCallback, useMemo, useState } from "react";
+import {
+  type ChangeEventHandler,
+  type JSX,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -6,7 +12,7 @@ import { ForwardRefLink } from "metabase/common/components/Link";
 import { useDebouncedValue } from "metabase/common/hooks/use-debounced-value";
 import { getTimelineName } from "metabase/common/utils/timelines";
 import CS from "metabase/css/core/index.css";
-import ModalHeader from "metabase/timelines/common/components/ModalHeader";
+import { ModalHeader } from "metabase/timelines/common/components/ModalHeader";
 import { MODAL_MIN_HEIGHT } from "metabase/timelines/common/constants";
 import { ActionIcon, Button, Flex, Icon, Menu, TextInput } from "metabase/ui";
 import * as Urls from "metabase/urls";

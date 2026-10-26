@@ -21,6 +21,7 @@ import {
   AreaTab,
   AreaTabGroup,
 } from "metabase/nav/components/AreaLayout";
+import { PLUGIN_DATA_APPS } from "metabase/plugins";
 import { useSelector } from "metabase/redux";
 import { Outlet, useLocation } from "metabase/router";
 import { FixedSizeIcon, Flex } from "metabase/ui";
@@ -65,6 +66,10 @@ function getActiveSection(pathname: string): ActiveSection {
     .with(
       P.string.startsWith(Urls.monitorAiAuditingCli()),
       () => "ai-auditing-cli",
+    )
+    .with(
+      P.string.startsWith(Urls.monitorAiAuditingDataApps()),
+      () => "ai-auditing-data-apps",
     )
     .with(
       P.string.startsWith(Urls.monitorAiAuditingConversations()),
@@ -273,6 +278,18 @@ export function MonitorLayout() {
             showLabel={isNavbarOpened}
             onClick={() => trackMonitorSectionClicked("ai-auditing-cli")}
           />
+          {PLUGIN_DATA_APPS.isEnabled && (
+            <AreaTab
+              label={t`Data app analytics`}
+              icon="app"
+              to={Urls.monitorAiAuditingDataApps()}
+              isSelected={activeSection === "ai-auditing-data-apps"}
+              showLabel={isNavbarOpened}
+              onClick={() =>
+                trackMonitorSectionClicked("ai-auditing-data-apps")
+              }
+            />
+          )}
         </AreaTabGroup>
       )}
     </>
@@ -289,7 +306,7 @@ export function MonitorLayout() {
           align="center"
           justify="center"
         >
-          <FixedSizeIcon name="pulse" size={14} c="brand" />
+          <FixedSizeIcon name="pulse" size={14} c="core-brand" />
         </Flex>
       }
       testId="monitor-nav"

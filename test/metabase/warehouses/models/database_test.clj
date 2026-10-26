@@ -79,7 +79,6 @@
             delete-queries     (atom [])]
         ;; A dynamic redef permanently proxies this hot var. This test is synchronized, so a temporary root swap is
         ;; both safe and cheaper for the rest of the test JVM.
-        #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
         (with-redefs [t2/query-one (fn [& args]
                                      (swap! delete-queries into (filter :delete-from args))
                                      (apply original-query-one args))]
@@ -94,6 +93,7 @@
                    :model/Field    _               {:table_id table-id :parent_id parent-id}]
       (t2/with-call-count [call-count]
         ;; This only deletes the test-local Database Fields created above.
+        ;; [kondo-keep] suppresses a warning :redundant-ignore can't see; --audit rechecks
         #_{:clj-kondo/ignore [:metabase/validate-deftest]}
         (#'database/delete-database-fields! db-id)
         (is (= 4 (call-count))
@@ -288,6 +288,18 @@
                 "id"          3}
                (encode-decode pg-db)))))))
 
+(deftest unknown-database-setting-test
+  (testing "a removed setting left in a database's settings is hidden, and isn't logged as an error (GHY-4961)"
+    (let [db (mi/instance :model/Database {:id       3
+                                           :settings {:database-enable-actions true
+                                                      :removed-setting         true}})]
+      (request/with-current-user (mt/user->id :rasta)
+        (mt/with-log-messages-for-level [messages [metabase.warehouses.models.database :debug]]
+          (is (= {"database-enable-actions" true}
+                 (get (json/decode (json/encode db)) "settings")))
+          (is (=? [{:level :debug, :message #"Hiding unknown setting :removed-setting.*"}]
+                  (filter #(re-find #"removed-setting" (:message %)) (messages)))))))))
+
 (deftest driver-supports-actions-and-database-enable-actions-test
   (mt/test-drivers #{:sqlite}
     (testing "Updating database-enable-actions to true should fail if the engine doesn't support actions"
@@ -420,7 +432,6 @@
     (is (= driver.u/default-sensitive-fields
            (database/sensitive-fields-for-db {})))))
 
-#_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:private ^:dynamic *secret-can-connect?* (constantly true))
 
 (defmethod driver/can-connect? :secret-test-driver [& args] (apply *secret-can-connect?* args))
@@ -818,6 +829,27 @@
              clojure.lang.ExceptionInfo
              #"private or internal network address"
              (t2/update! :model/Database (:id db) {:admin_details {:host "127.0.0.1" :user "hummingbird"}})))))))
+
+(deftest disallowed-connection-parameters-are-refused-on-save-test
+  ;; like the network policy, enforced on the model so serialization import and config-file provisioning -- which
+  ;; write a Database without testing a connection -- cannot store one either
+  (testing "a disallowed connection parameter cannot be stored"
+    (doseq [details [{:host "db.example.com" :additional-options "socketFactory=a.b.C"}
+                     {:host "db.example.com" :sslfactory "a.b.C"}]]
+      (testing (pr-str details)
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"dangerous"
+             (mt/with-temp [:model/Database _ {:engine :postgres :details details}]))))))
+  (testing "...including by adding it to an existing database"
+    (mt/with-temp [:model/Database db {:engine :postgres :details {:host "db.example.com"}}]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"dangerous"
+           (t2/update! :model/Database (:id db) {:details {:host "db.example.com" :sslfactory "a.b.C"}})))))
+  (testing "a database whose driver isn't registered (e.g. an uninstalled plugin) can still be saved"
+    (mt/with-temp [:model/Database db {:engine "not-a-registered-driver" :details {:host "db.example.com"}}]
+      (t2/update! :model/Database (:id db) {:details {:host "db2.example.com"}})
+      (is (=? {:details {:host "db2.example.com"}}
+              (t2/select-one :model/Database (:id db)))))))
 
 (deftest empty-details-are-not-subject-to-the-network-policy-test
   (mt/with-temp-env-var-value! [mb-warehouse-allowed-networks "external-only"]

@@ -92,7 +92,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Quarter");
       H.cartesianChartCircle();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q1 2026");
+      cy.findByText("Q2 2026");
     });
 
     it("should render and apply longitude/latitude binning options", () => {
@@ -183,7 +183,7 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Quarter");
       H.cartesianChartCircle();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q1 2026");
+      cy.findByText("Q2 2026");
     });
 
     it("should render and apply longitude/latitude binning options", () => {
@@ -238,7 +238,7 @@ describe("scenarios > binning > binning options", () => {
 
       H.cartesianChartCircle();
       // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("January 2026");
+      cy.findByText("April 2026");
 
       cy.log(
         "time series footer highlights the current bucket (metabase#11183)",

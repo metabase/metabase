@@ -1,3 +1,4 @@
+import { useDisclosure } from "@mantine/hooks";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
@@ -7,19 +8,23 @@ import {
   type CollectionRowModalState,
 } from "metabase/common/collections/components/CollectionRowModal";
 import { ForwardRefLink } from "metabase/common/components/Link";
+import type { OmniPickerTableItem } from "metabase/common/components/Pickers";
+import { getUserIsAdmin } from "metabase/current-user";
 import { LibraryTreePage } from "metabase/data-studio/common/components/LibraryTreePage";
 import { useErrorHandling } from "metabase/data-studio/common/hooks/use-error-handling";
 import type { TreeItem } from "metabase/data-studio/common/types";
 import {
   filterTreeByName,
   isCollectionData,
+  openNewCollectionModal,
 } from "metabase/data-studio/common/utils";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
-import { setOpenModalWithProps } from "metabase/redux/ui";
+import { useNavigate } from "metabase/router";
 import { Button, FixedSizeIcon, Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 
+import { ImplicitActionTablePickerModal } from "../../components/ImplicitActionTablePickerModal";
 import {
   ACTION_COLLECTION_NAMESPACES,
   ACTION_COLLECTION_PICKER_OPTIONS,
@@ -27,8 +32,6 @@ import {
 import { useActionDatabases } from "../../hooks/use-action-databases";
 import { useBuildActionTree } from "../../hooks/use-build-action-tree";
 import { canCreateActions } from "../../utils";
-
-import { RootDataActionsMenu } from "./RootDataActionsMenu";
 
 export function ActionListPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -42,7 +45,8 @@ export function ActionListPage() {
     isLoading: isLoadingDatabases,
     error: databasesError,
   } = useActionDatabases();
-  const canCreate = canCreateActions(databases);
+  const isAdmin = useSelector(getUserIsAdmin);
+  const canCreate = isAdmin && canCreateActions(databases);
   const {
     tree,
     isLoading: isLoadingActions,
@@ -56,10 +60,6 @@ export function ActionListPage() {
   const visibleTree = useMemo(
     () => (isSearchActive ? filterTreeByName(tree, searchQuery) : tree),
     [isSearchActive, tree, searchQuery],
-  );
-  const defaultExpandedIds = useMemo(
-    () => tree.slice(0, 1).map((node) => node.id),
-    [tree],
   );
   const renderRowMenu = useCallback(
     (item: TreeItem) => (
@@ -76,8 +76,18 @@ export function ActionListPage() {
       isSearchActive={isSearchActive}
       searchQuery={searchQuery}
       emptyMessage={t`No actions yet`}
-      defaultExpandedIds={defaultExpandedIds}
       createMenu={canCreate && <ActionsCreateMenu />}
+      pageMenu={{
+        label: t`Data action options`,
+        actions: [
+          {
+            label: t`View archived actions`,
+            icon: "view_archive",
+            to: Urls.dataStudioArchivedActions(),
+          },
+        ],
+        onOpenModal: setCollectionModal,
+      }}
       renderRowMenu={renderRowMenu}
       onSearchQueryChange={setSearchQuery}
     >
@@ -98,49 +108,69 @@ function ActionRowMenu({ item: { data }, onOpenModal }: ActionRowMenuProps) {
   if (!isCollectionData(data)) {
     return null;
   }
-  if (data.id === "root") {
-    return <RootDataActionsMenu collection={data} onOpenModal={onOpenModal} />;
-  }
   return <CollectionRowMenu collection={data} onOpenModal={onOpenModal} />;
 }
 
 function ActionsCreateMenu() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [isPickerOpened, { open: openPicker, close: closePicker }] =
+    useDisclosure();
 
   const handleNewCollectionClick = useCallback(() => {
     dispatch(
-      setOpenModalWithProps({
-        id: "collection",
-        props: {
-          initialCollectionId: null,
-          namespaces: ACTION_COLLECTION_NAMESPACES,
-          pickerOptions: ACTION_COLLECTION_PICKER_OPTIONS,
-          showAuthorityLevelPicker: false,
-        },
+      openNewCollectionModal({
+        initialCollectionId: null,
+        namespaces: ACTION_COLLECTION_NAMESPACES,
+        pickerOptions: ACTION_COLLECTION_PICKER_OPTIONS,
       }),
     );
   }, [dispatch]);
 
+  const handleTableChange = useCallback(
+    (table: OmniPickerTableItem) => {
+      closePicker();
+      navigate(Urls.newDataStudioImplicitAction(table.id));
+    },
+    [closePicker, navigate],
+  );
+
   return (
-    <Menu position="bottom-end">
-      <Menu.Target>
-        <Button size="lg" leftSection={<Icon name="add" />}>{t`New`}</Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item
-          component={ForwardRefLink}
-          to={Urls.newDataStudioAction()}
-          leftSection={<FixedSizeIcon name="bolt" />}
-        >
-          {t`Action`}
-        </Menu.Item>
-        <Menu.Item
-          leftSection={<FixedSizeIcon name="folder" />}
-          onClick={handleNewCollectionClick}
-        >
-          {t`Collection`}
-        </Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
+    <>
+      <Menu position="bottom-end">
+        <Menu.Target>
+          <Button size="lg" leftSection={<Icon name="add" />}>{t`New`}</Button>
+        </Menu.Target>
+        <Menu.Dropdown>
+          <Menu.Label>{t`Create your action with…`}</Menu.Label>
+          <Menu.Item
+            leftSection={<FixedSizeIcon name="table2" />}
+            onClick={openPicker}
+          >
+            {t`Table`}
+          </Menu.Item>
+          <Menu.Item
+            component={ForwardRefLink}
+            to={Urls.newDataStudioAction()}
+            leftSection={<FixedSizeIcon name="sql" />}
+          >
+            {t`SQL query`}
+          </Menu.Item>
+          <Menu.Divider />
+          <Menu.Item
+            leftSection={<FixedSizeIcon name="folder" />}
+            onClick={handleNewCollectionClick}
+          >
+            {t`Collection`}
+          </Menu.Item>
+        </Menu.Dropdown>
+      </Menu>
+      {isPickerOpened && (
+        <ImplicitActionTablePickerModal
+          onChange={handleTableChange}
+          onClose={closePicker}
+        />
+      )}
+    </>
   );
 }

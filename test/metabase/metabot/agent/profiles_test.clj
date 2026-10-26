@@ -2,15 +2,17 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
-   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
+   [metabase.metabot.tools.legacy :as tools.legacy]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]))
 
 (deftest get-profile-test
+  ;; The declaration, not the var's metadata: a converted tool is a record and carries none.
   (letfn [(tool-names [profile]
-            (set (map #(:tool-name (meta %)) (:tools profile))))]
+            (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))]
     (testing "retrieves embedding_next profile with default provider"
       (let [profile (profiles/get-profile :embedding_next)]
         (is (some? profile))
@@ -147,7 +149,7 @@
 (deftest embedding-next-matches-nlq-tools-test
   (testing (str "nlq-fallback matches embedding_next's general search plus run_query, which embedding doesn't offer yet; "
                 "curated nlq swaps search for the library tool")
-    (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
+    (let [tool-names (fn [profile] (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))
           embedding  (tool-names (profiles/get-profile :embedding_next))
           fallback   (tool-names (profiles/get-profile :nlq-fallback))
           ;; force the curated nlq (no redirect) — get-profile :nlq otherwise falls back when the index can't answer
@@ -174,7 +176,7 @@
                        [profile-id (contains? (profiles/get-tools-for-profile profile-id []) "run_query")]))))))))
 
 (deftest internal-sql-profile-test
-  (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))]
+  (let [tool-names (fn [profile] (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))]
     (testing "internal-sql is internal without the notebook builder"
       (let [internal     (profiles/get-profile :internal)
             internal-sql (profiles/get-profile :internal-sql)]

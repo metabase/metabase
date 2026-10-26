@@ -7,12 +7,6 @@
 # src/metabase/lib_be @metabase/querying-platform
 # src/metabase/query_processor @metabase/querying-platform
 
-# @metabase/graphy
-src/metabase/graph @metabase/graphy
-enterprise/backend/src/metabase_enterprise/dependencies @metabase/graphy
-enterprise/frontend/src/metabase-enterprise/dependencies @metabase/graphy
-enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics @metabase/graphy
-
 # @metabase/embedding
 
 frontend/src/metabase/embedding @metabase/embedding
@@ -67,6 +61,8 @@ enterprise/frontend/src/metabase-enterprise/metabot @metabase/metabot-frontend
 frontend/src/metabase/metabot @metabase/metabot-frontend
 
 # @metabase/metabot-backend
+# TODO (Chris 2026-09-25) -- drop the embeddings, entity_retrieval and semantic_search lines once no open PR has
+# files at those pre-move paths. Until then they keep Metabot as a required reviewer on PRs that haven't rebased.
 enterprise/backend/src/metabase_enterprise/embeddings @metabase/metabot-backend
 enterprise/backend/src/metabase_enterprise/entity_retrieval @metabase/metabot-backend
 enterprise/backend/src/metabase_enterprise/search @metabase/metabot-backend
@@ -97,3 +93,16 @@ test/metabase/search @metabase/metabot-backend
 # frontend/src/metabase/visualizations/custom-visualizations @metabase/gadget
 # frontend/test/__support__/custom-viz-fixtures @metabase/gadget
 # .github/workflows/release-custom-viz.yml @metabase/devex @metabase/gadget
+
+# @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/data_apps @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/dependencies @metabase/data-apps
+enterprise/backend/src/metabase_enterprise/remote_sync @metabase/data-apps
+enterprise/frontend/src/metabase-enterprise/data-apps @metabase/data-apps
+enterprise/frontend/src/metabase-enterprise/dependencies @metabase/data-apps
+enterprise/frontend/src/metabase-enterprise/monitor/dependency-diagnostics @metabase/data-apps
+enterprise/frontend/src/metabase-enterprise/remote_sync @metabase/data-apps
+frontend/src/metabase/monitor/dependency-diagnostics @metabase/data-apps
+src/metabase/data_apps @metabase/data-apps
+src/metabase/dependencies @metabase/data-apps
+src/metabase/remote_sync @metabase/data-apps
