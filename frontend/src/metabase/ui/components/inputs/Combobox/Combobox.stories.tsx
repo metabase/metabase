@@ -1,8 +1,4 @@
-import {
-  type ComboboxItem,
-  type ComboboxItemGroup,
-  InputBase,
-} from "@mantine/core";
+import type { ComboboxItem, ComboboxItemGroup } from "@mantine/core";
 import type { StoryFn } from "@storybook/react";
 import { Fragment, type ReactNode } from "react";
 
@@ -12,6 +8,7 @@ import {
   MultiSelect,
   Select,
   TagsInput,
+  TextInput,
   useCombobox,
 } from "metabase/ui";
 import {
@@ -159,7 +156,7 @@ const ComboboxCell = ({ row }: { row: RowId }) => {
   return (
     <Combobox store={combobox} {...COMBOBOX_PROPS}>
       <Combobox.Target>
-        <InputBase
+        <TextInput
           readOnly
           placeholder="Placeholder"
           value={row === "empty" ? EMPTY_SEARCH : ""}
