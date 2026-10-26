@@ -4,7 +4,7 @@ import { renderWithProviders, screen } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
 import { loadVisualizationComponents } from "metabase/viz-core";
-import type { GoalSegment, RawSeries } from "metabase-types/api";
+import type { GoalSegment, RawSeries, RowValues } from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
@@ -33,7 +33,13 @@ afterAll(() => {
 
 const GOAL_REF = { type: "card", id: 9, column: "goal" } as const;
 
-function setup(segments: GoalSegment[], { isQueryBuilder = false } = {}) {
+function setup(
+  segments: GoalSegment[],
+  {
+    isQueryBuilder = false,
+    rows = [[50]],
+  }: { isQueryBuilder?: boolean; rows?: RowValues[] } = {},
+) {
   const series: RawSeries = [
     createMockSingleSeries(
       createMockCard({
@@ -45,7 +51,7 @@ function setup(segments: GoalSegment[], { isQueryBuilder = false } = {}) {
           cols: [
             createMockColumn({ name: "count", base_type: "type/Integer" }),
           ],
-          rows: [[50]],
+          rows,
           referenced_entities: createMockFailedReferencedEntitiesResults({
             error: "boom",
           }),
@@ -84,11 +90,9 @@ describe("gauge dynamic goal", () => {
     expect(screen.queryByText("100")).not.toBeInTheDocument();
 
     await userEvent.hover(screen.getByLabelText("Goal warning"));
-    expect(
-      await screen.findByText(
-        "Couldn't get some color range values. Click to open settings.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Couldn't get some color range values. Click to open settings.",
+    );
 
     await userEvent.click(screen.getByLabelText("Goal warning"));
     expect(onOpenChartSettings).toHaveBeenCalledWith({
@@ -108,6 +112,30 @@ describe("gauge dynamic goal", () => {
     );
 
     expect(await screen.findAllByLabelText("Goal warning")).toHaveLength(2);
+  });
+
+  it("renders a warning in the query builder when a self-column bound's cell is null", async () => {
+    setup(
+      [
+        { min: 0, max: 50, color: "red" },
+        { min: 50, max: "count", color: "green" },
+      ],
+      { isQueryBuilder: true, rows: [[null]] },
+    );
+
+    expect(await screen.findByLabelText("Goal warning")).toBeInTheDocument();
+  });
+
+  it("renders a warning in the query builder when a self-column bound's question returned no rows", async () => {
+    setup(
+      [
+        { min: 0, max: 50, color: "red" },
+        { min: 50, max: "count", color: "green" },
+      ],
+      { isQueryBuilder: true, rows: [] },
+    );
+
+    expect(await screen.findByLabelText("Goal warning")).toBeInTheDocument();
   });
 
   it("renders the ranges that resolve without a warning outside the query builder", async () => {

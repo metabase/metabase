@@ -151,11 +151,9 @@ describe("progress chart dynamic goal", () => {
     });
 
     await userEvent.hover(await screen.findByLabelText("Goal warning"));
-    expect(
-      await screen.findByText(
-        "Couldn't get the goal value. Click to open settings.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Couldn't get the goal value. Click to open settings.",
+    );
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
 
     await userEvent.click(screen.getByLabelText("Goal warning"));
@@ -180,6 +178,18 @@ describe("progress chart dynamic goal", () => {
     setup({
       cols: SELF_GOAL_COLS,
       rows: [[50, null]],
+      settings: SELF_GOAL_SETTINGS,
+      isQueryBuilder: true,
+    });
+
+    expect(await screen.findByLabelText("Goal warning")).toBeInTheDocument();
+    expect(screen.getByText("Goal 0")).toBeInTheDocument();
+  });
+
+  it("measures against a goal of 0 with a warning in the query builder when the goal column's question returned no rows", async () => {
+    setup({
+      cols: SELF_GOAL_COLS,
+      rows: [],
       settings: SELF_GOAL_SETTINGS,
       isQueryBuilder: true,
     });
