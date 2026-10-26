@@ -2386,3 +2386,19 @@
                                           :collection_id trashed-folder-id})))
             (is (not (t2/exists? :model/Transform :collection_id trashed-folder-id)))))))))
 
+(deftest search-excludes-trashed-transforms-test
+  ;; the temp index table needs the app DB; the other search tests here get it from `mt/dataset`
+  (mt/initialize-if-needed! :db)
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    ;; see search-filters-transform-source-types-test for why the index scope sits outside `with-temp`
+    (search.tu/with-temp-index-table-if-supported
+      (let [search-term (str "transform-search-" (u/generate-nano-id))]
+        (mt/with-temp [:model/Transform {transform-id :id} {:name (str search-term "_trashed")}]
+          (mt/user-http-request :crowberto :put 200 (format "transform/%d" transform-id) {:archived true})
+          (search.tu/with-appdb-search-and-legacy-search
+            (testing "a normal search leaves out the trashed transform"
+              (is (not (contains? (->> (mt/user-http-request :crowberto :get 200 "search"
+                                                             :q search-term :models "transform")
+                                       :data
+                                       (into #{} (map :id)))
+                                  transform-id))))))))))

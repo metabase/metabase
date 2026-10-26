@@ -72,8 +72,8 @@
   [model archived?]
   [:= (search.config/column-with-model-alias model :archived) archived?])
 
-;; Databases, transforms, indexed-entities, and data apps can't be archived
-(doseq [model ["database" "transform" "indexed-entity" "data-app"]]
+;; Databases, indexed-entities, and data apps can't be archived
+(doseq [model ["database" "indexed-entity" "data-app"]]
   (defmethod archived-clause model
     [_model archived?]
     (if archived?

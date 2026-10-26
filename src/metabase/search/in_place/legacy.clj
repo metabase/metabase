@@ -455,7 +455,7 @@
 
 (defmethod columns-for-model "transform"
   [_]
-  [:id :name :description :created_at :updated_at])
+  [:id :name :description :archived :created_at :updated_at])
 
 (defmethod columns-for-model "data-app"
   [_]
