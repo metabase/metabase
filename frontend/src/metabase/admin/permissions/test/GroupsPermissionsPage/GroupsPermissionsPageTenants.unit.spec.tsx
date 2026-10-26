@@ -20,6 +20,7 @@ import { DataPermissionsPage } from "metabase/admin/permissions/pages/DataPermis
 import { GroupsPermissionsPage } from "metabase/admin/permissions/pages/GroupDataPermissionsPage/GroupsPermissionsPage";
 import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
 import { Route } from "metabase/router";
+import type { DatabasePermissions, GroupId } from "metabase-types/api";
 import { DataPermission, DataPermissionValue } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockGroup } from "metabase-types/api/mocks/group";
@@ -64,7 +65,9 @@ const TEST_GROUPS = [
 // "All tenant users" group's wider access worth warning about. Pinned on the
 // backend by metabase-enterprise.tenants.permissions-test/
 // new-tenant-groups-get-no-perms-on-existing-dbs.
-const BLOCKED_TENANT_GROUP_PERMISSIONS = {
+const BLOCKED_TENANT_GROUP_PERMISSIONS: Partial<
+  Record<GroupId, Partial<DatabasePermissions>>
+> = {
   [TENANT_GROUP.id]: {
     [DataPermission.VIEW_DATA]: DataPermissionValue.BLOCKED,
     [DataPermission.CREATE_QUERIES]: DataPermissionValue.NO,
