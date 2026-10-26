@@ -311,9 +311,12 @@ export async function checkQuarantineGate(opts: {
   log(RULE);
 
   if (failures.length === 0) {
-    log("✅ no failures this run — nothing to gate.");
-    log(RULE);
-    return { shouldFail: false, enforced: false, reason: "no failures to gate" };
+    log("⚠️  the test step failed, but no failing tests were reported.");
+    return finish({
+      shouldFail: true,
+      reason: "the test step failed with no failing tests to check",
+      dryRun,
+    });
   }
 
   if (!baseUrl) {
@@ -365,7 +368,7 @@ export async function checkQuarantineGate(opts: {
   }
   for (const test of unquarantined) {
     log(`  🚨 NOT quarantined  ${title(test)}`);
-    log(`                      ↳ ${test.file_path ?? "(no file)"}`); 
+    log(`                      ↳ ${test.file_path ?? "(no file)"}`);
     log(
       `                      ↳ View test in CI Conductor: ${testSearchUrl(baseUrl, test)}`,
     );
