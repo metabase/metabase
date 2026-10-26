@@ -113,6 +113,7 @@ function getReadingContext(directionId: string) {
   switch (directionId) {
     case "expression-bar-unified":
     case "expression-bar-unified-tail":
+    case "expression-bar-split":
       return UnifiedCompactReadingContext;
     default:
       return CompactReadingContext;
@@ -151,7 +152,8 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
   const hasCompactReading =
     direction.id === "expression-bar-inline-2" ||
     direction.id === "expression-bar-unified" ||
-    direction.id === "expression-bar-unified-tail";
+    direction.id === "expression-bar-unified-tail" ||
+    direction.id === "expression-bar-split";
 
   const ReadingContext = getReadingContext(direction.id);
 

@@ -247,3 +247,35 @@
 .suggestionActive .suggestionSummaryIcon {
   color: var(--mb-color-text-primary-inverse);
 }
+
+/*
+ * With a trailing zone the caret input hugs its text instead of filling the
+ * line, so the zone follows the expression as one stream and wraps to the
+ * start of the next line like any token would.
+ */
+.inputHugging {
+  flex: 0 0 auto;
+  field-sizing: content;
+  min-width: 4rem;
+  max-width: 100%;
+}
+
+/* Right of the expression while sharing its line; see useSummaryZonePlacement. */
+.summaryZone {
+  margin-left: auto;
+  font-family: var(--mantine-font-family);
+}
+
+/* On a line of its own the zone starts at the left and leaves the right to the actions. */
+.summaryZoneOwnLine {
+  flex: 1 1 auto;
+  margin-left: 0;
+}
+
+.summaryAddButton {
+  color: var(--mb-color-core-summarize);
+}
+
+.summaryAddButton:hover {
+  background-color: var(--mb-color-background_surface-success);
+}

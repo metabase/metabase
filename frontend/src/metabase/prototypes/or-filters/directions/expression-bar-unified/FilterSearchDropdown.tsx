@@ -8,6 +8,7 @@ import { Box, Icon, Stack, Text, UnstyledButton } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import S from "./ExpressionBar.module.css";
+import { type SummaryStage, getAggregationColumns } from "./summary";
 import {
   CLOSE_PAREN,
   type ExpressionToken,
@@ -32,12 +33,6 @@ export type Suggestion<T extends ExpressionToken = Token> =
   | { type: "token"; token: T; label: string }
   | { type: "column"; column: StagedColumn; label: string }
   | { type: "browse"; label: string };
-
-/** The stage after a summary, where filters on its aggregations live. */
-export type SummaryStage = {
-  query: Lib.Query;
-  stageIndex: number;
-};
 
 const KEYWORDS: { word: string; token: ExpressionToken }[] = [
   { word: "and", token: opToken("and") },
@@ -92,22 +87,12 @@ export function useSuggestions(
         label: Lib.displayInfo(query, stageIndex, column).longDisplayName,
       }),
     );
-    // On the summary stage every column comes from the previous stage, so the
-    // aggregations are told apart by the names the summary gave them.
-    const aggregationNames = new Set(
-      Lib.returnedColumns(query, stageIndex)
-        .map((column) => Lib.displayInfo(query, stageIndex, column))
-        .filter((info) => info.isAggregation)
-        .map((info) => info.name),
-    );
     const summaryColumns = summary
-      ? Lib.filterableColumns(summary.query, summary.stageIndex)
-          .map((column) => ({
-            column: { column, stageIndex: summary.stageIndex, isSummary: true },
-            info: Lib.displayInfo(summary.query, summary.stageIndex, column),
-          }))
-          .filter(({ info }) => aggregationNames.has(info.name))
-          .map(({ column, info }) => ({ column, label: info.longDisplayName }))
+      ? getAggregationColumns(query, stageIndex, summary).map((column) => ({
+          column: { column, stageIndex: summary.stageIndex, isSummary: true },
+          label: Lib.displayInfo(summary.query, summary.stageIndex, column)
+            .longDisplayName,
+        }))
       : [];
 
     const matching = (candidates: { column: StagedColumn; label: string }[]) =>

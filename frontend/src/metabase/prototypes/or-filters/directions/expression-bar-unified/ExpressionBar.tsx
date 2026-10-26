@@ -25,7 +25,7 @@ import {
   Stack,
   Text,
 } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { getFilterLabel, toFilterClause } from "../../harness/clauses";
 import { Token as TokenPill } from "../or-pills/Token";
@@ -35,11 +35,11 @@ import {
   type DropdownView,
   FilterSearchDropdown,
   type StagedColumn,
-  type SummaryStage,
   activateSuggestion,
   useSuggestions,
 } from "./FilterSearchDropdown";
 import { CompactReadingContext } from "./settings";
+import { useSummaryStage } from "./summary";
 import {
   CLOSE_PAREN,
   type ExpressionToken,
@@ -75,6 +75,8 @@ type ExpressionBarProps = {
    * so the summary filters always form the tail of the expression.
    */
   summaryPlacement?: "caret" | "end";
+  /** Rendered inside the bar after the tokens, e.g. a separate summary-filter zone. */
+  trailing?: ReactNode;
   placeholder?: string;
   /** Extra class on the bar box. */
   className?: string;
@@ -101,6 +103,7 @@ export function ExpressionBar({
   onChange,
   withSummary = false,
   summaryPlacement = "caret",
+  trailing,
   placeholder = t`Type a column, "and", "or", "("…`,
   className,
   hasInlineActions = false,
@@ -109,24 +112,12 @@ export function ExpressionBar({
   const compactReading = useContext(CompactReadingContext);
   const [isFocused, setIsFocused] = useState(false);
   const summaryStageIndex = stageIndex + 1;
-  const hasSummary =
-    withSummary && Lib.aggregations(query, stageIndex).length > 0;
-  // Filters on the summary edit the next stage; until one exists they edit a
-  // copy with the stage appended, so the first such filter creates it on apply.
-  const summaryQuery = useMemo(
-    () =>
-      Lib.stageCount(query) > summaryStageIndex
-        ? query
-        : Lib.appendStage(query),
-    [query, summaryStageIndex],
-  );
-  const summary = useMemo<SummaryStage | undefined>(
-    () =>
-      hasSummary
-        ? { query: summaryQuery, stageIndex: summaryStageIndex }
-        : undefined,
-    [hasSummary, summaryQuery, summaryStageIndex],
-  );
+  const summaryStage = useSummaryStage(query, stageIndex);
+  const summary = withSummary ? summaryStage : undefined;
+  const hasSummary = summary != null;
+  // Tokens read from the query may sit on the summary stage even when the bar
+  // does not offer it, e.g. a notebook step; they still need that stage's query.
+  const summaryQuery = summaryStage?.query ?? query;
   const queryFor = useCallback(
     (tokenStageIndex: number) =>
       tokenStageIndex === summaryStageIndex ? summaryQuery : query,
@@ -173,15 +164,21 @@ export function ExpressionBar({
   useEffect(() => {
     const previous = previousCommittedRef.current;
     previousCommittedRef.current = committedTokens;
-    setTokens(committedTokens);
-    setCaret(committedTokens.length);
 
     const isOwnCommit = isOwnCommitRef.current;
     isOwnCommitRef.current = false;
-    const fresh = isOwnCommit
-      ? new Set<number>()
-      : freshTokenIndexes(previous, committedTokens, queryFor);
-    flashTokens(fresh);
+    const fresh = freshTokenIndexes(previous, committedTokens, queryFor);
+    const isSameExpression =
+      previous.length === committedTokens.length && fresh.size === 0;
+    if (isSameExpression) {
+      // Another part of the query changed (the summary zone, a display switch);
+      // a draft in progress survives, a clean bar just adopts the new tokens.
+      setTokens((draft) => (draft === previous ? committedTokens : draft));
+      return;
+    }
+    setTokens(committedTokens);
+    setCaret(committedTokens.length);
+    flashTokens(isOwnCommit ? new Set() : fresh);
   }, [committedTokens, queryFor, flashTokens]);
 
   const isDirty = tokens !== committedTokens;
@@ -402,6 +399,7 @@ export function ExpressionBar({
           className={cx(S.input, {
             [S.inputInline]: caret < tokens.length,
             [S.inputEmpty]: text.length === 0,
+            [S.inputHugging]: trailing != null && trailing !== false,
           })}
           // Between tokens the input hugs its text and takes no space while empty, so
           // moving the caret never shifts the tokens. The active Gap shows where it sits.
@@ -516,6 +514,7 @@ export function ExpressionBar({
         }}
       >
         {stream}
+        {trailing}
         {hasInlineActions ? (
           inlineActions
         ) : (
@@ -663,7 +662,7 @@ type FilterTokenViewProps = {
   onRemove: () => void;
 };
 
-function FilterTokenView({
+export function FilterTokenView({
   query,
   stageIndex,
   isSummary,

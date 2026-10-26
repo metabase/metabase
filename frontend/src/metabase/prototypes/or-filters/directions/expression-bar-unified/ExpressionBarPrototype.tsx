@@ -4,9 +4,12 @@ import { Group } from "metabase/ui";
 import type { FilterUiProps } from "../../types";
 
 import { ExpressionBar } from "./ExpressionBar";
+import { SummaryPills } from "./SummaryPills";
 
 type UnifiedBarProps = FilterUiProps & {
   summaryPlacement?: "caret" | "end";
+  /** `"pills"` keeps the summary out of the expression: a pill zone after it, with its own button. */
+  summaryUi?: "inline" | "pills";
 };
 
 /**
@@ -20,6 +23,7 @@ function UnifiedBar({
   stageIndex,
   variant,
   summaryPlacement,
+  summaryUi = "inline",
   onChange,
 }: UnifiedBarProps) {
   const bar = (
@@ -27,8 +31,17 @@ function UnifiedBar({
       query={query}
       stageIndex={stageIndex}
       onChange={onChange}
-      withSummary
+      withSummary={summaryUi === "inline"}
       summaryPlacement={summaryPlacement}
+      trailing={
+        summaryUi === "pills" && (
+          <SummaryPills
+            query={query}
+            stageIndex={stageIndex}
+            onChange={onChange}
+          />
+        )
+      }
       hasInlineActions
     />
   );
@@ -51,4 +64,9 @@ export function ExpressionBarUnifiedPrototype(props: FilterUiProps) {
 /** Variant: a picked filter on the summary always lands at the end, AND-ed on. */
 export function ExpressionBarUnifiedTailPrototype(props: FilterUiProps) {
   return <UnifiedBar {...props} summaryPlacement="end" />;
+}
+
+/** Variant: the expression is the rows only; filters on the summary are pills after it. */
+export function ExpressionBarSplitPrototype(props: FilterUiProps) {
+  return <UnifiedBar {...props} summaryUi="pills" />;
 }
