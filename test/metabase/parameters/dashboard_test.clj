@@ -493,6 +493,19 @@
         (testing "\nmulti-condition join: walker picks the := link past a non-equality condition"
           (is (= expected (#'parameters.dashboard/target->via-path multi target))))))))
 
+(deftest ^:parallel target->via-path-cross-stage-string-ref-test
+  (testing "2nd-stage join against a previous-stage result column yields no via-path"
+    (mt/dataset avian-singles
+      (let [mp         (mt/metadata-provider)
+            messages   (lib.metadata/table mp (mt/id :messages))
+            users-id   (mt/id :users :id)
+            card-query (-> (lib/query mp messages)
+                           (nb/add-breakout "Sender ID")
+                           lib/append-stage
+                           (nb/add-join "Users" "Sender ID" "ID"))
+            target     [:dimension [:field users-id {:join-alias "Users"}] {:stage-number 1}]]
+        (is (nil? (#'parameters.dashboard/target->via-path card-query target)))))))
+
 (deftest ^:synchronized dashboard-remapping-conflict-scenarios-test
   ;; Test various scenarios where FK1, FK2, and PK have different remapping configurations.
   ;; This tests the logic in find-common-remapping-target and documents that it was

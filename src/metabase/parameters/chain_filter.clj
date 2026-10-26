@@ -874,7 +874,10 @@
            (or (empty? constraints)
                (and (empty? (:via-path options)) (empty? (:fk-pairs options)))))
       (do
-        (check-field-value-query-permissions field-id constraints options)
+        ;; The permission check uses the cache's actual read path, which never touches via-path/fk-pairs joins.
+        ;; Requiring perms on those joined tables would wrongly block sandboxed users whose sandbox covers only
+        ;; the field's own table.
+        (check-field-value-query-permissions field-id constraints (dissoc options :via-path :fk-pairs))
         (cached-field-values field-id constraints options))
 
       ;; This is Field->Field remapping e.g. `venue.category_id `-> `category.name `;
@@ -1061,7 +1064,7 @@
            (or (empty? constraints)
                (and (empty? (:via-path options)) (empty? (:fk-pairs options)))))
       (do
-        (check-field-value-query-permissions field-id constraints options)
+        (check-field-value-query-permissions field-id constraints (dissoc options :via-path :fk-pairs))
         (cached-field-values-search field-id query-string constraints options))
 
       (some? @the-remapped-field-id)
