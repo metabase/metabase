@@ -4055,7 +4055,6 @@
            analytics.interface
            audit-app
            collections
-           driver
            models
            util
            warehouses

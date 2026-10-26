@@ -3,6 +3,8 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
+   [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
@@ -10,6 +12,9 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.util :as driver.u]
+   [metabase.events.core :as events]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    ;; binds mock metadata providers via the ambient store, which the code under test reads
@@ -19,8 +24,10 @@
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
-   [metabase.util.snake-hating-map :as snake-hating-map])
+   [metabase.util.snake-hating-map :as snake-hating-map]
+   [toucan2.core :as t2])
   (:import
+   (java.util.concurrent CountDownLatch TimeUnit)
    (javax.net.ssl SSLSocketFactory)))
 
 (comment h2/keep-me)
@@ -464,27 +471,224 @@
                       (log-messages)))))))))
 
 (deftest supports?-failure-test-2
-  (let [fake-test-db (mt/db)]
+  (mt/with-temp [:model/Database db {}]
     (binding [driver.u/*memoize-supports?* true]
-      (testing "supports? returns false when `driver/database-supports?` takes longer than the timeout"
-        (let [db      (assoc fake-test-db :name (mt/random-name))
-              feature (keyword (name (ns-name *ns*)) (mt/random-name))]
-          (with-redefs [driver.u/supports?-timeout-ms 100
+      (try
+        (testing "supports? returns false when `driver/database-supports?` takes longer than the timeout"
+          ;; shrink the sweep to one feature so the timeout is only paid once
+          (with-redefs [driver/features           #{:left-join}
+                        driver.u/supports?-timeout-ms 100
                         driver/database-supports? (fn [_ _ _] (Thread/sleep 200) true)]
             (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
-              (is (false? (driver.u/supports? :test-driver feature db)))
+              (is (false? (driver.u/supports? :test-driver :left-join db)))
               (is (some (fn [{:keys [level message]}]
                           (and (= level :error)
                                (= message (u/format-color 'red "Failed to check feature '%s' for database %s: %s"
-                                                          (u/qualified-name feature)
+                                                          "left-join"
                                                           (:id db)
                                                           "Timed out after 100.0 ms"))))
-                        (log-messages)))))
-          (testing "we memoize the results for the same database, so we don't log the error again"
-            (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
-              (is (false? (driver.u/supports? :test-driver feature db)))
-              (is (= []
-                     (log-messages))))))))))
+                        (log-messages))))
+            (testing "the whole feature set is cached for the database, so the timeout is not logged again"
+              (mt/with-log-messages-for-level [log-messages [metabase.driver.util :error]]
+                (is (false? (driver.u/supports? :test-driver :left-join db)))
+                (is (= []
+                       (log-messages)))))))
+        (finally
+          (driver.u/invalidate-features-cache! (:id db)))))))
+
+(defn- feature-cache-entry [db-id]
+  (get @@#'driver.u/db-feature-sets [(mdb/unique-identifier) db-id]))
+
+(deftest feature-set-cache-replacement-test
+  (testing "N updates to a database row grow the cache by 0 entries — the entry is replaced, not accumulated"
+    (mt/with-temp [:model/Database db {}]
+      (binding [driver.u/*memoize-supports?* true]
+        (try
+          (let [entries-for-db #(filter (fn [[[_uid id] _]] (= id (:id db)))
+                                        @@#'driver.u/db-feature-sets)]
+            (driver.u/features :h2 (t2/select-one :model/Database :id (:id db)))
+            (is (= 1 (count (entries-for-db))))
+            (let [stamp-before (:stamp (feature-cache-entry (:id db)))]
+              (dotimes [i 3]
+                ;; explicit, increasing updated_at: with-temp stamps rows from the JVM clock and t2/update! from the
+                ;; app DB's now(), so the two can compare out of order in tests
+                (t2/update! :model/Database (:id db) {:description (mt/random-name)
+                                                      :updated_at  (t/plus (t/offset-date-time) (t/minutes (inc i)))})
+                (driver.u/features :h2 (t2/select-one :model/Database :id (:id db))))
+              (is (= 1 (count (entries-for-db))))
+              (testing "and the stamp tracked the row's updated_at"
+                (is (not= stamp-before (:stamp (feature-cache-entry (:id db))))))))
+          (finally
+            (driver.u/invalidate-features-cache! (:id db))))))))
+
+(deftest feature-set-cache-mirror-test
+  (testing "a feature check on a mirror database uses — and only ever creates — its router's entry"
+    (mt/with-temp [:model/Database router {}
+                   :model/Database mirror {:router_database_id (:id router)}]
+      (binding [driver.u/*memoize-supports?* true]
+        (try
+          (let [mirror-features (driver.u/features :h2 (t2/select-one :model/Database :id (:id mirror)))]
+            (is (some? (feature-cache-entry (:id router))))
+            (is (nil? (feature-cache-entry (:id mirror))))
+            (testing "the mirror reports the router's (interned) feature set"
+              (is (identical? mirror-features
+                              (driver.u/features :h2 (t2/select-one :model/Database :id (:id router)))))))
+          (finally
+            (driver.u/invalidate-features-cache! (:id router))
+            (driver.u/invalidate-features-cache! (:id mirror))))))))
+
+(deftest feature-set-cache-mirror-touch-test
+  (testing "touching a mirror row does not invalidate its router's cache entry"
+    (mt/with-temp [:model/Database router {}
+                   :model/Database mirror {:router_database_id (:id router)}]
+      (binding [driver.u/*memoize-supports?* true]
+        (try
+          (driver.u/features :h2 (t2/select-one :model/Database :id (:id router)))
+          (let [before (feature-cache-entry (:id router))]
+            (is (some? before))
+            (t2/update! :model/Database (:id mirror) {:description "touched"})
+            (driver.u/features :h2 (t2/select-one :model/Database :id (:id mirror)))
+            (is (identical? before (feature-cache-entry (:id router)))))
+          (finally
+            (driver.u/invalidate-features-cache! (:id router))
+            (driver.u/invalidate-features-cache! (:id mirror))))))))
+
+(deftest feature-set-cache-lib-metadata-test
+  (testing "a Lib metadata database map (SnakeHatingMap, no updated-at key) reads the cache without churning it"
+    (binding [driver.u/*memoize-supports?* true]
+      (try
+        (let [row    (t2/select-one :model/Database :id (mt/id))
+              _      (driver.u/features (:engine row) row)
+              before (feature-cache-entry (mt/id))
+              lib-db (lib.metadata/database (lib-be/application-database-metadata-provider (mt/id)))]
+          (is (some? before))
+          (is (true? (driver.u/supports? (:engine row) :left-join lib-db)))
+          (is (identical? before (feature-cache-entry (mt/id)))))
+        (finally
+          (driver.u/invalidate-features-cache! (mt/id)))))))
+
+(deftest feature-set-cache-lib-mirror-test
+  (testing "a Lib-shaped mirror map (kebab :router-database-id, SnakeHatingMap) reroutes to the router on a cold miss"
+    (mt/with-temp [:model/Database router {}
+                   :model/Database mirror {:router_database_id (:id router)}]
+      ;; convert outside the binding so nothing has warmed the cache yet
+      (let [lib-mirror (driver.u/ensure-lib-database (t2/select-one :model/Database :id (:id mirror)))]
+        (binding [driver.u/*memoize-supports?* true]
+          (try
+            (let [fs (driver.u/features :h2 lib-mirror)]
+              (is (nil? (feature-cache-entry (:id mirror))))
+              (let [entry (feature-cache-entry (:id router))]
+                (is (some? entry))
+                (testing "the entry was stamped from the router's row, which the miss fetched itself"
+                  (is (some? (:stamp entry)))))
+              (is (identical? fs (driver.u/features :h2 (t2/select-one :model/Database :id (:id router))))))
+            (finally
+              (driver.u/invalidate-features-cache! (:id router))
+              (driver.u/invalidate-features-cache! (:id mirror)))))))))
+
+(deftest feature-set-cache-eviction-test
+  (testing ":event/database-update evicts the database's cache entry"
+    (mt/with-temp [:model/Database db {}]
+      (binding [driver.u/*memoize-supports?* true]
+        (try
+          (driver.u/features :h2 (t2/select-one :model/Database :id (:id db)))
+          (is (some? (feature-cache-entry (:id db))))
+          (events/publish-event! :event/database-update {:object  (t2/select-one :model/Database :id (:id db))
+                                                         :user-id (mt/user->id :crowberto)})
+          (is (nil? (feature-cache-entry (:id db))))
+          (finally
+            (driver.u/invalidate-features-cache! (:id db))))))))
+
+(deftest feature-set-cache-stamp-test
+  (testing "a newer row replaces the entry; older and unstamped callers are served the newer entry"
+    (mt/with-temp [:model/Database db {}]
+      (binding [driver.u/*memoize-supports?* true]
+        (try
+          (let [answer  (atom true)
+                checks  (atom 0)
+                row     (t2/select-one :model/Database :id (:id db))
+                newer   (assoc row :updated_at (t/plus (:updated_at row) (t/minutes 1)))
+                lib-db  (lib.metadata/database (lib-be/application-database-metadata-provider (:id db)))]
+            (driver.u/invalidate-features-cache! (:id db))
+            (with-redefs [driver/features           #{:left-join}
+                          driver/database-supports? (fn [_ _ _] (swap! checks inc) @answer)]
+              (is (true? (driver.u/supports? :h2 :left-join row)))
+              (reset! answer false)
+              (testing "a newer row recomputes, and the answer flips"
+                (is (false? (driver.u/supports? :h2 :left-join newer))))
+              (let [checks-so-far @checks]
+                (testing "an older row is served the newer entry without recomputing"
+                  (is (false? (driver.u/supports? :h2 :left-join row))))
+                (testing "an unstamped caller accepts the hit"
+                  (is (false? (driver.u/supports? :h2 :left-join lib-db))))
+                (is (= checks-so-far @checks)))))
+          (finally
+            (driver.u/invalidate-features-cache! (:id db))))))))
+
+(deftest feature-set-cache-routed-answers-test
+  (testing "a routed database answers with its router's features, not its own"
+    (mt/with-temp [:model/Database router {}
+                   :model/Database routed {:router_database_id (:id router)}]
+      (binding [driver.u/*memoize-supports?* true]
+        (try
+          (with-redefs [driver/features           #{:left-join}
+                        ;; only the router supports it
+                        driver/database-supports? (fn [_ _ database] (= (:id database) (:id router)))]
+            (is (true? (driver.u/supports? :h2 :left-join (t2/select-one :model/Database :id (:id routed))))))
+          (finally
+            (driver.u/invalidate-features-cache! (:id router))
+            (driver.u/invalidate-features-cache! (:id routed))))))))
+
+(deftest feature-set-cache-unstamped-miss-test
+  (testing "a miss for an unstamped caller loads the row, so the entry gets a real stamp"
+    (mt/with-temp [:model/Database db {}]
+      (binding [driver.u/*memoize-supports?* true]
+        (try
+          (let [lib-db (lib.metadata/database (lib-be/application-database-metadata-provider (:id db)))]
+            (driver.u/invalidate-features-cache! (:id db))
+            (driver.u/supports? :h2 :left-join lib-db)
+            (is (some? (:stamp (feature-cache-entry (:id db))))))
+          (finally
+            (driver.u/invalidate-features-cache! (:id db))))))))
+
+(deftest feature-set-cache-delete-eviction-test
+  (testing ":event/database-delete evicts the database's cache entry"
+    (mt/with-temp [:model/Database db {}]
+      (binding [driver.u/*memoize-supports?* true]
+        (try
+          (driver.u/features :h2 (t2/select-one :model/Database :id (:id db)))
+          (is (some? (feature-cache-entry (:id db))))
+          (events/publish-event! :event/database-delete {:object  (t2/select-one :model/Database :id (:id db))
+                                                         :user-id (mt/user->id :crowberto)})
+          (is (nil? (feature-cache-entry (:id db))))
+          (finally
+            (driver.u/invalidate-features-cache! (:id db))))))))
+
+(deftest feature-set-cache-concurrent-miss-test
+  (testing "concurrent cold misses for one database ask the driver about each feature once"
+    (mt/with-temp [:model/Database db {}]
+      (let [n       4
+            lib-db  (driver.u/ensure-lib-database (t2/select-one :model/Database :id (:id db)))
+            calls   (atom {})
+            arrived (CountDownLatch. n)]
+        (binding [driver.u/*memoize-supports?* true]
+          (try
+            (driver.u/invalidate-features-cache! (:id db))
+            (with-redefs [driver/features           #{:left-join :right-join}
+                          driver/database-supports? (fn [_ feature _]
+                                                      (swap! calls update feature (fnil inc 0))
+                                                      (when (= feature :left-join)
+                                                        ;; hold each sweep until every caller has missed, or
+                                                        ;; until it's clear no other caller is sweeping
+                                                        (.countDown arrived)
+                                                        (.await arrived 2 TimeUnit/SECONDS))
+                                                      true)]
+              (let [callers (doall (repeatedly n #(future (driver.u/supports? :h2 :left-join lib-db))))]
+                (is (every? true? (map deref callers)))
+                (is (= {:left-join 1, :right-join 1}
+                       @calls))))
+            (finally
+              (driver.u/invalidate-features-cache! (:id db)))))))))
 
 (deftest features-batched-matches-per-feature-test
   (testing "bounding the whole scan instead of each check does not change which features come back"
