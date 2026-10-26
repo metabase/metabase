@@ -197,9 +197,9 @@ export function initializeSdkCustomVizPlugin() {
         // Regular (non-custom) displays are always allowed.
         !isCustomVizDisplay(display) || isCustomVizAllowed(display, allowlist);
 
-      // A plugin loaded under an earlier allowlist is still registered. We keep
-      // the viz unmounted (reporting loading) until it's unregistered, so it
-      // remounts with the fallback settings.
+      // A plugin could have been loaded under a previous allow list and needs
+      // to be removed. We keep the viz unmounted (reporting loading) until it's
+      // unregistered, so it remounts with the fallback settings.
       const needsUnregister =
         isCustomVizDisplay(display) && !allowed && visualizations.has(display);
       const forceUpdate = useForceUpdate();
