@@ -45,6 +45,7 @@ import {
   withRawRows,
   withTwoGroupsExample,
   withTwoStagesExample,
+  withTwoSummariesExample,
   withUnderlyingRecordsDrilled,
   withZoomBinsDrilled,
   withZoomMapDrilled,
@@ -123,6 +124,14 @@ const SYNTHETIC_SHAPE_EXAMPLES: Example[] = [
     },
     load: withTwoStagesExample,
     display: "bar",
+  },
+  {
+    get label() {
+      return t`Two summaries`;
+    },
+    load: withTwoSummariesExample,
+    display: "line",
+    hint: t`Stage 0: Total > 100, Sum of Total by Created At: Day. Stage 1: Sum of Total > 500, then Average of Sum of Total by Created At: Month. Stage 2: Average of Sum of Total > 700. Three stages, a filter on each; the second summary re-buckets the day to months, since an aggregation's output cannot be binned.`,
   },
 ];
 
