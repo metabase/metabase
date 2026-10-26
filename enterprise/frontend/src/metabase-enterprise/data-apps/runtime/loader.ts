@@ -27,6 +27,7 @@ export interface FetchedDataAppBundle {
   code: string;
   /** Origins the sandboxed bundle may fetch/XHR (from `data_app.yaml`). */
   allowedHosts: string[];
+  contentSecurityPolicy: string | null;
 }
 
 /**
@@ -35,6 +36,10 @@ export interface FetchedDataAppBundle {
  */
 // eslint-disable-next-line metabase/no-literal-metabase-strings -- HTTP response header name, not user-facing
 const ALLOWED_HOSTS_HEADER = "X-Metabase-Data-App-Allowed-Hosts";
+
+const CONTENT_SECURITY_POLICY_HEADER =
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- HTTP response header name, not user-facing
+  "X-Metabase-Data-App-Content-Security-Policy";
 
 const parseAllowedHostsHeader = (res: Response): string[] => {
   const raw = res.headers.get(ALLOWED_HOSTS_HEADER);
@@ -101,7 +106,11 @@ export const fetchDataAppBundleCode = async (
     );
   }
 
-  return { code: await res.text(), allowedHosts: parseAllowedHostsHeader(res) };
+  return {
+    code: await res.text(),
+    allowedHosts: parseAllowedHostsHeader(res),
+    contentSecurityPolicy: res.headers.get(CONTENT_SECURITY_POLICY_HEADER),
+  };
 };
 
 /**

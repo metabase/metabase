@@ -11,6 +11,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
+   [metabase.server.middleware.security :as security]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -531,3 +532,26 @@
             (doseq [twin twins]
               (is (str/includes? body (str "  twin_" (eid-part twin) ": defineQuery({"))))
             (is (str/includes? body (str "  entity_" (eid-part symbols) ": defineQuery({")))))))))
+(deftest bundle-policy-and-revalidation-test
+  (mt/test-helpers-set-global-values!
+    (mt/with-premium-features #{:data-apps}
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+        (mt/user-http-request :crowberto :post 200 "ee/apps" app-request)
+        (mt/user-http-request :crowberto :put 200 "ee/apps/demo/bundle" {:bundle "DEMOBUNDLE"})
+        (let [initial (mt/user-http-request-full-response :crowberto :get 200 "ee/apps/demo/bundle")
+              policy-header "X-Metabase-Data-App-Content-Security-Policy"
+              options {:request-options {:headers {"x-metabase-client" "data-app"}}}]
+          (testing "embedded requests receive bundle source and CSP header"
+            (let [response (mt/user-http-request-full-response :crowberto :get 200 "ee/apps/demo/bundle" options)]
+              (is (str/includes? (:body response) "DEMOBUNDLE"))
+              (is (= (get-in initial [:headers policy-header]) (get-in response [:headers policy-header])))))
+          (testing "changing allowed hosts updates CSP header"
+            (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:allowed_hosts ["https://other.example.com"]})
+            (let [response (mt/user-http-request-full-response :crowberto :get 200 "ee/apps/demo/bundle" options)]
+              (is (= (security/embedded-data-app-content-security-policy ["https://other.example.com"])
+                     (get-in response [:headers policy-header])))))
+          (testing "does not return CSP header when authorization fails or app bundle is missing"
+            (doseq [[user path status] [[:rasta "ee/apps/demo/bundle" 403]
+                                        [:crowberto "ee/apps/missing/bundle" 404]]]
+              (is (nil? (get-in (mt/user-http-request-full-response user :get status path options)
+                                [:headers policy-header]))))))))))
