@@ -84,7 +84,7 @@ const SYNTHETIC_SHAPE_EXAMPLES: Example[] = [
   },
   {
     get label() {
-      return t`Two stages, wraps`;
+      return t`1 summary`;
     },
     load: withTwoStagesExample,
     display: "bar",
