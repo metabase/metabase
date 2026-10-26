@@ -214,5 +214,21 @@ describe("DatabasesPermissionsPage with tenants", () => {
       );
       expect(modal).not.toHaveTextContent("internal users");
     });
+
+    it("applies the revoke to the tenant group once confirmed", async () => {
+      await setup({ tenantGroupViewData: DataPermissionValue.UNRESTRICTED });
+
+      const row = await getGroupRow(TENANT_GROUP.name);
+      await userEvent.click(within(row).getByText("Can view"));
+      await userEvent.click(await screen.findByText("Blocked"));
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Revoke access" }),
+      );
+
+      expect(await getGroupRow(TENANT_GROUP.name)).toHaveTextContent("Blocked");
+      expect(
+        await screen.findByText("You've made changes to permissions."),
+      ).toBeInTheDocument();
+    });
   });
 });

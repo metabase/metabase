@@ -163,4 +163,42 @@ describe("TenantCollectionPermissionsPage", () => {
     );
     expect(modal).not.toHaveTextContent("internal users");
   });
+
+  it("applies the revoke once the warning is confirmed", async () => {
+    setup();
+
+    await revokeAccess(TENANT_GROUP.name);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Revoke access" }),
+    );
+
+    const row = await screen.findByRole("row", {
+      name: `${TENANT_GROUP.name} permissions`,
+    });
+    expect(within(row).getByTestId("permissions-select")).toHaveTextContent(
+      "No access",
+    );
+    expect(
+      await screen.findByText("You've made changes to permissions."),
+    ).toBeInTheDocument();
+  });
+
+  it("leaves the permission alone when the warning is dismissed", async () => {
+    setup();
+
+    await revokeAccess(TENANT_GROUP.name);
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Cancel" }),
+    );
+
+    const row = await screen.findByRole("row", {
+      name: `${TENANT_GROUP.name} permissions`,
+    });
+    expect(within(row).getByTestId("permissions-select")).toHaveTextContent(
+      "View",
+    );
+    expect(
+      screen.queryByText("You've made changes to permissions."),
+    ).not.toBeInTheDocument();
+  });
 });
