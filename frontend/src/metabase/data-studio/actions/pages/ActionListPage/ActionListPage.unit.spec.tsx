@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
 import {
   setupActionsEndpoints,
+  setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupDatabasesEndpoints,
 } from "__support__/server-mocks";
@@ -100,7 +102,21 @@ describe("ActionListPage", () => {
 
     expect(
       screen.getAllByRole("menuitem").map((item) => item.textContent),
-    ).toEqual(["Action", "Collection"]);
+    ).toEqual(["Table", "SQL query", "Collection"]);
+  });
+
+  it("opens a table picker to create an action from a table", async () => {
+    setup({});
+    const collection = createMockCollection({ id: 1 });
+    setupCollectionByIdEndpoint({ collections: [collection] });
+    setupCollectionItemsEndpoint({ collection, collectionItems: [] });
+
+    await userEvent.click(await screen.findByRole("button", { name: /New/ }));
+    await userEvent.click(screen.getByRole("menuitem", { name: /Table/ }));
+
+    expect(
+      await screen.findByText("Pick a table for the action"),
+    ).toBeInTheDocument();
   });
 
   it("does not offer non-admins to create anything", async () => {

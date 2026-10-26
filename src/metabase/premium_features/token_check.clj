@@ -536,14 +536,17 @@
 
 (defn local-cached-token-checker
   "Wraps a token checker with short-lived in-memory TTL memoization.
-   Avoids hitting the DB on every request."
+   Avoids hitting the DB on every request. Passes through uncached until the app DB is set up, so the
+   app-db-not-ready failure is never cached past setup."
   [token-checker {:keys [local-ttl]}]
   (let [cached-check (memoize/ttl
                       (fn [token] (-check-token token-checker token))
                       :ttl/threshold (.toMillis ^java.time.Duration local-ttl))]
     (reify TokenChecker
       (-check-token [_ token]
-        (cached-check token))
+        (if (app-db/db-is-set-up?)
+          (cached-check token)
+          (-check-token token-checker token)))
       (-clear-cache! [_]
         (memoize/memo-clear! cached-check)
         (-clear-cache! token-checker))
@@ -594,8 +597,8 @@
                                   :local-cache  db-hash-local-cache})
 
     ;; inside the memoize so failure maps are memoized for local-ttl (negative cache; core.memoize
-    ;; single-flights values but not thrown exceptions), outside db-hash so they never reach the
-    ;; durable cache
+    ;; single-flights values but not thrown exceptions), except before app-DB setup, when the memo
+    ;; is skipped; outside db-hash so they never reach the durable cache
     :always
     (error-catching-token-checker)
 

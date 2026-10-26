@@ -8,9 +8,9 @@ A component that allows you to browse collections and their items.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                        |
-| :-------- | :---------------------------------------------------------- |
-| `props`   | [`CollectionBrowserProps`](./api/CollectionBrowserProps.md) |
+| Parameter | Type                                                                                 |
+| :-------- | :----------------------------------------------------------------------------------- |
+| `props`   | [`CollectionBrowserProps`](/docs/latest/embedding/sdk/api/CollectionBrowserProps.md) |
 
 <!-- [<endsnippet parameters>] -->
 

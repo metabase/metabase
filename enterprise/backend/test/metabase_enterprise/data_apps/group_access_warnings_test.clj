@@ -146,7 +146,7 @@
           (mt/with-temp-vals-in-db :model/Table (mt/id :venues) {:active false}
             (is (= [] (group-access/permission-warnings app)))))))))
 
-(deftest group-permission-warnings-ignore-unassigned-groups-test
+(deftest group-permission-warnings-ignore-groups-without-access-test
   (mt/with-premium-features #{:data-apps :advanced-permissions :sandboxes}
     (mt/with-no-data-perms-for-all-users!
       (with-app-reading! [_app [(mt/id :venues) (mt/id :orders)]]

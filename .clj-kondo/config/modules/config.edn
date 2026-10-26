@@ -180,6 +180,7 @@
    :module-exports #{analytics.interface
                      analytics.internal-stats}
    :api  #{metabase.analytics.api
+           metabase.analytics.api.metaplow-proxy
            metabase.analytics.api.proxy
            metabase.analytics.core
            metabase.analytics.event
@@ -2630,7 +2631,6 @@
            app-db
            appearance
            core.initialization-status
-           data-apps
            driver
            embedding
            lib.be
@@ -3340,6 +3340,7 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Field
+                    :model/ImplicitAction
                     :model/QueryAction
                     :model/Table
                     :model/User}}
@@ -3426,9 +3427,11 @@
                     :model/FieldValues
                     :model/Table
                     :model/TableUserSettings}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Database
+                    :model/ImplicitAction
                     :model/Measure
                     :model/Segment
                     :model/Transform
@@ -3852,7 +3855,6 @@
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Permissions
                     :model/Table}
    :model-exports #{:model/DataApp}}
 
@@ -3973,6 +3975,7 @@
                     :model/Field
                     :model/FieldUserSettings
                     :model/FieldValues
+                    :model/ImplicitAction
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/QueryAction

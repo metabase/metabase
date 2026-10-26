@@ -181,6 +181,26 @@ describe("file-paths.yaml", () => {
     ).toBe(false);
   });
 
+  // The e2e Metabase Track sink lives outside frontend/ and e2e/, so nothing else would pull it
+  // into either gate: without these entries a sink-only change runs no tests at all. The e2e gate
+  // reaches it through e2e_infra, so a sink-only change also forces a full e2e run.
+  it("covers the e2e Metabase Track sink in both the e2e and the frontend unit gates", () => {
+    expect(matches("e2e_all", "metaplow/sink.js")).toBe(true);
+    expect(matches("e2e_infra", "metaplow/sink.js")).toBe(true);
+    expect(matches("frontend_specs", "metaplow/sink.unit.spec.js")).toBe(true);
+  });
+
+  // e2e-containers.unit.spec.ts asserts over these, and it runs in the ci-scripts suite.
+  it.each([
+    ".github/workflows/e2e-test.yml",
+    ".github/workflows/embedding-sdk-component-tests.yml",
+    ".github/actions/e2e-prepare-containers/action.yml",
+    "metaplow/docker-compose.yml",
+    "deps.edn",
+  ])("runs the CI script tests for %s, which a spec asserts over", (path) => {
+    expect(matches("ci_scripts", path)).toBe(true);
+  });
+
   it("runs the ratchet check on the ratchets file", () => {
     expect(matches("project_ratchet_checks", ".clj-kondo/ratchets.edn")).toBe(
       true,

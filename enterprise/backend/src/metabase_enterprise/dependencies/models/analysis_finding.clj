@@ -49,11 +49,14 @@
   "Convert an error from lib/find-bad-refs-with-source to a row for analysis_finding_error table.
    We use `:message` for the error detail if there was an `validation-exception-error`."
   [error :- ::lib.schema.validate/error-with-source]
-  {:error-type          (:type error)
-   ;; error-detail cannot be longer than 254
-   :error-detail        (some-> (or (:name error) (:message error)) (u/truncate 254))
-   :source-entity-type  (:source-entity-type error)
-   :source-entity-id    (:source-entity-id error)})
+  ;; source_entity_id is an integer column; a non-integer id would fail the insert and roll back the whole analysis.
+  ;; `mu/defn` doesn't validate input in prod, so one can get here.
+  (let [source? (pos-int? (:source-entity-id error))]
+    {:error-type          (:type error)
+     ;; error-detail cannot be longer than 254
+     :error-detail        (some-> (or (:name error) (:message error)) (u/truncate 254))
+     :source-entity-type  (when source? (:source-entity-type error))
+     :source-entity-id    (when source? (:source-entity-id error))}))
 
 (def ^:private FindingDetails
   "The errors an analysis found, as `lib/find-bad-refs-with-source` returns them."

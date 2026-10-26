@@ -150,6 +150,13 @@
   [table-id :- ::lib.schema.id/table]
   (t2/delete! :model/Field :table_id table-id))
 
+(mu/defn delete-implicit-actions-for-table!
+  "Delete the implicit Actions that write to the Table with `table-id`, returning the number deleted."
+  [table-id :- ::lib.schema.id/table]
+  (if-let [action-ids (not-empty (t2/select-fn-set :action_id :model/ImplicitAction :table_id table-id))]
+    (t2/delete! :model/Action :id [:in action-ids])
+    0))
+
 (mu/defn user-renamed-field-names :- [:set :string]
   "The lower-cased names, among `names`, of the Fields of the Table with `table-id` whose display name a user set.
   Uploads use it to leave those Fields alone when appending re-derives display names from the CSV header."

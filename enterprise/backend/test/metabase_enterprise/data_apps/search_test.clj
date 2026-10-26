@@ -52,6 +52,11 @@
         search/model-set
         (contains? "data-app"))))
 
+(defn- grant-app-access!
+  "Grant the group with `group-id` read access to the resource collection of the data app with `app-id`."
+  [group-id app-id]
+  (perms/grant-collection-read-permissions! group-id (t2/select-one-fn :resource_collection_id :model/DataApp :id app-id)))
+
 (defn- with-each-engine
   "Run `check!` with the index engine when the app DB supports it, then with the legacy engine."
   [check!]
@@ -62,23 +67,23 @@
   (mt/with-premium-features #{:data-apps}
     (mt/with-temp [:model/DataApp {slug-match-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"
                                                        :bundle_path "sightings.js"}
-                   :model/DataApp {assigned-id :id} {:name "plovers" :display_name "Sandpiper counts"
-                                                     :bundle_path "counts.js"}
+                   :model/DataApp {granted-id :id} {:name "plovers" :display_name "Sandpiper counts"
+                                                    :bundle_path "counts.js"}
                    :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
-                   :model/DataAppGroupAssignment _ {:data_app_id assigned-id :permission_group_id group-id}]
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+      (grant-app-access! group-id granted-id)
       (with-each-engine
         (fn []
           (testing "an admin finds every app, by its slug or its display name"
-            (is (= #{slug-match-id assigned-id}
+            (is (= #{slug-match-id granted-id}
                    (set (keys (found-data-apps :crowberto :models "data-app"))))))
-          (testing "another user finds the apps assigned to one of their groups, with display name and slug"
-            (is (= {assigned-id {:name "Sandpiper counts" :data_app_slug "plovers"}}
+          (testing "another user finds the apps whose collection one of their groups can read, with display name and slug"
+            (is (= {granted-id {:name "Sandpiper counts" :data_app_slug "plovers"}}
                    (found-data-apps :rasta :models "data-app"))))
-          (testing "a user in no assigned group finds none"
+          (testing "a user in no group with access finds none"
             (is (= {} (found-data-apps :lucky :models "data-app"))))
           (testing "a search that names no models, as global search does, finds them too"
-            (is (= #{slug-match-id assigned-id}
+            (is (= #{slug-match-id granted-id}
                    (set (keys (found-data-apps :crowberto)))))))))))
 
 (deftest search-finds-disabled-and-outdated-data-apps-the-user-can-read-test
@@ -90,10 +95,10 @@
                    :model/DataApp {disabled-id :id} {:name "sandpiper-sanderling" :display_name "Sanderling"
                                                      :bundle_path "sanderling.js" :version 2 :enabled false}
                    :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
-                   :model/DataAppGroupAssignment _ {:data_app_id current-id :permission_group_id group-id}
-                   :model/DataAppGroupAssignment _ {:data_app_id outdated-id :permission_group_id group-id}
-                   :model/DataAppGroupAssignment _ {:data_app_id disabled-id :permission_group_id group-id}]
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+      (grant-app-access! group-id current-id)
+      (grant-app-access! group-id outdated-id)
+      (grant-app-access! group-id disabled-id)
       (with-redefs [data-apps.config/supported-app-version 2]
         (with-each-engine
           (fn []
@@ -114,26 +119,21 @@
                                                       :bundle_path "counts.js"}
                      :model/DataApp {disabled-id :id} {:name "sandpiper-drafts" :display_name "Drafts"
                                                        :enabled false :bundle_path "drafts.js"}
-                     :model/DataApp {unassigned-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"
-                                                         :bundle_path "sightings.js"}
+                     :model/DataApp {ungranted-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"
+                                                        :bundle_path "sightings.js"}
                      :model/PermissionsGroup {group-id :id} {}
-                     :model/PermissionsGroup {tenant-group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
-                     :model/DataAppGroupAssignment _ {:data_app_id enabled-id :permission_group_id group-id}
-                     :model/DataAppGroupAssignment _ {:data_app_id disabled-id :permission_group_id group-id}]
-        ;; Assigned before the group becomes a tenant group.
-        (t2/insert! :model/DataAppGroupAssignment {:data_app_id enabled-id :permission_group_id tenant-group-id})
-        (t2/update! :model/PermissionsGroup tenant-group-id {:is_tenant_group true})
-        (perms/add-user-to-group! (:id tenant-user) tenant-group-id)
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (grant-app-access! group-id enabled-id)
+        (grant-app-access! group-id disabled-id)
         (with-each-engine
           (fn []
             (testing "an admin finds every app"
-              (is (= #{enabled-id disabled-id unassigned-id} (set (keys (found-data-apps :crowberto))))))
-            (testing "another user finds only the enabled apps assigned to one of their groups"
+              (is (= #{enabled-id disabled-id ungranted-id} (set (keys (found-data-apps :crowberto))))))
+            (testing "another user finds only the enabled apps whose collection one of their groups can read"
               (is (= #{enabled-id} (set (keys (found-data-apps :rasta))))))
-            (testing "a user in no assigned group finds none"
+            (testing "a user in no group with access finds none"
               (is (= {} (found-data-apps :lucky))))
-            (testing "a tenant user finds none, even through an assigned tenant group"
+            (testing "a tenant user finds none"
               (is (= {} (found-data-apps (:id tenant-user)))))))))))
 
 (deftest type-filter-offers-data-apps-only-to-users-who-can-read-one-test
@@ -144,16 +144,16 @@
                                                      :enabled false :bundle_path "drafts.js"}
                    :model/PermissionsGroup {other-group-id :id} {}
                    :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
-                   :model/DataAppGroupAssignment _ {:data_app_id enabled-id :permission_group_id other-group-id}
-                   :model/DataAppGroupAssignment _ {:data_app_id disabled-id :permission_group_id group-id}]
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+      (grant-app-access! other-group-id enabled-id)
+      (grant-app-access! group-id disabled-id)
       (with-each-engine
         (fn []
           (testing "an admin is offered data apps"
             (is (offers-data-app-type? :crowberto)))
-          (testing "a user in no assigned group is not offered data apps"
+          (testing "a user in no group with access is not offered data apps"
             (is (not (offers-data-app-type? :lucky))))
-          (testing "a user whose groups are assigned only a disabled app is not offered data apps"
+          (testing "a user whose groups can read only a disabled app's collection is not offered data apps"
             (is (not (offers-data-app-type? :rasta)))))))))
 
 (deftest type-filter-offers-no-data-apps-without-the-feature-test
@@ -161,8 +161,8 @@
     (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"
                                                 :bundle_path "s.js"}
                    :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
-                   :model/DataAppGroupAssignment _ {:data_app_id app-id :permission_group_id group-id}]
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+      (grant-app-access! group-id app-id)
       (with-each-engine
         (fn []
           (doseq [user [:crowberto :rasta :lucky]]
@@ -181,8 +181,8 @@
     (mt/with-temp [:model/DataApp {app-id :id} {:name "sandpiper-sightings" :display_name "Shorebirds"
                                                 :bundle_path "s.js"}
                    :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
-                   :model/DataAppGroupAssignment _ {:data_app_id app-id :permission_group_id group-id}]
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+      (grant-app-access! group-id app-id)
       (doseq [[app-db with-app-db] [["this app DB" (fn [thunk] (thunk))]
                                     ["an app DB without the search index" without-app-db-index]]]
         (with-app-db
@@ -190,9 +190,9 @@
             (testing app-db
               (testing "an admin is offered data apps"
                 (is (semantic-engine-offers-data-app-type? :crowberto)))
-              (testing "a user in an assigned group is offered data apps"
+              (testing "a user in a group with access is offered data apps"
                 (is (semantic-engine-offers-data-app-type? :rasta)))
-              (testing "a user in no assigned group is not offered data apps"
+              (testing "a user in no group with access is not offered data apps"
                 (is (not (semantic-engine-offers-data-app-type? :lucky)))))))))))
 
 (deftest search-by-ids-finds-the-requested-data-app-test
@@ -202,9 +202,9 @@
                    :model/DataApp {other-id :id} {:name "plovers" :display_name "Sandpiper counts"
                                                   :bundle_path "counts.js"}
                    :model/PermissionsGroup {group-id :id} {}
-                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
-                   :model/DataAppGroupAssignment _ {:data_app_id app-id :permission_group_id group-id}
-                   :model/DataAppGroupAssignment _ {:data_app_id other-id :permission_group_id group-id}]
+                   :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+      (grant-app-access! group-id app-id)
+      (grant-app-access! group-id other-id)
       (with-each-engine
         (fn []
           (doseq [user [:crowberto :rasta]]
