@@ -268,7 +268,7 @@
                   (setting/set-value-of-type! :boolean :google-auth-enabled new-value))))
 
 (defsetting oidc-allowed-networks
-  (deferred-tru "What networks are OIDC requests allowed to? Possible values: ''allow-all'' (default), ''allow-private'', or ''external-only''.")
+  "What networks are OIDC requests allowed to? Possible values: 'allow-all' (default), 'allow-private', or 'external-only'."
   :type :keyword
   :visibility :internal
   :default :allow-all

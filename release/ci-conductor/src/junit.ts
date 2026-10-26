@@ -14,7 +14,7 @@ import type { NormalizedTest } from "./contract.ts";
 /**
  * List files under `dir` (recursively), keeping those `select` returns, as
  * paths joined to `dir`. Each adapter passes the topical part — which entries
- * are *its* JUnit files (hawk's `*_test.xml`, jest-junit's configured output
+ * are *its* JUnit files (hawk's `*.xml`, jest-junit's configured output
  * name, ...). Returns [] on any IO error — a missing artifact directory is a
  * no-op, not a failure (reporting is best-effort).
  */

@@ -20,7 +20,10 @@ import MetabaseSettings from "metabase/utils/settings";
 import type { User } from "metabase-types/api";
 
 import { clearTemporaryPassword, storeTemporaryPassword } from "../people";
-import { getUserTemporaryPassword } from "../selectors";
+import {
+  getIsUserSsoSourceEnabled,
+  getUserTemporaryPassword,
+} from "../selectors";
 
 interface UserPasswordResetModalInnerProps {
   clearTemporaryPassword: () => void;
@@ -142,6 +145,27 @@ const UserPasswordResetModalInner = ({
   );
 };
 
+interface SsoUserPasswordResetModalProps {
+  user: User;
+  onClose: () => void;
+}
+
+const SsoUserPasswordResetModal = ({
+  user,
+  onClose,
+}: SsoUserPasswordResetModalProps) => (
+  <ConfirmModal
+    opened
+    title={t`Can't reset ${user.common_name}'s password`}
+    onConfirm={onClose}
+    confirmButtonProps={{ color: "brand", variant: "filled" }}
+    confirmButtonText={t`Done`}
+    closeButtonText={null}
+    onClose={onClose}
+    message={t`This user signs in with single sign-on. Manage their access through your identity provider.`}
+  />
+);
+
 interface UserPasswordResetModalProps {
   params: { userId?: string };
   onClose: () => void;
@@ -156,10 +180,16 @@ export const UserPasswordResetModal = (props: UserPasswordResetModalProps) => {
   const temporaryPassword = useSelector((state) =>
     getUserTemporaryPassword(state, { userId }),
   );
+  const isUserSsoSourceEnabled = useSelector(
+    (state) => user != null && getIsUserSsoSourceEnabled(state, user),
+  );
 
   return (
     <LoadingAndErrorWrapper loading={isLoading} error={error}>
-      {user && (
+      {user && isUserSsoSourceEnabled && (
+        <SsoUserPasswordResetModal user={user} onClose={props.onClose} />
+      )}
+      {user && !isUserSsoSourceEnabled && (
         <UserPasswordResetModalInner
           {...props}
           clearTemporaryPassword={() =>

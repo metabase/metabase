@@ -93,10 +93,12 @@
                           e)))))))
 
 (mu/defn- implicit-action-table
-  [card-id :- ::lib.schema.id/card]
-  (let [query              (actions.db/card-query card-id)
-        {:keys [table-id]} (query/query->database-and-table-ids query)]
-    (t2/hydrate (actions.db/table table-id) :fields)))
+  "The Table, with its Fields, that the implicit `action` writes to: its model's source Table when it has a model."
+  [{model-id :model_id, table-id :table_id} :- ::actions.schema/action]
+  (let [table-id (if model-id
+                   (:table-id (query/query->database-and-table-ids (actions.db/card-query model-id)))
+                   table-id)]
+    (first (when table-id (actions.db/tables-with-fields [table-id])))))
 
 (defn- execute-custom-action! [action request-parameters opts]
   (actions/check-actions-enabled action)
@@ -144,13 +146,16 @@
 (mu/defn- build-implicit-query :- [:map
                                    [:query          ::mbql.s/Query]
                                    [:row-parameters ::actions.args/row]
+                                   [:pk-column :string]
                                    [:prefetch-parameters {:optional true} [:maybe ::parameters.schema/parameters]]]
-  [{:keys [model_id parameters] :as _action} :- ::actions.schema/action
+  [{:keys [parameters] :as action} :- ::actions.schema/action
    implicit-action                           :- ImplicitActionKind
    request-parameters                        :- RequestParameters]
   (let [{database-id :db_id
-         table-id    :id :as table} (implicit-action-table model_id)
-        table-fields             (:fields table)
+         table-id    :id :as table} (implicit-action-table action)
+        table-fields             (if (:model_id action)
+                                   (:fields table)
+                                   (action/table-action-fields table))
         pk-fields                (filterv #(isa? (:semantic_type %) :type/PK) table-fields)
         slug->field-name         (->> table-fields
                                       (map (juxt (comp u/slugify :name) :name))
@@ -181,18 +186,16 @@
     (cond-> {:query {:database database-id,
                      :type :query,
                      :query {:source-table table-id}}
-             :row-parameters row-parameters}
+             :row-parameters row-parameters
+             :pk-column      pk-field-name}
 
       requires-pk?
       (assoc-in [:query :query :filter]
                 [:= [:field (:id pk-field) nil] (get simple-parameters pk-field-name)])
 
       requires-pk?
-      (assoc :prefetch-parameters [{;; parameter ID here is not really important but let's generate something
-                                    ;; consistent rather than random to make this easier to test
-                                    :id     "metabase.actions.execution/prefetch-parameters-pk"
+      (assoc :prefetch-parameters [{:id     "metabase.actions.execution/prefetch-parameters-pk"
                                     :target [:dimension [:field (:id pk-field) nil]]
-                                    ;; :type/UUID derives from :type/Text, so UUIDs are handled as strings
                                     :type   (if (isa? (:base_type pk-field) :type/Number)
                                               :number/=
                                               :string/=)
@@ -202,11 +205,17 @@
   (let [k (keyword (:kind action-instance))]
     (legacy->current k k)))
 
+(defn- with-parameter-columns-only
+  "`result` of the implicit `action` with its `:created-row` limited to the primary key column `pk-column` and the
+  columns the action has parameters for, as its form and prefill are, which leaves out the sensitive columns."
+  [result {:keys [parameters]} pk-column]
+  (let [columns (into #{(u/slugify pk-column)} (map :id) parameters)]
+    (m/update-existing result :created-row #(m/filter-keys (comp columns u/slugify name) %))))
+
 (defn- execute-implicit-action!
-  [action request-parameters opts]
-  (let [model-id        (:model_id action)
-        implicit-action (parse-implicit-action action)
-        {:keys [query row-parameters]} (build-implicit-query action implicit-action request-parameters)
+  [{model-id :model_id, :as action} request-parameters opts]
+  (let [implicit-action (parse-implicit-action action)
+        {:keys [query row-parameters pk-column]} (build-implicit-query action implicit-action request-parameters)
         _               (api/check (or (= implicit-action :model.row/delete) (seq row-parameters))
                                    400
                                    (tru "Implicit parameters must be provided."))
@@ -217,11 +226,15 @@
                           (= implicit-action :model.row/update)
                           (assoc :update-row row-parameters))]
     (binding [qp.perms/*card-id* model-id]
-      (actions/perform-action! implicit-action arg-map {:scope        {:model-id model-id}
-                                                        :policy       :model-action
-                                                        :action-id    (:id action)
-                                                        :dashboard-id (:dashboard-id opts)
-                                                        :context      (:context opts :action-execute)}))))
+      (-> (actions/perform-action! implicit-action arg-map {:scope        (if model-id
+                                                                            {:model-id model-id}
+                                                                            {:table-id (:table_id action)})
+                                                            :policy       :model-action
+                                                            :action-id    (:id action)
+                                                            :dashboard-id (:dashboard-id opts)
+                                                            :context      (:context opts :action-execute)
+                                                            :check-access #(check-action-read-perms action)})
+          (with-parameter-columns-only action pk-column)))))
 
 (mu/defn execute-action!
   "Execute the given action with the given parameters of shape `{<parameter-id> <value>}."
@@ -268,7 +281,7 @@
     request-parameters :- RequestParameters
     opts               :- [:maybe ExecuteActionOpts]]
    (let [dashcard (api/check-404 (actions.db/dashcard-in-dashboard dashcard-id dashboard-id))
-         action (api/check-404 (action/select-action :id (:action_id dashcard)))]
+         action (api/check-404 (action/select-action :id (:action_id dashcard) :archived false))]
      (analytics/track-event! :snowplow/action
                              {:event     :action-executed
                               :source    :dashboard
@@ -281,17 +294,18 @@
   (api/check (contains? #{:model.row/update :model.row/delete} (parse-implicit-action action))
              400
              (tru "Values can only be fetched for actions that require a Primary Key."))
+  (check-action-read-perms action)
   (let [implicit-action (parse-implicit-action action)
-        {:keys [prefetch-parameters]} (build-implicit-query action implicit-action request-parameters)
+        {:keys [query prefetch-parameters]} (build-implicit-query action implicit-action request-parameters)
         info {:executed-by api/*current-user-id*
               :context     :action
               :action-id   (:id action)}
-        card (actions.db/card (:model_id action))
-        ;; prefilling a form with day old data would be bad
         result (model-persistence/with-persisted-substituion-disabled
                  (qp/process-query
                   (qp/userland-query
-                   (qp.card/query-for-card card prefetch-parameters nil nil)
+                   (if-let [model-id (:model_id action)]
+                     (qp.card/query-for-card (actions.db/card model-id) prefetch-parameters nil nil)
+                     query)
                    info)))
         ;; only expose values for fields that are not hidden
         hidden-param-ids (keep #(when (:hidden %) (:id %))

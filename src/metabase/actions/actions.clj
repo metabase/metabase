@@ -282,7 +282,8 @@
    [:user-id          {:optional true} [:maybe ms/PositiveInt]]
    [:action-id        {:optional true} [:maybe ms/PositiveInt]]
    [:dashboard-id     {:optional true} [:maybe ms/PositiveInt]]
-   [:context          {:optional true} [:maybe [:enum :action-execute :public-action-execute]]]])
+   [:context          {:optional true} [:maybe [:enum :action-execute :public-action-execute]]]
+   [:check-access     {:optional true} [:maybe [:=> [:cat] :any]]]])
 
 ;; TODO rename this to just perform-action! and rename the legacy entry point to clearly deprecate it.
 (mu/defn perform-action-v2!
@@ -294,7 +295,7 @@
    arg-map-or-maps :- [:or ::actions.args/any-arg-map [:sequential ::actions.args/any-arg-map]]
    ;; `action-id`, `dashboard-id` and `audit-context` are attribution for the audit row; the scope maps are closed
    ;; schemas, so they ride along as kwargs instead.
-   & {:keys [policy existing-context user-id action-id dashboard-id]
+   & {:keys [policy existing-context user-id action-id dashboard-id check-access]
       audit-context :context}
    :- [:maybe PerformActionOpts]]
   (when (and existing-context user-id)
@@ -366,6 +367,7 @@
                                            :scope    (actions.scope/normalize-scope scope)}
                             :inputs       arg-maps}
                            (fn [{:keys [outputs]}] {:result_rows (count outputs)})
+                           (some-> check-access (apply []))
                            (check-permissions policy arg-maps)
                            (if-not driver
                              (perform-action-internal! action-kw context arg-maps)

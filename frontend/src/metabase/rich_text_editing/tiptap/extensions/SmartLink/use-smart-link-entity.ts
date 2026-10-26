@@ -117,6 +117,7 @@ const getLibraryEntity = (
           "user",
           "indexed-entity",
           "exploration",
+          "data-app",
           null,
         ),
       },

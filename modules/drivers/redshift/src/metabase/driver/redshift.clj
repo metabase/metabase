@@ -800,15 +800,16 @@
         user-parameters))
 
 (defmethod driver-api/query->remark :redshift
-  [_ {{:keys [executed-by card-id dashboard-id]} :info, :as query}]
-  (str "/* partner: \"metabase\", "
-       (json/encode {:dashboard_id        dashboard-id
-                     :chart_id            card-id
-                     :optional_user_id    executed-by
-                     :optional_account_id (driver-api/site-uuid)
-                     :filter_values       (field->parameter-value query)})
-       " */ "
-       (driver-api/default-query->remark query)))
+  [_ query]
+  (let [{:keys [user-id card-id dashboard-id account-id]} (driver-api/query->remark-data query)]
+    (str "/* partner: \"metabase\", "
+         (json/encode {:dashboard_id        dashboard-id
+                       :chart_id            card-id
+                       :optional_user_id    user-id
+                       :optional_account_id account-id
+                       :filter_values       (field->parameter-value query)})
+         " */ "
+         (driver-api/default-query->remark query))))
 
 (defmethod sql-jdbc.execute/set-parameter [:redshift java.time.ZonedDateTime]
   [driver ps i t]

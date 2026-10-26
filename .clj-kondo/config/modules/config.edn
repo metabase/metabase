@@ -181,6 +181,7 @@
    :module-exports #{analytics.interface
                      analytics.internal-stats}
    :api  #{metabase.analytics.api
+           metabase.analytics.api.metaplow-proxy
            metabase.analytics.api.proxy
            metabase.analytics.core
            metabase.analytics.event
@@ -2224,6 +2225,7 @@
                     :model/NativeQuerySnippet
                     :model/Notification
                     :model/Revision
+                    :model/Table
                     :model/Timeline
                     :model/User}}
 
@@ -2538,6 +2540,7 @@
            appearance
            audit-app
            collections
+           data-apps
            events
            health-inspector
            lib
@@ -2560,6 +2563,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DataApp
                     :model/Database
                     :model/Table
                     :model/User}}
@@ -2634,7 +2638,6 @@
            app-db
            appearance
            core.initialization-status
-           data-apps
            driver
            embedding
            lib.be
@@ -2836,7 +2839,7 @@
   {:team "Cloud"
    :api  #{metabase.store-api.core
            metabase.store-api.init}
-   :uses #{settings util util.config}}
+   :uses #{settings util.config}}
 
   sync
   {:team "Graphy"
@@ -3346,6 +3349,7 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Field
+                    :model/ImplicitAction
                     :model/QueryAction
                     :model/Table
                     :model/User}}
@@ -3432,9 +3436,11 @@
                     :model/FieldValues
                     :model/Table
                     :model/TableUserSettings}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Database
+                    :model/ImplicitAction
                     :model/Measure
                     :model/Segment
                     :model/Transform
@@ -3842,7 +3848,7 @@
 
   enterprise/data-apps
   {:team "Embedding"
-   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.core metabase-enterprise.data-apps.init}
+   :api #{metabase-enterprise.data-apps.api metabase-enterprise.data-apps.init}
    :uses #{actions
            api
            api-scope
@@ -3856,8 +3862,8 @@
            premium-features
            remote-sync
            request
+           search
            settings
-           users
            util
            util.graph
            warehouse-schema-overlay
@@ -3866,8 +3872,6 @@
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Field
-                    :model/Permissions
                     :model/Table}
    :model-exports #{:model/DataApp}}
 
@@ -3920,6 +3924,7 @@
            app-db
            batch-processing
            collections
+           data-apps
            database-routing
            documents
            driver
@@ -3955,12 +3960,14 @@
                     :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/DashboardTab
+                    :model/DataApp
                     :model/Database
                     :model/Dimension
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
                     :model/FieldValues
+                    :model/ImplicitAction
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/QueryAction
@@ -4311,7 +4318,6 @@
            task.history
            util
            warehouse-schema-overlay
-           enterprise/data-apps
            enterprise/serialization
            enterprise/transforms.python}
    :model-exports #{:model/RemoteSyncTask}
@@ -4588,6 +4594,8 @@
            lib.schema
            models
            premium-features
+           query-processor
+           request
            revisions
            run-tracking
            sql-tools

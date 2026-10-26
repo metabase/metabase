@@ -8,7 +8,11 @@ import {
   loadEnv,
 } from "vite";
 
-import { dataAppBuildPlugins, dataAppLibBuild } from "./config/build-config";
+import {
+  dataAppBuildPlugins,
+  dataAppLibBuild,
+  dataAppOutDir,
+} from "./config/build-config";
 import { getDataAppDefine } from "./config/define";
 import { buildDevCsp } from "./config/dev-connect-src";
 import { dataAppEnvPrefix } from "./config/env-prefix";
@@ -31,14 +35,14 @@ function dataAppVitePlugin(): PluginOption[] {
       name: "metabase-data-app",
       // Merged over the user's config, so these win — the bundle Metabase loads
       // always matches what dev runs.
-      config: (_config: UserConfig, env: ConfigEnv): UserConfig => ({
+      config: (config: UserConfig, env: ConfigEnv): UserConfig => ({
         define: getDataAppDefine(env.mode),
         envDir,
         envPrefix: dataAppEnvPrefix(env.command),
         // The dev plugin serves a synthetic index.html; there's no file on disk.
         appType: "custom",
         build: {
-          outDir: "dist",
+          outDir: dataAppOutDir(config),
           emptyOutDir: true,
           ...dataAppLibBuild("index.js"),
         },

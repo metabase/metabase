@@ -4,7 +4,9 @@
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
    [metabase.transforms.interface :as transforms.i]
-   [metabase.transforms.query-impl :as transforms.query-impl]))
+   ;; load the `transforms.i/execute!` `:query` method
+   [metabase.transforms.query-impl :as transforms.query-impl]
+   [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
 
@@ -53,7 +55,13 @@
                                   (when on-start
                                     (on-start run-id)))})]
      (try
-       (transforms.i/execute! (resolve-target transform) opts)
+       ;; the executors log their own failures at ERROR; this one happens before any executor runs
+       (transforms.i/execute! (try (resolve-target transform)
+                                   (catch Throwable t
+                                     (log/errorf "Could not resolve the target of transform %s: %s"
+                                                 (pr-str (:id transform)) (ex-message t))
+                                     (throw t)))
+                              opts)
        (catch Throwable t
          ;; so a caller awaiting the start isn't left hanging on a pre-start failure;
          ;; a no-op when the run had already started and the promise was delivered

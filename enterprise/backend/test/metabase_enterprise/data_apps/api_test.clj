@@ -6,6 +6,7 @@
    [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase-enterprise.data-apps.group-access :as group-access]
    [metabase-enterprise.data-apps.resources :as data-app.resources]
+   [metabase-enterprise.data-apps.test-util :as data-apps.tu]
    [metabase.actions.core :as actions]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -34,7 +35,7 @@
 
 ;;; ---------------------------------------------- Permissions ----------------------------------------------
 
-(deftest assigned-users-can-load-bundles-but-cannot-manage-apps-test
+(deftest users-with-access-can-load-bundles-but-cannot-manage-apps-test
   ;; global mode so the `:data-apps` premium feature is visible to the real-HTTP
   ;; `user-real-request` calls below (which run on Jetty threads that don't inherit
   ;; a thread-local `binding`).
@@ -43,10 +44,8 @@
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
         (let [app (t2/select-one :model/DataApp :name "demo")
-              {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)
               permission_group_id (:id (t2/insert-returning-instance! :model/PermissionsGroup {:name "Finches"}))]
-          (testing "collection access alone does not assign an app"
-            (perms/grant-collection-read-permissions! (perms/all-users-group) resource_collection_id)
+          (testing "a user who cannot read the app's collection cannot open the app"
             (mt/user-http-request :rasta :get 403 "ee/apps/demo"))
           (testing "a member can open a data app"
             (group-access/add-groups! app [permission_group_id])
@@ -66,7 +65,7 @@
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
         (create-app!)
         (let [app (t2/select-one :model/DataApp :name "demo")
-              {:keys [resource_collection_id]} (data-app.resources/ensure-resources! app)]
+              {:keys [resource_collection_id]} app]
           (is (not (some #(= resource_collection_id (:id %))
                          (mt/user-http-request :rasta :get 200 "collection")))))
         (testing "a superuser can list, read metadata, and serve the bundle"
@@ -116,7 +115,7 @@
   (mt/with-premium-features #{}
     (mt/user-http-request :crowberto :post 402 "ee/apps" {:name "demo"})))
 
-(deftest assigned-group-reaches-only-copied-actions-test
+(deftest group-with-access-reaches-only-copied-actions-test
   (testing "an action is reachable exactly when it lives in the data app collection"
     (mt/with-premium-features #{:data-apps}
       (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
@@ -138,7 +137,7 @@
                                :dataset_query (lib/native-query (mt/metadata-provider) "UPDATE venues SET name = 'x'")}
                     source-id (actions/insert! (assoc action :collection_id source-collection-id))
                     copied-id (actions/insert! (assoc action :collection_id resource_collection_id))]
-                (testing "the assigned group reads the action copied into the app collection"
+                (testing "the group with access reads the action copied into the app collection"
                   (is (=? {:id copied-id}
                           (mt/user-http-request :rasta :get 200 (str "action/" copied-id)))))
                 (testing "the same group cannot read the source action it was copied from"
@@ -147,15 +146,6 @@
                 (testing "a superuser still reads both"
                   (is (=? {:id source-id}
                           (mt/user-http-request :crowberto :get 200 (str "action/" source-id)))))))))))))
-
-(deftest list-available-apps-test
-  (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (t2/insert! :model/DataApp :name "ready" :display_name "Ready" :bundle_path "data_apps/ready/index.js")
-      (t2/insert! :model/DataApp :name "disabled" :display_name "Disabled" :bundle_path "data_apps/disabled/index.js"
-                  :enabled false)
-      (is (=? [{:name "ready" :display_name "Ready"}]
-              (mt/user-http-request :crowberto :get 200 "ee/apps?available=true"))))))
 
 (deftest outdated-apps-are-hidden-from-users-and-badged-for-admins-test
   (mt/test-helpers-set-global-values!
@@ -169,20 +159,20 @@
           (perms/add-user-to-group! (mt/user->id :rasta) group-id)
           (doseq [slug ["old" "current"]
                   :let [app (t2/select-one :model/DataApp :name slug)]]
-            (data-app.resources/ensure-resources! app)
             (group-access/add-groups! app [group-id])))
         (with-redefs [data-app.config/supported-app-version 2]
           (testing "a regular user is never told about the outdated app in a list"
-            (doseq [url ["ee/apps" "ee/apps?available=true"]]
-              (is (= [{:name "current" :display_name "Current"}]
-                     (mt/user-http-request :rasta :get 200 url)))))
+            (is (= [{:id (t2/select-one-pk :model/DataApp :name "current") :name "current" :display_name "Current"
+                     :enabled true :outdated false}]
+                   (mt/user-http-request :rasta :get 200 "ee/apps"))))
           (testing "for a regular user, opening an outdated app is a 409 that says what to do"
             (doseq [url ["ee/apps/old" "ee/apps/old/bundle"]]
               (is (=? {:error-code "data-app-outdated"
                        :message    #"This app was built for version 1 of data apps.*"}
                       (mt/user-http-request :rasta :get 409 url)))))
           (testing "the current app still opens"
-            (is (= {:name "current" :display_name "Current"}
+            (is (= {:id (t2/select-one-pk :model/DataApp :name "current") :name "current" :display_name "Current"
+                    :enabled true :outdated false}
                    (mt/user-http-request :rasta :get 200 "ee/apps/current")))
             (is (str/includes?
                  (str (mt/user-real-request :crowberto :get 200 "ee/apps/current/bundle"))
@@ -191,9 +181,6 @@
             (is (=? [{:name "current" :version 2 :outdated false}
                      {:name "old" :version 1 :outdated true}]
                     (mt/user-http-request :crowberto :get 200 "ee/apps")))
-            (is (=? [{:name "current"}]
-                    (mt/user-http-request :crowberto :get 200 "ee/apps?available=true"))
-                "but the navbar's available list leaves it out for admins too")
             (is (=? {:name "old" :version 1 :outdated true}
                     (mt/user-http-request :crowberto :get 200 "ee/apps/old"))))
           (testing "nobody gets an outdated bundle"
@@ -303,11 +290,10 @@
       (mt/with-temp [:model/PermissionsGroup {group-id :id} {}
                      :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta), :group_id group-id}]
         (let [app (t2/select-one :model/DataApp :name "demo")]
-          (data-app.resources/ensure-resources! app)
           (group-access/add-groups! app [group-id]))
-        (testing "an assigned user can open the app"
+        (testing "a user with access can open the app"
           (mt/user-http-request :rasta :get 200 "ee/apps/demo"))
-        (testing "an assigned user cannot delete the app"
+        (testing "a user with access cannot delete the app"
           (is (= "You don't have permissions to do that."
                  (mt/user-http-request :rasta :delete 403 "ee/apps/demo")))
           (is (t2/exists? :model/DataApp :name "demo")))))))
@@ -316,21 +302,23 @@
   (mt/with-premium-features #{:data-apps}
     (mt/user-http-request :crowberto :delete 404 "ee/apps/missing")))
 
-(deftest delete-endpoint-preserves-assigned-groups-test
+(deftest delete-endpoint-preserves-groups-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
       (create-app!)
       (mt/with-temp [:model/PermissionsGroup group {}]
         (let [app (t2/select-one :model/DataApp :name "demo")
-              {collection-id :resource_collection_id} (data-app.resources/ensure-resources! app)]
-          (mt/with-temp [:model/Card {card-id :id} {:collection_id collection-id}]
-            (group-access/add-groups! app [(:id group)])
-            (mt/user-http-request :crowberto :delete 204 "ee/apps/demo")
-            (is (not (t2/exists? :model/DataApp :id (:id app))))
-            (is (not (t2/exists? :model/Collection :id collection-id)))
-            (is (not (t2/exists? :model/Card :id card-id)))
-            (is (empty? (t2/select :model/DataAppGroupAssignment :data_app_id (:id app))))
-            (is (t2/exists? :model/PermissionsGroup :id (:id group)))))))))
+              {collection-id :resource_collection_id} app]
+          (data-apps.tu/with-published-tables! [(mt/id :venues)]
+            (mt/with-temp [:model/Card {card-id :id} {:collection_id collection-id :dataset_query (data-apps.tu/venues-query)}]
+              (group-access/add-groups! app [(:id group)])
+              (mt/user-http-request :crowberto :delete 204 "ee/apps/demo")
+              (is (not (t2/exists? :model/DataApp :id (:id app))))
+              (is (not (t2/exists? :model/Collection :id collection-id)))
+              (is (not (t2/exists? :model/Card :id card-id)))
+              (is (not (t2/exists? :model/Permissions :group_id (:id group)
+                                   :object (perms/collection-read-path collection-id))))
+              (is (t2/exists? :model/PermissionsGroup :id (:id group))))))))))
 
 ;;; ----------------------------------------------------- API -----------------------------------------------------
 
@@ -369,7 +357,7 @@
         (testing "PUT /:slug can disable an app"
           (is (=? {:name "demo" :enabled false}
                   (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled false}))))
-        (testing "a disabled app is not served to an assigned user"
+        (testing "a disabled app is not served to a user with access"
           (group-access/add-groups! (t2/select-one :model/DataApp :name "demo") [(:id (perms/all-users-group))])
           (mt/user-http-request :rasta :get 403 "ee/apps/demo")
           (mt/user-real-request :rasta :get 403 "ee/apps/demo/bundle"))
@@ -419,15 +407,15 @@
 (deftest create-defaults-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (testing "an app created from its slug alone is a disabled app with an empty bundle and its collection"
+      (testing "app created from its slug alone is enabled, with an empty bundle and its collection"
         (is (=? {:name                   "demo"
                  :display_name           "demo"
                  :bundle_path            "dist/index.js"
-                 :enabled                false
+                 :enabled                true
                  :resource_collection_id pos-int?}
                 (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})))
         (is (= 0 (alength ^bytes (t2/select-one-fn :bundle :model/DataApp :name "demo"))))
-        (is (=? {:name "demo" :enabled false} (mt/user-http-request :crowberto :get 200 "ee/apps/demo")))))))
+        (is (=? {:name "demo" :enabled true} (mt/user-http-request :crowberto :get 200 "ee/apps/demo")))))))
 
 (deftest replace-bundle-endpoint-test
   (mt/test-helpers-set-global-values!
@@ -447,79 +435,81 @@
 
 (deftest admins-write-the-resource-collection-through-the-api-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-actions-enabled
-      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Card :model/Action]
-        (let [{collection-id :resource_collection_id} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})
-              query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))]
-          (testing "an admin creates a question in the app's collection"
-            (is (=? {:collection_id collection-id}
-                    (mt/user-http-request :crowberto :post 200 "card" {:name                   "Venues"
-                                                                       :collection_id          collection-id
-                                                                       :display                "table"
-                                                                       :visualization_settings {}
-                                                                       :dataset_query          query}))))
-          (testing "an admin creates an action in the app's collection"
-            (is (=? {:collection_id collection-id}
-                    (mt/user-http-request :crowberto :post 200 "action"
-                                          {:name          "Rename venues"
-                                           :type          "query"
-                                           :database_id   (mt/id)
-                                           :collection_id collection-id
-                                           :dataset_query (lib/native-query (mt/metadata-provider)
-                                                                            "UPDATE venues SET name = {{name}}")
-                                           :parameters    [{:id "name" :slug "name" :type "string/="
-                                                            :target [:variable [:template-tag "name"]]}]}))))
-          (testing "nobody else writes it"
-            (mt/user-http-request :rasta :post 403 "card" {:name                   "Mine"
-                                                           :collection_id          collection-id
-                                                           :display                "table"
-                                                           :visualization_settings {}
-                                                           :dataset_query          query})))))))
+    (data-apps.tu/with-published-tables! [(mt/id :venues)]
+      (mt/with-actions-enabled
+        (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Card :model/Action]
+          (let [{collection-id :resource_collection_id} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})
+                query (lib/query (mt/metadata-provider) (lib.metadata/table (mt/metadata-provider) (mt/id :venues)))]
+            (testing "an admin creates a question in the app's collection"
+              (is (=? {:collection_id collection-id}
+                      (mt/user-http-request :crowberto :post 200 "card" {:name                   "Venues"
+                                                                         :collection_id          collection-id
+                                                                         :display                "table"
+                                                                         :visualization_settings {}
+                                                                         :dataset_query          query}))))
+            (testing "an admin creates an action in the app's collection"
+              (is (=? {:collection_id collection-id}
+                      (mt/user-http-request :crowberto :post 200 "action"
+                                            {:name          "Rename venues"
+                                             :type          "query"
+                                             :database_id   (mt/id)
+                                             :collection_id collection-id
+                                             :dataset_query (lib/native-query (mt/metadata-provider)
+                                                                              "UPDATE venues SET name = {{name}}")
+                                             :parameters    [{:id "name" :slug "name" :type "string/="
+                                                              :target [:variable [:template-tag "name"]]}]}))))
+            (testing "nobody else writes it"
+              (mt/user-http-request :rasta :post 403 "card" {:name                   "Mine"
+                                                             :collection_id          collection-id
+                                                             :display                "table"
+                                                             :visualization_settings {}
+                                                             :dataset_query          query}))))))))
 
 (deftest typed-schema-endpoint-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-actions-enabled
-      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Card :model/Action]
-        (let [{collection-id :resource_collection_id} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})
-              mp    (mt/metadata-provider)
-              query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-                        (lib/aggregate (lib/count))
-                        (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id))))
-              card  (mt/user-http-request :crowberto :post 200 "card" {:name                   "Venues by category"
-                                                                       :collection_id          collection-id
-                                                                       :display                "table"
-                                                                       :visualization_settings {}
-                                                                       :dataset_query          query})
-              action-id (:id (mt/user-http-request :crowberto :post 200 "action"
-                                                   {:name          "Rename venue"
-                                                    :type          "query"
-                                                    :database_id   (mt/id)
-                                                    :collection_id collection-id
-                                                    :dataset_query (lib/native-query mp "UPDATE venues SET name = {{name}} WHERE id = {{id}}")
-                                                    :parameters    [{:id "name" :slug "name" :type "string/="
-                                                                     :target [:variable [:template-tag "name"]]
-                                                                     :required true}
-                                                                    {:id "id" :slug "id" :type "number/="
-                                                                     :target [:variable [:template-tag "id"]]}]}))
-              action-entity-id (t2/select-one-fn :entity_id :model/Action :id action-id)]
-          (testing "a non-superuser cannot read it"
-            (mt/user-http-request :rasta :get 403 "ee/apps/demo/typed-schema"))
-          (let [{:keys [body headers]} (mt/user-http-request-full-response :crowberto :get 200 "ee/apps/demo/typed-schema")]
-            (is (str/starts-with? (get headers "Content-Type") "text/typescript"))
-            (testing "the module says how to fetch it again"
-              (is (str/includes? body "// mb data-app typed-schema demo --out src/metabase.ts\n")))
-            (testing "the module imports the define functions"
-              (is (str/includes? body "import { defineAction, defineQuery } from \"@metabase/embedding-sdk-react/data-app\";")))
-            (testing "a question is a card source addressed by its entity ID and typed by its result columns"
-              (is (str/includes? body "export const queries = {\n  venuesByCategory: defineQuery({"))
-              (is (str/includes? body (str "entityId: \"" (:entity_id card) "\"")))
-              (is (str/includes? body "name: \"count\""))
-              (is (str/includes? body "jsType: \"number\"")))
-            (testing "an action is addressed by its entity ID and typed by its parameters"
-              (is (str/includes? body "export const actions = {\n  renameVenue: defineAction({"))
-              (is (str/includes? body (str "id: \"" action-entity-id "\"")))
-              (is (str/includes? body "slug: \"name\",\n          displayName: \"name\",\n          jsType: \"string\",\n          required: true,"))
-              (is (str/includes? body "slug: \"id\",\n          displayName: \"id\",\n          jsType: \"number\",")))))))))
+    (data-apps.tu/with-published-tables! [(mt/id :venues)]
+      (mt/with-actions-enabled
+        (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Card :model/Action]
+          (let [{collection-id :resource_collection_id} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})
+                mp    (mt/metadata-provider)
+                query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                          (lib/aggregate (lib/count))
+                          (lib/breakout (lib.metadata/field mp (mt/id :venues :category_id))))
+                card  (mt/user-http-request :crowberto :post 200 "card" {:name                   "Venues by category"
+                                                                         :collection_id          collection-id
+                                                                         :display                "table"
+                                                                         :visualization_settings {}
+                                                                         :dataset_query          query})
+                action-id (:id (mt/user-http-request :crowberto :post 200 "action"
+                                                     {:name          "Rename venue"
+                                                      :type          "query"
+                                                      :database_id   (mt/id)
+                                                      :collection_id collection-id
+                                                      :dataset_query (lib/native-query mp "UPDATE venues SET name = {{name}} WHERE id = {{id}}")
+                                                      :parameters    [{:id "name" :slug "name" :type "string/="
+                                                                       :target [:variable [:template-tag "name"]]
+                                                                       :required true}
+                                                                      {:id "id" :slug "id" :type "number/="
+                                                                       :target [:variable [:template-tag "id"]]}]}))
+                action-entity-id (t2/select-one-fn :entity_id :model/Action :id action-id)]
+            (testing "a non-superuser cannot read it"
+              (mt/user-http-request :rasta :get 403 "ee/apps/demo/typed-schema"))
+            (let [{:keys [body headers]} (mt/user-http-request-full-response :crowberto :get 200 "ee/apps/demo/typed-schema")]
+              (is (str/starts-with? (get headers "Content-Type") "text/typescript"))
+              (testing "the module says how to fetch it again"
+                (is (str/includes? body "// mb data-app typed-schema demo --out src/metabase.ts\n")))
+              (testing "the module imports the define functions"
+                (is (str/includes? body "import { defineAction, defineQuery } from \"@metabase/embedding-sdk-react/data-app\";")))
+              (testing "a question is a card source addressed by its entity ID and typed by its result columns"
+                (is (str/includes? body "export const queries = {\n  venuesByCategory: defineQuery({"))
+                (is (str/includes? body (str "entityId: \"" (:entity_id card) "\"")))
+                (is (str/includes? body "name: \"count\""))
+                (is (str/includes? body "jsType: \"number\"")))
+              (testing "an action is addressed by its entity ID and typed by its parameters"
+                (is (str/includes? body "export const actions = {\n  renameVenue: defineAction({"))
+                (is (str/includes? body (str "id: \"" action-entity-id "\"")))
+                (is (str/includes? body "slug: \"name\",\n          displayName: \"name\",\n          jsType: \"string\",\n          required: true,"))
+                (is (str/includes? body "slug: \"id\",\n          displayName: \"id\",\n          jsType: \"number\","))))))))))
 
 (defn- create-question!
   "A table question named `card-name` in the collection with `collection-id`, reading `query`, created by an admin."
@@ -533,30 +523,41 @@
 (deftest disabled-apps-are-listed-only-to-superusers-test
   (mt/with-premium-features #{:data-apps}
     (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})]
+      (let [{:keys [id]} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo" :enabled false})]
         (group-access/add-groups! (t2/select-one :model/DataApp :id id) [(:id (perms/all-users-group))])
-        (testing "an assigned user doesn't see the disabled app"
+        (testing "a user with access doesn't see the disabled app"
           (is (not-any? #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))
         (testing "a superuser does"
           (is (some #(= "demo" (:name %)) (mt/user-http-request :crowberto :get 200 "ee/apps"))))
-        (testing "an assigned user sees it once it's enabled"
+        (testing "a user with access sees it once it's enabled"
           (mt/user-http-request :crowberto :put 200 "ee/apps/demo" {:enabled true})
           (is (some #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))))))
 
+(deftest apps-are-listed-only-to-users-who-can-read-their-collection-test
+  (mt/with-premium-features #{:data-apps}
+    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
+      (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})
+      (testing "a user without a grant on the app's collection doesn't see the app"
+        (is (not-any? #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps"))))
+      (testing "a user sees it once their group can read the collection"
+        (group-access/add-groups! (t2/select-one :model/DataApp :name "demo") [(:id (perms/all-users-group))])
+        (is (some #(= "demo" (:name %)) (mt/user-http-request :rasta :get 200 "ee/apps")))))))
+
 (deftest typed-schema-keys-are-the-same-on-every-instance-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Card]
-      (let [{collection-id :resource_collection_id} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})
-            mp       (mt/metadata-provider)
-            query    (lib/query mp (lib.metadata/table mp (mt/id :venues)))
-            _        (create-question! collection-id "Café crème" query)
-            twins    [(create-question! collection-id "Twin" query) (create-question! collection-id "Twin" query)]
-            symbols  (create-question! collection-id "???" query)
-            body     (mt/user-http-request :crowberto :get 200 "ee/apps/demo/typed-schema")
-            eid-part #(str/replace (:entity_id %) "-" "")]
-        (testing "a name keeps its letters, whatever their script"
-          (is (str/includes? body "  caféCrème: defineQuery({")))
-        (testing "names that collide, or that have no letters, are told apart by entity ID"
-          (doseq [twin twins]
-            (is (str/includes? body (str "  twin_" (eid-part twin) ": defineQuery({"))))
-          (is (str/includes? body (str "  entity_" (eid-part symbols) ": defineQuery({"))))))))
+    (data-apps.tu/with-published-tables! [(mt/id :venues)]
+      (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup :model/Card]
+        (let [{collection-id :resource_collection_id} (mt/user-http-request :crowberto :post 200 "ee/apps" {:name "demo"})
+              mp       (mt/metadata-provider)
+              query    (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+              _        (create-question! collection-id "Café crème" query)
+              twins    [(create-question! collection-id "Twin" query) (create-question! collection-id "Twin" query)]
+              symbols  (create-question! collection-id "???" query)
+              body     (mt/user-http-request :crowberto :get 200 "ee/apps/demo/typed-schema")
+              eid-part #(str/replace (:entity_id %) "-" "")]
+          (testing "a name keeps its letters, whatever their script"
+            (is (str/includes? body "  caféCrème: defineQuery({")))
+          (testing "names that collide, or that have no letters, are told apart by entity ID"
+            (doseq [twin twins]
+              (is (str/includes? body (str "  twin_" (eid-part twin) ": defineQuery({"))))
+            (is (str/includes? body (str "  entity_" (eid-part symbols) ": defineQuery({")))))))))

@@ -1,8 +1,7 @@
 (ns metabase.store-api.settings
   (:require
    [metabase.config.core :as config]
-   [metabase.settings.core :refer [defsetting]]
-   [metabase.util.i18n :refer [deferred-tru]]))
+   [metabase.settings.core :refer [defsetting]]))
 
 (defn- default-to-staging?
   "It's against the rules to use setting values on namespace load, since they need the app DB to be loaded, and it isn't
@@ -14,7 +13,7 @@
     (or config/is-dev? config/is-e2e?)))
 
 (defsetting store-api-url
-  (deferred-tru "Store API URL.")
+  "Store API URL."
   :type       :string
   :encryption :when-encryption-key-set
   :visibility :internal

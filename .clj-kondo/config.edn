@@ -209,6 +209,7 @@
      metabase.metabot.tools.error/unrecoverable!
      metabase.metabot.tools.error-test/test-custom-status!
      metabase.metabot.tools.error-test/test-no-widget!
+     metabase.metabot.tools.recoverable.pipeline-test/pipeline-error-text!
      metabase.metabot.tools.recoverable.pipeline-test/text-for!
      metabase.metabot.tools.recoverable.pipeline-test/two-surface-error!
      metabase.metabot.tools.recoverable.pipeline/unknown-table!
