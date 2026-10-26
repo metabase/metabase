@@ -12,9 +12,12 @@
    [metabase.settings.core :as setting]
    [metabase.test :as mt]
    [metabase.test.data.sql :as sql.tx]
+   [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]))
 
 (set! *warn-on-reflection* true)
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest ^:parallel base-type-inference-test
   (is (= :type/Text

@@ -85,7 +85,7 @@
                   (catch Throwable e
                     e))]
       (log/warnf "Cannot sync Database %d: %s" database-id (ex-message ex))
-      (database-routing/with-database-routing-off
+      (database-routing/with-anonymous-router-access
         (let [db-id            (:id database)
               metadata-results (tracing/with-span :sync "sync.metadata" {:db/id db-id}
                                  (sync-metadata/sync-db-metadata! db-id))

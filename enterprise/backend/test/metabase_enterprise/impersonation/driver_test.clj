@@ -15,6 +15,7 @@
    [metabase.driver.connection :as driver.conn]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql :as driver.sql]
+   [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
@@ -34,6 +35,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
+   (com.mchange.v2.c3p0 PooledDataSource)
    (java.sql Connection)
    (java.util.concurrent CountDownLatch)))
 
@@ -377,6 +379,103 @@
                    java.lang.Exception
                    (mt/run-mbql-query venues
                      {:aggregation [[:count]]}))))))))))
+
+(deftest pooled-connections-get-impersonation-role-test
+  (testing "a connection taken straight from the pool, without do-with-connection-with-options, has the current user's role"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a       (u/lower-case-en (mt/random-name))
+              current-role #(-> (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (mt/id))) ["SELECT current_user AS role"])
+                                first
+                                :role)]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (with-impersonation-db!
+              (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                             :attributes     {"impersonation_attr" role-a}}
+                (is (= role-a (current-role))))
+              (testing "the next borrower doesn't inherit the role"
+                (is (not= role-a (current-role)))))))))))
+
+(deftest pool-made-before-database-change-still-sets-role-test
+  (testing "a support check that reads the Database row, as ClickHouse's version check does, sees it as the running query does, not as it was when the pool was made"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a       (u/lower-case-en (mt/random-name))
+              supports?    (mt/original-fn #'driver.u/supports?)
+              current-role #(-> (mt/native-query {:query "SELECT current_user AS role"})
+                                mt/process-query
+                                mt/rows
+                                ffirst)]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (with-impersonation-db!
+              (mt/with-dynamic-fn-redefs [driver.u/supports? (fn [driver feature database]
+                                                               (and (or (not= feature :connection-impersonation)
+                                                                        (= "checked" (some #(get-in database [% :version]) [:dbms-version :dbms_version])))
+                                                                    (supports? driver feature database)))]
+                (current-role)
+                (mt/with-temp-vals-in-db :model/Database (mt/id) {:dbms_version {:version "checked"}}
+                  (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                                 :attributes     {"impersonation_attr" role-a}}
+                    (is (= role-a (current-role)))))))))))))
+
+(defn- current-role
+  "The role of the session of `conn`."
+  [^Connection conn]
+  (:role (first (jdbc/query {:connection conn} ["SELECT current_user AS role"]))))
+
+(deftest routed-impersonated-users-get-their-role-on-every-connection-test
+  (testing "a routed user's connections to the destination have the role the router's impersonation policy gives them"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:advanced-permissions :database-routing}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a       (u/lower-case-en (mt/random-name))
+              details      (:details (mt/db))]
+          (tx/with-temp-roles! driver/*driver* details {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            nil
+            (mt/with-temp [:model/Database router {:engine :postgres :details details}
+                           :model/Database dest   {:engine :postgres :details details :name "routed-impersonated-dest"
+                                                   :router_database_id (u/the-id router)}
+                           :model/DatabaseRouter _ {:database_id (u/the-id router) :user_attribute "db"}]
+              (try
+                (mt/with-db router
+                  (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (u/the-id router) :attribute "impersonation_attr"}]
+                                                                 :attributes     {"impersonation_attr" role-a
+                                                                                  "db"                 "routed-impersonated-dest"}}
+                    (is (= role-a (ffirst (mt/rows (mt/process-query (mt/native-query {:query "SELECT current_user"})))))
+                        "query processor")
+                    (is (= role-a (sql-jdbc.execute/do-with-connection-with-options :postgres (u/the-id router) {} current-role))
+                        "do-with-connection-with-options")
+                    (is (= role-a (sql-jdbc.actions/do-with-jdbc-transaction (u/the-id router) current-role))
+                        "implicit action")))
+                (finally
+                  (driver/notify-database-updated :postgres router)
+                  (driver/notify-database-updated :postgres dest))))))))))
+
+(deftest role-that-cannot-be-set-fails-checkout-once-test
+  (testing "when the role can't be set, the caller gets that error, and the pool doesn't retry the checkout"
+    (mt/test-driver :postgres
+      (mt/with-premium-features #{:advanced-permissions}
+        (try
+          (impersonation.util-test/with-impersonations! {:impersonations [{:db-id (mt/id) :attribute "impersonation_attr"}]
+                                                         :attributes     {"impersonation_attr" "no_such_role"}}
+            (let [data-source (:datasource (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database (mt/id))))
+                  failed      (.getNumFailedCheckoutsDefaultUser ^PooledDataSource data-source)]
+              (is (thrown-with-msg? Exception #"no_such_role"
+                                    (sql-jdbc.execute/do-with-connection-with-options :postgres (mt/id) {} current-role)))
+              (is (= failed (.getNumFailedCheckoutsDefaultUser ^PooledDataSource data-source)))))
+          (finally
+            (driver/notify-database-updated :postgres (mt/db))))))))
 
 (deftest conn-impersonation-with-write-connection-test
   (testing "Impersonation works correctly when queries go through the write connection pool"
@@ -897,35 +996,6 @@
                                        :database_id (mt/id)
                                        :card_id (:id model))))))))))))
 
-(deftest resilient-connection-options-test
-  (testing "resilient connections have the correct role set"
-    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
-                                               :+features [:connection-impersonation]})
-      (mt/with-premium-features #{:advanced-permissions}
-        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
-              role-a (u/lower-case-en (mt/random-name))]
-          (tx/with-temp-roles! driver/*driver*
-            (impersonation-granting-details driver/*driver* (mt/db))
-            {role-a {venues-table {}}}
-            (impersonation-default-user driver/*driver*)
-            (impersonation-default-role driver/*driver*)
-            (with-impersonation-db!
-              (let [tables-set #(->> (driver/describe-database
-                                      driver/*driver*
-                                      (driver.u/ensure-lib-database (t2/select-one :model/Database (mt/id))))
-                                     :tables
-                                     (into #{}))
-                    default-table-set (tables-set)
-                    do-with-resolved-connection (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection)]
-                (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection
-                                            (fn [driver db options f]
-                                              (do-with-resolved-connection driver db options
-                                                                           (fn [conn]
-                                                                             (when-not (:connection db)
-                                                                               (driver/set-role! driver/*driver* conn role-a))
-                                                                             (f conn))))]
-                  (is (= default-table-set (tables-set))))))))))))
-
 (defn do-on-all-connection-in-pool [driver db-id options f]
   (let [max-pool-size (driver.settings/jdbc-data-warehouse-max-connection-pool-size)
         ^CountDownLatch start-latch (java.util.concurrent.CountDownLatch. max-pool-size)
@@ -944,6 +1014,32 @@
             (.countDown ^CountDownLatch finish-latch)))))
     (when-not (.await ^CountDownLatch finish-latch 60 java.util.concurrent.TimeUnit/SECONDS)
       (throw (ex-info "Timeout waiting for all futures to complete" {})))))
+
+(deftest resilient-connection-options-test
+  (testing "a connection checked out of the pool doesn't keep the role its previous borrower set"
+    (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
+                                               :+features [:connection-impersonation]})
+      (mt/with-premium-features #{:advanced-permissions}
+        (let [venues-table (sql.tx/qualify-and-quote driver/*driver* "test-data" "venues")
+              role-a (u/lower-case-en (mt/random-name))]
+          (tx/with-temp-roles! driver/*driver*
+            (impersonation-granting-details driver/*driver* (mt/db))
+            {role-a {venues-table {}}}
+            (impersonation-default-user driver/*driver*)
+            (impersonation-default-role driver/*driver*)
+            (with-impersonation-db!
+              (let [tables-set #(->> (driver/describe-database
+                                      driver/*driver*
+                                      (driver.u/ensure-lib-database (t2/select-one :model/Database (mt/id))))
+                                     :tables
+                                     (into #{}))
+                    default-table-set (tables-set)]
+                ;; Give the connection pool time to release any connections held by sync
+                (Thread/sleep 1000)
+                (do-on-all-connection-in-pool driver/*driver* (mt/id) {}
+                                              (fn [^Connection conn]
+                                                (driver/set-role! driver/*driver* conn role-a)))
+                (is (= default-table-set (tables-set)))))))))))
 
 (deftest nested-do-with-connection-with-options-test
   (testing "nested calls to `do-with-connection-with-options` have the correct connection options set"
@@ -1007,7 +1103,12 @@
                                         #"Advanced Permissions is a paid feature not currently available"
                                         (mt/formatted-rows [int]
                                                            (mt/run-mbql-query venues
-                                                             {:aggregation [[:count]]})))))
+                                                             {:aggregation [[:count]]}))))
+                  (is (thrown-with-msg? Exception
+                                        #"Advanced Permissions is a paid feature not currently available"
+                                        (sql-jdbc.execute/do-with-connection-with-options driver/*driver* (mt/id) nil
+                                                                                          (constantly nil)))
+                      "outside query processor"))
                 (testing "admin should still be able to query"
                   (request/as-admin
                     (is (= [100]

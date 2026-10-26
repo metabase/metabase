@@ -10,6 +10,7 @@
    Primary API: [[effective-details]], [[with-write-connection]], [[default-details]]."
   (:require
    [metabase.analytics-interface.core :as analytics]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
@@ -133,6 +134,13 @@
   [_database]
   nil)
 
+(defn connection-database
+  "The Database that a connection for `database` goes to in the current context: the current user's routing
+  destination when `database` is a router, otherwise `database` itself."
+  [database]
+  (or (database-routing/routed-database database)
+      database))
+
 (defn- overlay-details-for-type
   "Returns the connection-type-specific details overlay for `database`, or nil if the
    requested type has no configured overlay (or is `:default`).
@@ -162,6 +170,9 @@
 
    Takes the Lib metadata of a Database.
 
+   Resolves database routing first: for a router, the details are those of the current user's destination (see
+   [[connection-database]]).
+
    By default, returns the primary `:details`. Within a [[with-write-connection]] scope, takes
    `:write-data-details` into account (if configured). Within a [[with-transform-connection]]
    scope, takes `:write-data-details` into account (if configured) — transforms write, so
@@ -169,7 +180,8 @@
    (`:transform` vs `:write-data`) so the pool properties (e.g. `unreturnedConnectionTimeout`)
    can differ."
   [database :- ::lib.schema.metadata/database]
-  (let [overlay  (perf/not-empty (overlay-details-for-type database *connection-type*))
+  (let [database (connection-database database)
+        overlay  (perf/not-empty (overlay-details-for-type database *connection-type*))
         base     (merge (:details database) overlay)
         eff-type (resolve-effective-type *connection-type* overlay)]
     ;; Track when an overlay is genuinely used (not fallback).

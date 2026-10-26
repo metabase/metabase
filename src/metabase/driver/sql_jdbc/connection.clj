@@ -16,14 +16,16 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.connection :as u.connection]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in mapv select-keys]]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources PooledDataSource)
+   (com.mchange.v2.c3p0 C3P0ProxyConnection ConnectionCustomizer DataSources PooledDataSource)
    (java.sql Connection SQLException)
    (javax.sql DataSource)
    (org.apache.logging.log4j Level)))
@@ -263,10 +265,57 @@
   [spec-or-details]
   (select-keys spec-or-details [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))
 
+(defenterprise set-role-if-supported!
+  "Sets the connection impersonation role of the current user, or the default role, on the connection `conn` to
+  `database`; OSS has no connection impersonation, so the connection keeps its own user."
+  metabase-enterprise.impersonation.driver
+  [_driver _conn _database])
+
+(defonce ^:private pool-databases
+  (atom {}))
+
+(defonce ^:private ^ThreadLocal checkout-error
+  (ThreadLocal.))
+
+(defn- checkout-database
+  "The Database to set the role for at checkout: the running query's own Database when it is the pool's, which is read
+  fresh for each query, or else the `database` the pool was made for."
+  [database]
+  (or (when (driver-api/initialized?)
+        (let [current (driver-api/database (driver-api/metadata-provider))]
+          (when (= (:id current) (:id database))
+            current)))
+      database))
+
+(p/deftype+ WarehouseConnectionCustomizer []
+  ConnectionCustomizer
+  (onAcquire [_this _connection _identity-token])
+  (onCheckIn [_this _connection _identity-token])
+  (onCheckOut [_this connection identity-token]
+    (try
+      (let [[driver database] (or (get @pool-databases identity-token)
+                                  (throw (ex-info (tru "This connection pool is closed.") {})))]
+        (set-role-if-supported! driver connection (checkout-database database)))
+      (catch Throwable e
+        (.set checkout-error e)
+        (.close ^Connection connection))))
+  (onDestroy [_this _connection _identity-token]))
+
+(u.connection/register-c3p0-connection-customizer! WarehouseConnectionCustomizer)
+
+(defn take-checkout-error!
+  "The error raised setting the connection impersonation role on the connection last checked out on this thread, whose
+  physical connection was closed instead, or nil; clears it."
+  []
+  (let [e (.get checkout-error)]
+    (.remove checkout-error)
+    e))
+
 (mu/defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`.
    Uses [[driver.conn/effective-details]] to select the appropriate connection details
-   for the current connection context."
+   for the current connection context, and [[WarehouseConnectionCustomizer]] to set the current user's connection
+   impersonation role on every checkout."
   [{:keys [id], driver :engine, :as database} :- ::lib.schema.metadata/database]
   (log/debug (u/format-color :cyan "Creating new connection pool for %s database %s (%s) ..."
                              driver id (driver.conn/connection-telemetry-info)))
@@ -288,9 +337,12 @@
         ;; the auth provider's response is merged into the details, so it can set parameters too
         _                   (driver.u/validate-connection-parameters! driver details-with-auth)
         spec                (connection-details->spec driver details-with-auth)
-        properties          (data-warehouse-connection-pool-properties driver database)]
+        properties          (assoc (data-warehouse-connection-pool-properties driver database)
+                                   "connectionCustomizerClassName" (.getName WarehouseConnectionCustomizer))
+        pool-spec           (connection-pool-spec spec properties)]
+    (swap! pool-databases assoc (.getIdentityToken ^PooledDataSource (:datasource pool-spec)) [driver database])
     (merge
-     (connection-pool-spec spec properties)
+     pool-spec
      ;; also capture entries related to ssh tunneling for later use
      (select-internal-keys-for-spec details-with-auth)
      (select-internal-keys-for-spec spec)
@@ -306,6 +358,9 @@
   ;; closed" (see DEV-2161). Pool destruction is rare and significant enough to warrant INFO in production too.
   (log/info (u/format-color :red "Closing old connection pool for database %s ..." database-id))
   (driver-api/destroy-connection-pool! pool-spec)
+  (when-let [data-source (:datasource pool-spec)]
+    (when (instance? PooledDataSource data-source)
+      (swap! pool-databases dissoc (.getIdentityToken ^PooledDataSource data-source))))
   (ssh/close-tunnel! pool-spec))
 
 (defonce ^:private ^{:doc "A map of our currently open connection pools,
@@ -490,8 +545,9 @@
   connection type follows the current connection context — use [[driver.conn/with-write-connection]] to get a write
   connection pool."
   [db :- ::lib.schema.metadata/database]
-  (driver-api/check-allowed-access! (:id db))
-  (let [cache-key    (pool-cache-key db)
+  (driver-api/check-allowed-access! db)
+  (let [db           (driver.conn/connection-database db)
+        cache-key    (pool-cache-key db)
         ;; Calculate hash from effective details (includes write-connection merge)
         details-hash (jdbc-spec-hash db)]
     (driver.conn/track-connection-acquisition! (driver.conn/effective-details db))

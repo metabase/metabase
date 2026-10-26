@@ -12,10 +12,10 @@
    [metabase-enterprise.test :as met]
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
-   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.util :as driver.u]
    [metabase.permissions.models.permissions-group :as perms-group]
    [metabase.query-processor.test :as qp]
    [metabase.sync.core :as sync]
@@ -211,12 +211,9 @@
               (is (thrown-with-msg?
                    clojure.lang.ExceptionInfo
                    #"(?i)cannot query a destination database directly"
-                   (common/check-allowed-access! dest-id))))
-            (testing "destination access is allowed inside a routing-on context (legit routed query)"
-              (is (nil? (database-routing/with-database-routing-on
-                          (common/check-allowed-access! dest-id)))))
+                   (common/check-allowed-access! (driver.u/lib-database dest-id)))))
             (testing "the router database itself is not treated as a forbidden destination"
-              (is (nil? (common/check-allowed-access! router-id))))))))))
+              (is (nil? (common/check-allowed-access! (driver.u/lib-database router-id)))))))))))
 
 (deftest an-error-is-thrown-if-user-attribute-is-missing-or-no-match
   (mt/with-premium-features #{:database-routing}

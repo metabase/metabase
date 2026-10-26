@@ -1014,9 +1014,9 @@
                                           (let [would-be-database (cond-> existing-database
                                                                     details-with-secrets            (assoc :details details-with-secrets)
                                                                     write-data-details-with-secrets (assoc :write_data_details write-data-details-with-secrets))]
-                                            (driver.conn/with-write-connection
-                                              (warehouses/test-database-connection (or engine (:engine would-be-database))
-                                                                                   (driver.conn/effective-details (driver.u/ensure-lib-database would-be-database))))))
+                                            (warehouses/test-database-connection (or engine (:engine would-be-database))
+                                                                                 (merge (driver.conn/details-for-exact-type would-be-database :default)
+                                                                                        (driver.conn/details-for-exact-type would-be-database :write-data)))))
         full-sync?                      (some-> is_full_sync boolean)
         on-demand?                      (boolean is_on_demand)]
     (if-let [conn-error (or main-conn-error write-conn-error)]
@@ -1149,7 +1149,7 @@
         (analytics/track-event! :snowplow/simple_event {:event "database_manual_sync" :target_id id})
         (quick-task/submit-task!
          (fn []
-           (database-routing/with-database-routing-off
+           (database-routing/with-anonymous-router-access
              ;; explicit, user-requested sync — runs even when `disable-auto-sync` is enabled
              (sync/sync-db-metadata-explicit! (u/the-id db))
              (sync/analyze-db-explicit! (u/the-id db)))))
@@ -1207,7 +1207,7 @@
     ;; but no data perms, they should stll be able to trigger a sync of field values. This is fine because we don't
     ;; return any actual field values from this API. (#21764)
     (request/as-admin
-      (database-routing/with-database-routing-off
+      (database-routing/with-anonymous-router-access
         (if *rescan-values-async*
           (quick-task/submit-task!
            (fn []
