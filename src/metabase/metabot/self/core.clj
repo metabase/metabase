@@ -1,6 +1,7 @@
 (ns metabase.metabot.self.core
   (:require
    [clj-http.client :as http]
+   [clj-http.conn-mgr :as conn]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.walk :as walk]
@@ -21,7 +22,7 @@
    [metabase.util.malli.schema :as ms]
    [metabase.util.o11y :refer [with-span]])
   (:import
-   (java.io BufferedReader Closeable InputStream)
+   (java.io BufferedReader Closeable FilterInputStream InputStream IOException)
    (java.util.concurrent Callable Executors ExecutorService)))
 
 (set! *warn-on-reflection* true)
@@ -357,6 +358,54 @@
     (close [_]
       (.close input))))
 
+(defn- close-released-body!
+  "Close a streamed `body` whose client is already closed. Ignore the error that this close is known to throw,
+  and log it at debug level."
+  [^InputStream body]
+  ;; The body close releases the connection to a manager that is shut down. Apache HttpClient then throws
+  ;; `IllegalStateException: Connection not obtained from this manager`, or an `IOException` from the closed
+  ;; socket. See https://github.com/dakrone/clj-http/issues/627
+  (try
+    (.close body)
+    (catch IllegalStateException e
+      (log/debug e "Ignored the error from the body close after the client close"))
+    (catch IOException e
+      (log/debug e "Ignored the error from the body close after the client close"))))
+
+(defn- own-client?
+  "True when clj-http made the client of a request for that request only.
+
+  A bound or passed connection manager, or a passed client, can serve other requests."
+  [request-options]
+  (and (nil? conn/*connection-manager*)
+       (nil? (:connection-manager request-options))
+       (nil? (:http-client request-options))))
+
+(defn abort-on-close
+  "Return the body of a streamed clj-http `response`, changed so that a close drops the connection.
+
+  A close of the returned body closes the request's own `:http-client` first, so the provider sees a disconnect.
+  Then it closes the body, and it does not read the rest of the body. Over TLS 1.3 the client close can wait for
+  the next byte from the provider, up to the socket timeout.
+
+  Returns `:body` unchanged when it is not an `InputStream`, when the response has no `Closeable` `:http-client`,
+  or when `request-options` (the clj-http options of the request) share a client or a connection manager with
+  other requests. Call it on the thread that made the request, so it sees the same bound connection manager.
+  This is the workaround from https://github.com/dakrone/clj-http/issues/627."
+  [{:keys [body http-client]} request-options]
+  (if (and (instance? InputStream body)
+           (instance? Closeable http-client)
+           (own-client? request-options))
+    ;; Without this wrapper, a close of a chunked body reads the rest of the body. It returns only when the provider
+    ;; finishes, and the provider continues to generate until then.
+    (proxy [FilterInputStream] [body]
+      (close []
+        (try
+          (.close ^Closeable http-client)
+          (finally
+            (close-released-body! body)))))
+    body))
+
 ;;; AISDK5
 
 (def finish-reasons
@@ -390,10 +439,10 @@
           (nil? arguments) nil
           :else            {::non-object-arguments arguments}))
       (catch Exception e
-        (log/warn "Failed to parse tool arguments as JSON, passing raw string"
-                  {:tool    (:toolName (first chunks))
-                   :error   (.getMessage e)
-                   :raw-len (count raw)})
+        (log/debug "Failed to parse tool arguments as JSON, passing raw string"
+                   {:tool-call-id (:toolCallId (first chunks))
+                    :error        (.getMessage e)
+                    :raw-len      (count raw)})
         ;; Return a sentinel map so the model gets a repair message from [[reject-unparsed-arguments!]]
         ;; rather than a cryptic JSON parse stacktrace.
         {::raw-arguments raw}))))
@@ -1015,10 +1064,17 @@
                          (fn [chunk]
                            (cond-> chunk
                              (= (:type chunk) :tool-output-available) (assoc ::duration-ms duration-ms))))
-              outcome  (if-not tool
-                         (do (log/debugf "Tool call %s: unknown tool" tool-call-id)
-                             (tools.runtime/unknown-tool-outcome tool-name (keys tools)))
-                         (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)]
+              outcome  (let [{:keys [arguments]} (into {} (aisdk-xf) chunks)
+                             raw                 (::raw-arguments arguments)]
+                         ;; Valid JSON can set `::raw-arguments` too, to a value that isn't a string.
+                         (when (string? raw)
+                           (log/warn "Failed to parse tool arguments as JSON"
+                                     {:tool-name    safe-name
+                                      :tool-call-id tool-call-id
+                                      :raw-len      (count raw)}))
+                         (if-not tool
+                           (do (log/debugf "Tool call %s: unknown tool" tool-call-id)
+                               (tools.runtime/unknown-tool-outcome tool-name (keys tools)))
                            ;; Checked before coercion: `coerce-stringified-json` would decode a
                            ;; double-encoded `{::non-object-arguments "{…}"}` into an object and
                            ;; garble the message.
@@ -1089,12 +1145,14 @@
                    (vswap! active assoc toolCallId {:task task})))
 
                :error
-               (let [cut-off (for [[id {:keys [task]}] @active :when (not task)] id)]
+               (let [cut-off (u/for-map [[id {:keys [task chunks]}] @active
+                                         :when (not task)
+                                         :let  [tool-name (:toolName (first chunks))]]
+                               [id (if (contains? tools tool-name) tool-name "unknown")])]
                  (vreset! errored? true)
                  (when (seq cut-off)
-                   (log/warn "Dropping tool calls that a stream error cut off"
-                             {:tool-calls (into {} (map (juxt identity #(get-in @active [% :chunks 0 :toolName]))) cut-off)})
-                   (vswap! active #(apply dissoc % cut-off))))
+                   (log/warn "Dropping tool calls that a stream error cut off" {:tool-calls cut-off})
+                   (vswap! active #(apply dissoc % (keys cut-off)))))
 
                ;; otherwise: do nothing
                nil)

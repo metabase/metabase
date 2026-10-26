@@ -123,8 +123,7 @@
                        [:field
                         (opts :guard (and (map? opts) (not (and (:base-type opts) (:effective-type opts)))))
                         (id :guard (and (integer? id) (pos? id)))]
-                       (when-not (some #{:mbql/stage-metadata} &parents)
-                         id))]
+                       id)]
     ;; "pre-warm" the metadata provider
     (do (lib.metadata/bulk-metadata metadata-provider :metadata/column field-ids)
         (match/replace x
@@ -132,21 +131,20 @@
            (options :guard (and (map? options) (not (and (:base-type options)
                                                          (:effective-type options)))))
            (id :guard pos-int?)]
-          (if (some #{:mbql/stage-metadata} &parents)
-            &match
-            (update &match 1 merge
-                    ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
-                    ;;       case no change is performed. Find a way how to handle this properly!
-                    (when-not (and (some? (:base-type options))
-                                   (not= (:base-type options)
-                                         (:base-type (lib.metadata/field metadata-provider id))))
-                      ;; Following key is used to track which base-types we added during `query` call. It is used in
-                      ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
-                      ;; as legacy -> MBQL 5 -> legacy looks closer to the original.
-                      (merge (when-not (contains? options :base-type)
-                               {:lib/transformation-added-base-type true})
-                             (-> (lib.metadata/field metadata-provider id)
-                                 (select-keys [:base-type :effective-type]))))))))
+          (let [{:keys [base-type]} options
+                mp-field (lib.metadata/field metadata-provider id)]
+            ;; TODO: For brush filters, query with different base type as in metadata is sent from FE. In that
+            ;;       case no change is performed. Find a way how to handle this properly!
+            (if (and base-type (not= base-type (:base-type mp-field)))
+              &match
+              ;; Following key is used to track which base-types we added during `query` call. It is used in
+              ;; [[metabase.lib.convert/options->legacy-MBQL]] to remove those, so query after conversion
+              ;; as legacy -> MBQL 5 -> legacy looks closer to the original.
+              (let [new-opts (-> options
+                                 (cond-> (nil? base-type) (assoc :lib/transformation-added-base-type true))
+                                 (m/assoc-some :base-type (:base-type mp-field))
+                                 (m/assoc-some :effective-type (:effective-type mp-field)))]
+                [:field new-opts id])))))
     x))
 
 (mu/defn query-with-stages :- ::lib.schema/query

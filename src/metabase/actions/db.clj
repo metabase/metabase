@@ -11,14 +11,17 @@
    [toucan2.core :as t2]))
 
 (defn- action-database-joins
-  "The joins from `action` to the Database `db` of its query, or of its model Card for an implicit action."
+  "The joins from `action` to the Database `db` of its query, or for an implicit action of its model Card or its table."
   []
-  [[(t2/table-name :model/QueryAction) :qa] [:= :qa.action_id :action.id]
-   [(t2/table-name :model/Card) :card]      [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
-   [(t2/table-name :model/Database) :db]    [:= :db.id [:coalesce :qa.database_id :card.database_id]]])
+  [[(t2/table-name :model/QueryAction) :qa]    [:= :qa.action_id :action.id]
+   [(t2/table-name :model/Card) :card]         [:and [:= :card.id :action.model_id] [:= :action.type "implicit"]]
+   [(t2/table-name :model/ImplicitAction) :ia] [:= :ia.action_id :action.id]
+   [(t2/table-name :model/Table) :tbl]         [:= :tbl.id :ia.table_id]
+   [(t2/table-name :model/Database) :db]       [:= :db.id [:coalesce :qa.database_id :card.database_id :tbl.db_id]]])
 
 (mu/defn database-for-action
-  "The Database the Action with `action-id` runs against: its query's, or its model's for an implicit action, or nil."
+  "The Database the Action with `action-id` runs against: its query's, or its model's or table's for an implicit action,
+  or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/Database {:select    [:db.*]
                                   :from      [[(t2/table-name :model/Action) :action]]
@@ -87,6 +90,11 @@
   "Whether the unarchived Collection with `collection-id` exists."
   [collection-id :- ::lib.schema.id/collection]
   (t2/exists? :model/Collection :id collection-id :archived false))
+
+(mu/defn action-collection-id
+  "The Collection id of the Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one-fn :collection_id [:model/Action :collection_id] :id action-id))
 
 (mu/defn action-model-id
   "The model Card id of the Action with `action-id`, or nil."
@@ -186,6 +194,22 @@
   "The QueryAction of the Action with `action-id`, or nil."
   [action-id :- ::lib.schema.id/action]
   (t2/select-one :model/QueryAction :action_id action-id))
+
+(mu/defn implicit-action-table-id
+  "The Table id of the ImplicitAction of the Action with `action-id`, or nil."
+  [action-id :- ::lib.schema.id/action]
+  (t2/select-one-fn :table_id [:model/ImplicitAction :table_id] :action_id action-id))
+
+(mu/defn table-published? :- :boolean
+  "Whether the Table with `table-id` is published to the Library."
+  [table-id :- ::lib.schema.id/table]
+  (some? (t2/select-one-fn :id [:model/Table :id] :id table-id :is_published true
+                           {:from [(warehouse-schema-overlay/table-query)]})))
+
+(mu/defn tables-with-fields
+  "The Tables with `table-ids`, with their Fields hydrated."
+  [table-ids :- [:sequential ::lib.schema.id/table]]
+  (t2/hydrate (tables table-ids) :fields))
 
 (mu/defn implicit-actions
   "The ImplicitActions of the Actions with `action-ids`."

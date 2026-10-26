@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
+   [metabase.driver-api.core :as driver-api]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.clickhouse-qp :as clickhouse-qp]
    [metabase.driver.sql :as driver.sql]
@@ -29,7 +30,7 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (com.clickhouse.jdbc ConnectionImpl)
-   (java.sql Connection)))
+   (java.sql Connection SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -396,7 +397,7 @@
              :user "bob"
              :password "qaz"
              :ssl true
-             :custom_http_params "select_sequential_consistency=1,max_threads=42,allow_experimental_analyzer=0"})
+             :custom_http_params "select_sequential_consistency=1,join_use_nulls=1,max_threads=42,allow_experimental_analyzer=0"})
            (sql-jdbc.conn/connection-details->spec
             :clickhouse
             {:host "myclickhouse"
@@ -494,6 +495,10 @@
       (testing "pretty"
         (is (= "SELECT\n  `test_data`.`venues`.`id` AS `id`\nFROM\n  `test_data`.`venues`\nORDER BY\n  `test_data`.`venues`.`id` ASC\nLIMIT\n  5" pretty))))))
 
+(deftest pool-does-not-test-connections-on-checkout-test
+  (with-redefs [driver-api/is-test? false]
+    (is (false? (get (sql-jdbc.conn/data-warehouse-connection-pool-properties :clickhouse (mt/db)) "testConnectionOnCheckout")))))
+
 (deftest ^:parallel clickhouse-can-connect
   (mt/test-driver :clickhouse
     (doall
@@ -514,7 +519,7 @@
         (is (true? (driver/can-connect? :clickhouse details)))
         (is (= "//localhost:8123/default?clickhouse_setting_max_threads=5&max_block_size=50"
                (:subname spec)))
-        (is (= "select_sequential_consistency=1,max_result_rows=10,max_columns_to_read=20"
+        (is (= "select_sequential_consistency=1,join_use_nulls=1,max_result_rows=10,max_columns_to_read=20"
                (:custom_http_params spec)))
         (is (= {:max_threads 5
                 :max_block_size 65409 ;; unknown key is ignored
@@ -903,3 +908,10 @@
     ;; a lone double-quote is a one-character role name, not an already-quoted empty one -- it must still come
     ;; out as a terminated identifier
     "\""                            "SET ROLE \"\"\"\""))
+
+(deftest ^:parallel clickhouse-server-errors-need-more-than-class-22-test
+  (mt/test-driver :clickhouse
+    (doseq [[message code] [["Memory limit exceeded" 241] ["Too many rows or bytes" 396]]]
+      (let [e (SQLException. message "22000" code)]
+        (is (false? (#'sql-jdbc.execute/error-in-query? :clickhouse e)))
+        (is (true? (#'sql-jdbc.execute/error-in-query? :h2 e)))))))

@@ -623,6 +623,14 @@
   []
   (h2x/current-datetime-honeysql-form (mdb/db-type)))
 
+(defn ->integer
+  "Return a HoneySQL form casting `expr` to an integer in the app DB: `SIGNED` for MySQL/MariaDB, which have no
+  `INTEGER` cast type."
+  [expr]
+  [:cast expr (case (mdb/db-type)
+                :mysql :signed
+                :integer)])
+
 (defn current-timestamp
   "The current moment in UTC at the microsecond precision of the app DB's timestamp columns, so it reads back unchanged."
   []
@@ -694,7 +702,7 @@
 
 (methodical/defmethod t2.pipeline/transduce-query :around [:toucan.query-type/update.* :hook/dependencies :default]
   "Run the before-update hooks of a `:hook/dependencies` model in the transaction of its UPDATE, which Toucan otherwise
-  opens only after them, so dependency marks commit together with the UPDATE and after-commit work sees it."
+  opens only after them, so the dependency marks commit or roll back with the UPDATE and after-commit work sees it."
   [rf query-type model parsed-args resolved-query]
   (t2.conn/with-transaction [_conn nil {:nested-transaction-rule :ignore}]
     (next-method rf query-type model parsed-args resolved-query)))

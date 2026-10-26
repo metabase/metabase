@@ -641,6 +641,11 @@
    request]
   (users/check-self-or-superuser id)
   (api/let-404 [user (users-rest.db/active-personal-user-login-columns id)]
+    ;; admins can't give a password to a user who signs in through an enabled SSO provider; that would let them log
+    ;; in as that user while bypassing the provider.
+    (when api/*is-superuser?*
+      (api/check-404 (or (nil? (:sso_source user))
+                         (not (sso/sso-source-enabled? (:sso_source user))))))
     ;; admins are allowed to reset anyone's password (in the admin people list) so no need to check the value of
     ;; `old_password` for them regular users have to know their password, however
     (when-not api/*is-superuser?*
@@ -659,6 +664,7 @@
                                        :mfa_auth_identity_id)]
       ;; set-password! invalidates the user's existing sessions; a self-change gets a fresh one below
       (auth-identity/set-password! id password {:ended-by api/*current-user-id*})
+      (events/publish-event! :event/password-changed {:object user :user-id api/*current-user-id*})
       ;; after a successful password update go ahead and offer the client a new session that they can use
       (when (= id api/*current-user-id*)
         (let [{session-key :key, :as session} (auth-identity/create-session-with-auth-tracking!
@@ -680,9 +686,11 @@
   [{:keys [id]} :- [:map {:closed true}
                     [:id ms/PositiveInt]]]
   (api/check-superuser)
-  (let [user (api/check-404 (users-rest.db/user-active-and-type id))]
+  (let [user (api/check-404 (users-rest.db/user-active-type-and-sso-source id))]
     (api/check-404 (:is_active user))
     (api/check-404 (= :personal (:type user)))
+    (api/check-404 (or (nil? (:sso_source user))
+                       (not (sso/sso-source-enabled? (:sso_source user)))))
     (let [reset-token        (auth-identity/create-password-reset! id)
           password-reset-url (str (system/site-url) "/auth/reset_password/" reset-token)]
       (events/publish-event! :event/password-reset-initiated

@@ -1,3 +1,5 @@
+import userEvent from "@testing-library/user-event";
+
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
   setupGroupsEndpoint,
@@ -8,7 +10,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
-import type { Tenant, User } from "metabase-types/api";
+import type { EnterpriseSettings, Tenant, User } from "metabase-types/api";
 import {
   createMockGroup,
   createMockTokenFeatures,
@@ -16,6 +18,17 @@ import {
 } from "metabase-types/api/mocks";
 
 import { PeopleListingApp } from "./PeopleListingApp";
+
+interface SetupOpts {
+  external?: boolean;
+  showInviteButton?: boolean;
+  noResultsMessage?: string;
+  users?: User[];
+  currentUser?: User;
+  tenants?: Tenant[];
+  useTenants?: boolean;
+  settings?: Partial<EnterpriseSettings>;
+}
 
 const setup = ({
   external = false,
@@ -27,20 +40,14 @@ const setup = ({
   }),
   tenants = [],
   useTenants = true,
-}: {
-  external?: boolean;
-  showInviteButton?: boolean;
-  noResultsMessage?: string;
-  users?: User[];
-  currentUser?: User;
-  tenants?: Tenant[];
-  useTenants?: boolean;
-} = {}) => {
+  settings: settingOverrides = {},
+}: SetupOpts = {}) => {
   const settings = mockSettings({
     "token-features": createMockTokenFeatures({
       tenants: true,
     }),
     "use-tenants": useTenants,
+    ...settingOverrides,
   });
 
   setupEnterprisePlugins();
@@ -166,5 +173,47 @@ describe("no results message", () => {
     });
 
     expect(await screen.findByText(noResultsMessage)).toBeInTheDocument();
+  });
+});
+
+describe("user menu", () => {
+  const ssoUser = createMockUser({
+    id: 10,
+    email: "sso@example.com",
+    sso_source: "saml",
+  });
+
+  const openUserMenu = async () => {
+    await userEvent.click(
+      await screen.findByRole("button", { name: /ellipsis/i }),
+    );
+    await screen.findByRole("menuitem", { name: "Edit user" });
+  };
+
+  it("should offer to reset the password of a password user", async () => {
+    setup({ users: [createMockUser({ id: 10, sso_source: null })] });
+    await openUserMenu();
+
+    expect(
+      screen.getByRole("menuitem", { name: "Reset password" }),
+    ).toBeInTheDocument();
+  });
+
+  it("should not offer to reset the password of a user whose SSO provider is enabled", async () => {
+    setup({ users: [ssoUser], settings: { "saml-enabled": true } });
+    await openUserMenu();
+
+    expect(
+      screen.queryByRole("menuitem", { name: "Reset password" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("should offer to reset the password of an SSO user once their provider is disabled", async () => {
+    setup({ users: [ssoUser], settings: { "saml-enabled": false } });
+    await openUserMenu();
+
+    expect(
+      screen.getByRole("menuitem", { name: "Reset password" }),
+    ).toBeInTheDocument();
   });
 });

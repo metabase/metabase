@@ -427,7 +427,7 @@
   (unschedule-tasks! database)
   (secret/delete-orphaned-secrets! database)
   (delete-database-fields! id)
-  (warehouses.db/delete-query-actions-for-database! id)
+  (warehouses.db/delete-actions-for-database! id)
   (->> (eduction
         (map t2.realize/realize)
         (partition-all 1000)
@@ -464,9 +464,10 @@
   "Every place a Database stores a set of connection details."
   [:details :write_data_details :admin_details])
 
-(defn- validate-connection-hosts!
-  "Refuse to store details pointing at a private/internal network address. Enforcing this on the model, and not just on
-  the endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
+(defn- validate-connection-details!
+  "Refuse to store details pointing at a private/internal network address, or setting a connection parameter the driver
+  disallows (see [[driver/disallowed-connection-parameters]]). Enforcing this on the model, and not just on the
+  endpoints that test a connection, covers the routes that write a Database without ever testing it: serialization
   import, config-file provisioning, and destination databases.
 
   `keys-to-check` names which of [[details-keys]] to look at. An overlay is checked the way
@@ -480,8 +481,11 @@
       (doseq [k     keys-to-check
               :let  [details (get database k)]
               :when (and (map? details) (seq details))]
-        (driver.u/validate-connection-hosts! engine (cond->> details
-                                                      (not= k :details) (merge (:details database))))))))
+        (let [details (cond->> details
+                        (not= k :details) (merge (:details database)))]
+          (driver.u/validate-connection-hosts! engine details)
+          (when (driver.impl/registered? engine)
+            (driver.u/validate-connection-parameters! engine details)))))))
 
 (t2/define-before-update :model/Database
   [database]
@@ -492,11 +496,11 @@
     ;; driver. Otherwise validate only the ones being written, so an unrelated update to a grandfathered database does
     ;; not start failing. Either way the candidate is the merge, since an overlay is resolved against the `:details`
     ;; it accompanies rather than on its own.
-    (validate-connection-hosts! (or (:engine changes) (:engine original))
-                                (merge original changes)
-                                (if (contains? changes :engine)
-                                  details-keys
-                                  (filterv #(contains? changes %) details-keys))))
+    (validate-connection-details! (or (:engine changes) (:engine original))
+                                  (merge original changes)
+                                  (if (contains? changes :engine)
+                                    details-keys
+                                    (filterv #(contains? changes %) details-keys))))
   ;; Note: the "sample database may not be edited" policy is enforced at the API layer
   ;; ([[metabase.warehouses-rest.api]] PUT /:id), so internally-derived updates - e.g. the sample
   ;; database engine migration in [[metabase.sample-data.impl]] - can change the engine here.
@@ -554,7 +558,7 @@
 
 (t2/define-before-insert :model/Database
   [{:keys [details initial_sync_status engine], :as database}]
-  (validate-connection-hosts! engine database details-keys)
+  (validate-connection-details! engine database details-keys)
   (-> (merge {:is_full_sync true
               :is_on_demand false}
              database)
@@ -648,8 +652,11 @@
                             ;; there is an known issue with exception is ignored when render API response (#32822)
                             ;; If you see this error, you probably need to define a setting for `setting-name`.
                             ;; But ideally, we should resolve the above issue, and remove this try/catch
-                            (log/errorf "Error checking the readability of %s setting. The setting will be hidden in API response. Error: %s"
-                                        setting-name (ex-message e))
+                            (if (setting/registered? setting-name)
+                              (log/errorf "Error checking the readability of %s setting. The setting will be hidden in API response. Error: %s"
+                                          setting-name (ex-message e))
+                              ;; a removed setting stays in the stored settings until the database is saved
+                              (log/debugf "Hiding unknown setting %s in API response" setting-name))
                             ;; let's be conservative and hide it by defaults, if you want to see it,
                             ;; you need to define it :)
                             false)))
@@ -662,23 +669,31 @@
 (defmethod serdes/make-spec "Database"
   [_model-name _opts]
   ;; Connection details are never exported. Import is unconditional.
-  (let [details-transform {:export-with-context (fn [_current _ _details] ::serdes/skip)
-                           :import              identity}]
-    {:copy      [:auto_run_queries :cache_field_values_schedule :caveats :dbms_version
+  (let [details-transform  {:export-with-context (fn [_current _ _details] ::serdes/skip)
+                            :import              identity}
+        schedule-transform {:export-with-context (fn [_current _ _schedule] ::serdes/skip)
+                            :import              identity}]
+    {:copy      [:auto_run_queries :caveats
                  :description :engine :is_audit :is_attached_dwh :is_full_sync :is_on_demand
-                 :default_schema :metadata_sync_schedule :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
+                 :default_schema :name :points_of_interest :provider_name :refingerprint :settings :timezone :uploads_enabled
                  :uploads_schema_name :uploads_table_prefix]
      :skip      [;; deprecated field
                  :cache_ttl
                  ;; describes a sync on the source instance, and may name its connection details
-                 :initial_sync_error]
-     :transform {:created_at          (serdes/date)
+                 :initial_sync_error
+                 ;; detected by sync, and set again by the importing instance's sync
+                 :dbms_version]
+     :transform {;; randomized per instance unless the connection details, which we never export, let the user
+                 ;; schedule syncs; older files with such details carry the schedules those details require
+                 :cache_field_values_schedule schedule-transform
+                 :metadata_sync_schedule      schedule-transform
                  :details             details-transform
                  :write_data_details  details-transform
                  :admin_details       details-transform
                  :creator_id          (serdes/fk :model/User)
                  :router_database_id  (serdes/fk :model/Database)
-                 :initial_sync_status {:export identity :import (constantly "complete")}
+                 :initial_sync_status {:export-with-context (fn [_current _ _status] ::serdes/skip)
+                                       :import              (constantly "complete")}
                  ;; Never trust an archive's `is_sample`: the real Sample Database is excluded from export
                  ;; ([[warehouses.db/databases-for-serdes-reducible]]), so any incoming `is_sample true` is forged --
                  ;; and marking an imported row as the sample DB would let it ride sample-only code paths. Import false.
