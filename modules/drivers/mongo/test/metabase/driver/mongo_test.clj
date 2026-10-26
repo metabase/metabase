@@ -1406,8 +1406,8 @@
       {:use-conn-uri true :conn-uri "mongodb+srv://user:pw@cluster.example.com/db"}
       ["cluster.example.com"]))
   (testing "a details map naming no host of its own contributes no hosts, as it does for every other driver"
-    ;; `write_data_details` and `admin_details` are overlays merged on top of `:details`, so they reach us as partial
-    ;; maps; one that only carries credentials repoints nothing, and the map it overlays is validated on its own
+    ;; `write_data_details` is an overlay merged on top of `:details`, so it reaches us as a partial
+    ;; map; one that only carries credentials repoints nothing, and the map it overlays is validated on its own
     (are [details] (= [] (driver/connection-hosts :mongo details))
       {}
       {:user "admin" :pass "x"}

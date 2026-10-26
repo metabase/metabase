@@ -60,7 +60,7 @@
   "The connection spec `details` would produce, or nil when they do not make one. Used to read where a connection would
   go, never to open it.
 
-  A `:write_data_details` or `:admin_details` overlay reaches us as a partial map that may not make a whole spec.
+  A `:write_data_details` overlay reaches us as a partial map that may not make a whole spec.
   Details that cannot produce a spec cannot open a connection either, so nil is a safe answer rather than a blind
   spot."
   [driver details]
@@ -135,7 +135,6 @@
 (def ^:private pool-type->name-suffix
   "Suffix appended to the pool name for each non-default [[driver.conn/connection-pool-type]]."
   {:write-data "-write"
-   :admin      "-admin"
    :transform  "-transform"})
 
 (defn- pool-data-source-name

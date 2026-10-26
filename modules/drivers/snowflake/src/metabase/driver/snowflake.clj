@@ -1192,7 +1192,7 @@
          (nil? (:private-key-value details)))
     (assoc :use-password true)
 
-    ;; Skip when nothing implies a mode — overlay maps (:write_data_details / :admin_details)
+    ;; Skip when nothing implies a mode — an overlay map (:write_data_details)
     ;; that only tweak account/warehouse must not gain an :auth-mode, which would override
     ;; :details' :auth-mode during the merge in effective-details.
     (and (not (contains? details :auth-mode))
@@ -1207,8 +1207,7 @@
   [_ database]
   (-> database
       (m/update-existing :details normalize-details)
-      (m/update-existing :write_data_details normalize-details)
-      (m/update-existing :admin_details normalize-details)))
+      (m/update-existing :write_data_details normalize-details)))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
 ;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're

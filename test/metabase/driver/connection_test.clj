@@ -87,34 +87,8 @@
     (is (= "the default connection" (driver.conn/connection-telemetry-info)))
     (driver.conn/with-write-connection
       (is (= "the write-data connection" (driver.conn/connection-telemetry-info))))
-    (driver.conn/with-admin-connection
-      (is (= "the admin connection" (driver.conn/connection-telemetry-info))))
     (driver.conn/with-transform-connection
       (is (= "the transform connection" (driver.conn/connection-telemetry-info))))))
-
-(deftest effective-details-default-with-admin-details-test
-  (testing "effective-details returns :details when *connection-type* is :default, even when :admin-details present"
-    (let [details       {:host "read-host" :port 5432}
-          admin-details {:host "admin-host" :port 5432 :user "root"}
-          database      {:lib/type      :metadata/database
-                         :id            1
-                         :details       details
-                         :admin-details admin-details}]
-      (is (=? details
-              (driver.conn/effective-details database))))))
-
-(deftest effective-details-admin-without-feature-test
-  (testing "without an admin-overlay feature, with-admin-connection falls back to main connection details"
-    (mt/with-premium-features #{}
-      (let [details       {:host "read-host" :port 5432}
-            admin-details {:host "admin-host" :port 5432 :user "root"}
-            database      {:lib/type      :metadata/database
-                           :id            1
-                           :details       details
-                           :admin-details admin-details}]
-        (driver.conn/with-admin-connection
-          (is (=? details
-                  (driver.conn/effective-details database))))))))
 
 (deftest type-resolved-metric-test
   (mt/when-ee-evailable

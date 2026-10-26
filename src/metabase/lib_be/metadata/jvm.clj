@@ -171,7 +171,7 @@
   [query-type model parsed-args honeysql]
   (merge (next-method query-type model parsed-args honeysql)
          {:select [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details
-                   :admin_details :timezone :default_schema :router_database_id]}))
+                   :timezone :default_schema :router_database_id]}))
 
 (t2/define-after-select :metadata/database
   [database]

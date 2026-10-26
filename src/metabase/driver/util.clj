@@ -919,13 +919,6 @@
   [driver]
   (fields-hidden-by-form-marker driver "write-data-connection"))
 
-(defn fields-hidden-for-admin-connection
-  "Returns the set of field names (strings) that should NOT appear in `admin_details` for the given `driver`.
-   These are fields whose resolved `visible-if` includes `\"admin-connection\" false`, meaning they are hidden
-   when the admin-connection form marker is true."
-  [driver]
-  (fields-hidden-by-form-marker driver "admin-connection"))
-
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.
 

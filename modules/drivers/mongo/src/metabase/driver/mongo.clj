@@ -93,8 +93,8 @@
   ;; either may name several hosts (a replica set). Parsing the connection string the driver itself will use is the
   ;; only way to be sure we see the same hosts it will connect to.
   (if (and (not use-conn-uri) (str/blank? host))
-    ;; nothing to parse and nothing to connect to. `:write_data_details` and `:admin_details` are overlays merged on
-    ;; top of `:details`, so they arrive here as partial maps; one that carries no host of its own names no hosts,
+    ;; nothing to parse and nothing to connect to. `:write_data_details` is an overlay merged on top of `:details`,
+    ;; so it arrives here as a partial map; one that carries no host of its own names no hosts,
     ;; which is what the default implementation reports for the same input.
     []
     ;; Parsing failures are left to propagate. It is tempting to fall back to the `:host` field, since a connection

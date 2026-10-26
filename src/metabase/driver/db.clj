@@ -21,7 +21,7 @@
 (mu/defn database-connection-details
   "The engine and connection details of the Database with `database-id`, or nil."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one [:model/Database :id :engine :details :write_data_details :admin_details] :id database-id))
+  (t2/select-one [:model/Database :id :engine :details :write_data_details] :id database-id))
 
 (mu/defn json-field-names-with-unfolding-disabled
   "The names of the JSON Fields of the Table with `table-id` that have JSON unfolding disabled."
