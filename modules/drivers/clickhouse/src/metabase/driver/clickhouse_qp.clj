@@ -41,6 +41,10 @@
 
 (defmethod sql.qp/quote-style :clickhouse [_] ::clickhouse)
 
+(defmethod sql.qp/use-ctes-for-stages? :clickhouse
+  [_driver]
+  true)
+
 ;; without try, there might be test failures when QP is not yet initialized
 ;; e.g., when a test is preparing the dataset
 (defn- get-report-timezone-id-safely

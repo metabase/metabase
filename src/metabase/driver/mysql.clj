@@ -301,6 +301,14 @@
   [driver hsql-form amount unit]
   (h2x/add-interval-honeysql-form driver hsql-form amount unit))
 
+(defmethod sql.qp/use-ctes-for-stages? :mysql
+  [_driver]
+  ;; MySQL before 8.0 has no CTEs. All supported MariaDB versions have them.
+  (let [db (when (driver-api/initialized?)
+             (driver-api/database (driver-api/metadata-provider)))]
+    (not (and (mysql? db)
+              (some-> db :dbms-version :semantic-version first (< 8))))))
+
 ;; now() returns current timestamp in seconds resolution; now(6) returns it in nanosecond resolution
 (defmethod sql.qp/current-datetime-honeysql-form :mysql
   [driver]
