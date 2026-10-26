@@ -345,8 +345,8 @@
    temperature
    (max-tokens (count fields) attributes)
    {:request-id          (str (random-uuid))
-    :source              "data_sensitivity_classification"
-    :tag                 "data-sensitivity"
+    :source              "metadata_generation"
+    :tag                 "metadata-generation"
     :required-permission :permission/metabot-other-tools}))
 
 (defn usage-from-parts
