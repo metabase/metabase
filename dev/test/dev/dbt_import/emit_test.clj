@@ -3,7 +3,7 @@
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [dev.dbt-import.emit :as emit]
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.resolve :as resolve]
@@ -134,38 +134,34 @@
 
 (def ^:private sum-sales [:sum {} (fld "sales" :type/Float)])
 
-(def ^:private fill-and-timespine-cases
-  [{:id "fill_nulls_with on the metric" :type-params {:fill_nulls_with 0} :expect {:aggregation [:coalesce {} sum-sales 0]}}
-   {:id "fill_nulls_with on the input measure" :input-measure {:fill_nulls_with 0} :expect {:aggregation [:coalesce {} sum-sales 0]}}
-   {:id "the metric's fill_nulls_with wins over the input measure's"
-    :type-params {:fill_nulls_with 1} :input-measure {:fill_nulls_with 0} :expect {:aggregation [:coalesce {} sum-sales 1]}}
-   {:id "a negative fill_nulls_with" :type-params {:fill_nulls_with -1} :expect {:aggregation [:coalesce {} sum-sales -1]}}
-   {:id "fill_nulls_with on a count"
-    :measure {:agg "count", :expr "sales"} :type-params {:fill_nulls_with 0}
-    :expect {:aggregation [:coalesce {} [:count-where {} [:not-null {} (fld "sales" :type/Float)]] 0]}}
-   {:id "fill_nulls_with on a row count" :measure {:expr "1"} :type-params {:fill_nulls_with 0}
-    :expect {:aggregation [:coalesce {} [:count {}] 0]}}
-   {:id "fill_nulls_with on a max of an integer is fine: it has a numeric result"
-    :measure {:agg "max", :expr "quantity"} :type-params {:fill_nulls_with 0}
-    :expect {:aggregation [:coalesce {} [:max {} (fld "quantity" :type/Integer)] 0]}}
-   {:id "fill_nulls_with 0 on a text aggregation would fail in the warehouse"
-    :measure {:agg "max", :expr "customer_key"} :type-params {:fill_nulls_with 0}
-    :expect {:unsupported #"fill_nulls_with 0 on a non-numeric aggregation"}}
-   {:id "fill_nulls_with 0 on a max of a date would fail in the warehouse"
-    :measure {:agg "max", :expr "date_day"} :type-params {:fill_nulls_with 0}
-    :expect {:unsupported #"fill_nulls_with 0 on a non-numeric aggregation"}}
-   {:id "fill_nulls_with on a max of a column of unknown type is trusted"
-    :measure {:agg "max", :expr "x"} :columns {"x" nil} :type-params {:fill_nulls_with 0}
-    :expect {:aggregation [:coalesce {} [:max {} (fld "x" nil)] 0]}}
-   ;; join_to_timespine has no Metabase equivalent: there is nothing to join a scalar metric to. It is ignored, as the
-   ;; QRES-1 mapping table says, rather than blocking the metric.
-   {:id "join_to_timespine on the metric is ignored" :type-params {:join_to_timespine true} :expect {:aggregation sum-sales}}
-   {:id "join_to_timespine on the input measure is ignored" :input-measure {:join_to_timespine true} :expect {:aggregation sum-sales}}
-   {:id "join_to_timespine with fill_nulls_with"
-    :type-params {:join_to_timespine true, :fill_nulls_with 0} :expect {:aggregation [:coalesce {} sum-sales 0]}}])
+(deftest ^:parallel fill-nulls-with-test
+  (testing "fill_nulls_with wraps the aggregation in coalesce, whether it sits on the metric or its input measure"
+    (is (= [:coalesce {} sum-sales 0] (tu/aggregation {:type-params {:fill_nulls_with 0}})))
+    (is (= [:coalesce {} sum-sales 0] (tu/aggregation {:input-measure {:fill_nulls_with 0}})))
+    (is (= [:coalesce {} sum-sales -1] (tu/aggregation {:type-params {:fill_nulls_with -1}})))
+    (testing "the metric's wins over the input measure's"
+      (is (= [:coalesce {} sum-sales 1] (tu/aggregation {:type-params {:fill_nulls_with 1}, :input-measure {:fill_nulls_with 0}})))))
+  (testing "around a count"
+    (is (= [:coalesce {} [:count-where {} [:not-null {} (fld "sales" :type/Float)]] 0]
+           (tu/aggregation {:measure {:agg "count", :expr "sales"}, :type-params {:fill_nulls_with 0}}))))
+  (testing "around a row count"
+    (is (= [:coalesce {} [:count {}] 0] (tu/aggregation {:measure {:expr "1"}, :type-params {:fill_nulls_with 0}}))))
+  (testing "around a max of an integer, which has a numeric result"
+    (is (= [:coalesce {} [:max {} (fld "quantity" :type/Integer)] 0]
+           (tu/aggregation {:measure {:agg "max", :expr "quantity"}, :type-params {:fill_nulls_with 0}}))))
+  (testing "a numeric fill of a non-numeric aggregation would fail in the warehouse"
+    (are [column] (re-find #"fill_nulls_with 0 on a non-numeric aggregation"
+                           (tu/unsupported {:measure {:agg "max", :expr column}, :type-params {:fill_nulls_with 0}}))
+      "customer_key" "date_day"))
+  (testing "a column of unknown type is trusted"
+    (is (= [:coalesce {} [:max {} (fld "x" nil)] 0]
+           (tu/aggregation {:measure {:agg "max", :expr "x"}, :columns {"x" nil}, :type-params {:fill_nulls_with 0}})))))
 
-(deftest ^:parallel fill-and-timespine-test
-  (tu/check-cases fill-and-timespine-cases))
+(deftest ^:parallel join-to-timespine-test
+  (testing "join_to_timespine has no Metabase equivalent (nothing to join a scalar metric to) and is ignored, as the QRES-1 mapping table says"
+    (is (= sum-sales (tu/aggregation {:type-params {:join_to_timespine true}})))
+    (is (= sum-sales (tu/aggregation {:input-measure {:join_to_timespine true}})))
+    (is (= [:coalesce {} sum-sales 0] (tu/aggregation {:type-params {:join_to_timespine true, :fill_nulls_with 0}})))))
 
 (def ^:private card-dir "collections/main/dbt_metrics/")
 

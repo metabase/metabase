@@ -28,25 +28,18 @@
    [malli.transform :as mtx]
    [metabase.util.malli.registry :as mr]))
 
-;;; The enum-valued fields below are decoded to keywords but deliberately not restricted to the values we know: a
-;;; value the converter does not understand (a new dbt aggregation, a custom time granularity) must fail only the
-;;; metric that uses it, in the report, not the whole run at decode time.
-
-(def known-aggregation-types
-  "`measures[].agg` values dbt defines, `dbt_semantic_interfaces.type_enums.AggregationType`. The converter can turn
-  every one of these into an MBQL aggregation."
-  #{:sum :min :max :count_distinct :sum_boolean :average :percentile :median :count})
-
 (mr/def ::aggregation-type
-  "`measures[].agg`. See [[known-aggregation-types]]."
-  :keyword)
+  "`measures[].agg`. Mirrors `dbt_semantic_interfaces.type_enums.AggregationType`, a closed set the manifest JSON
+  schema also fixes (v10 to v12). The converter can turn every one of these into an MBQL aggregation."
+  [:enum :sum :min :max :count_distinct :sum_boolean :average :percentile :median :count])
 
 (mr/def ::metric-type
-  "`metrics[].type`. Only `:simple` is handled by QRES-1; the rest are QRES-5."
+  "`metrics[].type`. A closed set in the manifest JSON schema; `:conversion` arrived with v11. Only `:simple` is
+  handled by QRES-1; the rest are QRES-5."
   [:enum :simple :ratio :cumulative :derived :conversion])
 
 (mr/def ::entity-type
-  "`semantic_models[].entities[].type`."
+  "`semantic_models[].entities[].type`. A closed set in the manifest JSON schema, unchanged from v10 to v12."
   [:enum :primary :unique :foreign :natural])
 
 (mr/def ::dimension-type
@@ -54,9 +47,11 @@
   [:enum :categorical :time])
 
 (mr/def ::time-granularity
-  "A dbt time granularity: one of the standard `:nanosecond` … `:year`, or a custom granularity from a custom calendar
-  on the time spine (dbt 1.9+), which is any name the project chose."
-  :keyword)
+  "The granularity of a time dimension, `dimensions[].type_params.time_granularity`: a closed set of standard units
+  in the manifest JSON schema (v12; older versions have fewer). Custom granularities from a custom calendar on the
+  time spine (dbt 1.9+) never appear here, only in the free-form string fields `metrics[].time_granularity`,
+  `MetricTimeWindow.granularity` and `offset_to_grain`."
+  [:enum :nanosecond :microsecond :millisecond :second :minute :hour :day :week :month :quarter :year])
 
 (mr/def ::where-filter
   "One filter clause. The template is unrendered Jinja such as `{{ Dimension('order__status') }} = 'Shipped'`
@@ -85,7 +80,8 @@
   the converter should report it."
   [:map
    [:name             :string]
-   [:window_choice    [:enum :min :max]]
+   ;; dbt documents min and max, but its manifest schema types this as the full aggregation enum
+   [:window_choice    ::aggregation-type]
    [:window_groupings {:optional true} [:sequential :string]]])
 
 (mr/def ::measure

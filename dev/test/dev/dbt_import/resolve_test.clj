@@ -1,12 +1,14 @@
 (ns dev.dbt-import.resolve-test
   (:require
    [clojure.java.io :as io]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.resolve :as resolve]
    [dev.dbt-import.schemas.resolved :as resolved]
    [dev.dbt-import.test-util :as tu :refer [fld]]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -105,6 +107,8 @@
     (is (re-find #"percentile aggregation without a percentile value"
                  (reason config semantic-models (assoc sales :agg :percentile))))))
 
+(def ^:private sum-sales [:sum {} (fld "sales" :type/Float)])
+
 (defn- expected-clause [agg column base-type]
   (let [f (fld column base-type)]
     (case agg
@@ -118,279 +122,304 @@
       "count_distinct" [:distinct {} f]
       "sum_boolean"    [:count-where {} [:= {} f true]])))
 
-(def ^:private aggregation-matrix-cases
-  "Every aggregation over every column it makes sense for: numeric aggregations over numeric columns, min and max
-  over orderable ones, counts over anything, and sum_boolean over booleans only. The converter does not refuse a
-  numeric aggregation over a non-numeric column (the lib schema accepts it and dbt itself would fail on it), so only
-  the sum_boolean refusal is asserted here. min/max over uuid and bytea are skipped: whether they work depends on the
-  warehouse version."
-  (for [agg                                ["sum" "average" "median" "percentile" "min" "max" "count" "count_distinct" "sum_boolean"]
-        [column data-type base-type kind] tu/pg-columns
-        :when (not (and (#{"min" "max"} agg) (#{:uuid :binary} kind)))
-        :let [ok? (case agg
-                    ("sum" "average" "median" "percentile") (= kind :numeric)
-                    ("min" "max")                           (contains? #{:numeric :text :temporal} kind)
-                    ("count" "count_distinct")              true
-                    "sum_boolean"                           (= kind :boolean))]
-        :when (or ok? (= agg "sum_boolean"))]
-    {:id      (format "%s over %s (%s)" agg column data-type)
-     :measure (cond-> {:agg agg, :expr column}
-                (= agg "percentile") (assoc :agg_params {:percentile 0.9}))
-     :expect  (if ok?
-                {:aggregation (expected-clause agg column base-type)}
-                {:unsupported #"sum_boolean over the non-boolean column"})}))
-
 (deftest ^:parallel aggregation-x-column-type-test
-  (tu/check-cases aggregation-matrix-cases))
+  ;; Every aggregation over every column it makes sense for: numeric aggregations over numeric columns, min and max
+  ;; over orderable ones, counts over anything, and sum_boolean over booleans only. The converter does not refuse a
+  ;; numeric aggregation over a non-numeric column (the lib schema accepts it and dbt itself would fail on it), so
+  ;; only the sum_boolean refusal is asserted. min/max over uuid and bytea are skipped: whether they work depends on
+  ;; the warehouse version.
+  (doseq [agg                                ["sum" "average" "median" "percentile" "min" "max" "count" "count_distinct" "sum_boolean"]
+          [column data-type base-type kind] tu/pg-columns
+          :when (not (and (#{"min" "max"} agg) (#{:uuid :binary} kind)))
+          :let [ok?    (case agg
+                         ("sum" "average" "median" "percentile") (= kind :numeric)
+                         ("min" "max")                           (contains? #{:numeric :text :temporal} kind)
+                         ("count" "count_distinct")              true
+                         "sum_boolean"                           (= kind :boolean))
+                tweaks {:measure (cond-> {:agg agg, :expr column}
+                                   (= agg "percentile") (assoc :agg_params {:percentile 0.9}))}]]
+    (testing (format "%s over %s (%s)" agg column data-type)
+      (cond
+        ok?
+        (is (= (expected-clause agg column base-type) (tu/aggregation tweaks)))
 
-(defn- type-case
-  "A `count` over a column whose declared `data_type` is `data-type`; count accepts any column, so only the base type
-  is under test."
-  [data-type expected]
-  {:id      (str "data_type " (pr-str data-type))
-   :columns {"x" data-type}
-   :measure {:agg "count", :expr "x"}
-   :expect  (if (keyword? expected)
-              {:aggregation [:count-where {} [:not-null {} (fld "x" expected)]]}
-              expected)})
+        (= agg "sum_boolean")
+        (is (re-find #"sum_boolean over the non-boolean column" (tu/unsupported tweaks)))))))
 
-(def ^:private postgres-type-cases
-  (concat
-   (map #(apply type-case %)
-        [["float" :type/Float] ["FLOAT" :type/Float] ["Float" :type/Float] ["  float  " :type/Float]
-         ["float4" :type/Float] ["float8" :type/Float] ["real" :type/Float] ["double precision" :type/Float]
-         ["DOUBLE PRECISION" :type/Float] ["double  precision" :type/Float]
-         ["integer" :type/Integer] ["INTEGER" :type/Integer] ["int" :type/Integer] ["int2" :type/Integer]
-         ["int4" :type/Integer] ["int8" :type/BigInteger] ["bigint" :type/BigInteger] ["smallint" :type/Integer]
-         ["serial" :type/Integer] ["bigserial" :type/BigInteger] ["smallserial" :type/Integer]
-         ["numeric" :type/Decimal] ["numeric(10,2)" :type/Decimal] ["numeric(10, 2)" :type/Decimal]
-         ["NUMERIC(38,0)" :type/Decimal] ["numeric (10,2)" :type/Decimal] ["decimal" :type/Decimal]
-         ["decimal(5)" :type/Decimal] ["money" :type/Decimal]
-         ["boolean" :type/Boolean] ["bool" :type/Boolean] ["BOOLEAN" :type/Boolean]
-         ["text" :type/Text] ["varchar" :type/Text] ["varchar(255)" :type/Text] ["VARCHAR(255)" :type/Text]
-         ["varchar(max)" :type/Text] ["character varying" :type/Text] ["character varying(255)" :type/Text]
-         ["char" :type/Text] ["char(1)" :type/Text] ["character(10)" :type/Text] ["bpchar" :type/Text]
-         ["citext" :type/Text]
-         ["uuid" :type/UUID] ["json" :type/JSON] ["jsonb" :type/JSON] ["inet" :type/IPAddress]
-         ["bytea" :type/*] ["interval" :type/*] ["tsvector" :type/*] ["geometry" :type/*]
-         ["date" :type/Date] ["time" :type/Time] ["timetz" :type/TimeWithLocalTZ]
-         ["time without time zone" :type/Time] ["time(3) without time zone" :type/Time]
-         ["timestamp" :type/DateTime] ["timestamp(3)" :type/DateTime]
-         ["timestamp without time zone" :type/DateTime] ["timestamp(6) without time zone" :type/DateTime]
-         ["timestamp with time zone" :type/DateTimeWithLocalTZ] ["timestamp(6) with time zone" :type/DateTimeWithLocalTZ]
-         ["timestamptz" :type/DateTimeWithLocalTZ] ["TIMESTAMP WITH TIME ZONE" :type/DateTimeWithLocalTZ]
-         ;; arrays are arrays; Metabase does not type them further
-         ["integer[]" :type/*] ["numeric(10,2)[]" :type/*]])
-   ;; types nobody knows: reported, not guessed
-   (for [data-type ["geography" "geography(Point,4326)" "my_enum" "USER-DEFINED"]]
-     (type-case data-type {:unsupported #"no base type known"}))
-   ;; a blank data_type is no data_type
-   (for [data-type ["" "   "]]
-     (type-case data-type {:aggregation [:count-where {} [:not-null {} (fld "x" nil)]]}))))
+(defn- count-of-column-typed
+  "The aggregation a `count` over a column declared as `data-type` converts to, with `config` merged over the default.
+  `count` accepts any column, so only the base type is under test."
+  [data-type & {:as config}]
+  (tu/aggregation {:columns {"x" data-type}, :measure {:agg "count", :expr "x"}, :config config}))
 
-(def ^:private base-type-override-cases
-  [{:id      "a :base-types override applies to an unknown type with a precision suffix"
-    :config  {:base-types {"geography" :type/Text}}
-    :columns {"x" "GEOGRAPHY(POINT,4326)"}
-    :measure {:agg "count", :expr "x"}
-    :expect  {:aggregation [:count-where {} [:not-null {} (fld "x" :type/Text)]]}}
-   {:id      "a :base-types override wins over the driver's own mapping"
-    :config  {:base-types {"float" :type/Decimal}}
-    :measure {:agg "sum", :expr "sales"}
-    :expect  {:aggregation [:sum {} (fld "sales" :type/Decimal)]}}
-   {:id      "an upper-case override key still matches"
-    :config  {:base-types {"GEOGRAPHY" :type/Text}}
-    :columns {"x" "geography"}
-    :measure {:agg "count", :expr "x"}
-    :expect  {:aggregation [:count-where {} [:not-null {} (fld "x" :type/Text)]]}}])
+(defn- count-of-column-typed-reason
+  "The reason a `count` over a column declared as `data-type` is reported."
+  [data-type]
+  (tu/unsupported {:columns {"x" data-type}, :measure {:agg "count", :expr "x"}}))
 
-(def ^:private mysql-type-cases
-  (for [[data-type expected] [["int" :type/Integer] ["INT" :type/Integer] ["integer" :type/Integer]
-                              ["bigint" :type/BigInteger] ["tinyint(1)" :type/Integer] ["smallint" :type/Integer]
-                              ["mediumint" :type/Integer] ["decimal(10,2)" :type/Decimal] ["double" :type/Float]
-                              ["float" :type/Float] ["varchar(255)" :type/Text] ["text" :type/Text]
-                              ["longtext" :type/Text] ["datetime" :type/DateTime]
-                              ["timestamp" :type/DateTimeWithLocalTZ] ["date" :type/Date] ["json" :type/JSON]
-                              ["int unsigned" :type/Integer] ["bigint(20) unsigned" :type/BigInteger]
-                              ["year" :type/Integer] ["enum('a','b')" :type/MySQLEnum]]]
-    (assoc (type-case data-type expected)
-           :id     (str "mysql data_type " (pr-str data-type))
-           :config {:driver :mysql})))
+(deftest ^:parallel postgres-type-string-test
+  (are [data-type base-type] (= [:count-where {} [:not-null {} (fld "x" base-type)]] (count-of-column-typed data-type))
+    "float"                          :type/Float
+    "FLOAT"                          :type/Float
+    "Float"                          :type/Float
+    "  float  "                      :type/Float
+    "float4"                         :type/Float
+    "float8"                         :type/Float
+    "real"                           :type/Float
+    "double precision"               :type/Float
+    "DOUBLE PRECISION"               :type/Float
+    "double  precision"              :type/Float
+    "integer"                        :type/Integer
+    "INTEGER"                        :type/Integer
+    "int"                            :type/Integer
+    "int2"                           :type/Integer
+    "int4"                           :type/Integer
+    "int8"                           :type/BigInteger
+    "bigint"                         :type/BigInteger
+    "smallint"                       :type/Integer
+    "serial"                         :type/Integer
+    "bigserial"                      :type/BigInteger
+    "smallserial"                    :type/Integer
+    "numeric"                        :type/Decimal
+    "numeric(10,2)"                  :type/Decimal
+    "numeric(10, 2)"                 :type/Decimal
+    "NUMERIC(38,0)"                  :type/Decimal
+    "numeric (10,2)"                 :type/Decimal
+    "decimal"                        :type/Decimal
+    "decimal(5)"                     :type/Decimal
+    "money"                          :type/Decimal
+    "boolean"                        :type/Boolean
+    "bool"                           :type/Boolean
+    "BOOLEAN"                        :type/Boolean
+    "text"                           :type/Text
+    "varchar"                        :type/Text
+    "varchar(255)"                   :type/Text
+    "VARCHAR(255)"                   :type/Text
+    "varchar(max)"                   :type/Text
+    "character varying"              :type/Text
+    "character varying(255)"         :type/Text
+    "char"                           :type/Text
+    "char(1)"                        :type/Text
+    "character(10)"                  :type/Text
+    "bpchar"                         :type/Text
+    "citext"                         :type/Text
+    "uuid"                           :type/UUID
+    "json"                           :type/JSON
+    "jsonb"                          :type/JSON
+    "inet"                           :type/IPAddress
+    "bytea"                          :type/*
+    "interval"                       :type/*
+    "tsvector"                       :type/*
+    "geometry"                       :type/*
+    "date"                           :type/Date
+    "time"                           :type/Time
+    "timetz"                         :type/TimeWithLocalTZ
+    "time without time zone"         :type/Time
+    "time(3) without time zone"      :type/Time
+    "timestamp"                      :type/DateTime
+    "timestamp(3)"                   :type/DateTime
+    "timestamp without time zone"    :type/DateTime
+    "timestamp(6) without time zone" :type/DateTime
+    "timestamp with time zone"       :type/DateTimeWithLocalTZ
+    "timestamp(6) with time zone"    :type/DateTimeWithLocalTZ
+    "timestamptz"                    :type/DateTimeWithLocalTZ
+    "TIMESTAMP WITH TIME ZONE"       :type/DateTimeWithLocalTZ)
+  (testing "arrays are arrays; Metabase does not type them further"
+    (are [data-type] (= [:count-where {} [:not-null {} (fld "x" :type/*)]] (count-of-column-typed data-type))
+      "integer[]" "numeric(10,2)[]"))
+  (testing "types nobody knows are reported, not guessed"
+    (are [data-type] (re-find #"no base type known" (count-of-column-typed-reason data-type))
+      "geography" "geography(Point,4326)" "my_enum" "USER-DEFINED"))
+  (testing "a blank data_type is no data_type"
+    (are [data-type] (= [:count-where {} [:not-null {} (fld "x" nil)]] (count-of-column-typed data-type))
+      "" "   ")))
 
-(def ^:private h2-type-cases
-  (for [[data-type expected] [["INTEGER" :type/Integer] ["integer" :type/Integer] ["VARCHAR" :type/Text]
-                              ["DOUBLE PRECISION" :type/Float] ["BOOLEAN" :type/Boolean]
-                              ["TIMESTAMP WITH TIME ZONE" :type/DateTimeWithLocalTZ] ["DECIMAL(10,2)" :type/Decimal]]]
-    (assoc (type-case data-type expected)
-           :id     (str "h2 data_type " (pr-str data-type))
-           :config {:driver :h2})))
+(deftest ^:parallel base-type-override-test
+  (testing "a :base-types override applies to an unknown type, whatever its case or precision suffix"
+    (is (= [:count-where {} [:not-null {} (fld "x" :type/Text)]]
+           (count-of-column-typed "GEOGRAPHY(POINT,4326)" :base-types {"geography" :type/Text})))
+    (is (= [:count-where {} [:not-null {} (fld "x" :type/Text)]]
+           (count-of-column-typed "geography" :base-types {"GEOGRAPHY" :type/Text}))))
+  (testing "an override wins over the driver's own mapping"
+    (is (= [:sum {} (fld "sales" :type/Decimal)]
+           (tu/aggregation {:config {:base-types {"float" :type/Decimal}}, :measure {:agg "sum", :expr "sales"}})))))
 
-(deftest ^:parallel type-string-test
-  (tu/check-cases postgres-type-cases)
-  (tu/check-cases base-type-override-cases)
-  (testing "drivers whose type maps are keyed by upper-case names"
-    (tu/check-cases mysql-type-cases)
-    (tu/check-cases h2-type-cases))
+(deftest ^:parallel upper-case-type-map-test
+  (testing "MySQL keys its type map by upper-case names"
+    (are [data-type base-type] (= [:count-where {} [:not-null {} (fld "x" base-type)]] (count-of-column-typed data-type :driver :mysql))
+      "int"                 :type/Integer
+      "INT"                 :type/Integer
+      "integer"             :type/Integer
+      "bigint"              :type/BigInteger
+      "tinyint(1)"          :type/Integer
+      "smallint"            :type/Integer
+      "mediumint"           :type/Integer
+      "decimal(10,2)"       :type/Decimal
+      "double"              :type/Float
+      "float"               :type/Float
+      "varchar(255)"        :type/Text
+      "text"                :type/Text
+      "longtext"            :type/Text
+      "datetime"            :type/DateTime
+      "timestamp"           :type/DateTimeWithLocalTZ
+      "date"                :type/Date
+      "json"                :type/JSON
+      "int unsigned"        :type/Integer
+      "bigint(20) unsigned" :type/BigInteger
+      "year"                :type/Integer
+      "enum('a','b')"       :type/MySQLEnum))
+  (testing "so does H2"
+    (are [data-type base-type] (= [:count-where {} [:not-null {} (fld "x" base-type)]] (count-of-column-typed data-type :driver :h2))
+      "INTEGER"                  :type/Integer
+      "integer"                  :type/Integer
+      "VARCHAR"                  :type/Text
+      "DOUBLE PRECISION"         :type/Float
+      "BOOLEAN"                  :type/Boolean
+      "TIMESTAMP WITH TIME ZONE" :type/DateTimeWithLocalTZ
+      "DECIMAL(10,2)"            :type/Decimal))
   (testing "an unknown driver fails the run instead of producing cards"
-    (tu/check-cases [{:id      "unknown driver"
-                      :config  {:driver :not-a-real-driver}
-                      :measure {:agg "sum", :expr "sales"}
-                      :expect  {:thrown :any}}])))
-
-(def ^:private column-type-cases
-  "The manifest's `columns` are documentation: a project may declare no `data_type`, document only some columns, or
-  none at all. The converter then emits the field without a base type and the instance supplies it on import."
-  [{:id "a column with no declared data_type" :columns {"sales" nil} :expect {:aggregation [:sum {} (fld "sales" nil)]}}
-   {:id "a column the project never documented" :columns {"sales" ::tu/remove} :expect {:aggregation [:sum {} (fld "sales" nil)]}}
-   {:id "a model with no documented columns at all"
-    :edit (fn [m] (assoc-in m [:nodes tu/model-id :columns] {})) :expect {:aggregation [:sum {} (fld "sales" nil)]}}
-   {:id "the model node is missing from the manifest"
-    :edit (fn [m] (update m :nodes dissoc tu/model-id)) :expect {:aggregation [:sum {} (fld "sales" nil)]}}
-   {:id "sum_boolean over a column of unknown type is trusted"
-    :measure {:agg "sum_boolean", :expr "x"} :columns {"x" nil}
-    :expect {:aggregation [:count-where {} [:= {} (fld "x" nil) true]]}}])
+    (is (thrown? Exception (tu/convert {:config {:driver :not-a-real-driver}})))))
 
 (deftest ^:parallel column-type-test
-  (tu/check-cases column-type-cases))
+  (testing "the manifest's columns are documentation: a column without a type resolves without a base type"
+    (testing "no declared data_type"
+      (is (= [:sum {} (fld "sales" nil)] (tu/aggregation {:columns {"sales" nil}}))))
+    (testing "a column the project never documented"
+      (is (= [:sum {} (fld "sales" nil)] (tu/aggregation {:columns {"sales" ::tu/remove}}))))
+    (testing "a model with no documented columns at all"
+      (is (= [:sum {} (fld "sales" nil)] (tu/aggregation {:edit (fn [m] (assoc-in m [:nodes tu/model-id :columns] {}))}))))
+    (testing "the model node is missing from the manifest"
+      (is (= [:sum {} (fld "sales" nil)] (tu/aggregation {:edit (fn [m] (update m :nodes dissoc tu/model-id))}))))
+    (testing "sum_boolean over a column of unknown type is trusted"
+      (is (= [:count-where {} [:= {} (fld "x" nil) true]]
+             (tu/aggregation {:measure {:agg "sum_boolean", :expr "x"}, :columns {"x" nil}}))))))
 
 (def ^:private unsupported-sql #"SQL expression, not supported yet")
 
-(def ^:private expr-cases
-  [{:id "nil expr means the measure name is the column"
-    :measure {:name "sales", :expr nil} :input-measure {:name "sales"}
-    :expect {:aggregation [:sum {} (fld "sales" :type/Float)]}}
-   {:id "nil expr with a measure name that is not a documented column"
-    :measure {:name "revenue", :expr nil} :input-measure {:name "revenue"}
-    :expect {:aggregation [:sum {} (fld "revenue" nil)]}}
-   {:id "upper-case expr matches the column case-insensitively"
-    :measure {:expr "SALES"} :expect {:aggregation [:sum {} (fld "sales" :type/Float)]}}
-   {:id "mixed-case expr" :measure {:expr "Sales"} :expect {:aggregation [:sum {} (fld "sales" :type/Float)]}}
-   {:id "an exact-case match wins over a case-insensitive one"
-    :columns {"SALES" "numeric"} :measure {:expr "SALES"}
-    :expect {:aggregation [:sum {} (fld "SALES" :type/Decimal)]}}
-   {:id "a double-quoted identifier is still just the column"
-    :measure {:expr "\"sales\""} :expect {:aggregation [:sum {} (fld "sales" :type/Float)]}}
-   {:id "a double-quoted mixed-case identifier keeps its case"
-    :columns {"Sales" "float"} :measure {:expr "\"Sales\""}
-    :expect {:aggregation [:sum {} (fld "Sales" :type/Float)]}}
-   {:id "a backtick-quoted identifier is still just the column"
-    :measure {:expr "`sales`"} :expect {:aggregation [:sum {} (fld "sales" :type/Float)]}}
-   {:id "a table-qualified column is still just the column"
-    :measure {:expr "fact_sales.sales"} :expect {:aggregation [:sum {} (fld "sales" :type/Float)]}}
-   {:id "a quoted, table-qualified column"
-    :measure {:expr "\"fact_sales\".\"sales\""} :expect {:aggregation [:sum {} (fld "sales" :type/Float)]}}
-   {:id "leading whitespace around a column name"
-    :measure {:expr " sales"} :expect {:aggregation [:sum {} (fld "sales" :type/Float)]}}
-   {:id "a trailing newline, which a YAML block scalar (expr: |) always adds"
-    :measure {:expr "sales\n"} :expect {:aggregation [:sum {} (fld "sales" :type/Float)]}}
-   {:id "a non-ASCII column name"
-    :columns {"größe" "numeric"} :measure {:expr "größe"}
-    :expect {:aggregation [:sum {} (fld "größe" :type/Decimal)]}}
-   {:id "a column name starting with a digit (legal when quoted in the warehouse)"
-    :columns {"2024_sales" "numeric"} :measure {:expr "2024_sales"}
-    :expect {:aggregation [:sum {} (fld "2024_sales" :type/Decimal)]}}
-   {:id "a column name starting with an underscore"
-    :columns {"_sales" "numeric"} :measure {:expr "_sales"}
-    :expect {:aggregation [:sum {} (fld "_sales" :type/Decimal)]}}
-   {:id "a column named with a SQL reserved word (order)"
-    :columns {"order" "float"} :measure {:expr "order"}
-    :expect {:aggregation [:sum {} (fld "order" :type/Float)]}}
-   {:id "a column named with a SQL reserved word (select)"
-    :columns {"select" "integer"} :measure {:expr "select"}
-    :expect {:aggregation [:sum {} (fld "select" :type/Integer)]}}
-   {:id "arithmetic on a column" :measure {:expr "sales + 0"} :expect {:unsupported unsupported-sql}}
-   {:id "a function call" :measure {:expr "coalesce(sales, 0)"} :expect {:unsupported unsupported-sql}}
-   {:id "a cast" :measure {:expr "sales::numeric"} :expect {:unsupported unsupported-sql}}
-   {:id "a CASE expression"
-    :measure {:expr "case when is_returned then sales else 0 end"} :expect {:unsupported unsupported-sql}}
-   {:id "a product of two columns" :measure {:expr "sales * quantity"} :expect {:unsupported unsupported-sql}}
-   {:id "a trailing SQL comment" :measure {:expr "sales -- revenue"} :expect {:unsupported unsupported-sql}}
-   {:id "Jinja in expr" :measure {:expr "{{ var('amount_col') }}"} :expect {:unsupported unsupported-sql}}
-   {:id "an aggregate inside expr" :measure {:agg "count", :expr "count(*)"} :expect {:unsupported unsupported-sql}}
-   {:id "DISTINCT inside expr with agg count"
-    :measure {:agg "count", :expr "distinct customer_key"} :expect {:unsupported unsupported-sql}}
-   {:id "count of * is a row count" :measure {:agg "count", :expr "*"} :expect {:aggregation [:count {}]}}
-   {:id "sum of * is not a thing" :measure {:agg "sum", :expr "*"} :expect {:unsupported #"sum over \*"}}
-   {:id "sum of the literal 1 is a row count" :measure {:expr "1"} :expect {:aggregation [:count {}]}}
-   {:id "count of the literal 1 is a row count" :measure {:agg "count", :expr "1"} :expect {:aggregation [:count {}]}}
-   {:id "count_distinct of the literal 1"
-    :measure {:agg "count_distinct", :expr "1"} :expect {:unsupported #"count_distinct over the literal 1"}}
-   {:id "average of the literal 1" :measure {:agg "average", :expr "1"} :expect {:unsupported #"over the literal 1"}}
-   {:id "max of the literal 1" :measure {:agg "max", :expr "1"} :expect {:unsupported #"over the literal 1"}}
-   {:id "sum of the literal 0" :measure {:expr "0"} :expect {:unsupported #"sum over the literal 0"}}
-   {:id "sum of the literal 2" :measure {:expr "2"} :expect {:unsupported #"sum over the literal 2"}}
-   {:id "sum of the literal 01" :measure {:expr "01"} :expect {:unsupported #"literal 01"}}
-   {:id "sum of the literal 1.0" :measure {:expr "1.0"} :expect {:unsupported unsupported-sql}}
-   {:id "the bare word true is a literal, not a column" :measure {:expr "true"} :expect {:unsupported #"literal true"}}
-   {:id "the bare word NULL is a literal, not a column" :measure {:expr "NULL"} :expect {:unsupported #"literal NULL"}}
-   {:id "an empty expr" :measure {:expr ""} :expect {:unsupported :any}}
-   {:id "a whitespace-only expr" :measure {:expr "  \n"} :expect {:unsupported :any}}
-   {:id "expr naming a categorical dimension's column"
-    :measure {:agg "count_distinct", :expr "status"} :expect {:aggregation [:distinct {} (fld "status" :type/Text)]}}
-   {:id "expr naming an entity rather than a column is trusted as a column"
-    :measure {:agg "count_distinct", :expr "customer"} :expect {:aggregation [:distinct {} (fld "customer" nil)]}}
-   {:id "agg_time_dimension pointing at a missing dimension does not block conversion"
-    :measure {:agg_time_dimension "nope"} :expect {:aggregation [:sum {} (fld "sales" :type/Float)]}}])
+(defn- aggregation-of-expr
+  "The aggregation a measure with `expr` converts to: a `sum` unless `agg` says otherwise, over the default columns plus
+  `columns`."
+  [expr & {:keys [agg columns]}]
+  (tu/aggregation {:measure (cond-> {:expr expr} agg (assoc :agg agg)), :columns columns}))
 
-(deftest ^:parallel expr-test
-  (tu/check-cases expr-cases))
+(defn- expr-reason
+  "The reason a measure with `expr` (a `sum` unless `agg` says otherwise) is reported."
+  [expr & {:keys [agg]}]
+  (tu/unsupported {:measure (cond-> {:expr expr} agg (assoc :agg agg))}))
 
-(def ^:private count-cases
-  [{:id "count of a nullable column skips nulls"
-    :measure {:agg "count", :expr "sales"} :expect {:aggregation [:count-where {} [:not-null {} (fld "sales" :type/Float)]]}}
-   {:id "count of the primary-key column"
-    :measure {:agg "count", :expr "fact_sales_key"}
-    :expect {:aggregation [:count-where {} [:not-null {} (fld "fact_sales_key" :type/Integer)]]}}
-   {:id "count_distinct of a foreign key"
-    :measure {:agg "count_distinct", :expr "customer_key"} :expect {:aggregation [:distinct {} (fld "customer_key" :type/Text)]}}])
+(deftest ^:parallel expr-column-test
+  (testing "nil expr means the measure name is the column"
+    (is (= sum-sales (tu/aggregation {:measure {:name "sales", :expr nil}, :input-measure {:name "sales"}})))
+    (testing "documented or not"
+      (is (= [:sum {} (fld "revenue" nil)]
+             (tu/aggregation {:measure {:name "revenue", :expr nil}, :input-measure {:name "revenue"}})))))
+  (testing "spellings of a bare column name"
+    (are [expr] (= sum-sales (aggregation-of-expr expr))
+      "SALES" "Sales" "\"sales\"" "`sales`" "fact_sales.sales" "\"fact_sales\".\"sales\"" " sales" "sales\n"))
+  (testing "an exact-case match wins over a case-insensitive one"
+    (is (= [:sum {} (fld "SALES" :type/Decimal)] (aggregation-of-expr "SALES" :columns {"SALES" "numeric"}))))
+  (testing "a double-quoted mixed-case identifier keeps its case"
+    (is (= [:sum {} (fld "Sales" :type/Float)] (aggregation-of-expr "\"Sales\"" :columns {"Sales" "float"}))))
+  (testing "column names that are not plain ASCII words"
+    (are [expr data-type base-type] (= [:sum {} (fld expr base-type)] (aggregation-of-expr expr :columns {expr data-type}))
+      "größe"      "numeric" :type/Decimal
+      "2024_sales" "numeric" :type/Decimal
+      "_sales"     "numeric" :type/Decimal
+      "order"      "float"   :type/Float
+      "select"     "integer" :type/Integer))
+  (testing "expr naming a categorical dimension's column"
+    (is (= [:distinct {} (fld "status" :type/Text)] (aggregation-of-expr "status" :agg "count_distinct"))))
+  (testing "expr naming an entity rather than a column is trusted as a column"
+    (is (= [:distinct {} (fld "customer" nil)] (aggregation-of-expr "customer" :agg "count_distinct"))))
+  (testing "agg_time_dimension pointing at a missing dimension does not block conversion"
+    (is (= sum-sales (tu/aggregation {:measure {:agg_time_dimension "nope"}})))))
 
-(defn- percentile-case [agg-params expected]
-  {:id      (str "percentile with agg_params " (pr-str agg-params))
-   :measure {:agg "percentile", :expr "sales", :agg_params agg-params}
-   :expect  (if (number? expected)
-              {:aggregation [:percentile {} (fld "sales" :type/Float) expected]}
-              expected)})
+(deftest ^:parallel expr-sql-test
+  (testing "anything that is not a bare column or a literal is SQL, not supported yet (QRES-3)"
+    (are [expr] (re-find unsupported-sql (expr-reason expr))
+      "sales + 0"
+      "coalesce(sales, 0)"
+      "sales::numeric"
+      "case when is_returned then sales else 0 end"
+      "sales * quantity"
+      "sales -- revenue"
+      "{{ var('amount_col') }}"
+      "1.0"
+      ""
+      "  \n"))
+  (testing "an aggregate or DISTINCT inside expr"
+    (are [expr] (re-find unsupported-sql (expr-reason expr :agg "count"))
+      "count(*)" "distinct customer_key")))
 
-(def ^:private percentile-cases
-  (concat
-   (map #(apply percentile-case %)
-        [[{:percentile 0.95} 0.95] [{:percentile 0.5} 0.5] [{:percentile 0.99} 0.99] [{:percentile 0.25} 0.25]
-         ;; dbt documents the percentile as a fraction, so 1 is p100; a value above 1 is read as a percentage
-         [{:percentile 1} 1.0] [{:percentile 0} 0.0] [{:percentile 0.0} 0.0]
-         [{:percentile 95} 0.95] [{:percentile 95.0} 0.95] [{:percentile 50} 0.5] [{:percentile 99} 0.99]
-         [{:percentile 75} 0.75] [{:percentile 100} 1.0]
-         [{:percentile 0.9, :use_discrete_percentile false} 0.9]
-         [{:percentile 0.9, :use_approximate_percentile true} 0.9]
-         [nil {:unsupported #"without a percentile value"}]
-         [{} {:unsupported #"without a percentile value"}]
-         [{:percentile nil} {:unsupported #"without a percentile value"}]
-         [{:percentile 150} {:unsupported #"percentile 150 is out of range"}]
-         [{:percentile -0.5} {:unsupported #"percentile -0.5 is out of range"}]
-         [{:percentile 0.9, :use_discrete_percentile true} {:unsupported #"discrete percentile"}]])
-   [{:id "agg_params on a non-percentile aggregation are ignored"
-     :measure {:agg "sum", :expr "sales", :agg_params {:percentile 0.9}}
-     :expect {:aggregation [:sum {} (fld "sales" :type/Float)]}}
-    {:id "median is its own aggregation, not p50"
-     :measure {:agg "median", :expr "sales"} :expect {:aggregation [:median {} (fld "sales" :type/Float)]}}]))
+(deftest ^:parallel expr-literal-test
+  (testing "sum or count of the literal 1 is a row count"
+    (are [agg] (= [:count {}] (aggregation-of-expr "1" :agg agg))
+      "sum" "count"))
+  (testing "count of * is a row count, but * means nothing to other aggregations"
+    (is (= [:count {}] (aggregation-of-expr "*" :agg "count")))
+    (is (re-find #"sum over \*" (expr-reason "*" :agg "sum"))))
+  (testing "other literals have no Metabase equivalent"
+    (are [agg expr reason] (re-find reason (expr-reason expr :agg agg))
+      "count_distinct" "1"    #"count_distinct over the literal 1"
+      "average"        "1"    #"average over the literal 1"
+      "max"            "1"    #"max over the literal 1"
+      "sum"            "0"    #"sum over the literal 0"
+      "sum"            "2"    #"sum over the literal 2"
+      "sum"            "01"   #"literal 01"
+      "sum"            "true" #"literal true"
+      "sum"            "NULL" #"literal NULL")))
 
-(def ^:private sum-boolean-cases
-  [{:id "sum_boolean over a SQL predicate"
-    :measure {:agg "sum_boolean", :expr "status = 'returned'"} :expect {:unsupported unsupported-sql}}
-   {:id "sum_boolean over the literal 1"
-    :measure {:agg "sum_boolean", :expr "1"} :expect {:unsupported #"sum_boolean over the literal 1"}}
-   {:id "sum_boolean with fill_nulls_with"
-    :measure {:agg "sum_boolean", :expr "is_returned"} :input-measure {:fill_nulls_with 0}
-    :expect {:aggregation [:coalesce {} [:count-where {} [:= {} (fld "is_returned" :type/Boolean) true]] 0]}}])
+(deftest ^:parallel count-test
+  (is (= [:count-where {} [:not-null {} (fld "sales" :type/Float)]] (aggregation-of-expr "sales" :agg "count"))
+      "COUNT(col) skips nulls")
+  (is (= [:count-where {} [:not-null {} (fld "fact_sales_key" :type/Integer)]] (aggregation-of-expr "fact_sales_key" :agg "count")))
+  (is (= [:distinct {} (fld "customer_key" :type/Text)] (aggregation-of-expr "customer_key" :agg "count_distinct"))))
 
-(def ^:private unknown-aggregation-cases
-  [{:id "an aggregation dbt knows but Metabase does not is reported for that metric only"
-    :measure {:agg "approx_count_distinct"} :expect {:unsupported #"aggregation approx_count_distinct has no Metabase equivalent"}}])
+(defn- percentile-of-sales
+  "Tweaks for a `percentile` of `sales` with `agg-params`."
+  [agg-params]
+  {:measure {:agg "percentile", :expr "sales", :agg_params agg-params}})
 
-(deftest ^:parallel count-percentile-sum-boolean-test
-  (tu/check-cases count-cases)
-  (tu/check-cases percentile-cases)
-  (tu/check-cases sum-boolean-cases)
-  (tu/check-cases unknown-aggregation-cases))
+(deftest ^:parallel percentile-test
+  (testing "dbt documents the percentile as a fraction, so 1 is p100; a value above 1 is read as a percentage"
+    (are [agg-params fraction] (= [:percentile {} (fld "sales" :type/Float) fraction]
+                                  (tu/aggregation (percentile-of-sales agg-params)))
+      {:percentile 0.95}                                  0.95
+      {:percentile 0.5}                                   0.5
+      {:percentile 0.99}                                  0.99
+      {:percentile 0.25}                                  0.25
+      {:percentile 1}                                     1.0
+      {:percentile 0}                                     0.0
+      {:percentile 0.0}                                   0.0
+      {:percentile 95}                                    0.95
+      {:percentile 95.0}                                  0.95
+      {:percentile 50}                                    0.5
+      {:percentile 99}                                    0.99
+      {:percentile 75}                                    0.75
+      {:percentile 100}                                   1.0
+      {:percentile 0.9, :use_discrete_percentile false}   0.9
+      {:percentile 0.9, :use_approximate_percentile true} 0.9))
+  (testing "no percentile value"
+    (are [agg-params] (re-find #"without a percentile value" (tu/unsupported (percentile-of-sales agg-params)))
+      nil {} {:percentile nil}))
+  (testing "out of range"
+    (are [agg-params reason] (re-find reason (tu/unsupported (percentile-of-sales agg-params)))
+      {:percentile 150}  #"percentile 150 is out of range"
+      {:percentile -0.5} #"percentile -0.5 is out of range"))
+  (testing "Metabase percentiles are continuous"
+    (is (re-find #"discrete percentile"
+                 (tu/unsupported (percentile-of-sales {:percentile 0.9, :use_discrete_percentile true})))))
+  (testing "agg_params on a non-percentile aggregation are ignored"
+    (is (= sum-sales (tu/aggregation {:measure {:agg "sum", :expr "sales", :agg_params {:percentile 0.9}}}))))
+  (testing "median is its own aggregation, not p50"
+    (is (= [:median {} (fld "sales" :type/Float)] (aggregation-of-expr "sales" :agg "median")))))
+
+(deftest ^:parallel sum-boolean-test
+  (is (re-find unsupported-sql (expr-reason "status = 'returned'" :agg "sum_boolean")))
+  (is (re-find #"sum_boolean over the literal 1" (expr-reason "1" :agg "sum_boolean")))
+  (testing "with fill_nulls_with"
+    (is (= [:coalesce {} [:count-where {} [:= {} (fld "is_returned" :type/Boolean) true]] 0]
+           (tu/aggregation {:measure {:agg "sum_boolean", :expr "is_returned"}, :input-measure {:fill_nulls_with 0}})))))
 
 (def ^:private filter-templates
   "Filter templates that exercise the MetricFlow filter grammar. All are unsupported until QRES-3, which replaces this
@@ -438,67 +467,66 @@
 
 (def ^:private unsupported-filter #"filters are not supported yet")
 
-(def ^:private sum-sales [:sum {} (fld "sales" :type/Float)])
-
-(def ^:private filter-cases
-  (concat
-   (for [template filter-templates]
-     {:id     (str "metric filter " (pr-str template))
-      :metric {:filter {:where_filters [{:where_sql_template template}]}}
-      :expect {:unsupported unsupported-filter}})
-   [{:id "a filter on the input measure only"
-     :input-measure {:filter {:where_filters [{:where_sql_template "{{ Dimension('order__status') }} = 'Shipped'"}]}}
-     :expect {:unsupported unsupported-filter}}
-    {:id "filters on both the metric and its input measure"
-     :metric {:filter {:where_filters [{:where_sql_template "{{ Entity('customer') }} IS NOT NULL"}]}}
-     :input-measure {:filter {:where_filters [{:where_sql_template "{{ Dimension('order__status') }} = 'Shipped'"}]}}
-     :expect {:unsupported unsupported-filter}}
-    {:id "two where_filters ANDed on one metric"
-     :metric {:filter {:where_filters [{:where_sql_template "{{ Dimension('order__status') }} = 'Shipped'"}
-                                       {:where_sql_template "{{ Dimension('order__amount') }} > 0"}]}}
-     :expect {:unsupported unsupported-filter}}
-    {:id "an empty where_filters list is no filter" :metric {:filter {:where_filters []}} :expect {:aggregation sum-sales}}
-    {:id "a null filter is no filter" :metric {:filter nil} :expect {:aggregation sum-sales}}]))
+(defn- where-filters
+  "A `filter` holding one where clause per `template`."
+  [& templates]
+  {:where_filters (mapv (fn [template] {:where_sql_template template}) templates)})
 
 (deftest ^:parallel filter-test
-  (tu/check-cases filter-cases))
-
-(def ^:private non-additive-cases
-  [{:id "non_additive_dimension, window_choice max"
-    :measure {:non_additive_dimension {:name "date_day", :window_choice "max"}} :expect {:unsupported #"non-additive"}}
-   {:id "non_additive_dimension, window_choice min"
-    :measure {:non_additive_dimension {:name "date_day", :window_choice "min"}} :expect {:unsupported #"non-additive"}}
-   {:id "non_additive_dimension with window_groupings"
-    :measure {:non_additive_dimension {:name "date_day", :window_choice "max", :window_groupings ["customer"]}}
-    :expect {:unsupported #"non-additive"}}
-   {:id "non_additive_dimension naming a dimension that does not exist"
-    :measure {:non_additive_dimension {:name "nope", :window_choice "max"}} :expect {:unsupported #"non-additive"}}
-   {:id "an invalid window_choice fails the whole manifest"
-    :measure {:non_additive_dimension {:name "date_day", :window_choice "first"}} :expect {:thrown #"Invalid dbt manifest"}}])
+  (testing "every filter is unsupported until QRES-3"
+    (doseq [template filter-templates]
+      (testing (pr-str template)
+        (is (re-find unsupported-filter (tu/unsupported {:metric {:filter (where-filters template)}}))))))
+  (testing "a filter on the input measure only"
+    (is (re-find unsupported-filter
+                 (tu/unsupported {:input-measure {:filter (where-filters "{{ Dimension('order__status') }} = 'Shipped'")}}))))
+  (testing "filters on both the metric and its input measure"
+    (is (re-find unsupported-filter
+                 (tu/unsupported {:metric        {:filter (where-filters "{{ Entity('customer') }} IS NOT NULL")}
+                                  :input-measure {:filter (where-filters "{{ Dimension('order__status') }} = 'Shipped'")}}))))
+  (testing "two where_filters ANDed on one metric"
+    (is (re-find unsupported-filter
+                 (tu/unsupported {:metric {:filter (where-filters "{{ Dimension('order__status') }} = 'Shipped'"
+                                                                  "{{ Dimension('order__amount') }} > 0")}}))))
+  (testing "an empty where_filters list or a null filter is no filter"
+    (is (= sum-sales (tu/aggregation {:metric {:filter (where-filters)}})))
+    (is (= sum-sales (tu/aggregation {:metric {:filter nil}})))))
 
 (deftest ^:parallel non-additive-test
-  (tu/check-cases non-additive-cases))
+  (testing "semi-additive measures have no Metabase equivalent"
+    (are [non-additive-dimension] (re-find #"non-additive"
+                                           (tu/unsupported {:measure {:non_additive_dimension non-additive-dimension}}))
+      {:name "date_day", :window_choice "max"}
+      {:name "date_day", :window_choice "min"}
+      {:name "date_day", :window_choice "max", :window_groupings ["customer"]}
+      {:name "nope", :window_choice "max"}
+      ;; dbt documents min and max, but its manifest schema allows any aggregation here
+      {:name "date_day", :window_choice "sum"}))
+  (testing "a window_choice that is not an aggregation at all fails the whole manifest"
+    (is (thrown-with-msg? ExceptionInfo #"Invalid dbt manifest"
+                          (tu/convert {:measure {:non_additive_dimension {:name "date_day", :window_choice "first"}}})))))
 
 (defn- edit-relation [k v]
   (fn [m] (assoc-in m [:semantic_models tu/sm-id :node_relation k] v)))
 
-(def ^:private relation-cases
-  [{:id "a relation with no database (Spark, some Databricks setups) cannot be mapped"
-    :edit (edit-relation :database nil) :expect {:unsupported #"no Metabase database configured"}}
-   {:id "database names are matched exactly against the config"
-    :edit (edit-relation :database "DBT_BI") :expect {:unsupported #"no Metabase database configured for warehouse database \"DBT_BI\""}}
-   {:id "an upper-case schema is used verbatim"
-    :edit (edit-relation :schema_name "PUBLIC")
-    :expect {:aggregation [:sum {} (fld "PUBLIC" "fact_sales" "sales" :type/Float)], :source-table [tu/db "PUBLIC" "fact_sales"]}}
-   {:id "an alias that differs from the model name is the table"
-    :edit (fn [m]
-            (-> m
-                ((edit-relation :alias "fct_sales_v2"))
-                (assoc-in [:nodes tu/model-id :alias] "fct_sales_v2")))
-    :expect {:aggregation [:sum {} (fld "public" "fct_sales_v2" "sales" :type/Float)], :source-table [tu/db "public" "fct_sales_v2"]}}
-   {:id "a schema containing a dot is one name"
-    :edit (edit-relation :schema_name "analytics.v2")
-    :expect {:aggregation [:sum {} (fld "analytics.v2" "fact_sales" "sales" :type/Float)], :source-table [tu/db "analytics.v2" "fact_sales"]}}])
-
 (deftest ^:parallel relation-test
-  (tu/check-cases relation-cases))
+  (testing "a relation with no database (Spark, some Databricks setups) cannot be mapped"
+    (is (re-find #"no Metabase database configured" (tu/unsupported {:edit (edit-relation :database nil)}))))
+  (testing "database names are matched exactly against the config"
+    (is (re-find #"no Metabase database configured for warehouse database \"DBT_BI\""
+                 (tu/unsupported {:edit (edit-relation :database "DBT_BI")}))))
+  (testing "an upper-case schema is used verbatim"
+    (is (= {:aggregation  [:sum {} (fld "PUBLIC" "fact_sales" "sales" :type/Float)]
+            :source-table [tu/db "PUBLIC" "fact_sales"]}
+           (tu/convert {:edit (edit-relation :schema_name "PUBLIC")}))))
+  (testing "an alias that differs from the model name is the table"
+    (is (= {:aggregation  [:sum {} (fld "public" "fct_sales_v2" "sales" :type/Float)]
+            :source-table [tu/db "public" "fct_sales_v2"]}
+           (tu/convert {:edit (fn [m]
+                                (-> m
+                                    ((edit-relation :alias "fct_sales_v2"))
+                                    (assoc-in [:nodes tu/model-id :alias] "fct_sales_v2")))}))))
+  (testing "a schema containing a dot is one name"
+    (is (= {:aggregation  [:sum {} (fld "analytics.v2" "fact_sales" "sales" :type/Float)]
+            :source-table [tu/db "analytics.v2" "fact_sales"]}
+           (tu/convert {:edit (edit-relation :schema_name "analytics.v2")})))))
