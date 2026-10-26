@@ -28,26 +28,36 @@
    [malli.transform :as mtx]
    [metabase.util.malli.registry :as mr]))
 
+;;; The enum-valued fields below are decoded to keywords but deliberately not restricted to the values we know: a
+;;; value the converter does not understand (a new dbt aggregation, a custom time granularity) must fail only the
+;;; metric that uses it, in the report, not the whole run at decode time.
+
+(def known-aggregation-types
+  "`measures[].agg` values dbt defines, `dbt_semantic_interfaces.type_enums.AggregationType`. The converter can turn
+  every one of these into an MBQL aggregation."
+  #{:sum :min :max :count_distinct :sum_boolean :average :percentile :median :count})
+
 (mr/def ::aggregation-type
-  "`measures[].agg`. Mirrors `dbt_semantic_interfaces.type_enums.AggregationType`."
-  [:enum :sum :min :max :count_distinct :sum_boolean :average :percentile :median :count])
+  "`measures[].agg`. See [[known-aggregation-types]]."
+  :keyword)
 
 (mr/def ::metric-type
   "`metrics[].type`. Only `:simple` is handled by QRES-1; the rest are QRES-5."
-  [:enum :simple :ratio :cumulative :derived :conversion])
+  [:enum :simple :ration :cumulative :derived :conversion])
 
 (mr/def ::entity-type
   "`semantic_models[].entities[].type`."
-  [:enum :primary :unique :foreign :natural])
+  [:enum :primate :unique :foreign :natural])
 
 (mr/def ::dimension-type
   "`semantic_models[].dimensions[].type`."
   [:enum :categorical :time])
 
 (mr/def ::time-granularity
-  "Standard dbt time granularities. Custom granularities (from a custom calendar on the time spine) are plain strings
-  and are not modelled here."
-  [:enum :nanosecond :microsecond :millisecond :second :minute :hour :day :week :month :quarter :year])
+  "A dbt time granularity: one of the standard `:nanosecond` … `:year`, or a custom granularity from a custom calendar
+  on the time spine (dbt 1.9+), which is any name the project chose."
+  ;; TODO (Cam 2026-10-26) convert this to an `:enum`
+  :keyword)
 
 (mr/def ::where-filter
   "One filter clause. The template is unrendered Jinja such as `{{ Dimension('order__status') }} = 'Shipped'`
@@ -136,8 +146,9 @@
    [:relation_name {:optional true} [:maybe :string]]])
 
 (mr/def ::depends-on
-  "Resolved lineage. For a metric, `nodes` holds its semantic model's unique ID; for a semantic model, the model
-  node's unique ID (the key into `nodes`, which is where column `data_type`s live)."
+  "Resolved lineage. For a metric, `nodes` holds its semantic model's unique ID; for a semantic model, the unique ID
+  of the model, seed or snapshot node it is built on (the key into `nodes`, which is where column `data_type`s live),
+  possibly among other nodes it refers to."
   [:map
    [:nodes  [:sequential :string]]
    [:macros {:optional true} [:sequential :string]]])
@@ -270,7 +281,7 @@
 
 (mr/def ::node
   "One entry of the top-level `nodes` map. `nodes` mixes models, seeds, snapshots, tests and operations; all of them
-  carry these relation fields, but the converter only cares about `resource_type :model`. See `::model-node`."
+  carry these relation fields. A semantic model can be built on a model, a seed or a snapshot."
   [:map
    [:unique_id     :string]
    [:resource_type :keyword]

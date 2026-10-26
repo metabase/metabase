@@ -2,13 +2,16 @@
   (:require
    [clj-yaml.core :as yaml]
    [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.test :refer [deftest is testing]]
    [dev.dbt-import.emit :as emit]
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.resolve :as resolve]
-   [metabase.queries.models.card :as card])
+   [dev.dbt-import.test-util :as tu :refer [fld]]
+   [metabase.queries.models.card :as card]
+   [metabase.util :as u])
   (:import
-   (java.nio.file Files)
+   (java.nio.file Files Path Paths)
    (java.nio.file.attribute FileAttribute)))
 
 (set! *warn-on-reflection* true)
@@ -128,3 +131,105 @@
                                :dataset_query :serdes/meta])))))
     (testing "no result_metadata: the instance infers it on import"
       (is (not (contains? (read-yaml "collections/main/dbt_metrics/sales.yaml") :result_metadata))))))
+
+(def ^:private sum-sales [:sum {} (fld "sales" :type/Float)])
+
+(def ^:private fill-and-timespine-cases
+  [{:id "fill_nulls_with on the metric" :type-params {:fill_nulls_with 0} :expect {:aggregation [:coalesce {} sum-sales 0]}}
+   {:id "fill_nulls_with on the input measure" :input-measure {:fill_nulls_with 0} :expect {:aggregation [:coalesce {} sum-sales 0]}}
+   {:id "the metric's fill_nulls_with wins over the input measure's"
+    :type-params {:fill_nulls_with 1} :input-measure {:fill_nulls_with 0} :expect {:aggregation [:coalesce {} sum-sales 1]}}
+   {:id "a negative fill_nulls_with" :type-params {:fill_nulls_with -1} :expect {:aggregation [:coalesce {} sum-sales -1]}}
+   {:id "fill_nulls_with on a count"
+    :measure {:agg "count", :expr "sales"} :type-params {:fill_nulls_with 0}
+    :expect {:aggregation [:coalesce {} [:count-where {} [:not-null {} (fld "sales" :type/Float)]] 0]}}
+   {:id "fill_nulls_with on a row count" :measure {:expr "1"} :type-params {:fill_nulls_with 0}
+    :expect {:aggregation [:coalesce {} [:count {}] 0]}}
+   {:id "fill_nulls_with on a max of an integer is fine: it has a numeric result"
+    :measure {:agg "max", :expr "quantity"} :type-params {:fill_nulls_with 0}
+    :expect {:aggregation [:coalesce {} [:max {} (fld "quantity" :type/Integer)] 0]}}
+   {:id "fill_nulls_with 0 on a text aggregation would fail in the warehouse"
+    :measure {:agg "max", :expr "customer_key"} :type-params {:fill_nulls_with 0}
+    :expect {:unsupported #"fill_nulls_with 0 on a non-numeric aggregation"}}
+   {:id "fill_nulls_with 0 on a max of a date would fail in the warehouse"
+    :measure {:agg "max", :expr "date_day"} :type-params {:fill_nulls_with 0}
+    :expect {:unsupported #"fill_nulls_with 0 on a non-numeric aggregation"}}
+   {:id "fill_nulls_with on a max of a column of unknown type is trusted"
+    :measure {:agg "max", :expr "x"} :columns {"x" nil} :type-params {:fill_nulls_with 0}
+    :expect {:aggregation [:coalesce {} [:max {} (fld "x" nil)] 0]}}
+   ;; join_to_timespine has no Metabase equivalent: there is nothing to join a scalar metric to. It is ignored, as the
+   ;; QRES-1 mapping table says, rather than blocking the metric.
+   {:id "join_to_timespine on the metric is ignored" :type-params {:join_to_timespine true} :expect {:aggregation sum-sales}}
+   {:id "join_to_timespine on the input measure is ignored" :input-measure {:join_to_timespine true} :expect {:aggregation sum-sales}}
+   {:id "join_to_timespine with fill_nulls_with"
+    :type-params {:join_to_timespine true, :fill_nulls_with 0} :expect {:aggregation [:coalesce {} sum-sales 0]}}])
+
+(deftest ^:parallel fill-and-timespine-test
+  (tu/check-cases fill-and-timespine-cases))
+
+(def ^:private card-dir "collections/main/dbt_metrics/")
+
+(def ^:private adversarial-labels
+  ["Sales" "sales" "SALES" "Sales!" "Sales?" "Sales 2" "sales_2" "sales_2" "../../etc/passwd" "..\\..\\windows\\system32"
+   "a/b" "a/b/c" "." ".." "..." "📈" "📉" "📈📉" "Umsatz pro Größe" "日本語の売上" "Ventes €" (apply str (repeat 300 "x"))
+   (apply str (repeat 120 "é")) (apply str (repeat 80 "日")) "con" "nul" "CON" "aux.yaml" "x.yaml" "  leading space"
+   "trailing space  " "tab\tname" "new\nline" "#hash" "-dash" ":colon" "*star" "\"quoted\"" "'single'" "null" "true"])
+
+(deftest ^:parallel adversarial-label-paths-test
+  (let [files (tu/card-files (tu/metrics-manifest adversarial-labels))
+        paths (map :path files)
+        root  (Paths/get "/out" (make-array String 0))]
+    (is (= (count adversarial-labels) (count files)) "every metric gets a file")
+    (testing "file paths are unique, even on a case-insensitive file system"
+      (is (= (count paths) (count (distinct (map u/lower-case-en paths))))))
+    (doseq [path paths
+            :let [file-name (subs path (count card-dir))]]
+      (testing (pr-str path)
+        (is (str/starts-with? path card-dir))
+        (is (not (str/includes? file-name "/")) "a label cannot add a directory level")
+        (is (str/ends-with? file-name ".yaml"))
+        (is (<= (count (.getBytes ^String file-name "UTF-8")) 255) "fits a file name on ext4 and APFS")
+        (is (.startsWith (.normalize ^Path (.resolve ^Path root ^String path)) root) "stays inside the export directory")))))
+
+(deftest ^:parallel label-fallback-test
+  (testing "a nil or blank label falls back to the metric name"
+    (is (= ["m0" "m1" "m2"]
+           (map #(-> % :entity :name) (tu/card-files (tu/metrics-manifest [nil "" "  "])))))))
+
+(def ^:private yaml-hostile-strings
+  ["key: value" "- not a list" "# not a comment" "'single'" "\"double\"" "multi\nline\n\nparagraphs" "trailing newline\n"
+   "tab\there" "unicode ✓ ünï 日本" "---" "..." "null" "true" "false" "123" "1e3" "0x1F" "~" "{curly}" "[square]"
+   "&anchor" "*alias" "!tag" "%percent" "@at" "`backtick`" "| pipe" "> greater" "| Metric | Definition |\n|---|---|"
+   "   leading spaces" "trailing spaces   " "\\backslash" "emoji 📈" "a: b: c" "? question" ", comma" "=equals"])
+
+(deftest yaml-round-trip-test
+  (let [manifest (tu/metrics-manifest yaml-hostile-strings yaml-hostile-strings)
+        files    (emit/files config (tu/resolve-manifest-map manifest))
+        out-dir  (temp-dir)]
+    (emit/write! out-dir files)
+    (doseq [{:keys [path metric]} (rest files)
+            :let [{card-name :name, :keys [description]} (yaml/parse-string (slurp (io/file out-dir path)))]]
+      (testing (pr-str (-> metric :metric :label))
+        (is (= (-> metric :metric :label) card-name) "the label survives YAML as the card name")
+        (is (= (-> metric :metric :description) description) "the description survives YAML")))))
+
+(deftest determinism-test
+  (let [labels    ["Sales" "Quantity" "Price" "Target" "Sales"]
+        forward   (tu/metrics-manifest labels)
+        backward  (update forward :metrics #(into (array-map) (reverse %)))
+        run       (fn [manifest]
+                    (let [files (emit/files config (tu/resolve-manifest-map manifest))
+                          dir   (temp-dir)]
+                      (emit/write! dir files)
+                      (into (sorted-map) (for [{:keys [path]} files] [path (slurp (io/file dir path))]))))
+        first-run (run forward)]
+    (testing "re-running produces byte-identical files"
+      (is (= first-run (run forward))))
+    (testing "the order metrics appear in the manifest does not change the output"
+      (is (= first-run (run backward))))))
+
+(deftest ^:parallel empty-manifest-test
+  (let [resolved (tu/resolve-manifest-map (assoc (tu/build-manifest {}) :metrics {}))]
+    (is (= [] (:metrics resolved)))
+    (is (= [] (:unsupported resolved)))
+    (is (= 1 (count (emit/files config resolved))) "only the collection")))
