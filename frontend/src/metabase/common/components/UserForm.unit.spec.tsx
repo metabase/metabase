@@ -329,6 +329,95 @@ describe("UserForm", () => {
       createMockTenant({ id: 2, name: "TechStart Inc" }),
     ];
 
+    const ALL_TENANT_USERS = createMockGroup({
+      id: 10,
+      name: "All tenant users",
+      magic_group_type: "all-external-users",
+      is_tenant_group: true,
+    });
+
+    const TENANT_GROUP = createMockGroup({
+      id: 11,
+      name: "Favorites",
+      magic_group_type: null,
+      is_tenant_group: true,
+    });
+
+    const tenantUser = {
+      ...USER,
+      tenant_id: 1,
+      user_group_memberships: [
+        { id: ALL_TENANT_USERS.id, is_group_manager: false },
+      ],
+    };
+
+    const setupTenantUser = (initialValues: Partial<User> = tenantUser) =>
+      setup({
+        enterprisePlugins: ["sandboxes", "tenants"],
+        external: true,
+        tenants: TENANTS,
+        groups: [ALL_TENANT_USERS, TENANT_GROUP],
+        initialValues,
+      });
+
+    it("titles the group picker for tenant groups", async () => {
+      setupTenantUser();
+
+      expect(await screen.findByText("Tenant groups")).toBeInTheDocument();
+      expect(screen.queryByText("Groups")).not.toBeInTheDocument();
+    });
+
+    it("keeps the all tenant users group locked and non-removable", async () => {
+      setupTenantUser();
+
+      expect(
+        within(await screen.findByRole("list")).getByText(
+          ALL_TENANT_USERS.name,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /^Remove / }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("submits a new tenant user with both the all tenant users group and the chosen one", async () => {
+      const { onSubmit } = setupTenantUser({});
+
+      await userEvent.type(
+        await screen.findByLabelText(/Email/),
+        "misty@example.com",
+      );
+      await userEvent.click(
+        await screen.findByRole("textbox", { name: "Tenant" }),
+      );
+      await userEvent.click(await screen.findByText("Acme Corp"));
+
+      await userEvent.click(
+        await screen.findByRole("combobox", { name: "Groups" }),
+      );
+      await userEvent.click(
+        await screen.findByRole("option", { name: TENANT_GROUP.name }),
+      );
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Update" }),
+      );
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            email: "misty@example.com",
+            tenant_id: 1,
+            user_group_memberships: [
+              { id: ALL_TENANT_USERS.id, is_group_manager: false },
+              { id: TENANT_GROUP.id, is_group_manager: false },
+            ],
+          }),
+          expect.anything(),
+        );
+      });
+    });
+
     it("should require tenant_id for tenant users", async () => {
       setup({
         enterprisePlugins: ["sandboxes", "tenants"],

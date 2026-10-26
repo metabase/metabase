@@ -399,6 +399,53 @@ describe("LoginAttributeMappingEditor", () => {
     });
   });
 
+  describe("reserved keys", () => {
+    const RESERVED_KEY_ERROR =
+      'Keys starting with "@" are reserved for system use';
+
+    const addAttributeKey = async (key: string) => {
+      await userEvent.click(
+        await screen.findByRole("button", { name: /Add an attribute/ }),
+      );
+      const keyInput = (await screen.findAllByPlaceholderText("Key")).slice(
+        -1,
+      )[0];
+      await userEvent.type(keyInput, key);
+
+      return keyInput;
+    };
+
+    it("rejects a key starting with @, which the system owns", async () => {
+      const { onError } = setup({ simpleAttributes });
+
+      await addAttributeKey("@tenant.name");
+
+      expect(await screen.findByText(RESERVED_KEY_ERROR)).toBeInTheDocument();
+      expect(onError).toHaveBeenLastCalledWith(true);
+    });
+
+    it("clears the error once the key no longer starts with @", async () => {
+      const { onChange } = setup({ simpleAttributes });
+
+      const keyInput = await addAttributeKey("@tenant.name");
+      await userEvent.clear(keyInput);
+      await userEvent.type(keyInput, "my-special-attr");
+
+      expect(screen.queryByText(RESERVED_KEY_ERROR)).not.toBeInTheDocument();
+      expect(onChange).toHaveBeenLastCalledWith({
+        ...simpleAttributes,
+        "my-special-attr": "",
+      });
+    });
+
+    it("leaves the system defined @tenant.slug key alone", async () => {
+      setup({ structuredAttributes });
+
+      expect(await screen.findByText("@tenant.slug")).toBeInTheDocument();
+      expect(screen.queryByText(RESERVED_KEY_ERROR)).not.toBeInTheDocument();
+    });
+  });
+
   it("can handle not having any attributes", async () => {
     setup();
 
