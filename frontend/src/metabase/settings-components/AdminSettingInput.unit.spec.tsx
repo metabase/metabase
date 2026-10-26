@@ -46,6 +46,13 @@ const setup = (props: AdminSettingInputProps<SettingKey>) => {
       is_env_setting: true,
       env_name: "MB_HARDCODED_URL",
     }),
+    createMockSettingDefinition({
+      key: "site-name",
+      value: "Metabased",
+      // The backend interpolates the whitelabeled application name into the
+      // description, so the widget must render the server's copy.
+      description: "The name used for this instance of New Test Co.",
+    }),
   ]);
 
   setupUpdateSettingEndpoint();
@@ -80,6 +87,20 @@ describe("AdminSettingInput", () => {
     expect(await screen.findByText("Site Name")).toBeInTheDocument();
     expect(
       await screen.findByText("The name of your site"),
+    ).toBeInTheDocument();
+  });
+
+  it("should fall back to the description the server sends (metabase#17043)", async () => {
+    setup({
+      title: "Site Name",
+      name: "site-name",
+      inputType: "text",
+    });
+
+    expect(
+      await screen.findByText(
+        "The name used for this instance of New Test Co.",
+      ),
     ).toBeInTheDocument();
   });
 
