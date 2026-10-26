@@ -36,8 +36,6 @@ People viewing the dashboard will be able to click the button and perform your c
 
 You can add as many buttons as you want, and wire them up to one or more filters.
 
-If the action behind a button is archived, the button is disabled, and its tooltip says **This action is archived**.
-
 ## Connect an action to a dashboard filter
 
 When people click the action button on a dashboard, they'll be prompted to input values in the fields defined by that action. Alternatively, you can pre-fill some action fields with the values selected for a dashboard filter. Passing filter values to action fields is useful when the dashboard filters by an ID, and you want the action button to update the record associated with that ID.

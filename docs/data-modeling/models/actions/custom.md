@@ -85,8 +85,6 @@ Only admins can delete custom actions. Deleting an action also removes any dashb
 2. Click the **...** next to the action, and select **Delete**.
 3. Confirm by clicking **Delete**.
 
-<!-- TODO screenshot: the ... menu of a custom action on a model's actions page, opened, showing Edit and Delete (signed in as an admin) -->
-
 ## Example custom actions
 
 ### Example `UPDATE` action

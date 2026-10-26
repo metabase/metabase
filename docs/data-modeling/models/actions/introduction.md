@@ -36,7 +36,7 @@ For actions to work, you'll first need to do the following two things:
 ## Who can use actions
 
 - **To create, edit, or delete an action**, you must be an admin. That includes basic actions, custom actions, and [data actions](./data-actions.md#data-action-permissions).
-- **To run an action**, all you need is view access to the action's model or dashboard (or a link to a public action). But people with [row and column security](../../../permissions/row-and-column-security.md#people-with-row-and-column-security-cant-run-actions) on any table in a database can't run model actions on that database.
+- **To run an action**, all you need is view access to the action's model, dashboard, or [data actions](./data-actions.md) folder (or a link to a public action). But people with [row and column security](../../../permissions/row-and-column-security.md#people-with-row-and-column-security-cant-run-actions) on any table in a database can't run actions on that database.
 
 Remote sync and serialization imports can also create and change actions, so anyone who can push to a [synced repository](../../../installation-and-operation/remote-sync.md#treat-write-access-to-your-repository-like-admin-access) can change your actions.
 
