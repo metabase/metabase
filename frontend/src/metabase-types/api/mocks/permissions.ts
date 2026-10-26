@@ -1,8 +1,10 @@
 import {
   DataPermission,
+  type DatabasePermissions,
   DataPermissionValue,
   type Database,
   type Group,
+  type GroupId,
   type GroupsPermissions,
   type Impersonation,
   type PermissionsGraph,
@@ -11,9 +13,16 @@ import {
 export const createMockPermissionsGraph = ({
   groups,
   databases,
+  permissionsByGroupId = {},
 }: {
   groups: Omit<Group, "members">[];
   databases: Database[];
+  /**
+   * Per-group overrides merged over the unrestricted defaults, applied to every
+   * database. Use it for groups the backend gives narrower access, such as a
+   * tenant group that starts out blocked.
+   */
+  permissionsByGroupId?: Partial<Record<GroupId, Partial<DatabasePermissions>>>;
 }): PermissionsGraph => {
   const permissionGroups: GroupsPermissions = {};
 
@@ -28,6 +37,7 @@ export const createMockPermissionsGraph = ({
             native: DataPermissionValue.FULL,
             schemas: DataPermissionValue.FULL,
           },
+          ...permissionsByGroupId[group.id],
         },
       };
     }
