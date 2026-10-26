@@ -146,7 +146,8 @@
           {:status :cancelled
            :error e}
           (do
-            (log/errorf "Error executing transform: %s" (ex-message e))
+            ;; the caller owns the failure (and logs it); this returns it in the result map
+            (log/debugf "Error executing transform: %s" (ex-message e))
             {:status :failed
              :error e}))))))
 
