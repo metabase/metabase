@@ -7,6 +7,7 @@ import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useToast } from "metabase/common/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useUpdateMetabotMutation } from "metabase/metabot";
@@ -55,7 +56,7 @@ export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
       />
 
       <MetabotSettingsBody settingKey={enabledSettingKey}>
-        {!isEmbedMetabot && <MetabotQueryExecutionPane />}
+        {!isEmbedMetabot && <MetabotQueryExecutionToggle />}
 
         <PLUGIN_MODERATION.MetabotVerifiedContentConfigurationPane
           metabot={metabot}
@@ -76,32 +77,39 @@ export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
   );
 }
 
-function MetabotQueryExecutionPane() {
+function MetabotQueryExecutionToggle() {
   const { checked, envName, isBusy, onChange } = useSettingSwitch(
     "metabot-query-execution-enabled?",
   );
-  const isLocked = isBusy || envName != null;
+  const label = t`Let Metabot run queries and read their results`;
 
   return (
-    <Stack gap="sm">
+    <Box>
       <SettingHeader
         id="metabot-query-execution"
         title={t`Query execution`}
         description={t`Metabot can run queries and read their results to answer questions, using the permissions of the person asking. The result rows are sent to your AI provider. This doesn't apply to Metabot in Slack or in embedded apps.`}
       />
-      <Switch
-        label={t`Let Metabot run queries and read their results`}
-        checked={checked}
-        aria-disabled={isLocked || undefined}
-        onChange={(e) => {
-          if (!isLocked) {
-            onChange(e.target.checked);
-          }
-        }}
-        w="auto"
-      />
-      {envName != null && <Text c="text-secondary">{t`Using ${envName}`}</Text>}
-    </Stack>
+      <Flex align="center" gap="lg" mt="lg">
+        <Switch
+          aria-label={label}
+          checked={checked}
+          disabled={envName != null}
+          // aria-disabled rather than disabled keeps focus on the switch while a write is in flight
+          aria-disabled={isBusy || undefined}
+          onChange={(e) => {
+            if (!isBusy) {
+              onChange(e.target.checked);
+            }
+          }}
+          w="auto"
+        />
+        <Text c={checked ? "text-primary" : "text-secondary"} fw="500">
+          {label}
+        </Text>
+      </Flex>
+      {envName != null && <SetByEnvVar varName={envName} />}
+    </Box>
   );
 }
 
