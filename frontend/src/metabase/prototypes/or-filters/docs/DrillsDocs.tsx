@@ -280,7 +280,7 @@ export function DrillsDocs() {
         title={t`Try them in the harness`}
         intro={
           <>
-            {t`Each direction's canvas has a "Drill-throughs" example row: one unfiltered starting point per drill. Load one, click the chart, apply the drill, and watch where the clause lands.`}{" "}
+            {t`Each direction's canvas has a "Drill-throughs" example row: one unfiltered starting point per drill, and under each a button that loads the state the drill produces. Load a starting point, click the chart, apply the drill, and compare with the pre-built state.`}{" "}
             <Anchor component={Link} to="/prototypes/expression-bar-unified">
               {t`Open the one-bar direction`}
             </Anchor>

@@ -451,3 +451,201 @@ export function withTwoStagesExample(
     withSummaryStage,
   );
 }
+
+/**
+ * The states the drills above produce, built directly so they load without a
+ * click. Clause shapes follow what each drill writes (`drills.md`).
+ */
+
+function stringEquals(column: Lib.ColumnMetadata, value: string) {
+  return Lib.stringFilterClause({
+    operator: "=",
+    column,
+    values: [value],
+    options: {},
+  });
+}
+
+/** fk-filter on a Product ID cell: `Product ID = 14`. */
+export function withFkFilterDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const productId = findColumn(cleared, stageIndex, "Product ID");
+  if (!productId) {
+    return query;
+  }
+  return Lib.filter(
+    cleared,
+    stageIndex,
+    Lib.numberFilterClause({ operator: "=", column: productId, values: [14] }),
+  );
+}
+
+/** underlying-records on the Gizmo bar: back to rows, `Category = Gizmo`. */
+export function withUnderlyingRecordsDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const category = findFilterColumnByLongName(
+    cleared,
+    stageIndex,
+    "Product → Category",
+  );
+  if (!category) {
+    return query;
+  }
+  return Lib.filter(cleared, stageIndex, stringEquals(category, "Gizmo"));
+}
+
+/** underlying-records on a count-where bar: the breakout value plus the aggregation's condition. */
+export function withCountWhereDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const category = findFilterColumnByLongName(
+    cleared,
+    stageIndex,
+    "Product → Category",
+  );
+  const discount = findColumn(cleared, stageIndex, "Discount");
+  if (!category || !discount) {
+    return query;
+  }
+  return [
+    stringEquals(category, "Doohickey"),
+    Lib.defaultFilterClause({ operator: "not-null", column: discount }),
+  ].reduce(
+    (nextQuery, clause) => Lib.filter(nextQuery, stageIndex, clause),
+    cleared,
+  );
+}
+
+/** zoom-in.timeseries on July 2027: month-bucketed `=` filter, breakout by week. */
+export function withZoomTimeDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const byWeek = withCountByCreatedAt(query, stageIndex, "week");
+  const createdAt = byWeek
+    ? findColumn(byWeek, stageIndex, "Created At")
+    : undefined;
+  if (!byWeek || !createdAt) {
+    return query;
+  }
+  const month = findTemporalBucket(byWeek, stageIndex, createdAt, "month");
+  return Lib.filter(
+    byWeek,
+    stageIndex,
+    Lib.specificDateFilterClause({
+      operator: "=",
+      column: Lib.withTemporalBucket(createdAt, month),
+      values: [new Date(2027, 6, 1)],
+      hasTime: false,
+    }),
+  );
+}
+
+/** zoom-in.binning on the 40–60 bar: `>=` / `<` range on the binned column, bins narrowed. */
+export function withZoomBinsDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const binned = withCountByBinnedTotal(query, stageIndex);
+  const total = findColumn(binned, stageIndex, "Total");
+  if (!total) {
+    return query;
+  }
+  const binnedTotal = Lib.withDefaultBinning(binned, stageIndex, total);
+  return [
+    Lib.numberFilterClause({
+      operator: ">=",
+      column: binnedTotal,
+      values: [40],
+    }),
+    Lib.numberFilterClause({
+      operator: "<",
+      column: binnedTotal,
+      values: [60],
+    }),
+  ].reduce(
+    (nextQuery, clause) => Lib.filter(nextQuery, stageIndex, clause),
+    binned,
+  );
+}
+
+/** zoom-in.geographic on Texas: `State = TX`, breakout swapped to lat/lon binned every 1°. */
+export function withZoomMapDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const state = findFilterColumnByLongName(cleared, stageIndex, "User → State");
+  const latitude = findBreakoutColumn(cleared, stageIndex, "User → Latitude");
+  const longitude = findBreakoutColumn(cleared, stageIndex, "User → Longitude");
+  if (!state || !latitude || !longitude) {
+    return query;
+  }
+  const oneDegree = (column: Lib.ColumnMetadata) =>
+    Lib.withBinning(
+      column,
+      Lib.availableBinningStrategies(cleared, stageIndex, column).find(
+        (bucket) =>
+          Lib.displayInfo(cleared, stageIndex, bucket).displayName ===
+          "Bin every 1 degree",
+      ) ?? null,
+    );
+  const filtered = Lib.filter(
+    Lib.aggregateByCount(cleared, stageIndex),
+    stageIndex,
+    stringEquals(state, "TX"),
+  );
+  return Lib.breakout(
+    Lib.breakout(filtered, stageIndex, oneDegree(latitude)),
+    stageIndex,
+    oneDegree(longitude),
+  );
+}
+
+/** pivot on the Affiliate bar by Category: `Source = Affiliate`, breakout swapped to Category. */
+export function withPivotDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const byCategory = withCountByCategory(query, stageIndex);
+  const source = findFilterColumnByLongName(
+    byCategory,
+    stageIndex,
+    "User → Source",
+  );
+  if (!source) {
+    return query;
+  }
+  return Lib.filter(byCategory, stageIndex, stringEquals(source, "Affiliate"));
+}
+
+/** quick-filter on the Gadget Count cell: `Count > 4939` on the stage after the summary. */
+export function withCountFilterDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const byCategory = withCountByCategory(query, stageIndex);
+  const summaryStageIndex = stageIndex + 1;
+  const withSummaryStage = Lib.appendStage(byCategory);
+  const count = findFilterColumnByLongName(
+    withSummaryStage,
+    summaryStageIndex,
+    "Count",
+  );
+  if (!count) {
+    return byCategory;
+  }
+  return Lib.filter(
+    withSummaryStage,
+    summaryStageIndex,
+    Lib.numberFilterClause({ operator: ">", column: count, values: [4939] }),
+  );
+}

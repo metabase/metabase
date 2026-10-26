@@ -31,16 +31,24 @@ import {
   withCountByMonth,
   withCountBySource,
   withCountByState,
+  withCountFilterDrilled,
   withCountWhereByCategory,
+  withCountWhereDrilled,
   withDnfExample,
   withFilteredCountByCategoryByMonth,
+  withFkFilterDrilled,
   withFourLevelsExample,
   withNestedExample,
   withOrExample,
   withPillsExample,
+  withPivotDrilled,
   withRawRows,
   withTwoGroupsExample,
   withTwoStagesExample,
+  withUnderlyingRecordsDrilled,
+  withZoomBinsDrilled,
+  withZoomMapDrilled,
+  withZoomTimeDrilled,
 } from "./harness/examples";
 import { useOrdersQuery } from "./harness/useOrdersQuery";
 import type { FilterDirection } from "./types";
@@ -118,71 +126,223 @@ const SYNTHETIC_SHAPE_EXAMPLES: Example[] = [
   },
 ];
 
-/** One unfiltered starting point per drill in `drills.md`; the drill is performed in the results. */
-const DRILL_EXAMPLES: Example[] = [
+type DrillExample = {
+  /** The unfiltered query shape on which the drill appears; the drill is performed in the results. */
+  start: Example;
+  /** The same query after the drill, built directly so it loads without a click. */
+  drilled: Example;
+};
+
+/** One starting point and one drilled state per drill in `drills.md`. */
+const DRILL_EXAMPLES: DrillExample[] = [
   {
-    get label() {
-      return t`Quick filter, FK filter`;
+    start: {
+      get label() {
+        return t`Quick filter, FK filter`;
+      },
+      load: withRawRows,
+      hint: t`Orders as a table. Click a value → "=", "≠", "<", ">" or "Is empty"; click a Product ID → "View this Product's Orders" (Product ID = 14); click a header → filter picker.`,
     },
-    load: withRawRows,
-    hint: t`Orders as a table. Click a value → "=", "≠", "<", ">" or "Is empty"; click a Product ID → "View this Product's Orders" (Product ID = 42); click a header → filter picker.`,
+    drilled: {
+      get label() {
+        return t`Product ID = 14`;
+      },
+      load: withFkFilterDrilled,
+      hint: t`After "View this Product's Orders" on a Product ID cell: one FK filter on the rows.`,
+    },
   },
   {
-    get label() {
-      return t`See these Orders`;
+    start: {
+      get label() {
+        return t`See these Orders`;
+      },
+      load: withCountByCategory,
+      display: "bar",
+      hint: t`Count by Product → Category. Click a bar → "See these Orders" writes Category = Gizmo; "Break out by…" is also offered.`,
     },
-    load: withCountByCategory,
-    display: "bar",
-    hint: t`Count by Product → Category. Click a bar → "See these Orders" writes Category = Gizmo; "Break out by…" is also offered.`,
+    drilled: {
+      get label() {
+        return t`Category = Gizmo`;
+      },
+      load: withUnderlyingRecordsDrilled,
+      hint: t`After "See these Orders" on the Gizmo bar: aggregation and breakout dropped, one filter on the rows.`,
+    },
   },
   {
-    get label() {
-      return t`See these Orders (count where)`;
+    start: {
+      get label() {
+        return t`See these Orders (count where)`;
+      },
+      load: withCountWhereByCategory,
+      display: "bar",
+      hint: t`Count where Discount is not empty, by Product → Category. Click a bar → "See these Orders" writes two clauses: Category = Doohickey and Discount is not empty.`,
     },
-    load: withCountWhereByCategory,
-    display: "bar",
-    hint: t`Count where Discount is not empty, by Product → Category. Click a bar → "See these Orders" writes two clauses: Category = Gizmo and Discount is not empty.`,
+    drilled: {
+      get label() {
+        return t`Doohickey, Discount not empty`;
+      },
+      load: withCountWhereDrilled,
+      hint: t`After "See these Orders" on the Doohickey bar: the breakout value and the aggregation's own condition, two pills from one click.`,
+    },
   },
   {
-    get label() {
-      return t`Zoom in: time`;
+    start: {
+      get label() {
+        return t`Zoom in: time`;
+      },
+      load: withCountByMonth,
+      display: "line",
+      hint: t`Count by Created At: Month. Click a point → "See this month by week" writes Created At = July 2027 and breaks out by week.`,
     },
-    load: withCountByMonth,
-    display: "line",
-    hint: t`Count by Created At: Month. Click a point → "See this month by week" writes Created At = March 2024 and breaks out by week.`,
+    drilled: {
+      get label() {
+        return t`Jul 2027 by week`;
+      },
+      load: withZoomTimeDrilled,
+      display: "line",
+      hint: t`After "See this month by week" on July 2027: a month-bucketed "=" filter, breakout at the finer unit.`,
+    },
   },
   {
-    get label() {
-      return t`Zoom in: bins`;
+    start: {
+      get label() {
+        return t`Zoom in: bins`;
+      },
+      load: withCountByBinnedTotal,
+      display: "bar",
+      hint: t`Count by Total in auto bins. Click a bar → "Zoom in" writes Total >= 40 and Total < 60 and narrows the bins. Existing top-level Total filters are removed first.`,
     },
-    load: withCountByBinnedTotal,
-    display: "bar",
-    hint: t`Count by Total in auto bins. Click a bar → "Zoom in" writes Total >= 20 and Total < 40 and narrows the bins. Existing top-level Total filters are removed first.`,
+    drilled: {
+      get label() {
+        return t`Total 40–60`;
+      },
+      load: withZoomBinsDrilled,
+      display: "bar",
+      hint: t`After "Zoom in" on the 40–60 bar: a ">=" and a "<" pill on the binned column, bins narrowed to that range.`,
+    },
   },
   {
-    get label() {
-      return t`Zoom in: map`;
+    start: {
+      get label() {
+        return t`Zoom in: map`;
+      },
+      load: withCountByState,
+      display: "map",
+      hint: t`Count by User → State on a region map. Click a state → "Zoom in: State" writes State = TX and swaps the breakout to binned latitude and longitude.`,
     },
-    load: withCountByState,
-    display: "map",
-    hint: t`Count by User → State on a region map. Click a state → "Zoom in: State" writes State = CA and swaps the breakout to binned latitude and longitude.`,
+    drilled: {
+      get label() {
+        return t`TX by lat/lon`;
+      },
+      load: withZoomMapDrilled,
+      display: "map",
+      hint: t`After "Zoom in: State" on Texas: State = TX, breakouts on latitude and longitude binned every 1°, drawn as a grid map.`,
+    },
   },
   {
-    get label() {
-      return t`Break out by…`;
+    start: {
+      get label() {
+        return t`Break out by…`;
+      },
+      load: withCountBySource,
+      display: "bar",
+      hint: t`Count by User → Source. Click a bar → "Break out by…" → Category or Time: writes Source = Affiliate, removes that breakout and adds the chosen column.`,
     },
-    load: withCountBySource,
-    display: "bar",
-    hint: t`Count by User → Source. Click a bar → "Break out by…" → Category or Time: writes Source = Affiliate, removes that breakout and adds the chosen column.`,
+    drilled: {
+      get label() {
+        return t`Affiliate by Category`;
+      },
+      load: withPivotDrilled,
+      display: "bar",
+      hint: t`After "Break out by… → Product → Category" on the Affiliate bar: Source = Affiliate on the rows, breakout swapped to Category.`,
+    },
   },
   {
-    get label() {
-      return t`Filter on Count`;
+    start: {
+      get label() {
+        return t`Filter on Count`;
+      },
+      load: withCountByCategory,
+      hint: t`Count by Product → Category as a table. Click a Count cell → ">" or "<" writes Count > 4939 on a new stage after the summary.`,
     },
-    load: withCountByCategory,
-    hint: t`Count by Product → Category as a table. Click a Count cell → ">" or "<" writes Count > 153 on a new stage after the summary.`,
+    drilled: {
+      get label() {
+        return t`Count > 4939`;
+      },
+      load: withCountFilterDrilled,
+      hint: t`After ">" on the Gadget Count cell: the filter sits on the stage after the summary, where the summary pill or zone shows it.`,
+    },
   },
 ];
+
+type ExampleButtonProps = {
+  example: Example;
+  onLoad: (example: Example) => void;
+  fullWidth?: boolean;
+};
+
+function ExampleButton({ example, onLoad, fullWidth }: ExampleButtonProps) {
+  return (
+    <Tooltip
+      label={example.hint}
+      disabled={!example.hint}
+      maw="24rem"
+      multiline
+      openDelay={300}
+    >
+      <Button
+        size="sm"
+        variant="default"
+        fullWidth={fullWidth}
+        onClick={() => onLoad(example)}
+      >
+        {example.label}
+      </Button>
+    </Tooltip>
+  );
+}
+
+type DrillExampleGridProps = {
+  examples: DrillExample[];
+  onLoad: (example: Example) => void;
+};
+
+/** Two aligned rows: each drill's starting point above the state it produces. */
+function DrillExampleGrid({ examples, onLoad }: DrillExampleGridProps) {
+  return (
+    <Box
+      style={{
+        display: "grid",
+        gridTemplateColumns: `max-content repeat(${examples.length}, max-content)`,
+        gap: "var(--mantine-spacing-sm)",
+        alignItems: "center",
+      }}
+    >
+      <Text fw="bold" c="text-secondary" miw="6.5rem">{t`Drill-throughs`}</Text>
+      {examples.map(({ start }) => (
+        <ExampleButton
+          key={start.label}
+          example={start}
+          onLoad={onLoad}
+          fullWidth
+        />
+      ))}
+      <Text
+        fw="bold"
+        c="text-secondary"
+        miw="6.5rem"
+      >{t`After the drill`}</Text>
+      {examples.map(({ drilled }) => (
+        <ExampleButton
+          key={drilled.label}
+          example={drilled}
+          onLoad={onLoad}
+          fullWidth
+        />
+      ))}
+    </Box>
+  );
+}
 
 type ExampleRowProps = {
   label: string;
@@ -198,18 +358,7 @@ function ExampleRow({ label, examples, onLoad, children }: ExampleRowProps) {
         {label}
       </Text>
       {examples.map((example) => (
-        <Tooltip
-          key={example.label}
-          label={example.hint}
-          disabled={!example.hint}
-          maw="24rem"
-          multiline
-          openDelay={300}
-        >
-          <Button size="sm" variant="default" onClick={() => onLoad(example)}>
-            {example.label}
-          </Button>
-        </Tooltip>
+        <ExampleButton key={example.label} example={example} onLoad={onLoad} />
       ))}
       {children}
     </Group>
@@ -310,8 +459,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
                   {t`Reset`}
                 </Button>
               </ExampleRow>
-              <ExampleRow
-                label={t`Drill-throughs`}
+              <DrillExampleGrid
                 examples={DRILL_EXAMPLES}
                 onLoad={loadExample}
               />
