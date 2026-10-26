@@ -55,7 +55,9 @@
       :name "COLUMN_1"}]}})
 
 (def standard-mapping-series-data
-  [{:card {:id "123" :entity_id "123" :name "Test Card"} ;; Note: using string IDs for consistency
+  ;; :id is a real numeric id (what sourceId actually encodes); :entity_id is deliberately a different,
+  ;; unrelated value so a lookup that's accidentally matching on :entity_id can't pass by coincidence (metabase#76922)
+  [{:card {:id 123 :entity_id "not-the-id-lksdjfa" :name "Test Card"}
     :data {:cols [{:name "count"
                    :display_name "Count"
                    :base_type :type/Integer
@@ -78,7 +80,7 @@
       :name "COLUMN_1"}]}})
 
 (def string-mapping-series-data
-  [{:card {:id "456" :entity_id "456" :name "Another Test Card"} ;; Note: using string IDs for consistency
+  [{:card {:id 456 :entity_id "not-the-id-qwoeiru" :name "Another Test Card"}
     :data {:cols [{:name "sum"
                    :display_name "Sum"
                    :base_type :type/Float
@@ -100,7 +102,7 @@
       :name "COLUMN_1"}]}})
 
 (def missing-column-series-data
-  [{:card {:id "789" :entity_id "789" :name "Test Card"} ;; Note: using string IDs for consistency
+  [{:card {:id 789 :entity_id "not-the-id-zmxncbv" :name "Test Card"}
     :data {:cols [{:name "different_column"
                    :display_name "Different Column"}]
            :rows [[0]]}}])
@@ -125,13 +127,11 @@
     (let [result (render-util/get-visualization-columns missing-column-definition missing-column-series-data)]
       (is (empty? result) "Should return empty list when original column not found"))))
 
-(def entity-id-string-mapping-definition
-  {:columnValuesMapping
-   {:DIMENSION
-    ["$_card:UfzksyybSdOZv1wM7jYnn_name"]}})
-
-(def entity-id-series-data
-  [{:card {:id "123" :entity_id "UfzksyybSdOZv1wM7jYnn" :name "Entity ID Card"}
+;; sourceId ("card:<id>") and name-reference strings ("$_card:<id>_name") both carry a card's real numeric
+;; :id -- never its :entity_id, regardless of how close a random entity_id might look to one (metabase#76922).
+;; :entity_id below is deliberately something a lookup could never confuse for the id in sourceId/the name ref.
+(def numeric-id-series-data
+  [{:card {:id 191 :entity_id "not-the-id-vbnmqwe" :name "Numeric ID Card"}
     :data {:cols [{:name "count"
                    :display_name "Count"
                    :base_type :type/Integer
@@ -139,15 +139,15 @@
            :rows [[42]]}}])
 
 ;; Combined test for both value and name sources in merge-visualizer-data
-(def combined-entity-id-definition
+(def combined-numeric-id-definition
   {:display "funnel"
    :columnValuesMapping
    {:METRIC
-    [{:sourceId "card:UfzksyybSdOZv1wM7jYnn"
+    [{:sourceId "card:191"
       :originalName "count"
       :name "COLUMN_1"}]
     :DIMENSION
-    ["$_card:UfzksyybSdOZv1wM7jYnn_name"]}
+    ["$_card:191_name"]}
    :settings {:funnel.metric "METRIC", :funnel.dimension "DIMENSION"}})
 
 (def expected-merged-data
@@ -160,13 +160,16 @@
            :display_name "DIMENSION"
            :base_type :type/Text
            :semantic_type :type/Category}]
-   :rows [[42 "Entity ID Card"]]})
+   :rows [[42 "Numeric ID Card"]]})
 
-(deftest test-merge-visualizer-data-with-entity-ids
-  (testing "merge-visualizer-data handles entity IDs correctly"
+(deftest ^:parallel test-merge-visualizer-data-with-numeric-ids
+  (testing "merge-visualizer-data resolves both value sources and name references by the card's real numeric id
+            (#76922) -- a scalar funnel-of-numbers visualizer card, the only production path that actually
+            exercises this lookup, used to return an empty dataset here because sourceId/name-refs were being
+            matched against :entity_id instead"
     (let [result (render-util/merge-visualizer-data
-                  entity-id-series-data
-                  combined-entity-id-definition)]
+                  numeric-id-series-data
+                  combined-numeric-id-definition)]
       (is (= (:viz-settings expected-merged-data) (:viz-settings result)))
       (is (= (map #(select-keys % [:name :display_name]) (:cols expected-merged-data))
              (map #(select-keys % [:name :display_name]) (:cols result))))
