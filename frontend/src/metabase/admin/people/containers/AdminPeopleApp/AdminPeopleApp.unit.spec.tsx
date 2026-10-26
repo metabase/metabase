@@ -67,7 +67,12 @@ const setup = async (inputSetupOpts?: Partial<SetupOpts>) => {
   );
 };
 
-const setupTenantRoute = async (initialRoute: string) => {
+const setupTenantRoute = async (
+  initialRoute: string,
+  {
+    setupEmbeddingAutoenabled = true,
+  }: { setupEmbeddingAutoenabled?: boolean } = {},
+) => {
   const state = createMockState({
     admin: createMockAdminState({
       app: createMockAdminAppState({
@@ -80,7 +85,7 @@ const setupTenantRoute = async (initialRoute: string) => {
       is_superuser: true,
     }),
     settings: createMockSettingsState({
-      "setup-embedding-autoenabled": true,
+      "setup-embedding-autoenabled": setupEmbeddingAutoenabled,
       "use-tenants": false,
       "token-features": createMockTokenFeatures({
         tenants: false,
@@ -90,8 +95,9 @@ const setupTenantRoute = async (initialRoute: string) => {
 
   const TenantsRouteGuard = createTenantsRouteGuard();
 
-  renderWithProviders(
+  const { router } = renderWithProviders(
     <Route path="/admin/people" element={<AdminPeopleApp />}>
+      <Route index element={<>internal people</>} />
       <Route path="tenants" element={<TenantsRouteGuard />}>
         <Route path="groups" element={<UpsellTenants />} />
         <Route path="people" element={<UpsellTenants />} />
@@ -104,6 +110,8 @@ const setupTenantRoute = async (initialRoute: string) => {
       withRouter: true,
     },
   );
+
+  return { router };
 };
 
 describe("AdminPeopleApp", () => {
@@ -157,6 +165,25 @@ describe("AdminPeopleApp", () => {
         await screen.findByText("Use a multi-tenant user strategy"),
       ).toBeInTheDocument();
     });
+
+    it.each([
+      "/admin/people/tenants",
+      "/admin/people/tenants/groups",
+      "/admin/people/tenants/people",
+    ])(
+      "should send %s back to the internal people page without the tenants feature",
+      async (initialRoute) => {
+        const { router } = await setupTenantRoute(initialRoute, {
+          setupEmbeddingAutoenabled: false,
+        });
+
+        expect(await screen.findByText("internal people")).toBeInTheDocument();
+        expect(router?.location.pathname).toBe("/admin/people");
+        expect(
+          screen.queryByText("Use a multi-tenant user strategy"),
+        ).not.toBeInTheDocument();
+      },
+    );
   });
 
   describe("nudge to pro", () => {
