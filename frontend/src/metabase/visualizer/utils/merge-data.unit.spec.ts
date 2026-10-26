@@ -190,4 +190,86 @@ describe("mergeVisualizerData", () => {
 
     expect(result.results_timezone).toBe("America/Los_Angeles");
   });
+
+  it("should carry the referenced entities of the source datasets so dynamic goals resolve", () => {
+    const completed = (value: number) => ({
+      status: "completed" as const,
+      data: {
+        cols: [createMockColumn(NumberColumn({ name: "count" }))],
+        rows: [[value]],
+      },
+    });
+    const result = mergeVisualizerData({
+      columns: [
+        createMockColumn(NumberColumn({ name: "COLUMN_1" })),
+        createMockColumn(NumberColumn({ name: "COLUMN_2" })),
+      ],
+      columnValuesMapping: {
+        COLUMN_1: [
+          { sourceId: "card:1", originalName: "count", name: "COLUMN_1" },
+        ],
+        COLUMN_2: [
+          { sourceId: "card:2", originalName: "count", name: "COLUMN_2" },
+        ],
+      },
+      datasets: {
+        "card:1": createMockDataset({
+          data: {
+            cols: [createMockColumn(NumberColumn({ name: "count" }))],
+            rows: [[1]],
+            referenced_entities: { card: { 10: completed(10) } },
+          },
+        }),
+        "card:2": createMockDataset({
+          data: {
+            cols: [createMockColumn(NumberColumn({ name: "count" }))],
+            rows: [[2]],
+            referenced_entities: { measure: { 20: completed(20) } },
+          },
+        }),
+        "card:3": createMockDataset({
+          error: { status: 403 },
+          data: {
+            cols: [],
+            rows: [],
+            referenced_entities: { card: { 30: completed(30) } },
+          },
+        }),
+      },
+      dataSources: [
+        { id: "card:1", sourceId: 1, type: "card", name: "Chart 1" },
+        { id: "card:2", sourceId: 2, type: "card", name: "Chart 2" },
+        { id: "card:3", sourceId: 3, type: "card", name: "Chart 3" },
+      ],
+    });
+
+    expect(result.referenced_entities).toEqual({
+      card: { 10: completed(10) },
+      measure: { 20: completed(20) },
+    });
+  });
+
+  it("should leave referenced entities undefined when no source dataset has them", () => {
+    const result = mergeVisualizerData({
+      columns: [createMockColumn(NumberColumn({ name: "COLUMN_1" }))],
+      columnValuesMapping: {
+        COLUMN_1: [
+          { sourceId: "card:1", originalName: "count", name: "COLUMN_1" },
+        ],
+      },
+      datasets: {
+        "card:1": createMockDataset({
+          data: {
+            cols: [createMockColumn(NumberColumn({ name: "count" }))],
+            rows: [[1]],
+          },
+        }),
+      },
+      dataSources: [
+        { id: "card:1", sourceId: 1, type: "card", name: "Chart 1" },
+      ],
+    });
+
+    expect(result.referenced_entities).toBeUndefined();
+  });
 });

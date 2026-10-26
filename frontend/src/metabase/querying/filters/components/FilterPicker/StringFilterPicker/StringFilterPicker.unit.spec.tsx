@@ -33,6 +33,18 @@ import {
 
 import { StringFilterPicker } from "./StringFilterPicker";
 
+// The search debounce is idle time in these tests: they assert what a search
+// returns, not that the input waits before it asks.
+jest.mock(
+  "metabase/querying/common/components/FieldValuePicker/SearchValuePicker/constants",
+  () => ({
+    ...jest.requireActual(
+      "metabase/querying/common/components/FieldValuePicker/SearchValuePicker/constants",
+    ),
+    SEARCH_DEBOUNCE: 0,
+  }),
+);
+
 const EXPECTED_OPERATORS = [
   "Is",
   "Is not",

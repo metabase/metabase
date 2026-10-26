@@ -1,10 +1,5 @@
 import type { ComputedVisualizationSettings } from "metabase/viz-core";
-import {
-  getUnresolvedGoalMessage,
-  hasUnresolvedGoalValues,
-  needsGraphGoalResolution,
-  resolveGoalValue,
-} from "metabase/viz-core";
+import { needsGraphGoalResolution, resolveGoalValue } from "metabase/viz-core";
 import type { SingleSeries } from "metabase-types/api";
 
 export function resolveGoalSettings(
@@ -15,14 +10,11 @@ export function resolveGoalSettings(
     return settings;
   }
 
-  const goal = settings["graph.goal_value"];
-
-  if (hasUnresolvedGoalValues(data, [goal])) {
-    throw new Error(getUnresolvedGoalMessage("value"));
-  }
+  const resolved = resolveGoalValue(data, settings["graph.goal_value"]);
 
   return {
     ...settings,
-    "graph.goal_value": resolveGoalValue(data, goal).value,
+    // an unresolved goal line still draws, at 0
+    "graph.goal_value": resolved.value ?? 0,
   };
 }

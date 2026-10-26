@@ -230,6 +230,7 @@ function getColumns(
           <Flex justify="flex-end" w="100%">
             <Tooltip label={t`Refresh`}>
               <ActionIcon
+                variant="subtle"
                 aria-label={t`Refresh`}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -265,7 +266,7 @@ function ModelCacheStatus({
           to={Urls.monitorModelCacheRefreshJob(job.id)}
           onClick={(event) => event.stopPropagation()}
         >
-          <Ellipsified ff="monospace" c="error">
+          <Ellipsified ff="monospace" c="feedback-negative">
             {job.error}
           </Ellipsified>
         </Link>

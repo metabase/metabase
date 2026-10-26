@@ -1,3 +1,5 @@
+import type { MatcherOptions } from "@testing-library/cypress";
+
 import type {
   MeasureId,
   SegmentId,
@@ -19,8 +21,17 @@ const editSnippetPage = () => cy.findByTestId("edit-snippet-page");
 export const DataStudio = {
   nav: () => cy.findByTestId("data-studio-nav"),
   breadcrumbs: () => cy.findByTestId("data-studio-breadcrumbs"),
+  visit: () => {
+    cy.visit("/data-studio");
+    // The target is only known once the `hasSeenGuide` request comes back.
+    cy.location("pathname").should("match", /^\/data-studio\/.+/);
+    DataStudio.nav().should("be.visible");
+  },
   Transforms: {
-    header: () => cy.findByTestId("transforms-header"),
+    // The transform page shows a loader until the transform, databases and the
+    // lazy editor chunk have loaded, which can take longer than the default 4s
+    header: (options: MatcherOptions = {}) =>
+      cy.findByTestId("transforms-header", { timeout: 10_000, ...options }),
     sectionHeader: () => cy.findByTestId("transforms-section-header"),
     transformsTab: () =>
       DataStudio.Transforms.sectionHeader().findByText("Transforms"),
@@ -81,6 +92,10 @@ export const DataStudio = {
     editor: () => cy.findByTestId("python-editor"),
   },
   Snippets: {
+    visitList: () => {
+      cy.visit("/data-studio/snippets");
+      libraryPage().should("be.visible");
+    },
     newPage: newSnippetPage,
     editPage: editSnippetPage,
     archivedPage: archivedSnippetsPage,
@@ -90,7 +105,7 @@ export const DataStudio = {
     cancelButton: () => cy.findByRole("button", { name: "Cancel" }),
     editor: codeMirrorHelpers("snippet-editor", {}),
     visitSnippet: (snippetId: number) =>
-      cy.visit(`/data-studio/library/snippets/${snippetId}`),
+      cy.visit(`/data-studio/snippets/${snippetId}`),
   },
   Metrics: MetricPage,
   Tables: {
@@ -147,16 +162,19 @@ export const DataStudio = {
       H.popover();
     },
   },
+  Actions: {
+    visitList: () => {
+      cy.visit("/data-studio/actions");
+      libraryPage().should("be.visible");
+    },
+  },
   Library: {
     visit: () => {
       cy.visit("/data-studio/library");
       DataStudio.Library.libraryPage().should("be.visible");
       DataStudio.Library.collectionItem("Data").should("be.visible");
       DataStudio.Library.collectionItem("Metrics").should("be.visible");
-      DataStudio.Library.collectionItem("SQL snippets").should("be.visible");
     },
-    noResults: () =>
-      libraryPage().findByText("No tables, metrics, or snippets yet"),
     libraryPage,
     allTableItems: () => libraryPage().findAllByTestId("table-name"),
     tableItem: (name: string) =>

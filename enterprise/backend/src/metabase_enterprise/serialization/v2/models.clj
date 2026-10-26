@@ -4,20 +4,23 @@
 (def data-model
   "Schema model types"
   ["Database"
+   "Dimension"
    "Field"
    "FieldUserSettings"
    "Measure"
    "Segment"
    "Table"
+   "TableUserSettings"
    "Channel"])
 
 (def data-model-in-collection
-  "Data model types that can be found in collections (via published tables).
-   These are extracted by ID when discovered via descendants, even if no-data-model is set.
-   Includes both Field (full serdes) and FieldUserSettings (user-edits-only / git sync)."
+  "Data model types that can be found in collections (via published tables), extracted by ID when discovered via
+   descendants even if no-data-model is set."
   ["Table"
+   "TableUserSettings"
    "Field"
    "FieldUserSettings"
+   "Dimension"
    "Segment"
    ;; a dynamic goal in viz settings can name a Measure
    "Measure"])
@@ -33,11 +36,17 @@
    "NativeQuerySnippet"
    "Timeline"])
 
+(def elidable-content-models
+  "Content models a reference may name without the target being in the archive or the destination. Such references
+  are dropped on import instead of failing the load."
+  #{"Timeline"})
+
 (def exported-models
   "The list of all models exported by serialization by default. Used for production code and by tests."
   (concat data-model
           content
           ["CustomVizPlugin"
+           "DataApp"
            "EmbeddingTheme"
            "FieldValues"
            "Metabot"
@@ -46,7 +55,8 @@
            "Setting"
            "Transform"
            "TransformJob"
-           "TransformTag"]))
+           "TransformTag"
+           "TransformTest"]))
 
 (def inlined-models
   "An additional list of models which are inlined into parent entities for serialization.
@@ -54,7 +64,6 @@
   For example, the models should also have their entity_id fields populated (if they have one)."
   ["DashboardCard"
    "DashboardTab"
-   "Dimension"
    "ParameterCard"
    "DashboardCardSeries"
    "MetabotPrompt"
@@ -70,6 +79,7 @@
    "AnalysisFinding"
    "AnalysisFindingError"
    "ApiKey"
+   "ApiKeyUsageLog"
    "ApplicationPermissionsRevision"
    "AuditLog"
    "AuthIdentity"
@@ -83,15 +93,17 @@
    "Comment"
    "CommentReaction"
    "ConnectionImpersonation"
+   "ContentDiagnosticsFinding"
    "ContentTranslation"
    "DashboardBookmark"
-   "DataApp"
+   "DataAppGroupAssignment"
    "DataComplexityScore"
    "DataPermissions"
    "DatabaseRouter"
    "Dependency"
    "DependencyStatus"
    "DocumentBookmark"
+   "EmbeddingSdkReact18Host"
    "Exploration"
    "ExplorationBlock"
    "ExplorationBookmark"
@@ -100,10 +112,10 @@
    "ExplorationQueryResult"
    "ExplorationThread"
    "ExplorationThreadTimeline"
-   "HTTPAction"
    "ImplicitAction"
    "LoginHistory"
    "McpFeedback"
+   "McpGroupPermission"
    "McpQueryHandle"
    "McpSessionLog"
    "McpToolCallLog"
@@ -171,6 +183,7 @@
    "TransformJobRun"
    "TransformRun"
    "TransformRunCancelation"
+   "TransformTestRun"
    "Undo"
    "User"
    "UserKeyValue"

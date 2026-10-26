@@ -24,13 +24,13 @@ import {
 import type { GoalSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
-import { ICON_BUTTON_SIZE } from "../constants";
 
 import { SegmentBoundInput } from "./SegmentBoundInput";
 
 export const ChartSettingSegmentsEditor = ({
   data,
   datasetQuery,
+  formatOptions,
   value: segments,
   onChange,
   canRemoveAll = false,
@@ -73,7 +73,8 @@ export const ChartSettingSegmentsEditor = ({
                     <Tooltip label={t`Remove range`}>
                       <ActionIcon
                         aria-label={t`Remove range ${index + 1}`}
-                        size={ICON_BUTTON_SIZE}
+                        size="sm"
+                        variant="subtle"
                         onClick={() => {
                           const newSegments = segments.filter(
                             (_v, segmentIndex) => segmentIndex !== index,
@@ -95,6 +96,7 @@ export const ChartSettingSegmentsEditor = ({
                   aria-label={t`Range ${index + 1} minimum`}
                   data={data}
                   datasetQuery={datasetQuery}
+                  formatOptions={formatOptions}
                   id={`segment-min-${index}`}
                   placeholder={t`Min`}
                   referencedEntities={referencedEntities}
@@ -110,6 +112,7 @@ export const ChartSettingSegmentsEditor = ({
                   aria-label={t`Range ${index + 1} maximum`}
                   data={data}
                   datasetQuery={datasetQuery}
+                  formatOptions={formatOptions}
                   id={`segment-max-${index}`}
                   placeholder={t`Max`}
                   referencedEntities={referencedEntities}
@@ -127,11 +130,11 @@ export const ChartSettingSegmentsEditor = ({
           mt="2.5rem"
           mb="3rem"
           lh="1.25rem"
-          px="1.5rem"
         >{t`Add color ranges to make this number change color depending on it's value`}</Text>
       )}
 
       <Button
+        size="lg"
         leftSection={<Icon name="add" />}
         fullWidth
         variant="subtle"

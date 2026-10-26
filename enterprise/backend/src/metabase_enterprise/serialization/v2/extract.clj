@@ -34,13 +34,16 @@
     (conj "Setting")
 
     (not (:no-transforms opts))
-    (conj "Transform" "TransformTag" "TransformJob" "PythonLibrary")
+    (conj "Transform" "TransformTag" "TransformJob" "TransformTest" "PythonLibrary")
 
     (not (:no-embedding-themes opts))
     (conj "EmbeddingTheme")
 
     (not (:no-custom-viz-plugins opts))
-    (conj "CustomVizPlugin")))
+    (conj "CustomVizPlugin")
+
+    (not (:no-data-apps opts))
+    (conj "DataApp")))
 
 ;; OsiAiContext is intentionally NOT in the default export set. It's a top-level model that *depends on* its
 ;; entity, extracted unfiltered, so any export — even an untargeted "full" one, which still omits personal and
@@ -166,11 +169,9 @@
                             ;; so cards that reference them can still be exported and imported correctly
                             (and analytics-cards (contains? by-model "Card"))
                             (update "Card" (fn [ids] (vec (remove analytics-cards ids)))))
-          ;; FieldUserSettings has a non-standard PK (field_id, not id) — use the right column.
-          pk-col          (fn [model] (if (= model "FieldUserSettings") :field_id :id))
           extract-by-ids  (fn [[model ids]]
                             (serdes/extract-all model (merge opts {:collection-set coll-set
-                                                                   :filter-column  (pk-col model)
+                                                                   :filter-column  (serdes/primary-key model)
                                                                    :filter-ids     (vec ids)})))
           extract-all     (fn [model]
                             (serdes/extract-all model (assoc opts :collection-set coll-set)))]

@@ -319,12 +319,9 @@ result_metadata:
   lib/source: source/table-defaults
   lib/source-column-alias: QUANTITY
   qp/implicit-field?: true
-visualization_settings:
-  column_settings: null
+visualization_settings: {}
 card_schema: 24
 serdes/meta:
-- id: sRcMoDeL00ExAmPlEx001
-  label: source_model
-  model: Card
+- model: Card
 metabase_version: v1.57.1-SNAPSHOT (14ff27d)
 type: model

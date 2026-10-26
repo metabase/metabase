@@ -6,8 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.app-db.core :as mdb]
-   [metabase.collections-rest.api :as api.collection]
-   [metabase.collections-rest.children-query :as children-query]
+   [metabase.collections.children :as collections.children]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection-test :as collection-test]
    [metabase.collections.test-utils :refer [personal-collection with-library-not-synced without-library]]
@@ -361,11 +360,11 @@
             ids      (set (map :id (cons personal-collection [a b c d e f g])))]
         (mt/with-test-user :crowberto
           (testing "Make sure we get the expected collections when collection-id is nil"
-            (let [collections (#'api.collection/select-collections {:archived                       false
-                                                                    :exclude-other-user-collections false
-                                                                    :namespaces #{nil}
-                                                                    :shallow                        true
-                                                                    :permissions-set                #{"/"}})]
+            (let [collections (collections.children/select-collections {:archived                       false
+                                                                        :exclude-other-user-collections false
+                                                                        :namespaces #{nil}
+                                                                        :shallow                        true
+                                                                        :permissions-set                #{"/"}})]
               (is (= #{{:name "A"}
                        {:name "B"}
                        {:name "C"}
@@ -375,12 +374,12 @@
                           (map #(select-keys % [:name]))
                           (into #{}))))))
           (testing "Make sure we get the expected collections when collection-id is an integer"
-            (let [collections (#'api.collection/select-collections {:archived                       false
-                                                                    :exclude-other-user-collections false
-                                                                    :namespaces #{nil}
-                                                                    :shallow                        true
-                                                                    :collection-id                  (:id a)
-                                                                    :permissions-set                #{"/"}})]
+            (let [collections (collections.children/select-collections {:archived                       false
+                                                                        :exclude-other-user-collections false
+                                                                        :namespaces #{nil}
+                                                                        :shallow                        true
+                                                                        :collection-id                  (:id a)
+                                                                        :permissions-set                #{"/"}})]
               ;; E & G are too deep to show up
               (is (= #{{:name "C"}
                        {:name "B"}
@@ -390,11 +389,11 @@
                           (filter (fn [coll] (contains? ids (:id coll))))
                           (map #(select-keys % [:name]))
                           (into #{})))))
-            (let [collections (#'api.collection/select-collections {:archived                       false
-                                                                    :exclude-other-user-collections false
-                                                                    :shallow                        true
-                                                                    :collection-id                  (:id b)
-                                                                    :permissions-set                #{"/"}})]
+            (let [collections (collections.children/select-collections {:archived                       false
+                                                                        :exclude-other-user-collections false
+                                                                        :shallow                        true
+                                                                        :collection-id                  (:id b)
+                                                                        :permissions-set                #{"/"}})]
               (is (= #{}
                      (->> collections
                           (filter (fn [coll] (contains? ids (:id coll))))
@@ -636,15 +635,11 @@
                                                                        :entity_id @#'collection/library-metrics-entity-id))})
                lib-items    (:data (mt/user-http-request :crowberto :get 200
                                                          (str "collection/" (:id library) "/items")))]
-           (testing "System library children (Data, Metrics) have is_library_root true"
-             (doseq [item (filter :is_library_root lib-items)]
-               (is (contains? #{collection/library-data-collection-type
-                                collection/library-metrics-collection-type}
-                              (:type item)))))
-           (testing "Data and Metrics collections both marked as is_library_root"
+           (testing "Data, Metrics, and Dashboards collections are all marked as is_library_root"
              (let [roots (filter :is_library_root lib-items)]
                (is (= #{collection/library-data-collection-type
-                        collection/library-metrics-collection-type}
+                        collection/library-metrics-collection-type
+                        collection/library-dashboards-collection-type}
                       (set (map :type roots))))))
            (testing "User-created subcollections inside Data do NOT have is_library_root"
              (let [data-items (:data (mt/user-http-request :crowberto :get 200
@@ -1766,7 +1761,7 @@
               [:type :asc :nulls-first]
               [:%lower.name :asc]
               [:id :asc]]
-             (children-query/children-sort-clause {:official-collections-first? true} app-db))))))
+             (collections.children/children-sort-clause {:official-collections-first? true} app-db))))))
 
 (deftest ^:parallel children-sort-clause-test-2
   (testing "Sorting by last-edited-at"
@@ -1776,9 +1771,9 @@
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (children-query/children-sort-clause {:sort-column :last-edited-at
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :mysql)))))
+           (collections.children/children-sort-clause {:sort-column :last-edited-at
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-test-2b
   (testing "Sorting by last-edited-at"
@@ -1788,9 +1783,9 @@
             [:last_edit_timestamp :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (children-query/children-sort-clause {:sort-column :last-edited-at
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))))
+           (collections.children/children-sort-clause {:sort-column :last-edited-at
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-2c
   (testing "Sorting by last-edited-by"
@@ -1802,9 +1797,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (children-query/children-sort-clause {:sort-column :last-edited-by
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))))
+           (collections.children/children-sort-clause {:sort-column :last-edited-by
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-2d
   (testing "Sorting by last-edited-by"
@@ -1816,9 +1811,9 @@
             [:last_edit_first_name :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (children-query/children-sort-clause {:sort-column :last-edited-by
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :mysql)))))
+           (collections.children/children-sort-clause {:sort-column :last-edited-by
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-test-3
   (testing "Sorting by model"
@@ -1827,9 +1822,9 @@
             [:model_ranking :asc]
             [:%lower.name :asc]
             [:id :asc]]
-           (children-query/children-sort-clause {:sort-column :model
-                                                 :sort-direction :asc
-                                                 :official-collections-first? true} :postgres)))))
+           (collections.children/children-sort-clause {:sort-column :model
+                                                       :sort-direction :asc
+                                                       :official-collections-first? true} :postgres)))))
 
 (deftest ^:parallel children-sort-clause-test-3b
   (testing "Sorting by model"
@@ -1838,9 +1833,9 @@
             [:model_ranking :desc]
             [:%lower.name :asc]
             [:id :asc]]
-           (children-query/children-sort-clause {:sort-column :model
-                                                 :sort-direction :desc
-                                                 :official-collections-first? true} :mysql)))))
+           (collections.children/children-sort-clause {:sort-column :model
+                                                       :sort-direction :desc
+                                                       :official-collections-first? true} :mysql)))))
 
 (deftest ^:parallel children-sort-clause-description-test
   (testing "Sorting by description"
@@ -1850,18 +1845,18 @@
               [:%lower.description :asc :nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
-             (children-query/children-sort-clause {:sort-column :description
-                                                   :sort-direction :asc
-                                                   :official-collections-first? true} :postgres))))
+             (collections.children/children-sort-clause {:sort-column :description
+                                                         :sort-direction :asc
+                                                         :official-collections-first? true} :postgres))))
     (testing "descending"
       (is (= [[:authority_level :asc :nulls-last]
               [:type :asc :nulls-first]
               [:%lower.description :desc :nulls-last]
               [:%lower.name :asc]
               [:id :asc]]
-             (children-query/children-sort-clause {:sort-column :description
-                                                   :sort-direction :desc
-                                                   :official-collections-first? true} :postgres))))))
+             (collections.children/children-sort-clause {:sort-column :description
+                                                         :sort-direction :desc
+                                                         :official-collections-first? true} :postgres))))))
 
 (deftest ^:parallel snippet-collection-items-test
   (testing "GET /api/collection/:id/items"
@@ -1887,20 +1882,50 @@
                                    (map #(select-keys % [:id :name]))
                                    (:data (mt/user-http-request :rasta :get 200 (format "collection/%d/items" (:id collection)))))))))))))
 
+(deftest data-action-collection-items-test
+  (testing "GET /api/collection/:id/items lists the actions without a model in data actions collections only"
+    (mt/with-temp [:model/Collection   {folder-id :id}  {:namespace "data-actions", :name "Data actions folder"}
+                   :model/Collection   {regular-id :id} {:name "Regular collection"}
+                   :model/Card         {model-id :id}   {:type :model, :collection_id regular-id}
+                   :model/Action       {in-folder :id}  {:type :query, :name "In folder", :collection_id folder-id}
+                   :model/QueryAction  _                {:action_id     in-folder
+                                                         :database_id   (mt/id)
+                                                         :dataset_query (mt/native-query {:query "DELETE FROM venues"})}
+                   :model/Action       {archived :id}   {:type :query, :name "Archived", :collection_id folder-id, :archived true}
+                   :model/QueryAction  _                {:action_id     archived
+                                                         :database_id   (mt/id)
+                                                         :dataset_query (mt/native-query {:query "DELETE FROM venues"})}
+                   :model/Action       {at-root :id}    {:type :query, :name "At data actions root"}
+                   :model/QueryAction  _                {:action_id     at-root
+                                                         :database_id   (mt/id)
+                                                         :dataset_query (mt/native-query {:query "DELETE FROM venues"})}
+                   :model/Action       {of-model :id}   {:type :implicit, :name "Of a model", :model_id model-id}
+                   :model/ImplicitAction _              {:action_id of-model, :kind "row/create"}]
+      (let [actions (fn [path & params]
+                      (->> (apply mt/user-http-request :crowberto :get 200 path params)
+                           :data
+                           (filter (comp #{"action"} :model))
+                           (into #{} (map :name))))]
+        (is (= #{"In folder"}
+               (actions (str "collection/" folder-id "/items") :models "action")))
+        (is (= #{"Archived"}
+               (actions (str "collection/" folder-id "/items") :models "action" :archived true)))
+        (is (contains? (actions "collection/root/items" :namespace "data-actions") "At data actions root"))
+        (is (not (contains? (actions "collection/root/items" :namespace "data-actions") "Of a model")))
+        (is (= #{}
+               (actions (str "collection/" regular-id "/items"))))))))
+
 (deftest snippet-collection-items-count-only-test
   (testing "The snippets namespace is unpaginated, but a count-only request still keeps its LIMIT"
     (mt/with-temp [:model/NativeQuerySnippet _ {:name "UXW5016 root snippet"}]
       (mt/with-test-user :crowberto
-        (let [queries     (atom [])
-              real-query  mdb/query
-              this-thread (Thread/currentThread)]
-          ;; `with-redefs` is global, so only record what this thread asks for.
-          (with-redefs [mdb/query (fn [query & args]
-                                    (when (identical? this-thread (Thread/currentThread))
-                                      (swap! queries conj query))
-                                    (apply real-query query args))]
+        (let [queries    (atom [])
+              real-query (mt/original-fn #'mdb/query)]
+          (mt/with-dynamic-fn-redefs [mdb/query (fn [query & args]
+                                                  (swap! queries conj query)
+                                                  (apply real-query query args))]
             (request/with-limit-and-offset 0 0
-              (is (pos? (:total (#'api.collection/collection-children
+              (is (pos? (:total (collections.children/collection-children
                                  (assoc collection/root-collection :namespace "snippets")
                                  {:archived?                   false
                                   :show-dashboard-questions?   false
@@ -2145,6 +2170,11 @@
               :can_delete          false}
              (with-some-children-of-collection! nil
                (mt/user-http-request :crowberto :get 200 "collection/root")))))))
+
+(deftest fetch-data-actions-root-collection-test
+  (testing "GET /api/collection/root?namespace=data-actions names the root after data actions"
+    (is (=? {:id "root" :name "Data actions" :namespace "data-actions"}
+            (mt/user-http-request :crowberto :get 200 "collection/root" :namespace "data-actions")))))
 
 (deftest fetch-root-collection-permissions-test
   (testing "GET /api/collection/root"
@@ -2643,7 +2673,7 @@
                                       (swap! call-count inc)
                                       (when (= @call-count 2)
                                         (throw (ex-info "Simulated failure" {})))
-                                      (apply (mt/dynamic-value card/update-card!) args)))]
+                                      (apply (mt/original-fn #'card/update-card!) args)))]
         (mt/user-http-request :crowberto :post 500
                               (format "collection/%d/move-dashboard-question-candidates" coll-id)))
       ;; Verify neither card was moved (operation rolled back)

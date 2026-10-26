@@ -11,6 +11,7 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema-overlay.core :as warehouse-schema-overlay]
    [metabase.warehouses.schema :as warehouses.schema]
    [toucan2.core :as t2]))
 
@@ -21,14 +22,15 @@
              :active          true
              :db_id           [:in database-ids]
              :visibility_type nil
-             {:order-by [[:%lower.schema :asc]
+             {:from [(warehouse-schema-overlay/table-query)]
+              :order-by [[:%lower.schema :asc]
                          [:%lower.display_name :asc]]}))
 
 (mu/defn active-visible-schemas-for-databases
   "The distinct Database id and schema of the active, visible Tables of the Databases with `database-ids`."
   [database-ids :- [:sequential ::lib.schema.id/database]]
   (t2/query {:select-distinct [:db_id :schema]
-             :from            [(t2/table-name :model/Table)]
+             :from      [(warehouse-schema-overlay/table-query)]
              :where           [:and
                                [:in :db_id database-ids]
                                [:= :active true]
@@ -47,8 +49,11 @@
   [card-type        :- [:or :keyword :string]
    database-ids     :- [:set ::lib.schema.id/database]
    collection-scope :- [:maybe [:or [:= :root] [:set ::lib.schema.id/collection] [:sequential ::lib.schema.id/collection]]]]
+  ;; Rows are pushed through `mi/do-after-select :model/Card` by the caller, so `:dataset_query` and
+  ;; `:result_metadata` drag in the rest of [[metabase.queries.card-schema/schema-upgrade-triggers]].
   (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
-                                  :result_metadata :type :source_card_id :card_schema
+                                  :result_metadata :type :source_card_id :card_schema :entity_id
+                                  :dimensions :dimension_mappings
                                   [^:allow-subquery {:select   [:status]
                                                      :from     [:moderation_review]
                                                      :where    [:and
@@ -73,19 +78,21 @@
 
 (mu/defn databases-where
   "The Databases visible to the user with `user-id` (`is-superuser?`/`is-data-analyst?` further widen visibility), in
-  name then engine order. Excludes stub Databases and, unless `include-analytics?`, the audit Database. Restricted
-  to Databases routed from `router-database-id` when given, otherwise to non-routed Databases. When
-  `filter-by-data-access?` is true, further restricted to Databases the user can query, manage, or edit the
-  metadata of."
+  name then engine order. Excludes stub Databases unless `include-stubs?` and the audit Database unless
+  `include-analytics?`. Restricted to Databases routed from `router-database-id` when given, otherwise to non-routed
+  Databases. When `filter-by-data-access?` is true, further restricted to Databases the user can query, manage, or edit
+  the metadata of."
   [user-id                :- ::lib.schema.id/user
    is-superuser?          :- :boolean
    is-data-analyst?       :- :boolean
    filter-by-data-access? :- :boolean
    router-database-id     :- [:maybe ::lib.schema.id/database]
-   include-analytics?     :- :boolean]
+   include-analytics?     :- :boolean
+   include-stubs?         :- :boolean]
   (let [user-info  {:user-id user-id :is-superuser? is-superuser? :is-data-analyst? is-data-analyst?}
         base-where [:and
-                    [:= :is_stub false]
+                    (when-not include-stubs?
+                      [:= :is_stub false])
                     (when-not include-analytics?
                       [:= :is_audit false])
                     (if router-database-id
@@ -124,7 +131,8 @@
    like-pattern :- [:or :string vector?]
    limit        :- ms/PositiveInt]
   (t2/select [:model/Table :id :db_id :schema :name]
-             {:where    [:and [:= :db_id database-id]
+             {:from [(warehouse-schema-overlay/table-query)]
+              :where    [:and [:= :db_id database-id]
                          [:= :active true]
                          [:like :%lower.name like-pattern]
                          [:= :visibility_type nil]]
@@ -172,7 +180,7 @@
    search-card-slug               :- :string
    include-dashboard-questions?   :- [:maybe :boolean]]
   (t2/select [:model/Card :id :type :database_id :name :collection_id
-              [:collection.name :collection_name] :card_schema]
+              [:collection.name :collection_name]]
              {:where    [:and
                          [:= :report_card.database_id database-id]
                          [:= :report_card.archived false]
@@ -203,24 +211,26 @@
              :%lower.metabase_field/name     [:like like-pattern]
              :metabase_field.visibility_type [:not-in ["sensitive" "retired"]]
              :table.db_id                    database-id
-             {:order-by   [[[:lower :metabase_field.name] :asc]
+             {:from       [(warehouse-schema-overlay/field-query)]
+              :order-by   [[[:lower :metabase_field.name] :asc]
                            [[:lower :table.name] :asc]]
               ;; checking for table.active in join makes query faster when there are a lot of inactive tables
-              :inner-join [[:metabase_table :table] [:and :table.active
-                                                     [:= :table.id :metabase_field.table_id]]]
+              :inner-join [(warehouse-schema-overlay/table-query {:alias :table}) [:and :table.active
+                                                                                   [:= :table.id :metabase_field.table_id]]]
               :limit      limit}))
 
 (mu/defn table-ids-for-database
   "The ids of the Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-fn-set :id :model/Table, :db_id database-id))
+  (t2/select-fn-set :id :model/Table, :db_id database-id {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
 
 (mu/defn non-sensitive-fields-for-tables
   "The id, name, display name, Table id, and types of the non-sensitive Fields of the Tables with `table-ids`."
   [table-ids :- [:set ::lib.schema.id/table]]
   (t2/select [:model/Field :id :name :display_name :table_id :base_type :semantic_type]
              :table_id        [:in table-ids]
-             :visibility_type [:not-in ["sensitive" "retired"]]))
+             :visibility_type [:not-in ["sensitive" "retired"]]
+             {:from [(warehouse-schema-overlay/field-query)]}))
 
 (mu/defn insert-database!
   "Insert the Database `row` and return the inserted instance."
@@ -271,7 +281,7 @@
 (mu/defn active-tables-for-database
   "The active Tables of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]
-  (t2/select :model/Table :db_id database-id :active true))
+  (t2/select :model/Table :db_id database-id :active true {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn active-table-schemas
   "The distinct schemas of the active Tables of the Database with `database-id`, in schema order. When
@@ -282,7 +292,8 @@
   (let [clauses (cond-> []
                   (not include-hidden?) (conj [:= :visibility_type nil]))]
     (t2/select-fn-set :schema :model/Table :db_id database-id :active true
-                      (merge {:order-by [[:%lower.schema :asc]]}
+                      (merge {:from     [(warehouse-schema-overlay/table-query)]
+                              :order-by [[:%lower.schema :asc]]}
                              (when clauses
                                {:where (into [:and] clauses)})))))
 
@@ -294,7 +305,8 @@
              :db_id database-id
              :schema schema
              :active true
-             {:order-by [[:display_name :asc]]}))
+             {:from [(warehouse-schema-overlay/table-query)]
+              :order-by [[:display_name :asc]]}))
 
 (mu/defn active-visible-tables-in-schema
   "The active, visible Tables in `schema` of the Database with `database-id`, in display name order."
@@ -305,7 +317,8 @@
              :schema schema
              :active true
              :visibility_type nil
-             {:order-by [[:display_name :asc]]}))
+             {:from [(warehouse-schema-overlay/table-query)]
+              :order-by [[:display_name :asc]]}))
 
 (mu/defn collection-ids-named
   "The ids of the Collections named `collection-name`, or nil."

@@ -1,8 +1,8 @@
 import userEvent from "@testing-library/user-event";
-import type { PropsWithChildren } from "react";
+import { type PropsWithChildren, useLayoutEffect } from "react";
 
 import { act, renderWithProviders, screen } from "__support__/ui";
-import { Route } from "metabase/router";
+import { Navigate, Route, useNavigate } from "metabase/router";
 import { checkNotNull } from "metabase/utils/types";
 
 import { useRouteLeaveBlocker } from "./use-route-leave-blocker";
@@ -260,6 +260,57 @@ describe("useRouteLeaveBlocker with several guards mounted", () => {
     act(() => router.navigate("/b"));
 
     expect(router.location.pathname).toBe("/b");
+  });
+});
+
+function RedirectInLayoutEffect() {
+  const navigate = useNavigate();
+  useLayoutEffect(() => {
+    navigate("/c", { replace: true });
+  }, [navigate]);
+  return null;
+}
+
+const setupRedirectingDestination = (destination: JSX.Element) => {
+  const { router } = renderWithProviders(
+    <Route path="/">
+      <Route path="a" element={<Guard />} />
+      <Route path="b" element={destination} />
+      <Route path="c" element={<span>page c</span>} />
+    </Route>,
+    { withRouter: true, initialRoute: "/a" },
+  );
+
+  return { router: checkNotNull(router) };
+};
+
+// metabase#82316: `/admin` redirects on mount, and leaving a dirty page for it
+// left a blank screen.
+describe("useRouteLeaveBlocker when the destination redirects on mount", () => {
+  beforeEach(() => {
+    shouldBlock.mockReturnValue(true);
+  });
+
+  it("follows a redirect made from a layout effect", async () => {
+    const { router } = setupRedirectingDestination(<RedirectInLayoutEffect />);
+    act(() => router.navigate("/b"));
+
+    await userEvent.click(screen.getByRole("button", { name: "proceed" }));
+
+    expect(await screen.findByText("page c")).toBeInTheDocument();
+    expect(router.location.pathname).toBe("/c");
+  });
+
+  it("follows a redirect made from a passive effect", async () => {
+    const { router } = setupRedirectingDestination(
+      <Navigate to="/c" replace />,
+    );
+    act(() => router.navigate("/b"));
+
+    await userEvent.click(screen.getByRole("button", { name: "proceed" }));
+
+    expect(await screen.findByText("page c")).toBeInTheDocument();
+    expect(router.location.pathname).toBe("/c");
   });
 });
 

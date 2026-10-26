@@ -34,28 +34,7 @@ describe("issue 19737", () => {
     cy.signInAsAdmin();
   });
 
-  it("should show moved model in the data picker without refreshing (metabase#19737)", () => {
-    cy.visit("/collection/root");
-
-    moveModel(modelName, personalCollectionName);
-
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Moved model");
-
-    cy.findByLabelText("Navigation bar").within(() => {
-      cy.findByText("New").click();
-    });
-    // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Question").should("be.visible").click();
-
-    H.miniPickerBrowseAll().click();
-    H.entityPickerModal().within(() => {
-      cy.findByText(personalCollectionName).click();
-      cy.findByText(modelName);
-    });
-  });
-
-  it("should not show duplicate models in the data picker after it's moved from a custom collection without refreshing (metabase#19737)", () => {
+  it("should show a moved model once in the data picker without refreshing (metabase#19737)", () => {
     // move "Orders Model" to "First collection"
     cy.visit("/collection/root");
 
@@ -63,7 +42,7 @@ describe("issue 19737", () => {
 
     // eslint-disable-next-line metabase/no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Moved model");
-    // Close the modal so the next time we move the model another model will always be shown
+    // Close the undo toast so the next time we move the model another model will always be shown
     cy.icon("close:visible").click();
 
     cy.findByLabelText("Navigation bar").within(() => {
@@ -100,9 +79,14 @@ describe("issue 19737", () => {
 
     H.miniPickerBrowseAll().click();
     H.entityPickerModal().within(() => {
-      cy.findByText("First collection").should("not.exist");
-      H.entityPickerModalLevel(1).should("exist");
-      H.entityPickerModalLevel(2).should("not.exist");
+      H.entityPickerModalItem(0, personalCollectionName).click();
+      H.entityPickerModalLevel(1).findByText(modelName).should("be.visible");
+
+      H.entityPickerModalItem(0, "Our analytics").click();
+      H.entityPickerModalLevel(1).should("be.visible");
+      H.entityPickerModalLevel(1)
+        .findByText("First collection")
+        .should("not.exist");
     });
   });
 });
@@ -122,9 +106,6 @@ describe("issue 23024", () => {
   }
 
   beforeEach(() => {
-    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
-    cy.intercept("PUT", "/api/card/*").as("updateMetadata");
-
     H.restore();
     cy.signInAsAdmin();
 
@@ -217,10 +198,18 @@ describe("issue 23421", () => {
     cy.signInAsAdmin();
   });
 
-  it("`visualization_settings` should not break UI (metabase#23421)", () => {
+  it("`visualization_settings` with empty or hidden columns should not break UI (metabase#23421)", () => {
     H.createNativeQuestion(emptyColumnsQuestionDetails, {
-      visitQuestion: true,
+      wrapId: true,
+      idAlias: "emptyColumnsModelId",
     });
+    H.createNativeQuestion(hiddenColumnsModelDetails, {
+      wrapId: true,
+      idAlias: "hiddenColumnsModelId",
+    });
+
+    cy.log("empty columns");
+    cy.get("@emptyColumnsModelId").then((id) => H.visitModel(id));
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
 
@@ -228,12 +217,9 @@ describe("issue 23421", () => {
     cy.findByRole("columnheader", { name: "id" }).should("be.visible");
     cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
     cy.button("Save changes").should("be.visible");
-  });
 
-  it("`visualization_settings` with hidden columns should not break UI (metabase#23421)", () => {
-    H.createNativeQuestion(hiddenColumnsModelDetails, {
-      visitQuestion: true,
-    });
+    cy.log("hidden columns");
+    cy.get("@hiddenColumnsModelId").then((id) => H.visitModel(id));
     H.openQuestionActions();
     H.popover().findByText("Edit query definition").click();
 
@@ -250,12 +236,15 @@ describe("issue 23449", () => {
   const questionDetails = { query: { "source-table": REVIEWS_ID, limit: 2 } };
   function turnIntoModel() {
     cy.intercept("PUT", "/api/card/*").as("cardUpdate");
+    cy.intercept("POST", "/api/dataset").as("modelQuery");
 
     H.openQuestionActions();
     cy.findByText("Turn into a model").click();
     cy.findByText("Turn this into a model").click();
 
-    cy.wait("@cardUpdate").then(({ response }) => {
+    cy.wait("@cardUpdate");
+    // Turning the question into a model re-runs its query
+    cy.wait("@modelQuery").then(({ response }) => {
       expect(response.body.error).to.not.exist;
     });
   }
@@ -285,7 +274,7 @@ describe("issue 23449", () => {
     cy.findByTextEnsureVisible("Perfecto");
 
     turnIntoModel();
-    cy.findByTextEnsureVisible("Perfecto");
+    H.tableInteractive().findByTextEnsureVisible("Perfecto");
   });
 });
 
@@ -344,7 +333,7 @@ describe("issue 29378", () => {
     H.setActionsEnabledForDB(SAMPLE_DB_ID);
   });
 
-  it("should not crash the model detail page after searching for an action (metabase#29378)", () => {
+  it("should not crash the model actions page after searching for an action (metabase#29378)", () => {
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
     H.createAction(ACTION_DETAILS);
 
@@ -379,15 +368,15 @@ function mapModelColumnToDatabase({ table, field }) {
   H.popover().findByRole("option", { name: table }).click();
   H.popover().findByRole("option", { name: field }).click();
   cy.contains(`${table} → ${field}`).should("be.visible");
-  cy.findAllByDisplayValue(field);
-  cy.findByLabelText("Description").should("not.be.empty");
+  cy.findAllByDisplayValue(field).should("exist");
+  cy.findByLabelText("Description").should("not.have.value", "");
 }
 
 function selectModelColumn(column) {
   cy.findAllByTestId("header-cell").contains(column).click();
 }
 
-describe("issue 29517 - nested question based on native model with remapped values", () => {
+describe("issue 29517 - nested question based on native model with columns mapped to database fields", () => {
   const questionDetails = {
     name: "29517",
     type: "model",
@@ -454,15 +443,14 @@ describe("issue 29517 - nested question based on native model with remapped valu
     });
   });
 
-  it("click behavior to custom destination should work (metabase#29517-2)", () => {
-    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
-      "dashcardQuery",
-    );
-
+  it("click behavior to custom destination should work (metabase#29517)", () => {
     H.visitDashboard("@dashboardId");
 
     cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}*`).as(
       "loadTargetDashboard",
+    );
+    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
     );
     H.cartesianChartCircle().eq(25).click({ force: true });
     cy.wait("@loadTargetDashboard");
@@ -471,11 +459,11 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
     cy.wait("@dashcardQuery");
 
-    cy.get("[data-testid=cell-data]").contains("37.65");
+    H.getDashboardCard().findAllByText("37.65").should("be.visible");
   });
 });
 
-describe("issue 53556 - nested question based on native model with remapped values", () => {
+describe("issue 53556 - nested question based on native model with columns mapped to database fields", () => {
   const questionDetails = {
     name: "53556",
     type: "model",

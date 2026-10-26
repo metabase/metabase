@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.test :refer :all]
+   [metabase-enterprise.serialization.v2.ingest :as serdes.ingest]
    [metabase.app-db.connection :as mdb.connection]
    [metabase.app-db.core :as mdb]
    [metabase.app-db.schema-migrations-test.impl :as schema-migrations-test.impl]
@@ -77,7 +78,7 @@
    (fn [^javax.sql.DataSource data-source]
      ;; DB should stay open as long as `conn` is held open.
      (with-open [_conn (.getConnection data-source)]
-       (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script)])
+       (next.jdbc/execute! data-source ["RUNSCRIPT FROM ?" (str @data/h2-app-db-script-empty)])
        (with-db data-source (mdb/finish-db-setup!))
        ;; These app DBs should contain only data loaded by the test. Prevent `with-temp` from prewarming the
        ;; test-data Database, which would add an unexpected Database to serialization extracts.
@@ -545,3 +546,12 @@
                 :else           (t2/select-fn-vec pk [model pk] {:where where}))]
     (u/rfirst (serdes/extract-all model-name (cond-> {}
                                                ids (assoc :filter-column pk :filter-ids ids))))))
+
+(defn ingestion-in-memory
+  "An Ingestable serving the extracted `entities`, in order, under their label-free paths as the YAML ingestion does."
+  [entities]
+  (let [by-path (u/index-by (comp serdes.ingest/strip-labels serdes/path) entities)]
+    (reify serdes.ingest/Ingestable
+      (ingest-list [_] (map (comp serdes.ingest/strip-labels serdes/path) entities))
+      (ingest-one [_ path] (by-path (serdes.ingest/strip-labels path)))
+      (ingest-errors [_] []))))

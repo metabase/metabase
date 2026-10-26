@@ -1,8 +1,14 @@
-import type { Series, VisualizationSettings } from "metabase-types/api";
+import type {
+  DatasetColumn,
+  Series,
+  VisualizationSettings,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
   createMockSingleSeries,
 } from "metabase-types/api/mocks";
 
@@ -13,42 +19,31 @@ const { checkRenderable } = GAUGE_CHART_DEFINITION;
 const COLS = [createMockColumn({ name: "count", base_type: "type/Integer" })];
 
 describe("GAUGE_CHART_DEFINITION", () => {
+  describe("gauge.segments widget", () => {
+    it("formats the bounds like the gauge's labels", () => {
+      const series = createSeries({
+        cols: [...COLS, createMockColumn({ name: "total" })],
+        rows: [[50, 80]],
+      });
+
+      const props = GAUGE_CHART_DEFINITION.settings?.[
+        "gauge.segments"
+      ]?.getProps?.(
+        series,
+        { column: getMockColumnSettings },
+        jest.fn(),
+        undefined,
+        jest.fn(),
+      );
+
+      expect(props?.formatOptions).toEqual({ prefix: "count:" });
+    });
+  });
+
   describe("checkRenderable", () => {
-    it("accepts static ranges", () => {
-      expect(() =>
-        checkRenderable(createSeries(), {
-          "gauge.segments": [{ min: 0, max: 100, color: "red" }],
-        }),
-      ).not.toThrow();
-    });
-
-    it("accepts a range that is still resolving", () => {
-      expect(() =>
-        checkRenderable(createSeries(), {
-          "gauge.segments": [
-            {
-              min: 0,
-              max: { type: "card", id: 9, column: "goal" },
-              color: "red",
-            },
-          ],
-        }),
-      ).not.toThrow();
-    });
-
-    it("accepts a range whose answer lacks its column, so the chart can re-ask", () => {
+    it("renders when a range's bound will never resolve", () => {
       const series = createSeries({
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "other" })],
-                rows: [[1]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockFailedReferencedEntitiesResults(),
       });
 
       expect(() =>
@@ -61,74 +56,6 @@ describe("GAUGE_CHART_DEFINITION", () => {
             },
           ],
         }),
-      ).not.toThrow();
-    });
-
-    it("refuses to render when a referenced value is not a number", () => {
-      const series = createSeries({
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "goal" })],
-                rows: [["x"]],
-              },
-            },
-          },
-        },
-      });
-
-      expect(() =>
-        checkRenderable(series, {
-          "gauge.segments": [
-            {
-              min: 0,
-              max: { type: "card", id: 9, column: "goal" },
-              color: "red",
-            },
-          ],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
-    });
-
-    it("refuses to render a range bound to a column the question no longer has", () => {
-      expect(() =>
-        checkRenderable(createSeries(), {
-          "gauge.segments": [{ min: 0, max: "missing", color: "red" }],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
-    });
-
-    it("refuses to render when a range's bound will never resolve", () => {
-      const series = createSeries({
-        referenced_entities: {
-          card: { 9: { status: "failed", error: "boom" } },
-        },
-      });
-
-      expect(() =>
-        checkRenderable(series, {
-          "gauge.segments": [
-            { min: 0, max: 100, color: "red" },
-            {
-              min: 100,
-              max: { type: "card", id: 9, column: "goal" },
-              color: "green",
-            },
-          ],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
-    });
-
-    it("tolerates malformed persisted segments", () => {
-      // deliberately malformed input
-      const malformedSettings = {
-        "gauge.segments": [null, 5, { min: {}, max: [1], color: "red" }],
-      } as unknown as VisualizationSettings;
-
-      expect(() =>
-        checkRenderable(createSeries(), malformedSettings),
       ).not.toThrow();
     });
 
@@ -151,17 +78,10 @@ describe("GAUGE_CHART_DEFINITION", () => {
   describe("gauge.range default", () => {
     it("spans the resolved bounds of every range", () => {
       const series = createSeries({
-        referenced_entities: {
-          card: {
-            9: {
-              status: "completed",
-              data: {
-                cols: [createMockColumn({ name: "goal" })],
-                rows: [[250]],
-              },
-            },
-          },
-        },
+        referenced_entities: createMockReferencedEntitiesResults({
+          column: "goal",
+          value: 250,
+        }),
       });
       const settings: VisualizationSettings = {
         "gauge.segments": [
@@ -184,6 +104,10 @@ describe("GAUGE_CHART_DEFINITION", () => {
     });
   });
 });
+
+function getMockColumnSettings(column: DatasetColumn) {
+  return { prefix: `${column.name}:` };
+}
 
 function createSeries(
   data: Partial<Parameters<typeof createMockDatasetData>[0]> = {},

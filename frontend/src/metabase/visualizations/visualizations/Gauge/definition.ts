@@ -9,7 +9,6 @@ import {
   getDefaultSize,
   getMinSize,
   resolveGoalSegments,
-  validateGoalReferences,
 } from "metabase/viz-core";
 import { isDate, isNumeric } from "metabase-lib/v1/types/utils/isa";
 
@@ -25,14 +24,14 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
   isSensible: ({ cols, rows }) => {
     return rows.length === 1 && cols.length === 1;
   },
-  checkRenderable: (series, settings) => {
-    const [{ data }] = series;
-
-    if (!isNumeric(data.cols[0]) || isDate(data.cols[0])) {
+  checkRenderable: ([
+    {
+      data: { cols },
+    },
+  ]) => {
+    if (!isNumeric(cols[0]) || isDate(cols[0])) {
       throw new Error(t`Gauge visualization requires a number.`);
     }
-
-    validateGoalReferences(series, settings);
   },
   settings: {
     ...columnSettings({
@@ -69,9 +68,9 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
             value = defaultValue;
           }
         } catch (error) {}
-        const errorColor = Color(colorHex("error")).hex();
-        const warningColor = Color(colorHex("warning")).hex();
-        const successColor = Color(colorHex("success")).hex();
+        const errorColor = Color(colorHex("feedback-negative")).hex();
+        const warningColor = Color(colorHex("feedback-warning")).hex();
+        const successColor = Color(colorHex("feedback-positive")).hex();
         return [
           { min: 0, max: value / 2, color: errorColor, label: "" },
           { min: value / 2, max: value, color: warningColor, label: "" },
@@ -80,14 +79,15 @@ export const GAUGE_CHART_DEFINITION: VisualizationDefinition = {
       },
       widget: "segmentsEditor",
       persistDefault: true,
-      getProps: ([{ card, data }]) => ({
-        data,
-        datasetQuery: card.dataset_query,
-      }),
-      getWrapperStyle: () => ({
-        marginLeft: 0,
-        marginRight: 0,
-      }),
+      getProps: ([{ card, data }], settings) => {
+        const column = data.cols[0];
+
+        return {
+          data,
+          datasetQuery: card.dataset_query,
+          formatOptions: column && settings.column?.(column),
+        };
+      },
     },
   },
 };

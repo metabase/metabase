@@ -19,7 +19,6 @@ import type { VisualizationDisplay } from "metabase-types/api/visualization";
 import type { ComputedVisualizationSettings } from "./computed-settings";
 import type {
   ChartSettingColorRangeProps,
-  ChartSettingGoalInputProps,
   ChartSettingGoalValueProps,
   ChartSettingMaxCategoriesProps,
   ChartSettingSegmentedControlProps,
@@ -110,6 +109,13 @@ export type VisualizationSettingDefinition<
       : ComputedVisualizationSettings,
     extra?: SettingsExtra,
   ) => string | undefined;
+  getTitle?: (
+    object: T,
+    settings: T extends DatasetColumn
+      ? ColumnSettings
+      : ComputedVisualizationSettings,
+    extra?: SettingsExtra,
+  ) => string;
   getWrapperStyle?: (
     object: T,
     settings: T extends DatasetColumn
@@ -147,7 +153,7 @@ export type CompleteVisualizationSettingDefinition<
   TProps extends Record<string, unknown> = Record<string, unknown>,
 > = Omit<
   VisualizationSettingDefinition<T, TValue, TProps>,
-  "getProps" | "getWrapperStyle" | "getHidden" | "getSection"
+  "getProps" | "getWrapperStyle" | "getHidden" | "getSection" | "getTitle"
 > & {
   id: string;
   style?: CSSProperties;
@@ -262,6 +268,11 @@ export type VisualizationSettingsDefinitions = {
   >;
   "graph.tooltip_columns"?: SeriesSettingDefinition<Value, Props>;
   "graph.tooltip_type"?: SeriesSettingDefinition<Value, Props>;
+  "graph.trendline_color"?: SeriesSettingDefinition<Value, Props>;
+  "graph.trendline_style"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentedControlProps
+  >;
   "graph.x_axis._is_histogram"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis._is_numeric"?: SeriesSettingDefinition<Value, Props>;
   "graph.x_axis._is_timeseries"?: SeriesSettingDefinition<Value, Props>;
@@ -275,6 +286,7 @@ export type VisualizationSettingsDefinitions = {
   "graph.y_axis.max"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.min"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.axis_enabled"?: SeriesSettingDefinition<Value, Props>;
+  "graph.y_axis.right.title_text"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.scale"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.split_number"?: SeriesSettingDefinition<Value, Props>;
   "graph.y_axis.title_text"?: SeriesSettingDefinition<Value, Props>;
@@ -315,7 +327,7 @@ export type VisualizationSettingsDefinitions = {
   "pie.sort_rows_dimension"?: SeriesSettingDefinition<Value, Props>;
   prefix?: DatasetColumnSettingDefinition<Value, Props>;
   "progress.color"?: SeriesSettingDefinition<Value, Props>;
-  "progress.goal"?: SeriesSettingDefinition<Value, ChartSettingGoalInputProps>;
+  "progress.goal"?: SeriesSettingDefinition<Value, ChartSettingGoalValueProps>;
   "progress.value"?: SeriesSettingDefinition<Value, Props>;
   "sankey.edge_color"?: SeriesSettingDefinition<Value, Props>;
   "sankey.label_value_formatting"?: SeriesSettingDefinition<Value, Props>;
@@ -331,6 +343,10 @@ export type VisualizationSettingsDefinitions = {
     SmartScalarComparisonWidgetProps
   >;
   "scalar.field"?: SeriesSettingDefinition<Value, Props>;
+  "scalar.segments"?: SeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentsEditorProps
+  >;
   "scalar.show_comparison_value"?: SeriesSettingDefinition<Value, Props>;
   "scalar.switch_positive_negative"?: SeriesSettingDefinition<Value, Props>;
   scale?: DatasetColumnSettingDefinition<Value, Props>;
@@ -345,6 +361,7 @@ export type VisualizationSettingsDefinitions = {
   >;
   time_enabled?: DatasetColumnSettingDefinition<Value, Props>;
   time_style?: DatasetColumnSettingDefinition<Value, Props>;
+  "timeline_events.enabled"?: SeriesSettingDefinition<Value, Props>;
   title?: SingleSeriesSettingDefinition<Value, Props>;
   "treemap._groups_widget"?: SeriesSettingDefinition<
     Value,
@@ -358,6 +375,11 @@ export type VisualizationSettingsDefinitions = {
   "treemap.show_parent_values"?: SeriesSettingDefinition<Value, Props>;
   "treemap.sub_grouping"?: SeriesSettingDefinition<Value, Props>;
   "treemap.value"?: SeriesSettingDefinition<Value, Props>;
+  "trendline.color"?: SingleSeriesSettingDefinition<Value, Props>;
+  "trendline.style"?: SingleSeriesSettingDefinition<
+    Value,
+    ChartSettingSegmentedControlProps
+  >;
   view_as?: SeriesSettingDefinition<Value, Props>;
   "waterfall.decrease_color"?: SeriesSettingDefinition<Value, Props>;
   "waterfall.increase_color"?: SeriesSettingDefinition<Value, Props>;

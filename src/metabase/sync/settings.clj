@@ -58,6 +58,17 @@
   :type       :integer
   :default    10000)
 
+(defsetting interestingness-max-fields-per-sync
+  "Maximum number of fields per database to score for dimension interestingness in one sync. The leftovers pass
+  scores every field whose score is still NULL, which after a release that invalidates existing scores is every field
+  in the database; this bounds how long one sync spends on that backfill, leaving the rest for the next sync. Unlike
+  `scan-max-fields-per-table` and `fingerprint-max-fields-per-table` the skipped fields are not abandoned -- they stay
+  NULL and so are picked up by the following sync, which is why this can be set far higher than those two."
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    100000)
+
 (defsetting data-sensitivity-scan-enabled
   "When true, the analyze phase of sync labels every unlabeled field with a data_sensitivity category inferred from
   its name, types, and fingerprint, writing PUBLIC when nothing matches. Metadata only: the label does not mask or

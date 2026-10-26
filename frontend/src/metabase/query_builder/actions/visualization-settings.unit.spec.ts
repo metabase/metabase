@@ -1,6 +1,4 @@
-import { createMockState } from "__support__/state";
-import { createMockEntitiesState } from "__support__/store";
-import { getMetadata } from "metabase/metadata-store";
+import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type {
@@ -12,6 +10,8 @@ import {
   createMockColumn,
   createMockDataset,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockReferencedEntitiesResults,
 } from "metabase-types/api/mocks";
 import {
   createAdHocCard,
@@ -52,17 +52,11 @@ const RESULT_WITH_ANSWER = createMockDataset({
   data: createMockDatasetData({
     cols: [createMockColumn({ name: "count" })],
     rows: [[10]],
-    referenced_entities: {
-      card: {
-        1: {
-          status: "completed",
-          data: {
-            cols: [createMockColumn({ name: "total" })],
-            rows: [[42]],
-          },
-        },
-      },
-    },
+    referenced_entities: createMockReferencedEntitiesResults({
+      id: 1,
+      column: "total",
+      value: 42,
+    }),
   }),
 });
 
@@ -70,9 +64,7 @@ const RESULT_WITH_FAILURE = createMockDataset({
   data: createMockDatasetData({
     cols: [createMockColumn({ name: "count" })],
     rows: [[10]],
-    referenced_entities: {
-      card: { 1: { status: "failed", error: "boom" } },
-    },
+    referenced_entities: createMockFailedReferencedEntitiesResults({ id: 1 }),
   }),
 });
 
@@ -236,13 +228,9 @@ function createQuestion(
     visualization_settings: settings,
   });
 
-  const metadata = getMetadata(
-    createMockState({
-      entities: createMockEntitiesState({
-        databases: [createSampleDatabase()],
-      }),
-    }),
-  );
+  const metadata = createMockMetadata({
+    databases: [createSampleDatabase()],
+  });
 
   return new Question(card, metadata);
 }

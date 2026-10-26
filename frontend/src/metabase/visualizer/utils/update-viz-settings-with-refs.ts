@@ -3,6 +3,7 @@ import {
   getColumnNameFromKey,
 } from "metabase-lib/v1/queries/utils/column-key";
 import type { VisualizationSettings } from "metabase-types/api";
+import { isGoalSelfColumnRef } from "metabase-types/guards";
 
 /**
  * Recursively converts visualization settings to use the new column references.
@@ -122,5 +123,18 @@ export function updateVizSettingsWithRefs(
     columnsToRefs,
     ["graph.series_order_dimension", "graph.tooltip_columns"],
   );
-  return settingsWithUpdatedValues;
+  return updateGoalValueWithRefs(settingsWithUpdatedValues, columnsToRefs);
+}
+
+function updateGoalValueWithRefs(
+  settings: VisualizationSettings,
+  columnsToRefs: Record<string, string>,
+): VisualizationSettings {
+  const goal = settings["graph.goal_value"];
+
+  if (!isGoalSelfColumnRef(goal) || !(goal in columnsToRefs)) {
+    return settings;
+  }
+
+  return { ...settings, "graph.goal_value": columnsToRefs[goal] };
 }

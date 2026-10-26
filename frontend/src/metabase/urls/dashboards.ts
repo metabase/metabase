@@ -9,6 +9,7 @@ import type Question from "metabase-lib/v1/Question";
 import type {
   DashCardId,
   DashboardId,
+  DashboardSubscription,
   DashboardTabId,
 } from "metabase-types/api";
 
@@ -17,6 +18,8 @@ import { appendSlug } from "./utils";
 type DashboardUrlBuilderOpts = {
   addCardWithId?: number;
   editMode?: boolean;
+  /** `true` opens the subscriptions sidebar, a subscription id opens its edit form */
+  openSubscriptions?: boolean | DashboardSubscription["id"];
   tabId?: DashboardTabId | undefined;
   scrollToDashcard?: DashCardId | undefined;
 };
@@ -29,6 +32,7 @@ export function dashboard(
   {
     addCardWithId,
     editMode,
+    openSubscriptions,
     tabId,
     scrollToDashcard,
   }: DashboardUrlBuilderOpts = {},
@@ -46,6 +50,7 @@ export function dashboard(
   const hash = stringifyHashOptions({
     ...(addCardWithId ? { add: addCardWithId } : {}),
     ...(editMode ? { edit: editMode } : {}),
+    ...(openSubscriptions ? { subscriptions: openSubscriptions } : {}),
     ...(scrollToDashcard ? { scrollTo: scrollToDashcard } : {}),
   });
 

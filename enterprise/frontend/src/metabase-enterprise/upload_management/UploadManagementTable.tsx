@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { msgid, ngettext, t } from "ttag";
 
-import { SettingHeader } from "metabase/admin/settings/components/SettingHeader";
 import {
   BulkActionBar,
   BulkActionButton,
@@ -10,9 +9,10 @@ import { Link } from "metabase/common/components/Link";
 import { DelayedLoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { ClientSortableTable } from "metabase/common/components/Table";
 import { useToast } from "metabase/common/hooks";
+import { SettingHeader } from "metabase/settings-components";
 import {
+  ActionIcon,
   Box,
-  Button,
   Checkbox,
   Ellipsified,
   Flex,
@@ -119,8 +119,7 @@ export function UploadManagementTable() {
 
             sendToast({
               message,
-              toastColor: "feedback-negative",
-              icon: "warning",
+              variant: "negative",
             });
           } else if (result.length > 0) {
             const message = ngettext(
@@ -207,15 +206,15 @@ const UploadTableRow = ({
       <td>{createdAtString}</td>
       <td>{item.schema}</td>
       <td>
-        <Flex align="center" justify="flex-end">
-          <Button
+        <Flex align="center" justify="flex-end" py="sm">
+          <ActionIcon
             onClick={() => onTrash(item)}
             variant="subtle"
-            className="Button Button--borderless"
-            color="text-secondary"
+            size="sm"
+            aria-label={t`Delete table`}
           >
             <Icon name="trash" />
-          </Button>
+          </ActionIcon>
         </Flex>
       </td>
     </tr>

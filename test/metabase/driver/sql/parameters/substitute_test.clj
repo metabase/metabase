@@ -11,6 +11,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.compile :as qp.compile]
@@ -517,15 +518,10 @@
 (mu/defn- expand**
   "Expand parameters inside a top-level native `query`. Not recursive. Expands against `meta/metadata-provider` unless
   an explicit metadata provider `mp` is supplied (handy for overriding field metadata)."
-  ([query]
+  ([query :- :metabase.lib.util/query-like]
    (expand** meta/metadata-provider query))
-  ([mp
-    {:keys [parameters], :as query} :- [:or
-                                        [:map
-                                         [:lib/type [:= :mbql/query]]]
-                                        [:map
-                                         [:native [:map
-                                                   [:query some?]]]]]]
+  ([mp :- ::lib.schema.metadata/metadata-providerable
+    {:keys [parameters], :as query} :- :metabase.lib.util/query-like]
    (driver/with-driver :h2
      (-> (if (:lib/type query)
            (lib/query mp (dissoc query :parameters))

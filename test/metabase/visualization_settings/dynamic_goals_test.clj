@@ -42,6 +42,35 @@
     (testing "identity fn returns settings unchanged"
       (is (= viz (dynamic-goals/update-goal-values viz identity))))))
 
+(def ^:private visualizer-dashcard-viz
+  "A visualizer dashcard's settings: a goal at the top level, and two under `[:visualization :settings]`, one hidden."
+  {:graph.goal_value ref-a
+   :visualization    {:display  "line"
+                      :settings {:graph.show_goal  false
+                                 :graph.goal_value ref-b
+                                 :gauge.segments   [{:min 0 :max ref-a}]}}})
+
+(deftest ^:parallel dashcard-goal-values-test
+  (testing "collects the top-level goals and those nested in a visualizer dashcard, hidden ones included"
+    (is (= [ref-a ref-b 0 ref-a]
+           (dynamic-goals/dashcard-goal-values visualizer-dashcard-viz))))
+  (testing "settings without a nested visualization match goal-values"
+    (are [viz] (= (dynamic-goals/goal-values viz) (dynamic-goals/dashcard-goal-values viz))
+      {:graph.goal_value 5 :progress.goal ref-a}
+      {})))
+
+(deftest ^:parallel update-dashcard-goal-values-test
+  (testing "rewrites the top-level goals and those nested in a visualizer dashcard, hidden ones included"
+    (is (= {:graph.goal_value [:resolved ref-a]
+            :visualization    {:display  "line"
+                               :settings {:graph.show_goal  false
+                                          :graph.goal_value [:resolved ref-b]
+                                          :gauge.segments   [{:min [:resolved 0] :max [:resolved ref-a]}]}}}
+           (dynamic-goals/update-dashcard-goal-values visualizer-dashcard-viz (fn [goal] [:resolved goal])))))
+  (testing "settings without a nested visualization gain no :visualization key"
+    (is (= {:graph.goal_value [:resolved ref-a]}
+           (dynamic-goals/update-dashcard-goal-values {:graph.goal_value ref-a} (fn [goal] [:resolved goal]))))))
+
 (def ^:private referenced-entities
   {"card"    {"1" {:status "completed"
                    :data   {:cols [{:name "count"} {:name "total"}]
@@ -52,12 +81,15 @@
                    :data   {:cols [{:name "avg"}]
                             :rows [[7]]}}}})
 
-(defn- unresolved-reason [goal refs]
+(defn- thrown-reason [f]
   (try
-    (dynamic-goals/resolve-goal-value goal refs)
+    (f)
     nil
     (catch clojure.lang.ExceptionInfo e
       (:reason (ex-data e)))))
+
+(defn- unresolved-reason [goal refs]
+  (thrown-reason #(dynamic-goals/resolve-goal-value goal refs)))
 
 (deftest ^:parallel resolve-goal-value-passthrough-test
   (are [goal] (= goal (dynamic-goals/resolve-goal-value goal referenced-entities))
@@ -105,6 +137,28 @@
     (is (= :not-a-number (unresolved-reason {:id 1 :type "card" :column "total"}
                                             (assoc-in referenced-entities ["card" "1" :data :rows] []))))))
 
+(def ^:private self-data
+  {:cols [{:name "count"} {:name "total"} {:name "name"}]
+   :rows [[3 100 "x"]]})
+
+(deftest ^:parallel resolve-self-column-value-test
+  (testing "a column name resolves to that column's first-row value"
+    (is (= 100 (dynamic-goals/resolve-self-column-value "total" self-data)))
+    (is (= 3 (dynamic-goals/resolve-self-column-value "count" self-data))))
+  (testing "numbers and nil pass through"
+    (are [goal] (= goal (dynamic-goals/resolve-self-column-value goal self-data))
+      5
+      2.5
+      nil))
+  (testing "unresolvable"
+    (are [reason goal data] (= reason (thrown-reason #(dynamic-goals/resolve-self-column-value goal data)))
+      :column-not-found "nope"  self-data
+      :not-a-number     "name"  self-data
+      :not-a-number     "total" (assoc self-data :rows [])
+      :not-a-number     "total" (assoc self-data :rows [[3 nil "x"]])
+      :not-a-number     "total" (assoc self-data :rows [[3 ##Inf "x"]])
+      :never-ran        ref-a   self-data)))
+
 (deftest ^:parallel resolve-dynamic-goals-test
   (testing "substitutes referenced values across all goal-bearing settings"
     (is (= {:graph.show_goal  true
@@ -132,15 +186,46 @@
                            (assoc viz :graph.show_goal show-goal) referenced-entities))
         false
         nil))
-    (testing "and still throws once the goal line is shown"
-      (is (thrown? clojure.lang.ExceptionInfo
-                   (dynamic-goals/resolve-dynamic-goals
-                    (assoc viz :graph.show_goal true) referenced-entities))))
+    (testing "and falls back to 0 once the goal line is shown"
+      (is (= 0 (:graph.goal_value (dynamic-goals/resolve-dynamic-goals
+                                   (assoc viz :graph.show_goal true) referenced-entities)))))
     (testing "toggles can come from a separate effective-settings map"
       (is (= (assoc viz :gauge.segments [{:min 0 :max 100}])
              (dynamic-goals/resolve-dynamic-goals viz referenced-entities {:graph.show_goal false})))
-      (is (thrown? clojure.lang.ExceptionInfo
-                   (dynamic-goals/resolve-dynamic-goals viz referenced-entities {:graph.show_goal true}))))))
+      (is (= 0 (:graph.goal_value (dynamic-goals/resolve-dynamic-goals
+                                   viz referenced-entities {:graph.show_goal true})))))))
+
+(deftest ^:parallel resolve-dynamic-goals-unresolved-test
+  (let [failed {:id 2 :type "card" :column "total"}]
+    (testing "a goal value that can't resolve falls back to 0, so the chart still renders"
+      (is (= {:graph.show_goal true :graph.goal_value 0 :progress.goal 0}
+             (dynamic-goals/resolve-dynamic-goals
+              {:graph.show_goal true :graph.goal_value failed :progress.goal {:id 9 :type "card" :column "x"}}
+              referenced-entities))))
+    (testing "a segment bound that can't resolve becomes unset, the rest still resolve"
+      (is (= {:gauge.segments  [{:min 0 :max 100}
+                                {:min 100 :max nil}]
+              :scalar.segments [{:min nil :max 3}
+                                {:min nil :max nil}]}
+             (dynamic-goals/resolve-dynamic-goals
+              {:gauge.segments  [{:min 0 :max {:id 1 :type "card" :column "total"}}
+                                 {:min {:id 1 :type "card" :column "total"} :max failed}]
+               :scalar.segments [{:min nil :max {:id 1 :type "card" :column "count"}}
+                                 {:min {:id 1 :type "card" :column "nope"} :max nil}]}
+              referenced-entities))))))
+
+(deftest ^:parallel resolve-segments-test
+  (let [self-data {:cols [{:name "count"}] :rows [[3]]}
+        resolve   #(dynamic-goals/resolve-self-column-value % self-data)]
+    (is (= [{:min 0 :max 3} {:min nil :max 10} {:min nil :max 10}]
+           (dynamic-goals/resolve-segments [{:min 0 :max "count"}
+                                            {:min "missing" :max 10}
+                                            {:min nil :max 10}]
+                                           resolve)))
+    (testing "an error other than an unresolved goal still throws"
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"boom"
+                            (dynamic-goals/resolve-segments [{:min 0 :max 1}]
+                                                            (fn [_] (throw (ex-info "boom" {})))))))))
 
 (deftest ^:parallel shown-goal-values-test
   (let [ref {:id 1 :type "card" :column "total"}]

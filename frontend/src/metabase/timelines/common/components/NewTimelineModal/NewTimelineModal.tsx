@@ -6,7 +6,7 @@ import { ModalContent } from "metabase/common/components/ModalContent";
 import { getDefaultTimelineIcon } from "metabase/common/utils/timelines";
 import type { Collection, TimelineData } from "metabase-types/api";
 
-import TimelineForm from "../TimelineForm";
+import { TimelineForm } from "../TimelineForm";
 
 export interface NewTimelineModalProps {
   collection: Collection;

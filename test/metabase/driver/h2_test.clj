@@ -13,6 +13,7 @@
    [metabase.driver.h2 :as h2]
    [metabase.driver.h2.actions :as h2.actions]
    [metabase.driver.settings :as driver.settings]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -26,6 +27,17 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(deftest default-schema-test
+  (mt/test-driver :h2
+    (testing "default"
+      (is (= "PUBLIC"
+             (driver.sql/default-schema :h2 (mt/db)))))
+    (testing "schema configured in the JDBC URL"
+      (let [details (update (:details (mt/db)) :db str ";SCHEMA=INFORMATION_SCHEMA")]
+        (mt/with-temp [:model/Database database {:engine :h2, :details details}]
+          (is (= "INFORMATION_SCHEMA"
+                 (driver.sql/default-schema :h2 database))))))))
 
 (deftest ^:parallel connection-hosts-test
   (testing "local H2 databases have no network host"

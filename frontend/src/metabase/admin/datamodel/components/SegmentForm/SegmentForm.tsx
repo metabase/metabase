@@ -3,9 +3,10 @@ import { useFormik } from "formik";
 import { useEffect } from "react";
 import { t } from "ttag";
 
+import { skipToken, useGetTableQuery } from "metabase/api";
 import { FieldSet } from "metabase/common/components/FieldSet";
 import { Link } from "metabase/common/components/Link";
-import { getShallowTables } from "metabase/metadata-store";
+import CS from "metabase/css/core/index.css";
 import { PLUGIN_REMOTE_SYNC } from "metabase/plugins";
 import { useSelector, useStore } from "metabase/redux";
 import type { State } from "metabase/redux/store";
@@ -14,7 +15,7 @@ import {
   getSegmentQuery,
   getSegmentQueryDefinition,
 } from "metabase/segments";
-import { Alert, Button } from "metabase/ui";
+import { Alert, Box, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatasetQuery, Segment, TableId } from "metabase-types/api";
 
@@ -22,14 +23,9 @@ import FormInput from "../FormInput";
 import FormLabel from "../FormLabel";
 import FormTextArea from "../FormTextArea";
 
-import {
-  FormBody,
-  FormBodyContent,
-  FormFooter,
-  FormFooterContent,
-  FormRoot,
-  FormSection,
-} from "./SegmentForm.styled";
+import S from "./SegmentForm.module.css";
+
+const SECTION_PADDING_X = { base: "md", sm: "1.75rem", md: "xxxl" };
 
 export interface SegmentFormProps {
   segment?: Segment;
@@ -46,7 +42,6 @@ export const SegmentForm = ({
   // `validate` runs outside render, on values this render has not seen, so it
   // reads the store at call time rather than closing over a selected value.
   const store = useStore();
-  const tables = useSelector(getShallowTables);
   const isRemoteSyncReadOnly = useSelector(
     PLUGIN_REMOTE_SYNC.getIsRemoteSyncReadOnly,
   );
@@ -59,20 +54,28 @@ export const SegmentForm = ({
     });
   const definitionProps = getFieldProps("definition");
   const tableIdProps = getFieldProps("table_id");
+  const nameMeta = getFieldMeta("name");
+  const descriptionMeta = getFieldMeta("description");
+  const revisionMessageMeta = getFieldMeta("revision_message");
   const editorQuery = useSelector((state) =>
     getSegmentQuery(state, definitionProps.value, tableIdProps.value),
   );
   const tableId = isNew ? tableIdProps.value : segment?.table_id;
-  const table = tableId ? tables[tableId] : undefined;
-  const isReadOnly = isRemoteSyncReadOnly && !!table?.is_published;
+  const { data: table } = useGetTableQuery(
+    tableId ? { id: tableId } : skipToken,
+  );
+  // Treat a table that has not loaded as published, so the form stays
+  // read-only until the answer is known.
+  const isReadOnly =
+    isRemoteSyncReadOnly && tableId != null && (table?.is_published ?? true);
 
   useEffect(() => {
     onIsDirtyChange(dirty);
   }, [dirty, onIsDirtyChange]);
 
   return (
-    <FormRoot onSubmit={handleSubmit}>
-      <FormBody>
+    <Box component="form" className={S.form} onSubmit={handleSubmit}>
+      <Box px={SECTION_PADDING_X} py="xxl">
         {isReadOnly && (
           <Alert
             size="compact"
@@ -101,7 +104,7 @@ export const SegmentForm = ({
             readOnly={isReadOnly}
           />
         </FormLabel>
-        <FormBodyContent>
+        <Box maw="36rem">
           <FormLabel
             htmlFor="name"
             title={t`Name Your Segment`}
@@ -109,7 +112,8 @@ export const SegmentForm = ({
           >
             <FormInput
               {...getFieldProps("name")}
-              {...getFieldMeta("name")}
+              touched={nameMeta.touched}
+              error={nameMeta.error}
               id="name"
               placeholder={t`Something descriptive but not too long`}
               readOnly={isReadOnly}
@@ -122,7 +126,8 @@ export const SegmentForm = ({
           >
             <FormTextArea
               {...getFieldProps("description")}
-              {...getFieldMeta("description")}
+              touched={descriptionMeta.touched}
+              error={descriptionMeta.error}
               id="description"
               placeholder={t`This is a good place to be more specific about less obvious segment rules`}
               readOnly={isReadOnly}
@@ -136,26 +141,23 @@ export const SegmentForm = ({
               >
                 <FormTextArea
                   {...getFieldProps("revision_message")}
-                  {...getFieldMeta("revision_message")}
+                  touched={revisionMessageMeta.touched}
+                  error={revisionMessageMeta.error}
                   id="revision_message"
                   placeholder={t`This will show up in the revision history for this segment to help everyone remember why things changed`}
                 />
               </FormLabel>
-              <FormFooterContent>
-                <SegmentFormActions isValid={isValid} />
-              </FormFooterContent>
+              <SegmentFormActions isValid={isValid} />
             </FieldSet>
           )}
-        </FormBodyContent>
-      </FormBody>
+        </Box>
+      </Box>
       {isNew && !isReadOnly && (
-        <FormFooter>
-          <FormSection>
-            <SegmentFormActions isValid={isValid} />
-          </FormSection>
-        </FormFooter>
+        <Box className={CS.borderTop} px={SECTION_PADDING_X} py="xxl">
+          <SegmentFormActions isValid={isValid} />
+        </Box>
       )}
-    </FormRoot>
+    </Box>
   );
 };
 
@@ -168,16 +170,10 @@ const SegmentFormActions = ({
 }: SegmentFormActionsProps): JSX.Element => {
   return (
     <div>
-      <Button
-        type="submit"
-        variant="filled"
-        size="sm"
-        disabled={!isValid}
-        mr="lg"
-      >
+      <Button type="submit" variant="filled" disabled={!isValid} mr="lg">
         {t`Save changes`}
       </Button>
-      <Button component={Link} size="sm" to="/admin/datamodel/segments">
+      <Button component={Link} to="/admin/datamodel/segments">
         {t`Cancel`}
       </Button>
     </div>

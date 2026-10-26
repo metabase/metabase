@@ -1,4 +1,5 @@
 export function getLinkedIssues(body: string) {
+  if (!body) return null;
   const matches = body.match(
     /(close(s|d)?|fixe?(s|d)?|resolve(s|d)?)(:?) (#|https?:\/\/github\.com\/.+metabase\/issues\/)(\d+)/gi,
   );
@@ -16,6 +17,7 @@ export function getLinkedIssues(body: string) {
 export const issueNumberRegex = /\(#(\d+)\)/g
 
 export function getPRsFromCommitMessage(message: string) {
+  if (!message) return null;
   const firstLine = message.split('\n\n')[0];
   const result = [ ...firstLine.matchAll(issueNumberRegex) ];
   if (!result.length) {
@@ -28,6 +30,7 @@ export function getPRsFromCommitMessage(message: string) {
 
 // backport PRs just have a pr number in the body without a keyword
 export function getBackportSourcePRNumber(body: string) {
+  if (!body) return null;
   const matches = body.match(/#(\d+)/);
   return matches ? Number(matches[1]) : null;
 }

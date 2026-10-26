@@ -5,6 +5,7 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { useLazyGetCardQuery, useLazyGetMeasureQuery } from "metabase/api";
+import { isEmbedding } from "metabase/embedding/config";
 import {
   ActionIcon,
   Box,
@@ -15,10 +16,12 @@ import {
   Text,
   Tooltip,
 } from "metabase/ui";
+import * as Urls from "metabase/urls";
 import { useAnsweredGoalValue } from "metabase/visualizations/hooks/use-answered-goal-value";
 import { type GoalRefError, resolveGoalValue } from "metabase/viz-core";
 import type {
   CardId,
+  ColumnSettings,
   DatasetData,
   DatasetQuery,
   GoalForeignColumnRef,
@@ -33,14 +36,12 @@ import {
   isGoalSelfColumnRef,
 } from "metabase-types/guards";
 
-import { ICON_BUTTON_SIZE } from "../constants";
-
 import { GoalColumnMenuItem } from "./GoalColumnMenuItem";
 import { GoalEntityPickers } from "./GoalEntityPickers";
 import S from "./GoalValueInput.module.css";
 import { GoalValuePill } from "./GoalValuePill";
 import { StaticGoalValueInput } from "./StaticGoalValueInput";
-import type { ColumnOption, PickedItem } from "./types";
+import type { ColumnOption, PickedItem, ReferencedEntityKind } from "./types";
 import { useEntityColumnValues } from "./use-entity-column-values";
 import { useReferencedEntity } from "./use-referenced-entity";
 import { getNumericColumnOptions } from "./utils";
@@ -56,6 +57,14 @@ export type GoalValueInputProps = {
   "aria-label"?: string;
   data: DatasetData;
   datasetQuery: DatasetQuery | undefined;
+  excludedSelfColumn?: string;
+  /**
+   * Formatting settings of the current chart, not of the card the dynamic goal
+   * value comes from. This is intentional: values should be formatted the same
+   * way the chart formats its own values (Progress and Gauge also show them as
+   * labels on the chart).
+   */
+  formatOptions?: ColumnSettings;
   id: string;
   placeholder?: string;
   referencedEntities?: ReferencedEntity[];
@@ -68,6 +77,8 @@ export const GoalValueInput = ({
   "aria-label": ariaLabel,
   data,
   datasetQuery,
+  excludedSelfColumn,
+  formatOptions,
   id,
   placeholder,
   referencedEntities,
@@ -85,15 +96,23 @@ export const GoalValueInput = ({
   const numberInputRef = useRef<HTMLInputElement>(null);
 
   const foreignRef = isGoalForeignColumnRef(value) ? value : null;
-  const selfColumns = showSelfColumns ? getNumericColumnOptions(data.cols) : [];
+  const numericSelfColumns = showSelfColumns
+    ? getNumericColumnOptions(data.cols)
+    : [];
+  // an excluded column is still recognized when it is the current value
+  const selfColumns = numericSelfColumns.filter(
+    (column) => column.name !== excludedSelfColumn,
+  );
   const isSelfRef =
     isGoalSelfColumnRef(value) &&
-    selfColumns.some((column) => column.name === value);
+    numericSelfColumns.some((column) => column.name === value);
   const hasRef = foreignRef != null || isSelfRef;
 
   const entity: GoalForeignEntityRef | null = pickedEntity ?? foreignRef;
   const entityInfo = useReferencedEntity(entity);
   const entityName = entityInfo.name ?? pickedEntity?.name;
+  const sourceInfo = useReferencedEntity(foreignRef);
+  const sourceUrl = isEmbedding() ? undefined : sourceInfo.url;
   const resolveEntityColumnValue = useEntityColumnValues(
     datasetQuery,
     data,
@@ -110,12 +129,12 @@ export const GoalValueInput = ({
     value,
   });
   const selfColumnLabel = isSelfRef
-    ? (selfColumns.find((column) => column.name === value)?.label ??
+    ? (numericSelfColumns.find((column) => column.name === value)?.label ??
       String(value))
     : null;
   const pillTooltip = getPillTooltip({
-    entityColumns: entityInfo.columns,
-    entityName,
+    entityColumns: sourceInfo.columns,
+    entityName: sourceInfo.name,
     foreignRef,
     selfColumnLabel,
   });
@@ -195,7 +214,10 @@ export const GoalValueInput = ({
         return measure.result_column_name ?? null;
       }
 
-      const card = await fetchCard({ id: entityId }, true).unwrap();
+      const card = await fetchCard(
+        { id: entityId, ignore_error: true },
+        true,
+      ).unwrap();
       const numericColumns = getNumericColumnOptions(
         card.result_metadata ?? [],
       );
@@ -230,6 +252,12 @@ export const GoalValueInput = ({
     menu.open();
   };
 
+  const openSourceInNewTab = () => {
+    if (sourceUrl != null) {
+      Urls.openInNewTab(Urls.getSubpathSafeUrl(sourceUrl));
+    }
+  };
+
   const handlePillKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Backspace" || event.key === "Delete") {
       commitValue(null);
@@ -253,11 +281,13 @@ export const GoalValueInput = ({
           {hasRef ? (
             <GoalValuePill
               aria-label={ariaLabel}
+              formatOptions={formatOptions}
               isMenuOpen={isMenuOpen}
               resolved={resolved}
               tooltip={pillTooltip}
               onKeyDown={handlePillKeyDown}
               onOpenMenu={openMenuFromPill}
+              onOpenSource={sourceUrl != null ? openSourceInNewTab : undefined}
               onRemove={() => commitValue(null)}
             />
           ) : (
@@ -273,7 +303,8 @@ export const GoalValueInput = ({
                       aria-label={t`Pick a dynamic value`}
                       className={S.trigger}
                       data-open={isMenuOpen || isEntityPickerOpen}
-                      size={ICON_BUTTON_SIZE}
+                      size="sm"
+                      variant="subtle"
                       onClick={openMenuFromTrigger}
                     >
                       <Icon name="hexagon" />
@@ -328,6 +359,7 @@ export const GoalValueInput = ({
               {selfColumns.map((column) => (
                 <GoalColumnMenuItem
                   key={column.name}
+                  formatOptions={formatOptions}
                   label={column.label}
                   resolvedValue={resolveGoalValue(data, column.name).value}
                   selected={value === column.name}
@@ -366,6 +398,7 @@ export const GoalValueInput = ({
                   return columns.map((column) => (
                     <GoalColumnMenuItem
                       key={column.name}
+                      formatOptions={formatOptions}
                       label={column.label}
                       resolvedValue={resolveEntityColumnValue(column.name)}
                       selected={foreignRef?.column === column.name}
@@ -386,19 +419,41 @@ export const GoalValueInput = ({
       />
 
       {resolved.error != null && (
-        <Text c="error" fz="sm" mt="xs">
-          {getGoalErrorMessage(resolved.error)}
+        <Text c="feedback-negative" fz="sm" mt="xs">
+          {getGoalErrorMessage(resolved.error, sourceInfo.kind)}
         </Text>
       )}
     </Box>
   );
 };
 
-function getGoalErrorMessage({ reason, message }: GoalRefError): string {
+function getGoalErrorMessage(
+  { reason, message }: GoalRefError,
+  sourceKind: ReferencedEntityKind | undefined,
+): string {
   return match(reason)
     .with("query-failed", () => message ?? t`Couldn't load this value`)
+    .with("too-many-rows", () => getTooManyRowsMessage(sourceKind))
     .with("column-not-found", () => t`This column no longer exists`)
     .with("not-a-number", () => t`This value isn't a number`)
+    .exhaustive();
+}
+
+function getTooManyRowsMessage(
+  sourceKind: ReferencedEntityKind | undefined,
+): string {
+  return match(sourceKind)
+    .with(
+      "question",
+      () => t`The question's result must be a single value or row.`,
+    )
+    .with("model", () => t`The model's result must be a single value or row.`)
+    .with("metric", () => t`The metric's result must be a single value or row.`)
+    .with(
+      "measure",
+      () => t`The measure's result must be a single value or row.`,
+    )
+    .with(undefined, () => t`The result must be a single value or row.`)
     .exhaustive();
 }
 

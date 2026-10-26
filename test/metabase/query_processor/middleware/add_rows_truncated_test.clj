@@ -13,7 +13,7 @@
 
 (defn- add-rows-truncated [query rows]
   (let [rff (add-rows-truncated/add-rows-truncated (assoc query :lib/type :mbql/query) qp.reducible/default-rff)
-        rf  (rff nil)]
+        rf  (rff {})]
     (transduce identity rf rows)))
 
 (deftest ^:parallel add-rows-truncated-test

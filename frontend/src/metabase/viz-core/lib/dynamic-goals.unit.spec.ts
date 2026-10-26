@@ -1,30 +1,30 @@
-import { mockDynamicGoalSettingKeys } from "__support__/dynamic-goals";
+import { DYNAMIC_GOAL_DISPLAYS } from "__support__/dynamic-goals";
 import { color } from "metabase/ui/colors";
-import type {
-  GoalSegment,
-  GoalValue,
-  VisualizationSettings,
-} from "metabase-types/api";
+import type { GoalValue, VisualizationSettings } from "metabase-types/api";
 import {
   createMockColumn,
   createMockDatasetData,
+  createMockFailedReferencedEntitiesResults,
+  createMockFailedReferencedEntityResult,
+  createMockReferencedEntitiesResults,
+  createMockReferencedEntityResult,
 } from "metabase-types/api/mocks";
 
-import type { GoalCard } from "./dynamic-goals";
+import type { GoalCard } from "../types";
+
 import {
   getGoalSegmentBounds,
   getGoalValues,
   getNumericGoalValue,
   getReferencedEntities,
   getUnansweredGoalEntities,
-  hasFailedGoalValues,
   hasUnansweredGoalReferences,
   hasUnresolvedGoalReferences,
-  hasUnresolvedGoalValues,
   isDynamicGoalSetting,
   needsGraphGoalResolution,
   resolveGoalSegments,
   resolveGoalValue,
+  resolveOpenEndedGoalSegments,
 } from "./dynamic-goals";
 
 const cols = [
@@ -49,6 +49,19 @@ describe("resolveGoalValue", () => {
     expect(goalValue).toEqual({ value: 42 });
   });
 
+  it.each([
+    ["there are no rows", []],
+    ["the cell is null", [[10, null]]],
+    ["the cell is not a number", [[10, "x"]]],
+  ])("errors for a self-column reference when %s", (_name, rows) => {
+    const data = createMockDatasetData({ cols, rows });
+
+    expect(resolveGoalValue(data, "goal")).toEqual({
+      value: null,
+      error: { column: "goal", reason: "not-a-number" },
+    });
+  });
+
   it("errors for a self-column reference that does not exist", () => {
     const data = createMockDatasetData({ cols, rows });
     const goalValue = resolveGoalValue(data, "missing");
@@ -66,17 +79,11 @@ describe("resolveGoalValue", () => {
     const data = createMockDatasetData({
       cols,
       rows,
-      referenced_entities: {
-        card: {
-          7: {
-            status: "completed",
-            data: {
-              cols: [createMockColumn({ name: "total" })],
-              rows: [[123]],
-            },
-          },
-        },
-      },
+      referenced_entities: createMockReferencedEntitiesResults({
+        id: 7,
+        column: "total",
+        value: 123,
+      }),
     });
     const goalValue = resolveGoalValue(data, {
       type: "card",
@@ -93,17 +100,12 @@ describe("resolveGoalValue", () => {
     const data = createMockDatasetData({
       cols,
       rows,
-      referenced_entities: {
-        measure: {
-          3: {
-            status: "completed",
-            data: {
-              cols: [createMockColumn({ name: "avg" })],
-              rows: [[55]],
-            },
-          },
-        },
-      },
+      referenced_entities: createMockReferencedEntitiesResults({
+        type: "measure",
+        id: 3,
+        column: "avg",
+        value: 55,
+      }),
     });
     const goalValue = resolveGoalValue(data, {
       type: "measure",
@@ -120,14 +122,10 @@ describe("resolveGoalValue", () => {
     const data = createMockDatasetData({
       cols,
       rows,
-      referenced_entities: {
-        card: {
-          7: {
-            status: "failed",
-            error: "boom",
-          },
-        },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults({
+        id: 7,
+        error: "boom",
+      }),
     });
     const goalValue = resolveGoalValue(data, {
       type: "card",
@@ -145,6 +143,23 @@ describe("resolveGoalValue", () => {
         message: "boom",
       },
     });
+  });
+
+  it("errors with too-many-rows when the referenced query returned more than one row", () => {
+    const data = createMockDatasetData({
+      cols,
+      rows,
+      referenced_entities: createMockFailedReferencedEntitiesResults({
+        id: 7,
+        error:
+          "Referenced card 7 returned more rows than the requested maximum of 1.",
+        error_type: "too-many-rows",
+      }),
+    });
+
+    expect(
+      resolveGoalValue(data, { type: "card", id: 7, column: "total" }).error,
+    ).toMatchObject({ reason: "too-many-rows" });
   });
 
   it("is resolving when the referenced entity is absent from the response", () => {
@@ -177,14 +192,11 @@ describe("resolveGoalValue", () => {
     const data = createMockDatasetData({
       cols,
       rows,
-      referenced_entities: {
-        card: {
-          7: {
-            status: "completed",
-            data: { cols: [createMockColumn({ name: "other" })], rows: [[1]] },
-          },
-        },
-      },
+      referenced_entities: createMockReferencedEntitiesResults({
+        id: 7,
+        column: "other",
+        value: 1,
+      }),
     });
     const goalValue = resolveGoalValue(data, {
       type: "card",
@@ -208,17 +220,11 @@ describe("resolveGoalValue", () => {
     const data = createMockDatasetData({
       cols,
       rows,
-      referenced_entities: {
-        card: {
-          7: {
-            status: "completed",
-            data: {
-              cols: [createMockColumn({ name: "total" })],
-              rows: [["nope"]],
-            },
-          },
-        },
-      },
+      referenced_entities: createMockReferencedEntitiesResults({
+        id: 7,
+        column: "total",
+        value: "nope",
+      }),
     });
     const goalValue = resolveGoalValue(data, {
       type: "card",
@@ -290,14 +296,10 @@ describe("resolveGoalSegments", () => {
   it("resolves a foreign card reference from referenced_entities", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: {
-        card: {
-          9: {
-            status: "completed",
-            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
-          },
-        },
-      },
+      referenced_entities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: 250,
+      }),
     });
 
     const segments = resolveGoalSegments(data, [
@@ -316,14 +318,12 @@ describe("resolveGoalSegments", () => {
   it("resolves a foreign measure reference from referenced_entities", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: {
-        measure: {
-          4: {
-            status: "completed",
-            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
-          },
-        },
-      },
+      referenced_entities: createMockReferencedEntitiesResults({
+        type: "measure",
+        id: 4,
+        column: "goal",
+        value: 250,
+      }),
     });
 
     const segments = resolveGoalSegments(data, [
@@ -342,9 +342,7 @@ describe("resolveGoalSegments", () => {
   it("drops segments with a card reference that fail to resolve", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: {
-        card: { 9: { status: "failed", error: "boom" } },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults(),
     });
     const segments = resolveGoalSegments(data, [
       {
@@ -360,9 +358,10 @@ describe("resolveGoalSegments", () => {
   it("drops segments with a measure reference that fails to resolve", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: {
-        measure: { 4: { status: "failed", error: "boom" } },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults({
+        type: "measure",
+        id: 4,
+      }),
     });
     const segments = resolveGoalSegments(data, [
       {
@@ -376,86 +375,111 @@ describe("resolveGoalSegments", () => {
   });
 });
 
-describe("hasFailedGoalValues", () => {
+describe("resolveOpenEndedGoalSegments", () => {
   const DATA = createMockDatasetData({
     cols: [createMockColumn({ name: "value" })],
     rows: [[50]],
   });
-  const SEGMENTS: GoalSegment[] = [
-    { min: 0, max: { type: "card", id: 9, column: "goal" }, color: "red" },
-  ];
 
-  it("is false when every bound resolves", () => {
+  it("keeps a bound left empty open", () => {
+    const segments = resolveOpenEndedGoalSegments(DATA, [
+      { min: null, max: 10, color: "red", label: "low" },
+      { min: 10, max: 100, color: "yellow", label: "mid" },
+      { min: 100, max: null, color: "green", label: "high" },
+    ]);
+
+    expect(segments).toEqual([
+      { min: null, max: 10, color: "red", label: "low" },
+      { min: 10, max: 100, color: "yellow", label: "mid" },
+      { min: 100, max: null, color: "green", label: "high" },
+    ]);
+  });
+
+  it("drops a segment with both bounds empty", () => {
     expect(
-      hasFailedGoalValues(
-        DATA,
-        getGoalSegmentBounds([{ min: 0, max: 100, color: "red" }]),
-      ),
-    ).toBe(false);
+      resolveOpenEndedGoalSegments(DATA, [
+        { min: null, max: null, color: "red" },
+      ]),
+    ).toEqual([]);
   });
 
-  it("is false while a reference is still unanswered", () => {
-    expect(hasFailedGoalValues(DATA, getGoalSegmentBounds(SEGMENTS))).toBe(
-      false,
-    );
+  it("resolves a self-column bound against the first row", () => {
+    const segments = resolveOpenEndedGoalSegments(DATA, [
+      { min: "value", max: null, color: "green" },
+    ]);
+
+    expect(segments).toEqual([
+      { min: 50, max: null, color: "green", label: undefined },
+    ]);
   });
 
-  it("is false when a foreign answer lacks the column: it gets re-asked", () => {
+  it("resolves a foreign reference next to an open bound", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: {
-        card: {
-          9: {
-            status: "completed",
-            data: { cols: [createMockColumn({ name: "other" })], rows: [[1]] },
-          },
-        },
-      },
+      referenced_entities: createMockReferencedEntitiesResults({
+        type: "measure",
+        id: 4,
+        column: "goal",
+        value: 250,
+      }),
     });
 
-    expect(hasFailedGoalValues(data, getGoalSegmentBounds(SEGMENTS))).toBe(
-      false,
-    );
+    const segments = resolveOpenEndedGoalSegments(data, [
+      {
+        min: { type: "measure", id: 4, column: "goal" },
+        max: null,
+        color: "green",
+      },
+    ]);
+
+    expect(segments).toEqual([
+      { min: 250, max: null, color: "green", label: undefined },
+    ]);
   });
 
-  it("is true when the referenced query failed", () => {
+  it("treats a bound that failed to resolve as unset", () => {
     const data = createMockDatasetData({
       ...DATA,
-      referenced_entities: {
-        card: { 9: { status: "failed", error: "boom" } },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults(),
     });
 
-    expect(hasFailedGoalValues(data, getGoalSegmentBounds(SEGMENTS))).toBe(
-      true,
-    );
-  });
-
-  it("is true when the referenced value is not a number", () => {
-    const data = createMockDatasetData({
-      ...DATA,
-      referenced_entities: {
-        card: {
-          9: {
-            status: "completed",
-            data: { cols: [createMockColumn({ name: "goal" })], rows: [["x"]] },
-          },
-        },
+    const segments = resolveOpenEndedGoalSegments(data, [
+      {
+        min: { type: "card", id: 9, column: "goal" },
+        max: null,
+        color: "green",
       },
-    });
+      { min: "missing", max: 100, color: "red" },
+      {
+        min: null,
+        max: { type: "card", id: 9, column: "goal" },
+        color: "blue",
+      },
+    ]);
 
-    expect(hasFailedGoalValues(data, getGoalSegmentBounds(SEGMENTS))).toBe(
-      true,
-    );
+    expect(segments).toEqual([
+      { min: null, max: 100, color: "red", label: undefined },
+    ]);
   });
 
-  it("is true for a self-column reference to a missing column: nothing re-asks it", () => {
+  it("drops a segment whose set bound is still unanswered", () => {
+    const segments = resolveOpenEndedGoalSegments(DATA, [
+      {
+        min: null,
+        max: { type: "card", id: 9, column: "goal" },
+        color: "green",
+      },
+    ]);
+
+    expect(segments).toEqual([]);
+  });
+
+  it("gives a segment without a color the default fill", () => {
+    const getColor = jest.fn(() => "#123456");
+
     expect(
-      hasFailedGoalValues(
-        DATA,
-        getGoalSegmentBounds([{ min: 0, max: "missing", color: "red" }]),
-      ),
-    ).toBe(true);
+      resolveOpenEndedGoalSegments(DATA, [{ min: 0, max: null }], getColor),
+    ).toEqual([{ min: 0, max: null, color: "#123456", label: undefined }]);
   });
 });
 
@@ -517,6 +541,45 @@ describe("getReferencedEntities", () => {
 
     expect(referencedEntities).toEqual([]);
   });
+
+  it("collects the references of a number chart's color ranges", () => {
+    const referencedEntities = getReferencedEntities({
+      display: "scalar",
+      visualization_settings: {
+        "scalar.segments": [
+          { min: null, max: "count", color: "red" },
+          {
+            min: { type: "card", id: 1, column: "sum" },
+            max: { type: "measure", id: 2, column: "avg" },
+            color: "yellow",
+          },
+          {
+            min: { type: "card", id: 1, column: "total" },
+            max: null,
+            color: "green",
+          },
+        ],
+      },
+    });
+
+    expect(referencedEntities).toEqual([
+      { type: "card", id: 1, columns: ["sum", "total"] },
+      { type: "measure", id: 2, columns: ["avg"] },
+    ]);
+  });
+
+  it("collects the reference of a progress chart's goal", () => {
+    const referencedEntities = getReferencedEntities({
+      display: "progress",
+      visualization_settings: {
+        "progress.goal": { type: "measure", id: 2, column: "sum" },
+      },
+    });
+
+    expect(referencedEntities).toEqual([
+      { type: "measure", id: 2, columns: ["sum"] },
+    ]);
+  });
 });
 
 describe("malformed persisted segments", () => {
@@ -543,9 +606,6 @@ describe("malformed persisted segments", () => {
     const segments = settings["gauge.segments"];
 
     expect(resolveGoalSegments(data, segments)).toEqual([]);
-    expect(hasFailedGoalValues(data, getGoalSegmentBounds(segments))).toBe(
-      false,
-    );
     expect(
       getUnansweredGoalEntities(data, getGoalSegmentBounds(segments)),
     ).toEqual([]);
@@ -621,19 +681,10 @@ describe("getUnansweredGoalEntities", () => {
       ...DATA,
       referenced_entities: {
         card: {
-          9: {
-            status: "completed",
-            data: {
-              cols: [createMockColumn({ name: "goal" })],
-              rows: [[250]],
-            },
-          },
+          9: createMockReferencedEntityResult({ column: "goal", value: 250 }),
         },
         measure: {
-          4: {
-            status: "completed",
-            data: { cols: [createMockColumn({ name: "sum" })], rows: [[10]] },
-          },
+          4: createMockReferencedEntityResult({ column: "sum", value: 10 }),
         },
       },
     });
@@ -647,8 +698,8 @@ describe("getUnansweredGoalEntities", () => {
     const data = createMockDatasetData({
       ...DATA,
       referenced_entities: {
-        card: { 9: { status: "failed", error: "boom" } },
-        measure: { 4: { status: "failed", error: "boom" } },
+        card: { 9: createMockFailedReferencedEntityResult() },
+        measure: { 4: createMockFailedReferencedEntityResult() },
       },
     });
 
@@ -693,14 +744,10 @@ describe("hasUnansweredGoalReferences", () => {
   it("returns false when the reference resolved", () => {
     const data = createMockDatasetData({
       ...baseData,
-      referenced_entities: {
-        card: {
-          9: {
-            status: "completed",
-            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
-          },
-        },
-      },
+      referenced_entities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: 250,
+      }),
     });
 
     expect(hasUnansweredGoalReferences(gauge, data)).toBe(false);
@@ -709,9 +756,7 @@ describe("hasUnansweredGoalReferences", () => {
   it("returns false for a failed reference: the result answered it", () => {
     const data = createMockDatasetData({
       ...baseData,
-      referenced_entities: {
-        card: { 9: { status: "failed", error: "boom" } },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults(),
     });
 
     expect(hasUnansweredGoalReferences(gauge, data)).toBe(false);
@@ -767,9 +812,7 @@ describe("hasUnresolvedGoalReferences", () => {
   it("is true for a failed reference, so it gets retried", () => {
     const data = createMockDatasetData({
       ...baseData,
-      referenced_entities: {
-        card: { 9: { status: "failed", error: "boom" } },
-      },
+      referenced_entities: createMockFailedReferencedEntitiesResults(),
     });
 
     expect(hasUnresolvedGoalReferences(gauge, data)).toBe(true);
@@ -778,14 +821,10 @@ describe("hasUnresolvedGoalReferences", () => {
   it("is true when the referenced column is missing from the entity's answer", () => {
     const data = createMockDatasetData({
       ...baseData,
-      referenced_entities: {
-        card: {
-          9: {
-            status: "completed",
-            data: { cols: [createMockColumn({ name: "other" })], rows: [[1]] },
-          },
-        },
-      },
+      referenced_entities: createMockReferencedEntitiesResults({
+        column: "other",
+        value: 1,
+      }),
     });
 
     expect(hasUnresolvedGoalReferences(gauge, data)).toBe(true);
@@ -794,14 +833,10 @@ describe("hasUnresolvedGoalReferences", () => {
   it("is false when every reference resolved", () => {
     const data = createMockDatasetData({
       ...baseData,
-      referenced_entities: {
-        card: {
-          9: {
-            status: "completed",
-            data: { cols: [createMockColumn({ name: "goal" })], rows: [[250]] },
-          },
-        },
-      },
+      referenced_entities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: 250,
+      }),
     });
 
     expect(hasUnresolvedGoalReferences(gauge, data)).toBe(false);
@@ -810,8 +845,28 @@ describe("hasUnresolvedGoalReferences", () => {
 
 describe("dynamic goal settings per display", () => {
   it("knows which settings a display resolves", () => {
+    expect(isDynamicGoalSetting("area", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("area", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("bar", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("bar", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("boxplot", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("boxplot", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("combo", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("combo", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting("gauge", "gauge.segments")).toBe(true);
     expect(isDynamicGoalSetting("gauge", "graph.goal_value")).toBe(false);
+    expect(isDynamicGoalSetting("line", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("line", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("progress", "progress.goal")).toBe(true);
+    expect(isDynamicGoalSetting("progress", "graph.goal_value")).toBe(false);
+    expect(isDynamicGoalSetting("row", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("row", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("scalar", "scalar.segments")).toBe(true);
+    expect(isDynamicGoalSetting("scalar", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("scatter", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("scatter", "gauge.segments")).toBe(false);
+    expect(isDynamicGoalSetting("waterfall", "graph.goal_value")).toBe(true);
+    expect(isDynamicGoalSetting("waterfall", "gauge.segments")).toBe(false);
     expect(isDynamicGoalSetting(undefined, "graph.goal_value")).toBe(false);
   });
 
@@ -826,6 +881,66 @@ describe("dynamic goal settings per display", () => {
     expect(getReferencedEntities(card)).toEqual([]);
     expect(hasUnansweredGoalReferences(card, undefined)).toBe(false);
     expect(hasUnresolvedGoalReferences(card, undefined)).toBe(false);
+  });
+});
+
+describe.each(DYNAMIC_GOAL_DISPLAYS)("%s chart goal value", (display) => {
+  const card: GoalCard = {
+    display,
+    visualization_settings: {
+      "graph.show_goal": true,
+      "graph.goal_value": { type: "card", id: 9, column: "goal" },
+    },
+  };
+  const baseData = createMockDatasetData({
+    cols: [createMockColumn({ name: "count" })],
+    rows: [[50]],
+  });
+  const answeredData = createMockDatasetData({
+    ...baseData,
+    referenced_entities: createMockReferencedEntitiesResults({
+      column: "goal",
+      value: 250,
+    }),
+  });
+  const failedData = createMockDatasetData({
+    ...baseData,
+    referenced_entities: createMockFailedReferencedEntitiesResults(),
+  });
+
+  it("asks the query for the entity a foreign goal value references", () => {
+    expect(getReferencedEntities(card)).toEqual([
+      { type: "card", id: 9, columns: ["goal"] },
+    ]);
+  });
+
+  it("asks for nothing when the goal value is static or a self column", () => {
+    expect(
+      getReferencedEntities({
+        ...card,
+        visualization_settings: { "graph.goal_value": 100 },
+      }),
+    ).toEqual([]);
+    expect(
+      getReferencedEntities({
+        ...card,
+        visualization_settings: { "graph.goal_value": "count" },
+      }),
+    ).toEqual([]);
+  });
+
+  it("has unanswered references until the data answers them", () => {
+    expect(hasUnansweredGoalReferences(card, undefined)).toBe(true);
+    expect(hasUnansweredGoalReferences(card, baseData)).toBe(true);
+    expect(hasUnansweredGoalReferences(card, answeredData)).toBe(false);
+    expect(hasUnansweredGoalReferences(card, failedData)).toBe(false);
+  });
+
+  it("has unresolved references until the data answers them successfully", () => {
+    expect(hasUnresolvedGoalReferences(card, undefined)).toBe(true);
+    expect(hasUnresolvedGoalReferences(card, baseData)).toBe(true);
+    expect(hasUnresolvedGoalReferences(card, answeredData)).toBe(false);
+    expect(hasUnresolvedGoalReferences(card, failedData)).toBe(true);
   });
 });
 
@@ -845,28 +960,26 @@ describe("needsGraphGoalResolution", () => {
     expect(needsGraphGoalResolution(undefined, shownGoal(ref))).toBe(false);
   });
 
-  describe("for a display that resolves graph goals", () => {
-    mockDynamicGoalSettingKeys(["graph.goal_value"]);
-
+  describe.each(DYNAMIC_GOAL_DISPLAYS)("for a %s chart", (display) => {
     it("is true for a shown reference", () => {
-      expect(needsGraphGoalResolution("line", shownGoal(ref))).toBe(true);
-      expect(needsGraphGoalResolution("line", shownGoal("count"))).toBe(true);
+      expect(needsGraphGoalResolution(display, shownGoal(ref))).toBe(true);
+      expect(needsGraphGoalResolution(display, shownGoal("count"))).toBe(true);
     });
 
     it("is false for unset and static goals", () => {
-      expect(needsGraphGoalResolution("line", shownGoal(null))).toBe(false);
-      expect(needsGraphGoalResolution("line", shownGoal(undefined))).toBe(
+      expect(needsGraphGoalResolution(display, shownGoal(null))).toBe(false);
+      expect(needsGraphGoalResolution(display, shownGoal(undefined))).toBe(
         false,
       );
-      expect(needsGraphGoalResolution("line", shownGoal(10))).toBe(false);
+      expect(needsGraphGoalResolution(display, shownGoal(10))).toBe(false);
     });
 
     it("is false when the goal line is hidden", () => {
       expect(
-        needsGraphGoalResolution("line", { "graph.goal_value": ref }),
+        needsGraphGoalResolution(display, { "graph.goal_value": ref }),
       ).toBe(false);
       expect(
-        needsGraphGoalResolution("line", {
+        needsGraphGoalResolution(display, {
           "graph.show_goal": false,
           "graph.goal_value": ref,
         }),
@@ -935,11 +1048,8 @@ describe("goal value references", () => {
     rows: [[50]],
     referenced_entities: {
       card: {
-        1: {
-          status: "completed",
-          data: { cols: [createMockColumn({ name: "sum" })], rows: [[10]] },
-        },
-        2: { status: "failed", error: "boom" },
+        1: createMockReferencedEntityResult({ column: "sum", value: 10 }),
+        2: createMockFailedReferencedEntityResult(),
       },
     },
   });
@@ -961,42 +1071,6 @@ describe("goal value references", () => {
       { type: "card", id: 1 },
       { type: "measure", id: 3 },
     ]);
-  });
-
-  it("reports failed references but not unanswered ones", () => {
-    expect(hasFailedGoalValues(data, [100, "value"])).toBe(false);
-    expect(
-      hasFailedGoalValues(data, [{ type: "measure", id: 3, column: "avg" }]),
-    ).toBe(false);
-    expect(
-      hasFailedGoalValues(data, [{ type: "card", id: 2, column: "sum" }]),
-    ).toBe(true);
-    expect(hasFailedGoalValues(data, ["missing"])).toBe(true);
-  });
-
-  it("reports unanswered and failed references alike as unresolved", () => {
-    expect(
-      hasUnresolvedGoalValues(data, [
-        100,
-        "value",
-        { type: "card", id: 1, column: "sum" },
-        null,
-      ]),
-    ).toBe(false);
-    expect(
-      hasUnresolvedGoalValues(data, [
-        { type: "measure", id: 3, column: "avg" },
-      ]),
-    ).toBe(true);
-    expect(
-      hasUnresolvedGoalValues(data, [{ type: "card", id: 2, column: "sum" }]),
-    ).toBe(true);
-    expect(
-      hasUnresolvedGoalValues(data, [
-        { type: "card", id: 1, column: "missing" },
-      ]),
-    ).toBe(true);
-    expect(hasUnresolvedGoalValues(data, ["missing"])).toBe(true);
   });
 });
 

@@ -2,7 +2,6 @@ import { useCallback, useMemo } from "react";
 import { match } from "ts-pattern";
 import { t } from "ttag";
 
-import { SettingsSection } from "metabase/admin/components/SettingsSection";
 import {
   Form,
   FormErrorMessage,
@@ -10,6 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { SettingsSection } from "metabase/settings-components";
 import { Button, Group, Icon, Stack, Text } from "metabase/ui";
 import {
   useDeleteCustomVizPluginMutation,
@@ -80,14 +80,6 @@ export function EditDevCustomVizForm({ plugin }: Props) {
                     .with("error", () => (
                       <Text c="feedback-negative" fw={700}>{t`Error`}</Text>
                     ))
-                    .with("pending", () => (
-                      <Text
-                        c="text-secondary"
-                        fw={plugin.enabled ? 700 : undefined}
-                      >
-                        {t`Pending`}
-                      </Text>
-                    ))
                     .exhaustive()}
                 </Group>
               </Group>
@@ -100,7 +92,7 @@ export function EditDevCustomVizForm({ plugin }: Props) {
               <Group justify="flex-end">
                 <Button
                   variant="subtle"
-                  color="feedback-negative"
+                  color="negative"
                   onClick={handleRemove}
                 >
                   {t`Disable`}

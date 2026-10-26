@@ -86,7 +86,7 @@ export const EmbedModalContentStatusBar = ({
               <Box component="span" display="inline-flex">
                 <Button
                   variant="subtle"
-                  color="feedback-negative"
+                  color="negative"
                   disabled={isReadOnly}
                   loading={isUnpublishing || isFetching}
                   onClick={() => {

@@ -76,7 +76,7 @@ const ScalarSkeleton = ({
           />
         </Flex>
         {name ? (
-          <SkeletonCaption name={name} description={description} size="large" />
+          <SkeletonCaption name={name} description={description} />
         ) : (
           tier.showsTitle && (
             <Flex align="center" justify="center" h={TITLE_LINE_HEIGHT}>

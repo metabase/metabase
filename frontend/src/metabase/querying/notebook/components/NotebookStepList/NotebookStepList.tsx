@@ -37,7 +37,7 @@ export function NotebookStepList({
   updateQuestion,
   readOnly = false,
 }: NotebookStepListProps) {
-  const metadata = question.metadata();
+  const database = question.database();
   const [openSteps, setOpenSteps] = useState<OpenSteps>(
     getInitialOpenSteps(question, readOnly),
   );
@@ -49,8 +49,8 @@ export function NotebookStepList({
     if (!question) {
       return [];
     }
-    return getQuestionSteps(question, metadata, openSteps);
-  }, [metadata, question, openSteps]);
+    return getQuestionSteps(question, database ?? undefined, openSteps);
+  }, [database, question, openSteps]);
 
   const handleStepOpen = useCallback((id: INotebookStep["id"]) => {
     setOpenSteps((openSteps) => ({ ...openSteps, [id]: true }));

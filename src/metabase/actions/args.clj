@@ -52,7 +52,7 @@
 ;;; Anything else required depends on the action type.
 
 (mr/def ::common
-  [:map [:database ::lib.schema.id/database]])
+  [:map {:closed true} [:database ::lib.schema.id/database]])
 
 (mr/def ::row
   [:map-of :string [:ref ::lib.schema.parameter/parameter.value]])
@@ -62,12 +62,19 @@
 ;;;    {:database <id>, :query {:source-table <id>}}
 
 (mr/def ::query
-  [:map [:source-table ::lib.schema.id/table]])
+  [:map {:closed true} [:source-table ::lib.schema.id/table]])
+
+(mr/def ::query.filtered
+  [:map {:closed true}
+   [:source-table ::lib.schema.id/table]
+   [:filter :metabase.legacy-mbql.schema/Filter]])
 
 (mr/def ::crud.row.common
   [:merge
    ::common
-   [:map [:query ::query]]])
+   [:map
+    [:type {:optional true} [:= :query]]
+    [:query ::query]]])
 
 ;;;; `:model.row/create`
 
@@ -102,9 +109,7 @@
   [:merge
    ::crud.row.common
    [:map [:update-row ::row]
-    [:query [:merge
-             ::query
-             [:map [:filter [:sequential :any]]]]]]])
+    [:query ::query.filtered]]])
 
 (defmethod action-arg-map-schema :model.row/update
   [_action]
@@ -124,9 +129,7 @@
 (mr/def ::model.row.delete
   [:merge
    ::crud.row.common
-   [:map [:query [:merge
-                  ::query
-                  [:map [:filter [:sequential :any]]]]]]])
+   [:map [:query ::query.filtered]]])
 
 (defmethod action-arg-map-schema :model.row/delete
   [_action]
@@ -146,7 +149,8 @@
   [:merge
    ::common
    [:map [:table-id pos-int?]
-    [:row ::row]]])
+    [:row {:optional true} ::row]
+    [:arg {:optional true} ::row]]])
 
 ;;; The request bodies for the table CRUD actions are all the same. The body of a request to `POST
 ;;; /api/action/:action-namespace/:action-name/:table-id` is just a vector of rows but the API endpoint itself calls
@@ -176,3 +180,35 @@
   {:database (or database (when table-id (actions.db/table-database-id table-id)))
    :table-id table-id
    :row      (update-keys (or row row-arg) u/qualified-name)})
+
+(mr/def ::implicit
+  [:map {:closed true}
+   [:database   ::lib.schema.id/database]
+   [:type       [:= :query]]
+   [:query      [:or ::query ::query.filtered]]
+   [:create-row {:optional true} ::row]
+   [:update-row {:optional true} ::row]])
+
+(mr/def ::table.insert
+  [:map {:closed true}
+   [:database ::lib.schema.id/database]
+   [:table-id ::lib.schema.id/table]
+   [:values   ::row]])
+
+(mr/def ::data-grid.row.input
+  "A data-grid row action input before its normalization resolves the database."
+  [:map {:closed true}
+   [:table-id ::lib.schema.id/table]
+   [:row      ::row]])
+
+(mr/def ::any-arg-map
+  "One arg map an action can be invoked with, in any of the shapes [[action-arg-map-schema]] recognizes."
+  [:or
+   ::model.row.create
+   ::model.row.update
+   ::model.row.delete
+   ::table.common
+   ::data-grid.row.input
+   ::implicit
+   ::table.insert
+   [:= {} {}]])

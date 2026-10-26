@@ -34,6 +34,12 @@ export const hasActionsEnabled = (database: Pick<Database, "settings">) => {
   return Boolean(database.settings?.["database-enable-actions"]);
 };
 
+export const hasNativeWritePermissions = (
+  database: Pick<Database, "native_permissions">,
+) => {
+  return database.native_permissions === "write";
+};
+
 export const hasWritableConnectionDetails = (
   database: Pick<Database, "write_data_details">,
 ) => {

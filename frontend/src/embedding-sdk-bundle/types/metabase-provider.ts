@@ -40,7 +40,7 @@ export interface MetabaseProviderProps {
   pluginsConfig?: MetabaseGlobalPluginsConfig;
 
   /**
-   * See [Global event handlers](https://www.metabase.com/docs/latest/embedding/sdk/config#global-event-handlers).
+   * See [Handle embed events](https://www.metabase.com/docs/latest/embedding/config#handle-embed-events-react-sdk-only).
    */
   eventHandlers?: SdkEventHandlersConfig;
 

@@ -91,7 +91,7 @@ export interface DatasetColumn {
   fk_target_field_id?: FieldId | null;
   should_index?: boolean;
 
-  remapping?: Map<RowValue, string | number>;
+  remapping?: Map<RowValue, RowValue>;
 }
 
 export interface ResultsMetadata {
@@ -298,6 +298,7 @@ export type ReferencedEntitiesResults = {
 export interface ReferencedEntityResult {
   status: "completed" | "failed";
   error?: string;
+  error_type?: "too-many-rows";
   data?: {
     cols: DatasetColumn[];
     rows: RowValues[];

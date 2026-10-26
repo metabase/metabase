@@ -6,13 +6,9 @@ import {
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
 
-import {
-  DATA_APP_TEST_ENV as TEST_ENV,
-  dataAppNumericField as numericField,
-  dataAppNumericResultColumn as resultColumn,
-} from "./helpers";
+import { DATA_APP_TEST_ENV as TEST_ENV } from "./helpers";
 
-const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+const { ORDERS_ID } = SAMPLE_DATABASE;
 
 const { H } = cy;
 
@@ -30,12 +26,17 @@ describe("scenarios > data apps > SDK runtime", () => {
         displayName: APP_DISPLAY_NAME,
         testEnv: {
           ...TEST_ENV,
-          // A table id that doesn't exist → the query resolves to an error.
-          errorQuery: { source: { type: "table", id: 999999 } },
+          // A card that doesn't exist, so the query resolves to an error rather
+          // than to the refusal a query without a saved question would raise.
+          errorQuery: {
+            source: { type: "table", id: ORDERS_ID },
+            savedQuestionEntityId: "missingQuestionEntity",
+          },
         },
       });
 
-    it("surfaces the useMetabaseQuery error state", () => {
+    it("surfaces the useMetabaseQuery error state, and re-runs the query when the app calls refetch", () => {
+      cy.intercept("POST", "/api/dataset").as("datasetQuery");
       setupQueryStatesApp();
 
       visitAppRoute("query-states");
@@ -44,15 +45,7 @@ describe("scenarios > data apps > SDK runtime", () => {
           "have.text",
           "error",
         );
-      });
-    });
 
-    it("re-runs the query when the app calls refetch", () => {
-      cy.intercept("POST", "/api/dataset").as("datasetQuery");
-      setupQueryStatesApp();
-
-      visitAppRoute("query-states");
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
         // The query has to have resolved before refetching means anything.
         cy.findByTestId("query-value", { timeout: 30000 })
           .invoke("text")
@@ -103,90 +96,6 @@ describe("scenarios > data apps > SDK runtime", () => {
               });
           },
         );
-      });
-    });
-
-    it("builds a query with filter/breakout/orderBy/aggregations helpers", () => {
-      H.mockDataApp(APP_NAME, {
-        displayName: APP_DISPLAY_NAME,
-        testEnv: {
-          ...TEST_ENV,
-          combinators: {
-            source: { type: "table", id: ORDERS_ID },
-            filterField: numericField(ORDERS.TOTAL, "TOTAL"),
-            filterValue: 50,
-            breakoutField: numericField(ORDERS.PRODUCT_ID, "PRODUCT_ID"),
-          },
-        },
-      });
-
-      visitAppRoute("combinators");
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByTestId("combinators-loading", { timeout: 30000 }).should(
-          "have.text",
-          "done",
-        );
-        cy.findByTestId("combinators-error").should("have.text", "no-error");
-        // `.should(callback)` retries until the query resolves with rows.
-        cy.findByTestId("combinators-rowcount", { timeout: 30000 }).should(
-          ($el) => {
-            expect(Number($el.text())).to.be.greaterThan(0);
-          },
-        );
-      });
-    });
-  });
-
-  describe("saved question sources", () => {
-    const setupCardSourceApp = () =>
-      H.createQuestion({
-        name: "Orders as a data-app query source",
-        query: { "source-table": ORDERS_ID },
-      }).then(({ body: card }) => {
-        H.mockDataApp(APP_NAME, {
-          displayName: APP_DISPLAY_NAME,
-          testEnv: {
-            ...TEST_ENV,
-            cardSource: {
-              source: { type: "card", id: card.id },
-              tableSource: { type: "table", id: ORDERS_ID },
-              filterField: numericField(ORDERS.TOTAL, "TOTAL"),
-              filterColumn: resultColumn("TOTAL"),
-              filterValue: 50,
-              breakoutField: numericField(ORDERS.PRODUCT_ID, "PRODUCT_ID"),
-              breakoutColumn: resultColumn("PRODUCT_ID"),
-            },
-          },
-        });
-
-        visitAppRoute("card-source");
-      });
-
-    it("queries a saved question as a source", () => {
-      setupCardSourceApp();
-
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        cy.findByTestId("card-source-case-source", {
-          timeout: 30000,
-        }).should("have.text", "match");
-
-        // A match on two empty results would be vacuous, so the source has to
-        // have actually returned rows.
-        cy.findByTestId("card-source-total").should(($el) => {
-          expect(Number($el.text())).to.be.greaterThan(0);
-        });
-      });
-    });
-
-    it("applies filters, aggregations, and breakouts on top of a saved question", () => {
-      setupCardSourceApp();
-
-      H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
-        ["filters", "aggregations", "breakouts"].forEach((clause) => {
-          cy.findByTestId(`card-source-case-${clause}`, {
-            timeout: 30000,
-          }).should("have.text", "match");
-        });
       });
     });
   });

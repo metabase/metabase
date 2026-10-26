@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import metabotSlackbotIcon from "assets/img/metabot-slackbot.png";
 import { ExternalLink } from "metabase/common/components/ExternalLink";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Stack, Text } from "metabase/ui";
@@ -12,7 +13,7 @@ export const SlackConfiguration = () => {
   const bugReportingEnabled = useSetting("bug-reporting-enabled") ?? false;
   const { data: appInfo } = useGetSlackAppInfoQuery();
 
-  const iconUrl = "/app/assets/img/metabot-slackbot.png";
+  const iconUrl = metabotSlackbotIcon;
   const basicInfoUrl = appInfo?.app_id
     ? `https://api.slack.com/apps/${appInfo.app_id}/general#edit`
     : `https://api.slack.com/apps`;

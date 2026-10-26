@@ -17,6 +17,7 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import { useToast } from "metabase/common/hooks";
 import CS from "metabase/css/core/index.css";
 import { useAdminSetting, useSetting } from "metabase/settings";
+import { SettingHeader } from "metabase/settings-components";
 import {
   Alert,
   Box,
@@ -35,8 +36,6 @@ import type {
   SettingValue,
   UploadsSettings,
 } from "metabase-types/api";
-
-import { SettingHeader } from "../SettingHeader";
 
 import { dbHasSchema, getDatabaseOptions, getSchemaOptions } from "./utils";
 
@@ -94,7 +93,7 @@ export function UploadSettingsFormView({
   const showError = (msg: string) => {
     setErrorMessage(msg);
     setTimeout(() => setErrorMessage(null), FEEDBACK_TIMEOUT);
-    sendToast({ icon: "warning", message: msg });
+    sendToast({ variant: "negative", message: msg });
   };
 
   const handleEnableUploads = async () => {
@@ -269,7 +268,7 @@ export function UploadSettingsFormView({
               actionFn={handleDisableUploads}
               type="button"
               variant="filled"
-              color="feedback-negative"
+              color="negative"
               useLoadingSpinner
             />
           )

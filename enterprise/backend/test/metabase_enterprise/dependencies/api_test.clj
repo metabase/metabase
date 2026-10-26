@@ -3,9 +3,9 @@
    [clojure.test :refer :all]
    [medley.core :as m]
    [metabase-enterprise.dependencies.api :as deps.api]
-   [metabase-enterprise.dependencies.async :as dependencies.async]
-   [metabase-enterprise.dependencies.events]
    [metabase-enterprise.dependencies.findings :as dependencies.findings]
+   [metabase-enterprise.dependencies.hooks :as deps.hooks]
+   [metabase-enterprise.dependencies.task.entity-check :as task.entity-check]
    [metabase-enterprise.dependencies.test-util :as deps.test]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.test-utils :refer [personal-collection-id]]
@@ -21,9 +21,6 @@
    [metabase.test :as mt]
    [metabase.util :as u]
    [toucan2.core :as t2]))
-
-(comment
-  metabase-enterprise.dependencies.events/keep-me)
 
 (defn- card-with-query
   "Create a card map with the given name and dataset query."
@@ -132,19 +129,6 @@
    Must be called within lib-be/with-metadata-provider-cache."
   [card-id]
   (dependencies.findings/upsert-analysis! (t2/select-one :model/Card :id card-id)))
-
-; dependencies.async/submit! effectively awaits all pending tasks on the executor.
-; Those tasks would be executed regardless; this is just changing the timing to be
-; less problematic for multiple test runs in sequence.
-#_{:clj-kondo/ignore [:metabase/validate-deftest]}
-(use-fixtures :each
-  (fn drained-dependency-async-executor-fixture [t]
-    (try
-      (t)
-      (finally
-        ;; Drain the single-threaded async executor to ensure all pending dependency
-        ;; work completes before model cleanup deletes cards, avoiding lock timeouts.
-        @(dependencies.async/submit! (fn [] nil))))))
 
 (deftest graph-test
   (testing "GET /api/ee/dependencies/graph"
@@ -465,11 +449,7 @@
                                                                      :name "inactive_transform_table"}}]
           ;; Simulate the transform having been run: link it to its (now inactive) target table
           (t2/update! :model/Transform transform-id {:target_table_id table-id})
-          (events/publish-event! :event/transform-run-complete
-                                 {:object {:db-id (mt/id)
-                                           :output-schema "PUBLIC"
-                                           :output-table "inactive_transform_table"
-                                           :transform-id transform-id}})
+          (deps.hooks/after-transform-run transform-id table-id)
           (deps.test/synchronously-run-backfill!)
           (testing "GET /graph/dependents returns the inactive table as a child"
             (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
@@ -508,6 +488,33 @@
                 (let [response2 (mt/user-http-request :crowberto :get 200 (str "ee/dependencies/graph/dependents?broken=false&type=card&id=" (:id model-card)))]
                   (is (= #{(:id dependent-card) (:id next-card)} (set (map :id response2)))
                       "There should two dependents total"))))))))))
+
+(deftest ^:synchronized python-transform-not-broken-after-entity-check-test
+  (testing "GHY-3584: a Python transform has no query to validate, so the entity-check task must not record it as broken"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus :model/AnalysisFinding :model/AnalysisFindingError]
+        (mt/with-temp [:model/Transform {transform-id :id}
+                       {:name   "Python transform - ghy3584"
+                        :source {:type            :python
+                                 :source-database (mt/id)
+                                 :source-tables   [{:alias       "orders"
+                                                    :database_id (mt/id)
+                                                    :schema      "PUBLIC"
+                                                    :table       "ORDERS"
+                                                    :table_id    (mt/id :orders)}]
+                                 :body            "def transform(orders):\n    return orders"}}]
+          (deps.test/synchronously-run-backfill!)
+          (#'task.entity-check/check-entities!)
+          (let [dependent-ids (fn [broken?]
+                                (set (map :id (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/dependents"
+                                                                    :type "table"
+                                                                    :id (mt/id :orders)
+                                                                    :dependent-types "transform"
+                                                                    :broken broken?))))]
+            (is (contains? (dependent-ids false) transform-id)
+                "the Python transform is a dependent of the table it reads")
+            (is (not (contains? (dependent-ids true) transform-id))
+                "the Python transform is not listed as broken")))))))
 
 (deftest graph-permissions-test
   (testing "GET /api/ee/dependencies/graph requires read permissions on the starting entity"
@@ -747,7 +754,23 @@
                     (is (contains? dependent-ids (:id readable-card))
                         "Should see readable card as dependent")
                     (is (not (contains? dependent-ids (:id unreadable-card)))
-                        "Should not see unreadable card as dependent")))))))))))
+                        "Should not see unreadable card as dependent")))
+                (testing "User sees a root snippet with the snippets root permission, not the default root one"
+                  (mt/with-non-admin-groups-no-root-collection-for-namespace-perms collection/snippets-ns
+                    (let [snippet-node? (fn []
+                                          (contains? (->> (mt/user-http-request :rasta :get 200 "ee/dependencies/graph"
+                                                                                :id (:id readable-card)
+                                                                                :type "card")
+                                                          :nodes
+                                                          (map (juxt :type :id))
+                                                          set)
+                                                     ["snippet" snippet-id]))]
+                      (perms/grant-collection-read-permissions! (perms/all-users-group) collection/root-collection)
+                      (is (not (snippet-node?)))
+                      (perms/revoke-collection-permissions! (perms/all-users-group) collection/root-collection)
+                      (perms/grant-collection-read-permissions! (perms/all-users-group)
+                                                                (assoc collection/root-collection :namespace collection/snippets-ns))
+                      (is (snippet-node?)))))))))))))
 
 (deftest graph-table-permission-filtering-test
   (testing "GET /api/ee/dependencies/graph filters out tables when user lacks table permissions"
@@ -894,6 +917,63 @@
               (testing "returns card that uses the segment"
                 (is (= 1 (count response)))
                 (is (= (:id card) (:id (first response))))))))))))
+
+(deftest graph-action-dependents-test
+  (testing "GET /api/ee/dependencies/graph/dependents returns the actions a user can read"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection readable-collection   {}
+                       :model/Collection unreadable-collection {:namespace "data-actions"}
+                       :model/Card {model-id :id} (assoc (basic-card "Venues model" :venues)
+                                                         :type          :model
+                                                         :collection_id (:id readable-collection))
+                       :model/Action {readable-id :id} {:type     :implicit
+                                                        :name     "Create venue"
+                                                        :model_id model-id}
+                       :model/ImplicitAction _ {:action_id readable-id, :kind "row/create"}
+                       :model/Action {unreadable-id :id} {:type          :query
+                                                          :name          "Delete venue"
+                                                          :collection_id (:id unreadable-collection)}
+                       :model/Action {root-id :id} {:type :query
+                                                    :name "Archive venue"}
+                       :model/QueryAction _ {:action_id     root-id
+                                             :database_id   (mt/id)
+                                             :dataset_query (-> (lib/native-query (mt/metadata-provider)
+                                                                                  (str "DELETE FROM venues WHERE id IN "
+                                                                                       "(SELECT id FROM {{#" model-id "}})"))
+                                                                (lib/with-template-tags
+                                                                  {(str "#" model-id) {:id           "model-tag"
+                                                                                       :type         :card
+                                                                                       :name         (str "#" model-id)
+                                                                                       :display-name "Venues model"
+                                                                                       :card-id      model-id}}))}
+                       :model/QueryAction _ {:action_id     unreadable-id
+                                             :database_id   (mt/id)
+                                             :dataset_query (-> (lib/native-query (mt/metadata-provider)
+                                                                                  (str "DELETE FROM venues WHERE id IN "
+                                                                                       "(SELECT id FROM {{#" model-id "}})"))
+                                                                (lib/with-template-tags
+                                                                  {(str "#" model-id) {:id           "model-tag"
+                                                                                       :type         :card
+                                                                                       :name         (str "#" model-id)
+                                                                                       :display-name "Venues model"
+                                                                                       :card-id      model-id}}))}]
+          (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+            (perms/grant-collection-read-permissions! (perms/all-users-group) readable-collection)
+            (deps.test/synchronously-run-backfill!)
+            (let [dependents (fn [user]
+                               (->> (mt/user-http-request user :get 200 "ee/dependencies/graph/dependents"
+                                                          :id model-id
+                                                          :type "card"
+                                                          :dependent-types "action")
+                                    (map (juxt :type :id (comp :name :data) (comp (juxt :name :namespace) :collection :data)))
+                                    set))]
+              (is (= #{["action" readable-id "Create venue" [(:name readable-collection) nil]]
+                       ["action" unreadable-id "Delete venue" [(:name unreadable-collection) "data-actions"]]
+                       ["action" root-id "Archive venue" ["Data actions" "data-actions"]]}
+                     (dependents :crowberto)))
+              (is (= #{["action" readable-id "Create venue" [(:name readable-collection) nil]]}
+                     (dependents :rasta))))))))))
 
 (deftest graph-measure-root-test
   (testing "GET /api/ee/dependencies/graph with measure as root node"
@@ -1154,11 +1234,7 @@
           ;; Simulate the referenced transform having been run: link it to its target table
           ;; so the table→transform dep is visible in the dependency graph.
           (t2/update! :model/Transform referenced-transform-id {:target_table_id referenced-table-id})
-          (events/publish-event! :event/transform-run-complete
-                                 {:object {:db-id (mt/id)
-                                           :output-schema "PUBLIC"
-                                           :output-table "referenced_transform_table"
-                                           :transform-id referenced-transform-id}})
+          (deps.hooks/after-transform-run referenced-transform-id referenced-table-id)
           (deps.test/synchronously-run-backfill!)
           (let [response (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced?types=transform&query=unreftest")]
             (is (=? {:data [{:id unreffed-transform-id
@@ -2748,7 +2824,7 @@
                       response)))))))))
 
 (deftest data-analyst-can-access-dependency-graph-test
-  (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
+  (mt/with-premium-features #{:advanced-permissions :data-studio :dependencies :transforms-basic :hosting}
     (testing "Data analysts can access dependency diagnostics endpoints"
       (let [data-analyst-group-id (:id (perms-group/data-analyst))]
         (mt/with-temp [:model/User {analyst-id :id} {:first_name "Data"
@@ -2757,16 +2833,80 @@
                                                      :is_data_analyst true}
                        :model/PermissionsGroupMembership _ {:user_id analyst-id
                                                             :group_id data-analyst-group-id}
-                       :model/Database {db-id :id} {}
-                       :model/Table {_table-id :id} {:db_id db-id}
-                       :model/Transform {transform-id :id} {:source_database_id db-id
-                                                            :name "Test Transform"}]
-          (testing "graph/unreferenced"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            "ee/dependencies/graph/unreferenced"))))
-          (testing "graph/breaking"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            "ee/dependencies/graph/breaking"))))
-          (testing "graph with transform"
-            (is (map? (mt/user-http-request analyst-id :get 200
-                                            (str "ee/dependencies/graph?type=transform&id=" transform-id))))))))))
+                       ;; the sample database: All Users may query it, so analyst-wide transform visibility applies
+                       :model/Transform {transform-id :id} {:source_database_id (mt/id)
+                                                            :name "Analyst Grace Transform - gracetest"}]
+          (letfn [(unreferenced-transform-ids []
+                    (->> (mt/user-http-request analyst-id :get 200
+                                               "ee/dependencies/graph/unreferenced?types=transform&query=gracetest")
+                         :data
+                         (map :id)
+                         set))]
+            (testing "graph/unreferenced"
+              (is (contains? (unreferenced-transform-ids) transform-id)))
+            (testing "graph/breaking"
+              (is (map? (mt/user-http-request analyst-id :get 200
+                                              "ee/dependencies/graph/breaking"))))
+            (testing "graph with transform"
+              (is (map? (mt/user-http-request analyst-id :get 200
+                                              (str "ee/dependencies/graph?type=transform&id=" transform-id)))))
+            (testing "analyst-wide visibility pauses while advanced-permissions is unavailable"
+              (mt/with-premium-features #{:data-studio :dependencies :transforms-basic :hosting}
+                (is (not (contains? (unreferenced-transform-ids) transform-id)))))))))))
+
+(defn- delete-venue-query []
+  (lib/native-query (mt/metadata-provider) "DELETE FROM venues WHERE id = {{id}}"))
+
+(deftest graph-root-data-action-permissions-test
+  (testing "the graph shows a data action at the data-actions root only to users who can read that root"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-non-admin-groups-no-root-collection-for-namespace-perms :data-actions
+        (mt/with-temp [:model/Action {action-id :id} {:type :query :name "Root data action permtest"}
+                       :model/QueryAction _ {:action_id     action-id
+                                             :database_id   (mt/id)
+                                             :dataset_query (delete-venue-query)}]
+          (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+            (deps.test/synchronously-run-backfill!)
+            (let [dependent-ids    (fn []
+                                     (->> (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                                :id (mt/id :venues)
+                                                                :type "table"
+                                                                :dependent-types "action")
+                                          (into #{} (map :id))))
+                  unreferenced-ids (fn []
+                                     (->> (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/unreferenced"
+                                                                :types "action"
+                                                                :query "permtest")
+                                          :data
+                                          (into #{} (map :id))))]
+              (testing "a user who can read the default root but not the data-actions root"
+                (is (not (contains? (dependent-ids) action-id)))
+                (is (not (contains? (unreferenced-ids) action-id))))
+              (testing "a user who can read the data-actions root"
+                (perms/grant-collection-read-permissions! (perms/all-users-group)
+                                                          (assoc collection/root-collection :namespace "data-actions"))
+                (is (contains? (dependent-ids) action-id))
+                (is (contains? (unreferenced-ids) action-id))))))))))
+
+(deftest ^:synchronized unreferenced-root-data-action-location-test
+  (testing "GET /api/ee/dependencies/graph/unreferenced locates a data action at the data-actions root in that root"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-temp [:model/Action {action-id :id} {:type :query :name "Root data action locationtest"}
+                     :model/QueryAction _ {:action_id     action-id
+                                           :database_id   (mt/id)
+                                           :dataset_query (delete-venue-query)}]
+        (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+          (deps.test/synchronously-run-backfill!)
+          (let [unreferenced (fn [query]
+                               (mt/user-http-request :crowberto :get 200 "ee/dependencies/graph/unreferenced"
+                                                     :types "action"
+                                                     :query query))
+                matches?     (fn [query]
+                               (contains? (into #{} (map :id) (:data (unreferenced query))) action-id))]
+            (testing "the response names the data-actions root"
+              (is (=? {:data [{:id   action-id
+                               :data {:collection {:name "Data actions" :namespace "data-actions"}}}]}
+                      (unreferenced "locationtest"))))
+            (testing "a search for the data-actions root name finds the action"
+              (is (matches? "Data actions"))
+              (is (not (matches? "Our analytics"))))))))))

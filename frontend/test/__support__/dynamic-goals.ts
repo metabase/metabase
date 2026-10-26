@@ -1,20 +1,25 @@
-import type { GoalSettingKey } from "metabase/viz-core/lib/dynamic-goal-settings";
-import * as dynamicGoalSettings from "metabase/viz-core/lib/dynamic-goal-settings";
+import { GOAL_LINE_DASH } from "metabase/viz-core";
+import type { VisualizationDisplay } from "metabase-types/api";
 
-/**
- * Makes every display resolve `keys` for the tests of the enclosing `describe`.
- * Temporary, until all cartesian charts support dynamic goals.
- */
-export function mockDynamicGoalSettingKeys(keys: GoalSettingKey[]) {
-  let spy: jest.SpyInstance;
+// "CARTESIAN" here means displays rendered with `CartesianChart` component
+export const DYNAMIC_GOAL_CARTESIAN_DISPLAYS = [
+  "area",
+  "bar",
+  "combo",
+  "line",
+  "scatter",
+  "waterfall",
+] as const satisfies readonly VisualizationDisplay[];
 
-  beforeEach(() => {
-    spy = jest
-      .spyOn(dynamicGoalSettings, "getDynamicGoalSettingKeys")
-      .mockReturnValue(keys);
-  });
+// Every display that resolves `graph.goal_value`
+export const DYNAMIC_GOAL_DISPLAYS = [
+  ...DYNAMIC_GOAL_CARTESIAN_DISPLAYS,
+  "boxplot",
+  "row",
+] as const satisfies readonly VisualizationDisplay[];
 
-  afterEach(() => {
-    spy.mockRestore();
-  });
+export function queryEChartsGoalLine() {
+  return document.querySelector(
+    `path[stroke-dasharray="${GOAL_LINE_DASH.join(",")}"]`,
+  );
 }

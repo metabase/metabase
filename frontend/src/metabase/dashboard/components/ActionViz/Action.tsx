@@ -14,7 +14,7 @@ import { getActionIsEnabledInDatabase } from "metabase/dashboard/utils";
 import { useQuestionFromCard } from "metabase/metadata-store";
 import { connect } from "metabase/redux";
 import type { Dispatch, State } from "metabase/redux/store";
-import { Tooltip } from "metabase/ui";
+import { Box, Tooltip } from "metabase/ui";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import type {
   ActionDashboardCard,
@@ -24,9 +24,8 @@ import type {
   WritebackAction,
 } from "metabase-types/api";
 
-import { FullContainer } from "./ActionButton.styled";
 import ActionButtonView from "./ActionButtonView";
-import ActionVizForm from "./ActionVizForm";
+import { ActionVizForm } from "./ActionVizForm";
 import {
   getDashcardParamValues,
   getMappedActionParameters,
@@ -62,11 +61,7 @@ const ActionComponent = ({
   const { data: card } = useGetCardQuery(
     dashcard.action?.model_id ? { id: dashcard.action.model_id } : skipToken,
   );
-  const buildQuestion = useQuestionFromCard();
-  const model = useMemo(
-    () => (card ? buildQuestion(card) : undefined),
-    [card, buildQuestion],
-  );
+  const model = useQuestionFromCard(card);
 
   const actionSettings = dashcard.action?.visualization_settings;
   const actionDisplayType =
@@ -168,7 +163,7 @@ function ActionFn(props: ActionProps) {
 
     return (
       <Tooltip label={tooltip}>
-        <FullContainer data-testid="action-button-full-container">
+        <Box w="100%" h="100%" data-testid="action-button-full-container">
           <ActionButtonView
             disabled
             icon="bolt"
@@ -176,7 +171,7 @@ function ActionFn(props: ActionProps) {
             settings={props.settings}
             focus={props.isEditingDashcard}
           />
-        </FullContainer>
+        </Box>
       </Tooltip>
     );
   }

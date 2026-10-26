@@ -304,6 +304,20 @@
                        (stale-map [a-id b-id]))
                     "both cycle members should be drained (re-analyzed, not stale)")))))))))
 
+(deftest ^:synchronized python-transform-records-clean-finding-test
+  (testing "GHY-3584: a Python transform has no query, so upsert-analysis! resolves its database from source_database_id and records a clean finding"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/AnalysisFinding :model/AnalysisFindingError]
+        (mt/with-temp [:model/Transform {transform-id :id} {:source {:type            :python
+                                                                     :source-database (mt/id)
+                                                                     :source-tables   []
+                                                                     :body            "def transform():\n    pass"}}]
+          (lib-be/with-metadata-provider-cache
+            (deps.findings/upsert-analysis! (t2/select-one :model/Transform transform-id)))
+          (is (=? {:result true :stale false}
+                  (t2/select-one :model/AnalysisFinding :analyzed_entity_type :transform :analyzed_entity_id transform-id)))
+          (is (empty? (models.analysis-finding-error/errors-for-entity :transform transform-id))))))))
+
 (deftest ^:synchronized unanalyzable-entity-records-terminal-error-test
   (testing "A stale entity whose database can't be resolved records a terminal error finding instead of no-oping forever."
     ;; Without the fix, instance-db-id -> nil makes upsert-analysis! no-op: the stale flag is never
@@ -316,7 +330,7 @@
           (let [cid (:id card)]
             ;; seed a clean finding, mark it stale, then make its database unresolvable
             (models.analysis-finding/upsert-analysis! :card cid true [])
-            (models.analysis-finding/mark-stale! :card [cid])
+            (models.analysis-finding/mark-stale! {:card #{cid}})
             (with-redefs-fn {#'deps.findings/instance-db-id (constantly nil)}
               (fn []
                 (lib-be/with-metadata-provider-cache
@@ -349,7 +363,7 @@
                                             :analyzed_entity_type :card :analyzed_entity_id cid))
                   "phase 1: stale flag cleared")
               ;; phase 2: database resolvable again; re-trigger analysis (as an event/job would)
-              (models.analysis-finding/mark-stale! :card [cid])
+              (models.analysis-finding/mark-stale! {:card #{cid}})
               (lib-be/with-metadata-provider-cache
                 (deps.findings/upsert-analysis! (t2/instance :model/Card card)))
               (is (empty? (models.analysis-finding-error/errors-for-entity :card cid))
@@ -372,12 +386,12 @@
         (mt/with-temp [:model/Card {card1-id :id} {:dataset_query (native-card "select id from orders")}
                        :model/Card {card2-id :id} {:dataset_query (native-card "select id from products")}]
           (let [wanted #{card1-id card2-id}
-                upsert-analysis! deps.findings/upsert-analysis!]
-            (with-redefs [deps.findings/upsert-analysis!
-                          (fn [instance]
-                            (when (wanted (:id instance))
-                              (swap! providers conj (:lib/metadata (:dataset_query instance))))
-                            (upsert-analysis! instance))]
+                upsert-analysis! (mt/original-fn #'deps.findings/upsert-analysis!)]
+            (mt/with-dynamic-fn-redefs [deps.findings/upsert-analysis!
+                                        (fn [instance]
+                                          (when (wanted (:id instance))
+                                            (swap! providers conj (:lib/metadata (:dataset_query instance))))
+                                          (upsert-analysis! instance))]
               (deps.findings/analyze-batch! :card 500)))
           (testing "both cards were selected, so the assertion below is meaningful"
             (is (= 2 (count @providers))))

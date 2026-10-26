@@ -4,16 +4,13 @@ import { t } from "ttag";
 import { color } from "metabase/ui/colors";
 import type { ColorGetter } from "metabase/ui/colors/types";
 import type {
-  Card,
   CardId,
-  DatasetData,
   GoalForeignColumnRef,
   GoalForeignEntityRef,
   GoalSegment,
   GoalValue,
   MeasureId,
   ReferencedEntity,
-  ReferencedEntityType,
   RowValue,
   VisualizationDisplay,
   VisualizationSettings,
@@ -26,57 +23,20 @@ import {
   isGoalValue,
 } from "metabase-types/guards";
 
+import type {
+  GoalCard,
+  GoalData,
+  GoalRefError,
+  GoalValueResult,
+  ResolvedGoalSegment,
+  ResolvedOpenEndedGoalSegment,
+} from "../types";
+
 import {
   GOAL_SETTINGS,
   type GoalSettingKey,
-  type GoalSettingKind,
   getDynamicGoalSettingKeys,
 } from "./dynamic-goal-settings";
-import { segmentIsValid } from "./utils";
-
-export type GoalData = Pick<
-  DatasetData,
-  "cols" | "rows" | "referenced_entities"
->;
-
-export type ResolvedGoalSegment = {
-  color: string;
-  label?: string;
-  min: number;
-  max: number;
-};
-
-export type GoalRefErrorReason =
-  | "query-failed"
-  | "column-not-found"
-  | "not-a-number";
-
-export type GoalRefError =
-  | {
-      type?: Extract<ReferencedEntityType, "card">;
-      id?: CardId;
-      column: string;
-      reason: GoalRefErrorReason;
-      message?: string;
-    }
-  | {
-      type?: Extract<ReferencedEntityType, "measure">;
-      id?: MeasureId;
-      column: string;
-      reason: GoalRefErrorReason;
-      message?: string;
-    };
-
-export type GoalValueResult = {
-  value: number | null;
-  error?: GoalRefError;
-  isUnanswered?: boolean;
-};
-
-export type GoalCard = {
-  display: Card["display"];
-  visualization_settings?: Card["visualization_settings"];
-};
 
 export function resolveGoalValue(
   data: GoalData,
@@ -148,7 +108,10 @@ function resolveForeignColumnRef(
         type,
         id,
         column,
-        reason: "query-failed",
+        reason:
+          result.error_type === "too-many-rows"
+            ? "too-many-rows"
+            : "query-failed",
         message: result.error,
       },
     };
@@ -200,24 +163,27 @@ export function getNumericGoalValue(
   return isGoalStaticValue(value) ? value : null;
 }
 
+// Users enter "50" for 50%, while the axis will use 0.5
+export const getGoalAxisValue = (goalValue: number, isNormalized: boolean) =>
+  isNormalized ? goalValue / 100 : goalValue;
+
+export const getGoalLineValue = (
+  settings: VisualizationSettings,
+  isNormalized: boolean,
+): number | null => {
+  const goalValue = getNumericGoalValue(settings);
+
+  return settings["graph.show_goal"] && goalValue !== null
+    ? getGoalAxisValue(goalValue, isNormalized)
+    : null;
+};
+
 export function isDynamicGoalSetting(
   display: VisualizationDisplay | undefined,
   key: GoalSettingKey,
 ): boolean {
   return getDynamicGoalSettingKeys(display).includes(key);
 }
-
-export const getUnresolvedGoalMessage = (kind: GoalSettingKind) =>
-  match(kind)
-    .with(
-      "value",
-      () => t`Couldn't load the value this chart's goal depends on.`,
-    )
-    .with(
-      "segments",
-      () => t`Couldn't load a value one of this chart's ranges depends on.`,
-    )
-    .exhaustive();
 
 function isGoalSettingActive(
   settings: VisualizationSettings,
@@ -269,16 +235,17 @@ export function getGoalValues(
   });
 }
 
-export function resolveGoalSegments(
+export function resolveOpenEndedGoalSegments(
   data: GoalData,
   segments: GoalSegment[] | undefined,
   getColor: ColorGetter = color,
-): ResolvedGoalSegment[] {
+): ResolvedOpenEndedGoalSegment[] {
   return validGoalSegments(segments).flatMap((segment) => {
+    // a bound that can't resolve counts as unset
     const min = resolveGoalValue(data, segment.min).value;
     const max = resolveGoalValue(data, segment.max).value;
 
-    if (min == null || max == null || !segmentIsValid({ min, max })) {
+    if (min == null && max == null) {
       return [];
     }
 
@@ -293,6 +260,22 @@ export function resolveGoalSegments(
   });
 }
 
+export function resolveGoalSegments(
+  data: GoalData,
+  segments: GoalSegment[] | undefined,
+  getColor: ColorGetter = color,
+): ResolvedGoalSegment[] {
+  return resolveOpenEndedGoalSegments(data, segments, getColor).filter(
+    isClosedGoalSegment,
+  );
+}
+
+function isClosedGoalSegment(
+  segment: ResolvedOpenEndedGoalSegment,
+): segment is ResolvedGoalSegment {
+  return segment.min != null && segment.max != null;
+}
+
 export function getSegmentColor(
   segment: GoalSegment,
   getColor: ColorGetter = color,
@@ -300,18 +283,8 @@ export function getSegmentColor(
   return segment.color ?? getColor("text-secondary");
 }
 
-export function hasFailedGoalValues(
-  data: GoalData,
-  values: (GoalValue | null | undefined)[],
-): boolean {
-  return values.some((value) => isFailed(value, resolveGoalValue(data, value)));
-}
-
-export function hasUnresolvedGoalValues(
-  data: GoalData,
-  values: (GoalValue | null | undefined)[],
-): boolean {
-  return values.some((value) => isUnresolved(resolveGoalValue(data, value)));
+export function getGoalErrors(results: GoalValueResult[]): GoalRefError[] {
+  return results.flatMap((result) => (result.error ? [result.error] : []));
 }
 
 export function getUnansweredGoalEntities(
@@ -412,15 +385,4 @@ function isUnanswered(resolved: GoalValueResult): boolean {
 // Unanswered, or answered with an error.
 function isUnresolved(resolved: GoalValueResult): boolean {
   return isUnanswered(resolved) || resolved.error != null;
-}
-
-// Only a foreign reference gets re-asked (see needsAnswer) - every other error is final.
-function isFailed(
-  value: GoalValue | null | undefined,
-  resolved: GoalValueResult,
-): boolean {
-  return (
-    resolved.error != null &&
-    !(isGoalForeignColumnRef(value) && needsAnswer(resolved))
-  );
 }

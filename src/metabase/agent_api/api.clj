@@ -27,6 +27,8 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.metabot.core :as metabot]
    [metabase.metabot.tools.construct :as metabot-construct]
+   [metabase.metabot.tools.core :as tools.core]
+   [metabase.metabot.tools.recovery-hints :as recovery-hints]
    [metabase.metabot.tools.resources :as metabot-resources]
    [metabase.metabot.tools.search :as metabot-search]
    [metabase.metabot.util :as metabot.u]
@@ -39,6 +41,7 @@
    [metabase.request.core :as request]
    [metabase.server.streaming-response :as streaming-response]
    [metabase.util :as u]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
@@ -109,8 +112,12 @@
    [:collection {:optional true} [:maybe :map]]
    ;; Present on collection results — the parent location path (e.g. "/12/34/").
    [:location {:optional true} [:maybe :string]]
-   [:updated_at {:optional true} [:maybe :any]]
-   [:created_at {:optional true} [:maybe :any]]])
+   ;; `[:maybe :any]` publishes as `oneOf [{}, {type:null}]`. Clients that enforce
+   ;; `oneOf` reject null timestamps because both branches match; TemporalInstant
+   ;; keeps the branches disjoint (`date-time` vs `null`). Collections can omit
+   ;; `updated_at` in search results.
+   [:updated_at {:optional true} [:maybe ms/TemporalInstant]]
+   [:created_at {:optional true} [:maybe ms/TemporalInstant]]])
 
 (mr/def ::search-response
   "Search results containing tables, models, metrics, saved questions, dashboards, and
@@ -235,7 +242,9 @@
   table, ambiguous FK, etc.); we let those propagate so [[api.macros/defendpoint]] surfaces
   them with the appropriate 4xx status code instead of a 500."
   [body]
-  (-> (metabot-construct/execute-representations-query (:query body))
+  (-> (metabot-construct/execute-representations-query
+       (:query body)
+       {:recovery-hint recovery-hints/recovery-hint})
       (get-in [:structured-output :query])))
 
 (defn- evaluate-external-query-for-execution
@@ -280,10 +289,10 @@
                 "```\n"
                 "{\"query\": {\"lib/type\": \"mbql/query\",\n"
                 "             \"stages\": [{\"lib/type\": \"mbql.stage/mbql\",\n"
-                "                          \"source-table\": [\"Sample Database\", \"PUBLIC\", \"ORDERS\"],\n"
+                "                          \"source-table\": [\"Sample Database\", null, \"ORDERS\"],\n"
                 "                          \"aggregation\": [[\"count\", {}]],\n"
                 "                          \"breakout\": [[\"field\", {\"temporal-unit\": \"month\"},\n"
-                "                                        [\"Sample Database\", \"PUBLIC\", \"ORDERS\", \"CREATED_AT\"]]]}]}}\n"
+                "                                        [\"Sample Database\", null, \"ORDERS\", \"CREATED_AT\"]]]}]}}\n"
                 "```\n"
                 "\n"
                 "Common pitfalls: (1) forgetting the `{}` options map; (2) writing numeric "
@@ -671,9 +680,12 @@
 ;;; -------------------------------------------------- Read Resource -------------------------------------------------
 
 (mr/def ::read-resource-request
-  "Request shape for /v1/read-resource. Accepts up to 5 metabase:// URIs."
-  [:map {:closed true}
-   [:uris [:sequential ms/NonBlankString]]])
+  "Request shape for /v1/read-resource: the tool's own published arguments.
+
+  Taken from the tool rather than written out again, so this endpoint and the agent loop offer the
+  same shape and the same limits. Before, this was a hand-written copy that had already lost the
+  5-URI cap the tool enforces."
+  (:args (tools.core/validate-tool! metabot-resources/read-resource-tool)))
 
 (mr/def ::read-resource-item
   "One fetched resource. Either `:content` (success) or `:error` (failure) is present."
@@ -689,12 +701,33 @@
    [:resources [:sequential ::read-resource-item]]
    [:output    :string]])
 
+(def ^:private read-resource-ctx
+  "The tool context for this endpoint.
+
+  `:tool-names` decides which recovery steps a per-URI failure keeps: a step is dropped unless the
+  caller has every tool its text names. This API publishes `search` (see `/v1/search` below), so the
+  \"find it with search\" steps survive here. Renaming that endpoint's tool drops those steps rather
+  than sending the caller at something it does not have, which is the point of `:uses`."
+  {:tool-names #{"search"}})
+
+(defn- read-resource-item
+  "One [[::read-resource-item]] from the tool's entry for that URI.
+
+  This endpoint's published item shape, built here rather than by the tool: a URI that could not be
+  read is this item's `:error`, not the call's. The tool reports per item and leaves what that means
+  to its caller."
+  [{:keys [item output failed? structured-output]}]
+  (cond-> {:uri (:uri item)}
+    failed?       (assoc :error output)
+    (not failed?) (assoc :content {:structured-output structured-output})))
+
 (api.macros/defendpoint :post "/v1/read-resource" :- ::read-resource-response
   "Read one or more Metabase resources via metabase:// URI patterns.
 
-  Dispatches into the shared URI resolver in `metabase.metabot.tools.resources`,
-  which validates URIs, fetches entities with per-URI permission checks, and
-  returns a map of `{:resources ... :output ...}`. Up to 5 URIs per call."
+  Calls the `read_resource` tool in `metabase.metabot.tools.resources` — the same record the agent
+  loop calls, so URI dispatch, per-URI permission checks and the per-URI failure text are shared.
+  A URI that cannot be read becomes that item's `:error`; the call still returns 200 with the items
+  that did read. Up to 5 URIs per call, rejected as a 400 by `::read-resource-request`."
   {:scope metabot/agent-resource-read
    :tool  {:name "read_resource"
            :description (str "Read Metabase entities by metabase:// URI. "
@@ -705,15 +738,29 @@
   [_route-params
    _query-params
    body :- ::read-resource-request]
-  (try
-    (metabot-resources/read-resource body)
-    (catch clojure.lang.ExceptionInfo e
-      ;; The Metabot dispatcher's "too many URIs" guard throws ex-info without a
-      ;; :status-code. Surface it as a 400 to the HTTP boundary rather than the
-      ;; default 500.
-      (throw (ex-info (ex-message e)
-                      (merge {:status-code 400} (ex-data e))
-                      e)))))
+  ;; `with-batched-entries` rather than `tools.core/call`, because this endpoint's contract differs
+  ;; from the agent loop's in exactly one way: a call where no URI could be read is still a 200 with
+  ;; an `:error` per item, where the agent loop needs it to be a failed call. Composing the entries
+  ;; here is what lets both be true without the tool knowing either of us.
+  (tools.core/with-batched-entries metabot-resources/read-resource-tool body read-resource-ctx
+    {:on-item-fault
+     (fn [{:keys [uri]} e]
+       ;; One URI hitting a fault is this item's error, not the call's: the others read fine and the
+       ;; published response promises every URI it was given. Master did this too, with
+       ;; `(ex-message e)` as the text — a message written for a developer, crossing an API boundary
+       ;; to an agent that can do nothing with it. The exception goes to the log; the caller gets a
+       ;; sentence that is true and says nothing about our internals.
+       (log/error e "Reading a resource faulted" {:uri uri})
+       {:item    {:uri uri}
+        :failed? true
+        :output  (tru "This resource could not be read.")})}
+    (fn [entries]
+      {:resources (mapv read-resource-item entries)
+       ;; The tool's own envelope, so the text is identical to what the agent loop reads. Its
+       ;; `:structured-output` and `:data-parts` title are not part of this response.
+       :output    (tools.core/render-text
+                   (:output (tools.core/compose metabot-resources/read-resource-tool entries
+                                                read-resource-ctx)))})))
 
 ;;; ------------------------------------------------- Create Question ------------------------------------------------
 
@@ -855,7 +902,7 @@
     ;; Mirror REST's `check-allowed-to-modify-query`: swapping the dataset_query requires data perms
     ;; to run the *new* query, otherwise a user with collection write on a card can repoint it at data
     ;; they cannot query. `queries/update-card!` does NOT run this check itself, so we run it here.
-    (when (api/column-will-change? :dataset_query card-before-update card-updates)
+    (when (api/column-will-change? (:dataset_query card-before-update) (get card-updates :dataset_query ::api/not-provided))
       (query-perms/check-run-permissions-for-query (:dataset_query card-updates))
       ;; Reject cycles. `lib/check-card-overwrite` throws if the new query references this card
       ;; transitively. Mirror REST's wrapping that promotes it to HTTP 400 instead of a 500.
@@ -1341,6 +1388,8 @@
   collide with that tab's cards; a move only reflows cards sharing the moved card's tab."
   [dashboard-id mutations]
   (let [current        (agent-api.db/dashcards dashboard-id)
+        ;; the dashboard row is the same for every mutation in the batch
+        dashboard      (agent-api.db/dashboard dashboard-id)
         ;; one fetch serves the default tab, per-mutation tab_id validation, and collision grouping
         tab-ids        (agent-api.db/dashboard-tab-ids dashboard-id)
         ;; new dashcards land on the first tab, alongside any nil-tab dashcards, which the
@@ -1367,6 +1416,10 @@
         (case action
           "add"
           (let [card    (api/read-check :model/Card card_id)
+                ;; A card placed on a shared dashboard exposes its selected timeline events, so the
+                ;; same read check the REST writer applies runs here too.
+                _       (queries/check-newly-exposed-dashcards-timeline-permissions!
+                         dashboard current [{:card_id card_id}])
                 ;; A card internal to a different dashboard (a dashboard question) can't be added
                 ;; here — mirrors the REST dashcard-creation gate.
                 _       (api/check (or (nil? (:dashboard_id card))
@@ -1389,13 +1442,13 @@
           (let [tab-id (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :heading nil)
-                                  {:visualization_settings (dashboard-card/virtual-card-settings "heading" text)}))
+                                  {:visualization_settings (dashboard-card/virtual-card-settings "heading" {:text text})}))
 
           "add_text"
           (let [tab-id (target-tab-id tab_id)]
             (insert-new-dashcard! state dashboard-id tab-id
                                   (autoplaced-position (on-tab (:placed @state) tab-id) :text display_size)
-                                  {:visualization_settings (dashboard-card/virtual-card-settings "text" text)}))
+                                  {:visualization_settings (dashboard-card/virtual-card-settings "text" {:text text})}))
 
           "update_text"
           (let [existing (api/check-404
@@ -1644,14 +1697,24 @@
     (str/trim (subs auth-header 7))))
 
 (defn- error-response
-  "Create a 401 error response with structured JSON body."
-  [error-type message]
+  "Create a 401 error response with a structured JSON body and `challenge` as its RFC 6750 `WWW-Authenticate` value."
+  [error-type message challenge]
   {:status  401
-   :headers {"Content-Type" "application/json"}
+   :headers {"Content-Type"     "application/json"
+             "WWW-Authenticate" challenge}
    :body    {:error   error-type
              :message message}})
 
 ;;; -------------------------------------------- Stateless JWT Authentication --------------------------------------------
+
+(def ^:private jwt-not-configured
+  {:error   "jwt_not_configured"
+   :message "JWT authentication is not configured. Set the JWT shared secret in admin settings."})
+
+(defn- jwt-provider-available?
+  "Whether a `:provider/jwt` implementation is registered with [[auth-identity/authenticate]]."
+  []
+  (auth-identity/isa? :provider/jwt :metabase.auth-identity.provider/provider))
 
 (defn- authenticate-with-jwt
   "Authenticate a request using a stateless JWT. Returns `{:user <user>}` on success, or
@@ -1663,26 +1726,30 @@
    When the JWT contains a `\"scope\"` claim, the result includes `:scopes` — a parsed set of scope strings — so that
    [[enforce-authentication]] can attach it to the request for downstream scope enforcement."
   [token]
-  (let [result (auth-identity/authenticate :provider/jwt {:token token})]
-    (if (:success? result)
-      ;; JWT is valid - look up user from the email extracted by the JWT provider
-      ;; The provider uses jwt-attribute-email setting to extract the email from claims
-      (if-let [user (when-let [email (get-in result [:user-data :email])]
-                      (agent-api.db/active-user-by-email email))]
-        (let [scope-entry (-> result :jwt-data (find :scope))]
-          (cond-> {:user user}
-            scope-entry
-            (assoc :scopes (or (scope/parse-scopes (val scope-entry)) #{}))))
-        ;; Don't reveal whether the user exists or not - use same error as invalid JWT
-        {:error   "invalid_jwt"
-         :message "Invalid or expired JWT token."})
-      ;; Authentication failed - map error to agent API format
-      (case (:error result)
-        :jwt-not-enabled {:error   "jwt_not_configured"
-                          :message "JWT authentication is not configured. Set the JWT shared secret in admin settings."}
-        ;; Default: use generic invalid JWT message (don't leak details)
-        {:error   "invalid_jwt"
-         :message "Invalid or expired JWT token."}))))
+  ;; The JWT provider ships only in EE, so on OSS nothing registers `:provider/jwt` and `authenticate` has no method
+  ;; to dispatch to. Answer the way a disabled provider does rather than let it throw: this is the last stop for a
+  ;; bearer token the OAuth bridge already declined, and it owes that request a 401 challenge, not a 500.
+  (if-not (jwt-provider-available?)
+    jwt-not-configured
+    (let [result (auth-identity/authenticate :provider/jwt {:token token})]
+      (if (:success? result)
+        ;; JWT is valid - look up user from the email extracted by the JWT provider
+        ;; The provider uses jwt-attribute-email setting to extract the email from claims
+        (if-let [user (when-let [email (get-in result [:user-data :email])]
+                        (agent-api.db/active-user-by-email email))]
+          (let [scope-entry (-> result :jwt-data (find :scope))]
+            (cond-> {:user user}
+              scope-entry
+              (assoc :scopes (or (scope/parse-scopes (val scope-entry)) #{}))))
+          ;; Don't reveal whether the user exists or not - use same error as invalid JWT
+          {:error   "invalid_jwt"
+           :message "Invalid or expired JWT token."})
+        ;; Authentication failed - map error to agent API format
+        (case (:error result)
+          :jwt-not-enabled jwt-not-configured
+          ;; Default: use generic invalid JWT message (don't leak details)
+          {:error   "invalid_jwt"
+           :message "Invalid or expired JWT token."})))))
 
 ;;; -------------------------------------------------- Middleware ----------------------------------------------------
 
@@ -1693,21 +1760,26 @@
 
    - For **session-authenticated** requests (where `:metabase-user-id` is already set by
      upstream middleware), preserves any pre-existing `:token-scopes` value if present,
-     otherwise defaults to `#{::scope/unrestricted}` for unrestricted access.
+     otherwise defaults to `#{::scope/unrestricted}` for unrestricted access. An OAuth-authenticated
+     request without `:token-scopes` is not defaulted, so scope enforcement rejects it.
    - For **JWT-authenticated** requests, derives `:token-scopes` from the JWT when a
      `\"scope\"` claim is present, falls back to any pre-existing `:token-scopes` on the
-     request, and finally defaults to `#{::scope/unrestricted}` for unscoped JWTs.
+     request, and finally defaults to `#{::scope/unrestricted}` for unscoped JWTs. A request
+     [[metabase.server.middleware.data-app-scope]] already confined is the exception: its
+     narrowing is a server-side decision and a caller-supplied `\"scope\"` claim may not
+     widen it back out.
 
    This ensures downstream scope enforcement never has to special-case nil within the
    agent API."
   [handler]
-  (fn [{:keys [headers metabase-user-id token-scopes] :as request} respond raise]
+  (fn [{:keys [headers metabase-user-id token-scopes data-app-scoped?] :as request} respond raise]
     (cond
       ;; Already authenticated via X-Metabase-Session or synthetic request (e.g. MCP dispatch).
       ;; Preserve existing :token-scopes when present (MCP sets them on the synthetic request).
       metabase-user-id
       (handler (cond-> request
-                 (not token-scopes) (assoc :token-scopes #{::scope/unrestricted}))
+                 (and (not token-scopes) (not (:authenticated-via-oauth? request)))
+                 (assoc :token-scopes #{::scope/unrestricted}))
                respond raise)
 
       ;; Not authenticated via session - check for Bearer JWT
@@ -1715,15 +1787,19 @@
       (let [auth-header  (get headers "authorization")
             bearer-token (extract-bearer-token auth-header)]
         (cond
-          ;; No authorization header and no session
+          ;; No authorization header and no session.
+          ;; RFC 6750 section 3.1: a challenge to a request with no bearer token carries no error code.
           (nil? auth-header)
           (respond (error-response "missing_authorization"
-                                   "Authentication required. Use X-Metabase-Session header or Authorization: Bearer <jwt>."))
+                                   (str "Authentication required. Use X-Metabase-Session header or "
+                                        "Authorization: Bearer <jwt>.")
+                                   "Bearer"))
 
           ;; Authorization header present but not Bearer format
           (nil? bearer-token)
           (respond (error-response "invalid_authorization_format"
-                                   "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"))
+                                   "Authorization header must use Bearer scheme: Authorization: Bearer <jwt>"
+                                   "Bearer"))
 
           ;; Validate JWT
           :else
@@ -1734,11 +1810,13 @@
                   (log/warn "JWT scopes" (:scopes result)
                             "differ from pre-existing token-scopes" token-scopes))
                 (request/with-current-user (:id user)
-                  (handler (assoc request :token-scopes (or (:scopes result)
-                                                            token-scopes
-                                                            #{::scope/unrestricted}))
+                  (handler (assoc request :token-scopes (if data-app-scoped?
+                                                          token-scopes
+                                                          (or (:scopes result)
+                                                              token-scopes
+                                                              #{::scope/unrestricted})))
                            respond raise)))
-              (respond (error-response (:error result) (:message result))))))))))
+              (respond (error-response (:error result) (:message result) "Bearer error=\"invalid_token\"")))))))))
 
 (def +auth
   "Agent API authentication middleware. Supports both session-based and stateless JWT authentication."
@@ -1794,3 +1872,11 @@
                                      (respond response))
                                    raise))))
    (fn [prefix] (open-api/open-api-spec base-routes prefix))))
+
+(defn defendpoint-scopes
+  "All defendpoint scopes from agent-api as a sorted set."
+  []
+  (into (sorted-set)
+        (comp (keep #(get-in % [:form :metadata :scope]))
+              (filter string?))
+        (vals (api.macros/ns-routes 'metabase.agent-api.api))))

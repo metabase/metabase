@@ -4,6 +4,7 @@
    #?@(:cljs ([metabase.test-runner.assert-exprs.approximately-equal]))
    [clojure.test :refer [is testing]]
    [clojure.walk :as walk]
+   [malli.util :as mut]
    [medley.core :as m]
    [metabase.lib.core :as lib]
    [metabase.lib.dispatch :as lib.dispatch]
@@ -11,12 +12,15 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
+   [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.lib.util :as lib.util]
    [metabase.util :as u]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
@@ -69,18 +73,48 @@
   [:or schema [:-> schema schema]])
 
 (def ^:private Row
-  [:map-of :string :any])
+  [:map-of :string ::lib.schema.literal/literal])
 
-(def ^:private TestCase
-  [:map
-   [:click-type    [:enum :cell :header]]
+(mr/def ::expectation
+  "A `=?` expectation: partial maps, predicates, and regexes matched against a real drill or query."
+  [:schema {::mr/deliberately-open true, :description "a =? expectation pattern"} :any])
+
+(def ^:private DrillArgs
+  [:maybe [:sequential [:or :keyword ::lib.schema.literal/literal ::lib.schema.metadata/column]]])
+
+(def ^:private QueryKinds
+  [:sequential [:enum :mbql :native]])
+
+(def ^:private test-case-entries
+  [[:click-type    [:enum :cell :header]]
    [:query-type    [:enum :aggregated :unaggregated]]
    [:column-name   :string]
    ;; defaults to "ORDERS"
    [:query-table   {:optional true} [:maybe [:enum "ORDERS" "PRODUCTS"]]]
    [:custom-query  {:optional true} [:maybe (schema-or-update-fn ::lib.schema/query)]]
    [:custom-native {:optional true} [:maybe (schema-or-update-fn ::lib.schema/query)]]
-   [:custom-row    {:optional true} [:maybe (schema-or-update-fn Row)]]])
+   [:custom-row    {:optional true} [:maybe (schema-or-update-fn Row)]]
+   [:drill-type         {:optional true} ::lib.schema.drill-thru/drill-thru.type]
+   [:expected           {:optional true} [:maybe ::expectation]]
+   [:expected-query     {:optional true} [:maybe ::expectation]]
+   [:expected-native    {:optional true} [:maybe ::expectation]]
+   [:query-kinds        {:optional true} [:maybe QueryKinds]]
+   [:native-drills      {:optional true} ifn?]
+   [:drill-args         {:optional true} DrillArgs]
+   [:drill-query-native {:optional true} [:maybe ::lib.schema/query]]])
+
+(defn- test-case-schema
+  "A closed test case map schema in which the optional entries named by `required-keys` are required."
+  [& required-keys]
+  (into [:map {:closed true}]
+        (map (fn [[k :as entry]]
+               (if (some #{k} required-keys)
+                 [k (peek entry)]
+                 entry)))
+        test-case-entries))
+
+(def ^:private TestCase
+  (test-case-schema))
 
 (def ^:private ^:dynamic *native-card-id* nil)
 
@@ -177,7 +211,7 @@
    (append-filter-stage query column-name #(lib/> % -1)))
   ([query            :- ::lib.schema/query
     column-name      :- :string
-    column-filter-fn :- [:-> ::lib.schema.metadata/column :any]]
+    column-filter-fn :- [:-> ::lib.schema.metadata/column ::lib.schema.expression/boolean]]
    (let [query'           (lib/append-stage query)
          column-to-filter (column-by-name query' column-name)]
      (assert (some? column-to-filter) (str "Failed to find " column-name " in " query))
@@ -213,7 +247,7 @@
     (append-filter-stage-to-test-expectation expected-query my-column-name)
 
   are matching pairs."
-  ([expected-query               :- :map
+  ([expected-query               :- ::expectation
     field-matcher-or-filter-expr :- FieldMatcherOrFilterExpr]
    (assert (vector? (:stages expected-query))
            "expected-query should have a :stages key mapped to a vector")
@@ -225,21 +259,21 @@
 
   Useful for updating the `:expected-query` for [[test-drill-application]] when the `:custom-query` was modified
   by [[append-filter-stage]]."
-  ([expected-query :- :map
+  ([expected-query :- ::expectation
     field-matcher-or-filter-expr :- FieldMatcherOrFilterExpr]
    (prepend-filter-to-test-expectation-stage expected-query -1 field-matcher-or-filter-expr))
-  ([expected-query :- :map
+  ([expected-query :- ::expectation
     stage-number   :- :int
     field-matcher-or-filter-expr :- FieldMatcherOrFilterExpr]
    (assert (vector? (:stages expected-query))
            "expected-query should have a :stages key mapped to a vector")
    (let [filter-expr (field-matcher-or-filter-expr->filter-expr field-matcher-or-filter-expr)]
      (update-in expected-query
-                [:stages (lib.util/canonical-stage-index expected-query stage-number) :filters]
+                [:stages (cond-> stage-number (neg? stage-number) (+ (count (:stages expected-query)))) :filters]
                 #(into [filter-expr] %)))))
 
 (mu/defn prepend-stage-to-test-expectation
-  [expected-query :- :map]
+  [expected-query :- ::expectation]
   (assert (vector? (:stages expected-query))
           "expected-query should have a :stages key mapped to a vector")
   (update expected-query :stages #(into [{}] %)))
@@ -279,7 +313,10 @@
      :row row}))
 
 (mu/defn test-case-context :- ::lib.schema.drill-thru/context
-  [{:keys [mbql row]} :- [:map] ;; TODO: Better type? Does one exist?
+  [{:keys [mbql row]} :- [:map {:closed true}
+                          [:mbql   ::lib.schema/query]
+                          [:native {:optional true} [:maybe ::lib.schema/query]]
+                          [:row    Row]]
    query-kind         :- [:enum :mbql :native]
    {:keys [column-name click-type query-type], :as _test-case} :- TestCase]
   (let [returned   (lib/returned-columns mbql -1 (lib.util/query-stage mbql -1))
@@ -324,14 +361,7 @@
         :dimensions dimensions}))))
 
 (def ^:private AvailableDrillsTestCase
-  [:merge
-   TestCase
-   [:map
-    [:expected [:or [:-> [:sequential [:map
-                                       [:type ::lib.schema.drill-thru/drill-thru.type]]]
-                     :boolean]
-                [:sequential [:map
-                              [:type ::lib.schema.drill-thru/drill-thru.type]]]]]]])
+  (test-case-schema :expected))
 
 (mu/defn test-available-drill-thrus
   [{:keys [column-name click-type query-type query-table query-kinds expected native-drills]
@@ -354,17 +384,10 @@
                   (lib/available-drill-thrus query -1 context))))))))
 
 (def ^:private TestCaseWithDrillType
-  [:merge
-   TestCase
-   [:map
-    [:drill-type ::lib.schema.drill-thru/drill-thru.type]]])
+  (test-case-schema :drill-type))
 
 (def ^:private ReturnsDrillTestCase
-  [:merge
-   TestCaseWithDrillType
-   [:map
-    [:expected [:map
-                [:type ::lib.schema.drill-thru/drill-thru.type]]]]])
+  (test-case-schema :drill-type :expected))
 
 (defn- drop-uuids [form]
   (walk/postwalk #(cond-> % (map? %) (dissoc :lib/uuid))
@@ -442,11 +465,7 @@
             (is (not (contains? drills drill-type)))))))))
 
 (def ^:private DrillApplicationTestCase
-  [:merge
-   ReturnsDrillTestCase
-   [:map
-    [:expected-query :map]
-    [:drill-args {:optional true} [:maybe [:sequential :any]]]]])
+  (test-case-schema :drill-type :expected :expected-query))
 
 (mu/defn test-drill-application
   "Test that a certain drill gets returned, AND when applied to a query returns the expected query."
@@ -470,6 +489,10 @@
                         (clean-expected-query expected-query))
                     query'))))))))
 
+(def ^:private PartialTestCase
+  "A partial `TestCase` map for a `variant-case` that gets merged onto a `base-case`."
+  (mut/optional-keys TestCase))
+
 (mu/defn test-drill-variants-with-merged-args
   "Run `test-fn` first with `base-case` then with each of the specified `variants`.
 
@@ -492,10 +515,10 @@
 
   If any `variant-case` is a fn, it should be of type map -> map and will be passed the `base-case` and the returned
   map will be merged with `base-case` instead."
-  [test-fn   :- [:-> :map :any]
+  [test-fn   :- [:-> TestCase [:maybe ::lib.schema.drill-thru/drill-thru]]
    base-desc :- :string
-   base-case :- :map
-   & variants]
+   base-case :- TestCase
+   & variants :- [:* [:or :string PartialTestCase [:-> PartialTestCase PartialTestCase]]]]
   (assert (even? (count variants)) "variants must come in variant-desc and variant-case pairs")
 
   (when-not (= "SKIP" base-desc)

@@ -2,17 +2,17 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api-scope.core :as api-scope]
-   [metabase.entity-retrieval.core :as entity-retrieval]
    [metabase.metabot.agent.profiles :as profiles]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
-   [metabase.metabot.tools.transforms :as tools.transforms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.metabot.tools.legacy :as tools.legacy]
+   [metabase.search.entity-retrieval.core :as entity-retrieval]
    [metabase.test :as mt]))
 
 (deftest get-profile-test
+  ;; The declaration, not the var's metadata: a converted tool is a record and carries none.
   (letfn [(tool-names [profile]
-            (set (map #(:tool-name (meta %)) (:tools profile))))]
+            (set (map #(:name (tools.legacy/declaration-of %)) (:tools profile))))]
     (testing "retrieves embedding_next profile with default provider"
       (let [profile (profiles/get-profile :embedding_next)]
         (is (some? profile))
@@ -36,15 +36,6 @@
         (is (contains? (tool-names profile) "search"))
         (is (contains? (tool-names profile) "create_sql_query"))
         (is (contains? (tool-names profile) "create_chart"))))
-    (testing "retrieves transforms_codegen profile"
-      (let [profile (profiles/get-profile :transforms_codegen)]
-        (is (some? profile))
-        (is (= :transforms_codegen (:name profile)))
-        (is (= "anthropic/claude-sonnet-4-6" (:model profile)))
-        (is (= 30 (:max-iterations profile)))
-        (is (vector? (:tools profile)))
-        (is (contains? (tool-names profile) "search"))
-        (is (contains? (tool-names profile) "list_available_fields"))))
     (testing "retrieves sql profile"
       (let [profile (profiles/get-profile :sql)]
         (is (=? {:name :sql
@@ -80,8 +71,17 @@
         (is (contains? (tool-names profile) "create_dashboard_subscription"))))
     (testing "returns nil for unknown profile"
       (is (nil? (profiles/get-profile :unknown-profile))))
+    (testing "profile-registered? distinguishes registered profiles from unknown ones"
+      (is (true? (profiles/profile-registered? :embedding_next)))
+      (is (true? (profiles/profile-registered? :explorations)))
+      (is (false? (profiles/profile-registered? :unknown-profile))))
+    (testing "profile-available? also needs an eval instance for an eval-only profile"
+      (is (= {:internal true, :internal-sql false, :unknown-profile false}
+             (into {} (for [p [:internal :internal-sql :unknown-profile]] [p (boolean (profiles/profile-available? p))]))))
+      (mt/with-temp-env-var-value! [mb-metabot-eval-profiles-enabled true]
+        (is (true? (boolean (profiles/profile-available? :internal-sql))))))
     (testing "all profiles have required keys"
-      (doseq [profile-id [:embedding_next :internal :transforms_codegen :sql :nlq :slackbot]]
+      (doseq [profile-id [:embedding_next :internal :internal-sql :sql :nlq :slackbot]]
         (let [profile (profiles/get-profile profile-id)]
           (is (= profile-id (:name profile)))
           (is (contains? profile :model))
@@ -147,7 +147,8 @@
               "SQL tools should be gated by permission:write_sql_queries"))))))
 
 (deftest embedding-next-matches-nlq-tools-test
-  (testing "nlq-fallback matches embedding_next's general search; curated nlq swaps that for the library tool"
+  (testing (str "nlq-fallback matches embedding_next's general search plus run_query, which embedding doesn't offer yet; "
+                "curated nlq swaps search for the library tool")
     (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))
           embedding  (tool-names (profiles/get-profile :embedding_next))
           fallback   (tool-names (profiles/get-profile :nlq-fallback))
@@ -155,14 +156,58 @@
           curated    (mt/with-dynamic-fn-redefs [entity-retrieval/entity-retrieval-available? (constantly true)]
                        (tool-names (profiles/get-profile :nlq)))]
       ;; the fallback profile is embedding_next's discovery surface (general `search`)
-      (is (= fallback embedding))
+      (is (= fallback (conj embedding "run_query")))
       ;; the curated profile is the same set with retrieve_library_entities in place of `search`
-      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities"))))))
+      (is (= curated (-> embedding (disj "search") (conj "retrieve_library_entities" "run_query"))))))
   (binding [scope/*current-user-scope* api-scope/unrestricted]
     (testing "ungated tools are available with empty capabilities"
       (let [tools (profiles/get-tools-for-profile :embedding_next [])]
         (is (contains? tools "search"))
         (is (contains? tools "construct_notebook_query"))))))
+
+(deftest run-query-offered-in-nlq-profiles-test
+  (testing "with query execution on, an NLQ user gets run_query in both NLQ profiles and not in embedding"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (binding [scope/*current-user-scope* (scope/user-metabot-perms->scopes {:permission/metabot     :yes
+                                                                              :permission/metabot-nlq :yes})]
+        (is (= {:nlq true, :nlq-fallback true, :embedding_next false}
+               (into {}
+                     (for [profile-id [:nlq :nlq-fallback :embedding_next]]
+                       [profile-id (contains? (profiles/get-tools-for-profile profile-id []) "run_query")]))))))))
+
+(deftest internal-sql-profile-test
+  (let [tool-names (fn [profile] (set (map #(:tool-name (meta %)) (:tools profile))))]
+    (testing "internal-sql is internal without the notebook builder"
+      (let [internal     (profiles/get-profile :internal)
+            internal-sql (profiles/get-profile :internal-sql)]
+        (is (= :internal-sql (:name internal-sql)))
+        (is (= (:prompt-template internal) (:prompt-template internal-sql)))
+        (is (= (disj (tool-names internal) "construct_notebook_query")
+               (tool-names internal-sql)))))
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (binding [scope/*current-user-scope* api-scope/unrestricted]
+        (testing "with SQL write permission it offers SQL, run_query and load_skill, and no notebook builder"
+          (let [tools (profiles/get-tools-for-profile :internal-sql ["permission:save_questions"
+                                                                     "permission:write_sql_queries"])]
+            (is (= #{"search" "read_resource" "load_skill" "create_sql_query" "run_query"}
+                   (into #{} (filter #{"search" "read_resource" "load_skill" "create_sql_query" "run_query"
+                                       "construct_notebook_query"})
+                         (keys tools))))))
+        (testing "without SQL write permission it offers no SQL tools either"
+          (let [tools (profiles/get-tools-for-profile :internal-sql ["permission:save_questions"])]
+            (is (not (contains? tools "create_sql_query")))
+            (is (not (contains? tools "construct_notebook_query")))))))))
+
+(deftest internal-sql-profile-needs-only-the-sql-permission-test
+  (testing "a user with Metabot's SQL permission and no NLQ permission can write SQL and run it"
+    (let [perms (assoc scope/perm-type-defaults
+                       :permission/metabot                :yes
+                       :permission/metabot-sql-generation :yes)]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (binding [scope/*current-user-metabot-permissions* perms
+                  scope/*current-user-scope*               (scope/user-metabot-perms->scopes perms)]
+          (is (=? {"create_sql_query" some?, "run_query" some?}
+                  (profiles/get-tools-for-profile :internal-sql ["permission:write_sql_queries"]))))))))
 
 (deftest nlq-data-discovery-fallback-test
   (testing "the :nlq profile always keeps a data-discovery tool, swapping by index availability"
@@ -183,52 +228,6 @@
             (is (contains? tools "search")
                 "the general-search fallback keeps the agent from having zero discovery tools")
             (is (contains? tools "construct_notebook_query"))))))))
-
-(deftest transform-feature-capabilities-test
-  (let [orig-has-feature (mt/original-fn #'premium-features/has-feature?)
-        transform-tools #{#'tools.transforms/write-transform-sql-tool
-                          #'tools.transforms/write-transform-python-tool}]
-    (testing "Available with features present"
-      (mt/with-dynamic-fn-redefs [premium-features/has-feature? (fn [feat]
-                                                                  (if (#{:transforms-basic :transforms-python} feat)
-                                                                    true
-                                                                    (orig-has-feature feat)))]
-        (is (= transform-tools
-               (set (#'profiles/filter-by-capabilities transform-tools
-                                                       ["permission:write_transforms"]))))))
-    (testing "Not available with missing features"
-      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)
-                                  premium-features/has-feature? (fn [feat]
-                                                                  (if (#{:transforms-basic :transforms-python} feat)
-                                                                    false
-                                                                    (orig-has-feature feat)))]
-        (is (= #{}
-               (set (#'profiles/filter-by-capabilities transform-tools
-                                                       ["permission:write_transforms"]))))))
-    (testing "Sql tool available on self hosted instances"
-      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly false)
-                                  premium-features/has-feature? (fn [feat]
-                                                                  (if (#{:transforms-basic :transforms-python} feat)
-                                                                    false
-                                                                    (orig-has-feature feat)))]
-        (is (= #{#'tools.transforms/write-transform-sql-tool}
-               (set (#'profiles/filter-by-capabilities transform-tools
-                                                       ["permission:write_transforms"]))))))
-    (testing "Python transform tools not available when basic transforms are not available"
-      (mt/with-dynamic-fn-redefs [premium-features/is-hosted? (constantly true)
-                                  premium-features/has-feature? (fn [feat]
-                                                                  (cond
-                                                                    (#{:transforms-basic} feat)
-                                                                    false
-
-                                                                    (#{:transforms-python} feat)
-                                                                    true
-
-                                                                    :else
-                                                                    (orig-has-feature feat)))]
-        (is (= #{}
-               (set (#'profiles/filter-by-capabilities transform-tools
-                                                       ["permission:write_transforms"]))))))))
 
 (deftest terminal-tools-test
   (testing "the :sql profile marks its SQL write tools AND clarification terminal"
@@ -268,3 +267,28 @@
         (is (contains? tools "read_resource")
             "precondition: read_resource is active (would otherwise match a skill)")
         (is (not (contains? tools "load_skill")))))))
+
+(deftest terminal-tools-are-still-unconverted-test
+  (testing (str "Every tool a profile can end a turn on is still an `mu/defn` var. "
+                "`metabase.metabot.agent.core/answer-producing?` requires `:structured-output` "
+                "from them on top of the absence of `:error`, because each one catches its own "
+                "exceptions and returns `{:output \"Query 3 not found\"}` — a failure with no "
+                "`:error` for the adapter to find, which would otherwise end the turn and deliver "
+                "that sentence as the answer.\n\n"
+                "When one of these is converted it throws instead, its failure carries an `:error`, "
+                "and the extra requirement becomes wrong: a converted tool that answers without "
+                "structured output would stop being terminal. So this test is the tripwire — if it "
+                "fails because you converted one of these, delete the `:structured-output` clause "
+                "in `answer-producing?` and this test with it.")
+    (let [terminal (for [[profile-id profile] @@#'profiles/*profiles
+                         :let  [by-name (into {} (map (juxt #(:name (tools.legacy/declaration-of %))
+                                                            identity))
+                                              (:tools profile))]
+                         tool-name (:terminal-tools profile)]
+                     [profile-id tool-name (get by-name tool-name)])]
+      (is (seq terminal) "no terminal tools found — has :terminal-tools moved?")
+      (doseq [[profile-id tool-name tool-var] terminal]
+        (testing (str profile-id " / " tool-name)
+          (is (some? tool-var) "a profile lists a terminal tool it does not expose")
+          (is (tools.legacy/legacy-tool? tool-var)
+              (str tool-name " is converted now — see this test's docstring")))))))

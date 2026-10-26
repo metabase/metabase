@@ -329,7 +329,11 @@
                            response)))
                   (let [response (mt/user-http-request :lucky :get 200 (str "field/" field-id "/values"))]
                     (is (= {:values [["destination-2"]] :field_id field-id :has_more_values false}
-                           response))))))))))))
+                           response)))
+                  (testing "a routed user gets no values while database routing is unavailable"
+                    (mt/with-premium-features #{}
+                      (is (= [] (:values (mt/user-http-request :rasta :get 200
+                                                               (str "field/" field-id "/values"))))))))))))))))
 
 (defmulti router-dataset-name
   "Name for router dataset"

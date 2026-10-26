@@ -1,28 +1,24 @@
 // Enables hot reload in development and noop in production
 // MUST be imported BEFORE `react` and `react-dom`
 import "metabase-dev";
-
 import { Api } from "metabase/api";
-import { PLUGIN_API, api } from "metabase/api/client";
+import {
+  PLUGIN_API,
+  api,
+  shouldShowNotAuthorizedPage,
+} from "metabase/api/client";
 import { init } from "metabase/app";
-import { getUser } from "metabase/current-user";
+import { getUser, loadCurrentUser } from "metabase/current-user";
 import { setRequestClientHeaders } from "metabase/embedding/lib/auth/set-request-client-headers";
 import { mainReducers } from "metabase/reducers-main";
 import { setErrorPage } from "metabase/redux/app";
-import { navigate } from "metabase/router";
+import { navigate, prefetchRegisteredPages } from "metabase/router";
 import { getRoutes } from "metabase/routes";
+import { getSetting } from "metabase/settings";
 import { IFRAMED_IN_SELF, isWithinIframe } from "metabase/utils/iframe";
 
 // Let embedded children detect that their parent is a Metabase instance.
 window.METABASE = true;
-
-// If any of these receives a 403, we should display the "not authorized" page.
-const NOT_AUTHORIZED_TRIGGERS = [
-  /\/api\/dashboard\/\d+$/,
-  /\/api\/collection\/\d+(?:\/items)?$/,
-  /\/api\/card\/\d+$/,
-  /\/api\/pulse\/\d+$/,
-];
 
 /**
  * This is the entry point for the core app, so if we're in an iframe (not on metabase itself) we can assume we're in full-app embedding.
@@ -35,6 +31,16 @@ if (isWithinIframe() && !IFRAMED_IN_SELF) {
 }
 
 init(mainReducers, getRoutes, (store) => {
+  // `LoadCurrentUser` sends this request from an effect, after the route has
+  // mounted. Sending it here puts it next to the settings request. The effect
+  // joins it, reuses its result, or repeats it if it failed.
+  //
+  // `/setup` is outside that gate and does a forced refetch, which RTK drops
+  // while a request is pending. An instance with no user has no session to load.
+  if (getSetting(store.getState(), "has-user-setup")) {
+    store.dispatch(loadCurrentUser());
+  }
+
   // received a 401 response
   api.on(401, (url) => {
     if (url.indexOf("/api/user/current") >= 0) {
@@ -62,8 +68,17 @@ init(mainReducers, getRoutes, (store) => {
 
   // received a 403 response
   api.on(403, (url) => {
-    if (NOT_AUTHORIZED_TRIGGERS.some((regex) => regex.test(url))) {
+    if (shouldShowNotAuthorizedPage(url)) {
       store.dispatch(setErrorPage({ status: 403 }));
     }
   });
+
+  // This entry serves full-app embedding too, and inside a customer's page
+  // background downloads are not ours to spend. The public and embed entries
+  // never get here at all.
+  if (IFRAMED_IN_SELF || !isWithinIframe()) {
+    prefetchRegisteredPages({
+      shouldStart: () => getUser(store.getState()) != null,
+    });
+  }
 });

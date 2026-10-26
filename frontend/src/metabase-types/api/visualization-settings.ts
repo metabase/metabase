@@ -96,8 +96,8 @@ export type GoalSegment = {
 };
 
 export type ScalarSegment = {
-  min: GoalStaticValue | null;
-  max: GoalStaticValue | null;
+  min: GoalValue | null;
+  max: GoalValue | null;
   color: string;
   label?: string;
 };

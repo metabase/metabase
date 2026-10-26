@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.analytics-interface.core :as analytics]
    [metabase.metabot.persistence :as metabot.persistence]
+   [metabase.metabot.settings :as metabot.settings]
    [metabase.slackbot.client :as slackbot.client]
    [metabase.system.core :as system]
    [metabase.util.log :as log]
@@ -72,6 +73,37 @@
    :elements [{:type "mrkdwn"
                :text (truncation-notice (system/site-url))}]})
 
+(defn- escape-mrkdwn
+  "Escape the characters Slack reads as markup when they appear in mrkdwn text."
+  [s]
+  (-> s
+      (str/replace "&" "&amp;")
+      (str/replace "<" "&lt;")
+      (str/replace ">" "&gt;")))
+
+(defn- finish-reason-notice
+  "Copy explaining that a turn stopped before it finished, or nil for a reason this build does not
+   recognize. Mirrors the web strings, so the same turn reads the same way in Slack and on the web."
+  [reason bot-name]
+  (case reason
+    "length"         (str "Response from " bot-name " was cut off because it hit the maximum length")
+    "content-filter" (str "Response from " bot-name " was stopped by a content filter. Try rephrasing your question.")
+    "tool-calls"     (str bot-name " paused after reaching its step limit for this response")
+    nil))
+
+(defn finish-reason-block
+  "A muted aside explaining that `reason` stopped a turn early, or nil when there is nothing to say.
+
+   A block rather than message text: [[metabase.slackbot.streaming/thread->history]] replays a bot
+   message's `:text` back to the model as its own words, and this sentence is Metabase describing the
+   model, not the model speaking."
+  [reason]
+  ;; `metabot-name` is admin-set and lands in mrkdwn, where `<!channel>` is a broadcast to everyone
+  ;; in the channel -- so it is escaped rather than interpolated raw.
+  (when-let [notice (finish-reason-notice reason (escape-mrkdwn (metabot.settings/metabot-name)))]
+    {:type     "context"
+     :elements [{:type "mrkdwn" :text (str "_" notice "_")}]}))
+
 (defn- make-channel-callbacks
   "Create callback functions for channel replies.
    Uses the Slack assistant setStatus API for progress indication.
@@ -109,7 +141,7 @@
         on-data        (make-viz-prefetch-callback prefetched-viz)]
     (set-status! "Thinking...")
     (try
-      (let [{message-external-id :external-id assistant-msg-id :msg-id}
+      (let [{message-external-id :external-id assistant-msg-id :msg-id finish-reason :finish-reason}
             (make-streaming-ai-request
              conversation-id
              prompt
@@ -140,8 +172,10 @@
               ;; Derived rather than re-tested: `elide` returns `answer` itself when it fits, so
               ;; the notice cannot disagree with whether a cut actually happened.
               truncated?              (not= final-text answer)
+              notice-block            (finish-reason-block finish-reason)
               final-blocks            (-> (final-text-blocks final-text)
-                                          (cond-> truncated? (conj (truncation-block)))
+                                          (cond-> truncated?   (conj (truncation-block)))
+                                          (cond-> notice-block (conj notice-block))
                                           (into blocks)
                                           (into (feedback-blocks conversation-id message-external-id)))
               res                     (slackbot.client/post-thread-reply client {:channel channel :thread_ts thread-ts}

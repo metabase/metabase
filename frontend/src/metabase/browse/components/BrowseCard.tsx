@@ -13,6 +13,8 @@ import {
 import type { ColorName } from "metabase/ui/colors/types";
 import type { IconName } from "metabase-types/api";
 
+import S from "./BrowseCard.module.css";
+
 const sizeOptions = {
   md: {
     height: "4rem",
@@ -36,6 +38,7 @@ export const BrowseCard = ({
   iconColor = "core-brand",
   title,
   size = "md",
+  className,
   children,
   onClick,
 }: {
@@ -44,16 +47,15 @@ export const BrowseCard = ({
   iconColor?: ColorName;
   title: string;
   size?: "md" | "lg";
+  className?: string;
   children?: React.ReactNode;
   onClick?: () => void;
 }) => {
   return (
     <Card
+      data-testid="browse-card"
       withBorder
       shadow="none"
-      component={Link}
-      to={to}
-      onClick={onClick}
       h={sizeOptions[size].height}
       p="1.5rem"
       classNames={{
@@ -62,6 +64,8 @@ export const BrowseCard = ({
           CS.hoverParent,
           CS.hoverVisibility,
           CS.textBrandHover,
+          S.card,
+          className,
         ),
       }}
     >
@@ -78,23 +82,27 @@ export const BrowseCard = ({
           c={iconColor}
           size={sizeOptions[size].iconSize}
         />
-        <Ellipsified>
-          <Title
-            order={2}
-            size="md"
-            lh={1.2}
-            display="inline"
-            style={{ overflow: "hidden" }}
-            w="100%"
-          >
-            {title}
-          </Title>
-        </Ellipsified>
-        {size === "md" && (
-          <Box ml="auto" style={{ flexShrink: 0 }}>
-            {children}
-          </Box>
-        )}
+        <Link to={to} onClick={onClick} className={S.link}>
+          <Ellipsified className={S.title}>
+            <Title
+              order={2}
+              size="md"
+              lh={1.2}
+              display="inline"
+              style={{ overflow: "hidden" }}
+              w="100%"
+            >
+              {title}
+            </Title>
+          </Ellipsified>
+        </Link>
+        <Box
+          ml="auto"
+          style={{ flexShrink: 0 }}
+          className={cx(S.actions, { [S.cornerActions]: size === "lg" })}
+        >
+          {children}
+        </Box>
       </Flex>
     </Card>
   );

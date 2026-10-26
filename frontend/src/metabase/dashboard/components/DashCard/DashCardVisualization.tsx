@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { getMetricSeriesWithDefaultDisplay } from "metabase/common/utils/card";
+import { PLUGIN_CONTENT_TRANSLATION } from "metabase/content-translation/plugins";
 import CS from "metabase/css/core/index.css";
 import { setParameterValuesFromQueryParams } from "metabase/dashboard/actions/parameters";
 import { dashboardClickActionMode } from "metabase/dashboard/click-behavior/mode";
@@ -15,12 +16,16 @@ import {
   getDashcardData,
 } from "metabase/dashboard/selectors";
 import {
+  getIsDashCardTimelineEventsEnabled,
+  useDashCardTimelineEvents,
+  useReportDashCardTimelineEventsEnabled,
+} from "metabase/dashboard/timeline-events";
+import {
   getVirtualCardType,
   isDashcardAccessRestricted,
 } from "metabase/dashboard/utils";
 import { EmbeddingEntityContextProvider } from "metabase/embedding/context";
 import { useMetadataProvider } from "metabase/metadata-store";
-import { PLUGIN_CONTENT_TRANSLATION } from "metabase/plugins";
 import { useDispatch, useSelector } from "metabase/redux";
 import type { Path } from "metabase/router";
 import { useNavigate } from "metabase/router";
@@ -43,6 +48,7 @@ import type {
 import { DEFAULT_VISUALIZER_DISPLAY } from "metabase/visualizer/constants";
 import {
   createDataSource,
+  createDataSourceQuery,
   formatVisualizerClickObject,
   mergeVisualizerData,
   shouldSplitVisualizerSeries,
@@ -56,7 +62,6 @@ import {
   isCartesianChart,
 } from "metabase/viz-core";
 import type Question from "metabase-lib/v1/Question";
-import { STRUCTURED_QUERY_TEMPLATE } from "metabase-lib/v1/queries/StructuredQuery";
 import type {
   Card,
   CardId,
@@ -295,8 +300,8 @@ export function DashCardVisualization({
         name: dashcard.card.name,
         description: dashcard.card.description,
         display: display ?? DEFAULT_VISUALIZER_DISPLAY,
-        visualization_settings: settings,
-        dataset_query: STRUCTURED_QUERY_TEMPLATE,
+        visualization_settings: _.omit(settings, "click_behavior"),
+        dataset_query: createDataSourceQuery(dashcard.card),
       },
       _.omit(dashcard.visualization_settings, "visualization"),
     );
@@ -490,6 +495,24 @@ export function DashCardVisualization({
       bufferSpace: 100,
     });
 
+  const {
+    isEnabled: isTimelineEventsEnabled,
+    timelineEvents,
+    timelineEventsVisibility,
+    selectedTimelineEventIds,
+    onOpenTimelines,
+    onSelectTimelineEvents,
+    onDeselectTimelineEvents,
+    onTimelineEventsShown,
+  } = useDashCardTimelineEvents(dashcard);
+  const isChartTimelineEventsEnabled = useSelector((state) =>
+    getIsDashCardTimelineEventsEnabled(state, dashcard.id),
+  );
+  const handleTimelineEventsEnabledChange =
+    useReportDashCardTimelineEventsEnabled(dashcard.id);
+  const withTimelineEvents =
+    isTimelineEventsEnabled && isChartTimelineEventsEnabled;
+
   const actionButtons = useMemo(() => {
     const cardId = dashcard.card_id ?? dashcard.card?.id;
     const cardResult = cardId ? datasets?.[cardId] : undefined;
@@ -508,6 +531,7 @@ export function DashCardVisualization({
         result,
         canEdit: !isVisualizerCard,
         openUnderlyingQuestionItems,
+        withTimelineEvents,
       });
 
     const errorStatus =
@@ -541,6 +565,7 @@ export function DashCardVisualization({
             result={result}
             dashcard={dashcard}
             canEdit={!isVisualizerCard}
+            withTimelineEvents={withTimelineEvents}
             onEditVisualization={
               isVisualizerCard ? onEditVisualization : undefined
             }
@@ -556,6 +581,7 @@ export function DashCardVisualization({
     dashcardMenu,
     datasets,
     isEditing,
+    withTimelineEvents,
     inlineParameters,
     onChangeCardAndRun,
     onEditVisualization,
@@ -642,9 +668,16 @@ export function DashCardVisualization({
           renderLoadingView={renderLoadingView}
           titleMenuItems={titleMenuItems}
           errorMessageOverride={visualizerErrMsg}
+          timelineEvents={timelineEvents}
+          timelineEventsVisibility={timelineEventsVisibility}
+          selectedTimelineEventIds={selectedTimelineEventIds}
+          onOpenTimelines={onOpenTimelines}
+          onSelectTimelineEvents={onSelectTimelineEvents}
+          onDeselectTimelineEvents={onDeselectTimelineEvents}
+          onTimelineEventsShown={onTimelineEventsShown}
+          onTimelineEventsEnabledChange={handleTimelineEventsEnabledChange}
           enableEntityNavigation={enableEntityNavigation}
           onSameOriginNavigation={onSameOriginNavigation}
-          autoAdjustSettings
         />
       </EmbeddingEntityContextProvider>
     </div>

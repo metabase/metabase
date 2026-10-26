@@ -3,7 +3,10 @@ import ReactDOMServer from "react-dom/server";
 import { createColorGetter } from "metabase/static-viz/lib/colors";
 import type { GoalData } from "metabase/viz-core";
 import type { GoalSegment } from "metabase-types/api";
-import { createMockColumn } from "metabase-types/api/mocks";
+import {
+  createMockColumn,
+  createMockFailedReferencedEntitiesResults,
+} from "metabase-types/api/mocks";
 
 import GaugeContainer from "./GaugeContainer";
 import { GAUGE_INNER_RADIUS, GAUGE_OUTER_RADIUS } from "./constants";
@@ -20,6 +23,7 @@ const DATA: GoalData = { cols: [COUNT_COL], rows: [[42]] };
 
 const GREEN = "#84BB4C";
 const RED = "#ED6E6E";
+const BLUE = "#509EE3";
 
 type SetupOpts = {
   data?: GoalData;
@@ -92,15 +96,24 @@ describe("GaugeContainer", () => {
     expect(fill?.toUpperCase()).toBe(getColor("text-secondary").toUpperCase());
   });
 
-  it("drops a segment with a missing bound", () => {
+  it("runs a segment with a missing bound to that end of the gauge", () => {
     const root = setup({
       segments: [
         { min: null, max: 50, color: RED },
         { min: 0, max: 100, color: GREEN },
+        { min: 50, max: null, color: BLUE },
+      ],
+    });
+    const expected = setup({
+      segments: [
+        { min: 0, max: 50, color: RED },
+        { min: 0, max: 100, color: GREEN },
+        { min: 50, max: 100, color: BLUE },
       ],
     });
 
-    expect(getSegmentFills(root)).toEqual([GREEN]);
+    expect(getSegmentFills(root)).toEqual(getSegmentFills(expected));
+    expect(getSegmentPaths(root)).toEqual(getSegmentPaths(expected));
   });
 
   it("spans the range across overlapping segments", () => {
@@ -145,7 +158,7 @@ describe("GaugeContainer", () => {
     ).toEqual([GREEN, RED]);
   });
 
-  it("renders an empty gauge over the default range when no segment has both bounds", () => {
+  it("renders an empty gauge over the default range when no segment has a bound", () => {
     const root = setup({ segments: [{ min: null, max: null, color: GREEN }] });
 
     expect(getSegmentFills(root)).toEqual([]);
@@ -154,78 +167,97 @@ describe("GaugeContainer", () => {
   });
 
   describe("unresolvable segments", () => {
-    it("throws for a reference nothing has answered yet", () => {
-      expect(() =>
-        setup({
-          segments: [
-            {
-              min: 0,
-              max: { type: "card", id: 9, column: "goal" },
-              color: GREEN,
-            },
-          ],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
+    function setupUnresolvableSegment(data: GoalData, max: GoalSegment["max"]) {
+      return setup({
+        data,
+        segments: [
+          { min: 0, max: 100, color: GREEN },
+          { min: 50, max, color: RED },
+        ],
+      });
+    }
+
+    function expectSegmentRunToGaugeEnd(root: HTMLElement) {
+      const expected = setup({
+        segments: [
+          { min: 0, max: 100, color: GREEN },
+          { min: 50, max: 100, color: RED },
+        ],
+      });
+
+      expect(getSegmentFills(root)).toEqual([GREEN, RED]);
+      expect(getSegmentPaths(root)).toEqual(getSegmentPaths(expected));
+    }
+
+    it("runs a segment bound to a reference nothing has answered yet to the end of the gauge", () => {
+      const root = setupUnresolvableSegment(DATA, {
+        type: "card",
+        id: 9,
+        column: "goal",
+      });
+
+      expectSegmentRunToGaugeEnd(root);
     });
 
-    it("throws for a reference whose query failed", () => {
-      expect(() =>
-        setup({
-          data: {
-            ...DATA,
-            referenced_entities: {
-              card: { 9: { status: "failed", error: "boom" } },
-            },
-          },
-          segments: [
-            {
-              min: 0,
-              max: { type: "card", id: 9, column: "goal" },
-              color: GREEN,
-            },
-          ],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
+    it("runs a segment bound to a reference whose query failed to the end of the gauge", () => {
+      const root = setupUnresolvableSegment(
+        {
+          ...DATA,
+          referenced_entities: createMockFailedReferencedEntitiesResults(),
+        },
+        { type: "card", id: 9, column: "goal" },
+      );
+
+      expectSegmentRunToGaugeEnd(root);
     });
 
-    it("throws for a referenced column that does not exist", () => {
-      expect(() =>
-        setup({
-          data: {
-            ...DATA,
-            referenced_entities: {
-              card: {
-                9: {
-                  status: "completed",
-                  data: { cols: [GOAL_COL], rows: [[250]] },
-                },
+    it("runs a segment bound to a referenced column that does not exist to the end of the gauge", () => {
+      const root = setupUnresolvableSegment(
+        {
+          ...DATA,
+          referenced_entities: {
+            card: {
+              9: {
+                status: "completed",
+                data: { cols: [GOAL_COL], rows: [[250]] },
               },
             },
           },
-          segments: [
-            {
-              min: 0,
-              max: { type: "card", id: 9, column: "missing" },
-              color: GREEN,
-            },
-          ],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
+        },
+        { type: "card", id: 9, column: "missing" },
+      );
+
+      expectSegmentRunToGaugeEnd(root);
     });
 
-    it("throws for a self-column reference that does not exist", () => {
-      expect(() =>
-        setup({ segments: [{ min: 0, max: "missing", color: GREEN }] }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
+    it("runs a segment bound to a self-column reference that does not exist to the end of the gauge", () => {
+      const root = setupUnresolvableSegment(DATA, "missing");
+
+      expectSegmentRunToGaugeEnd(root);
     });
 
-    it("throws for a self-column reference that is not a number", () => {
-      expect(() =>
-        setup({
-          data: { cols: [COUNT_COL, GOAL_COL], rows: [[10, null]] },
-          segments: [{ min: 0, max: "goal", color: GREEN }],
-        }),
-      ).toThrow("Couldn't load a value one of this chart's ranges depends on.");
+    it("runs a segment bound to a self-column reference that is not a number to the end of the gauge", () => {
+      const root = setupUnresolvableSegment(
+        { cols: [COUNT_COL, GOAL_COL], rows: [[10, null]] },
+        "goal",
+      );
+
+      expectSegmentRunToGaugeEnd(root);
+    });
+
+    it("drops a segment with both bounds unresolvable", () => {
+      const root = setup({
+        segments: [
+          { min: 0, max: 100, color: GREEN },
+          {
+            min: "missing",
+            max: { type: "card", id: 9, column: "goal" },
+            color: RED,
+          },
+        ],
+      });
+
+      expect(getSegmentFills(root)).toEqual([GREEN]);
     });
   });
 });

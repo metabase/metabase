@@ -9,6 +9,8 @@
    [metabase.channel.render.card :as channel.render.card]
    [metabase.channel.render.core :as channel.render]
    [metabase.channel.render.js.svg :as js.svg]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.pulse.render.test-util :as render.tu]
    [metabase.query-processor.test :as qp]
    [metabase.test :as mt]
@@ -455,7 +457,7 @@
                 true)))))))
 
 (deftest href-includes-scroll
-  (testing "the title and body hrefs for cards in dashboards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
+  (testing "the title href for cards in dashboards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
     (mt/with-temp [:model/Card           card {:name          "A Card"
                                                :dataset_query (mt/mbql-query venues {:limit 1})}
                    :model/Dashboard      dashboard {}
@@ -468,8 +470,8 @@
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
-          (is (every? #(= % expected-href) (match/match-many rendered-card-content {:href href} href)))))))
-  (testing "the title and body hrefs for visualizer cards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
+          (is (= [expected-href] (match/match-many rendered-card-content {:href href} href)))))))
+  (testing "the title href for visualizer cards should be of the form '.../dashboard/<DASHBOARD_ID>#scrollTo=<DASHBOARD_CARD_ID>'"
     (mt/with-temp [:model/Card           card {:name          "A Card"
                                                :dataset_query (mt/mbql-query venues {:limit 1})}
                    :model/Dashboard      dashboard {}
@@ -482,7 +484,23 @@
                                                                                 (qp/process-query (:dataset_query card))
                                                                                 {:channel.render/include-title? true}))
               expected-href         (format "https://mb.com/dashboard/%d#scrollTo=%d" (:dashboard_id dc1) (:id dc1))]
-          (is (every? #(= % expected-href) (match/match-many rendered-card-content {:href href} href))))))))
+          (is (= [expected-href] (match/match-many rendered-card-content {:href href} href))))))))
+
+(deftest card-body-is-not-a-link-test
+  (testing "the card body is not wrapped in a link, so table cells can be selected; only the title links (#34165)"
+    (let [mp (mt/metadata-provider)]
+      (mt/with-temp [:model/Card          card {:display       :table
+                                                :dataset_query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                                   (lib/limit 1))}
+                     :model/Dashboard     dashboard {}
+                     :model/DashboardCard dashcard {:dashboard_id (:id dashboard) :card_id (:id card)}]
+        (let [results (qp/process-query (:dataset_query card))]
+          (doseq [dc [nil dashcard]]
+            (testing (if dc "dashcard" "card")
+              (let [doc (hiccup->hickory (:content (channel.render/render-pulse-card :inline "UTC" card dc results
+                                                                                     {:channel.render/include-title? true})))]
+                (is (seq (hik.s/select (hik.s/class "pulse-body") doc)))
+                (is (empty? (hik.s/select (hik.s/descendant (hik.s/tag :a) (hik.s/class "pulse-body")) doc)))))))))))
 
 (deftest dashcard-title-override-wins-over-card-name-test
   (testing "a dashcard's card.title override wins over the underlying card's own name in rendered emails (#18344)"
@@ -560,52 +578,114 @@
 
 (def ^:private goal-referenced-entities
   {"card" {"42" {:status "completed"
-                 :data   {:cols [{:name "target"}]
+                 :data   {:cols [{:name "target" :display_name "Target" :base_type :type/Integer}]
                           :rows [[80]]}}}})
 
 (deftest ^:parallel render-resolves-dynamic-goal-line-test
   (testing "a graph.goal_value entity ref is substituted before the settings reach the JS renderer"
+    (doseq [display [:area :bar :boxplot :combo :line :row :scatter :waterfall]]
+      (testing display
+        (let [captured (atom nil)
+              card     {:id                     1
+                        :name                   "chart with dynamic goal"
+                        :display                display
+                        :visualization_settings {:graph.dimensions ["x"]
+                                                 :graph.metrics    ["y"]
+                                                 :graph.show_goal  true
+                                                 :graph.goal_value goal-ref}}
+              data     {:cols                [{:name "x" :display_name "X" :base_type :type/Text}
+                                              {:name         "y"
+                                               :display_name "Y"
+                                               :base_type    :type/Integer
+                                               :source       :aggregation}]
+                        :rows                [["a" 1] ["b" 2]]
+                        :referenced_entities goal-referenced-entities}]
+          (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
+                                                        (reset! captured viz-settings)
+                                                        {:type :svg :content "<svg></svg>"})]
+            (channel.render/render-pulse-card-for-display nil card {:data data}))
+          (is (= 80 (:graph.goal_value @captured))))))))
+
+(deftest ^:parallel render-resolves-dynamic-goal-on-dashcard-test
+  (testing "a card ref in the dashcard's own viz settings is substituted too"
+    (mt/with-temp [:model/Card          card      {:name                   "bar with dynamic goal"
+                                                   :display                :bar
+                                                   :visualization_settings {:graph.dimensions ["x"]
+                                                                            :graph.metrics    ["y"]}}
+                   :model/Dashboard     dashboard {}
+                   :model/DashboardCard dashcard  {:dashboard_id           (:id dashboard)
+                                                   :card_id                (:id card)
+                                                   :visualization_settings {:graph.dimensions ["x"]
+                                                                            :graph.metrics    ["y"]
+                                                                            :graph.show_goal  true
+                                                                            :graph.goal_value goal-ref}}]
+      (let [captured (atom nil)
+            data     {:cols                [{:name "x" :display_name "X" :base_type :type/Text}
+                                            {:name         "y"
+                                             :display_name "Y"
+                                             :base_type    :type/Integer
+                                             :source       :aggregation}]
+                      :rows                [["a" 1] ["b" 2]]
+                      :referenced_entities goal-referenced-entities}]
+        (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
+                                                      (reset! captured viz-settings)
+                                                      {:type :svg :content "<svg></svg>"})]
+          (channel.render/render-pulse-card :inline nil card dashcard {:data data}))
+        (is (= 80 (:graph.goal_value @captured)))))))
+
+(deftest render-resolves-dynamic-goal-on-visualizer-dashcard-test
+  (testing "a card ref in a visualizer dashcard's nested chart settings is substituted, toggled by those settings"
+    (doseq [show-goal [true false]]
+      (testing (str "graph.show_goal " show-goal)
+        (mt/with-temp [:model/Card          card      {:name                   "line in a visualizer dashcard"
+                                                       :display                :line
+                                                       :visualization_settings {}}
+                       :model/Dashboard     dashboard {}
+                       :model/DashboardCard dashcard  {:dashboard_id           (:id dashboard)
+                                                       :card_id                (:id card)
+                                                       :visualization_settings
+                                                       {:visualization
+                                                        {:display             "line"
+                                                         :columnValuesMapping {:COLUMN_1 [{:sourceId     (str "card:" (:id card))
+                                                                                           :originalName "x"
+                                                                                           :name         "COLUMN_1"}]
+                                                                               :COLUMN_2 [{:sourceId     (str "card:" (:id card))
+                                                                                           :originalName "y"
+                                                                                           :name         "COLUMN_2"}]}
+                                                         :settings            {:graph.dimensions ["COLUMN_1"]
+                                                                               :graph.metrics    ["COLUMN_2"]
+                                                                               :graph.show_goal  show-goal
+                                                                               :graph.goal_value goal-ref}}}}]
+          (let [captured (atom nil)
+                data     {:cols                [{:name "x" :display_name "X" :base_type :type/Text}
+                                                {:name         "y"
+                                                 :display_name "Y"
+                                                 :base_type    :type/Integer
+                                                 :source       :aggregation}]
+                          :rows                [["a" 1] ["b" 2]]
+                          :referenced_entities goal-referenced-entities}]
+            (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
+                                                          (reset! captured viz-settings)
+                                                          {:type :svg :content "<svg></svg>"})]
+              (channel.render/render-pulse-card :inline nil card dashcard {:data data}))
+            (is (= (if show-goal 80 goal-ref)
+                   (get-in @captured [:visualization :settings :graph.goal_value])))))))))
+
+(deftest ^:parallel render-resolves-dynamic-progress-goal-test
+  (testing "a progress.goal entity ref is substituted before the settings reach the JS renderer"
     (let [captured (atom nil)
           card     {:id                     1
-                    :name                   "bar with dynamic goal"
-                    :display                :bar
-                    :visualization_settings {:graph.dimensions ["x"]
-                                             :graph.metrics    ["y"]
-                                             :graph.show_goal  true
-                                             :graph.goal_value goal-ref}}
-          data     {:cols             [{:name "x" :base_type :type/Text}
-                                       {:name "y" :base_type :type/Integer :source :aggregation}]
-                    :rows             [["a" 1] ["b" 2]]
+                    :name                   "progress with dynamic goal"
+                    :display                :progress
+                    :visualization_settings {:progress.goal goal-ref}}
+          data     {:cols                [{:name "count" :display_name "Count" :base_type :type/Integer}]
+                    :rows                [[42]]
                     :referenced_entities goal-referenced-entities}]
       (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
                                                     (reset! captured viz-settings)
                                                     {:type :svg :content "<svg></svg>"})]
         (channel.render/render-pulse-card-for-display nil card {:data data}))
-      (is (= 80 (:graph.goal_value @captured))))))
-
-(deftest ^:parallel render-resolves-dynamic-goal-on-dashcard-test
-  (testing "a card ref in the dashcard's own viz settings is substituted too"
-    (let [captured (atom nil)
-          card     {:id                     1
-                    :name                   "bar with dynamic goal"
-                    :display                :bar
-                    :visualization_settings {:graph.dimensions ["x"]
-                                             :graph.metrics    ["y"]}}
-          dashcard {:id                     2
-                    :dashboard_id           3
-                    :visualization_settings {:graph.dimensions ["x"]
-                                             :graph.metrics    ["y"]
-                                             :graph.show_goal  true
-                                             :graph.goal_value goal-ref}}
-          data     {:cols                [{:name "x" :base_type :type/Text}
-                                          {:name "y" :base_type :type/Integer :source :aggregation}]
-                    :rows                [["a" 1] ["b" 2]]
-                    :referenced_entities goal-referenced-entities}]
-      (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
-                                                    (reset! captured viz-settings)
-                                                    {:type :svg :content "<svg></svg>"})]
-        (channel.render/render-pulse-card :inline nil card dashcard {:data data}))
-      (is (= 80 (:graph.goal_value @captured))))))
+      (is (= 80 (:progress.goal @captured))))))
 
 (deftest render-resolves-dynamic-gauge-segments-test
   (testing "gauge segment entity refs are substituted before the card reaches the JS renderer"
@@ -614,14 +694,32 @@
                     :name                   "gauge with dynamic segment"
                     :display                :gauge
                     :visualization_settings {:gauge.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}}
-          data     {:cols             [{:name "count" :base_type :type/Integer}]
+          data     {:cols             [{:name "count" :display_name "Count" :base_type :type/Integer}]
                     :rows             [[42]]
                     :referenced_entities goal-referenced-entities}]
-      (with-redefs [js.svg/gauge (fn [card _data]
-                                   (reset! captured (:visualization_settings card))
-                                   (byte-array 0))]
+      (mt/with-dynamic-fn-redefs [js.svg/gauge (fn [card _data]
+                                                 (reset! captured (:visualization_settings card))
+                                                 (byte-array 0))]
         (channel.render/render-pulse-card-for-display nil card {:data data}))
       (is (= [{:min 0 :max 80 :color "#84BB4C"}] (:gauge.segments @captured))))))
+
+(deftest ^:parallel render-resolves-dynamic-scalar-segments-test
+  (testing "scalar segment entity refs are substituted in the query result's viz settings, which the scalar renderer reads"
+    (let [card      {:id                     1
+                     :name                   "scalar with dynamic segment"
+                     :display                :scalar
+                     :visualization_settings {:scalar.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}}
+          data      (fn [value]
+                      {:cols                [{:name "count" :display_name "Count" :base_type :type/Integer}]
+                       :rows                [[value]]
+                       :viz-settings        {:scalar.segments [{:min 0 :max goal-ref :color "#84BB4C"}]}
+                       :referenced_entities goal-referenced-entities})
+          rendered  (fn [value]
+                      (hiccup/html (channel.render/render-pulse-card-for-display nil card {:data (data value)})))]
+      (testing "value inside the resolved range takes the segment color"
+        (is (str/includes? (rendered 42) "#84BB4C")))
+      (testing "value outside it doesn't"
+        (is (not (str/includes? (rendered 100) "#84BB4C")))))))
 
 (deftest ^:parallel render-keeps-self-column-gauge-bounds-test
   (testing "a gauge bound naming a column of the same query is left for the JS renderer to resolve"
@@ -630,8 +728,8 @@
                     :name                   "gauge with self-column bound"
                     :display                :gauge
                     :visualization_settings {:gauge.segments [{:min 0 :max "target" :color "#84BB4C"}]}}
-          data     {:cols [{:name "count" :base_type :type/Integer}
-                           {:name "target" :base_type :type/Integer}]
+          data     {:cols [{:name "count" :display_name "Count" :base_type :type/Integer}
+                           {:name "target" :display_name "Target" :base_type :type/Integer}]
                     :rows [[42 80]]}]
       (mt/with-dynamic-fn-redefs [js.svg/gauge (fn [card _data]
                                                  (reset! captured (:visualization_settings card))
@@ -643,29 +741,40 @@
 
 (def ^:private stub-svg "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1\" height=\"1\"></svg>")
 
-(defn- render-broken-goal-html
-  "Renders a bar card whose goal references a card that failed, with `graph.show_goal` set to `show-goal`."
+(defn- render-broken-goal
+  "Renders a bar card whose goal references a card that failed, with `graph.show_goal` set to `show-goal`. Returns
+  the HTML and the viz settings the JS renderer got."
   [show-goal]
-  (let [card {:id                     1
-              :name                   "bar with broken goal"
-              :display                :bar
-              :visualization_settings {:graph.dimensions ["x"]
-                                       :graph.metrics    ["y"]
-                                       :graph.show_goal  show-goal
-                                       :graph.goal_value goal-ref}}
-        data {:cols                [{:name "x" :base_type :type/Text}
-                                    {:name "y" :base_type :type/Integer :source :aggregation}]
-              :rows                [["a" 1]]
-              :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}}]
-    ;; render-pulse-card-for-display returns the content hiccup directly
-    (hiccup/html (channel.render/render-pulse-card-for-display nil card {:data data}))))
+  (let [captured (atom nil)
+        card     {:id                     1
+                  :name                   "bar with broken goal"
+                  :display                :bar
+                  :visualization_settings {:graph.dimensions ["x"]
+                                           :graph.metrics    ["y"]
+                                           :graph.show_goal  show-goal
+                                           :graph.goal_value goal-ref}}
+        data     {:cols                [{:name "x" :display_name "X" :base_type :type/Text}
+                                        {:name         "y"
+                                         :display_name "Y"
+                                         :base_type    :type/Integer
+                                         :source       :aggregation}]
+                  :rows                [["a" 1]]
+                  :referenced_entities {"card" {"42" {:status "failed" :error "boom"}}}}
+        html     (binding [js.svg/*javascript-visualization* (fn [_cards-with-data viz-settings]
+                                                               (reset! captured viz-settings)
+                                                               {:type :svg :content stub-svg})]
+                   ;; render-pulse-card-for-display returns the content hiccup directly
+                   (hiccup/html (channel.render/render-pulse-card-for-display nil card {:data data})))]
+    {:html html, :viz-settings @captured}))
 
 (deftest ^:parallel render-failed-dynamic-goal-test
-  (testing "a failed referenced query fails that card's render into the standard error box"
-    (is (str/includes? (render-broken-goal-html true) render-error-box))))
+  (testing "a failed referenced query still renders the chart, with the goal line at 0"
+    (let [{:keys [html viz-settings]} (render-broken-goal true)]
+      (is (not (str/includes? html render-error-box)))
+      (is (= 0 (:graph.goal_value viz-settings))))))
 
 (deftest ^:parallel render-hidden-failed-dynamic-goal-test
-  (testing "but not when the card doesn't show the goal line: nothing renders that value"
-    (binding [js.svg/*javascript-visualization* (fn [_cards-with-data _viz-settings]
-                                                  {:type :svg :content stub-svg})]
-      (is (not (str/includes? (render-broken-goal-html false) render-error-box))))))
+  (testing "a goal line the card doesn't show is left as-is: nothing renders that value"
+    (let [{:keys [html viz-settings]} (render-broken-goal false)]
+      (is (not (str/includes? html render-error-box)))
+      (is (= goal-ref (:graph.goal_value viz-settings))))))

@@ -69,6 +69,9 @@ const getDefaultPluginApi = () => ({
     // Send the host page URL as the embed referrer header. Installed by the
     // React SDK's init flow.
     reactSdkEmbedReferrer: noop,
+    // Send the host app React version header. Installed by the React SDK's
+    // init flow.
+    reactSdkReactVersion: noop,
     // Send the host page URL as the embed referrer header. Installed by the
     // iframe SDK's embed route, which receives the URL via postMessage.
     embedReferrer: noop,

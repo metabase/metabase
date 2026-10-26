@@ -80,12 +80,12 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.server.core :as server]
-   [metabase.server.test-handler :as server.test-handler]
    [metabase.settings.core :as setting]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [metabase.test-runner]
    [metabase.test.data.impl :as data.impl]
+   [metabase.test.server.handler :as test.server.handler]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -180,7 +180,7 @@
 (defn start!
   "Start Metabase"
   []
-  (server/start-web-server! (server.test-handler/test-handler))
+  (server/start-web-server! (test.server.handler/test-handler))
   (init!)
   (when config/is-dev?
     (prune-deleted-inmem-databases!)

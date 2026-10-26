@@ -40,7 +40,7 @@
 (def specs-schema
   "Schema for the `referenced_entities` request param."
   [:maybe [:sequential {:max max-specs}
-           [:map
+           [:map {:closed true}
             [:type (into [:enum] (keys entity-types))]
             [:id :int]
             [:columns {:optional true} [:maybe [:sequential :string]]]
@@ -110,9 +110,10 @@
         (if (> (count (:rows data)) max-rows)
           (do
             (log/warnf "Referenced %s %s returned more than the requested %s row(s)" entity-type id max-rows)
-            {:status "failed"
-             :error  (tru "Referenced {0} {1} returned more rows than the requested maximum of {2}."
-                          entity-type id max-rows)})
+            {:status     "failed"
+             :error_type "too-many-rows"
+             :error      (tru "Referenced {0} {1} returned more rows than the requested maximum of {2}."
+                              entity-type id max-rows)})
           {:status "completed"
            :data   (-> data
                        (perf/select-keys [:cols :rows])
@@ -211,8 +212,10 @@
    (sources->specs (mapcat #(goal-sources % effective-settings) viz-settings-maps))))
 
 (defn maybe-wrap-qp-for-goals
-  "Derive specs from a card's and its dashcard's viz settings and wrap `qp` to inject their values."
-  [qp card-viz dash-viz]
+  "Derive specs from a card's and its dashcard's viz settings and wrap `qp` to inject their values. `visualizer-viz`
+  are the settings a visualizer dashcard nests under `:visualization`; they toggle their own goals."
+  [qp card-viz dash-viz visualizer-viz]
   (maybe-wrap-qp qp
-                 (viz-settings->goal-specs [card-viz dash-viz] (merge card-viz dash-viz))
+                 (concat (viz-settings->goal-specs [card-viz dash-viz] (merge card-viz dash-viz))
+                         (viz-settings->goal-specs visualizer-viz))
                  goal-max-rows))

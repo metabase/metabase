@@ -1,7 +1,10 @@
 import { t } from "ttag";
 
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import type { GroupInfo, SpecialGroupType } from "metabase-types/api";
+import type { GroupInfo, Member, SpecialGroupType } from "metabase-types/api";
+
+export const isApiKeyGroupMember = (member: Member) =>
+  member.email.endsWith("@api-key.invalid");
 
 const SPECIAL_GROUP_NAMES: Record<string, () => string> = {
   "All Users": () => t`All Users`,
@@ -46,6 +49,19 @@ export function getSpecialGroupType(
 
 export function canEditMembership(group: Pick<GroupInfo, "magic_group_type">) {
   return !isDefaultGroup(group) && !PLUGIN_TENANTS.isExternalUsersGroup(group);
+}
+
+/**
+ * Mirrors the server-side gate: additions to the Data Analysts group are refused
+ * without advanced-permissions, removals are always allowed.
+ */
+export function getAddMembersDisabledReason(
+  group: Pick<GroupInfo, "magic_group_type">,
+  hasAdvancedPermissions: boolean,
+): string | null {
+  return isDataAnalystGroup(group) && !hasAdvancedPermissions
+    ? t`Adding members to this group requires a plan that includes the Data Analysts group. Members can only be removed.`
+    : null;
 }
 
 export function getGroupNameLocalized(group: Pick<GroupInfo, "name">) {

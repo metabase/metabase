@@ -1,19 +1,13 @@
+import cx from "classnames";
 import { useCallback } from "react";
 import { msgid, ngettext } from "ttag";
 
 import { getEventCount } from "metabase/common/utils/timelines";
+import CS from "metabase/css/core/index.css";
+import { Box, Flex, Icon, Stack } from "metabase/ui";
 import type { Timeline } from "metabase-types/api";
 
-import {
-  CardAside,
-  CardBody,
-  CardDescription,
-  CardIcon,
-  CardIconContainer,
-  CardRoot,
-  CardTitle,
-  ListRoot,
-} from "./TimelinePicker.styled";
+import S from "./TimelinePicker.module.css";
 
 export interface TimelinePickerProps {
   value?: Timeline;
@@ -21,9 +15,13 @@ export interface TimelinePickerProps {
   onChange?: (value: Timeline) => void;
 }
 
-const TimelinePicker = ({ value, options, onChange }: TimelinePickerProps) => {
+export const TimelinePicker = ({
+  value,
+  options,
+  onChange,
+}: TimelinePickerProps) => {
   return (
-    <ListRoot>
+    <Stack gap="sm">
       {options.map((option) => (
         <TimelineCard
           key={option.id}
@@ -32,7 +30,7 @@ const TimelinePicker = ({ value, options, onChange }: TimelinePickerProps) => {
           onChange={onChange}
         />
       ))}
-    </ListRoot>
+    </Stack>
   );
 };
 
@@ -54,24 +52,38 @@ const TimelineCard = ({
   }, [timeline, onChange]);
 
   return (
-    <CardRoot key={timeline.id} isSelected={isSelected} onClick={handleClick}>
-      <CardIconContainer>
-        <CardIcon name={timeline.icon} />
-      </CardIconContainer>
-      <CardBody>
-        <CardTitle>{timeline.name}</CardTitle>
-        <CardDescription>{timeline.description}</CardDescription>
-      </CardBody>
-      <CardAside>
+    <Flex
+      className={cx(S.card, CS.cursorPointer, { [S.selected]: isSelected })}
+      align="center"
+      p="lg"
+      bdrs="xxs"
+      onClick={handleClick}
+    >
+      <Flex
+        className={S.iconBorder}
+        flex="0 0 auto"
+        justify="center"
+        align="center"
+        w="2rem"
+        h="2rem"
+      >
+        <Icon className={S.icon} name={timeline.icon} />
+      </Flex>
+      <Box flex="1 1 auto" mx="lg" miw={0}>
+        <Box className={S.title} fz="1rem" fw="bold" mb="xxxs">
+          {timeline.name}
+        </Box>
+        <Box className={S.description} fz="sm">
+          {timeline.description}
+        </Box>
+      </Box>
+      <Box className={S.aside} flex="0 0 auto" fz="sm">
         {ngettext(
           msgid`${eventCount} event`,
           `${eventCount} events`,
           eventCount,
         )}
-      </CardAside>
-    </CardRoot>
+      </Box>
+    </Flex>
   );
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default TimelinePicker;

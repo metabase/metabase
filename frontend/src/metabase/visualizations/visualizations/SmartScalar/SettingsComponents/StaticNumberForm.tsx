@@ -2,8 +2,10 @@ import type { ChangeEvent, FormEvent } from "react";
 import { useState } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import {
   Box,
+  Button,
   NumberInput,
   PopoverBackButton,
   Stack,
@@ -12,8 +14,6 @@ import {
 import type { SmartScalarComparisonStaticNumber } from "metabase-types/api";
 
 import { COMPARISON_TYPES } from "../constants";
-
-import { DoneButton } from "./SmartScalarSettingsWidgets.styled";
 
 interface StaticNumberFormProps {
   value?: SmartScalarComparisonStaticNumber;
@@ -69,7 +69,12 @@ export function StaticNumberForm({
             data-autofocus
           />
         </Stack>
-        <DoneButton type="submit" disabled={!canSubmit}>{t`Done`}</DoneButton>
+        <Button
+          className={CS.alignSelfEnd}
+          type="submit"
+          variant="filled"
+          disabled={!canSubmit}
+        >{t`Done`}</Button>
       </Stack>
     </Box>
   );

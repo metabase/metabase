@@ -44,7 +44,10 @@ describe("BrowseDatabases", () => {
   });
 
   describe("opening a database through the UI", () => {
-    const renderBrowseDatabasesWithRouter = (databases: Database[]) => {
+    const renderBrowseDatabasesWithRouter = (
+      databases: Database[],
+      { isAdmin = false }: setupOpts = {},
+    ) => {
       setupDatabasesEndpoints(databases);
       return renderWithProviders(
         <>
@@ -52,7 +55,9 @@ describe("BrowseDatabases", () => {
           <Route path="/browse/databases/:slug" element={<BrowseSchemas />} />
         </>,
         {
-          storeInitialState: createMockState({ currentUser: createMockUser() }),
+          storeInitialState: createMockState({
+            currentUser: createMockUser({ is_superuser: isAdmin }),
+          }),
           withRouter: true,
           initialRoute: "/browse/databases",
         },
@@ -101,6 +106,22 @@ describe("BrowseDatabases", () => {
       },
     );
 
+    it("opens the database options menu without opening the database", async () => {
+      const { router } = renderBrowseDatabasesWithRouter(
+        [databaseWithSchemas(7, "Sales", ["PUBLIC", "ANALYTICS"])],
+        { isAdmin: true },
+      );
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Database options" }),
+      );
+
+      expect(
+        await screen.findByRole("menuitem", { name: /Edit metadata/ }),
+      ).toBeInTheDocument();
+      expect(router?.location.pathname).toBe("/browse/databases");
+    });
+
     it("opens a database whose name starts with a digit", async () => {
       // "7-sales" as a url segment would be read back as database 7
       const { router } = renderBrowseDatabasesWithRouter([
@@ -119,6 +140,26 @@ describe("BrowseDatabases", () => {
     expect(
       await screen.findByText("No databases here yet"),
     ).toBeInTheDocument();
+  });
+
+  describe("database options menu", () => {
+    it("should not render for regular users", async () => {
+      renderBrowseDatabases(2, { isAdmin: false });
+      await waitForLoaderToBeRemoved();
+
+      expect(
+        screen.queryByRole("button", { name: "Database options" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should render on each database card for admins", async () => {
+      renderBrowseDatabases(2, { isAdmin: true });
+      await waitForLoaderToBeRemoved();
+
+      expect(
+        screen.getAllByRole("button", { name: "Database options" }),
+      ).toHaveLength(2);
+    });
   });
 
   describe("Add database card", () => {

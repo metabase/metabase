@@ -115,7 +115,17 @@
                  "sslhostnameverifier=a.b.C"
                  "sslpasswordcallback=a.b.C"
                  "xmlFactoryFactory=a.b.C"
-                 "loggerFile=a/b"]]
+                 "loggerFile=a/b"
+                 ;; class-instantiation sinks on drivers that inherit this method:
+                 "queryInterceptors=a.b.C"   ; presto-jdbc
+                 "dnsResolver=a.b.C"         ; starburst / trino
+                 "hostnameverifier=a.b.C"    ; vertica (bare, not just the ssl-prefixed form)
+                 "socketfactoryname=a.b.C"   ; vertica
+                 "sslsocketfactoryname=a.b.C" ; vertica
+                 "socketFactoryClass=a.b.C"  ; sqlserver-style spelling
+                 ;; matching is case-insensitive
+                 "SOCKETFACTORY=a.b.C"
+                 "DnsResolver=a.b.C"]]
       (testing opt
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo #"dangerous"
@@ -200,11 +210,11 @@
                                              :+features   [:actions]
                                              :+conn-props ["schema-filters"]})
     (let [fake-schema-name (u/qualified-name ::fake-schema)]
-      (with-redefs [sql-jdbc.describe-database/all-schemas (let [orig sql-jdbc.describe-database/all-schemas]
-                                                             (fn [metadata]
-                                                               (eduction
-                                                                cat
-                                                                [(orig metadata) [fake-schema-name]])))]
+      (mt/with-dynamic-fn-redefs [sql-jdbc.describe-database/all-schemas (let [orig (mt/original-fn #'sql-jdbc.describe-database/all-schemas)]
+                                                                           (fn [metadata]
+                                                                             (eduction
+                                                                              cat
+                                                                              [(orig metadata) [fake-schema-name]])))]
         (let [syncable (driver/syncable-schemas driver/*driver* (mt/db))]
           (is (contains? syncable "public"))
           (is (contains? syncable fake-schema-name))))
@@ -290,7 +300,7 @@
                                 %))]
                   (sql.qp/->honeysql
                    driver/*driver*
-                   [:= {} col-ref [:value {:base-type :type/UUID} (str uuid)]])))
+                   [:= {} col-ref (lib/normalize [:value {:base-type :type/UUID} (str uuid)])])))
           (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [field]]
                    (some-fn #(= uuid %)
                             #(= [:metabase.util.honey-sql-2/typed

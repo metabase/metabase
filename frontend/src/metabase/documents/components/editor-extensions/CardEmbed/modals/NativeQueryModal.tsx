@@ -6,12 +6,14 @@ import EmptyCodeResult from "assets/img/empty-states/code.svg";
 import { datasetApi } from "metabase/api/dataset";
 import { getErrorMessage as getResponseErrorMessage } from "metabase/api/utils";
 import { ErrorMessage } from "metabase/common/components/ErrorMessage";
-import { useQuestionFromCard } from "metabase/metadata-store";
+import { useUserMetabotPermissions } from "metabase/metabot/hooks";
+import { getMetabotVisible } from "metabase/metabot/state";
+import { useQuestionFromCardBuilder } from "metabase/metadata-store";
 import { defaultClickActionMode } from "metabase/querying/click-actions/lib/modes";
 import { DataReference } from "metabase/querying/components/DataReference/DataReference";
 import type { DataReferenceItem } from "metabase/querying/components/DataReference/types";
 import { NativeQueryEditor } from "metabase/querying/components/NativeQueryEditor";
-import { useDispatch } from "metabase/redux";
+import { useDispatch, useSelector } from "metabase/redux";
 import { useEditorHost } from "metabase/rich_text_editing/tiptap/EditorHost";
 import { Box, Button, Flex, Loader, Modal, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
@@ -37,7 +39,6 @@ const MODAL_SIDEBAR_FEATURES = {
   dataReference: true,
   variables: false,
   snippets: false,
-  promptInput: false,
   formatQuery: false,
 } as const;
 
@@ -110,7 +111,7 @@ export const NativeQueryModal = ({
 }: NativeQueryModalProps) => {
   const dispatch = useDispatch();
   const host = useEditorHost();
-  const buildQuestion = useQuestionFromCard();
+  const buildQuestion = useQuestionFromCardBuilder();
 
   const [modifiedQuestion, setModifiedQuestion] = useState<Question | null>(
     null,
@@ -119,6 +120,10 @@ export const NativeQueryModal = ({
   const [isShowingTemplateTagsEditor, setIsShowingTemplateTagsEditor] =
     useState(false);
   const [isShowingDataReference, setIsShowingDataReference] = useState(false);
+  const isMetabotSidebarOpen = useSelector((state) =>
+    getMetabotVisible(state, "omnibot"),
+  );
+  const { hasSqlGenerationAccess } = useUserMetabotPermissions();
   const [dataReferenceStack, setDataReferenceStack] = useState<
     DataReferenceItem[]
   >([]);
@@ -339,6 +344,8 @@ export const NativeQueryModal = ({
                   query={nativeQuery}
                   isNativeEditorOpen
                   isInitiallyOpen
+                  canAutoOpenDataReference={!isMetabotSidebarOpen}
+                  hasSqlGenerationAccess={hasSqlGenerationAccess}
                   availableHeight={totalHeight}
                   isRunnable
                   isRunning={isQueryRunning}
@@ -467,7 +474,7 @@ export const NativeQueryModal = ({
           bg="background_page-primary"
           className={S.footer}
         >
-          <Button variant="subtle" onClick={onClose}>
+          <Button variant="subtle" color="neutral" onClick={onClose}>
             {t`Cancel`}
           </Button>
           <Button

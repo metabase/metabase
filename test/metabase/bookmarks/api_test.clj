@@ -2,6 +2,7 @@
   "Tests for /api/bookmark endpoints."
   (:require
    [clojure.test :refer :all]
+   [metabase.bookmarks.db :as bookmarks.db]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
    [metabase.test :as mt]
@@ -58,6 +59,36 @@
       (mt/user-http-request :rasta :put 200 (str "card/" (u/the-id card)) {:dashboard_id (u/the-id d)})
       (is (some #(= (u/the-id card) (:item_id %))
                 (mt/user-http-request :rasta :get 200 "bookmark"))))))
+
+(deftest insert-bookmark!-idempotent-test
+  (testing "GHY-4152: insert-bookmark! returns the existing row rather than tripping the (user_id, item)
+            unique constraint, so a caller racing itself gets the state it asked for"
+    (mt/with-temp [:model/Card card {}]
+      (let [user-id (mt/user->id :rasta)
+            card-id (u/the-id card)
+            first!  (bookmarks.db/insert-bookmark! "card" card-id user-id)]
+        (is (= (:id first!) (:id (bookmarks.db/insert-bookmark! "card" card-id user-id))))
+        (is (= 1 (t2/count :model/CardBookmark :card_id card-id :user_id user-id)))))))
+
+(deftest unknown-bookmark-model-test
+  (testing "GHY-4152: bookmark-exists?, insert-bookmark!, and delete-bookmark! all fail the same way for a model
+            string none of them recognize, now that metabase.bookmarks.db is module API and can be reached
+            directly by callers the REST/MCP schemas don't validate"
+    (let [user-id (mt/user->id :rasta)]
+      (doseq [[label thunk] [["bookmark-exists?" #(bookmarks.db/bookmark-exists? "bogus" 1 user-id)]
+                             ["insert-bookmark!" #(bookmarks.db/insert-bookmark! "bogus" 1 user-id)]
+                             ["delete-bookmark!" #(bookmarks.db/delete-bookmark! "bogus" 1 user-id)]]]
+        (testing label
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unknown bookmarkable model" (thunk))))))))
+
+(deftest duplicate-bookmark-post-returns-400-test
+  (testing "GHY-4152: POST /api/bookmark/:model/:id returns 400 \"Bookmark already exists\" on a duplicate request.
+            Regression guard for the insert-bookmark! swap from t2/insert-returning-instance! to
+            mdb/select-or-insert!, which could silently succeed on a duplicate instead of 400ing."
+    (mt/with-temp [:model/Card card {}]
+      (mt/user-http-request :rasta :post 200 (str "bookmark/card/" (u/the-id card)))
+      (is (= "Bookmark already exists"
+             (mt/user-http-request :rasta :post 400 (str "bookmark/card/" (u/the-id card))))))))
 
 (deftest bookmark-requires-only-read-perms-test
   (testing "POST /api/bookmark/card/:id succeeds for a read-only (collection-read) user"

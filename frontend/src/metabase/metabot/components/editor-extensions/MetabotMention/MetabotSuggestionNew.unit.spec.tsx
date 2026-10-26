@@ -77,6 +77,16 @@ const setup = (props: Partial<MetabotMentionSuggestionProps> = {}) => {
     onClose,
     decorationNode: null,
     clientRect: null,
+    placement: "bottom-start",
+    offset: { mainAxis: 0, crossAxis: 0 },
+    flip: false,
+    floatingUi: {
+      placement: "bottom-start",
+      strategy: "absolute",
+      middleware: [],
+    },
+    mount: jest.fn(),
+    loading: false,
     ...props,
   };
 

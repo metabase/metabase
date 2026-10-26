@@ -33,7 +33,7 @@ function NewTimelineModalContainer(props: NewTimelineModalContainerProps) {
       // Unjustified type cast. FIXME
       values as CreateTimelineRequest,
     ).unwrap();
-    navigate(Urls.timelineInCollection(timeline));
+    navigate(Urls.timelineInCollection({ ...timeline, collection }));
   };
 
   if (isLoading || error || !collection) {

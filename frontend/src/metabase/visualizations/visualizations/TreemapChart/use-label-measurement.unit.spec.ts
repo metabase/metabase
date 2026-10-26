@@ -2,22 +2,18 @@ import { act, renderHook } from "@testing-library/react";
 import type { EChartsType } from "echarts/core";
 import type { MutableRefObject } from "react";
 
-import {
-  DEFAULT_VISUALIZATION_THEME,
-  type RenderingContext,
-  type TreemapFormatters,
-  type TreemapTree,
+import { createMockChartContext } from "__support__/echarts";
+import type {
+  RenderingContext,
+  TreemapFormatters,
+  TreemapTree,
 } from "metabase/viz-core";
 
 import { useLabelMeasurement } from "./use-label-measurement";
 
-const renderingContext: RenderingContext = {
-  getColor: (name) => name,
+const renderingContext = createMockChartContext({
   measureText: () => 10,
-  measureTextHeight: () => 0,
-  fontFamily: "",
-  theme: DEFAULT_VISUALIZATION_THEME,
-};
+});
 
 const formatters = {
   value: (value: number) => String(value),

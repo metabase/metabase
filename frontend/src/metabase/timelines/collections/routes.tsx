@@ -1,8 +1,11 @@
+import cx from "classnames";
+
 import {
   type ModalComponent,
   type ModalRouteOptions,
   createModalRouteComponent,
 } from "metabase/common/components/ModalRoute";
+import CS from "metabase/css/core/index.css";
 import type { RouteObject } from "metabase/router";
 import { NO_ANIMATION_MODAL_PROPS } from "metabase/ui";
 
@@ -12,6 +15,17 @@ import { NO_ANIMATION_MODAL_PROPS } from "metabase/ui";
  * single request.
  */
 const options = { modalProps: NO_ANIMATION_MODAL_PROPS };
+
+/** The list and details modals scroll their own body: the dialog hands its height down, and the body clips rather than scrolls. */
+const listOptions = {
+  modalProps: {
+    ...NO_ANIMATION_MODAL_PROPS,
+    classNames: {
+      content: cx(CS.flex, CS.flexColumn),
+      body: cx(CS.flex, CS.flexColumn, CS.overflowHidden),
+    },
+  },
+};
 
 const timelineIndexModal = () =>
   import(
@@ -94,7 +108,7 @@ export function getCollectionTimelineRoutes(): RouteObject[] {
       children: [
         {
           index: true,
-          lazy: lazyComponent(timelineIndexModal, options),
+          lazy: lazyComponent(timelineIndexModal, listOptions),
         },
         {
           path: "new",
@@ -106,14 +120,17 @@ export function getCollectionTimelineRoutes(): RouteObject[] {
         },
         {
           path: "archive",
-          lazy: lazyComponent(timelineListArchiveModal, options),
+          lazy: lazyComponent(timelineListArchiveModal, listOptions),
         },
         {
           path: ":timelineId",
           children: [
             {
               index: true,
-              lazy: lazyComponent(timelineDetailsModal, options),
+              lazy: lazyComponent(timelineDetailsModal, {
+                ...listOptions,
+                closeTo: "../..",
+              }),
             },
             {
               path: "edit",
@@ -128,7 +145,7 @@ export function getCollectionTimelineRoutes(): RouteObject[] {
             },
             {
               path: "archive",
-              lazy: lazyComponent(timelineArchiveModal, options),
+              lazy: lazyComponent(timelineArchiveModal, listOptions),
             },
             {
               path: "delete",

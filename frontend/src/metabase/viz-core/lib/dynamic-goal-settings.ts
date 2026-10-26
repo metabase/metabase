@@ -16,11 +16,20 @@ export const GOAL_SETTINGS: Record<GoalSettingKey, GoalSettingKind> = {
   "scalar.segments": "segments",
 };
 
-// Kept in a separate module so `__support__/dynamic-goals` can spy on `getDynamicGoalSettingKeys` .
 const DYNAMIC_GOAL_SETTINGS_BY_DISPLAY: Partial<
   Record<VisualizationDisplay, GoalSettingKey[]>
 > = {
+  area: ["graph.goal_value"],
+  bar: ["graph.goal_value"],
+  boxplot: ["graph.goal_value"],
+  combo: ["graph.goal_value"],
   gauge: ["gauge.segments"],
+  line: ["graph.goal_value"],
+  progress: ["progress.goal"],
+  row: ["graph.goal_value"],
+  scalar: ["scalar.segments"],
+  scatter: ["graph.goal_value"],
+  waterfall: ["graph.goal_value"],
 };
 
 export function getDynamicGoalSettingKeys(

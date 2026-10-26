@@ -1,7 +1,7 @@
 import { createMockState } from "__support__/state";
 import { createMockEntitiesState } from "__support__/store";
 import { render, renderWithProviders, screen } from "__support__/ui";
-import { getMetadata } from "metabase/metadata-store";
+import { getEntityLookups } from "metabase/querying/common/components/DataSelector";
 import { checkNotNull } from "metabase/utils/types";
 import { getSchemaDisplayName } from "metabase-lib/v1/metadata/utils/schema";
 import type { Database } from "metabase-types/api";
@@ -17,22 +17,30 @@ const DEFAULT_PROPS = {
   isLoading: false,
   onChangeDatabase: jest.fn(),
   onChangeSchema: jest.fn(),
+  getDatabaseSchemas: () => [],
 };
 
-const hydrateDatabase = (database: Database) => {
+// The picker reads a database's schemas through the store, so a test that
+// renders schema names puts the database in the store first.
+const storeDatabase = (database: Database) => {
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [database] }),
   });
-  return checkNotNull(getMetadata(state).database(database.id));
+  const lookups = getEntityLookups(state);
+
+  return {
+    database: checkNotNull(lookups.database(database.id)),
+    getDatabaseSchemas: lookups.databaseSchemas,
+  };
 };
 
 const setup = (opts: { database: Database }) => {
   const state = createMockState({
     entities: createMockEntitiesState({ databases: [opts.database] }),
   });
-  const metadata = getMetadata(state);
-  const database = checkNotNull(metadata.database(opts.database.id));
-  const schemas = database.getSchemas();
+  const lookups = getEntityLookups(state);
+  const database = checkNotNull(lookups.database(opts.database.id));
+  const schemas = lookups.databaseSchemas(database.id);
 
   renderWithProviders(
     <DataSelectorDatabaseSchemaPicker
@@ -40,6 +48,7 @@ const setup = (opts: { database: Database }) => {
       selectedDatabase={database}
       selectedSchema={schemas[0]}
       databases={[database]}
+      getDatabaseSchemas={lookups.databaseSchemas}
       onChangeSchema={jest.fn()}
       onChangeDatabase={jest.fn()}
     />,
@@ -61,7 +70,7 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
       const databaseName = "Database name";
       const schemaName = "Schema name";
 
-      const database = hydrateDatabase(
+      const { database, getDatabaseSchemas } = storeDatabase(
         createMockDatabase({
           name: databaseName,
           tables: [
@@ -75,6 +84,7 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
         <DataSelectorDatabaseSchemaPicker
           {...DEFAULT_PROPS}
           databases={[database]}
+          getDatabaseSchemas={getDatabaseSchemas}
         />,
       );
 
@@ -88,7 +98,7 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
       const databaseName = "Database name";
       const schemaName = "Schema name";
 
-      const database = hydrateDatabase(
+      const { database, getDatabaseSchemas } = storeDatabase(
         createMockDatabase({
           name: databaseName,
           is_saved_questions: true,
@@ -103,6 +113,7 @@ describe("DataSelectorDatabaseSchemaPicker", () => {
         <DataSelectorDatabaseSchemaPicker
           {...DEFAULT_PROPS}
           databases={[database]}
+          getDatabaseSchemas={getDatabaseSchemas}
         />,
       );
 

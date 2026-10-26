@@ -7,7 +7,7 @@ import {
   canAccessDataModel as canAccessDataModelSelector,
   useUserKeyValue,
 } from "metabase/current-user";
-import { useDataStudioSettings } from "metabase/data-studio/settings/hooks";
+import { useDataStudioSettings } from "metabase/data-studio/settings/hooks/use-data-studio-settings";
 import {
   AreaLayout,
   AreaTab,
@@ -39,6 +39,12 @@ export function DataStudioLayout() {
   const hasDirtyChanges = PLUGIN_REMOTE_SYNC.useHasLibraryDirtyChanges();
   const hasTransformDirtyChanges =
     PLUGIN_REMOTE_SYNC.useHasTransformDirtyChanges();
+  const hasSnippetsDirtyChanges =
+    PLUGIN_REMOTE_SYNC.useHasSnippetsDirtyChanges();
+  const hasDataActionsDirtyChanges =
+    PLUGIN_REMOTE_SYNC.useHasDataActionsDirtyChanges();
+  const hasGlossaryDirtyChanges =
+    PLUGIN_REMOTE_SYNC.useHasGlossaryDirtyChanges();
   const [isGitSettingsOpen, setIsGitSettingsOpen] = useState(false);
 
   const hasLibraryFeature = useHasTokenFeature("library");
@@ -108,11 +114,51 @@ export function DataStudioLayout() {
           }
         />
         <AreaTab
+          label={t`Dashboards`}
+          icon="dashboard"
+          to={Urls.dataStudioDashboards()}
+          isSelected={currentTab === "dashboards"}
+          showLabel={isNavbarOpened}
+          isGated={!hasLibraryFeature}
+        />
+        <AreaTab
+          label={t`SQL snippets`}
+          icon="snippet"
+          to={Urls.dataStudioSnippets()}
+          isSelected={currentTab === "snippets"}
+          showLabel={isNavbarOpened}
+          rightSection={
+            hasSnippetsDirtyChanges &&
+            PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+            ) : null
+          }
+        />
+        <AreaTab
+          label={t`Data actions`}
+          icon="bolt"
+          to={Urls.dataStudioActions()}
+          isSelected={currentTab === "actions"}
+          showLabel={isNavbarOpened}
+          rightSection={
+            hasDataActionsDirtyChanges &&
+            PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+            ) : null
+          }
+        />
+        <AreaTab
           label={t`Glossary`}
           icon="glossary"
           to={Urls.dataStudioGlossary()}
           isSelected={currentTab === "glossary"}
           showLabel={isNavbarOpened}
+          rightSection={
+            hasGlossaryDirtyChanges &&
+            PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge ? (
+              <PLUGIN_REMOTE_SYNC.CollectionSyncStatusBadge />
+            ) : null
+          }
         />
       </AreaTabGroup>
 

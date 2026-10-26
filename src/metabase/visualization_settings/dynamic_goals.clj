@@ -80,10 +80,42 @@
   [viz-settings f]
   (update-values-in viz-settings goal-settings f))
 
+(def ^:private visualizer-settings-path
+  "Where a visualizer dashcard nests the settings of the chart it draws."
+  [:visualization :settings])
+
+(defn dashcard-goal-values
+  "Like [[goal-values]], plus the goals a visualizer dashcard nests under `:visualization`. Hidden goals included,
+  unlike [[shown-goal-values]]."
+  [viz-settings]
+  (concat (goal-values viz-settings)
+          (goal-values (get-in viz-settings visualizer-settings-path))))
+
+(defn update-dashcard-goal-values
+  "Like [[update-goal-values]], also rewriting the goals a visualizer dashcard nests under `:visualization`."
+  [viz-settings f]
+  (cond-> (update-goal-values viz-settings f)
+    (map? (get-in viz-settings visualizer-settings-path))
+    (update-in visualizer-settings-path update-goal-values f)))
+
 (defn- unresolved!
   [reason {:keys [id type column]}]
-  (throw (ex-info (format "Unresolved dynamic goal (%s): %s %s, column %s" (name reason) type id column)
+  (throw (ex-info (if type
+                    (format "Unresolved dynamic goal (%s): %s %s, column %s" (name reason) type id column)
+                    (format "Unresolved dynamic goal (%s): column %s" (name reason) column))
                   {:type ::unresolved-goal, :reason reason, :entity-type type, :entity-id id, :column column})))
+
+(defn- first-row-value
+  "Return the value in the first row of `column` in `data`.
+  Throw `::unresolved-goal` with details from `ref` if the column is missing or the value is not a finite number."
+  [{:keys [cols rows]} column ref]
+  (let [idx (first (keep-indexed (fn [i col] (when (= column (:name col)) i)) cols))]
+    (when-not idx
+      (unresolved! :column-not-found ref))
+    (let [value (nth (vec (first rows)) idx nil)]
+      (if (and (number? value) (Double/isFinite (double value)))
+        value
+        (unresolved! :not-a-number ref)))))
 
 (defn resolve-goal-value
   "Resolve `goal-value` against `referenced-entities` (a query result's `[:data :referenced_entities]`,
@@ -100,23 +132,56 @@
         (unresolved! :never-ran ref))
       (when-not (and data (some-> status name (= "completed")))
         (unresolved! :query-failed ref))
-      (let [idx (first (keep-indexed (fn [i col] (when (= column (:name col)) i)) (:cols data)))]
-        (when-not idx
-          (unresolved! :column-not-found ref))
-        (let [value (nth (vec (first (:rows data))) idx nil)]
-          (if (and (number? value) (Double/isFinite (double value)))
-            value
-            (unresolved! :not-a-number ref)))))
+      (first-row-value data column ref))
     goal-value))
 
+(defn resolve-self-column-value
+  "Resolves a column name to its value in the first row of the chart's query result `data`. Numbers and nil pass through.
+  Used by renderers that do not run JavaScript. Entity references must be resolved by [[resolve-dynamic-goals]] first.
+  Throw `::unresolved-goal` with reason `:column-not-found` for a missing column, `:not-a-number` for a value that is
+  not a finite number, or `:never-ran` for an unresolved entity reference."
+  [goal-value data]
+  (if-let [ref (goal-source goal-value)]
+    (unresolved! :never-ran ref)
+    (if (string? goal-value)
+      (first-row-value data goal-value {:column goal-value})
+      goal-value)))
+
+(defn- resolve-or-nil
+  "`(resolve-fn goal-value)`, or nil when it throws `::unresolved-goal`."
+  [resolve-fn goal-value]
+  (try
+    (resolve-fn goal-value)
+    (catch clojure.lang.ExceptionInfo e
+      (when-not (= ::unresolved-goal (:type (ex-data e)))
+        (throw e)))))
+
+(defn resolve-segments
+  "Resolve every segment's `:min`/`:max` with `resolve-bound` (one of the resolvers above). A bound that can't
+  resolve becomes nil, as if it was never set."
+  [segments resolve-bound]
+  (mapv (fn [segment]
+          (cond-> segment
+            (some? (:min segment)) (update :min #(resolve-or-nil resolve-bound %))
+            (some? (:max segment)) (update :max #(resolve-or-nil resolve-bound %))))
+        segments))
+
 (defn resolve-dynamic-goals
-  "Substitute every shown goal value in `viz-settings` with its [[resolve-goal-value]] resolution. A goal
-  the chart doesn't show is left as-is, so a failed reference behind it can't break the render. Toggles
-  are read from `effective-settings`, which defaults to `viz-settings`: resolving one half of a
-  card+dashcard pair has to consult the merge, since either half can flip `graph.show_goal`."
+  "Substitute every shown goal value in `viz-settings` with its [[resolve-goal-value]] resolution, best-effort so the
+  chart still renders: a goal value that can't resolve falls back to 0, and a segment bound that can't resolve
+  becomes nil. A goal the chart doesn't show is left as-is. Toggles are read from `effective-settings`, which
+  defaults to `viz-settings`: resolving one half of a card+dashcard pair has to consult the merge, since either half
+  can flip `graph.show_goal`."
   ([viz-settings referenced-entities]
    (resolve-dynamic-goals viz-settings referenced-entities viz-settings))
   ([viz-settings referenced-entities effective-settings]
-   (update-values-in viz-settings
-                     (shown-goal-settings effective-settings)
-                     #(resolve-goal-value % referenced-entities))))
+   (let [resolve-fn #(resolve-goal-value % referenced-entities)]
+     (reduce-kv
+      (fn [viz setting kind]
+        (if (nil? (get viz setting))
+          viz
+          (case kind
+            :value    (update viz setting #(or (resolve-or-nil resolve-fn %) 0))
+            :segments (update viz setting resolve-segments resolve-fn))))
+      viz-settings
+      (shown-goal-settings effective-settings)))))
