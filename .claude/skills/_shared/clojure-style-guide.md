@@ -44,6 +44,13 @@ These seven things are, and each is a reason to cut or relocate:
 | **Invented precision** — score bands, thresholds, or tables no code enforces | Reads as spec, isn't | Cut, or make the code enforce it |
 | **A note on the wrong var** — describing how overrides behave, on the base/default impl | Nobody reading the override sees it | Move to the overrides it describes |
 
+**Referring to code:**
+
+- Name a namespace or var in a docstring or comment as a link, `[[metabase.util.json/decode]]` or
+  `[[metabase.sql-parsing.core]]`, not in backticks. The brackets tell tooling it is a real namespace or var in the
+  codebase, so it can be resolved and linked; an alias-qualified `[[sql/unsupported]]` or an unqualified
+  `[[decode-manifest]]` works too. Backticks are for everything else: keys, literals, SQL, file names, shell commands.
+
 **Comments:**
 
 - `TODO` format: `;; TODO (Name YYYY-MM-DD) -- description`
@@ -102,6 +109,74 @@ Use `ex-cause`/`ex-message`/`ex-data`/`ex-info` rather than `.getCause`/`.getMes
 ```
 
 Only `(:import java.time.X)` when interop with a Java method genuinely needs the class.
+
+**A branch that yields `nil` is a `when` or `when-not`, not an `if` with a `nil` arm:**
+
+```clojure
+;; good
+(when-not (= agg :count)
+  (unsupported "%s over * has no Metabase equivalent" (name agg)))
+
+;; bad
+(if (= agg :count)
+  nil
+  (unsupported "%s over * has no Metabase equivalent" (name agg)))
+```
+
+The same goes for `(if c x nil)`: write `(when c x)`.
+
+**A local binding never shadows a `clojure.core` var or a var in the current namespace:**
+
+```clojure
+;; good
+(defn field-metadata [field-name field-base-type] ...)
+(let [{entity-type :type} entity] ...)
+
+;; bad
+(defn field-metadata [name base-type] ...)      ; `name` is clojure.core/name; `base-type` is a fn in this ns
+(let [{:keys [type]} entity] ...)               ; `type` is clojure.core/type
+```
+
+Qualify the name instead: `field-name`, `entity-type`, `table-alias`, `unsupported-metrics`. Watch `:keys`
+destructuring in particular, since it names the local after the key. kondo's `:shadowed-var` linter finds these.
+
+**An ID takes its entity's ID schema, never a general one like `pos-int?`:**
+
+```clojure
+;; good
+(mu/defn table-ref [table-id :- ::lib.schema.id/table] ...)
+
+;; bad
+(mu/defn table-ref [table-id :- pos-int?] ...)
+```
+
+`metabase.lib.schema.id` has a schema for every entity with an ID (`::lib.schema.id/database`, `::table`, `::field`,
+`::card`, ...). Some modules define their own equivalents for their entities; those are fine to use instead.
+
+**A no-argument function passed around is a `thunk`, not an `f`:**
+
+```clojure
+;; good
+(defn with-context [context thunk]
+  (thunk))
+
+;; bad
+(defn with-context [context f]
+  (f))
+```
+
+**Find one element with `m/find-first`, not `(first (filter ...))`:**
+
+```clojure
+;; good
+(m/find-first #(= metric-name (:name %)) metrics)
+
+;; bad
+(first (filter #(= metric-name (:name %)) metrics))
+```
+
+`medley.core` is aliased as `m`. It says what is meant, and stops at the first match instead of building a lazy seq to
+take one element from.
 
 **Check non-emptiness with `seq`, not `count`:**
 
