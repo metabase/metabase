@@ -139,7 +139,7 @@ async function _init(
                 <RouterProvider
                   routes={routes}
                   onLocationChange={mirrorLocation}
-                  hydrateFallback={<DelayedLoadingSpinner />}
+                  loadingFallback={<DelayedLoadingSpinner />}
                 />
               </MetabotProvider>
             </AppThemeProvider>

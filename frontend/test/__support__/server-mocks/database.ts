@@ -41,6 +41,18 @@ export function setupDatabaseEndpoints(db: Database) {
   setupUpdateDatabaseEndpoint(db);
 }
 
+export function setupDatabaseMetadataEndpoint(db: Database) {
+  fetchMock.get(`path:/api/database/${db.id}/metadata`, db, {
+    name: `database-${db.id}-metadata`,
+  });
+}
+
+export function setupDatabaseMetadataErrorEndpoint(databaseId: DatabaseId) {
+  fetchMock.get(`path:/api/database/${databaseId}/metadata`, 500, {
+    name: `database-${databaseId}-metadata`,
+  });
+}
+
 export function setupUpdateDatabaseEndpoint(db: Database) {
   fetchMock.put(`path:/api/database/${db.id}`, async (call) => {
     const body = await call?.request?.json();
@@ -50,6 +62,27 @@ export function setupUpdateDatabaseEndpoint(db: Database) {
 
 export function setupUpdateDatabaseEndpointError(databaseId: Database["id"]) {
   fetchMock.put(`path:/api/database/${databaseId}`, { status: 500 });
+}
+
+export function setupDatabaseNotFoundEndpoint(databaseId: DatabaseId) {
+  fetchMock.get(`path:/api/database/${databaseId}`, {
+    status: 404,
+    body: "Not found.",
+  });
+}
+
+export function setupCreateDatabaseEndpointError({
+  status,
+  body,
+}: {
+  status: number;
+  body: string | Record<string, unknown>;
+}) {
+  fetchMock.post(
+    "path:/api/database",
+    { status, body },
+    { name: "create-database" },
+  );
 }
 
 export function setupDatabaseHealthcheckEndpoint(databaseId: Database["id"]) {
@@ -73,6 +106,20 @@ export function setupDatabaseListEndpoint(databases: Database[]) {
   fetchMock.get(
     "path:/api/database",
     { data: databases, total: databases.length },
+    { name: "database-list" },
+  );
+}
+
+export function setupDatabaseListEndpointError({
+  status,
+  body,
+}: {
+  status: number;
+  body: Record<string, unknown>;
+}) {
+  fetchMock.get(
+    "path:/api/database",
+    { status, body },
     { name: "database-list" },
   );
 }

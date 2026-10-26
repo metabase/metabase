@@ -37,6 +37,7 @@
     :model/AiUsageLog
     :model/AnalysisFinding
     :model/AnalysisFindingError
+    :model/AnalysisFindingStatus
     :model/ApiKey
     :model/ApiKeyUsageLog
     :model/AuthIdentity
@@ -122,6 +123,7 @@
     :model/ReplacementRun
     :model/RemoteSyncObject
     :model/RemoteSyncTask
+    :model/ResultMetadataStatus
     :model/Revision
     :model/SemanticSearchTokenTracking
     :model/SearchIndexMetadata

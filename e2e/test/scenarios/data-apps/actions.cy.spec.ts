@@ -36,7 +36,6 @@ describe(
           displayName: APP_DISPLAY_NAME,
           testEnv: {
             ...TEST_ENV,
-            actionId: action.id,
             actionEntityId: action.entity_id,
             actionParams,
           },
@@ -111,7 +110,6 @@ describe(
                   displayName: APP_DISPLAY_NAME,
                   testEnv: {
                     ...TEST_ENV,
-                    actionId: action.id,
                     actionEntityId: action.entity_id,
                     actionParams: { team_name: "Data App FC", score: 7 },
                   },

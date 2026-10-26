@@ -49,6 +49,7 @@
    [toucan2.core :as t2])
   (:import
    (java.io File)
+   (java.sql Connection SQLException SQLTransientConnectionException)
    (java.util Properties)
    (org.mariadb.jdbc UrlParser)))
 
@@ -1394,3 +1395,74 @@
         (is (= [["CREATE INDEX `by_cat` ON `t` (`category`)"]] stmts))
         (is (not (str/includes? (ffirst stmts) "PREPARE")))
         (is (not (str/includes? (ffirst stmts) "UNHEX")))))))
+
+(deftest error-while-reading-rows-is-invalid-query-test
+  (mt/test-driver :mysql
+    (testing "An error in the query that the database raises after the first fetch of rows is an invalid query"
+      ;; MariaDB raises this with SQLState HY000, which its JDBC driver throws as SQLTransientConnectionException
+      (is (=? {:status     :failed
+               :error_type :invalid-query
+               :error      #"(?s).*JSON_TABLE.*"}
+              (qp/process-query
+               (qp/userland-query
+                (lib/native-query
+                 (mt/metadata-provider)
+                 (str "WITH RECURSIVE seq (n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM seq WHERE n < 601) "
+                      "SELECT seq.n, jt.a FROM seq STRAIGHT_JOIN JSON_TABLE(IF(seq.n < 601, '{\"a\": 1}', '{}'), '$' "
+                      "COLUMNS (a INT PATH '$.a' ERROR ON EMPTY)) AS jt")))))))))
+
+(deftest lock-timeout-while-reading-rows-is-qp-error-test
+  (mt/test-driver :mysql
+    (let [db             (mt/db)
+          connection     (mt/original-fn #'sql-jdbc.execute/do-with-resolved-connection)
+          row-thunk      (mt/original-fn #'sql-jdbc.execute/row-thunk)
+          delivered      (atom 0)
+          failure        (atom nil)]
+      (sql-jdbc.execute/do-with-connection-with-options
+       driver/*driver* db {:write? true}
+       (fn [^Connection conn]
+         (.setAutoCommit conn false)
+         (with-open [stmt (.createStatement conn)]
+           (.execute stmt "UPDATE venues SET name = name WHERE id = 100"))
+         (try
+           (mt/with-temporary-setting-values [sql-jdbc-fetch-size 20]
+             (mt/with-dynamic-fn-redefs [sql-jdbc.execute/do-with-resolved-connection
+                                         (fn [driver db options f]
+                                           (connection driver db options
+                                                       (fn [^Connection c]
+                                                         (let [read-timeout #(-> (jdbc/query {:connection c}
+                                                                                             ["SELECT @@session.innodb_lock_wait_timeout AS timeout"])
+                                                                                 first :timeout)
+                                                               timeout (read-timeout)]
+                                                           (try
+                                                             (jdbc/execute! {:connection c} ["SET SESSION innodb_lock_wait_timeout = 1"])
+                                                             (f c)
+                                                             (finally
+                                                               (jdbc/execute! {:connection c}
+                                                                              [(str "SET SESSION innodb_lock_wait_timeout = " timeout)])
+                                                               (is (= timeout (read-timeout)))))))))
+                                         sql-jdbc.execute/row-thunk
+                                         (fn [& args]
+                                           (let [next-row (apply row-thunk args)]
+                                             #(try
+                                                (let [row (next-row)]
+                                                  (when row (swap! delivered inc))
+                                                  row)
+                                                (catch SQLException e
+                                                  (reset! failure e)
+                                                  (throw e)))))]
+               (is (=? {:status :failed :error_type :qp}
+                       (qp/process-query
+                        (qp/userland-query
+                         (lib/native-query (mt/metadata-provider)
+                                           "SELECT id FROM venues ORDER BY id LOCK IN SHARE MODE")))))))
+           (is (pos? @delivered) "The timeout happens during row reads, after the first fetch")
+           (is (= "HY000" (some-> ^SQLException @failure .getSQLState)))
+           (is (= 1205 (some-> ^SQLException @failure .getErrorCode)))
+           (finally (.rollback conn))))))))
+
+(deftest ^:parallel query-error-evidence-test
+  (mt/test-driver :mysql
+    (doseq [[state code expected] [["HY000" 4176 true] ["HY000" 1205 false] [nil 4176 false]]]
+      (is (= expected (sql-jdbc.execute/impl-error-in-query?
+                       :mysql (SQLTransientConnectionException. "Row read failed" state code)))))))

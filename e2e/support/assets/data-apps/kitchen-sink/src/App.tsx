@@ -198,15 +198,10 @@ function NativeQueryPage() {
 }
 
 function Actions() {
-  const { actionId, actionEntityId, actionParams } = getTestEnv();
-  // A data app names its actions by definition. This fixture has no
-  // collection files, so the copy the definition points at is the authored action.
+  const { actionEntityId, actionParams } = getTestEnv();
   const action = useAction(
-    actionId
-      ? defineAction({
-          action: { id: actionId, parameters: [] },
-          copiedActionEntityId: actionEntityId,
-        })
+    actionEntityId
+      ? defineAction({ action: { id: actionEntityId, parameters: [] } })
       : null,
   );
   const [output, setOutput] = useState("idle");

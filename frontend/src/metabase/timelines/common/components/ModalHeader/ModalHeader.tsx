@@ -1,5 +1,5 @@
 import cx from "classnames";
-import type { ReactNode } from "react";
+import type { JSX, ReactNode } from "react";
 import { c, t } from "ttag";
 
 import CS from "metabase/css/core/index.css";

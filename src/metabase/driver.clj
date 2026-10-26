@@ -1057,9 +1057,10 @@
     ;; `{{table}}` gets replaced by a reference to a table.
     :parameters/table-reference
     ;;
-    ;; Does this driver natively support pivot queries via a single `GROUP BY GROUPING SETS (...)` query, instead of
-    ;; the legacy multi-query path? Drivers that opt in must also derive from `:sql` (which provides the
-    ;; `:pivot` clause compiler).
+    ;; Does this driver have a native single-scan pivot compiler — one that runs the shared upstream
+    ;; (filters/joins/expressions) once and emits every breakout combination in a single query, rather
+    ;; than a query per combination? Drivers that opt in must supply a `:pivot` clause compiler that
+    ;; emits the `pivot-grouping` column alongside the breakouts and aggregations.
     :native-pivot-tables})
 
 (defmulti database-supports?
@@ -1612,7 +1613,7 @@
   to get the raw native query as needed.
 
   A table the query names that matches no synced table or transform target can be returned as
-  `{:unresolved-table {:schema ... :table ...}}`, so dependency tracking can recompute the query once sync finds it.
+  `{:unresolved-table {:schema ... :table ...}}`, which dependency tracking does not record as an upstream.
 
   The return value should match the `:metabase.driver/native-query-deps` schema."
   {:added "0.57.0" :arglists '([driver query])}

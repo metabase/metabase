@@ -370,7 +370,7 @@ describe("AggregationPicker", () => {
     it("should open the editor when a named expression with operator is used", async () => {
       setup({ query: createQueryWithInlineExpressionWithOperator() });
 
-      expect(screen.getByText("Custom Expression")).toBeInTheDocument();
+      expect(await screen.findByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("My count")).toBeInTheDocument();
     });
 
@@ -395,13 +395,13 @@ describe("AggregationPicker", () => {
       expect(screen.queryByText("Custom Expression")).not.toBeInTheDocument();
     });
 
-    it("should open the editor even if `allowCustomExpressions` prop is false if expression is used", () => {
+    it("should open the editor even if `allowCustomExpressions` prop is false if expression is used", async () => {
       setup({
         query: createQueryWithInlineExpression(),
         allowCustomExpressions: false,
       });
 
-      expect(screen.getByText("Custom Expression")).toBeInTheDocument();
+      expect(await screen.findByText("Custom Expression")).toBeInTheDocument();
       expect(screen.getByDisplayValue("Avg Q")).toBeInTheDocument();
     });
   });

@@ -288,9 +288,7 @@
           ;; observed here so a send that throws is counted too
           (analytics/observe! :metabase-notification/send-duration-ms {:payload-type payload_type} (duration-ms-fn))
           (when-let [total-time (since-trigger-ms notification-info)]
-            (analytics/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))
-          (when-let [run-id (task-history/current-run-id)]
-            (task-history/complete-task-run! run-id))))
+            (analytics/observe! :metabase-notification/total-duration-ms {:payload-type payload_type} total-time))))
       nil)))
 
 (defn- cron->next-execution-times
@@ -371,11 +369,12 @@
 
 (defprotocol NotificationQueueProtocol
   "Protocol for notification queue implementations."
-  (put-notification!  [this notification] "Add a notification to the queue. If a notification with the same id is already in the queue, replace it.")
+  (put-notification!  [this notification] "Add a notification to the queue. If a notification with the same queue key is already in the queue, replace it and return the replaced one. The queue key is `:notification/queue-key` in the notification's metadata, else its `:id`.")
   (take-notification-with-timeout! [this timeout-ms] "Take the next notification from the queue, returning nil if timeout is reached.")
   (queue-size [this] "Get the current size of the queue."))
 
-;; A priority queue that deduplicates notifications by id
+;; A priority queue that deduplicates notifications by queue key: `:notification/queue-key` in the
+;; notification's metadata, else its `:id`
 (deftype ^:private DedupPriorityQueue
          [^java.util.PriorityQueue                  items-list
           ^java.util.concurrent.ConcurrentHashMap   id->notification
@@ -383,15 +382,16 @@
           ^java.util.concurrent.locks.Condition     not-empty-cond]
   NotificationQueueProtocol
   (put-notification! [_ notification]
-    (let [id   (or (:id notification) (str (random-uuid)))
+    (let [id   (or (:notification/queue-key (meta notification)) (:id notification) (str (random-uuid)))
           item (NotificationQueueEntry. id (subscription->deadline (:triggering_subscription notification)))]
       (.lock queue-lock)
       (try
         (when-not (.containsKey id->notification id)
           (.offer items-list item))
-        (.put id->notification id notification)
-        ;; Signal that a notification is available
-        (.signal not-empty-cond)
+        (let [replaced (.put id->notification id notification)]
+          ;; Signal that a notification is available
+          (.signal not-empty-cond)
+          replaced)
         (finally
           (.unlock queue-lock)))))
 
@@ -419,9 +419,9 @@
 
 (defn- create-dedup-priority-queue
   "A thread-safe, prioritized notification queue with the following properties:
-  - Notifications are identified by unique IDs
+  - Notifications are identified by their queue key: `:notification/queue-key` in the metadata, else `:id`
   - Prioritized by deadline
-  - Adding a notification with an ID already in the queue replaces the existing one
+  - Adding a notification with a queue key already in the queue replaces the existing one
   - Taking from an empty queue blocks until a notification is available
   - Multiple threads can safely add and take from the queue concurrently"
   []
@@ -447,13 +447,35 @@
   []
   (BlockingQueue. (ArrayBlockingQueue. default-blocking-queue-size)))
 
+(defn- queue-notification!
+  "Put `notification` in `queue`, with the log context and the current task run in its metadata."
+  [queue notification]
+  (let [tagged   (-> notification
+                     log/with-context-meta
+                     task-history/track-run-work!)
+        replaced (try
+                   (put-notification! queue tagged)
+                   (catch Throwable e
+                     ;; `tagged` is not in the queue, so it will never run
+                     (task-history/end-run-work! tagged)
+                     (throw e)))]
+    ;; the replaced map will never run. Release it outside the queue lock, because the last piece of work of a run
+    ;; writes the run status. A failure there belongs to the run of the replaced map, not to this send, which is queued.
+    (when replaced
+      (try
+        (task-history/end-run-work! replaced)
+        (catch Throwable e
+          (log/warn e "Could not end the task run work of a replaced notification"))))))
+
 (defn- create-notification-dispatcher
   "Create a thread pool for sending notifications.
-  There can only be one notification with the same id in the queue.
-  - if a notification of the same id is already in the queue, then replace it
+  There can only be one notification with the same queue key in the queue. The queue key is
+  `:notification/queue-key` in the notification's metadata, else its `:id`. Each channel of a dashboard
+  subscription sets its own queue key, because all channels have the pulse id as `:id`.
+  - if a notification with the same queue key is already in the queue, then replace it
   (we keep the latest version because it likely contains the most up-to-date information
   such as: creator_id, active status, handlers info etc.)
-  - if a notification doesn't have id, put it into queue regardless (used to send unsaved notifications)
+  - if a notification has no queue key and no id, put it into the queue regardless (used to send unsaved notifications)
 
   Returns a map with :dispatch-fn and :shutdown-fn."
   [pool-size queue]
@@ -490,9 +512,7 @@
                       (if-not (.get shutdown-flag)
                         (do
                           (ensure-enough-workers!)
-                          (put-notification! queue (-> notification
-                                                       log/with-context-meta
-                                                       task-history/with-run-id-meta))
+                          (queue-notification! queue notification)
                           ::ok)
                         (do
                           (log/infof "Rejecting notification with id %d as the workers are being shutdown" (:id notification))
@@ -576,7 +596,7 @@
                                         (assoc :auto-complete sync?))
       (log/with-context {:notification_id (:id notification)
                          :payload_type    (:payload_type notification)}
-        (let [notification (with-meta notification {:notification/triggered-at-ns (u/start-timer)})]
+        (let [notification (vary-meta notification assoc :notification/triggered-at-ns (u/start-timer))]
           (log/debugf "Will be send %s" (if sync? "synchronously" "asynchronously"))
           (if sync?
             (send-notification-sync! notification)
