@@ -12,6 +12,7 @@ Remote Sync lets you develop analytics content in your Metabase and automaticall
 - Top-level collections (dashboards, questions, models, metrics)
 - Library content (published tables with their segments and measures, plus metrics, dashboards, snippets, and the glossary)
 - Transforms
+- [Data apps](../data-modeling/data-apps.md), with their bundles and collections
 
 Metabase doesn't sync any of your data. All Metabase stores in Git are [YAML files](./serialization.md#example-of-a-serialized-question) that describe your analytics content. Your actual data stays in your databases and never leaves your Metabase.
 
@@ -369,6 +370,7 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 - Collection structure and metadata
 - Library content (published tables, metrics, dashboards, snippets, segments, measures, glossary)
 - Transforms (including tags, tests, and folders)
+- [Data apps](../data-modeling/data-apps.md), with their bundles and collections
 
 **What doesn't sync:**
 
@@ -378,6 +380,7 @@ Remote Sync uses the same serialization format as the [Metabase CLI serializatio
 - Transform jobs
 - Personal collections
 - Table metadata (table names, column types, descriptions, visibility settings, etc.)
+- A data app's live or draft status, and its group access
 
 ### Synced content that uses a database your Metabase doesn't have
 
