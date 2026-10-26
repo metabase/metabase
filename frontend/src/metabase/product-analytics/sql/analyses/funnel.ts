@@ -8,7 +8,12 @@ import { seconds } from "../compile/actorPredicate";
 import { bucket, dateTimeLit, lit } from "../compile/dialect";
 import { flagSql } from "../compile/flag";
 import { grainLabel } from "../compile/grain";
-import type { Cte, DrillPoint, QueryPlan } from "../compose";
+import {
+  type Cte,
+  DROPPED_OFF_POINT_KEY,
+  type DrillPoint,
+  type QueryPlan,
+} from "../compose";
 
 import {
   type BaseBlock,
@@ -561,6 +566,10 @@ export const planFunnel = (spec: AnalysisSpec): QueryPlan => {
     const step = parseStepLabel(point.label)?.step;
     if (step === undefined || step < 1 || step > n) {
       return null;
+    }
+    // Dropped off before a step: got to the one before it but not to it.
+    if (point[DROPPED_OFF_POINT_KEY] === true && step > 1) {
+      return `${from}\nWHERE ${reachedStepSql(funnel, String(step - 1))} AND NOT (${reachedStepSql(funnel, String(step))})${inGroup}`;
     }
     return `${from}\nWHERE ${reachedStepSql(funnel, String(step))}${inGroup}`;
   };

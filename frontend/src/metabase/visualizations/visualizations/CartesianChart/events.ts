@@ -54,6 +54,7 @@ import {
   isQuarterInterval,
   isRemappedToString,
   isTimeSeriesAxis,
+  withFunnelStepsDropOff,
 } from "metabase/viz-core";
 import type {
   BrushClickObject,
@@ -1020,15 +1021,21 @@ export const getSeriesClickData = (
     seriesModel,
   );
 
-  return {
-    cardId: seriesModel.cardId,
-    event: event.event.event,
-    value: datum[seriesModel.dataKey],
-    column: seriesModel.column,
-    data,
-    dimensions,
+  return withFunnelStepsDropOff(
+    {
+      cardId: seriesModel.cardId,
+      event: event.event.event,
+      value: datum[seriesModel.dataKey],
+      column: seriesModel.column,
+      data,
+      dimensions,
+      settings,
+    },
+    chartModel,
     settings,
-  };
+    seriesId,
+    echartsDataIndex,
+  );
 };
 
 export const getAdjustedBrushEndEvent = (

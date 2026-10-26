@@ -474,6 +474,8 @@ class Visualization extends PureComponent<
             {
               ...clicked,
               extraData: {
+                // Charts can mark a click, e.g. funnel steps' drop-off.
+                ...clicked.extraData,
                 ...getExtraDataForClick(clicked),
                 isRawTable,
               },

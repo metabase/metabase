@@ -87,9 +87,11 @@ export {
 } from "./echarts/cartesian/option";
 export { TREND_LINE_WIDTH } from "./echarts/cartesian/option/trend-line";
 export {
+  FUNNEL_STEPS_DROP_OFF_KEY,
   FUNNEL_STEPS_GHOST_SERIES_ID,
   FUNNEL_STEPS_MEDIAN_SECONDS_COLUMN,
   getFunnelStepsModel,
+  withFunnelStepsDropOff,
 } from "./echarts/cartesian/funnel-steps/model";
 export { getFunnelStepsOption } from "./echarts/cartesian/funnel-steps/option";
 export { getFunnelStepsTooltipModel } from "./echarts/cartesian/funnel-steps/tooltip";

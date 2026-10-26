@@ -19,6 +19,12 @@ export interface Cte {
 /** A clicked point on an analysis's chart: its result columns' values, by name. */
 export type DrillPoint = Record<string, string | number | boolean | null>;
 
+/**
+ * Set on a point that stands for who dropped off before it rather than who's
+ * in it, like a funnel step's ghost bar.
+ */
+export const DROPPED_OFF_POINT_KEY = "dropped_off";
+
 export interface QueryPlan {
   ctes: Cte[];
   select: string;

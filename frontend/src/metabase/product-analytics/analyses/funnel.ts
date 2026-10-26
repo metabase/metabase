@@ -14,6 +14,7 @@ import { parseStepLabel, pointString } from "../sql/analyses/base";
 import { BREAKOUT_COLUMN } from "../sql/analyses/breakout";
 import { TIME_TO_CONVERT_COLUMN } from "../sql/analyses/funnel";
 import { grainLabel, grainTitle } from "../sql/compile/grain";
+import { DROPPED_OFF_POINT_KEY } from "../sql/compose";
 
 import {
   getBreakoutExtraColumns,
@@ -362,6 +363,9 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
           return null;
         }
         const { step, name } = parsed;
+        if (point[DROPPED_OFF_POINT_KEY] === true && step > 1) {
+          return t`Dropped off before step ${step}: ${name}`;
+        }
         return step === 1
           ? t`Did step 1: ${name}`
           : t`Reached step ${step}: ${name}`;

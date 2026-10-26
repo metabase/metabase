@@ -2,9 +2,10 @@ import { t } from "ttag";
 
 import { dayjs } from "metabase/dayjs";
 import type { ClickObject } from "metabase/visualizations/types";
+import { FUNNEL_STEPS_DROP_OFF_KEY } from "metabase/viz-core";
 
 import type { Granularity } from "../spec/types";
-import type { DrillPoint } from "../sql/compose";
+import { DROPPED_OFF_POINT_KEY, type DrillPoint } from "../sql/compose";
 
 const toPointValue = (value: unknown): DrillPoint[string] =>
   typeof value === "string" ||
@@ -17,7 +18,7 @@ const toPointValue = (value: unknown): DrillPoint[string] =>
  * The clicked point's result values by column name. A sankey node click
  * carries only its own column; the rest of `data` would name both ends.
  */
-export const getDrillPoint = (clicked: ClickObject): DrillPoint | null => {
+const getPointValues = (clicked: ClickObject): DrillPoint | null => {
   if (clicked.dimensions !== undefined && clicked.dimensions.length > 0) {
     return Object.fromEntries(
       clicked.dimensions.map(({ column, value }) => [
@@ -37,6 +38,17 @@ export const getDrillPoint = (clicked: ClickObject): DrillPoint | null => {
     );
   }
   return null;
+};
+
+/**
+ * The clicked point's result values, marked when the click is on who dropped
+ * off before it, like a funnel step's ghost bar.
+ */
+export const getDrillPoint = (clicked: ClickObject): DrillPoint | null => {
+  const point = getPointValues(clicked);
+  return point !== null && clicked.extraData?.[FUNNEL_STEPS_DROP_OFF_KEY]
+    ? { ...point, [DROPPED_OFF_POINT_KEY]: true }
+    : point;
 };
 
 /** How many actors the clicked point stands for, when the chart shows a count. */
