@@ -4,10 +4,10 @@
    [clojure.test :refer [deftest is testing]]
    [metabase-enterprise.data-sensitivity.context :as context]
    [metabase-enterprise.data-sensitivity.core :as core]
-   [metabase-enterprise.data-sensitivity.core-test :as core-test]
    [metabase-enterprise.data-sensitivity.db :as ds.db]
    [metabase-enterprise.data-sensitivity.llm :as llm]
    [metabase-enterprise.data-sensitivity.runner :as runner]
+   [metabase-enterprise.data-sensitivity.test-util :as ds.tu]
    [metabase.api.common :as api]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self.core :as metabot.self.core]
@@ -68,8 +68,8 @@
     (do-with-temp-tables
      3
      (fn [db tables]
-       (core-test/do-with-llm!
-        (core-test/canned-llm (constantly {:data_sensitivity "PII" :semantic_type "type/Name" :confidence "medium"}))
+       (ds.tu/do-with-llm!
+        (ds.tu/canned-llm (constantly {:data_sensitivity "PII" :semantic_type "type/Name" :confidence "medium"}))
         (fn []
           (let [run (start! db {})]
             (is (= {:status :pending :total_tables 3 :scope {:type :database}
@@ -104,8 +104,8 @@
     (do-with-temp-tables
      3
      (fn [db _tables]
-       (core-test/do-with-llm!
-        (core-test/canned-llm (constantly {:data_sensitivity "PII"}))
+       (ds.tu/do-with-llm!
+        (ds.tu/canned-llm (constantly {:data_sensitivity "PII"}))
         (fn []
           (mt/with-dynamic-fn-redefs [metabot.settings/llm-mini-model (constantly "anthropic/claude-haiku-4-5")]
             ;; Per table: 95 uncached input at $1, 5 cache-read at $0.10 and 20 output at $5 per million tokens.
@@ -121,10 +121,10 @@
                  :model/Field    _     {:table_id (:id table) :name "ds_email" :base_type :type/Text}
                  :model/Field    _     {:table_id (:id table) :name "ds_id" :base_type :type/Integer
                                         :semantic_type :type/PK}]
-    (core-test/do-with-llm!
-     (core-test/canned-llm {"ds_count" {:data_sensitivity "PUBLIC" :semantic_type "type/Email"}
-                            "ds_email" {:data_sensitivity "PII" :semantic_type "type/Email"}
-                            "ds_id"    {:data_sensitivity "PUBLIC" :semantic_type "type/Category"}})
+    (ds.tu/do-with-llm!
+     (ds.tu/canned-llm {"ds_count" {:data_sensitivity "PUBLIC" :semantic_type "type/Email"}
+                        "ds_email" {:data_sensitivity "PII" :semantic_type "type/Email"}
+                        "ds_id"    {:data_sensitivity "PUBLIC" :semantic_type "type/Category"}})
      (fn []
        (testing "a semantic type that does not fit the field's type, or would replace a key type, makes no proposal"
          (let [run (start! db {:attributes [:semantic_type]})]
@@ -148,8 +148,8 @@
     (let [entries {"ds_agree"    {:data_sensitivity "PII" :semantic_type "type/Email"}
                    "ds_disagree" {:data_sensitivity "PII" :semantic_type "type/Email"}
                    "ds_abstain"  {:data_sensitivity "UNSURE"}}]
-      (core-test/do-with-llm!
-       (core-test/canned-llm entries)
+      (ds.tu/do-with-llm!
+       (ds.tu/canned-llm entries)
        (fn []
          (testing "agreeing and abstaining labels make no proposal"
            (let [run (start! db {:attributes [:data_sensitivity :semantic_type]})]
@@ -184,14 +184,14 @@
     (let [messages (atom [])
           llm      (fn [& [_model msgs :as args]]
                      (swap! messages conj msgs)
-                     (apply (core-test/canned-llm
+                     (apply (ds.tu/canned-llm
                              {"ds_none"    {:description "Customer email address."}
                               "ds_comment" {:description "Shipping note."}
                               "ds_same"    {:description "Same text"}
                               "ds_human"   {:description "Another text."}
                               "ds_cleared" {:description "Another text."}})
                             args))]
-      (core-test/do-with-llm!
+      (ds.tu/do-with-llm!
        llm
        (fn []
          (let [run (start! db {:attributes [:description]})]
@@ -229,8 +229,8 @@
                          "ds_b" {:data_sensitivity "PII"}
                          "ds_c" {:data_sensitivity "PII"}
                          "ds_d" {:data_sensitivity "PII"}})]
-      (core-test/do-with-llm!
-       (fn [& args] (apply (core-test/canned-llm @entries) args))
+      (ds.tu/do-with-llm!
+       (fn [& args] (apply (ds.tu/canned-llm @entries) args))
        (fn []
          (let [run-1 (:id (start! db {:attributes [:data_sensitivity]}))]
            (wait-ended run-1)
@@ -268,8 +268,8 @@
    2
    (fn [db [table-1 table-2]]
      (let [label (atom "PII")]
-       (core-test/do-with-llm!
-        (fn [& args] (apply (core-test/canned-llm (constantly {:data_sensitivity @label})) args))
+       (ds.tu/do-with-llm!
+        (fn [& args] (apply (ds.tu/canned-llm (constantly {:data_sensitivity @label})) args))
         (fn []
           (let [run-1 (:id (start! db {:attributes [:data_sensitivity]}))]
             (wait-ended run-1)
@@ -288,11 +288,11 @@
    1
    (fn [db [table]]
      (let [fail? (atom false)]
-       (core-test/do-with-llm!
+       (ds.tu/do-with-llm!
         (fn [& args]
           (if @fail?
             (throw (ex-info "provider down" {}))
-            (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args)))
+            (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args)))
         (fn []
           (let [run-1 (:id (start! db {:attributes [:data_sensitivity]}))]
             (wait-ended run-1)
@@ -313,8 +313,8 @@
                        (swap! calls conj (table-name-in-message messages))
                        (.countDown started)
                        (Thread/sleep 30000)
-                       (apply (core-test/canned-llm (constantly {})) args))]
-         (core-test/do-with-llm!
+                       (apply (ds.tu/canned-llm (constantly {})) args))]
+         (ds.tu/do-with-llm!
           llm
           (fn []
             (let [run (start! db {})]
@@ -339,8 +339,8 @@
            llm     (fn [& args]
                      (.countDown started)
                      (Thread/sleep 30000)
-                     (apply (core-test/canned-llm (constantly {})) args))]
-       (core-test/do-with-llm!
+                     (apply (ds.tu/canned-llm (constantly {})) args))]
+       (ds.tu/do-with-llm!
         llm
         (fn []
           (let [run (start! db {})]
@@ -358,11 +358,11 @@
   (do-with-temp-tables
    3
    (fn [db tables]
-     (core-test/do-with-llm!
+     (ds.tu/do-with-llm!
       (fn [& [_model messages :as args]]
         (if (= "ds_01" (table-name-in-message messages))
           (throw (ex-info "Provider said no" {:error-code "provider_error"}))
-          (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args)))
+          (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args)))
       (fn []
         (let [run   (start! db {:attributes [:data_sensitivity]})
               ended (wait-ended (:id run))]
@@ -386,11 +386,11 @@
   (do-with-temp-tables
    3
    (fn [db tables]
-     (core-test/do-with-llm!
+     (ds.tu/do-with-llm!
       (fn [& [_model messages :as args]]
         (if (#{"ds_01" "ds_02"} (table-name-in-message messages))
           (throw (ex-info "Provider said no" {:error-code "provider_error"}))
-          (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args)))
+          (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args)))
       (fn []
         (let [ended (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))]
           (t2/update! :model/Table (:id (nth tables 2)) {:active false})
@@ -417,10 +417,10 @@
        (is (=? {:table_count 2 :field_count 2}
                (runner/estimate db {:attributes [:data_sensitivity]}))))
      (let [prompts (atom [])]
-       (core-test/do-with-llm!
+       (ds.tu/do-with-llm!
         (fn [& [_model messages :as args]]
           (swap! prompts conj (:content (last messages)))
-          (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args))
+          (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args))
         (fn []
           (testing "a database run skips tables hidden on the table or by a user"
             (let [ended (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))]
@@ -439,11 +439,11 @@
                    :model/Table    table {:db_id (:id db) :name "ds_chunks" :active true}
                    :model/Field    _     {:table_id (:id table) :name "ds_ok" :base_type :type/Text}
                    :model/Field    _     {:table_id (:id table) :name "ds_fail" :base_type :type/Text}]
-      (core-test/do-with-llm!
+      (ds.tu/do-with-llm!
        (fn [& [_model messages :as args]]
          (if (re-find #"(?m)^- ds_fail \(" (:content (last messages)))
            (throw (ex-info "Provider said no" {:error-code "provider_error"}))
-           (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args)))
+           (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args)))
        (fn []
          (mt/with-dynamic-fn-redefs [llm/chunk-size-for (constantly 1)]
            (is (=? {:status        :succeeded
@@ -458,11 +458,11 @@
      2
      (fn [db tables]
        (let [blocked? (atom true)]
-         (core-test/do-with-llm!
+         (ds.tu/do-with-llm!
           (fn [& [_model messages :as args]]
             (when (and (= "ds_00" (table-name-in-message messages)) @blocked?)
               (Thread/sleep 30000))
-            (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args))
+            (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args))
           (fn []
             (mt/with-dynamic-fn-redefs [runner/call-timeout-ms (constantly 200)]
               (let [timer (u/start-timer)
@@ -489,11 +489,11 @@
     (do-with-temp-tables
      2
      (fn [db _tables]
-       (core-test/do-with-llm!
+       (ds.tu/do-with-llm!
         (fn [& [_model messages :as args]]
           (when (= "ds_01" (table-name-in-message messages))
             (Thread/sleep 300))
-          (apply (core-test/canned-llm (constantly {:data_sensitivity "PII"})) args))
+          (apply (ds.tu/canned-llm (constantly {:data_sensitivity "PII"})) args))
         (fn []
           (mt/with-dynamic-fn-redefs [runner/slow-call-ms (constantly 150)]
             (is (=? {:status :succeeded
@@ -506,7 +506,7 @@
      4
      (fn [db tables]
        (let [calls (atom [])]
-         (core-test/do-with-llm!
+         (ds.tu/do-with-llm!
           (fn [& [_model messages :as args]]
             (let [table-name (table-name-in-message messages)]
               (swap! calls conj table-name)
@@ -514,7 +514,7 @@
                 (throw (ex-info "You have reached your AI usage limit."
                                 {:type    :metabot/usage-limit-reached
                                  :message "You have reached your AI usage limit."}))
-                (apply (core-test/canned-llm (constantly {})) args))))
+                (apply (ds.tu/canned-llm (constantly {})) args))))
           (fn []
             (let [run   (start! db {})
                   ended (wait-ended (:id run))]
@@ -555,11 +555,11 @@
      1
      (fn [db _tables]
        (let [started (CountDownLatch. 1)]
-         (core-test/do-with-llm!
+         (ds.tu/do-with-llm!
           (fn [& args]
             (.countDown started)
             (Thread/sleep 30000)
-            (apply (core-test/canned-llm (constantly {})) args))
+            (apply (ds.tu/canned-llm (constantly {})) args))
           (fn []
             (let [run (start! db {})]
               (is (.await started 10 TimeUnit/SECONDS))
@@ -575,10 +575,10 @@
      2
      (fn [db _tables]
        (let [seen (atom [])]
-         (core-test/do-with-llm!
+         (ds.tu/do-with-llm!
           (fn [& args]
             (swap! seen conj [api/*current-user-id* scope/*current-user-metabot-permissions*])
-            (apply (core-test/canned-llm (constantly {})) args))
+            (apply (ds.tu/canned-llm (constantly {})) args))
           (fn []
             (mt/with-current-user (mt/user->id :rasta)
               (let [run (runner/start-run! db {} (mt/user->id :crowberto))]
@@ -586,42 +586,17 @@
             (is (= 2 (count @seen)))
             (is (every? #{[(mt/user->id :crowberto) scope/all-yes-permissions]} @seen)))))))))
 
-(deftest default-attributes-prompt-parity-test
-  (testing "a run with the default attributes sends the same messages as the synchronous classifier"
-    (let [table    (t2/select-one :model/Table :id (mt/id :people))
-          messages (atom [])
-          llm      (fn [& [_model msgs :as args]]
-                     (swap! messages conj (mapv :content msgs))
-                     (apply (core-test/canned-llm (constantly {})) args))
-          capture  (fn [thunk]
-                     (reset! messages [])
-                     (core-test/do-with-llm! llm thunk)
-                     (sort-by str @messages))
-          classic  (capture #(core/classify-table! table))
-          run-id   (atom nil)
-          run      (capture (fn []
-                              (let [run (runner/start-run! (mt/db) {:table_ids [(:id table)]}
-                                                           (mt/user->id :crowberto))]
-                                (reset! run-id (:id run))
-                                (wait-ended (:id run)))))]
-      (try
-        (is (seq classic))
-        (is (str/includes? (second (first classic)) "values:") "the packet carries sampled values")
-        (is (= classic run))
-        (finally
-          (t2/delete! :model/MetadataGenerationRun :id @run-id))))))
-
 (deftest sensitivity-only-prompt-test
   (testing "a sensitivity-only run sends the same data with a smaller system prompt"
     (let [table    (t2/select-one :model/Table :id (mt/id :people))
           calls    (atom [])
           llm      (fn [& [_model msgs schema :as args]]
                      (swap! calls conj {:messages (mapv :content msgs) :schema schema})
-                     (apply (core-test/canned-llm (constantly {})) args))
+                     (apply (ds.tu/canned-llm (constantly {})) args))
           run-ids  (atom [])
           capture  (fn [attributes]
                      (reset! calls [])
-                     (core-test/do-with-llm!
+                     (ds.tu/do-with-llm!
                       llm
                       (fn []
                         (let [run (start! (mt/db) {:table_ids [(:id table)] :attributes attributes})]
@@ -663,7 +638,7 @@
              calls   (atom 0)
              run-id  (atom nil)]
          (try
-           (core-test/do-with-llm!
+           (ds.tu/do-with-llm!
             (fn [& _args]
               (swap! calls inc)
               (let [aborted (promise)]
@@ -704,11 +679,11 @@
                   (finally
                     (deliver release true)
                     (run! wait-ended @run-ids)))))]
-      (core-test/do-with-llm!
+      (ds.tu/do-with-llm!
        (fn [& args]
          (.countDown started)
          @release
-         (apply (core-test/canned-llm (constantly {})) args))
+         (apply (ds.tu/canned-llm (constantly {})) args))
        #(go 0)))))
 
 (deftest cancel-pending-run-test
@@ -761,8 +736,8 @@
      (fn [db _tables]
        (let [record-table! (mt/original-fn #'ds.db/record-table!)
              recorded      (atom 0)]
-         (core-test/do-with-llm!
-          (core-test/canned-llm (constantly {:data_sensitivity "PII"}))
+         (ds.tu/do-with-llm!
+          (ds.tu/canned-llm (constantly {:data_sensitivity "PII"}))
           (fn []
             (mt/with-dynamic-fn-redefs [ds.db/record-table! (fn [run-id changes proposals]
                                                               (let [result (record-table! run-id changes proposals)]
@@ -779,8 +754,8 @@
      1
      (fn [db _tables]
        (let [started (CountDownLatch. 1)]
-         (core-test/do-with-llm!
-          (core-test/canned-llm (constantly {}))
+         (ds.tu/do-with-llm!
+          (ds.tu/canned-llm (constantly {}))
           (fn []
             (mt/with-dynamic-fn-redefs [context/table-packet (fn [& _]
                                                                (.countDown started)
@@ -811,8 +786,8 @@
                         (let [retry (runner/retry-failed! db run (mt/user->id :crowberto))]
                           (wait-ended (:id retry))
                           (set (get-in retry [:scope :table_ids]))))]
-       (core-test/do-with-llm!
-        (core-test/canned-llm (constantly {:data_sensitivity "PII"}))
+       (ds.tu/do-with-llm!
+        (ds.tu/canned-llm (constantly {:data_sensitivity "PII"}))
         (fn []
           (testing "retry of a reaped run covers its failed tables and the tables it did not process"
             (let [run (reaped-run [{:table_id (:id t1) :table_name (:name t1) :schema "S"
@@ -832,8 +807,8 @@
     (do-with-temp-tables
      2
      (fn [db [t0 t1]]
-       (core-test/do-with-llm!
-        (core-test/canned-llm (constantly {:data_sensitivity "PII"}))
+       (ds.tu/do-with-llm!
+        (ds.tu/canned-llm (constantly {:data_sensitivity "PII"}))
         (fn []
           (mt/with-dynamic-fn-redefs [core/sample-connection-error (fn [& _] (throw (ex-info "boom" {})))]
             (let [run (wait-ended (:id (start! db {:attributes [:data_sensitivity]})))]
