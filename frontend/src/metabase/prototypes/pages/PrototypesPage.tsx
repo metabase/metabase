@@ -38,6 +38,10 @@ export function PrototypesPage() {
     (candidate) => candidate.iteration === 2,
   );
 
+  const iteration3 = directions.filter(
+    (candidate) => candidate.iteration === 3,
+  );
+
   return (
     <Flex h="100%" mih="100vh">
       <Stack
@@ -63,12 +67,21 @@ export function PrototypesPage() {
 
         <Divider my="sm" />
 
-        <Text fw="bold" px="sm">{t`Iteration 2`}</Text>
-        {iteration2.length > 0 ? (
-          <PrototypeLinks prototypes={iteration2} activeId={prototype?.id} />
-        ) : (
-          <Text c="text-secondary" px="sm">{t`No directions yet.`}</Text>
-        )}
+        <NavLink
+          label={t`Iteration 2`}
+          childrenOffset="sm"
+          defaultOpened={false}
+        >
+          <PrototypeLinks
+            prototypes={iteration2}
+            activeId={prototype?.id}
+            mt="xs"
+          />
+        </NavLink>
+        <Divider my="sm" />
+
+        <Text fw="bold" px="sm">{t`Iteration 3`}</Text>
+        <PrototypeLinks prototypes={iteration3} activeId={prototype?.id} />
       </Stack>
 
       <Box flex={1} p="lg" style={{ overflow: "auto" }}>

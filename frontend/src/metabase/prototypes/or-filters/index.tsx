@@ -3,6 +3,7 @@ import type { PrototypeDefinition, PrototypeIteration } from "../types";
 import { OrFilterCanvas } from "./OrFilterCanvas";
 import { FILTER_DIRECTIONS } from "./directions";
 import { ITERATION_2_DIRECTIONS } from "./directions/iteration2";
+import { ITERATION_3_DIRECTIONS } from "./directions/iteration3";
 import type { FilterDirection } from "./types";
 
 function toPrototype(
@@ -28,4 +29,5 @@ function toPrototype(
 export const OR_FILTER_PROTOTYPES: PrototypeDefinition[] = [
   ...FILTER_DIRECTIONS.map((direction) => toPrototype(direction, 1)),
   ...ITERATION_2_DIRECTIONS.map((direction) => toPrototype(direction, 2)),
+  ...ITERATION_3_DIRECTIONS.map((direction) => toPrototype(direction, 3)),
 ];

@@ -17,6 +17,7 @@ import type * as Lib from "metabase-lib";
 import type { CardDisplayType } from "metabase-types/api";
 
 import { CompactReadingContext } from "./directions/expression-bar-2/settings";
+import { CompactReadingContext as Iteration3CompactReadingContext } from "./directions/expression-bar-3/settings";
 import { ChillFrame } from "./frames/ChillFrame";
 import { NotebookFrame } from "./frames/NotebookFrame";
 import { FilterTreeInspector } from "./harness/FilterTreeInspector";
@@ -136,10 +137,17 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
     return isLoading ? <Loader /> : null;
   }
 
+  const hasCompactReading =
+    direction.id === "expression-bar-inline-2" ||
+    direction.id === "expression-bar-inline-3";
+
+  const ReadingContext =
+    direction.id === "expression-bar-inline-3"
+      ? Iteration3CompactReadingContext
+      : CompactReadingContext;
+
   return (
-    <CompactReadingContext.Provider
-      value={direction.id === "expression-bar-inline-2" && compactReading}
-    >
+    <ReadingContext.Provider value={hasCompactReading && compactReading}>
       <Stack gap="xl">
         <Stack gap="sm">
           <Title order={3}>{direction.name}</Title>
@@ -192,7 +200,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
           </Paper>
         </Stack>
 
-        {direction.id === "expression-bar-inline-2" && (
+        {hasCompactReading && (
           <Paper withBorder p="lg" radius="md">
             <Stack gap="sm">
               <Text fw="bold">{t`Prototype settings`}</Text>
@@ -286,6 +294,6 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
           </Paper>
         </Stack>
       </Stack>
-    </CompactReadingContext.Provider>
+    </ReadingContext.Provider>
   );
 }
