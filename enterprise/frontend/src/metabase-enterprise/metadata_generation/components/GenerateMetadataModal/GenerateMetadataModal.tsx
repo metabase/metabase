@@ -152,14 +152,14 @@ export function GenerateMetadataForm({
   const [startRun, { isLoading: isStarting, error: startError }] =
     useStartMetadataGenerationRunMutation();
 
-  // The tables and schemas are only needed to offer a scope choice.
+  // The tables and schemas are only needed to offer a scope choice. Runs skip
+  // hidden tables, so they are not offered.
   const { data: database, isLoading: isLoadingDatabase } =
     useGetDatabaseMetadataQuery(
       isScopeFixed
         ? skipToken
         : {
             id: databaseId,
-            include_hidden: true,
             remove_inactive: true,
             skip_fields: true,
           },

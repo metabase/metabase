@@ -36,14 +36,14 @@
   [:and
    table-condition
    [:= :active true]
-   [:not= :visibility_type "retired"]
+   [:not-in :visibility_type ["retired" "sensitive" "hidden"]]
    [:= :nfc_path nil]
    [:= :parent_id nil]])
 
 (mu/defn active-fields
-  "The active, non-retired, top-level Fields of `table-id`, ordered by position then id. Hidden and sensitive fields
-  are included. JSON child fields are excluded: SQL unfolding sets only `nfc_path`, Mongo sets `nfc_path` and
-  `parent_id`."
+  "The active, top-level Fields of `table-id` whose `visibility_type`, as users see it, is not retired, sensitive or
+  hidden, ordered by position then id. Sync, FieldValues and Metabot also skip the values of sensitive and hidden
+  fields. JSON child fields are excluded: SQL unfolding sets only `nfc_path`, Mongo sets `nfc_path` and `parent_id`."
   [table-id :- ::lib.schema.id/table]
   (t2/select :model/Field
              {:from     [(warehouse-schema-overlay/field-query)]
@@ -79,12 +79,13 @@
                                                 {:from [(warehouse-schema-overlay/table-query)]})))
 
 (mu/defn active-tables
-  "The active Tables of `database-id`, restricted to `schema` when it is non-nil, ordered by schema then name."
+  "The active Tables of `database-id` with no `visibility_type` as users see it, as sync selects them, restricted to
+  `schema` when it is non-nil, ordered by schema then name."
   [database-id :- ::lib.schema.id/database
    schema      :- [:maybe :string]]
   (t2/select :model/Table
              {:from     [(warehouse-schema-overlay/table-query)]
-              :where    (cond-> [:and [:= :db_id database-id] [:= :active true]]
+              :where    (cond-> [:and [:= :db_id database-id] [:= :active true] [:= :visibility_type nil]]
                           schema (conj [:= :schema schema]))
               :order-by [[:schema :asc] [:name :asc]]}))
 

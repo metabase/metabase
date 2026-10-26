@@ -121,7 +121,8 @@
     :else                   {:type :database}))
 
 (defn- tables-in-scope
-  "The active tables of `database-id` that `scope` names, ordered by schema then name."
+  "The active, visible tables of `database-id` ([[db/active-tables]]) that `scope` names, ordered by schema then
+  name."
   [database-id {scope-type :type :keys [schemas table_ids]}]
   (let [tables (db/active-tables database-id nil)]
     (vec (case scope-type
@@ -130,18 +131,18 @@
            :tables   (filter (comp (set table_ids) :id) tables)))))
 
 (defn- scope-tables
-  "The active tables of `database-id` that `scope` names, ordered by schema then name. Throws a 400 when the scope
-  names a schema or table that has no active table in the database, or when it holds no table."
+  "The active, visible tables of `database-id` that `scope` names, ordered by schema then name. Throws a 400 when the
+  scope names a schema or table that has no active, visible table in the database, or when it holds no table."
   [database-id {scope-type :type :keys [schemas table_ids] :as scope}]
   (let [tables (tables-in-scope database-id scope)]
     (case scope-type
       :database nil
       :schemas  (when-let [missing (seq (remove (set (map :schema tables)) schemas))]
-                  (throw (core/bad-request (tru "No active tables in schemas: {0}." (str/join ", " missing)))))
+                  (throw (core/bad-request (tru "No active, visible tables in schemas: {0}." (str/join ", " missing)))))
       :tables   (when-let [missing (seq (remove (set (map :id tables)) table_ids))]
-                  (throw (core/bad-request (tru "Not active tables of this database: {0}." (str/join ", " missing))))))
+                  (throw (core/bad-request (tru "Not active, visible tables of this database: {0}." (str/join ", " missing))))))
     (when (empty? tables)
-      (throw (core/bad-request (tru "The database has no active tables to classify."))))
+      (throw (core/bad-request (tru "The database has no active, visible tables to classify."))))
     tables))
 
 (defn- parse-request
@@ -518,9 +519,9 @@
            {:status-code 409 :database-id database-id}))
 
 (mu/defn start-run! :- (ms/InstanceOf :model/MetadataGenerationRun)
-  "Start a run over the active tables of `database` that the request names: all of them, those in `:schemas`, or
-  `:table_ids`. `:attributes` defaults to [[llm/default-attributes]]. Returns the new run. Throws a 409 when a run is active
-  for the database, and a 400 when Metabot cannot run or the scope holds no active table. The run executes as `creator-id`."
+  "Start a run over the active, visible tables of `database` that the request names: all of them, those in `:schemas`,
+  or `:table_ids`. `:attributes` defaults to [[llm/default-attributes]]. Returns the new run. Throws a 409 when a run is
+  active for the database, and a 400 when Metabot cannot run or the scope holds no active, visible table. The run executes as `creator-id`."
   [database   :- (ms/InstanceOf :model/Database)
    request    :- ::start-request
    creator-id :- ms/PositiveInt]
@@ -563,9 +564,9 @@
     (db/run run-id)))
 
 (mu/defn retry-failed! :- (ms/InstanceOf :model/MetadataGenerationRun)
-  "Start a new run over the tables in the `table_errors` of the ended run `run` that are still active, with its
-  attributes, as `creator-id`. These are the tables that failed and the tables the run did not process. Throws a 400
-  when the run is active or none of these tables is active."
+  "Start a new run over the tables in the `table_errors` of the ended run `run` that are still active and
+  visible, with its attributes, as `creator-id`. These are the tables that failed and the tables the run did not
+  process. Throws a 400 when the run is active or none of these tables is active and visible."
   [database   :- (ms/InstanceOf :model/Database)
    run        :- (ms/InstanceOf :model/MetadataGenerationRun)
    creator-id :- ms/PositiveInt]
@@ -574,7 +575,7 @@
   (let [active    (set (map :id (db/active-tables (:id database) nil)))
         table-ids (into [] (comp (map :table_id) (distinct) (filter active)) (:table_errors run))]
     (when (empty? table-ids)
-      (throw (core/bad-request (tru "The run has no failed tables that are still active."))))
+      (throw (core/bad-request (tru "The run has no failed tables that are still active and visible."))))
     (start-run! database {:table_ids table-ids :attributes (:attributes run)} creator-id)))
 
 ;;; Heartbeat and reaper
