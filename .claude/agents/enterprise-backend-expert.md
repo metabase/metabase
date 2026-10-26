@@ -24,7 +24,7 @@ EE code lives in `enterprise/backend/src/metabase_enterprise/<module>/`. OSS shi
 - **SCIM**: `metabase-enterprise.scim.{routes,auth,api,settings,db,core}` and `scim.v2.api`.
 - **Tenants**: OSS shim `metabase.tenants.core`. EE `metabase-enterprise.tenants.{core,models,api,auth-provider,permissions,schema,db}`. The `use-tenants` setting lives in `metabase.permissions.settings`.
 - **Database routing**
-  - OSS: `metabase.database-routing.core` (`with-database-routing-on`/`-off`).
+  - OSS: `metabase.database-routing.core`; connections are routed where they are obtained (`metabase.driver.connection/connection-database`), and `driver.conn/check-not-routed` refuses shared work (sync, FieldValues, model indexes, uploads) for routed users. There is no way to turn routing off.
   - EE: `metabase-enterprise.database-routing.{common,middleware,models,api,schema,db}`.
 - **Dependencies**: `metabase-enterprise.dependencies.{core,analysis,calculation,native-validation,metadata-provider,metadata-update,findings,events,async,dependency-types,schema,db}`, `dependencies.models.*`, `dependencies.task.{backfill,entity-check}`.
 - **Remote sync**
@@ -46,8 +46,8 @@ EE code lives in `enterprise/backend/src/metabase_enterprise/<module>/`. OSS shi
 - Every Toucan model must appear in `serialization.v2.models` as exported, inlined, or excluded. Tests enforce this. `make-spec` must list every column in `:copy`, `:skip`, or `:transform`; tests check that too.
 - "Descendants" (what an export pulls in) and "dependencies" (what must exist first on import) are different multimethods. Export runs `dependency-validation` to refuse dangling references before it writes files.
 - Remote sync reuses serdes v2 for extract and load. `remote-sync.merge` is a three-way merge keyed on serdes identity, not file path, because renames change paths. `remote-sync.guards` refuses work while another task runs. A model joins remote sync through an entry in `remote-sync.spec/remote-sync-specs`.
-- Database routing is keyed by a user attribute, not by tenant. The router DB maps the attribute value to a destination Database row. Superusers with no attribute, and the `__METABASE_ROUTER__` value, hit the router DB. Non-admins with no attribute get a 400. Anonymous users always get an error.
-- `swap-destination-db` must be the last middleware before execution. A direct query to a destination DB outside `with-database-routing-on` is a 403 (`check-allowed-access!`). Sync runs with routing off.
+- Database routing is keyed by a user attribute, not by tenant. The router DB maps the attribute value to a destination Database row. Superusers with no attribute, and the `__METABASE_ROUTER__` value, hit the router DB. Non-admins with no attribute get a 400. No user bound (guest embeds, public links, scheduled jobs) means the router.
+- Connections to a router resolve to the current user's destination in `driver.conn/effective-details` and the JDBC pool; the QP's `bind-destination-database` only records the destination. Any direct access to a destination DB is a 403 (`check-allowed-access!`). Sync runs with routing off.
 - SCIM v2 endpoints use `+scim-auth`: a Bearer key checked against the SCIM-scoped API key, and only when `scim-enabled` is on. The SCIM config endpoints in `scim.api` use normal session auth.
 - Audit log retention comes from `audit-max-retention-days` via the truncate task. `audit-app.task.partitions` handles `query_execution` partitioning.
 - Support access grants extend the emailed-secret auth provider. The user's password expires when the grant ends.

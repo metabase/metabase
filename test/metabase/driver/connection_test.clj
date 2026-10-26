@@ -33,14 +33,6 @@
                            :write-data-details write-data-details}]
              (driver.conn/with-write-connection
                (is (=? write-data-details
-                       (driver.conn/effective-details database))))))
-         (testing "with snake_case key (Toucan2 instance style)"
-           (let [database (t2/instance :model/Database
-                                       {:id                 1
-                                        :details            details
-                                        :write_data_details write-data-details})]
-             (driver.conn/with-write-connection
-               (is (=? write-data-details
                        (driver.conn/effective-details database)))))))))))
 
 (deftest effective-details-write-fallback-test
@@ -75,12 +67,10 @@
           (is (=? details
                   (driver.conn/effective-details database))))))))
 
-(deftest effective-details-nil-test
-  (testing "effective-details returns nil when database is nil"
-    (is (nil? (driver.conn/effective-details nil)))
-    (mt/with-premium-features #{:writable-connection}
-      (driver.conn/with-write-connection
-        (is (nil? (driver.conn/effective-details nil)))))))
+(deftest effective-details-refuses-database-instance-test
+  (testing "effective-details takes only the Lib metadata of a Database, so a Database instance fails fast"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (driver.conn/effective-details (t2/select-one :model/Database (mt/id)))))))
 
 (deftest connection-telemetry-info-test
   (testing "connection-telemetry-info describes the current connection context as prose, for logging only"

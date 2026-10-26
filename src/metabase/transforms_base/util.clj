@@ -10,6 +10,7 @@
    [metabase.database-routing.core :as database-routing]
    [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.indexes.models.table-index :as table-index]
    [metabase.indexes.reconcile :as reconcile]
@@ -18,6 +19,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.compile :as qp.compile]
@@ -187,13 +189,15 @@
 
 ;;; ------------------------------------------------- Table Names -------------------------------------------------
 
-(defn- resolve-nil-schema
+(mu/defn- resolve-nil-schema
   "When a table has nil schema, check if the physical table exists under the driver's
    default schema. If so, return that schema. Otherwise return nil.
    This handles the case where transforms create tables without explicit schema
    but the driver needs a schema to find the table during sync."
-  [driver database table]
-  (when-let [default-schema (:default_schema database)]
+  [driver   :- :keyword
+   database :- ::lib.schema.metadata/database
+   table    :- :metabase.warehouse-schema.schema/table]
+  (when-let [default-schema (:default-schema database)]
     (when (driver/table-exists? driver database {:schema default-schema :name (:name table)})
       default-schema)))
 
@@ -515,12 +519,16 @@
   "Test if the target table of a transform already exists."
   [{:keys [target] :as transform}]
   (let [db-id (transforms-base.i/target-db-id transform)
-        {driver :engine :as database} (transforms-base.db/database db-id)]
+        {driver :engine :as database} (driver.u/lib-database db-id)]
     (driver/table-exists? driver database target)))
 
-(defn- sync-table!
-  ([database target] (sync-table! database target nil))
-  ([database target {:keys [create?]}]
+(mu/defn- sync-table!
+  ([database :- ::lib.schema.metadata/database
+    target   :- ::transforms-base.schema/synced-target]
+   (sync-table! database target nil))
+  ([database          :- ::lib.schema.metadata/database
+    target            :- ::transforms-base.schema/synced-target
+    {:keys [create?]} :- [:maybe [:map {:closed true} [:create? {:optional true} :boolean]]]]
    (when-let [table (or (target-table (:id database) target)
                         (when create?
                           (sync/create-table! database (select-keys target [:schema :name :data_source :data_authority :is_writable]))))]
@@ -536,9 +544,10 @@
        (sync/sync-table! table)
        table))))
 
-(defn activate-table-and-mark-computed!
+(mu/defn activate-table-and-mark-computed!
   "Activate table for `target` in `database` in the app db."
-  [database target]
+  [database :- ::lib.schema.metadata/database
+   target   :- ::transforms-base.schema/transform-target]
   (when-let [table (sync-table! database (assoc target
                                                 :data_authority :computed
                                                 :data_source :metabase-transform
@@ -548,16 +557,18 @@
       (transforms-base.db/update-table! (:id table) {:active true}))
     table))
 
-(defn sync-target!
+(mu/defn sync-target!
   "Sync target of a transform"
-  [target database]
+  [target   :- ::transforms-base.schema/transform-target
+   database :- ::lib.schema.metadata/database]
   ;; sync the new table (note that even a failed sync status means that the execution succeeded)
   (log/info "Syncing target" (pr-str target) "for transform")
   (activate-table-and-mark-computed! database target))
 
-(defn deactivate-table!
+(mu/defn deactivate-table!
   "Deactivate table for `target` in `database` in the app db."
-  [database target]
+  [database :- ::lib.schema.metadata/database
+   target   :- ::transforms-base.schema/transform-target]
   (when-let [table (sync-table! database target)]
     ;; TODO this should probably be a function in the sync module
     (transforms-base.db/update-table! (:id table) {:active false})))
@@ -568,7 +579,8 @@
   (when target
     (let [database-id (transforms-base.i/target-db-id transform)]
       (when database-id
-        (if-let [{driver :engine :as database} (transforms-base.db/database database-id)]
+        (if-let [{driver :engine :as database} (when (transforms-base.db/database-exists? database-id)
+                                                 (driver.u/lib-database database-id))]
           (let [drop-target (update target :type keyword)]
             (driver/drop-transform-target! driver database drop-target)
             (log/info "Deactivating  target " (pr-str target) "for transform" id)
@@ -640,11 +652,12 @@
   (when transform-id
     (transforms-base.db/mark-table-index-failed! transform-id (reconcile/index-name index) (ex-message t))))
 
-(defn- apply-standalone-indexes!
+(mu/defn- apply-standalone-indexes!
   "Create the target's `:standalone` indexes as separate DDL, now that the table exists. `:inline` kinds render at
   table creation, so they're filtered out here. Each create uses `:if-not-exists`, so re-applying is a no-op. On a
   per-index DDL throw, marks the request failed (when `:transform-id` is set) and re-throws."
-  [database {:keys [indexes schema transform-id] table-name :name}]
+  [database                                               :- ::lib.schema.metadata/database
+   {:keys [indexes schema transform-id] table-name :name} :- ::transforms-base.schema/indexed-target]
   (let [driver     (:engine database)
         methods    (driver/supported-index-methods driver database)
         standalone (filter #(= :standalone (get-in methods [(:kind %) :lifecycle])) indexes)]
@@ -669,7 +682,7 @@
   [transform]
   (when (and (seq (:indexes (:target transform)))
              (full-create-run? transform))
-    (let [database (transforms-base.db/database (transforms-base.i/target-db-id transform))]
+    (let [database (driver.u/lib-database (transforms-base.i/target-db-id transform))]
       (apply-standalone-indexes! database (assoc (:target transform) :transform-id (:id transform))))))
 
 (defn- apply-index-outcomes!
@@ -705,7 +718,7 @@
                     (table-index/select-for-verification (:id transform) (:index-request-ids target))
                     (table-index/select-for-transform (:id transform)))]
       (when-let [managed (seq managed)]
-        (let [database (transforms-base.db/database (transforms-base.i/target-db-id transform))
+        (let [database (driver.u/lib-database (transforms-base.i/target-db-id transform))
               {:keys [schema] table-name :name} (:target transform)]
           (when-some [warehouse-indexes (try
                                           (reconcile/fetch-warehouse-indexes database schema table-name)
@@ -732,7 +745,7 @@
         {:keys [publish-events?]
          :or   {publish-events? true}} opts
         db-id (transforms-base.i/target-db-id transform)
-        database (transforms-base.db/database db-id)
+        database (driver.u/lib-database db-id)
         table (sync-target! target database)]
     ;; Sync target table, set target_table_id on transform, and mark table as owned by this transform
     (when table

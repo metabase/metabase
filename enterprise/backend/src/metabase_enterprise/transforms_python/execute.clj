@@ -8,6 +8,7 @@
    [metabase.app-db.core :as app-db]
    [metabase.driver :as driver]
    [metabase.driver.connection :as driver.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.tracing.core :as tracing]
    [metabase.transforms-base.interface :as transforms-base.i]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -105,7 +106,7 @@
   (try
     (let [message-log                                                (base/empty-message-log)
           {:keys [target owner_user_id creator_id] transform-id :id} transform
-          {driver :engine :as db}                                    (transforms-python.db/database (transforms-base.i/target-db-id transform))
+          {driver :engine :as db}                                    (driver.u/lib-database (transforms-base.i/target-db-id transform))
           run-user-id                                                (if (and (= run-method :manual) user-id)
                                                                        user-id
                                                                        (or owner_user_id creator_id))

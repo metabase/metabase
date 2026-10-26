@@ -113,7 +113,7 @@
                :database-is-nullable       true
                :jdbc-type                  java.sql.Types/INTEGER
                :json-unfolding             false}}}
-           (driver/describe-table :h2 (mt/db) {:name "VENUES"})))))
+           (driver/describe-table :h2 (lib.metadata/database (mt/metadata-provider)) {:name "VENUES"})))))
 
 (deftest describe-auto-increment-on-non-pk-field-test
   (testing "a non-pk field with auto-increment should be have metabase_field.database_is_auto_increment=true"
@@ -127,7 +127,7 @@
                          "CREATE TABLE \"employee_counter\" (\"id\" INTEGER AUTO_INCREMENT PRIMARY KEY, \"count\" INTEGER AUTO_INCREMENT, \"rank\" INTEGER NOT NULL)"
                          "GRANT ALL ON \"employee_counter\" TO GUEST;"]]
         (jdbc/execute! one-off-dbs/*conn* [statement]))
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (is (= {:fields #{{:base-type                  :type/Integer
                          :database-is-auto-increment true
                          :database-is-generated      false
@@ -160,10 +160,11 @@
                          :name                       "rank"
                          :json-unfolding             false}}
               :name "employee_counter"}
-             (sql-jdbc.describe-table/describe-table :h2 (mt/id) {:name "employee_counter"}))))))
+             (sql-jdbc.describe-table/describe-table :h2 (lib.metadata/database (mt/metadata-provider)) {:name "employee_counter"}))))))
 
 (defn- describe-fields-for-table [db table]
-  (let [driver (driver.u/database->driver db)]
+  (let [driver (driver.u/database->driver db)
+        db     (driver.u/ensure-lib-database db)]
     (sort-by :database-position
              (if (driver.u/supports? driver :describe-fields db)
                (vec (m/mapply driver/describe-fields
@@ -288,7 +289,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (sql-jdbc.execute/do-with-connection-with-options
      driver/*driver*
-     (mt/db)
+     (mt/id)
      nil
      (fn [conn]
        (is (= ["id"]
@@ -304,7 +305,7 @@
           (let [table (t2/select-one :model/Table :id (mt/id :json))]
             (sql-jdbc.execute/do-with-connection-with-options
              driver/*driver*
-             (mt/db)
+             (mt/id)
              nil
              (fn [^java.sql.Connection conn]
                (let [fields     (sql-jdbc.describe-table/describe-table-fields driver/*driver* conn table nil)
@@ -339,7 +340,7 @@
       (when-not (mysql/mariadb? (mt/db))
         (testing "Nested field column listing"
           (is (= [:type/JSON :type/SerializedJSON]
-                 (->> (sql-jdbc.sync/describe-table driver/*driver* (mt/db) {:name "json"})
+                 (->> (sql-jdbc.sync/describe-table driver/*driver* (lib.metadata/database (mt/metadata-provider)) {:name "json"})
                       :fields
                       (filter #(= (:name %) "json_bit"))
                       first
@@ -409,7 +410,7 @@
                     :nfc-path [:json_bit "title"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                   driver/*driver*
-                  (mt/db)
+                  (lib.metadata/database (mt/metadata-provider))
                   {:name "json" :id (mt/id "json")}))))))))
 
 (deftest json-columns-with-values-are-not-object-test
@@ -424,9 +425,9 @@
         (testing "there should be no nested fields"
           (is (= #{} (sql-jdbc.sync/describe-nested-field-columns
                       driver/*driver*
-                      (mt/db)
+                      (lib.metadata/database (mt/metadata-provider))
                       {:name "json_table" :id (mt/id "json_table")}))))
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (is (=? (if (mysql/mariadb? (mt/db))
                   #{{:name "id"
                      :base_type :type/Integer}
@@ -457,12 +458,12 @@
                  (count
                   (sql-jdbc.sync/describe-nested-field-columns
                    driver/*driver*
-                   (mt/db)
+                   (lib.metadata/database (mt/metadata-provider))
                    {:name "big_json_table" :id (mt/id "big_json_table")}))))
           (mt/with-log-messages-for-level [messages :warn]
             (sql-jdbc.sync/describe-nested-field-columns
              driver/*driver*
-             (mt/db)
+             (lib.metadata/database (mt/metadata-provider))
              {:name "big_json_table" :id (mt/id "big_json_table")})
             (is (str/includes?
                  (-> (messages) first :message)
@@ -476,7 +477,7 @@
           (is (= sql-jdbc.describe-table/max-nested-field-columns
                  (count (sql-jdbc.sync/describe-nested-field-columns
                          driver/*driver*
-                         (mt/db)
+                         (lib.metadata/database (mt/metadata-provider))
                          {:name "big_json" :id (mt/id "big_json")})))))))))
 
 (mt/defdataset long-json
@@ -496,8 +497,8 @@
         (mt/with-temporary-setting-values [sql-jdbc.describe-table/nested-field-columns-value-length-limit
                                            (dec (count (json/encode {:b (apply str (repeat 10 "y"))})))]
           (mt/dataset long-json
-            (sync/sync-database! (mt/db) {:scan :schema})
-            (let [jdbc-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            (sync/sync-database! (mt/id) {:scan :schema})
+            (let [jdbc-spec   (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                   table       (t2/select-one :model/Table :db_id (mt/id) :name "long_json_table")
                   json-fields (t2/select :model/Field :table_id (:id table) :name [:in ["short_json" "long_json"]])
                   pks         ["id"]
@@ -542,7 +543,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
     (when-not (mysql/mariadb? (mt/db))
       (mt/dataset json-unwrap-bigint-and-boolean
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (testing "Fields marked as :type/SerializedJSON are fingerprinted that way"
           (is (= #{{:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "jsoncol", :base_type :type/JSON, :semantic_type :type/SerializedJSON}
@@ -566,7 +567,7 @@
                     :nfc-path          [:jsoncol "myint"]}}
                  (sql-jdbc.sync/describe-nested-field-columns
                   driver/*driver*
-                  (mt/db)
+                  (lib.metadata/database (mt/metadata-provider))
                   (t2/select-one :model/Table :db_id (mt/id) :name "bigint-and-bool-table")))))))))
 
 (mt/defdataset json-int-turn-string
@@ -608,7 +609,7 @@
                     table-rows-sample/nested-field-sample-limit 4]
         (mt/dataset json-int-turn-string
           (when-not (mysql/mariadb? (mt/db))
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (testing "if table has an pk, we fetch both first and last rows thus detect the change in type"
               (is (= [{:name              "json_col → int_turn_string"
                        :database-type     "text"
@@ -619,7 +620,7 @@
                        :nfc-path          [:json_col "int_turn_string"]}]
                      (into [] (sql-jdbc.sync/describe-nested-field-columns
                                driver/*driver*
-                               (mt/db)
+                               (lib.metadata/database (mt/metadata-provider))
                                (t2/select-one :model/Table :db_id (mt/id) :name "json_with_pk")))))
               (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
                 (is (= [{:name              "json_col → int_turn_string"
@@ -631,7 +632,7 @@
                          :nfc-path          [:json_col "int_turn_string"]}]
                        (into [] (sql-jdbc.sync/describe-nested-field-columns
                                  driver/*driver*
-                                 (mt/db)
+                                 (lib.metadata/database (mt/metadata-provider))
                                  (t2/select-one :model/Table :db_id (mt/id) :name "json_without_pk")))))))))))))
 
 (defn- describe-table-indexes
@@ -647,10 +648,10 @@
             (comp
              (map (fn [{:keys [field-name]}] {:type :normal-column-index :value field-name}))
              (map lowercase-value))
-            (driver/describe-indexes driver database {:table-names [(:name table)]}))
+            (driver/describe-indexes driver (driver.u/ensure-lib-database database) {:table-names [(:name table)]}))
       (into #{}
             (map lowercase-value)
-            (driver/describe-table-indexes driver database table)))))
+            (driver/describe-table-indexes driver (driver.u/ensure-lib-database database) table)))))
 
 (deftest describe-table-indexes-test
   (mt/test-drivers (mt/normal-driver-select {:+parent :sql-jdbc
@@ -669,9 +670,9 @@
                  {:type :normal-column-index :value "indexed"}}
                (describe-table-indexes (t2/select-one :model/Table (mt/id :single_index))))))
       (testing "for composite indexes, we only care about the 1st column"
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "composite_index" ["first" "second"]))
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "first"}}
                (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index)))))))))
@@ -693,7 +694,7 @@
         [{:field-name "column" :indexed? false :base-type :type/Integer}]
         [[1 2]]]]
       (testing "unique index"
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "unique_index" ["column"] {:method "hash"}))
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "column"}}
@@ -707,7 +708,7 @@
         [{:field-name "column" :indexed? false :base-type :type/Integer}]
         [[1 2]]]]
       (testing "hashed index"
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "hashed_index" ["column"] {:unique? true}))
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "column"}}
@@ -729,9 +730,9 @@
         [{:field-name "column" :indexed? false :base-type :type/Integer}]
         [[1 2]]]]
       (testing "clustered index"
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "clustered_index" ["column"]))
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        "CLUSTER clustered_index USING idx_clustered_index_column;")
         (is (= #{{:type :normal-column-index :value "id"}
                  {:type :normal-column-index :value "column"}}
@@ -755,14 +756,14 @@
         [{:field-name "column" :indexed? false :base-type :type/Integer}]
         [[1 2]]]]
       (testing "conditional index are ignored"
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "conditional_index" ["column"] {:condition "id > 2"}))
         (is (= #{{:type :normal-column-index :value "id"}}
                (describe-table-indexes (t2/select-one :model/Table (mt/id :conditional_index)))))))))
 
 (deftest describe-fields-are-sorted-test
   (mt/test-drivers (mt/normal-drivers-with-feature :describe-fields)
-    (let [returned-fields (into [] (driver/describe-fields driver/*driver* (mt/db)))
+    (let [returned-fields (into [] (driver/describe-fields driver/*driver* (lib.metadata/database (mt/metadata-provider))))
           sorted-fields (sort-by (juxt :table-schema :table-name :database-position) returned-fields)]
       (is (= sorted-fields
              returned-fields)))))
@@ -823,7 +824,7 @@
           (testing (if materialized? "Materialized View" "View")
             (tx/drop-view! driver/*driver* (mt/db) view-name {:materialized? materialized?})
             (tx/create-view-of-table! driver/*driver* (mt/db) view-name table-name {:materialized? materialized?})
-            (sync/sync-database! (mt/db) {:scan :schema})
+            (sync/sync-database! (mt/id) {:scan :schema})
             (let [orders-id (:id (tx/metabase-instance (tx/map->TableDefinition {:table-name table-name}) (mt/db)))
                   view-instance (tx/metabase-instance (tx/map->TableDefinition {:table-name view-name}) (mt/db))
                   orders-m-id (:id view-instance)
@@ -837,7 +838,7 @@
                                :model/Field
                                :table_id orders-m-id
                                {:order-by [:database_position]})]
-              (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db))))
+              (is (contains? (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (lib.metadata/database (mt/metadata-provider)))))
                              (:name view-instance)))
               (is (some? orders-m-id))
               (is (some? orders-id))

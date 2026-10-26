@@ -10,10 +10,13 @@
    Primary API: [[effective-details]], [[with-write-connection]], [[default-details]]."
   (:require
    [metabase.analytics-interface.core :as analytics]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.performance :as perf]))
 
@@ -131,6 +134,13 @@
   [_database]
   nil)
 
+(defn connection-database
+  "The Database that a connection for `database` goes to in the current context: the current user's routing
+  destination when `database` is a router, otherwise `database` itself."
+  [database]
+  (or (database-routing/routed-database database)
+      database))
+
 (defn- overlay-details-for-type
   "Returns the connection-type-specific details overlay for `database`, or nil if the
    requested type has no configured overlay (or is `:default`).
@@ -155,10 +165,13 @@
     overlay                        connection-type
     :else                          :default))
 
-(defn effective-details
+(mu/defn effective-details
   "Returns the connection details map appropriate for the current context.
 
-   Accepts a database (Toucan2 instance or lib/metadata). Returns nil for nil input.
+   Takes the Lib metadata of a Database.
+
+   Resolves database routing first: for a router, the details are those of the current user's destination (see
+   [[connection-database]]).
 
    By default, returns the primary `:details`. Within a [[with-write-connection]] scope, takes
    `:write-data-details` into account (if configured). Within a [[with-transform-connection]]
@@ -166,22 +179,22 @@
    they get write-data credentials when set — but resolves to a *different* pool key
    (`:transform` vs `:write-data`) so the pool properties (e.g. `unreturnedConnectionTimeout`)
    can differ."
-  [database]
-  (when-let [database (some-> database driver.u/ensure-lib-database)]
-    (let [overlay  (perf/not-empty (overlay-details-for-type database *connection-type*))
-          base     (merge (:details database) overlay)
-          eff-type (resolve-effective-type *connection-type* overlay)]
-      ;; Track when an overlay is genuinely used (not fallback).
-      ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
-      ;; pool-level connection acquisition metrics.
-      (when (and overlay
-                 (not *suppress-resolution-telemetry*))
-        (try (analytics/inc! :metabase-db-connection/type-resolved
-                             {:connection-type (name *connection-type*)})
-             (catch Exception _ nil)))
-      (-> base
-          (assoc ::connection-pool-type eff-type)
-          (assoc ::database-id (u/id database))))))
+  [database :- ::lib.schema.metadata/database]
+  (let [database (connection-database database)
+        overlay  (perf/not-empty (overlay-details-for-type database *connection-type*))
+        base     (merge (:details database) overlay)
+        eff-type (resolve-effective-type *connection-type* overlay)]
+    ;; Track when an overlay is genuinely used (not fallback).
+    ;; Default resolutions are not tracked here — see :metabase-db-connection/write-op for
+    ;; pool-level connection acquisition metrics.
+    (when (and overlay
+               (not *suppress-resolution-telemetry*))
+      (try (analytics/inc! :metabase-db-connection/type-resolved
+                           {:connection-type (name *connection-type*)})
+           (catch Exception _ nil)))
+    (-> base
+        (assoc ::connection-pool-type eff-type)
+        (assoc ::database-id (u/id database)))))
 
 (defn details-for-exact-type
   "Returns the details map for exactly the given connection-type, with no fallback or merging.

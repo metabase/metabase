@@ -57,6 +57,7 @@
    [metabase.pulse.api]
    [metabase.queries-rest.api]
    [metabase.query-processor.api]
+   [metabase.request.core :as request]
    [metabase.revisions.api]
    [metabase.search.api]
    [metabase.segments.rest.api]
@@ -176,6 +177,17 @@
 (def ^:private ^{:arglists '([handler])} +sanitize-streaming-errors
   (routes.common/wrap-middleware-for-open-api-spec-generation sanitize-streaming-errors))
 
+(defn- without-current-user
+  "Middleware that runs `handler` with no current user, keeping only the request's locale: guest embeds and public links
+  are authorized by their signed token or public UUID, never by the visitor's session."
+  [handler]
+  (fn [request respond raise]
+    (request/do-with-current-user (select-keys request [:user-locale])
+                                  #(handler request respond raise))))
+
+(def ^:private ^{:arglists '([handler])} +without-current-user
+  (routes.common/wrap-middleware-for-open-api-spec-generation without-current-user))
+
 (defn- +auth                    [handler] (routes.common/+auth                    (->handler handler)))
 (defn- +message-only-exceptions [handler] (routes.common/+message-only-exceptions (+sanitize-streaming-errors (->handler handler))))
 (defn- +public-exceptions       [handler] (routes.common/+public-exceptions       (+sanitize-streaming-errors (->handler handler))))
@@ -226,7 +238,7 @@
    "/document"             (+auth metabase.documents.api/routes)
    "/eid-translation"      (+auth 'metabase.eid-translation.api)
    "/email"                (+auth metabase.channel.rest.api/email-routes)
-   "/embed"                (+message-only-exceptions metabase.embedding-rest.api/embedding-routes)
+   "/embed"                (+message-only-exceptions (+without-current-user metabase.embedding-rest.api/embedding-routes))
    "/embed-mcp"            (+auth metabase.mcp.callback-api/routes)
    "/embed-theme"          (+auth metabase.embedding-rest.api/theme-routes)
    "/embedding-hub"        metabase.embedding-hub.api/routes
@@ -262,7 +274,7 @@
    "/persist"              (+auth 'metabase.model-persistence.api)
    "/premium-features"     (+auth metabase.premium-features.rest.api/routes)
    "/preview_embed"        (+auth metabase.embedding-rest.api/preview-embedding-routes)
-   "/public"               (+public-exceptions metabase.public-sharing-rest.api/routes)
+   "/public"               (+public-exceptions (+without-current-user metabase.public-sharing-rest.api/routes))
    "/pulse"                metabase.pulse.api/pulse-routes
    "/revision"             (+auth 'metabase.revisions.api)
    "/search"               (+auth metabase.search.api/routes)

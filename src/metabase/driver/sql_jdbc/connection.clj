@@ -14,15 +14,18 @@
    [metabase.driver.sql-jdbc.connection.pool-lock :as pool-lock]
    [metabase.driver.sql-jdbc.connection.ssh-tunnel :as ssh]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util :as u]
+   [metabase.util.connection :as u.connection]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [get-in mapv select-keys]]
-   [metabase.warehouses.schema :as warehouses.schema]
    [potemkin :as p])
   (:import
-   (com.mchange.v2.c3p0 C3P0ProxyConnection DataSources PooledDataSource)
+   (com.mchange.v2.c3p0 C3P0ProxyConnection ConnectionCustomizer DataSources PooledDataSource)
    (java.sql Connection SQLException)
    (javax.sql DataSource)
    (org.apache.logging.log4j Level)))
@@ -137,10 +140,11 @@
   {:write-data "-write"
    :transform  "-transform"})
 
-(defn- pool-data-source-name
+(mu/defn- pool-data-source-name :- :string
   "The c3p0 `dataSourceName` for `database`'s pool of the current connection type: `db-<id>-<driver>-<name>`, with
   `-write` (or the other suffixes in [[pool-type->name-suffix]]) appended for a non-default pool type."
-  [driver database]
+  [driver   :- :keyword
+   database :- ::lib.schema.metadata/database]
   (str (format "db-%d-%s-%s"
                (u/the-id database)
                (name driver)
@@ -261,12 +265,58 @@
   [spec-or-details]
   (select-keys spec-or-details [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))
 
-(defn- create-pool!
+(defenterprise set-role-if-supported!
+  "Sets the connection impersonation role of the current user, or the default role, on the connection `conn` to
+  `database`; OSS has no connection impersonation, so the connection keeps its own user."
+  metabase-enterprise.impersonation.driver
+  [_driver _conn _database])
+
+(defonce ^:private pool-databases
+  (atom {}))
+
+(defonce ^:private ^ThreadLocal checkout-error
+  (ThreadLocal.))
+
+(defn- checkout-database
+  "The Database to set the role for at checkout: the running query's own Database when it is the pool's, which is read
+  fresh for each query, or else the `database` the pool was made for."
+  [database]
+  (or (when (driver-api/initialized?)
+        (let [current (driver-api/database (driver-api/metadata-provider))]
+          (when (= (:id current) (:id database))
+            current)))
+      database))
+
+(p/deftype+ WarehouseConnectionCustomizer []
+  ConnectionCustomizer
+  (onAcquire [_this _connection _identity-token])
+  (onCheckIn [_this _connection _identity-token])
+  (onCheckOut [_this connection identity-token]
+    (try
+      (let [[driver database] (or (get @pool-databases identity-token)
+                                  (throw (ex-info (tru "This connection pool is closed.") {})))]
+        (set-role-if-supported! driver connection (checkout-database database)))
+      (catch Throwable e
+        (.set checkout-error e)
+        (.close ^Connection connection))))
+  (onDestroy [_this _connection _identity-token]))
+
+(u.connection/register-c3p0-connection-customizer! WarehouseConnectionCustomizer)
+
+(defn take-checkout-error!
+  "The error raised setting the connection impersonation role on the connection last checked out on this thread, whose
+  physical connection was closed instead, or nil; clears it."
+  []
+  (let [e (.get checkout-error)]
+    (.remove checkout-error)
+    e))
+
+(mu/defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`.
    Uses [[driver.conn/effective-details]] to select the appropriate connection details
-   for the current connection context."
-  [{:keys [id], driver :engine, :as database}]
-  {:pre [(map? database)]}
+   for the current connection context, and [[WarehouseConnectionCustomizer]] to set the current user's connection
+   impersonation role on every checkout."
+  [{:keys [id], driver :engine, :as database} :- ::lib.schema.metadata/database]
   (log/debug (u/format-color :cyan "Creating new connection pool for %s database %s (%s) ..."
                              driver id (driver.conn/connection-telemetry-info)))
   (let [details             (driver.conn/effective-details database)
@@ -287,9 +337,12 @@
         ;; the auth provider's response is merged into the details, so it can set parameters too
         _                   (driver.u/validate-connection-parameters! driver details-with-auth)
         spec                (connection-details->spec driver details-with-auth)
-        properties          (data-warehouse-connection-pool-properties driver database)]
+        properties          (assoc (data-warehouse-connection-pool-properties driver database)
+                                   "connectionCustomizerClassName" (.getName WarehouseConnectionCustomizer))
+        pool-spec           (connection-pool-spec spec properties)]
+    (swap! pool-databases assoc (.getIdentityToken ^PooledDataSource (:datasource pool-spec)) [driver database])
     (merge
-     (connection-pool-spec spec properties)
+     pool-spec
      ;; also capture entries related to ssh tunneling for later use
      (select-internal-keys-for-spec details-with-auth)
      (select-internal-keys-for-spec spec)
@@ -305,6 +358,9 @@
   ;; closed" (see DEV-2161). Pool destruction is rare and significant enough to warrant INFO in production too.
   (log/info (u/format-color :red "Closing old connection pool for database %s ..." database-id))
   (driver-api/destroy-connection-pool! pool-spec)
+  (when-let [data-source (:datasource pool-spec)]
+    (when (instance? PooledDataSource data-source)
+      (swap! pool-databases dissoc (.getIdentityToken ^PooledDataSource data-source))))
   (ssh/close-tunnel! pool-spec))
 
 (defonce ^:private ^{:doc "A map of our currently open connection pools,
@@ -318,21 +374,20 @@
   pool-cache-key->jdbc-spec-hash
   (atom {}))
 
-(defn- pool-cache-key
+(mu/defn- pool-cache-key
   "Returns the cache key for connection pools: `[database-id, connection-type]`.
    Uses [[driver.conn/connection-pool-type]] so that a requested write connection
    without configured `:write-data-details` resolves to `:default`, reusing the
    existing pool instead of creating a duplicate."
-  [database]
+  [database :- ::lib.schema.metadata/database]
   [(u/the-id database) (driver.conn/connection-pool-type database)])
 
 (mu/defn- jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on the effective connection details, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated.
   Uses [[driver.conn/effective-details]] to select the appropriate details for the current connection context."
-  [{driver :engine, :as database} :- [:maybe ::warehouses.schema/database-or-metadata]]
-  (when (some? database)
-    (hash (connection-details->spec driver (driver.conn/effective-details database)))))
+  [{driver :engine, :as database} :- ::lib.schema.metadata/database]
+  (hash (connection-details->spec driver (driver.conn/effective-details database))))
 
 (defn- set-canonical-pool!
   "Atomically update the canonical connection pool for a database and connection type.
@@ -353,12 +408,11 @@
   (swap! pool-cache-key->jdbc-spec-hash assoc cache-key details-hash)
   nil)
 
-(defn invalidate-pool-for-db!
-  "Invalidates all connection pools for the given database (all connection types) by closing
+(mu/defn invalidate-pool-for-db!
+  "Invalidates all connection pools for the Database with `db-id` (all connection types) by closing
   them and removing from cache."
-  [database]
-  (let [db-id           (u/the-id database)
-        canonical-keys  (mapv (fn [conn-type] [db-id conn-type])
+  [db-id :- ::lib.schema.id/database]
+  (let [canonical-keys  (mapv (fn [conn-type] [db-id conn-type])
                               driver.conn/connection-types)
         pool-map        @pool-cache-key->connection-pool
         canonical-count (count (filter pool-map canonical-keys))]
@@ -460,8 +514,9 @@
       ;; the hash didn't match, but it's possible that a stale instance of `DatabaseInstance`
       ;; was passed in (ex: from a long-running sync operation); fetch the latest one from
       ;; our app DB, and see if it STILL doesn't match
-      (not= curr-hash (-> (driver.db/database-connection-details database-id)
-                          jdbc-spec-hash)))))
+      (or (not (driver.db/database-exists? database-id))
+          (not= curr-hash (-> (driver.u/lib-database database-id)
+                              jdbc-spec-hash))))))
 
 (defn- get-canonical-pool
   "Get a canonical pool if it exists and is valid, otherwise return nil.
@@ -484,62 +539,42 @@
       :else
       (get-pool-if-valid pool-spec database-id log-invalidation?))))
 
-(defn db->pooled-connection-spec
-  "Return a JDBC connection spec that includes a c3p0 `ComboPooledDataSource`. These connection pools are cached so we
-  don't create multiple ones for the same DB and connection type. The connection type follows the current
-  connection context — use [[driver.conn/with-write-connection]] to get a write connection pool."
-  [db-or-id-or-spec]
-  (when-let [db-id (u/id db-or-id-or-spec)]
-    (driver-api/check-allowed-access! db-id))
-  (cond
-    ;; db-or-id-or-spec is a Database instance or an integer ID
-    (u/id db-or-id-or-spec)
-    (let [database-id  (u/the-id db-or-id-or-spec)
-          ;; we need the Database instance no matter what (in order to calculate details hash)
-          db           (or (when (driver-api/instance-of? :model/Database db-or-id-or-spec)
-                             (driver-api/instance->metadata db-or-id-or-spec :metadata/database))
-                           (when (= (:lib/type db-or-id-or-spec) :metadata/database)
-                             db-or-id-or-spec)
-                           (driver-api/with-metadata-provider database-id
-                             (driver-api/database (driver-api/metadata-provider))))
-          cache-key    (pool-cache-key db)
-          ;; Calculate hash from effective details (includes write-connection merge)
-          details-hash (jdbc-spec-hash db)]
-      (driver.conn/track-connection-acquisition! (driver.conn/effective-details db))
-      (cond
-        (or (:is-audit db)
-            (and (audit-app/analytics-dev-mode)
-                 (get-in db [:details :is-audit-dev])))
-        {:datasource (driver-api/data-source)}
+(mu/defn db->pooled-connection-spec
+  "Return a JDBC connection spec that includes a c3p0 `ComboPooledDataSource` for the Lib metadata `db` of a Database.
+  These connection pools are cached so we don't create multiple ones for the same DB and connection type. The
+  connection type follows the current connection context — use [[driver.conn/with-write-connection]] to get a write
+  connection pool."
+  [db :- ::lib.schema.metadata/database]
+  (driver-api/check-allowed-access! db)
+  (let [db           (driver.conn/connection-database db)
+        cache-key    (pool-cache-key db)
+        ;; Calculate hash from effective details (includes write-connection merge)
+        details-hash (jdbc-spec-hash db)]
+    (driver.conn/track-connection-acquisition! (driver.conn/effective-details db))
+    (cond
+      (or (:is-audit db)
+          (and (audit-app/analytics-dev-mode)
+               (get-in db [:details :is-audit-dev])))
+      {:datasource (driver-api/data-source)}
 
-        (get-in db [:details :is-audit-dev])
-        (throw (ex-info (tru "Cannot open a connection for an analytics-dev database unless analytics dev mode is enabled.")
-                        {:database-id (:id db)}))
+      (get-in db [:details :is-audit-dev])
+      (throw (ex-info (tru "Cannot open a connection for an analytics-dev database unless analytics dev mode is enabled.")
+                      {:database-id (:id db)}))
 
-        :else
-        (or
-         ;; we have an existing valid pool for this database, so use it
-         (get-canonical-pool cache-key details-hash true)
-         ;; We don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed
-         ;; the very next instant. This will cause their queries to fail. Thus we should do the usual locking here
-         ;; and make sure only one thread will be creating a pool at a given instant.
-         (locking pool-lock/monitor
-           (or
-            ;; check if another thread created the pool while we were waiting to acquire the lock
-            (get-canonical-pool cache-key details-hash false)
-            ;; create a new pool and add it to our cache, then return it
-            (u/prog1 (create-pool! db)
-              (set-canonical-pool! cache-key details-hash <>)))))))
-
-    ;; already a `clojure.java.jdbc` spec map
-    (map? db-or-id-or-spec)
-    db-or-id-or-spec
-
-    ;; invalid. Throw Exception
-    :else
-    (throw (ex-info (tru "Not a valid Database/Database ID/JDBC spec")
-                    ;; don't log the actual spec lest we accidentally expose credentials
-                    {:input (class db-or-id-or-spec)}))))
+      :else
+      (or
+       ;; we have an existing valid pool for this database, so use it
+       (get-canonical-pool cache-key details-hash true)
+       ;; We don't want to end up with a bunch of simultaneous threads creating pools only to have them destroyed
+       ;; the very next instant. This will cause their queries to fail. Thus we should do the usual locking here
+       ;; and make sure only one thread will be creating a pool at a given instant.
+       (locking pool-lock/monitor
+         (or
+          ;; check if another thread created the pool while we were waiting to acquire the lock
+          (get-canonical-pool cache-key details-hash false)
+          ;; create a new pool and add it to our cache, then return it
+          (u/prog1 (create-pool! db)
+            (set-canonical-pool! cache-key details-hash <>))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |

@@ -2,6 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.fields.sync-metadata :as sync-metadata]
    [metabase.test :as mt]
@@ -25,7 +27,7 @@
                                                 (swap! update-operations conj [(name model) id updates])
                                                 (count updates))]
          (#'sync-metadata/update-field-metadata-if-needed!
-          db
+          (driver.u/lib-database (:id db))
           table
           new-metadata-from-sync
           metadata-in-application-db)
@@ -342,7 +344,7 @@
             ;; drop the column and create a new one with the same name
             (sql-jdbc.execute/do-with-connection-with-options
              :h2
-             (mt/db)
+             (lib.metadata/database (mt/metadata-provider))
              {}
              (fn [conn]
                (doseq [sql ["ALTER TABLE \"TABLE\" DROP COLUMN \"FIELD\";"
@@ -393,7 +395,7 @@
                                 :base-type  :type/Text}]
                               [["100"] ["200"] ["300"]]]]
       (try
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (let [original-field (t2/select-one :model/Field (mt/id :my_table :text_column))]
           (testing "sanity check: original column is text"
             (is (=? {:base_type      :type/Text
@@ -405,14 +407,14 @@
           ;; not translate to H2, so we use ALTER COLUMN to achieve the same "in-place update" effect.
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
-           (mt/db)
+           (lib.metadata/database (mt/metadata-provider))
            {}
            (fn [conn]
              (doseq [sql ["DROP TABLE \"MY_TABLE\";"
                           "CREATE TABLE \"MY_TABLE\" (\"TEXT_COLUMN\" DECIMAL(38,2));"
                           "INSERT INTO \"MY_TABLE\"(text_column) VALUES(100.00),(200.00),(300.00);"]]
                (next.jdbc/execute! conn [sql]))))
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/id))
           (let [new-field (t2/select-one :model/Field (mt/id :my_table :text_column))]
             (testing "after sync, base_type and effective_type both reflect the new numeric column
                      and stale coercion/semantic type are cleared"
@@ -424,7 +426,7 @@
                       new-field))))
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
-           (mt/db)
+           (lib.metadata/database (mt/metadata-provider))
            {}
            (fn [conn]
              (doseq [sql ["DROP TABLE \"MY_TABLE\";"]]
@@ -433,23 +435,23 @@
           (t2/delete! :model/Field :table_id (:table_id original-field))
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
-           (mt/db)
+           (lib.metadata/database (mt/metadata-provider))
            {}
            (fn [conn]
              (doseq [sql ["CREATE TABLE \"MY_TABLE\" (\"TEXT_COLUMN\" TEXT);"
                           "INSERT INTO \"MY_TABLE\"(text_column) VALUES('100'),('200'),('300');"]]
                (next.jdbc/execute! conn [sql]))))
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/id))
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
-           (mt/db)
+           (lib.metadata/database (mt/metadata-provider))
            {}
            (fn [conn]
              (doseq [sql ["DROP TABLE \"MY_TABLE\";"
                           "CREATE TABLE \"MY_TABLE\" (\"TEXT_COLUMN\" DECIMAL(38,2));"
                           "INSERT INTO \"MY_TABLE\"(text_column) VALUES(100.00),(200.00),(300.00);"]]
                (next.jdbc/execute! conn [sql]))))
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/id))
           (let [new-field (t2/select-one :model/Field :name "TEXT_COLUMN")]
             (testing "after sync, base_type and effective_type both reflect the new numeric column
                      and stale coercion/semantic type are cleared"
@@ -538,7 +540,7 @@
           (mt/user-http-request :crowberto :put 200 (format "field/%d" field-id) {:data_sensitivity "PII"})
           (sql-jdbc.execute/do-with-connection-with-options
            :h2
-           (mt/db)
+           (lib.metadata/database (mt/metadata-provider))
            {}
            (fn [conn]
              (doseq [sql ["ALTER TABLE \"TABLE\" DROP COLUMN \"FIELD\";"

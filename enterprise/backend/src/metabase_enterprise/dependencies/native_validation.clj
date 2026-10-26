@@ -23,7 +23,7 @@
   parameter substitution must happen INSIDE the *compile-with-inline-parameters* binding
   to produce inline literals instead of ? placeholders."
   [query :- ::lib.schema/query]
-  (database-routing/with-database-routing-off
+  (database-routing/with-anonymous-router-access
     (let [with-params (lib/add-parameters-for-template-tags query)
           compiled    (qp.compile/compile-with-inline-parameters with-params)]
       (lib/native-query with-params (:query compiled)))))

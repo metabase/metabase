@@ -54,6 +54,22 @@
    [:target-incremental-strategy {:optional true} ::target-incremental-strategy]
    [:index-request-ids {:optional true} [:sequential pos-int?]]])
 
+(mr/def ::synced-target
+  "A transform target with the columns of the Table that syncing it creates."
+  [:merge
+   ::transform-target
+   [:map {:closed true}
+    [:data_authority {:optional true} :keyword]
+    [:data_source    {:optional true} :keyword]
+    [:is_writable    {:optional true} :boolean]]])
+
+(mr/def ::indexed-target
+  "A transform target with the ID of the transform whose index requests it carries."
+  [:merge
+   ::transform-target
+   [:map {:closed true}
+    [:transform-id {:optional true} pos-int?]]])
+
 (mr/def ::transform
   "A transform map as expected by execute-base! implementations. The full transforms module
   (metabase.transforms.schema) hydrates and stores more columns on this same map; they're declared here,
