@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { t } from "ttag";
 
 import {
@@ -12,6 +12,7 @@ import {
   Switch,
   Text,
   Title,
+  Tooltip,
 } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { CardDisplayType } from "metabase-types/api";
@@ -24,13 +25,20 @@ import { FilterTreeInspector } from "./harness/FilterTreeInspector";
 import { QueryResults } from "./harness/QueryResults";
 import {
   clearFilters,
+  withCountByBinnedTotal,
+  withCountByCategory,
   withCountByCategoryByMonth,
+  withCountByMonth,
+  withCountBySource,
+  withCountByState,
+  withCountWhereByCategory,
   withDnfExample,
   withFilteredCountByCategoryByMonth,
   withFourLevelsExample,
   withNestedExample,
   withOrExample,
   withPillsExample,
+  withRawRows,
   withTwoGroupsExample,
   withTwoStagesExample,
 } from "./harness/examples";
@@ -44,11 +52,13 @@ type Example = {
   load: (query: Lib.Query, stageIndex: number) => Lib.Query;
   /** How the results render once loaded; defaults to a table. */
   display?: CardDisplayType;
+  /** What to click in the results and what the drill writes; shown as a tooltip. */
+  hint?: string;
 };
 
 const DEFAULT_DISPLAY: CardDisplayType = "table";
 
-const EXAMPLES: Example[] = [
+const SYNTHETIC_SHAPE_EXAMPLES: Example[] = [
   {
     get label() {
       return t`A or B`;
@@ -108,6 +118,104 @@ const EXAMPLES: Example[] = [
   },
 ];
 
+/** One unfiltered starting point per drill in `drills.md`; the drill is performed in the results. */
+const DRILL_EXAMPLES: Example[] = [
+  {
+    get label() {
+      return t`Quick filter, FK filter`;
+    },
+    load: withRawRows,
+    hint: t`Orders as a table. Click a value → "=", "≠", "<", ">" or "Is empty"; click a Product ID → "View this Product's Orders" (Product ID = 42); click a header → filter picker.`,
+  },
+  {
+    get label() {
+      return t`See these Orders`;
+    },
+    load: withCountByCategory,
+    display: "bar",
+    hint: t`Count by Product → Category. Click a bar → "See these Orders" writes Category = Gizmo; "Break out by…" is also offered.`,
+  },
+  {
+    get label() {
+      return t`See these Orders (count where)`;
+    },
+    load: withCountWhereByCategory,
+    display: "bar",
+    hint: t`Count where Discount is not empty, by Product → Category. Click a bar → "See these Orders" writes two clauses: Category = Gizmo and Discount is not empty.`,
+  },
+  {
+    get label() {
+      return t`Zoom in: time`;
+    },
+    load: withCountByMonth,
+    display: "line",
+    hint: t`Count by Created At: Month. Click a point → "See this month by week" writes Created At = March 2024 and breaks out by week.`,
+  },
+  {
+    get label() {
+      return t`Zoom in: bins`;
+    },
+    load: withCountByBinnedTotal,
+    display: "bar",
+    hint: t`Count by Total in auto bins. Click a bar → "Zoom in" writes Total >= 20 and Total < 40 and narrows the bins. Existing top-level Total filters are removed first.`,
+  },
+  {
+    get label() {
+      return t`Zoom in: map`;
+    },
+    load: withCountByState,
+    display: "map",
+    hint: t`Count by User → State on a region map. Click a state → "Zoom in: State" writes State = CA and swaps the breakout to binned latitude and longitude.`,
+  },
+  {
+    get label() {
+      return t`Break out by…`;
+    },
+    load: withCountBySource,
+    display: "bar",
+    hint: t`Count by User → Source. Click a bar → "Break out by…" → Category or Time: writes Source = Affiliate, removes that breakout and adds the chosen column.`,
+  },
+  {
+    get label() {
+      return t`Filter on Count`;
+    },
+    load: withCountByCategory,
+    hint: t`Count by Product → Category as a table. Click a Count cell → ">" or "<" writes Count > 153 on a new stage after the summary.`,
+  },
+];
+
+type ExampleRowProps = {
+  label: string;
+  examples: Example[];
+  onLoad: (example: Example) => void;
+  children?: ReactNode;
+};
+
+function ExampleRow({ label, examples, onLoad, children }: ExampleRowProps) {
+  return (
+    <Group gap="sm" align="center">
+      <Text fw="bold" c="text-secondary" miw="6.5rem">
+        {label}
+      </Text>
+      {examples.map((example) => (
+        <Tooltip
+          key={example.label}
+          label={example.hint}
+          disabled={!example.hint}
+          maw="24rem"
+          multiline
+          openDelay={300}
+        >
+          <Button size="sm" variant="default" onClick={() => onLoad(example)}>
+            {example.label}
+          </Button>
+        </Tooltip>
+      ))}
+      {children}
+    </Group>
+  );
+}
+
 /** Each expression-bar copy has its own settings context; the canvas feeds the right one. */
 function getReadingContext(directionId: string) {
   switch (directionId) {
@@ -149,6 +257,11 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
     return isLoading ? <Loader /> : null;
   }
 
+  const loadExample = ({ load, display: exampleDisplay }: Example) => {
+    setQuery(load(baseQuery ?? query, STAGE_INDEX));
+    setDisplay(exampleDisplay ?? DEFAULT_DISPLAY);
+  };
+
   const hasCompactReading =
     direction.id === "expression-bar-inline-2" ||
     direction.id === "expression-bar-unified" ||
@@ -168,21 +281,11 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
                 <Text c="text-secondary">{direction.description}</Text>
               </Box>
 
-              <Group gap="sm" align="center">
-                <Text fw="bold" c="text-secondary">{t`Examples`}</Text>
-                {EXAMPLES.map(({ label, load, display: exampleDisplay }) => (
-                  <Button
-                    key={label}
-                    size="sm"
-                    variant="default"
-                    onClick={() => {
-                      setQuery(load(baseQuery ?? query, STAGE_INDEX));
-                      setDisplay(exampleDisplay ?? DEFAULT_DISPLAY);
-                    }}
-                  >
-                    {label}
-                  </Button>
-                ))}
+              <ExampleRow
+                label={t`Synthetic shapes`}
+                examples={SYNTHETIC_SHAPE_EXAMPLES}
+                onLoad={loadExample}
+              >
                 <Button
                   ml="auto"
                   size="sm"
@@ -206,7 +309,12 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
                 >
                   {t`Reset`}
                 </Button>
-              </Group>
+              </ExampleRow>
+              <ExampleRow
+                label={t`Drill-throughs`}
+                examples={DRILL_EXAMPLES}
+                onLoad={loadExample}
+              />
             </Stack>
           </Paper>
         </Stack>

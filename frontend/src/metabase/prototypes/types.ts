@@ -7,6 +7,7 @@ export type PrototypeDefinition = {
   id: string;
   name: string;
   description: string;
-  iteration: PrototypeIteration;
+  /** Absent for reference pages that sit above the iterations in the rail. */
+  iteration?: PrototypeIteration;
   Component: ComponentType;
 };

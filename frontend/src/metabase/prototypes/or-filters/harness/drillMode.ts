@@ -3,9 +3,10 @@ import type { QueryClickActionsMode } from "metabase/querying/click-actions/type
 
 /**
  * The real click-actions pipeline, limited to the drills that write a filter
- * clause. Object detail, sort, pivot and the rest would only distract from
- * the question the prototype asks: what does a drilled filter look like next
- * to an OR expression?
+ * clause. Pivot ("Break out by…") counts: it writes one `=` per breakout
+ * value before swapping the breakout. Object detail, sort and the rest would
+ * only distract from the question the prototype asks: what does a drilled
+ * filter look like next to an OR expression?
  */
 const FILTER_DRILLS_MODE: QueryClickActionsMode = {
   name: "or-filters-prototype",
@@ -18,6 +19,7 @@ const FILTER_DRILLS_MODE: QueryClickActionsMode = {
     "drill-thru/zoom-in.timeseries",
     "drill-thru/zoom-in.binning",
     "drill-thru/zoom-in.geographic",
+    "drill-thru/pivot",
   ],
   clickActions: [],
 };

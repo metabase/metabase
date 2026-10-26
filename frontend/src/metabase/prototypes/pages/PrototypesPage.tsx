@@ -29,8 +29,8 @@ export function PrototypesPage() {
       ? PROTOTYPES[0]
       : PROTOTYPES.find((candidate) => candidate.id === prototypeId);
 
-  // Baseline sits above the iterations: it is today's UI, not a direction.
-  const [baseline, ...directions] = PROTOTYPES;
+  // The drills reference and Baseline sit above the iterations: neither is a direction.
+  const [docs, baseline, ...directions] = PROTOTYPES;
   const iteration1 = directions.filter(
     (candidate) => candidate.iteration === 1,
   );
@@ -55,7 +55,12 @@ export function PrototypesPage() {
           <AppSwitcher />
         </Group>
 
-        <PrototypeLinks prototypes={[baseline]} activeId={prototype?.id} />
+        <PrototypeLinks
+          prototypes={[docs, baseline]}
+          activeId={prototype?.id}
+        />
+
+        <Divider my="sm" />
 
         <NavLink label={t`Iteration 1`} childrenOffset="sm">
           <PrototypeLinks

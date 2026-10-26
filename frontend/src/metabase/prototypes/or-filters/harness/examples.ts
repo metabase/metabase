@@ -208,6 +208,39 @@ function findBreakoutColumn(
   );
 }
 
+function findTemporalBucket(
+  query: Lib.Query,
+  stageIndex: number,
+  column: Lib.ColumnMetadata,
+  shortName: string,
+): Lib.Bucket | null {
+  return (
+    Lib.availableTemporalBuckets(query, stageIndex, column).find(
+      (bucket) =>
+        Lib.displayInfo(query, stageIndex, bucket).shortName === shortName,
+    ) ?? null
+  );
+}
+
+/** `Count` by `Created At`, bucketed by `unit`, on a cleared query. */
+function withCountByCreatedAt(
+  query: Lib.Query,
+  stageIndex: number,
+  unit: string,
+): Lib.Query | undefined {
+  const cleared = clearFilters(query, stageIndex);
+  const createdAt = findBreakoutColumn(cleared, stageIndex, "Created At");
+  if (!createdAt) {
+    return undefined;
+  }
+  const bucket = findTemporalBucket(cleared, stageIndex, createdAt, unit);
+  return Lib.breakout(
+    Lib.aggregateByCount(cleared, stageIndex),
+    stageIndex,
+    Lib.withTemporalBucket(createdAt, bucket),
+  );
+}
+
 /**
  * An aggregated question: `Count` by `Product → Category` by `Created At: Month`.
  * This is the shape where the "See these Orders" and "zoom in" drills appear;
@@ -217,30 +250,119 @@ export function withCountByCategoryByMonth(
   query: Lib.Query,
   stageIndex: number,
 ): Lib.Query {
+  const byMonth = withCountByCreatedAt(query, stageIndex, "month");
+  const category = byMonth
+    ? findBreakoutColumn(byMonth, stageIndex, "Product → Category")
+    : undefined;
+  if (!byMonth || !category) {
+    return query;
+  }
+  return Lib.breakout(byMonth, stageIndex, category);
+}
+
+/**
+ * Drill starting points. Each one is the unfiltered query shape on which a
+ * drill from `drills.md` appears in the click popover; the drill itself is
+ * performed in the results, so the bar shows exactly what it writes.
+ */
+
+/** Orders as a table: quick-filter on a value cell, fk-filter on Product ID / User ID, column-filter on a header. */
+export function withRawRows(query: Lib.Query, stageIndex: number): Lib.Query {
+  return clearFilters(query, stageIndex);
+}
+
+/** `Count` by `Product → Category`: "See these Orders" writes `Category = X`; "Break out by…" offers category and time. */
+export function withCountByCategory(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  return withCountByBreakout(query, stageIndex, "Product → Category");
+}
+
+/** `Count` by `Created At: Month`: zoom-in.timeseries filters the clicked month and breaks out by week. */
+export function withCountByMonth(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  return withCountByCreatedAt(query, stageIndex, "month") ?? query;
+}
+
+/** `Count` by `Total` in auto bins: zoom-in.binning writes `Total >= a and Total < b` and narrows the bins. */
+export function withCountByBinnedTotal(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
   const cleared = clearFilters(query, stageIndex);
+  const total = findBreakoutColumn(cleared, stageIndex, "Total");
+  if (!total) {
+    return query;
+  }
+  return Lib.breakout(
+    Lib.aggregateByCount(cleared, stageIndex),
+    stageIndex,
+    Lib.withDefaultBinning(cleared, stageIndex, total),
+  );
+}
+
+/** `Count` by `User → State`: zoom-in.geographic writes `State = X` and swaps the breakout to binned lat/lon. */
+export function withCountByState(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  return withCountByBreakout(query, stageIndex, "User → State");
+}
+
+/** `Count` by `User → Source`: "Break out by…" writes `Source = X` and breaks out by the chosen column. */
+export function withCountBySource(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  return withCountByBreakout(query, stageIndex, "User → Source");
+}
+
+/**
+ * `Count where Discount is not empty` by `Product → Category`: "See these
+ * Orders" appends two clauses, the breakout value and the aggregation's own
+ * condition.
+ */
+export function withCountWhereByCategory(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const discount = findColumn(cleared, stageIndex, "Discount");
   const category = findBreakoutColumn(
     cleared,
     stageIndex,
     "Product → Category",
   );
-  const createdAt = findBreakoutColumn(cleared, stageIndex, "Created At");
-  if (!category || !createdAt) {
+  if (!discount || !category) {
     return query;
   }
-  const monthBucket = Lib.availableTemporalBuckets(
-    cleared,
-    stageIndex,
-    createdAt,
-  ).find(
-    (bucket) =>
-      Lib.displayInfo(cleared, stageIndex, bucket).shortName === "month",
-  );
-  const counted = Lib.aggregateByCount(cleared, stageIndex);
-  const byCategory = Lib.breakout(counted, stageIndex, category);
+  const countWhere = Lib.expressionClause("count-where", [
+    Lib.defaultFilterClause({ operator: "not-null", column: discount }),
+  ]);
   return Lib.breakout(
-    byCategory,
+    Lib.aggregate(cleared, stageIndex, countWhere),
     stageIndex,
-    Lib.withTemporalBucket(createdAt, monthBucket ?? null),
+    category,
+  );
+}
+
+function withCountByBreakout(
+  query: Lib.Query,
+  stageIndex: number,
+  longDisplayName: string,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const column = findBreakoutColumn(cleared, stageIndex, longDisplayName);
+  if (!column) {
+    return query;
+  }
+  return Lib.breakout(
+    Lib.aggregateByCount(cleared, stageIndex),
+    stageIndex,
+    column,
   );
 }
 

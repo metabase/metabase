@@ -1,0 +1,24 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th,
+.table td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+.table th {
+  color: var(--mb-color-text-secondary);
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.table td:first-child {
+  white-space: nowrap;
+  font-weight: bold;
+}
