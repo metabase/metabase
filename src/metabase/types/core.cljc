@@ -139,6 +139,12 @@
 (derive :type/Duration :Semantic/*)
 (derive :type/Duration :type/Number)
 
+;;; Binary Types
+
+;; Raw bytes: Postgres `bytea`, MySQL `BLOB`, SQL Server `varbinary`. Like Mongo's binData (below), blobs are files,
+;; images or ciphertext, so sampling them for a fingerprint costs a lot of memory for no useful result.
+(derive :type/Binary :type/fingerprint-unsupported)
+
 ;;; Text Types
 
 (derive :type/Text :type/*)
@@ -294,6 +300,8 @@
 (derive :type/MongoBinData :type/TextLike)
 ;; binData holds arbitrary binary blobs (files, images, encrypted data) that aren't text-truncated by the sampler, so
 ;; fingerprinting them (sampling the full values) can use enormous amounts of memory for no useful result.
+;;
+;; TODO (Cam 2026-10-26) consider whether this should derive from `:type/Binary` instead
 (derive :type/MongoBinData :type/fingerprint-unsupported)
 (derive :type/MySQLEnum :type/Text)
 ;; IP address can be either a data type e.g. Postgres `inet` or a semantic type e.g. a `text` column that has IP

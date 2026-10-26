@@ -546,7 +546,7 @@
    jdbc-type     :- [:maybe int?]]
   (case database-type
     "BIGINT"           :type/BigInteger
-    "BINARY"           :type/*
+    "BINARY"           :type/Binary
     "BOOLEAN"          :type/Boolean
     "BYTEINT"          :type/Integer
     "CHAR"             :type/Text
@@ -569,7 +569,7 @@
     "STRING"           :type/Text
     "TEXT"             :type/Text
     "TINYINT"          :type/Integer
-    "VARBINARY"        :type/*
+    "VARBINARY"        :type/Binary
     "VARCHAR"          :type/Text
     "DATE"             :type/Date
     "DATETIME"         :type/DateTime

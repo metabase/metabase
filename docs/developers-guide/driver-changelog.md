@@ -80,22 +80,10 @@ summary: Changes to the Metabase driver interface, listed by release.
 
 ## Metabase 0.65.0
 
-- `metabase.driver.sql-jdbc.execute/set-role-if-supported!` moved to
-  `metabase.driver.sql-jdbc.connection/set-role-if-supported!`. The JDBC connection pool now sets the connection
-  impersonation role on every checkout, so a driver that overrides `do-with-connection-with-options` no longer calls
-  it, and `do-with-connection-with-options` no longer sets it either.
-
-- `metabase.driver.connection/effective-details` and `metabase.driver.sql-jdbc.connection/db->pooled-connection-spec`
-  resolve a database routing router to the current user's destination. Read connection details through
-  `effective-details` and get JDBC connections through the pool, so routing applies; building a connection from raw
-  details (`sql-jdbc.conn/connection-details->spec`, `driver.u/can-connect-with-details?`) is a discouraged var
-  outside driver namespaces.
-
-- The admin connection is removed: `metabase.driver.connection/with-admin-connection`,
-  `metabase.driver.connection/database-admin-details`, the `:admin` connection type,
-  `metabase.driver.common/admin-connection-option` (and its `"admin-connection"` `visible-if` marker) and
-  `metabase.driver.util/fields-hidden-for-admin-connection` are gone, and a Database no longer has `:admin_details`.
-  A driver's `normalize-db-details` normalizes only `:details` and `:write_data_details`.
+- `:type/Binary` is a new base type for raw bytes: Postgres `bytea`, MySQL `BLOB` and `VARBINARY`, SQL Server
+  `varbinary`, and the like. Drivers should return it from `sql-jdbc.sync/database-type->base-type` for such columns
+  instead of `:type/*`. The bundled drivers already do. It derives from `:type/fingerprint-unsupported`, so sync does
+  not sample these columns.
 
 - `metabase.driver/disallowed-connection-parameters` `[driver]` -- new multimethod returning the names of client
   connection parameters a user may never set, whether in `:additional-options` or as a detail key. Metabase refuses
