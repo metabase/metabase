@@ -27,6 +27,17 @@ const notFoundRoutes = routeObjtoArray(premiumRoutes);
 const upsells = routeObjtoArray(upsellRoutes);
 
 describe("Admin Settings Routing - Enterprise without features", () => {
+  it("should not offer the Custom URL homepage option without a valid license", async () => {
+    await setup({ isAdmin: true, initialRoute: "/general" });
+
+    expect(
+      await screen.findByRole("radio", { name: "Default Metabase home" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("radio", { name: "Custom URL" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("renders the settings editor", async () => {
     await setup({ isAdmin: true });
     expect(

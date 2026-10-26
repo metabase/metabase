@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupSettingEndpoint } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
@@ -177,6 +177,35 @@ describe("SettingsNav", () => {
     expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
     expect(screen.queryByText("Python Runner")).not.toBeInTheDocument();
     expect(screen.queryByText("Branding")).not.toBeInTheDocument();
+  });
+
+  it("should show an upsell gem on the Appearance nav item without the whitelabel feature", async () => {
+    await setup({
+      initialRoute: "/admin/settings/general",
+      tokenFeatures: { whitelabel: false },
+    });
+
+    const appearanceNavItem = await screen.findByRole("link", {
+      name: /Appearance/,
+    });
+    expect(
+      within(appearanceNavItem).getByTestId("upsell-gem"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Branding")).not.toBeInTheDocument();
+  });
+
+  it("should not show an upsell gem on the Appearance nav item with the whitelabel feature", async () => {
+    await setup({
+      initialRoute: "/admin/settings/general",
+      tokenFeatures: { whitelabel: true },
+    });
+
+    const appearanceNavItem = await screen.findByRole("link", {
+      name: /Appearance/,
+    });
+    expect(
+      within(appearanceNavItem).queryByTestId("upsell-gem"),
+    ).not.toBeInTheDocument();
   });
 
   it("should show the Appearance folder to settings managers when whitelabel is enabled", async () => {
