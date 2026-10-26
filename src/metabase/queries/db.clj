@@ -360,12 +360,12 @@
                                     :join   [:implicit_action [:= :action.id :implicit_action.action_id]]
                                     :where  [:= :action.model_id model-id]}))
 
-(mu/defn move-actions-of-models!
-  "Move the Actions of the Cards with `model-ids` to the Collection with `collection-id`, returning the number
+(mu/defn move-actions-of-model!
+  "Move the Actions of the model Card with `model-id` to the Collection with `collection-id`, returning the number
   updated."
-  [model-ids     :- [:set ::lib.schema.id/card]
+  [model-id      :- ::lib.schema.id/card
    collection-id :- [:maybe ::lib.schema.id/collection]]
-  (t2/update! :model/Action :model_id [:in model-ids] {:collection_id collection-id}))
+  (t2/update! :model/Action {:model_id model-id} {:collection_id collection-id}))
 
 (mu/defn delete-actions-of-model!
   "Delete the Actions of the Card with `model-id`, returning the number deleted."
