@@ -16,7 +16,11 @@ import * as Lib from "metabase-lib";
 import { FilterTokenView } from "./ExpressionBar";
 import S from "./ExpressionBar.module.css";
 import { CompactReadingContext } from "./settings";
-import { getAggregationColumns, useSummaryStage } from "./summary";
+import {
+  type SummaryStage,
+  getAggregationColumns,
+  useSummaryStages,
+} from "./summary";
 
 type SummaryPillsProps = {
   query: Lib.Query;
@@ -24,10 +28,16 @@ type SummaryPillsProps = {
   onChange: (query: Lib.Query) => void;
 };
 
+/** An aggregation the zone can filter on, with the summary stage its filter lives on. */
+type SummaryColumn = {
+  summary: SummaryStage;
+  column: Lib.ColumnMetadata;
+};
+
 /**
- * The filters on the summary as a separate zone after the expression: plain
- * AND-ed pills, added through their own button, applied at once. Renders
- * nothing while the stage has no summary.
+ * The filters on the summaries as a separate zone after the expression:
+ * plain AND-ed pills, one summary stage after another, added through their
+ * own button, applied at once. Renders nothing while the stage has no summary.
  */
 export function SummaryPills({
   query,
@@ -35,18 +45,31 @@ export function SummaryPills({
   onChange,
 }: SummaryPillsProps) {
   const compactReading = useContext(CompactReadingContext);
-  const summary = useSummaryStage(query, stageIndex);
+  const summaries = useSummaryStages(query, stageIndex);
   const filters = useMemo(
-    () => (summary ? Lib.filters(summary.query, summary.stageIndex) : []),
-    [summary],
+    () =>
+      summaries.flatMap((summary) =>
+        Lib.filters(summary.query, summary.stageIndex).map((filter) => ({
+          summary,
+          filter,
+        })),
+      ),
+    [summaries],
   );
   const columns = useMemo(
-    () => (summary ? getAggregationColumns(query, stageIndex, summary) : []),
-    [query, stageIndex, summary],
+    () =>
+      summaries.flatMap((summary) =>
+        getAggregationColumns(
+          summary.query,
+          summary.stageIndex - 1,
+          summary,
+        ).map((column): SummaryColumn => ({ summary, column })),
+      ),
+    [summaries],
   );
   const zoneRef = useSummaryZonePlacement();
 
-  if (!summary) {
+  if (summaries.length === 0) {
     return null;
   }
 
@@ -55,7 +78,7 @@ export function SummaryPills({
 
   return (
     <Group ref={zoneRef} gap="xs" wrap="wrap" className={S.summaryZone}>
-      {filters.map((filter, index) => (
+      {filters.map(({ summary, filter }, index) => (
         <FilterTokenView
           key={index}
           query={summary.query}
@@ -79,11 +102,10 @@ export function SummaryPills({
         />
       ))}
       <AddSummaryFilter
-        query={summary.query}
-        stageIndex={summary.stageIndex}
         columns={columns}
+        summaryCount={summaries.length}
         isFirst={filters.length === 0}
-        onAdd={(filterable) =>
+        onAdd={({ summary }, filterable) =>
           commit(Lib.filter(summary.query, summary.stageIndex, filterable))
         }
       />
@@ -123,23 +145,22 @@ function useSummaryZonePlacement() {
 }
 
 type AddSummaryFilterProps = {
-  query: Lib.Query;
-  stageIndex: number;
-  columns: Lib.ColumnMetadata[];
+  columns: SummaryColumn[];
+  /** How many summaries the columns come from; above one, each column says which. */
+  summaryCount: number;
   isFirst: boolean;
-  onAdd: (filterable: Lib.Filterable) => void;
+  onAdd: (column: SummaryColumn, filterable: Lib.Filterable) => void;
 };
 
-/** A button that opens the summary's aggregations, then the picked column's filter widget. */
+/** A button that opens the summaries' aggregations, then the picked column's filter widget. */
 function AddSummaryFilter({
-  query,
-  stageIndex,
   columns,
+  summaryCount,
   isFirst,
   onAdd,
 }: AddSummaryFilterProps) {
   const [isOpened, setIsOpened] = useState(false);
-  const [column, setColumn] = useState<Lib.ColumnMetadata>();
+  const [column, setColumn] = useState<SummaryColumn>();
 
   const close = () => {
     setIsOpened(false);
@@ -168,12 +189,12 @@ function AddSummaryFilter({
       <Popover.Dropdown p={0} style={{ overflow: "visible" }}>
         {column ? (
           <FilterPickerBody
-            query={query}
-            stageIndex={stageIndex}
-            column={column}
+            query={column.summary.query}
+            stageIndex={column.summary.stageIndex}
+            column={column.column}
             isNew
             onChange={(filterable) => {
-              onAdd(filterable);
+              onAdd(column, filterable);
               close();
             }}
             onBack={() => setColumn(undefined)}
@@ -196,10 +217,22 @@ function AddSummaryFilter({
                 />
                 <Text fw="bold" className={S.suggestionTitle}>
                   {
-                    Lib.displayInfo(query, stageIndex, candidate)
-                      .longDisplayName
+                    Lib.displayInfo(
+                      candidate.summary.query,
+                      candidate.summary.stageIndex,
+                      candidate.column,
+                    ).longDisplayName
                   }
                 </Text>
+                {summaryCount > 1 && (
+                  <Text
+                    size="sm"
+                    c="text-secondary"
+                    className={S.suggestionHint}
+                  >
+                    {t`summary ${candidate.summary.stageIndex}`}
+                  </Text>
+                )}
               </UnstyledButton>
             ))}
           </Stack>

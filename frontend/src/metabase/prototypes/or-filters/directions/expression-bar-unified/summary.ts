@@ -35,6 +35,41 @@ export function useSummaryStage(
 }
 
 /**
+ * Every summary stage after `stageIndex`, in order: one per consecutive
+ * stage that aggregates, so a query that summarizes twice yields two. Only
+ * the last one can be missing from the query; it is appended on a copy, as
+ * in `useSummaryStage`, so every entry shares one query.
+ */
+export function useSummaryStages(
+  query: Lib.Query,
+  stageIndex: number,
+): SummaryStage[] {
+  return useMemo(() => {
+    const aggregatingStages: number[] = [];
+    for (
+      let index = stageIndex;
+      index < Lib.stageCount(query) &&
+      Lib.aggregations(query, index).length > 0;
+      index++
+    ) {
+      aggregatingStages.push(index);
+    }
+    const lastSummaryIndex = aggregatingStages.at(-1);
+    if (lastSummaryIndex == null) {
+      return [];
+    }
+    const withStages =
+      Lib.stageCount(query) > lastSummaryIndex + 1
+        ? query
+        : Lib.appendStage(query);
+    return aggregatingStages.map((index) => ({
+      query: withStages,
+      stageIndex: index + 1,
+    }));
+  }, [query, stageIndex]);
+}
+
+/**
  * The summary's aggregation columns (Count, Sum of Total…) as filterable
  * columns of the summary stage. On that stage every column comes from the
  * previous stage, so the aggregations are told apart by the names the
