@@ -82,6 +82,7 @@ function MetabotQueryExecutionToggle() {
     "metabot-query-execution-enabled?",
   );
   const label = t`Let Metabot run queries and read their results`;
+  const isSetByEnv = envName != null;
 
   return (
     <Box>
@@ -94,8 +95,8 @@ function MetabotQueryExecutionToggle() {
         <Switch
           aria-label={label}
           checked={checked}
-          disabled={envName != null}
-          // aria-disabled rather than disabled keeps focus on the switch while a write is in flight
+          disabled={isSetByEnv}
+          // aria-disabled, not disabled, so focus stays on the switch during a write
           aria-disabled={isBusy || undefined}
           onChange={(e) => {
             if (!isBusy) {
@@ -108,7 +109,7 @@ function MetabotQueryExecutionToggle() {
           {label}
         </Text>
       </Flex>
-      {envName != null && <SetByEnvVar varName={envName} />}
+      {isSetByEnv && <SetByEnvVar varName={envName} />}
     </Box>
   );
 }
