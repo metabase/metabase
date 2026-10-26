@@ -22,7 +22,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.premium-features.core :refer [defenterprise]]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.connection :as u.connection]
@@ -233,11 +232,6 @@
         (catch Throwable e
           (log/errorf "Failed to set timezone '%s' for %s database: %s" timezone-id driver (ex-message e)))))))
 
-(defenterprise set-role-if-supported!
-  "OSS no-op implementation of `set-role-if-supported!`."
-  metabase-enterprise.impersonation.driver
-  [_driver _conn _database])
-
 ;; TODO - since we're not running the queries in a transaction, does this make any difference at all? (metabase#40012)
 (defn set-best-transaction-level!
   "Set the connection transaction isolation level to the least-locking level supported by the DB. See
@@ -354,6 +348,15 @@
              ;; if we can't read the stat for some reason, fail open rather than blocking queries
              false)))))
 
+(defn- check-checkout-error
+  "Returns `conn`, unless setting the connection impersonation role failed when it was checked out, in which case the
+  connection is closed and that error is thrown."
+  ^Connection [^Connection conn]
+  (if-let [e (sql-jdbc.conn/take-checkout-error!)]
+    (do (.close conn)
+        (throw e))
+    conn))
+
 (mu/defn do-with-resolved-connection
   "Execute
 
@@ -376,23 +379,25 @@
                            (throw (ex-info (tru "Too many queries are running. Please try again in a moment.")
                                            {:type   driver-api/qp.error-type.connection-pool-checkout-queue-full
                                             :driver driver})))
-                         (try
-                           (.getConnection conn-data-source)
-                           (catch Throwable e
-                             (let [timed-out? (connection-checkout-timeout? e)]
-                               (when-not timed-out?
-                                 (try
-                                   (sql-jdbc.conn/invalidate-empty-pool! conn-data-source)
-                                   (catch Exception e2
-                                     (log/warnf e2 "Error closing the connection pool for database %s" (u/id db-or-id-or-spec)))))
-                               (throw (ex-info (if timed-out?
-                                                 (tru "Too many queries are running. Please try again in a moment.")
-                                                 (tru "Unable to connect to the database: {0}" (ex-message e)))
-                                               {:type   (if timed-out?
-                                                          driver-api/qp.error-type.connection-pool-checkout-timeout
-                                                          driver-api/qp.error-type.unable-to-acquire-connection)
-                                                :driver driver}
-                                               e)))))))]
+                         (sql-jdbc.conn/take-checkout-error!)
+                         (check-checkout-error
+                          (try
+                            (.getConnection conn-data-source)
+                            (catch Throwable e
+                              (let [timed-out? (connection-checkout-timeout? e)]
+                                (when-not timed-out?
+                                  (try
+                                    (sql-jdbc.conn/invalidate-empty-pool! conn-data-source)
+                                    (catch Exception e2
+                                      (log/warnf e2 "Error closing the connection pool for database %s" (u/id db-or-id-or-spec)))))
+                                (throw (ex-info (if timed-out?
+                                                  (tru "Too many queries are running. Please try again in a moment.")
+                                                  (tru "Unable to connect to the database: {0}" (ex-message e)))
+                                                {:type   (if timed-out?
+                                                           driver-api/qp.error-type.connection-pool-checkout-timeout
+                                                           driver-api/qp.error-type.unable-to-acquire-connection)
+                                                 :driver driver}
+                                                e))))))))]
         (if (:keep-open? options)
           (f (get-conn))
           (with-open [conn ^Connection (get-conn)]
@@ -406,22 +411,12 @@
   Connection."
   {:added "0.47.0"}
   [driver                                                 :- :keyword
-   db-or-id-or-spec                                       :- [:or
+   _db-or-id-or-spec                                      :- [:or
                                                               ::lib.schema.id/database
                                                               driver-api/schema.metadata.database
                                                               :metabase.lib.schema.common/database-details]
    ^Connection conn                                      :- (driver-api/instance-of-class Connection)
    {:keys [^String session-timezone write?], :as options} :- ConnectionOptions]
-  (when-let [db (cond
-                  ;; id?
-                  (integer? db-or-id-or-spec)
-                  (driver-api/with-metadata-provider db-or-id-or-spec
-                    (driver-api/database (driver-api/metadata-provider)))
-                  ;; db?
-                  (u/id db-or-id-or-spec)     db-or-id-or-spec
-                  ;; otherwise it's a spec and we can't get the db
-                  :else nil)]
-    (set-role-if-supported! driver conn db))
   (when-not (recursive-connection?)
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)

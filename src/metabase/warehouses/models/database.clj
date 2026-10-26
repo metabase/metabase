@@ -310,9 +310,7 @@
                  (catch Throwable provider-e
                    (log/warnf "Error during provider detection for database {:id %d}: %s" (:id database) (ex-message provider-e)))))))
          (when (driver.conn/database-write-data-details lib-db)
-           (let [write-details (driver.conn/without-resolution-telemetry
-                                (driver.conn/with-write-connection
-                                  (driver.conn/effective-details lib-db)))]
+           (let [write-details (merge details (driver.conn/details-for-exact-type lib-db :write-data))]
              (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data"))))))))
 
 (defn- health-check-candidates
