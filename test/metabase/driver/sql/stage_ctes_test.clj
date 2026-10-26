@@ -84,6 +84,11 @@
         (lib/order-by (col (lib/orderable-columns query) "count"))
         (lib/limit 5))))
 
+(defn- born-after-1970
+  "Keeps only people born after 1970-01-01. ClickHouse test data stores dates before 1970 as 1970-01-01."
+  [query birth-date]
+  (lib/filter query (lib/> birth-date "1970-01-01")))
+
 (defn- query-joining-card
   "People joined to Card 1 on source, count by birth year and creation year, then a filter on the count."
   [mp]
@@ -93,6 +98,7 @@
         query (lib/join query (lib/join-clause card [(lib/= (field :people :source)
                                                             (col (lib/join-condition-rhs-columns query card nil nil) "source"))]))]
     (-> query
+        (born-after-1970 (field :people :birth_date))
         (lib/aggregate (lib/count))
         (lib/breakout (lib/with-temporal-bucket (field :people :birth_date) :year))
         (lib/breakout (lib/with-temporal-bucket (field :people :created_at) :year))
@@ -108,6 +114,7 @@
         people (join-alias query)
         column #(col (lib/breakoutable-columns query) % people)]
     (-> query
+        (born-after-1970 (col (lib/filterable-columns query) "birth_date" people))
         (lib/aggregate (lib/count))
         (lib/breakout (lib/with-temporal-bucket (column "birth_date") :year))
         (lib/breakout (lib/with-temporal-bucket (column "created_at") :year))
@@ -150,11 +157,11 @@
         (testing message
           (let [query (query-fn mp)]
             (mt/with-native-query-testing-context query
-              (is (= [["1958-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 13]
-                      ["1958-01-01T00:00:00Z" "2018-01-01T00:00:00Z" 17]
-                      ["1959-01-01T00:00:00Z" "2016-01-01T00:00:00Z" 14]
-                      ["1959-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 19]
-                      ["1959-01-01T00:00:00Z" "2018-01-01T00:00:00Z" 24]]
+              (is (= [["1970-01-01T00:00:00Z" "2016-01-01T00:00:00Z" 18]
+                      ["1970-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 19]
+                      ["1970-01-01T00:00:00Z" "2018-01-01T00:00:00Z" 21]
+                      ["1971-01-01T00:00:00Z" "2016-01-01T00:00:00Z" 18]
+                      ["1971-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 20]]
                      (mt/formatted-rows [u.date/temporal-str->iso8601-str u.date/temporal-str->iso8601-str int]
                                         (qp/process-query query))))))))
       (testing "question on a native question that starts with WITH"
