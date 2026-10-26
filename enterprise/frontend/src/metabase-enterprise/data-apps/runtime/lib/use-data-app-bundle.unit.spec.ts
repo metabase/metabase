@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 
 import {
   DataAppBundleError,
@@ -23,10 +23,18 @@ const mockedInstantiate = jest.mocked(instantiateDataAppBundle);
 const mockedReport = jest.mocked(reportErrorToParent);
 
 const LOADED_APP: LoadedApp = { component: () => null, providerProps: {} };
+const CSP_POLICY =
+  "default-src 'none'; connect-src 'self' https://api.example.com; form-action 'none';";
+
+const getCspMetaTag = () =>
+  // eslint-disable-next-line testing-library/no-node-access -- meta tag isn't part of React tree
+  document.querySelector('meta[http-equiv="Content-Security-Policy"]');
 
 type SetupOpts = {
   code?: string;
   allowedHosts?: string[];
+  contentSecurityPolicy?: string | null;
+  embedded?: boolean;
   error?: Error;
   app?: LoadedApp;
 };
@@ -34,24 +42,39 @@ type SetupOpts = {
 function setup({
   code = "CODE",
   allowedHosts = [],
+  contentSecurityPolicy = null,
+  embedded = false,
   error,
   app,
 }: SetupOpts = {}) {
   if (error) {
     mockedFetch.mockRejectedValue(error);
   } else {
-    mockedFetch.mockResolvedValue({ code, allowedHosts });
+    mockedFetch.mockResolvedValue({
+      code,
+      allowedHosts,
+      contentSecurityPolicy,
+    });
   }
   if (app) {
     // Instantiating is async: Near-Membrane defers setup to the realm iframe's
     // `load` event once the sandbox is given a realm-host document.
     mockedInstantiate.mockResolvedValue(app);
   }
-  return renderHook(() => useDataAppBundle("sales"));
+  return renderHook(() => useDataAppBundle("sales", { embedded }));
 }
 
 describe("useDataAppBundle", () => {
-  afterEach(() => jest.clearAllMocks());
+  beforeEach(() => jest.resetAllMocks());
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+
+    document
+      // eslint-disable-next-line testing-library/no-node-access -- meta tag isn't part of React tree
+      .querySelectorAll('meta[http-equiv="Content-Security-Policy"]')
+      .forEach((meta) => meta.remove());
+  });
 
   it("fetches, instantiates, and exposes the loaded app", async () => {
     const { result } = setup({
@@ -66,6 +89,16 @@ describe("useDataAppBundle", () => {
       "https://x",
     ]);
     expect(mockedReport).not.toHaveBeenCalled();
+  });
+
+  it("does not install CSP meta tag when not embedded", async () => {
+    const { result } = setup({
+      contentSecurityPolicy: CSP_POLICY,
+      app: LOADED_APP,
+    });
+
+    await waitFor(() => expect(result.current.data).toEqual(LOADED_APP));
+    expect(getCspMetaTag()).toBeNull();
   });
 
   it("treats a 404 as the friendly not-ready state (no error detail)", async () => {
@@ -116,5 +149,89 @@ describe("useDataAppBundle", () => {
 
     expect(result.current.failed).toBe(false);
     expect(mockedReport).not.toHaveBeenCalled();
+  });
+
+  describe("embedded mode", () => {
+    beforeEach(() => {
+      jest.spyOn(console, "error").mockImplementation(() => {});
+    });
+
+    it("installs CSP policy before evaluating bundle", async () => {
+      mockedInstantiate.mockImplementation(async () => {
+        // The bundle could load resources disallowed by CSP during evaluation.
+        expect(getCspMetaTag()?.getAttribute("content")).toBe(CSP_POLICY);
+
+        return LOADED_APP;
+      });
+
+      const { result } = setup({
+        code: "BUNDLE",
+        contentSecurityPolicy: CSP_POLICY,
+        embedded: true,
+      });
+
+      await waitFor(() =>
+        expect(result.current.data?.component).toBe(LOADED_APP.component),
+      );
+      expect(mockedFetch).toHaveBeenCalledTimes(1);
+      expect(mockedFetch).toHaveBeenCalledWith("sales");
+
+      expect(mockedInstantiate).toHaveBeenCalledWith(
+        "BUNDLE",
+        "sales",
+        window,
+        [],
+      );
+    });
+
+    it.each([null, "", " "])(
+      "reports error when the CSP is missing: %p",
+      async (contentSecurityPolicy) => {
+        const { result } = setup({
+          contentSecurityPolicy,
+          embedded: true,
+          app: LOADED_APP,
+        });
+
+        await waitFor(() => expect(result.current.failed).toBe(true));
+        expect(mockedInstantiate).not.toHaveBeenCalled();
+        expect(mockedReport).toHaveBeenCalledWith(
+          false,
+          expect.objectContaining({
+            message:
+              "Something went wrong while loading this app. Try refreshing the page.",
+          }),
+        );
+      },
+    );
+
+    it("discards the bundle and CSP policy if hook unmounts before bundle is fetched", async () => {
+      let completeFetch = (
+        _value: Awaited<ReturnType<typeof fetchDataAppBundleCode>>,
+      ) => {};
+
+      mockedFetch.mockReturnValue(
+        new Promise((resolve) => {
+          completeFetch = resolve;
+        }),
+      );
+
+      const { unmount } = renderHook(() =>
+        useDataAppBundle("sales", { embedded: true }),
+      );
+
+      unmount();
+
+      await act(async () => {
+        completeFetch({
+          code: "BUNDLE",
+          allowedHosts: [],
+          contentSecurityPolicy: CSP_POLICY,
+        });
+      });
+
+      expect(getCspMetaTag()).toBeNull();
+      expect(mockedInstantiate).not.toHaveBeenCalled();
+    });
   });
 });
