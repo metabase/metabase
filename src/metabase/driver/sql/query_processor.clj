@@ -2283,58 +2283,48 @@
 
 (def ^:private stage-cte-prefix "__mb_stage_")
 
-(defn- stage-cte-name
-  "Name of the CTE for the current nesting level and stage, e.g.
-   WITH
-   __mb_stage_0 AS (
-       WITH
-       __mb_stage_0_1 AS (...)
-       __mb_stage_1_1 AS (...)
-   )
-   __mb_stage_1 AS (...)"
-  [level stage-idx]
-  (cond-> (str stage-cte-prefix stage-idx)
-    (pos? level) (str "_" level)))
-
 (defn- cte-stage-source-form
   "The CTE is aliased as `__mb_source` so field refs can compile the same as with nested subselects."
-  [driver level prev-stage-idx]
-  {:from [[(->honeysql driver (h2x/identifier :table-alias (stage-cte-name level prev-stage-idx)))
+  [driver prev-cte-name]
+  {:from [[(->honeysql driver (h2x/identifier :table-alias prev-cte-name))
            [(->honeysql driver (h2x/identifier :table-alias source-query-alias))]]]})
 
 (defn- stage-cte
   "Adds the CTE name to the CTE body, e.g. \"SELECT a FROM t\" becomes \"__mb_stage_N AS (SELECT a FROM t)\".
   Applies the fix for duplicate column names similar to `stage-source-form`."
-  [level stage-idx hsql stage]
-  (let [cte-name         (stage-cte-name level stage-idx)
+  [hsql stage]
+  (let [cte-name         (::cte-name stage)
         columns-metadata (get-in stage [:lib/stage-metadata :columns])]
     (if (needs-cte-for-duplicate-cols? columns-metadata)
       [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
       [cte-name hsql])))
 
 (defn- stages->honeysql-ctes
-  "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from.
-   `level` is the CTE nesting level, it is added to each stage so that [[join-source]] can nest the joins properly"
-  [driver stages level]
+  "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from."
+  [driver stages]
   (let [stages   (vec stages)
         last-idx (dec (count stages))
         cte-body (fn [idx]
-                   (let [prev-from (if (zero? idx) {} (cte-stage-source-form driver level (dec idx)))]
+                   (let [prev-from (if (zero? idx) {} (cte-stage-source-form driver (::cte-name (stages (dec idx)))))]
                      (stage->honeysql driver prev-from (stages idx))))
-        ctes     (mapv #(stage-cte level % (cte-body %) (stages %)) (range last-idx))]
+        ctes     (mapv #(stage-cte (cte-body %) (stages %)) (range last-idx))]
     (update (cte-body last-idx) :with #(into ctes %))))
 
-(defn- stages->honeysql [driver stages level]
-  (let [stages (mapv #(assoc % ::cte-level level) stages)]
-    (if (and (> (count stages) 1)
-             (driver-api/initialized?)
-             (driver/database-supports? driver :stage-ctes (driver-api/database (driver-api/metadata-provider))))
-      (stages->honeysql-ctes driver stages level)
-      (stages->honeysql-subselects driver stages))))
+(defn- stage-ctes?
+  "Whether the current database compiles stages to CTEs, see the `:stage-ctes` driver feature."
+  [driver]
+  (and (driver-api/initialized?)
+       (driver/database-supports? driver :stage-ctes (driver-api/database (driver-api/metadata-provider)))))
+
+(defn- stages->honeysql [driver stages]
+  (if (and (> (count stages) 1)
+           (stage-ctes? driver))
+    (stages->honeysql-ctes driver stages)
+    (stages->honeysql-subselects driver stages)))
 
 (defmethod join-source :sql
   [driver {:keys [stages]}]
-  (stages->honeysql driver stages (inc (::cte-level *inner-query* 0))))
+  (stages->honeysql driver stages))
 
 (defn- all-stages
   "`stages` together with the stages of every join in them"
@@ -2343,23 +2333,56 @@
             (cons stage (mapcat (comp all-stages :stages) (:joins stage))))
           stages))
 
-(defn- native-sql-cte-level
+(defn- native-sql-max-cte-number
   [stage]
   (let [sql (or (:persisted-info/native stage)
                 (when (= (:lib/type stage) :mbql.stage/native)
                   (:native stage)))]
     (when (string? sql)
-      (when-let [levels (seq (for [[_ level] (re-seq (re-pattern (str stage-cte-prefix #"\d+(?:_(\d+))?")) sql)]
-                               (if level (parse-long level) 0)))]
-        (apply max levels)))))
+      (when-let [numbers (seq (for [[_ n] (re-seq (re-pattern (str stage-cte-prefix #"(\d+)")) sql)]
+                                (parse-long n)))]
+        (apply max numbers)))))
 
-(defn- top-level-cte-level
-  "The CTE nesting level for the top-level stages of query. Normally 0, but we check if there are any CTEs
-   inside the native SQL of any stage in the query, and set it to one above that to avoid name collisions."
+(defn- first-cte-number
+  "The number of the first stage CTE. Normally 0, but if the native SQL of any stage already has stage CTEs, we start
+  above them to avoid name collisions."
   [stages]
-  (if-let [levels (seq (keep native-sql-cte-level (all-stages stages)))]
-    (inc (apply max levels))
+  (if-let [numbers (seq (keep native-sql-max-cte-number (all-stages stages)))]
+    (inc (apply max numbers))
     0))
+
+(defn- assign-cte-names
+  "Gives each stage that compiles to a CTE a unique `::cte-name`, starting at `__mb_stage_<n>`. Join stages get their
+  names before the stage that joins them, so the names are in the same order as the CTEs after [[hoist-ctes]].
+  Returns `[stages next-n]`."
+  [stages n]
+  (let [last-idx (dec (count stages))]
+    (reduce (fn [[stages n] [idx stage]]
+              (let [[joins n] (reduce (fn [[joins n] join]
+                                        (let [[join-stages n] (assign-cte-names (:stages join) n)]
+                                          [(conj joins (assoc join :stages join-stages)) n]))
+                                      [[] n]
+                                      (:joins stage))
+                    stage     (cond-> stage
+                                (seq joins)      (assoc :joins joins)
+                                (< idx last-idx) (assoc ::cte-name (str stage-cte-prefix n)))]
+                [(conj stages stage) (cond-> n (< idx last-idx) inc)]))
+            [[] n]
+            (map-indexed vector stages))))
+
+(defn- hoist-ctes
+  "Moves the `WITH` clauses of nested queries, e.g. multi-stage join sources, to one `WITH` clause at the top. Inner
+  queries come first, so each CTE comes before the CTEs that use it."
+  [hsql]
+  (let [ctes (volatile! [])
+        hsql (perf/postwalk (fn [form]
+                              (if (and (map? form) (:with form))
+                                (do (vswap! ctes into (:with form))
+                                    (dissoc form :with))
+                                form))
+                            hsql)]
+    (cond-> hsql
+      (and (map? hsql) (seq @ctes)) (assoc :with @ctes))))
 
 (mu/defn mbql->honeysql :- [:or :map [:tuple [:= :inline] :map]]
   "Build the HoneySQL form we will compile to SQL and execute."
@@ -2367,9 +2390,11 @@
    query  :- ::qp.schema/any-query]
   (if (:lib/type query)
     (binding [driver/*driver* driver]
-      (let [stages (preprocess driver query)]
+      (let [stages     (preprocess driver query)
+            [stages _] (assign-cte-names stages (first-cte-number stages))]
         (log/trace "Compiling MBQL query")
-        (u/prog1 (stages->honeysql driver stages (top-level-cte-level stages))
+        (u/prog1 (cond-> (stages->honeysql driver stages)
+                   (stage-ctes? driver) hoist-ctes)
           (log/debug "Compiled HoneySQL form")
           (driver-api/debug> (list '🍯 <>)))))
     (let [metadata-provider (driver-api/metadata-provider)
