@@ -53,7 +53,7 @@
                             {:inline?   (shared/inline-viz-capable?)
                              :entity-id (:chart-id result)
                              :query-id  (:query-id result)
-                             :query     (links/->legacy-mbql (:query result))
+                             :query     (links/->frontend-query (:query result))
                              :display   (:chart-type result)
                              :title     title
                              :link      (:results-url result)})]})
@@ -101,7 +101,7 @@
                             {:inline?   (shared/inline-viz-capable?)
                              :entity-id (or (:chart_id new-chart-data) chart_id)
                              :query-id  (or (:query_id chart) (str (random-uuid)))
-                             :query     (links/->legacy-mbql query)
+                             :query     (links/->frontend-query query)
                              :display   new-viz
                              :title     title
                              :link      (links/pseudo-card->link
