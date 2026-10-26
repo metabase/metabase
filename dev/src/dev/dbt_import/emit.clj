@@ -34,8 +34,6 @@
    [:entity ::entity]
    [:metric {:optional true} ::resolved/metric]])
 
-;;; ------------------------------------------------------------- MBQL -------------------------------------------------------------
-
 (mu/defn- field-clause :- vector?
   "A portable `:field` clause. The base type is left out when the manifest did not declare one; the instance fills it
   in when the import binds the field."
@@ -75,8 +73,6 @@
    :stages   [{:lib/type     :mbql.stage/mbql
                :source-table source-table
                :aggregation  [(aggregation-clause metric)]}]})
-
-;;; ----------------------------------------------------------- entities -----------------------------------------------------------
 
 (mu/defn- collection-entity :- ::entity
   [{collection-name :name, :keys [entity-id]} :- ::resolved/collection]

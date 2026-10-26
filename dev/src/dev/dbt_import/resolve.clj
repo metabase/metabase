@@ -16,7 +16,6 @@
    [buddy.core.codecs :as codecs]
    [buddy.core.hash :as buddy-hash]
    [clojure.string :as str]
-   [dev.dbt-import.schemas.dbt-manifest :as dbt-manifest]
    [dev.dbt-import.schemas.ir :as schemas.ir]
    [dev.dbt-import.schemas.resolved :as schemas.resolved]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -149,9 +148,6 @@
 
       non-additive-dimension
       (unsupported "non-additive measures have no Metabase equivalent")
-
-      (not (dbt-manifest/known-aggregation-types agg))
-      (unsupported (format "aggregation %s has no Metabase equivalent" (name agg)))
 
       :let [percentile (:percentile agg-params)]
 

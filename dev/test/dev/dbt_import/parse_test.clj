@@ -1,11 +1,13 @@
 (ns dev.dbt-import.parse-test
   (:require
    [clojure.java.io :as io]
-   [clojure.test :refer [deftest is testing]]
+   [clojure.test :refer [are deftest is testing]]
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.schemas.ir :as ir]
    [dev.dbt-import.test-util :as tu :refer [fld]]
-   [metabase.util.malli.registry :as mr]))
+   [metabase.util.malli.registry :as mr])
+  (:import
+   (clojure.lang ExceptionInfo)))
 
 (set! *warn-on-reflection* true)
 
@@ -91,8 +93,6 @@
       (is (= "sales" (:label (parse/parse-metric semantic-models (assoc sales :label "")))))
       (is (= "sales" (:label (parse/parse-metric semantic-models (assoc sales :label nil))))))))
 
-;;; ------------------------------------------------------- manifest-level -------------------------------------------------------
-
 (def ^:private sum-sales [:sum {} (fld "sales" :type/Float)])
 
 (defn- schema-version [v]
@@ -104,39 +104,39 @@
 (defn- add-metric [metric]
   (fn [m] (assoc-in m [:metrics (:unique_id metric)] (merge (get-in m [:metrics "metric.p.m"]) metric))))
 
-(def ^:private manifest-cases
-  [{:id "manifest v13 is rejected" :edit (schema-version "v13") :expect {:thrown #"Invalid dbt manifest"}}
-   {:id "manifest v9 is rejected" :edit (schema-version "v9") :expect {:thrown #"Invalid dbt manifest"}}
-   {:id "manifest v10 is accepted" :edit (schema-version "v10") :expect {:aggregation sum-sales}}
-   {:id "manifest v11 is accepted" :edit (schema-version "v11") :expect {:aggregation sum-sales}}
-   {:id "unknown top-level keys and fields pass through"
-    :edit (fn [m] (-> m (assoc :saved_queries {} :unit_tests {}) (assoc-in [:metrics "metric.p.m" :brand_new_field] {:x 1})))
-    :expect {:aggregation sum-sales}}
-   {:id "a pre-release dbt version string" :edit (fn [m] (assoc-in m [:metadata :dbt_version] "1.13.0-b2")) :expect {:aggregation sum-sales}}
-   {:id "a custom time_granularity on the metric" :metric {:time_granularity "fiscal_quarter"} :expect {:aggregation sum-sales}}
-   ;; one value the converter does not know, anywhere in the manifest, must not fail every metric
-   {:id "another measure with an aggregation the converter does not know"
-    :edit (add-measure {:name "weird", :agg "approx_count_distinct"}) :expect {:aggregation sum-sales}}
-   {:id "another metric with a type the converter does not know"
-    :edit (add-metric {:unique_id "metric.p.funnel", :name "funnel", :type "funnel"}) :expect {:aggregation sum-sales}}
-   {:id "a metric with a type the converter does not know is reported"
-    :edit        (add-metric {:unique_id "metric.p.funnel", :name "funnel", :type "funnel"})
-    :metric-name "funnel"
-    :expect      {:unsupported #"metric type funnel is not supported"}}
-   {:id "a dimension with a custom granularity from the time spine (dbt 1.9+)"
-    :edit (fn [m] (update-in m [:semantic_models tu/sm-id :dimensions]
-                             conj {:name "fiscal_day", :type "time", :description nil, :label nil, :is_partition false
-                                   :type_params {:time_granularity "fiscal_quarter", :validity_params nil}, :expr "date_day"}))
-    :expect {:aggregation sum-sales}}
-   {:id "an entity type the converter does not know"
-    :edit (fn [m] (update-in m [:semantic_models tu/sm-id :entities] conj
-                             {:name "k", :type "composite", :description nil, :label nil, :role nil, :expr nil}))
-    :expect {:aggregation sum-sales}}])
+(deftest ^:parallel manifest-version-test
+  (testing "manifest schema versions v10 to v12 are accepted"
+    (are [v] (= sum-sales (tu/aggregation {:edit (schema-version v)}))
+      "v10" "v11" "v12"))
+  (testing "other versions are rejected up front"
+    (are [v] (thrown-with-msg? ExceptionInfo #"Invalid dbt manifest"
+                               (tu/convert {:edit (schema-version v)}))
+      "v9" "v13"))
+  (testing "a pre-release dbt version string"
+    (is (= sum-sales (tu/aggregation {:edit (fn [m] (assoc-in m [:metadata :dbt_version] "1.13.0-b2"))})))))
 
-(deftest ^:parallel manifest-test
-  (tu/check-cases manifest-cases))
-
-;;; ---------------------------------------------------------- nodes ----------------------------------------------------------
+(deftest ^:parallel unknown-manifest-content-test
+  (testing "unknown top-level keys and fields pass through"
+    (is (= sum-sales (tu/aggregation {:edit (fn [m]
+                                              (-> m
+                                                  (assoc :saved_queries {} :unit_tests {})
+                                                  (assoc-in [:metrics "metric.p.m" :brand_new_field] {:x 1})))}))))
+  (testing "a custom time_granularity on the metric is a free-form string"
+    (is (= sum-sales (tu/aggregation {:metric {:time_granularity "fiscal_quarter"}}))))
+  (testing "aggregation, metric type, entity type and dimension granularity are closed enums in dbt's manifest schema"
+    ;; dbt validates these when it parses the project, so a manifest it wrote never carries another value. One would
+    ;; mean a dbt newer than the converter knows (`conversion` arrived with v11) or a hand-edited file: an invalid
+    ;; manifest, rejected up front rather than guessed at.
+    (are [edit] (thrown-with-msg? ExceptionInfo #"Invalid dbt manifest" (tu/convert {:edit edit}))
+      (add-measure {:name "weird", :agg "approx_count_distinct"})
+      (add-metric {:unique_id "metric.p.funnel", :name "funnel", :type "funnel"})
+      (fn [m]
+        (update-in m [:semantic_models tu/sm-id :entities] conj
+                   {:name "k", :type "composite", :description nil, :label nil, :role nil, :expr nil}))
+      (fn [m]
+        (update-in m [:semantic_models tu/sm-id :dimensions] conj
+                   {:name "fiscal_day", :type "time", :description nil, :label nil, :is_partition false, :expr "date_day"
+                    :type_params {:time_granularity "fiscal_quarter", :validity_params nil}})))))
 
 (defn- re-home-model
   "Move the model node to `node-id` with `resource-type`, and point the semantic model at it."
@@ -147,111 +147,100 @@
           (update :nodes #(-> % (dissoc tu/model-id) (assoc node-id node)))
           (assoc-in [:semantic_models tu/sm-id :depends_on :nodes] [node-id])))))
 
-(def ^:private node-cases
-  [{:id "a semantic model built on a seed" :edit (re-home-model "seed.p.fact_sales" "seed") :expect {:aggregation sum-sales}}
-   {:id "a semantic model built on a snapshot" :edit (re-home-model "snapshot.p.fact_sales" "snapshot") :expect {:aggregation sum-sales}}
-   {:id "depends_on lists another model first: the node matching node_relation is the one with the columns"
-    :edit (fn [m]
-            (-> m
-                (assoc-in [:nodes "model.p.other"] (assoc (tu/model-node {"sales" "text"}) :unique_id "model.p.other" :name "other" :alias "other"))
-                (assoc-in [:semantic_models tu/sm-id :depends_on :nodes] ["model.p.other" tu/model-id])))
-    :expect {:aggregation sum-sales}}
-   {:id "a metric whose depends_on names no semantic model"
-    :metric {:depends_on {:macros [], :nodes []}} :expect {:unsupported #"semantic model nil not found"}}
-   {:id "a metric whose semantic model is missing"
-    :metric {:depends_on {:macros [], :nodes ["semantic_model.p.nope"]}} :expect {:unsupported #"semantic model \"semantic_model.p.nope\" not found"}}
-   {:id "a metric whose measure is missing"
-    :input-measure {:name "nope"} :expect {:unsupported #"measure \"nope\" not found on semantic model \"fact_sales\""}}
-   {:id "the metrics map key is not the unique_id"
-    :edit (fn [m] (update m :metrics (fn [ms] {"metric.p.weird_key" (val (first ms))}))) :expect {:aggregation sum-sales}}
-   {:id "a semantic model with no default agg_time_dimension"
-    :edit (fn [m] (assoc-in m [:semantic_models tu/sm-id :defaults] nil)) :expect {:aggregation sum-sales}}])
+(deftest ^:parallel source-node-test
+  (testing "a semantic model built on a seed or a snapshot finds its columns"
+    (are [node-id resource-type] (= sum-sales (tu/aggregation {:edit (re-home-model node-id resource-type)}))
+      "seed.p.fact_sales"     "seed"
+      "snapshot.p.fact_sales" "snapshot"))
+  (testing "when depends_on lists several nodes, the one matching node_relation has the columns"
+    (is (= sum-sales (tu/aggregation {:edit (fn [m]
+                                              (-> m
+                                                  (assoc-in [:nodes "model.p.other"]
+                                                            (assoc (tu/model-node {"sales" "text"})
+                                                                   :unique_id "model.p.other" :name "other" :alias "other"))
+                                                  (assoc-in [:semantic_models tu/sm-id :depends_on :nodes]
+                                                            ["model.p.other" tu/model-id])))}))))
+  (testing "the metrics map key need not be the unique_id"
+    (is (= sum-sales (tu/aggregation {:edit (fn [m] (update m :metrics (fn [ms] {"metric.p.weird_key" (val (first ms))})))}))))
+  (testing "a semantic model with no default agg_time_dimension"
+    (is (= sum-sales (tu/aggregation {:edit (fn [m] (assoc-in m [:semantic_models tu/sm-id :defaults] nil))})))))
 
-(deftest ^:parallel node-test
-  (tu/check-cases node-cases))
-
-;;; ------------------------------------------------------ other metric types ------------------------------------------------------
+(deftest ^:parallel dangling-reference-test
+  (is (re-find #"semantic model nil not found"
+               (tu/unsupported {:metric {:depends_on {:macros [], :nodes []}}})))
+  (is (re-find #"semantic model \"semantic_model.p.nope\" not found"
+               (tu/unsupported {:metric {:depends_on {:macros [], :nodes ["semantic_model.p.nope"]}}})))
+  (is (re-find #"measure \"nope\" not found on semantic model \"fact_sales\""
+               (tu/unsupported {:input-measure {:name "nope"}}))))
 
 (defn- metric-input [metric-name & {:as overrides}]
   (merge {:name metric-name, :filter nil, :alias nil} overrides))
 
-(defn- other-type-case [id metric-type type-params]
-  {:id          id
-   :metric      {:type metric-type}
-   :type-params (merge {:measure nil, :input_measures []} type-params)
-   :expect      {:unsupported (re-pattern (str "metric type " metric-type " is not supported yet"))}})
+(defn- other-type-reason
+  "The reason a metric of `metric-type` with `type-params` is reported."
+  [metric-type type-params]
+  (tu/unsupported {:metric      {:type metric-type}
+                   :type-params (merge {:measure nil, :input_measures []} type-params)}))
 
-(def ^:private metric-type-cases
-  [(other-type-case "ratio" "ratio" {:numerator (metric-input "a"), :denominator (metric-input "b")})
-   (other-type-case "ratio of a metric to itself" "ratio" {:numerator (metric-input "a"), :denominator (metric-input "a")})
-   (other-type-case "ratio with a filtered numerator" "ratio"
-                    {:numerator   (metric-input "a" :filter {:where_filters [{:where_sql_template "{{ Dimension('order__status') }} = 'Shipped'"}]})
-                     :denominator (metric-input "a")})
-   (other-type-case "ratio with aliases" "ratio" {:numerator (metric-input "a" :alias "x"), :denominator (metric-input "b" :alias "y")})
-   (other-type-case "derived from one input" "derived" {:expr "a * 100", :metrics [(metric-input "a")]})
-   (other-type-case "derived difference" "derived" {:expr "a - b", :metrics [(metric-input "a") (metric-input "b")]})
-   (other-type-case "derived with a guarded division" "derived" {:expr "a / nullif(b, 0)", :metrics [(metric-input "a") (metric-input "b")]})
-   (other-type-case "derived period over period" "derived"
-                    {:expr    "current - previous"
-                     :metrics [(metric-input "a" :alias "current")
-                               (metric-input "a" :alias "previous" :offset_window {:count 7, :granularity "day"})]})
-   (other-type-case "derived with offset_to_grain" "derived"
-                    {:expr "a - mtd", :metrics [(metric-input "a") (metric-input "a" :alias "mtd" :offset_to_grain "month")]})
-   (other-type-case "derived from a derived metric" "derived" {:expr "d * 2", :metrics [(metric-input "d")]})
-   (other-type-case "cumulative over a 7 day window" "cumulative" {:measure (tu/input-measure {}), :window {:count 7, :granularity "day"}})
-   (other-type-case "cumulative month to date" "cumulative" {:measure (tu/input-measure {}), :grain_to_date "month"})
-   (other-type-case "cumulative all time" "cumulative" {:measure (tu/input-measure {})})
-   (other-type-case "cumulative, period_agg first" "cumulative"
-                    {:measure (tu/input-measure {}), :cumulative_type_params {:window nil, :grain_to_date "month", :period_agg "first"}})
-   (other-type-case "cumulative, period_agg last" "cumulative"
-                    {:measure (tu/input-measure {}), :cumulative_type_params {:window {:count 30, :granularity "day"}, :grain_to_date nil, :period_agg "last"}})
-   (other-type-case "cumulative, period_agg average" "cumulative"
-                    {:measure (tu/input-measure {}), :cumulative_type_params {:window nil, :grain_to_date nil, :period_agg "average"}})
-   (other-type-case "conversion rate" "conversion"
-                    {:conversion_type_params {:base_measure (tu/input-measure {}), :conversion_measure (tu/input-measure {:name "paid"})
-                                              :entity "customer", :calculation "conversion_rate", :window nil, :constant_properties nil}})
-   (other-type-case "conversion count" "conversion"
-                    {:conversion_type_params {:base_measure (tu/input-measure {}), :conversion_measure (tu/input-measure {:name "paid"})
-                                              :entity "customer", :calculation "conversions", :window {:count 7, :granularity "day"}}})
-   (other-type-case "conversion with constant properties" "conversion"
-                    {:conversion_type_params {:base_measure (tu/input-measure {}), :conversion_measure (tu/input-measure {:name "paid"})
-                                              :entity "customer", :calculation "conversion_rate"
-                                              :constant_properties [{:base_property "plan", :conversion_property "plan"}]}})])
+(deftest ^:parallel other-metric-types-test
+  (testing "ratio, derived, cumulative and conversion metrics are reported, not thrown (QRES-5)"
+    (are [metric-type type-params] (re-find (re-pattern (str "metric type " metric-type " is not supported yet"))
+                                            (other-type-reason metric-type type-params))
+      "ratio"      {:numerator (metric-input "a"), :denominator (metric-input "b")}
+      "ratio"      {:numerator (metric-input "a"), :denominator (metric-input "a")}
+      "ratio"      {:numerator   (metric-input "a" :filter {:where_filters [{:where_sql_template "{{ Dimension('order__status') }} = 'Shipped'"}]})
+                    :denominator (metric-input "a")}
+      "ratio"      {:numerator (metric-input "a" :alias "x"), :denominator (metric-input "b" :alias "y")}
+      "derived"    {:expr "a * 100", :metrics [(metric-input "a")]}
+      "derived"    {:expr "a - b", :metrics [(metric-input "a") (metric-input "b")]}
+      "derived"    {:expr "a / nullif(b, 0)", :metrics [(metric-input "a") (metric-input "b")]}
+      "derived"    {:expr    "current - previous"
+                    :metrics [(metric-input "a" :alias "current")
+                              (metric-input "a" :alias "previous" :offset_window {:count 7, :granularity "day"})]}
+      "derived"    {:expr "a - mtd", :metrics [(metric-input "a") (metric-input "a" :alias "mtd" :offset_to_grain "month")]}
+      "derived"    {:expr "d * 2", :metrics [(metric-input "d")]}
+      "cumulative" {:measure (tu/input-measure {}), :window {:count 7, :granularity "day"}}
+      "cumulative" {:measure (tu/input-measure {}), :grain_to_date "month"}
+      "cumulative" {:measure (tu/input-measure {})}
+      "cumulative" {:measure (tu/input-measure {}), :cumulative_type_params {:window nil, :grain_to_date "month", :period_agg "first"}}
+      "cumulative" {:measure (tu/input-measure {}), :cumulative_type_params {:window {:count 30, :granularity "day"}, :grain_to_date nil, :period_agg "last"}}
+      "cumulative" {:measure (tu/input-measure {}), :cumulative_type_params {:window nil, :grain_to_date nil, :period_agg "average"}}
+      "conversion" {:conversion_type_params {:base_measure (tu/input-measure {}), :conversion_measure (tu/input-measure {:name "paid"})
+                                             :entity "customer", :calculation "conversion_rate", :window nil, :constant_properties nil}}
+      "conversion" {:conversion_type_params {:base_measure (tu/input-measure {}), :conversion_measure (tu/input-measure {:name "paid"})
+                                             :entity "customer", :calculation "conversions", :window {:count 7, :granularity "day"}}}
+      "conversion" {:conversion_type_params {:base_measure (tu/input-measure {}), :conversion_measure (tu/input-measure {:name "paid"})
+                                             :entity "customer", :calculation "conversion_rate"
+                                             :constant_properties [{:base_property "plan", :conversion_property "plan"}]}})))
 
-(deftest ^:parallel metric-type-test
-  (tu/check-cases metric-type-cases))
-
-;;; --------------------------------------------------- 1.12 inline-spec metrics ---------------------------------------------------
-
-(defn- inline-case [id params expect & {:as more}]
-  (merge {:id          (str "inline spec: " id)
-          :type-params {:measure nil, :input_measures [], :metric_aggregation_params (merge {:semantic_model "fact_sales"} params)}
-          :expect      expect}
+(defn- inline
+  "Tweaks for a 1.12 inline-spec simple metric that carries `params` in `metric_aggregation_params` instead of pointing
+  at a measure. `more` are further tweaks."
+  [params & {:as more}]
+  (merge {:type-params {:measure                   nil
+                        :input_measures            []
+                        :metric_aggregation_params (merge {:semantic_model "fact_sales"} params)}}
          more))
 
-(def ^:private inline-cases
-  "The inline-spec cases share the converter's unverified assumption about the `metric_aggregation_params` shape
-  (QRES-6)."
-  [(inline-case "sum" {:agg "sum", :expr "sales"} {:aggregation sum-sales})
-   (inline-case "count_distinct" {:agg "count_distinct", :expr "customer_key"}
-                {:aggregation [:distinct {} (fld "customer_key" :type/Text)]})
-   (inline-case "no expr defaults to the metric name" {:agg "sum"} {:aggregation sum-sales}
-                :metric {:name "sales", :unique_id "metric.p.sales"})
-   (inline-case "no expr and no documented column of the metric's name" {:agg "sum"} {:aggregation [:sum {} (fld "m" nil)]})
-   (inline-case "percentile" {:agg "percentile", :expr "sales", :agg_params {:percentile 0.9}}
-                {:aggregation [:percentile {} (fld "sales" :type/Float) 0.9]})
-   (inline-case "row count" {:agg "count", :expr "1"} {:aggregation [:count {}]})
-   (inline-case "no agg" {} {:unsupported #"neither a measure nor metric_aggregation_params"})
-   (inline-case "non-additive" {:agg "sum", :expr "sales", :non_additive_dimension {:name "date_day", :window_choice "max"}}
-                {:unsupported #"non-additive"})
-   (inline-case "agg_time_dimension override is accepted" {:agg "sum", :expr "sales", :agg_time_dimension "nope"}
-                {:aggregation sum-sales})
-   (inline-case "fill_nulls_with on the metric" {:agg "sum", :expr "sales"} {:aggregation [:coalesce {} sum-sales 0]}
-                :type-params {:measure nil, :input_measures [], :fill_nulls_with 0
-                              :metric_aggregation_params {:semantic_model "fact_sales", :agg "sum", :expr "sales"}})
-   {:id          "inline spec: a measure and inline params both present, the measure wins"
-    :type-params {:metric_aggregation_params {:semantic_model "fact_sales", :agg "max", :expr "sales"}}
-    :expect      {:aggregation sum-sales}}])
-
 (deftest ^:parallel inline-spec-test
-  (tu/check-cases inline-cases))
+  (testing "the inline spec shares the converter's unverified assumption about the metric_aggregation_params shape (QRES-6)"
+    (is (= sum-sales (tu/aggregation (inline {:agg "sum", :expr "sales"}))))
+    (is (= [:distinct {} (fld "customer_key" :type/Text)]
+           (tu/aggregation (inline {:agg "count_distinct", :expr "customer_key"}))))
+    (is (= [:percentile {} (fld "sales" :type/Float) 0.9]
+           (tu/aggregation (inline {:agg "percentile", :expr "sales", :agg_params {:percentile 0.9}}))))
+    (is (= [:count {}] (tu/aggregation (inline {:agg "count", :expr "1"}))))
+    (testing "no expr defaults to the metric name, documented column or not"
+      (is (= sum-sales (tu/aggregation (inline {:agg "sum"} :metric {:name "sales", :unique_id "metric.p.sales"}))))
+      (is (= [:sum {} (fld "m" nil)] (tu/aggregation (inline {:agg "sum"})))))
+    (testing "agg_time_dimension override is accepted"
+      (is (= sum-sales (tu/aggregation (inline {:agg "sum", :expr "sales", :agg_time_dimension "nope"})))))
+    (testing "fill_nulls_with on the metric"
+      (is (= [:coalesce {} sum-sales 0]
+             (tu/aggregation (update (inline {:agg "sum", :expr "sales"}) :type-params assoc :fill_nulls_with 0)))))
+    (is (re-find #"neither a measure nor metric_aggregation_params" (tu/unsupported (inline {}))))
+    (is (re-find #"non-additive"
+                 (tu/unsupported (inline {:agg "sum", :expr "sales"
+                                          :non_additive_dimension {:name "date_day", :window_choice "max"}}))))
+    (testing "a measure and inline params both present: the measure wins"
+      (is (= sum-sales (tu/aggregation {:type-params {:metric_aggregation_params {:semantic_model "fact_sales", :agg "max", :expr "sales"}}}))))))

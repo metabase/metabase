@@ -1,15 +1,11 @@
 (ns dev.dbt-import.test-util
-  "Shared fixture for the converter's table-driven tests.
+  "Shared fixture for the converter's tests.
 
   [[build-manifest]] makes a small manifest in the shape `dbt parse` writes (manifest v12, dbt 1.12): one model node,
-  one semantic model and one metric `m` (sum of `sales`), which a case tweaks. [[check-cases]] runs each case through
-  the whole pipeline (`decode-manifest` → `parse` → `resolve` → `emit/aggregation-clause`) and checks one outcome:
-
-  * `{:aggregation clause}`: the metric converts and emits exactly this aggregation (`:converted :any` accepts any);
-  * `{:unsupported re}`: the metric lands in `:unsupported` with a reason matching `re` (`:any` accepts any reason);
-  * `{:thrown re}`: the run throws, with a message matching `re`."
+  one semantic model and one metric `m` (sum of `sales`), tweaked per test. [[convert]] runs it through the whole
+  pipeline (`decode-manifest` → `parse` → `resolve` → `emit/aggregation-clause`); [[aggregation]] and [[unsupported]]
+  pick out the clause the metric converted to, or the reason it did not, for an `is` to compare against."
   (:require
-   [clojure.test :refer [is testing]]
    [dev.dbt-import.emit :as emit]
    [dev.dbt-import.parse :as parse]
    [dev.dbt-import.resolve :as resolve]
@@ -162,9 +158,9 @@
    :tags             []})
 
 (defn build-manifest
-  "A manifest with one model node, one semantic model and one metric `m` (sum of `sales`). A case tweaks it with
-  `:measure` (merged into the measure), `:measures` (replaces them), `:input-measure`, `:metric`, `:type-params`,
-  `:columns` (merged into the node's columns; `::remove` drops one) and finally `:edit`, a fn over the whole manifest."
+  "A manifest with one model node, one semantic model and one metric `m` (sum of `sales`), tweaked with `:measure`
+  (merged into the measure), `:measures` (replaces them), `:input-measure`, `:metric`, `:type-params`, `:columns`
+  (merged into the node's columns; `::remove` drops one) and finally `:edit`, a fn over the whole manifest."
   [{im-overrides :input-measure, :keys [measure measures metric type-params columns edit]}]
   (let [im      (input-measure im-overrides)
         metric' (merge (base-metric) metric)
@@ -190,46 +186,39 @@
   ([config manifest]
    (->> manifest round-trip dbt-manifest/decode-manifest parse/parse-manifest (resolve/resolve-manifest config))))
 
-(defn run-case
-  "Run a case through the whole pipeline and describe what happened to its metric."
-  [{:keys [config metric-name] :as c}]
-  (try
-    (let [config      (merge default-config config)
-          metric-name (or metric-name (get-in c [:metric :name]) "m")
-          resolved    (resolve-manifest-map config (build-manifest c))
-          converted   (first (filter #(= metric-name (-> % :metric :name)) (:metrics resolved)))
-          unsupported (first (filter #(= metric-name (:name %)) (:unsupported resolved)))]
-      (cond
-        converted   {:aggregation  (emit/aggregation-clause converted)
-                     :source-table (:source-table converted)}
-        unsupported {:unsupported (:reason unsupported)}
-        :else       {:missing true}))
-    (catch Throwable e
-      {:thrown (or (ex-message e) (.getName (class e)))})))
+(defn convert
+  "Run the manifest [[build-manifest]] makes from `tweaks` through the whole pipeline and describe what happened to its
+  metric (`m`, unless `:metric-name` says otherwise): `{:aggregation clause, :source-table ref}` when it converted,
+  `{:unsupported reason}` when it was reported. `:config` is merged over [[default-config]]. A failure of the whole
+  run throws, as it does in the converter."
+  [{:keys [config metric-name] :as tweaks}]
+  (let [config      (merge default-config config)
+        metric-name (or metric-name (get-in tweaks [:metric :name]) "m")
+        resolved    (resolve-manifest-map config (build-manifest tweaks))]
+    (if-let [converted (first (filter #(= metric-name (-> % :metric :name)) (:metrics resolved)))]
+      {:aggregation  (emit/aggregation-clause converted)
+       :source-table (:source-table converted)}
+      (if-let [unsupported (first (filter #(= metric-name (:name %)) (:unsupported resolved)))]
+        {:unsupported (:reason unsupported)}
+        (throw (ex-info (format "metric %s was neither converted nor reported" (pr-str metric-name))
+                        {:resolved resolved}))))))
 
-(defn- matches-text? [expected actual]
-  (and (string? actual)
-       (or (= expected :any)
-           (boolean (re-find expected actual)))))
+(defn aggregation
+  "The aggregation clause the metric [[convert]] builds from `tweaks` converts to. When it is reported instead, the
+  `{:unsupported reason}` map, so a failing `is` shows the reason."
+  [tweaks]
+  (let [result (convert tweaks)]
+    (if (contains? result :aggregation)
+      (:aggregation result)
+      result)))
 
-(defn- satisfied? [expect result]
-  (cond
-    (= (:converted expect) :any)    (some? (:aggregation result))
-    (contains? expect :aggregation) (and (= (:aggregation expect) (:aggregation result))
-                                         (or (not (contains? expect :source-table))
-                                             (= (:source-table expect) (:source-table result))))
-    (contains? expect :unsupported) (matches-text? (:unsupported expect) (:unsupported result))
-    (contains? expect :thrown)      (matches-text? (:thrown expect) (:thrown result))
-    :else                           (throw (ex-info "case has no recognised expectation" {:expect expect}))))
-
-(defn check-cases
-  "Run `cases`, each a map with an `:id`, an `:expect` (see the namespace docstring) and the [[build-manifest]] tweaks."
-  [cases]
-  (doseq [{:keys [id expect] :as c} cases]
-    (let [result (run-case c)]
-      (testing id
-        (is (satisfied? expect result)
-            (str "expected " (pr-str expect) "\n  actual   " (pr-str result)))))))
+(defn unsupported
+  "The reason the metric [[convert]] builds from `tweaks` is reported as unsupported. When it converts instead, a
+  string saying what to, so a failing `re-find` shows the clause."
+  [tweaks]
+  (let [result (convert tweaks)]
+    (or (:unsupported result)
+        (str "converted to " (pr-str (:aggregation result))))))
 
 (defn metrics-manifest
   "A manifest whose metrics all sum `sales` and differ only in `label` (and description). Metric names are m0, m1, …"
