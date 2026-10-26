@@ -18,6 +18,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.util :as u]
+   [metabase.server.middleware.security :as mw.security]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.json :as json]
    [metabase.util.malli.schema :as ms])
@@ -175,8 +176,7 @@
        (mapv data-app-response)))
 
 ;; NOTE on the `slug-regex` constraint: the default path-param matcher allows slashes inside a segment, so `/:slug`
-;; would otherwise swallow `/x/bundle`. The regex also excludes the literal `repo-status`, `sandbox-host` and
-;; `generate` routes.
+;; would otherwise swallow `/x/bundle`. The regex also excludes the literal `repo-status` and `generate` routes.
 (api.macros/defendpoint :put ["/:slug" :slug slug-regex] :- DataAppResponse
   "Enable or disable a data app. A disabled app is served to superusers only. Superusers only; anything else about an
   app changes only through a repository import."
@@ -273,8 +273,8 @@
     (data-app-response (cond-> app (not api/*is-superuser?*) check-not-outdated))))
 
 (api.macros/defendpoint :get ["/:slug/bundle" :slug slug-regex] :- :any
-  "Serve the cached JS bundle for a single data app by slug, disabled ones to superusers only. Honors
-   `If-None-Match` against the content-hash ETag with a 304."
+  "Serve the cached JS bundle and its CSP for a single data app by slug, disabled ones to superusers only.
+   Honors `If-None-Match` against the content-hash ETag with a 304."
   {:scope api-scope/data-app}
   [{:keys [slug]} :- [:map {:closed true} [:slug ms/NonBlankString]]
    _query-params
@@ -298,7 +298,9 @@
             (respond {:status  200
                       :headers (-> bundle-response-headers
                                    (assoc "X-Metabase-Data-App-Allowed-Hosts"
-                                          (json/encode (:allowed_hosts row)))
+                                          (json/encode (:allowed_hosts row))
+                                          "X-Metabase-Data-App-Content-Security-Policy"
+                                          (mw.security/embedded-data-app-content-security-policy (:allowed_hosts row)))
                                    (cond-> etag (assoc "ETag" etag)))
                       :body    (ByteArrayInputStream. bundle)})
             (respond {:status  404

@@ -1135,3 +1135,17 @@
   (testing "a missing font is not cached either"
     (is (= "max-age=0, no-cache, must-revalidate, proxy-revalidate"
            (cache-control-for "/app/fonts/Lato/lato-v16-latin-regular.woff2" {:status 404})))))
+
+(deftest embedded-data-app-has-content-security-policy-test
+  (mt/with-temporary-setting-values [site-url "https://instance.example.com"]
+    (let [policy (mw.security/embedded-data-app-content-security-policy
+                  ["https://api.example.com" "https://instance.example.com" "https://*.example.com"])]
+      (is (str/includes? policy "form-action https://api.example.com;"))
+      (is (nil? (header->directive policy "frame-ancestors")))
+      (is (str/includes? policy "frame-src 'self' https://api.example.com;"))
+      (is (not (str/includes? policy "https://instance.example.com")))
+      (is (not (str/includes? policy "https://*.example.com"))))))
+
+(deftest embedded-data-app-policy-blocks-forms-without-allowed-hosts-test
+  (is (= "form-action 'none'"
+         (header->directive (mw.security/embedded-data-app-content-security-policy []) "form-action"))))
