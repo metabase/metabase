@@ -5,7 +5,7 @@
   through either is anonymously reachable, and it reaches a database when anything it renders runs a query there.
   Turning off anonymous access to a database stops every entity that reaches it from returning that data.
 
-  [[anonymously-reachable-entities]] is the whole of it from outside. [[rendered-card-ids]] is the step each content
+  [[anonymously-reachable-entities]] is the public API. [[rendered-card-ids]] is the method each content
   module implements."
   (:require
    [metabase.embedding.settings :as embedding.settings]
@@ -19,7 +19,7 @@
    [metabase.util.malli.schema :as ms]))
 
 (mr/def ::surface
-  "A way an anonymous user opens an entity: a public link, or a published guest embed."
+  "A way an anonymous user could open an entity: a public link, or a published guest embed."
   [:enum :public-link :guest-embed])
 
 (mr/def ::surfaces
@@ -27,8 +27,7 @@
   [:set {:min 1} ::surface])
 
 (mr/def ::id->surfaces
-  "The surfaces each entity of one model is open through, by entity id, e.g. `{1 #{:public-link}, 2 #{:public-link
-  :guest-embed}}`."
+  "For some model type (e.g. card, dashboard, document) a map of `id` to the surfaces that it is publicly accessible through."
   [:map-of ms/PositiveInt ::surfaces])
 
 (mr/def ::card-ids-by-surface
@@ -109,9 +108,9 @@
         (into (set (keys shown)) (keys shown-indirectly))))
 
 (defn- parameters-publicly-exposed-via-surface
-  "The filters among `parameters`, an entity's filter definitions, whose value list an anonymous user can fetch through
-  `surface`: all of them through a public link, and through a guest embed only those its publisher enabled in
-  `embedding-params`."
+  "For a given `surface` (public links or guest embedding), filter `parameters` down to what an anonymous user of that surface could see.
+  - For public links, ANY published filter can be set
+  - For guest embeds, publishers choose which filters are `enabled` when publishing."
   [surface embedding-params parameters]
   (if (= surface :public-link)
     parameters
