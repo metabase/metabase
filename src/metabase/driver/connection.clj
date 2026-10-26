@@ -131,7 +131,6 @@
   [_database]
   nil)
 
-
 (defn- overlay-details-for-type
   "Returns the connection-type-specific details overlay for `database`, or nil if the
    requested type has no configured overlay (or is `:default`).
