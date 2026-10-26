@@ -4207,3 +4207,30 @@
       (is (= [] (t2/select :data_app_group_assignment)))
       (migrate!)
       (is (thrown? Exception (t2/select :data_app_group_assignment))))))
+
+(deftest transform-archived-columns-test
+  (testing "n3gl8w, ue2bct: transform gains archived and archived_directly, false for every existing transform"
+    (impl/test-migrations ["n3gl8w" "ue2bct"] [migrate!]
+      (let [transform-id (t2/insert-returning-pk! :transform {:name        "existing"
+                                                              :source      (json/encode {:type "python" :body "pass"})
+                                                              :target      (json/encode {:type "table" :schema "public" :name "out"})
+                                                              :source_type "python"
+                                                              :entity_id   (u/generate-nano-id)
+                                                              :created_at  :%now
+                                                              :updated_at  :%now})
+            ;; Read whole rows: naming the new columns in the query would make the pre-migration run a SQL error.
+            transform    (fn [] (t2/select-one :transform :id transform-id))]
+        (migrate!)
+        (is (= {:archived false :archived_directly false}
+               (select-keys (transform) [:archived :archived_directly])))
+        (testing "the columns store true"
+          (t2/update! :transform transform-id {:archived true :archived_directly true})
+          (is (= {:archived true :archived_directly true}
+                 (select-keys (transform) [:archived :archived_directly]))))
+        (testing "rolling back drops the columns and keeps the row"
+          ;; The test harness records no version for the deployment of a version-less changeset, so the rollback
+          ;; counts it as part of 65 (see `versions/backfill-versions`). Roll back past 65 to undo it.
+          (migrate! :down 64)
+          (is (= "existing" (:name (transform))))
+          (is (not (contains? (transform) :archived)))
+          (is (not (contains? (transform) :archived_directly))))))))

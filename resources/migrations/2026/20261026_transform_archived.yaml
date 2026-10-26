@@ -1,0 +1,35 @@
+## Transforms can be moved to the Trash, the same way as cards: `archived` marks a trashed transform, and
+## `archived_directly` tells a transform trashed on its own from one trashed along with its folder.
+
+databaseChangeLog:
+  - changeSet:
+      id: n3gl8w
+      author: brybacki
+      comment: Add transform.archived
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: archived
+                  type: ${boolean.type}
+                  remarks: Whether the transform is in the Trash
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: ue2bct
+      author: brybacki
+      comment: Add transform.archived_directly
+      changes:
+        - addColumn:
+            tableName: transform
+            columns:
+              - column:
+                  name: archived_directly
+                  type: ${boolean.type}
+                  remarks: Whether the transform was trashed directly, rather than along with its folder
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
