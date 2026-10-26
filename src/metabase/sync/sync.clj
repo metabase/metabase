@@ -9,6 +9,7 @@
    In the near future these steps will be scheduled individually, meaning those functions will
    be called directly instead of calling the [[sync-database!]] function to do all three at once."
   (:require
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver.settings :as driver.settings]
    [metabase.driver.util :as driver.u]
    [metabase.sync.analyze :as analyze]
@@ -89,11 +90,12 @@
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
   tables, caller should check if can connect."
   [table :- i/TableInstance]
-  (doto table
-    sync-metadata/sync-table-metadata!
-    analyze/analyze-table!
-    sync.field-values/update-field-values-for-table!
-    sync-util/set-initial-table-sync-complete!))
+  (database-routing/with-anonymous-router-access
+    (doto table
+      sync-metadata/sync-table-metadata!
+      analyze/analyze-table!
+      sync.field-values/update-field-values-for-table!
+      sync-util/set-initial-table-sync-complete!)))
 
 (mu/defn refingerprint-field!
   "Refingerprint a field, usually after its type changes. Checks if can connect to database, returning
@@ -108,5 +110,6 @@
           (driver.u/can-connect-with-details? (:engine database) (:details database)))
       (sync-util/with-error-handling (format "Error refingerprinting field %s"
                                              (sync-util/name-for-logging field))
-        (sync.fingerprint/refingerprint-field! field))
+        (database-routing/with-anonymous-router-access
+          (sync.fingerprint/refingerprint-field! field)))
       :sync/no-connection)))

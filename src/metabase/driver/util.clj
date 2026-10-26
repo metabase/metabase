@@ -8,6 +8,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.auth-provider.core :as auth-provider]
    [metabase.config.core :as config]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.settings :as driver.settings]
    [metabase.lib-be.core :as lib-be]
@@ -350,7 +351,8 @@
   how long the driver may take -- callers bound it at whatever granularity suits them."
   [driver feature database]
   (try
-    (driver/database-supports? driver feature database)
+    (database-routing/with-anonymous-router-access
+      (driver/database-supports? driver feature database))
     (catch Throwable e
       (log/error (u/format-color 'red "Failed to check feature '%s' for database %s: %s" (u/qualified-name feature) (:id database) (ex-message e)))
       false)))

@@ -8,6 +8,7 @@
    4.  Sync FKs and indexes
    5.  Sync Metabase Metadata table (`metabase.sync.sync-metadata.metabase-metadata`)"
   (:require
+   [metabase.database-routing.core :as database-routing]
    [metabase.sync.fetch-metadata :as fetch-metadata]
    [metabase.sync.interface :as i]
    [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
@@ -120,7 +121,8 @@
 (mu/defn sync-table-metadata!
   "Sync the metadata for an individual `table` -- make sure Fields and FKs are up-to-date."
   [table :- i/TableInstance]
-  (let [database (table/database table)]
-    (sync-fields/sync-fields-for-table! database table)
-    (sync-fks/sync-fks-for-table! database table)
-    (sync-indexes/maybe-sync-indexes-for-table! database table)))
+  (database-routing/with-anonymous-router-access
+    (let [database (table/database table)]
+      (sync-fields/sync-fields-for-table! database table)
+      (sync-fks/sync-fks-for-table! database table)
+      (sync-indexes/maybe-sync-indexes-for-table! database table))))

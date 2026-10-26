@@ -962,6 +962,7 @@
            appearance
            audit-app
            auth-provider
+           database-routing
            events
            lib
            lib.be
@@ -3402,6 +3403,7 @@
            app-db
            audit-app
            collections
+           database-routing
            driver
            lib
            lib.be

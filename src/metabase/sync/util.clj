@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.analytics-interface.core :as analytics]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
@@ -334,7 +335,7 @@
                          (with-db-logging-disabled
                           (sync-in-context database
                                            (partial do-with-error-handling (format "Error in sync step %s" message) f))))))
-              result (sync-fn)]
+              result (database-routing/with-anonymous-router-access (sync-fn))]
           (when (instance? Throwable result)
             (analytics/inc! :metabase-sync/failures {:driver (name (:engine database))}))
           result)))))

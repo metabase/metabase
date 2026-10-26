@@ -30,6 +30,11 @@
      (fn []
        ~@body)))
 
+(defmacro with-anonymous-router-access
+  "Runs body as work whose results every user of a database shares, such as sync or a guest embed."
+  [& body]
+  `(do ~@body))
+
 (defenterprise check-allowed-access!
   "OSS version, does nothing"
   metabase-enterprise.database-routing.common

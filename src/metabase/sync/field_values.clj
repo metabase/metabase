@@ -2,6 +2,7 @@
   "Logic for updating FieldValues for fields in a database."
   (:require
    [java-time.api :as t]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.sync.db :as sync.db]
@@ -211,7 +212,8 @@
                                         :else
                                         true)))
                                   to-sync)
-        sync-counts      (sync-fields-for-table! table fields-to-sync fvs-map)]
+        sync-counts      (database-routing/with-anonymous-router-access
+                           (sync-fields-for-table! table fields-to-sync fvs-map))]
     (merge-with + clear-counts (or sync-counts empty-counts))))
 
 (mu/defn- update-field-values-for-database!
@@ -263,7 +265,8 @@
     (when (seq on-demand-fields)
       (log/debugf "Updating FieldValues for %d on-demand fields across %d tables"
                   (count on-demand-fields) (count (set (map :table_id on-demand-fields))))
-      (sync-fields-grouped-by-table! on-demand-fields))))
+      (database-routing/with-anonymous-router-access
+        (sync-fields-grouped-by-table! on-demand-fields)))))
 
 (defn- delete-expired-advanced-field-values-for-field!
   [field]
