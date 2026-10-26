@@ -27,6 +27,7 @@ import type {
 } from "metabase-types/api";
 
 import { userToColor } from "../colors";
+import { getIsUserSsoSourceEnabled } from "../selectors";
 
 import { MembershipSelect } from "./MembershipSelect";
 import { ReactivateUserButton } from "./ReactivateUserButton";
@@ -71,6 +72,10 @@ export const PeopleListRow = ({
   const isPasswordLoginEnabled = useSelector((state) =>
     getSetting(state, enablePasswordLoginKey),
   );
+  const isUserSsoSourceEnabled = useSelector((state) =>
+    getIsUserSsoSourceEnabled(state, user),
+  );
+  const canResetPassword = isPasswordLoginEnabled && !isUserSsoSourceEnabled;
 
   return (
     <tr key={user.id}>
@@ -145,7 +150,7 @@ export const PeopleListRow = ({
                     {t`Edit user`}
                   </Menu.Item>
 
-                  {isPasswordLoginEnabled && (
+                  {canResetPassword && (
                     <Menu.Item
                       component={ForwardRefLink}
                       to={Urls.resetPassword(user)}
