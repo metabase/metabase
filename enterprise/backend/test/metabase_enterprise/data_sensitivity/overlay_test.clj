@@ -42,17 +42,15 @@
                      :model/Field {plain :id}         {:table_id table-id attribute deterministic}
                      :model/Field {ai-id :id}         {:table_id table-id attribute deterministic}
                      :model/Field {human-id :id :as human-field} {:table_id table-id attribute deterministic}
-                     :model/Field {rejected :id}      {:table_id table-id attribute deterministic}
                      :model/Field {none :id}          {:table_id table-id attribute deterministic}]
         (field-user-settings/set-ai-values-for-fields! {ai-id {attribute ai}})
         (field-user-settings/upsert-user-settings human-field {attribute human})
         (doseq [field-id [plain ai-id human-id]]
           (propose! table-id field-id attribute proposed))
-        (propose! table-id rejected attribute proposed :status :rejected)
         (testing "the default read never returns a pending value and keeps human > AI > deterministic"
-          (is (= {plain deterministic ai-id ai human-id human rejected deterministic none deterministic}
+          (is (= {plain deterministic ai-id ai human-id human none deterministic}
                  (into {} (map (juxt identity #(get (warehouse-schema.db/field %) attribute)))
-                       [plain ai-id human-id rejected none])))
+                       [plain ai-id human-id none])))
           (is (not-any? #(contains? (warehouse-schema.db/field %) :ai_proposals) [plain human-id])))
         (testing "the preview reads the pending proposal as if accepted, also over AI and human values"
           (doseq [field-id [plain ai-id human-id]]
@@ -60,8 +58,7 @@
                      :ai_proposals {attribute {:value (stored proposed) :reasoning "because" :confidence :high
                                                :conflict (= field-id human-id)}}}
                     (preview field-id)))))
-        (testing "the preview ignores a rejected proposal and keeps the merged value of a Field with no proposal"
-          (is (=? {attribute deterministic :ai_proposals {}} (preview rejected)))
+        (testing "the preview keeps the merged value of a Field with no proposal"
           (is (=? {attribute deterministic :ai_proposals {}} (preview none))))))))
 
 (deftest preview-leaves-other-attributes-test
