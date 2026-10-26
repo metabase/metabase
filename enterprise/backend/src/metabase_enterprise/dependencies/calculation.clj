@@ -83,12 +83,12 @@
   {:table (into #{} (keep :table-id) dimension-mappings)})
 
 (mu/defn- upstream-deps:dynamic-goals :- ::deps.schema/upstream-deps
-  "Entities whose value a dynamic goal in `viz-settings` reads."
+  "Entities whose value a dynamic goal in `viz-settings` reads, including goals nested in a visualizer dashcard."
   [viz-settings :- [:maybe ms/VisualizationSettings]]
-  (->> (dynamic-goals/goal-values viz-settings)
+  (->> (dynamic-goals/dashcard-goal-values viz-settings)
        (keep dynamic-goals/goal-source)
        (filter (fn [{:keys [id type]}]
-                 (and (pos-int? id) (#{"card" "measure"} type))))
+                 (and (pos-int? id) (dynamic-goals/goal-entity-types type))))
        (u/group-by (comp keyword :type) :id conj #{})))
 
 (mu/defn- upstream-deps:python-transform :- ::deps.schema/upstream-deps

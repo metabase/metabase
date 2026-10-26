@@ -292,6 +292,30 @@
                       :type "card"}]
                     response))))))))
 
+(deftest dynamic-goal-dependents-test
+  (testing "GET /api/ee/dependencies/graph/dependents lists cards and dashboards whose dynamic goal reads the card"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Card :model/Dependency :model/DependencyStatus]
+        (mt/with-temp [:model/User user {:email "me@wherever.com"}]
+          (let [{goal-card-id :id}  (card/create-card! (basic-card "Goal card") user)
+                goal                {:id goal-card-id :type "card" :column "count"}
+                {holder-id :id}     (card/create-card!
+                                     (assoc (basic-card "Goal holder" :products)
+                                            :visualization_settings {:graph.goal_value goal})
+                                     user)
+                {shown-card-id :id} (card/create-card! (basic-card "Shown card" :products) user)]
+            (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                           :model/DashboardCard _ {:dashboard_id           dashboard-id
+                                                   :card_id                shown-card-id
+                                                   :visualization_settings {:progress.goal goal}}]
+              (deps.test/synchronously-run-backfill!)
+              (is (= #{["card" holder-id] ["dashboard" dashboard-id]}
+                     (into #{}
+                           (map (juxt :type :id))
+                           (mt/user-http-request :rasta :get 200 "ee/dependencies/graph/dependents"
+                                                 :id goal-card-id
+                                                 :type "card")))))))))))
+
 (deftest ^:synchronized dependents-multiple-types-test
   (testing "GET /api/ee/dependencies/graph/dependents with multiple dependent-types"
     (mt/with-premium-features #{:dependencies}

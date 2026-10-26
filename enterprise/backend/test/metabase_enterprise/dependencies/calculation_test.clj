@@ -733,6 +733,20 @@
                                         :graph.goal_value {:id 7777 :type "card" :column "count"}}}]})
                         [:card])))))
 
+(deftest ^:parallel upstream-deps-visualizer-dynamic-goal-test
+  (testing "a goal nested in a visualizer dashcard's settings is a dashboard dependency"
+    (is (= {:card #{7777} :measure #{8888}}
+           (select-keys (calculation/calculate-deps*
+                         :dashboard
+                         {:dashcards [{:visualization_settings
+                                       {:visualization {:display  "gauge"
+                                                        :settings {:gauge.segments
+                                                                   [{:min 0
+                                                                     :max {:id 7777 :type "card" :column "count"}}]
+                                                                   :progress.goal
+                                                                   {:id 8888 :type "measure" :column "sum"}}}}}]})
+                        [:card :measure])))))
+
 (deftest upstream-deps-card-with-measure-dynamic-goal-test
   (let [mp (mt/metadata-provider)
         orders-id (mt/id :orders)

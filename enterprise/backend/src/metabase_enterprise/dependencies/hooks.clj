@@ -100,7 +100,8 @@
     (mark-changed! (deps.dependency-types/model->dependency-type model) (:id instance))))
 
 (doseq [[model columns] {:model/Action             #{:model_id :type}
-                         :model/Card               #{:type :dataset_query :dimension_mappings :parameters}
+                         :model/Card               #{:type :dataset_query :dimension_mappings :parameters
+                                                     :visualization_settings}
                          :model/Dashboard          #{:parameters}
                          :model/Document           #{:content_type :document}
                          :model/Measure            #{:definition :table_id}

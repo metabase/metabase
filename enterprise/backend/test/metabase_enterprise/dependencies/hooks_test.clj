@@ -38,7 +38,26 @@
           (t2/update! :model/Card card-id {:name "Renamed"})
           (is (not (stale? :card card-id)))
           (t2/update! :model/Card card-id {:dataset_query (table-query :orders)})
-          (is (stale? :card card-id)))))))
+          (is (stale? :card card-id))
+          (testing "editing its viz settings, where dynamic goals live, marks it stale"
+            (deps.dependency-status/upsert-status! :card card-id)
+            (t2/update! :model/Card card-id {:visualization_settings
+                                             {:graph.goal_value {:id card-id :type "card" :column "count"}}})
+            (is (stale? :card card-id))))))))
+
+(deftest card-goal-only-edit-recalculates-dependencies-test
+  (testing "adding a dynamic goal to a card, and nothing else, records the card it reads as a dependency"
+    (mt/with-premium-features #{:dependencies}
+      (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+        (mt/with-temp [:model/Card {goal-card-id :id} {:dataset_query (table-query :orders)}
+                       :model/Card {card-id :id}      {:dataset_query (table-query :products)}]
+          (deps.test/synchronously-run-backfill!)
+          (t2/update! :model/Card card-id {:visualization_settings
+                                           {:graph.goal_value {:id goal-card-id :type "card" :column "count"}}})
+          (deps.test/synchronously-run-backfill!)
+          (is (t2/exists? :model/Dependency
+                          :from_entity_type :card :from_entity_id card-id
+                          :to_entity_type :card :to_entity_id goal-card-id)))))))
 
 (deftest card-update-marks-finding-test
   (testing "updating a card's query marks its own analysis finding stale in the same transaction"
