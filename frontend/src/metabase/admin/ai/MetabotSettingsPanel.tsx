@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
@@ -83,17 +83,27 @@ function MetabotQueryExecutionToggle() {
   );
   const label = t`Let Metabot run queries and read their results`;
   const isSetByEnv = envName != null;
+  const descriptionId = useId();
+  const envMessageId = useId();
 
   return (
     <Box>
       <SettingHeader
         id="metabot-query-execution"
         title={t`Query execution`}
-        description={t`Metabot can run queries and read their results to answer questions, using the permissions of the person asking. The result rows are sent to your AI provider. This doesn't apply to Metabot in Slack or in embedded apps.`}
+        description={
+          <span id={descriptionId}>
+            {t`Metabot can run queries and read their results to answer questions, using the permissions of the person asking. The result rows are sent to your AI provider. This doesn't apply to Metabot in Slack or in embedded apps.`}
+          </span>
+        }
       />
       <Flex align="center" gap="lg" mt="lg">
         <Switch
+          id="metabot-query-execution"
           aria-label={label}
+          aria-describedby={
+            isSetByEnv ? `${descriptionId} ${envMessageId}` : descriptionId
+          }
           checked={checked}
           disabled={isSetByEnv}
           // aria-disabled, not disabled, so focus stays on the switch during a write
@@ -109,7 +119,11 @@ function MetabotQueryExecutionToggle() {
           {label}
         </Text>
       </Flex>
-      {isSetByEnv && <SetByEnvVar varName={envName} />}
+      {isSetByEnv && (
+        <Box id={envMessageId}>
+          <SetByEnvVar varName={envName} />
+        </Box>
+      )}
     </Box>
   );
 }

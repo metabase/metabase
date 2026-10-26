@@ -389,9 +389,9 @@ describe("MetabotSettingsPanel query execution", () => {
         checked: enabled,
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/The result rows are sent to your AI provider/),
-    ).toBeInTheDocument();
+    expect(await queryExecutionSwitch()).toHaveAccessibleDescription(
+      /The result rows are sent to your AI provider/,
+    );
   });
 
   it("persists turning query execution off", async () => {
@@ -416,6 +416,9 @@ describe("MetabotSettingsPanel query execution", () => {
     ).toHaveTextContent("MB_METABOT_QUERY_EXECUTION_ENABLED");
     expect(toggle).toBeChecked();
     expect(toggle).toBeDisabled();
+    expect(toggle).toHaveAccessibleDescription(
+      /set by the MB_METABOT_QUERY_EXECUTION_ENABLED environment variable/,
+    );
   });
 
   it("hides query execution while Metabot is off", async () => {
