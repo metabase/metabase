@@ -6,6 +6,7 @@
    [metabase.api.macros :as api.macros]
    [metabase.collections.models.collection :as collection]
    [metabase.collections.models.collection.root :as collection.root]
+   [metabase.data-apps.core :as data-apps]
    [metabase.eid-translation.core :as eid-translation]
    [metabase.events.core :as events]
    [metabase.lib-be.core :as lib-be]
@@ -813,8 +814,11 @@
        [:parameters         {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]
        [:stored_result_id   {:optional true} [:maybe ms/PositiveInt]]
        [:sort               {:optional true}
-        [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]]
+        [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]
+   request]
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
+        _                (when (data-apps/data-app-request? request)
+                           (-> (data-apps/request-data-app request) (data-apps/check-card resolved-card-id)))
         card             (api/check-404 (queries-rest.db/card resolved-card-id))]
     (if stored_result_id
       (do
@@ -865,7 +869,10 @@
        [:parameters    {:optional true} [:maybe ::parameters.schema/api.parameter-values]]
        [:format_rows   {:default false} ms/BooleanValue]
        [:pivot_results {:default false} ms/BooleanValue]
-       [:csv_include_bom {:default false} ms/BooleanValue]]]
+       [:csv_include_bom {:default false} ms/BooleanValue]]
+   request]
+  (when (data-apps/data-app-request? request)
+    (-> (data-apps/request-data-app request) (data-apps/check-card card-id)))
   (qp.card/process-query-for-card
    (api/check-404 (queries-rest.db/card card-id)) export-format
    :parameters  parameters
@@ -949,7 +956,10 @@
     :or   {ignore_cache false}} :- [:map {:closed true}
                                     [:ignore_cache {:optional true} [:maybe :boolean]]
                                     [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]
-                                    [:parameters   {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]]
+                                    [:parameters   {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]
+   request]
+  (when (data-apps/data-app-request? request)
+    (-> (data-apps/request-data-app request) (data-apps/check-card card-id)))
   (let [card (api/check-404 (queries-rest.db/card card-id))]
     (when dashboard_id
       (api/read-check :model/Dashboard dashboard_id))
