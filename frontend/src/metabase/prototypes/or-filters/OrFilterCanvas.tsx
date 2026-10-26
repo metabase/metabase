@@ -25,8 +25,10 @@ import { FilterTreeInspector } from "./harness/FilterTreeInspector";
 import { QueryResults } from "./harness/QueryResults";
 import {
   clearFilters,
+  withCategoryMonthDrilled,
   withCountByBinnedTotal,
   withCountByCategory,
+  withCountByCategoryByMonth,
   withCountByMonth,
   withCountBySource,
   withCountByState,
@@ -154,6 +156,23 @@ const DRILL_EXAMPLES: DrillExample[] = [
   {
     start: {
       get label() {
+        return t`Category × Month`;
+      },
+      load: withCountByCategoryByMonth,
+      display: "bar",
+      hint: t`Count by Product → Category by Created At: Month. Click a bar → "See these Orders" writes one filter per breakout: Category = Gizmo and Created At = March 2027 (month-bucketed). "Break out by…" writes the same two and swaps the breakouts.`,
+    },
+    drilled: {
+      get label() {
+        return t`Gizmo, Mar 2027`;
+      },
+      load: withCategoryMonthDrilled,
+      hint: t`After "See these Orders" on the Gizmo × March 2027 bar: two pills from one click, one of them a bucketed date.`,
+    },
+  },
+  {
+    start: {
+      get label() {
         return t`Zoom in: time`;
       },
       load: withCountByMonth,
@@ -244,10 +263,10 @@ const DRILL_EXAMPLES: DrillExample[] = [
 type ExampleButtonProps = {
   example: Example;
   onLoad: (example: Example) => void;
-  fullWidth?: boolean;
+  leftSection?: ReactNode;
 };
 
-function ExampleButton({ example, onLoad, fullWidth }: ExampleButtonProps) {
+function ExampleButton({ example, onLoad, leftSection }: ExampleButtonProps) {
   return (
     <Tooltip
       label={example.hint}
@@ -259,7 +278,7 @@ function ExampleButton({ example, onLoad, fullWidth }: ExampleButtonProps) {
       <Button
         size="sm"
         variant="default"
-        fullWidth={fullWidth}
+        leftSection={leftSection}
         onClick={() => onLoad(example)}
       >
         {example.label}
@@ -268,45 +287,27 @@ function ExampleButton({ example, onLoad, fullWidth }: ExampleButtonProps) {
   );
 }
 
-type DrillExampleGridProps = {
+type DrillExamplePairsProps = {
   examples: DrillExample[];
   onLoad: (example: Example) => void;
 };
 
-/** Two aligned rows: each drill's starting point above the state it produces. */
-function DrillExampleGrid({ examples, onLoad }: DrillExampleGridProps) {
+/** One connected pair per drill, starting point then result, wrapping like a row of pills. */
+function DrillExamplePairs({ examples, onLoad }: DrillExamplePairsProps) {
   return (
-    <Box
-      style={{
-        display: "grid",
-        gridTemplateColumns: `max-content repeat(${examples.length}, max-content)`,
-        gap: "var(--mantine-spacing-sm)",
-        alignItems: "center",
-      }}
-    >
+    <Group gap="sm" align="center">
       <Text fw="bold" c="text-secondary" miw="6.5rem">{t`Drill-throughs`}</Text>
-      {examples.map(({ start }) => (
-        <ExampleButton
-          key={start.label}
-          example={start}
-          onLoad={onLoad}
-          fullWidth
-        />
+      {examples.map(({ start, drilled }) => (
+        <Button.Group key={start.label}>
+          <ExampleButton example={start} onLoad={onLoad} />
+          <ExampleButton
+            example={drilled}
+            onLoad={onLoad}
+            leftSection={<Icon name="arrow_right" size={12} />}
+          />
+        </Button.Group>
       ))}
-      <Text
-        fw="bold"
-        c="text-secondary"
-        miw="6.5rem"
-      >{t`After the drill`}</Text>
-      {examples.map(({ drilled }) => (
-        <ExampleButton
-          key={drilled.label}
-          example={drilled}
-          onLoad={onLoad}
-          fullWidth
-        />
-      ))}
-    </Box>
+    </Group>
   );
 }
 
@@ -337,6 +338,7 @@ function getReadingContext(directionId: string) {
     case "expression-bar-unified":
     case "expression-bar-unified-tail":
     case "expression-bar-split":
+    case "expression-bar-summary-menu":
       return UnifiedCompactReadingContext;
     default:
       return CompactReadingContext;
@@ -396,7 +398,8 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
     direction.id === "expression-bar-inline-2" ||
     direction.id === "expression-bar-unified" ||
     direction.id === "expression-bar-unified-tail" ||
-    direction.id === "expression-bar-split";
+    direction.id === "expression-bar-split" ||
+    direction.id === "expression-bar-summary-menu";
 
   const ReadingContext = getReadingContext(direction.id);
 
@@ -446,7 +449,7 @@ export function OrFilterCanvas({ direction }: OrFilterCanvasProps) {
                   {t`Reset`}
                 </Button>
               </ExampleRow>
-              <DrillExampleGrid
+              <DrillExamplePairs
                 examples={DRILL_EXAMPLES}
                 onLoad={loadExample}
               />

@@ -773,3 +773,36 @@ export function withTwoSummariesExample(
     }),
   );
 }
+
+/**
+ * underlying-records on the Gizmo × March 2027 bar: back to rows with one
+ * filter per breakout dimension, the date one bucketed by month.
+ */
+export function withCategoryMonthDrilled(
+  query: Lib.Query,
+  stageIndex: number,
+): Lib.Query {
+  const cleared = clearFilters(query, stageIndex);
+  const category = findFilterColumnByLongName(
+    cleared,
+    stageIndex,
+    "Product → Category",
+  );
+  const createdAt = findColumn(cleared, stageIndex, "Created At");
+  if (!category || !createdAt) {
+    return query;
+  }
+  const month = findTemporalBucket(cleared, stageIndex, createdAt, "month");
+  return [
+    Lib.specificDateFilterClause({
+      operator: "=",
+      column: Lib.withTemporalBucket(createdAt, month),
+      values: [new Date(2027, 2, 1)],
+      hasTime: false,
+    }),
+    stringEquals(category, "Gizmo"),
+  ].reduce(
+    (nextQuery, clause) => Lib.filter(nextQuery, stageIndex, clause),
+    cleared,
+  );
+}

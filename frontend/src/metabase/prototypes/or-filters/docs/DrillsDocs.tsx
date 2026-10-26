@@ -217,6 +217,16 @@ const HARNESS_EXAMPLES: ReactNode[][] = [
     </>,
   ],
   [
+    "Category × Month",
+    "Count by Product → Category by Created At: Month (bar)",
+    <>
+      underlying-records → <Code>Created At: Month = Apr 2028</Code> and{" "}
+      <Code>Category = Doohickey</Code>, one filter per breakout dimension, one
+      of them a bucketed date; Break out by… writes the same two and swaps the
+      breakouts
+    </>,
+  ],
+  [
     "Zoom in: time",
     "Count by Created At: Month (line)",
     <>
