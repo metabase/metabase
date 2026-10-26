@@ -29,10 +29,7 @@ import {
   setRepositoryReset,
 } from "./run-file.ts";
 import { loadRepositoryReset, runSetupFiles } from "./setup-files.ts";
-import {
-  rememberCanvasMocks,
-  resetTestingLibraryConfig,
-} from "./shared-packages.ts";
+import { rememberCanvasMocks } from "./shared-packages.ts";
 import { createFakeClock, isPoisoned, trackTimers } from "./timers.ts";
 
 const MAX_RESIDENT_MB = Number(process.env.NT_MAX_RSS_MB ?? 1500);
@@ -64,7 +61,6 @@ function installEnvironment(): void {
   recordEnvironmentBaseline();
   setRepositoryReset(loadRepositoryReset());
   ignoreUnmatchedCallsAfterBody();
-  resetTestingLibraryConfig();
   rememberCanvasMocks();
 }
 

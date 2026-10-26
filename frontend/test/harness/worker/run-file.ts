@@ -57,11 +57,9 @@ import {
 } from "./results.ts";
 import { restoreSetupMocks, runSetupFiles } from "./setup-files.ts";
 import {
-  pointScreenAtNewDocument,
   rememberCanvasMocks,
   resetClipboard,
   resetFocus,
-  resetTestingLibraryConfig,
   restoreCanvasMocks,
 } from "./shared-packages.ts";
 import {
@@ -328,7 +326,6 @@ async function resetForNextFile(): Promise<void> {
   restoreSetupMocks();
   restoreCanvasMocks();
   rememberCanvasMocks();
-  resetTestingLibraryConfig();
   repositoryReset();
 
   resetMocksForNextFile();
@@ -348,7 +345,6 @@ function resetDocument(): void {
 function replaceWindowForNextFile(): void {
   const previous = replaceWindow();
   mirrorGlobalsAgain();
-  pointScreenAtNewDocument();
   tryTo(() => previous.close());
   // Packages that bind to the window load again, and register their hooks
   // again when they do.
