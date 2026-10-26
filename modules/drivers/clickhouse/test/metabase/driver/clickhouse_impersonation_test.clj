@@ -109,6 +109,9 @@
                           ENGINE ReplicatedMergeTree('/clickhouse/{cluster}/tables/{database}/{table}/{shard}', '{replica}')
                           ORDER BY (i);"
                           "INSERT INTO `metabase_test_role_db`.`some_table` VALUES (42), (144);"
+                          ;; the test reads through the load balancer, so it can reach a replica the rows haven't
+                          ;; reached yet
+                          "SYSTEM SYNC REPLICA ON CLUSTER '{cluster}' `metabase_test_role_db`.`some_table`;"
                           "CREATE ROLE IF NOT EXISTS `metabase_test_role` ON CLUSTER '{cluster}';"
                           "CREATE ROLE IF NOT EXISTS `metabase-test-role` ON CLUSTER '{cluster}';"
                           "CREATE USER IF NOT EXISTS `metabase_test_user` ON CLUSTER '{cluster}' NOT IDENTIFIED;"
