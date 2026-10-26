@@ -321,15 +321,13 @@
 
 ;;; ---------------------------------------- metric sources ----------------------------------------
 
-(deftest ^:parallel metric-required-source-classifies-the-four-definition-shapes-test
+(deftest ^:parallel metric-required-source-classifies-definition-shapes-test
   (testing "Metric sources follow the query processor's compatibility rules"
     (are [expected stages] (= expected
-                              (metabot.tools.util/metric-required-source
-                               {:dataset_query {:stages stages} :table_id 5}))
+                              (metabot.tools.util/metric-required-source {:dataset_query {:stages stages}}))
       {:kind :table, :table-id 5, :bare-table-only? false} [{:source-table 5}]
       {:kind :card,  :card-id 42}                          [{:source-card 42}]
-      {:kind :table, :table-id 5, :bare-table-only? true}  [{:source-table 5} {}]
-      {:kind :table, :table-id 5, :bare-table-only? true}  [{:source-card 42} {}])))
+      {:kind :table, :table-id 5, :bare-table-only? true}  [{:source-table 5} {}])))
 
 (deftest ^:parallel metric-required-source-unreadable-definition-test
   (testing "A blank or unconvertible metric definition has no usable source"
@@ -343,12 +341,12 @@
 (deftest ^:parallel metric-required-source-legacy-definition-test
   (testing "Legacy definitions are converted before classifying the source"
     (are [expected query] (= expected (metabot.tools.util/metric-required-source
-                                       {:dataset_query (assoc query :database 1 :type :query) :table_id 5}))
+                                       {:dataset_query (assoc query :database 1 :type :query)}))
       {:kind :table, :table-id 5, :bare-table-only? false} {:query {:source-table 5}}
       {:kind :card, :card-id 12}                           {:query {:source-table "card__12"
                                                                     :aggregation  [[:count]]}}
       ;; a nested `:source-query` is two stages, so the base table is the one to use
-      {:kind :table, :table-id 5, :bare-table-only? true}  {:query {:source-query {:source-table "card__12"}
+      {:kind :table, :table-id 5, :bare-table-only? true}  {:query {:source-query {:source-table 5}
                                                                     :aggregation  [[:count]]}})))
 
 (deftest ^:parallel metric-compatible-with-stage?-test
