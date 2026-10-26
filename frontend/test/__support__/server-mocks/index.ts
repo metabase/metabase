@@ -34,6 +34,7 @@ export * from "./impersonation";
 export * from "./index-manager";
 export * from "./library";
 export * from "./logger";
+export * from "./logo";
 export * from "./measure";
 export * from "./metabot";
 export * from "./metabot-analytics";
