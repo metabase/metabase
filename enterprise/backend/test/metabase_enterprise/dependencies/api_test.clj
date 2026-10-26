@@ -2973,8 +2973,7 @@
     (data-apps.tu/with-published-tables! [(mt/id :venues)]
       (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
                      {:name "birds" :display_name "Birds" :bundle_path "birds.js" :enabled false}
-                     :model/Card {card-id :id} (data-app-card collection-id)
-                     :model/PermissionsGroup {group-id :id} {}]
+                     :model/Card {card-id :id} (data-app-card collection-id)]
         (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
           (deps.test/synchronously-run-dependency-job!)
           (perms/grant-collection-read-permissions! (perms/all-users-group) collection-id)
@@ -2987,11 +2986,7 @@
             (mt/with-premium-features #{:dependencies :data-apps}
               (testing "an admin sees every app, disabled ones too"
                 (is (= #{app-id} (dependent-ids :crowberto))))
-              (testing "a user sees the enabled apps assigned to one of their groups, not the apps whose collection they
-                       can read"
-                (is (= #{} (dependent-ids :rasta)))
-                (perms/add-user-to-group! (mt/user->id :rasta) group-id)
-                (t2/insert! :model/DataAppGroupAssignment {:data_app_id app-id :permission_group_id group-id})
+              (testing "a user sees the enabled apps whose collection they can read"
                 (is (= #{} (dependent-ids :rasta)))
                 (t2/update! :model/DataApp app-id {:enabled true})
                 (is (= #{app-id} (dependent-ids :rasta)))))
@@ -3002,11 +2997,11 @@
 (deftest graph-data-app-names-only-for-non-admins-test
   (testing "GET /api/ee/dependencies/graph gives a non-admin only a data app's names, as the data-app API does"
     (mt/with-premium-features #{:dependencies :data-apps}
-      (mt/with-temp [:model/DataApp {app-id :id} {:name "birds" :display_name "Birds" :description "Sightings"
-                                                  :bundle_path "birds.js"}
+      (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
+                     {:name "birds" :display_name "Birds" :description "Sightings" :bundle_path "birds.js"}
                      :model/PermissionsGroup {group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
-                     :model/DataAppGroupAssignment _ {:data_app_id app-id :permission_group_id group-id}]
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (perms/grant-collection-read-permissions! group-id collection-id)
         (let [app-data (fn [user]
                          (->> (mt/user-http-request user :get 200 "ee/dependencies/graph" :id app-id :type "data-app")
                               :nodes
@@ -3021,12 +3016,13 @@
 (deftest graph-data-app-without-data-apps-feature-test
   (testing "GET /api/ee/dependencies/graph refuses a data app start node without the data apps feature"
     (mt/with-premium-features #{:dependencies}
-      (mt/with-temp [:model/DataApp {app-id :id} {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
+      (mt/with-temp [:model/DataApp {app-id :id collection-id :resource_collection_id}
+                     {:name "birds" :display_name "Birds" :bundle_path "birds.js"}
                      :model/PermissionsGroup {group-id :id} {}
-                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}
-                     :model/DataAppGroupAssignment _ {:data_app_id app-id :permission_group_id group-id}]
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id group-id}]
+        (perms/grant-collection-read-permissions! group-id collection-id)
         (doseq [[description user] [["to an admin" :crowberto]
-                                    ["to a user in a group assigned the app" :rasta]]]
+                                    ["to a user in a group that can read the app's collection" :rasta]]]
           (testing description
             (is (= "You don't have permissions to do that."
                    (mt/user-http-request user :get 403 "ee/dependencies/graph" :id app-id :type "data-app")))))))))
