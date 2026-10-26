@@ -352,6 +352,32 @@ describe("scenarios > embedding-sdk > interactive-question > creating a question
     });
   });
 
+  it('should show an empty state in the staged picker, not the raw tables, when `entityTypes` = ["semantic-layer"] and nothing is published', () => {
+    H.createLibrary();
+    cy.signOut();
+    mockAuthProviderAndJwtSignIn();
+
+    mountSdkContent(
+      <div style={{ display: "flex", padding: "20px" }}>
+        <InteractiveQuestion
+          questionId="new"
+          dataPicker="staged"
+          entityTypes={["semantic-layer"]}
+        />
+      </div>,
+    );
+
+    getSdkRoot().findByText("Pick your starting data").should("be.visible");
+
+    H.popover().within(() => {
+      cy.findByText("To pick some data, you'll need to add some first").should(
+        "be.visible",
+      );
+      cy.findByText("Sample Database").should("not.exist");
+      cy.findByText("Orders").should("not.exist");
+    });
+  });
+
   [
     {
       targetCollectionId: "personal",
