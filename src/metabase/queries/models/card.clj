@@ -1010,10 +1010,11 @@
   ;; Public and embedded pages resolve goals as admin, so this is their only check. A missing entity is refused
   ;; because a not-yet-issued id would point at whatever gets created next. No bound user means an internal write
   ;; (serdes import, migrations, tasks) rather than a request.
-  (when api/*current-user-id*
+  (when-let [refs (and api/*current-user-id*
+                       (not-empty (resolvable-goal-references viz-settings)))]
+    ;; most settings carry no goals, so skip scanning every previous setting (a whole dashboard's, for a new dashcard)
     (run! check-goal-reference!
-          (set/difference (resolvable-goal-references viz-settings)
-                          (into #{} (mapcat resolvable-goal-references) previous-viz-settings)))))
+          (set/difference refs (into #{} (mapcat resolvable-goal-references) previous-viz-settings)))))
 
 (defn check-shared-dashboard-goal-permissions!
   "Placing `cards` on `dashboard` resolves their goals for anyone who opens it when the dashboard is publicly shared or

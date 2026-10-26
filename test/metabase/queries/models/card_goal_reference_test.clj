@@ -12,6 +12,7 @@
    [metabase.permissions.core :as perms]
    [metabase.queries.core :as queries]
    [metabase.queries.models.card :as card]
+   [metabase.revisions.core :as revisions]
    [metabase.test :as mt]
    [metabase.test.http-client :as client]
    [toucan2.core :as t2]))
@@ -169,6 +170,55 @@
                                                                                                  (card-goal goal-id))})]
          (mt/with-model-cleanup [:model/Dashboard]
            (mt/user-http-request :rasta :post 200 (format "dashboard/%d/copy" dash-id))))))))
+
+(deftest duplicated-dashcard-goal-reference-test
+  (do-with-unreadable-card!
+   (fn [goal-id]
+     (do-with-unreadable-card!
+      (fn [other-goal-id]
+        (let [goal-viz (gauge-viz (card-goal goal-id))]
+          (mt/with-temp [:model/Card          {card-id :id}     {:dataset_query (count-query)}
+                         :model/Dashboard     {dash-id :id}     {}
+                         :model/DashboardCard {dashcard-id :id} (merge layout {:dashboard_id           dash-id
+                                                                               :card_id                card-id
+                                                                               :visualization_settings goal-viz})]
+            (let [existing     (merge layout {:id dashcard-id :card_id card-id :visualization_settings goal-viz})
+                  new-dashcard (fn [viz] (merge layout {:id -1 :card_id card-id :visualization_settings viz}))]
+              (testing "a new dashcard carrying a goal already on the dashboard saves, as an editor duplicate does"
+                (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dash-id)
+                                      {:dashcards [existing (new-dashcard goal-viz)]
+                                       :tabs      []}))
+              (testing "a new dashcard carrying a goal not on the dashboard yet is refused"
+                (mt/user-http-request :rasta :put 403 (format "dashboard/%d" dash-id)
+                                      {:dashcards [existing (new-dashcard (gauge-viz (card-goal other-goal-id)))]
+                                       :tabs      []}))))))))))
+
+(deftest reverted-dashcard-goal-reference-test
+  (do-with-unreadable-card!
+   (fn [goal-id]
+     (mt/with-temp [:model/Card      {card-id :id} {:dataset_query (count-query)}
+                    :model/Dashboard {dash-id :id} {}]
+       (let [goal-dashcard #(merge layout {:dashboard_id           dash-id
+                                           :card_id                card-id
+                                           :visualization_settings (gauge-viz (card-goal goal-id))})
+             snapshot      #(revisions/serialize-instance :model/Dashboard dash-id
+                                                          (t2/select-one :model/Dashboard :id dash-id))
+             revert-status (fn [serialized]
+                             (mt/with-test-user :rasta
+                               (status-of #(revisions/revert-to-revision! :model/Dashboard dash-id
+                                                                          (mt/user->id :rasta) serialized))))]
+         (testing "restoring a dashcard whose goal another dashcard still carries succeeds"
+           (let [restored-id (t2/insert-returning-pk! :model/DashboardCard (goal-dashcard))
+                 _           (t2/insert! :model/DashboardCard (goal-dashcard))
+                 serialized  (snapshot)]
+             (t2/delete! :model/DashboardCard :id restored-id)
+             (is (= :no-error (revert-status serialized)))))
+         (testing "restoring a goal no longer on the dashboard is refused"
+           (t2/delete! :model/DashboardCard :dashboard_id dash-id)
+           (t2/insert! :model/DashboardCard (goal-dashcard))
+           (let [serialized (snapshot)]
+             (t2/delete! :model/DashboardCard :dashboard_id dash-id)
+             (is (= 403 (revert-status serialized))))))))))
 
 (deftest public-card-goal-reference-save-test
   (testing "an editor can't make a public card return a card they can't read"
