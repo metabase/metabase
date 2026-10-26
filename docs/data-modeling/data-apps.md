@@ -5,13 +5,13 @@ summary: Data apps are React apps that Metabase serves on top of your Library. A
 
 # Data apps
 
-_Data studio > Data apps_
+_Data Studio > Data apps_
 
 {% include plans-blockquote.html feature="Data apps" is_plural=true %}
 
 <!-- TODO(writer): confirm which plans include the data-apps feature. The blockquote assumes Pro and Enterprise. -->
 
-A data app is a React app that Metabase serves at `/apps/<slug>`. Data apps let you build small internal tools on your Metabase data, like portals, review queues, and forms, without standing up a separate app and backend. An app reads questions and metrics built on your [Library](./semantic-layer/library.md), and writes data through data actions: SQL queries that insert, update, or delete rows.
+A data app is a React app that Metabase serves at `/apps/<slug>`. Data apps let you build small internal tools on your Metabase data, like portals, review queues, and forms, without standing up a separate app and backend. An app reads questions and metrics built on your [Library](./semantic-layer/library.md), and writes data through data actions that insert, update, or delete rows.
 
 An app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads and writes.
 
@@ -28,33 +28,56 @@ Developers (or their AI agents) build apps on a development Metabase with the [M
 
 ## Build an app with the Metabase CLI
 
-<!-- TODO(writer): confirm the `mb data-app` commands (create, push bundle, typed-schema, delete) with the CLI team. The released CLI (0.5.2) has no `data-app` command yet, and the metabase-data-apps skill names the schema file `src/metabase.data.ts`. -->
-
 Log the CLI in to your development Metabase as an admin. Then:
 
-1. Create the app with the CLI.
-2. Add the questions the app reads, and the data actions it uses to write data, to the app's collection. See [What a data app can read and write](#what-a-data-app-can-read-and-write).
-3. Generate the app's typed schema:
+1. Create the app. Its slug (`name`) sets the app's address, `/apps/<slug>`, and can have lowercase letters, numbers, and single dashes.
 
    ```sh
-   mb data-app typed-schema <slug> --out src/metabase.ts
+   mb data-app create --body '{"name":"order-review","display_name":"Order review"}'
    ```
 
-   The typed schema is a TypeScript file with a query for each question and metric, and an action for each data action, in the app's collection. It refers to them by entity ID, so the same app works on every Metabase you sync it to.
+   Metabase creates the app's collection along with the app. The response gives the collection's ID as `resource_collection_id`.
 
-4. Build the app, and push its bundle to your development Metabase. A bundle can be at most 10 MiB.
+2. Copy the app template into a new, empty directory, and install its dependencies:
+
+   ```sh
+   mb data-app scaffold order-review
+   cd order-review
+   npm install @metabase/embedding-sdk-react@<major>-beta
+   npm install
+   ```
+
+   Replace `<major>` with your Metabase's major version, like `66` for Metabase 1.66.x. The template otherwise installs the latest SDK, which might not build against your Metabase.
+
+3. Add the questions the app reads, and the data actions it uses to write data, to the app's collection. See [What a data app can read and write](#what-a-data-app-can-read-and-write).
+4. In the app's directory, generate the app's typed schema:
+
+   ```sh
+   mb data-app typed-schema order-review --out src/metabase.ts
+   ```
+
+   The typed schema is a TypeScript file with a query for each question and metric, and an action for each data action, in the app's collection. It refers to them by entity ID, so the same app works on every Metabase you sync it to. Generate it again whenever you change the app's collection.
+
+5. Build the app, and upload its bundle to your development Metabase:
+
+   ```sh
+   npm run build
+   mb data-app set-bundle order-review
+   ```
+
+   People can open the new bundle right away. A bundle can be at most 10 MiB.
 
 To have an AI agent run the CLI for you, check out [Use the CLI with an AI agent](../installation-and-operation/metabase-cli.md#use-the-cli-with-an-ai-agent).
 
 ### What a data app can read and write
 
-An app's collection can hold only questions, metrics, and query actions. When you save an item to the collection, Metabase refuses it if it breaks one of these rules:
+An app's collection can hold only questions, metrics, and data actions. When you save an item to the collection, Metabase refuses it if it breaks one of these rules:
 
 - Questions must be built with the query builder, not SQL. They can read only [tables published to the Library](./semantic-layer/published-tables.md) and metrics from the Library, so they can't start from or join another saved question or model. If a question reads something else, the error names what it read.
 - Questions and metrics in the collection can't be archived, public, or embedded, and they can't be in a dashboard or a document.
-- Actions must be query actions that don't belong to a model and aren't archived or public. An action can refer only to questions in the app's collection, and its fields can't get their values from a question.
+- Actions can be table actions, which insert, update, or delete one row of a table published to the Library, or query actions, which run SQL. Actions can't belong to a model, and they can't be archived or public. An action can refer only to questions in the app's collection, and its fields can't get their values from a question.
 
-Only admins can edit an app's collection. Adding a group to an app gives that group read access to the collection, and nothing more. On a Metabase in Read-only mode, nobody can edit the collection.
+Only admins can edit an app's collection. Adding a group to an app gives that group read access to the collection, and nothing more.
 
 You can't move the app's collection, move it to the trash, make it official, or sync it on its own. The collection syncs with its app.
 
@@ -85,14 +108,9 @@ Click an app in the list to see its details. Each app has four tabs:
 - **Actions**: The data actions the app uses to write data. Click an action to see its **Definition** and **Fields**.
 - **Permissions**: The groups whose people can open the app.
 
-If your Metabase has the [dependency graph](./tools/graph.md), each question and action also has a **Dependencies** tab. To see the whole app in the dependency graph:
-
-1. In Data Studio's left sidebar, click **Dependency graph**.
-2. In the **Pick an item to see its dependencies** box, type the app's name, or select **Browse all** and open the **Data apps** folder.
-
-The graph shows the app with the questions and actions in its collection, because the app depends on them.
-
 ![Data app Overview tab](./images/data-apps-overview-tab.png)
+
+If your Metabase has the [dependency graph](./tools/graph.md), each question and action also has a **Dependencies** tab. You can also [see the whole app in the dependency graph](./tools/graph.md#data-apps-in-the-dependency-graph).
 
 ### Choose who can open an app
 
@@ -126,7 +144,7 @@ New apps start live. To change an app's status:
 
 Making an app a draft doesn't change the app. Nobody can open it until you make it live again.
 
-Each Metabase keeps its own status for an app, and you can change it on a Metabase in Read-only mode.
+With the CLI, run `mb data-app set-enabled <slug> false` to make an app a draft, or `true` to make it live.
 
 ### Open an app from Data Studio
 
@@ -142,7 +160,7 @@ When [Remote Sync](../installation-and-operation/remote-sync.md) is on, it alway
 
 A new app starts live on your production Metabase. Until you add groups there, only admins can open it.
 
-On a Metabase in Read-only mode, you can't create, edit, or delete apps, or push bundles: pulls are the only way to change an app. You can still make an app live or a draft, and choose its groups.
+On a Metabase in Read-only mode, you can't create, edit, or delete apps, upload bundles, or edit an app's collection: pulls are the only way to change an app. You can still make an app live or a draft, and choose its groups.
 
 ### What syncs with a data app
 
@@ -152,7 +170,7 @@ Remote Sync syncs the app's manifest, its bundle, and its collection with its qu
 - `data_apps/<slug>/` also holds the app's bundle.
 - `collections/data_apps/` holds the app's collection.
 
-Remote Sync doesn't sync the app's status (live or draft) or its group access. Set those on each Metabase.
+Remote Sync doesn't sync the app's status (live or draft) or its group access. Each Metabase keeps its own, so set them on each Metabase.
 
 ### If a pull fails
 
@@ -161,7 +179,13 @@ Remote Sync doesn't sync the app's status (live or draft) or its group access. S
 
 ## Delete a data app
 
-Data Studio doesn't have an option to delete apps. Delete an app with the Metabase CLI, on a Metabase in Read-write mode. When a pull finds that an app's files are gone from the repository, the pull deletes the app on that Metabase.
+Data Studio doesn't have an option to delete apps. To delete an app, run:
+
+```sh
+mb data-app delete <slug>
+```
+
+You can't delete apps on a Metabase in Read-only mode. When a pull finds that an app's files are gone from the repository, the pull deletes the app on that Metabase.
 
 Deleting an app also deletes its collection (with its questions and actions), its bundle, and its group access. The groups themselves stay.
 
@@ -175,56 +199,7 @@ People in [tenants](../embedding/tenants.md) can't open data apps.
 
 ## See data app activity in Monitor
 
-The **Data app analytics** page in Monitor logs each question and action that your data apps run. Use it to see who uses each app, what it runs, how long it takes, and what fails.
-
-Only admins can see the page.
-
-1. Click the **grid** icon in the upper right and select **Monitor**.
-2. In the left sidebar, under **AI Auditing**, click **Data app analytics**.
-
-<!-- TODO screenshot: the Data app analytics page in Monitor, with the filter bar and a few rows of question and action runs -->
-
-Runs from an app's local development preview don't show up on the page.
-
-### Filter data app activity
-
-Each filter above the log shows its default value until you change it:
-
-- **All data apps**: Pick one app. **Installed** lists your apps by name. **Removed** lists apps that are in the log but no longer exist, by their slug.
-- **All entity types**: Pick **Question** or **Action** to see only that kind of run.
-- **All users**: Pick one person.
-- **Last 30 days**: Pick another time window.
-
-If nothing matches your filters, the table shows **No activity found**. Widen the date range, or clear some filters.
-
-### What the log shows for each run
-
-The log lists the newest runs first. For each run, it shows:
-
-- **Started at**: When the run started.
-- **Identifier**: The app's slug, from its address `/apps/<slug>`.
-- **Name**: The app's display name. Empty for apps that no longer exist.
-- **User**: Who ran the question or action.
-- **Entity type**: **Question** or **Action**.
-- **Question**: The question that ran.
-- **Action**: The action that ran.
-- **Running time (s)**: How long the run took, in seconds.
-- **Result rows**: How many rows the run returned.
-- **Database**: The database the run queried.
-- **Query**: The query that ran.
-- **Metabase version**: The version of Metabase that ran it.
-- **User agent**, **Sanitized user agent**, and **IP address**: Only show up if you turn on [`MB_ANALYTICS_PII_RETENTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_analytics_pii_retention_enabled), which is off by default.
-- **Error**: The error message of a failed run.
-
-### Build your own reports on data app activity
-
-To build your own questions on this activity, click **Query this data**. It opens the query builder on the [query log](../usage-and-performance-tools/usage-analytics-reference.md#query-log), filtered to data app activity.
-
-The questions that an app reads also count as views of those questions in [Usage analytics](../usage-and-performance-tools/usage-analytics.md).
-
-### How long Metabase keeps data app activity
-
-Metabase keeps query log rows for 720 days by default, then deletes them, so older activity drops off the page. To change the limit, set [`MB_AUDIT_MAX_RETENTION_DAYS`](../configuring-metabase/environment-variables.md#mb_audit_max_retention_days).
+To see the questions and actions that your apps run, who runs them, and what fails, check out [Data app analytics](../monitor/data-app-analytics.md) in Monitor.
 
 ## Fix an app that won't open
 
