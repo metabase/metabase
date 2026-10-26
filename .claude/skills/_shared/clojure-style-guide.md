@@ -58,6 +58,13 @@ These seven things are, and each is a reason to cut or relocate:
 | **Invented precision** — score bands, thresholds, or tables no code enforces | Reads as spec, isn't | Cut, or make the code enforce it |
 | **A note on the wrong var** — describing how overrides behave, on the base/default impl | Nobody reading the override sees it | Move to the overrides it describes |
 
+**Referring to code:**
+
+- Name a namespace or var in a docstring or comment as a link, `[[metabase.util.json/decode]]` or
+  `[[metabase.sql-parsing.core]]`, not in backticks. The brackets tell tooling it is a real namespace or var in the
+  codebase, so it can be resolved and linked; an alias-qualified `[[sql/unsupported]]` or an unqualified
+  `[[decode-manifest]]` works too. Backticks are for everything else: keys, literals, SQL, file names, shell commands.
+
 **Comments:**
 
 - `TODO` format: `;; TODO (Name YYYY-MM-DD) -- description`
@@ -196,7 +203,8 @@ destructuring in particular, since it names the local after the key. kondo's `:s
 (first (filter #(= metric-name (:name %)) metrics))
 ```
 
-`medley.core` is aliased as `m`. It says what is meant.
+`medley.core` is aliased as `m`. It says what is meant, and stops at the first match instead of building a lazy seq to
+take one element from.
 
 **Check non-emptiness with `seq`, not `count`:**
 
