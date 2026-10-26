@@ -1,7 +1,8 @@
 (ns metabase.linters.eastwood
   (:require
    [eastwood.lint :as eastwood]
-   [metabase.linters.common :as common])
+   [metabase.linters.common :as common]
+   [metabase.linters.shards :as shards])
   (:import (java.io File)))
 
 (set! *warn-on-reflection* true)
@@ -71,17 +72,27 @@
     {:source-paths (common/source-paths)}
     options)))
 
+(defn- shard-options
+  "With `:shard [k n]` in `options`, the `:namespaces` for shard `k` of `n` (counting from 0) of the namespaces under
+  `source-paths`, split by line count so the shards take about as long as each other."
+  [{[k n :as shard] :shard, :keys [exclude-namespaces]} source-paths]
+  (when shard
+    {:namespaces (shards/shard (apply dissoc (shards/namespace-weights source-paths) exclude-namespaces) k n)}))
+
 (defn eastwood-tests
   "Entry-point for the :eastwood/test alias. Derives :source-paths from classpath directories
   whose basename is `test` so we don't have to hardcode the per-driver test paths in deps.edn —
   they're already on the classpath via :drivers-dev's :extra-paths. Excludes `.clj-kondo/test`,
-  which is for clj-kondo hook tests and uses a different toolchain."
+  which is for clj-kondo hook tests and uses a different toolchain.
+  Pass `:shard [k n]` to lint only shard `k` of `n`, counting from 0."
   [options]
-  (eastwood/eastwood-from-cmdline
-   (merge
-    default-options
-    {:source-paths (filterv (fn [^File f]
-                              (and (= "test" (.getName f))
-                                   (not= ".clj-kondo" (some-> (.getParentFile f) .getName))))
-                            (common/source-paths))}
-    options)))
+  (let [source-paths (filterv (fn [^File f]
+                                (and (= "test" (.getName f))
+                                     (not= ".clj-kondo" (some-> (.getParentFile f) .getName))))
+                              (common/source-paths))]
+    (eastwood/eastwood-from-cmdline
+     (merge
+      default-options
+      {:source-paths source-paths}
+      (dissoc options :shard)
+      (shard-options options source-paths)))))
