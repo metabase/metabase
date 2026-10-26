@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [flatland.ordered.set :refer [ordered-set]]
+   [metabase.database-routing.core :as database-routing]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -40,7 +41,8 @@
 
 (defmethod transforms-base.i/table-dependencies :query
   [transform]
-  (query-table-dependencies transform))
+  (database-routing/with-anonymous-router-access
+    (query-table-dependencies transform)))
 
 ;;; ------------------------------------------------- Ordering Logic -------------------------------------------------
 

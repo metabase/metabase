@@ -249,6 +249,31 @@
                                          [[(format "DROP OWNED BY %s;" no-schema-user)]
                                           [(format "DROP ROLE IF EXISTS %s;" no-schema-user)]])))))))
 
+(deftest run-transform-on-router-test
+  (mt/test-drivers (mt/normal-driver-select {:+features [:transforms/table]})
+    (mt/with-premium-features #{:database-routing}
+      (mt/dataset transforms-dataset/transforms-test
+        (let [mp     (mt/metadata-provider)
+              schema (t2/select-one-fn :schema :model/Table (mt/id :transforms_products))
+              query  (lib/query mp (lib.metadata/table mp (mt/id :transforms_products)))]
+          (doseq [[run-method user] [[:manual :crowberto] [:cron nil]]]
+            (testing (str (name run-method) " run on router writes its target")
+              (with-transform-cleanup! [target {:type   "table"
+                                                :schema schema
+                                                :name   (str "router_products_" (name run-method))}]
+                (mt/with-temp [:model/Database _ {:engine             driver/*driver*
+                                                  :router_database_id (mt/id)
+                                                  :details            {:destination_database true}}
+                               :model/DatabaseRouter _ {:database_id (mt/id) :user_attribute "db_name"}
+                               :model/Transform transform {:name   "Router transform"
+                                                           :source {:type :query :query query}
+                                                           :target target}]
+                  (if user
+                    (mt/with-current-user (mt/user->id user)
+                      (transforms.execute/execute! transform {:run-method run-method}))
+                    (transforms.execute/execute! transform {:run-method run-method}))
+                  (is (some? (transforms.tu/wait-for-table (:name target) 10000))))))))))))
+
 (doseq [driver [:postgres :mysql :clickhouse :snowflake :bigquery-cloud-sdk]]
   (defmethod driver/database-supports? [driver ::sleep-query]
     [_driver _feature _database]
