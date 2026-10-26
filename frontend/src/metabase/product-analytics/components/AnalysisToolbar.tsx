@@ -1,6 +1,8 @@
 import { useDisclosure } from "@mantine/hooks";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/common/components/ToolbarButton";
 import { ActionIcon, Badge, Button, Group, Icon, Tooltip } from "metabase/ui";
 import type { ConcreteTableId } from "metabase-types/api";
 
@@ -43,6 +45,11 @@ type AnalysisToolbarProps = {
   /** The setup button is hovered, so the setup panel can show it's the one. */
   onHintSetup: (isHinted: boolean) => void;
   onSave: () => void;
+  /** Runs the analysis again; disabled while it can't run or is running. */
+  onRefresh: () => void;
+  isRefreshDisabled: boolean;
+  /** The "…" menu, before Save. */
+  actionsMenu: ReactNode;
 };
 
 /**
@@ -70,6 +77,9 @@ export const AnalysisToolbar = ({
   areFiltersExpanded,
   onToggleFilters,
   onHintSetup,
+  onRefresh,
+  isRefreshDisabled,
+  actionsMenu,
   onSave,
 }: AnalysisToolbarProps) => {
   const [sqlOpened, { open: openSql, close: closeSql }] = useDisclosure();
@@ -164,6 +174,15 @@ export const AnalysisToolbar = ({
           >
             <Icon name="sql" />
           </ActionIcon>
+          <ToolbarButton
+            icon="refresh"
+            size="lg"
+            tooltipLabel={t`Refresh`}
+            aria-label={t`Refresh`}
+            disabled={isRefreshDisabled}
+            onClick={onRefresh}
+          />
+          {actionsMenu}
           {canSave && (
             <Button variant="subtle" disabled={isSaveDisabled} onClick={onSave}>
               {t`Save`}

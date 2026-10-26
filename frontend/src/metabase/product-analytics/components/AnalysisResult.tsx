@@ -24,6 +24,7 @@ import { getChartSkeletonImage } from "metabase/visualizations/components/skelet
 import type { ClickActionsMode } from "metabase/visualizations/types";
 import type {
   CardDisplayType,
+  CardId,
   Dataset,
   DatasetQuery,
   RawSeries,
@@ -31,14 +32,20 @@ import type {
 } from "metabase-types/api";
 
 import type { MissingSetting } from "../analyses/types";
+import type { AnalysisVisualizationTimelineProps } from "../use-analysis-timelines";
 
-const SYNTHETIC_CARD_ID = -1;
 const MIN_HEIGHT_PX = 400;
 // Where the cohort table's "Cohort" header text starts: the grid's padding
 // plus the header cell's, in CohortTable.module.css. The title lines up with it.
 const COHORT_LABEL_INSET = "1rem";
 
 type AnalysisSeriesInput = {
+  /**
+   * The saved card's id while the chart shows it as saved, so downloads and
+   * copies go through the card, as in the query builder. Undefined for an
+   * analysis that's new or has unsaved changes: it runs as an ad-hoc query.
+   */
+  cardId: CardId | undefined;
   title: string;
   display: CardDisplayType;
   vizSettings: VisualizationSettings;
@@ -48,6 +55,7 @@ type AnalysisSeriesInput = {
 
 /** The chart's series, once there's a result. Also feeds the display panel. */
 export const getAnalysisRawSeries = ({
+  cardId,
   title,
   display,
   vizSettings,
@@ -58,7 +66,7 @@ export const getAnalysisRawSeries = ({
     ? [
         {
           card: {
-            id: SYNTHETIC_CARD_ID,
+            id: cardId,
             name: title,
             display,
             visualization_settings: vizSettings,
@@ -72,9 +80,8 @@ export const getAnalysisRawSeries = ({
 type AnalysisResultProps = {
   title: string;
   display: CardDisplayType;
-  vizSettings: VisualizationSettings;
-  dataset: Dataset | undefined;
-  datasetQuery: DatasetQuery | undefined;
+  /** From `getAnalysisRawSeries`; null until there's a result. */
+  rawSeries: RawSeries | null;
   isLoading: boolean;
   error: string | undefined;
   /** Settings still to fill in. When non-empty, this replaces the result. */
@@ -87,14 +94,13 @@ type AnalysisResultProps = {
   placeholder?: string;
   isDisplayOpen: boolean;
   onToggleDisplay: () => void;
+  timelineProps: AnalysisVisualizationTimelineProps;
 };
 
 export const AnalysisResult = ({
   title,
   display,
-  vizSettings,
-  dataset,
-  datasetQuery,
+  rawSeries,
   isLoading,
   error,
   missing,
@@ -104,14 +110,8 @@ export const AnalysisResult = ({
   placeholder,
   isDisplayOpen,
   onToggleDisplay,
+  timelineProps,
 }: AnalysisResultProps) => {
-  const rawSeries = getAnalysisRawSeries({
-    title,
-    display,
-    vizSettings,
-    dataset,
-    datasetQuery,
-  });
   // Errors and loading come first: settings can't be finished without a table.
   const isIncomplete = missing.length > 0 && !error && !isLoading;
   const isShowingVisualization =
@@ -141,11 +141,6 @@ export const AnalysisResult = ({
           </Title>
           <Tooltip label={displayLabel}>
             <ActionIcon
-              // Metabase's theme makes the default variant's border
-              // transparent; this restores Mantine's bordered look.
-              variant="default"
-              size="lg"
-              bd="1px solid var(--mb-color-border-neutral)"
               aria-label={displayLabel}
               aria-pressed={isDisplayOpen}
               disabled={!canToggleDisplay}
@@ -186,6 +181,7 @@ export const AnalysisResult = ({
                 isQueryBuilder={false}
                 mode={clickActionsMode}
                 onChangeCardAndRun={noop}
+                {...timelineProps}
               />
               {staleSeries !== null && (
                 <VisualizationRunningState className={cx(CS.spread, CS.z2)} />

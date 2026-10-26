@@ -23,7 +23,9 @@ const NO_SAVED_SETTINGS: StoredSettings = {};
  *
  * `hasUnsavedChanges` compares against the settings this page opened with or
  * last saved, so it's false as soon as a save finishes, before the card
- * refetches.
+ * refetches. `onReloaded` takes the saved card's settings when they change
+ * under the page, like a restored revision, and drops unsaved edits, as the
+ * query builder does.
  */
 export const useAnalysisState = <S>(
   savedSettings: StoredSettings | undefined,
@@ -75,6 +77,14 @@ export const useAnalysisState = <S>(
     navigateToHash("", { replace: true });
   }, [stored, navigateToHash]);
 
+  const handleReloaded = useCallback(
+    (settings: StoredSettings) => {
+      setLastSaved(settings);
+      navigateToHash("", { replace: true });
+    },
+    [navigateToHash],
+  );
+
   return {
     stored,
     hasUnsavedChanges: !_.isEqual(stored, lastSaved),
@@ -82,5 +92,6 @@ export const useAnalysisState = <S>(
     setPanel,
     onChangeSettings: handleChangeSettings,
     onSaved: handleSaved,
+    onReloaded: handleReloaded,
   };
 };

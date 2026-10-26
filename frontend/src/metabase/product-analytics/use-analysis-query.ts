@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import {
@@ -45,6 +45,8 @@ type AnalysisQueryResult = {
   warnings: string[];
   isLoading: boolean;
   error: string | undefined;
+  /** Runs the analysis's query again. A no-op until it can run. */
+  rerun: () => void;
 };
 
 /**
@@ -302,6 +304,14 @@ export const useAnalysisQuery = ({
       : undefined;
 
   const adhoc = useGetAdhocQueryQuery(datasetQuery ?? skipToken);
+  const { refetch } = adhoc;
+  const isReadyToRun = datasetQuery !== undefined;
+  // RTK throws when a skipped query is refetched.
+  const rerun = useCallback(() => {
+    if (isReadyToRun) {
+      refetch();
+    }
+  }, [isReadyToRun, refetch]);
 
   return {
     sql: built?.sql ?? compiled?.sql ?? null,
@@ -311,5 +321,6 @@ export const useAnalysisQuery = ({
     warnings: built?.warnings ?? [],
     isLoading: isLoading || adhoc.isFetching,
     error: error ?? getDatasetError(adhoc),
+    rerun,
   };
 };

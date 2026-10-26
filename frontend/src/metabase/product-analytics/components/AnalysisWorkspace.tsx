@@ -1,5 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
 import { AddToDashSelectDashModal } from "metabase/common/components/Pickers/AddToDashSelectDashModal";
@@ -28,16 +29,27 @@ import type { DrillPoint } from "../sql/compose";
 import { useAddToDashboardToast } from "../use-add-to-dashboard-toast";
 import { useAnalysis } from "../use-analysis";
 import { useAnalysisState } from "../use-analysis-state";
+import { useAnalysisTimelines } from "../use-analysis-timelines";
 import { useSaveAnalysis } from "../use-save-analysis";
+import { useStableValue } from "../use-stable-value";
 
+import { AnalysisActionsMenu } from "./AnalysisActionsMenu";
 import { AnalysisResult, getAnalysisRawSeries } from "./AnalysisResult";
 import { AnalysisTitle, getNewAnalysisTitle } from "./AnalysisTitle";
 import { AnalysisToolbar } from "./AnalysisToolbar";
+import { ArchivedAnalysisBanner } from "./ArchivedAnalysisBanner";
 import { DisplayPanel } from "./DisplayPanel";
+import { EventsPanel } from "./EventsPanel";
 import { FilterPills, useFilterCount } from "./FilterPills";
 import { SetupPanel } from "./SetupPanel";
 import { SegmentsPanel } from "./palette/SegmentsPanel";
 import { ToolbarSetting } from "./toolbar/ToolbarSetting";
+
+// The events a saved chart shows are kept with its other display settings.
+const TIMELINE_SETTING_KEYS = [
+  "timeline.selected_timeline_ids",
+  "timeline.excluded_timeline_event_ids",
+];
 
 type AnalysisWorkspaceProps<K extends AnalysisKind> = {
   kind: K;
@@ -80,9 +92,12 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
   const [areFiltersExpanded, setAreFiltersExpanded] = useState(false);
   const [isDisplayOpen, setIsDisplayOpen] = useState(false);
   // PROTOTYPE: display changes live in this page's state, not the URL. Saving
-  // keeps them on the card, but a saved analysis reopens without them.
+  // keeps them on the card, but a saved analysis reopens without them, except
+  // for the events it shows.
   const [displayOverrides, setDisplayOverrides] =
-    useState<VisualizationSettings>({});
+    useState<VisualizationSettings>(() =>
+      _.pick(savedCard?.visualization_settings ?? {}, TIMELINE_SETTING_KEYS),
+    );
   const [displayColors, setDisplayColors] = useState<DisplayColors>({});
   const handleChangeColor = useCallback(
     (key: string, color: string) =>
@@ -96,6 +111,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     setPanel,
     onChangeSettings,
     onSaved,
+    onReloaded,
   } = useAnalysisState<AnalysisSettingsByKind[K]>(savedSettings);
   const isSetupOpen = panel !== null && tableId !== undefined;
   const isSegmentsShowing = isSegmentsOpen && tableId !== undefined;
@@ -128,7 +144,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
     breakoutViewWidget !== undefined &&
     !breakoutViewWidget.hidden &&
     computed.breakout_view === "pivot";
-  const chartSettings = { ...vizSettings, ...displayOverrides };
+  const chartSettings = useStableValue({ ...vizSettings, ...displayOverrides });
   const isDisplayShowing = isDisplayOpen && tableId !== undefined;
   const filterCount = useFilterCount(computed.filters, table);
   const drillQueries = useDrillQueries({
@@ -150,6 +166,69 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
 
   const tableName = table?.display_name ?? t`this table`;
   const title = savedCard?.name ?? getNewAnalysisTitle(kind, tableName);
+  // Shown as the saved card until it's edited, as in the query builder, so
+  // downloads and copies go through the card.
+  const chartCardId =
+    savedCard !== undefined && !hasUnsavedChanges ? savedCard.id : undefined;
+  const rawSeries = useMemo(
+    () =>
+      getAnalysisRawSeries({
+        cardId: chartCardId,
+        title: question,
+        display,
+        vizSettings: chartSettings,
+        dataset: query.dataset,
+        datasetQuery: query.datasetQuery,
+      }),
+    [
+      chartCardId,
+      question,
+      display,
+      chartSettings,
+      query.dataset,
+      query.datasetQuery,
+    ],
+  );
+  const handleChangeTimelineVisibility = useCallback(
+    (visibility: VisualizationSettings) =>
+      setDisplayOverrides((overrides) => ({ ...overrides, ...visibility })),
+    [],
+  );
+  // One panel right of the chart at a time.
+  const handleOpenEvents = useCallback(() => setIsDisplayOpen(false), []);
+  const timelines = useAnalysisTimelines({
+    rawSeries,
+    chartSettings,
+    collectionId: savedCard?.collection_id,
+    onChangeVisibility: handleChangeTimelineVisibility,
+    onOpen: handleOpenEvents,
+  });
+  const handleToggleDisplay = () => {
+    if (!isDisplayOpen) {
+      timelines.close();
+    }
+    setIsDisplayOpen(!isDisplayOpen);
+  };
+  const handleToggleEvents = () =>
+    timelines.isOpen ? timelines.close() : timelines.open();
+
+  // Restoring a revision changes the card under the page. The next card is
+  // the restored one, and the page takes its settings.
+  const cardBeforeRevertRef = useRef<Card | undefined>(undefined);
+  const handleReverted = useCallback(() => {
+    cardBeforeRevertRef.current = savedCard;
+  }, [savedCard]);
+  useEffect(() => {
+    const cardBeforeRevert = cardBeforeRevertRef.current;
+    if (
+      cardBeforeRevert !== undefined &&
+      savedCard !== cardBeforeRevert &&
+      savedSettings !== undefined
+    ) {
+      cardBeforeRevertRef.current = undefined;
+      onReloaded(savedSettings);
+    }
+  }, [savedCard, savedSettings, onReloaded]);
 
   // Only the kind on the current tab is saved; the other tabs' settings stay
   // in the URL for this session.
@@ -203,6 +282,7 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
         gap={0}
         bg="background_page-secondary"
       >
+        {savedCard?.archived && <ArchivedAnalysisBanner card={savedCard} />}
         <Stack
           gap="md"
           pl="xxl"
@@ -239,6 +319,24 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             onToggleSetup={() => setPanel(isSetupOpen ? null : "setup")}
             onHintSetup={setIsSetupHinted}
             onSave={handleSave}
+            onRefresh={query.rerun}
+            isRefreshDisabled={
+              query.datasetQuery === undefined || query.isLoading
+            }
+            actionsMenu={
+              <AnalysisActionsMenu
+                savedCard={savedCard}
+                onReverted={handleReverted}
+                rawSeries={rawSeries}
+                dataset={query.isLoading ? undefined : query.dataset}
+                vizSettings={chartSettings}
+                events={
+                  timelines.isAvailable
+                    ? { isOpen: timelines.isOpen, onToggle: handleToggleEvents }
+                    : undefined
+                }
+              />
+            }
             filterCount={filterCount}
             areFiltersExpanded={areFiltersExpanded}
             onToggleFilters={() => setAreFiltersExpanded((isOpen) => !isOpen)}
@@ -299,15 +397,13 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             <Stack
               flex={1}
               miw={0}
-              pr={isDisplayShowing ? 0 : "lg"}
+              pr={isDisplayShowing || timelines.isOpen ? 0 : "lg"}
               style={{ overflowY: "auto" }}
             >
               <AnalysisResult
                 title={question}
                 display={display}
-                vizSettings={chartSettings}
-                dataset={query.dataset}
-                datasetQuery={query.datasetQuery}
+                rawSeries={rawSeries}
                 isLoading={query.isLoading}
                 error={query.error}
                 missing={missing}
@@ -318,29 +414,23 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
                 clickActionsMode={drillActions.mode}
                 placeholder={isPivot ? getPivotPlaceholder() : undefined}
                 isDisplayOpen={isDisplayShowing}
-                onToggleDisplay={() => setIsDisplayOpen((isOpen) => !isOpen)}
+                onToggleDisplay={handleToggleDisplay}
+                timelineProps={timelines.visualizationProps}
               />
             </Stack>
           )}
           {isDisplayShowing && (
             <DisplayPanel
-              series={
-                query.isLoading || query.error
-                  ? null
-                  : getAnalysisRawSeries({
-                      title: question,
-                      display,
-                      vizSettings: chartSettings,
-                      dataset: query.dataset,
-                      datasetQuery: query.datasetQuery,
-                    })
-              }
+              series={query.isLoading || query.error ? null : rawSeries}
               baseSettings={vizSettings}
               onChange={setDisplayOverrides}
               colorSlots={colorSlots}
               onChangeColor={handleChangeColor}
               onClose={() => setIsDisplayOpen(false)}
             />
+          )}
+          {timelines.isOpen && tableId !== undefined && (
+            <EventsPanel {...timelines.sidebarProps} />
           )}
         </Group>
       </Stack>
