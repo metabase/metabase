@@ -311,22 +311,16 @@ describe("admin > database > database routing", () => {
         .click();
       assertDbRoutingNotDisabled();
 
-      cy.log("should be disabled if table editing is enabled");
-      // Table editing must be the only active conflict here: the routing
-      // section shows a single message, and model persistence and uploads
-      // take precedence over table editing.
+      cy.log("should not be disabled if table editing is enabled");
       tableEditingSection()
         .findByLabelText("Editable tables")
         .should("not.be.checked")
         .click({ force: true });
-      assertDbRoutingDisabled(
-        "Database routing can't be enabled when table editing is enabled.",
-      );
+      assertDbRoutingNotDisabled();
       tableEditingSection()
         .findByLabelText("Editable tables")
         .should("be.checked")
         .click({ force: true });
-      assertDbRoutingNotDisabled();
 
       cy.log("should be disabled if uploads are enabled for the database");
       cy.visit("/admin/settings/uploads");
@@ -450,7 +444,7 @@ describe("admin > database > database routing", () => {
         disableModelActionsViaApi(WRITABLE_DB_ID);
       });
 
-      it("should not be possible to enable model persistence, table editing, or uploads when database routing is enabled", () => {
+      it("should not be possible to enable model persistence or uploads when database routing is enabled", () => {
         cy.log("setup");
         enableGlobalModelPersistence();
         configureDbRoutingViaAPI({
@@ -480,16 +474,11 @@ describe("admin > database > database routing", () => {
           .should("be.enabled");
 
         cy.log(
-          "should not be possible to enable table editing when database routing is enabled",
+          "should be possible to enable table editing when database routing is enabled",
         );
-        tableEditingSection().within(() => {
-          cy.findByLabelText("Editable tables").should("be.disabled");
-          cy.findByText(
-            "Table editing can't be enabled when database routing is enabled.",
-          )
-            .scrollIntoView()
-            .should("be.visible");
-        });
+        tableEditingSection()
+          .findByLabelText("Editable tables")
+          .should("be.enabled");
 
         cy.log(
           "should not be possible to enable uploads when database routing is enabled",

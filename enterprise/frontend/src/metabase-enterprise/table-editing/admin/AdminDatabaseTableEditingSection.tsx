@@ -8,9 +8,8 @@ import {
 } from "metabase/admin/databases/components/DatabaseFeatureComponents";
 import { DatabaseInfoSection } from "metabase/admin/databases/components/DatabaseInfoSection";
 import { findErrorMessage } from "metabase/api/utils/errors";
-import { hasDbRoutingEnabled } from "metabase/common/utils/database";
 import { ALLOWED_ENGINES_FOR_TABLE_EDITING } from "metabase/databases/constants";
-import { Alert, Box, Flex, Icon, Switch } from "metabase/ui";
+import { Box, Flex, Switch } from "metabase/ui";
 import type {
   Database,
   DatabaseData,
@@ -71,8 +70,6 @@ export function AdminDatabaseTableEditingSection({
     database.engine &&
     ALLOWED_ENGINES_FOR_TABLE_EDITING.includes(database.engine);
 
-  const databaseHasRouting = hasDbRoutingEnabled(database);
-
   const dataEditingSetting =
     settingsAvailable?.[DATABASE_TABLE_EDITING_SETTING];
   const isSettingDisabled =
@@ -108,7 +105,7 @@ export function AdminDatabaseTableEditingSection({
           id="table-editing-toggle"
           checked={isEnabled}
           onChange={(e) => handleToggle(e.currentTarget.checked)}
-          disabled={isSettingDisabled || (!isEnabled && databaseHasRouting)}
+          disabled={isSettingDisabled}
         />
       </Flex>
       <Box maw="22.5rem">
@@ -118,17 +115,6 @@ export function AdminDatabaseTableEditingSection({
             t`Your database connection will need Write permissions.`}
         </Description>
       </Box>
-
-      {databaseHasRouting && (
-        <Alert
-          size="compact"
-          variant="light"
-          icon={<Icon name="info" />}
-          mb="lg"
-        >
-          {t`Table editing can't be enabled when database routing is enabled.`}
-        </Alert>
-      )}
     </DatabaseInfoSection>
   );
 }

@@ -31,7 +31,7 @@
     (mt/with-premium-features #{:table-data-editing}
       (let [enabled-for-db?  (:enabled-for-db? (#'setting/resolve-setting :database-enable-table-editing))
             disabled-reasons (partial extract-disabled-reasons* enabled-for-db?)]
-        (testing "returns database routing reason for destination databases"
+        (testing "returns database routing reason for destination databases, but not for their router"
           (mt/with-temp [:model/Database router-db {:initial_sync_status "complete"}
                          :model/Database target-db {:initial_sync_status "complete", :router_database_id (:id router-db)}
                          :model/Table    _         {:db_id (:id router-db) :is_writable true}]
@@ -45,11 +45,10 @@
                                       :active      true
                                       :created_at  :%now
                                       :updated_at  :%now})
-            (is (= [:setting/database-routing]
-                   (disabled-reasons router-db)))
+            (is (empty? (disabled-reasons router-db)))
             (is (= [:setting/database-routing]
                    (disabled-reasons target-db)))
-            (is (false? (can-configure-data-editing-for-db? router-db)))
+            (is (can-configure-data-editing-for-db? router-db))
             (is (false? (can-configure-data-editing-for-db? target-db)))))
         (testing "returns sync in progress reason when sync is incomplete"
           (mt/with-temp [:model/Database db {:initial_sync_status "incomplete"}]

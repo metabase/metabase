@@ -2,14 +2,12 @@ import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { Link } from "metabase/common/components/Link";
-import { hasTableEditingEnabled } from "metabase/common/utils/database";
 import { hasFeature } from "metabase/databases";
 import { Text } from "metabase/ui";
 import type { Database } from "metabase-types/api";
 
 export const getDisabledFeatureMessage = (database: Database) => {
   return match({
-    hasTableEditingEnabled: hasTableEditingEnabled(database),
     isPersisted: hasFeature(database, "persist-models-enabled"),
     isUploadDb: database.uploads_enabled,
     supportsRouting: !!database.features?.includes("database-routing"),
@@ -27,10 +25,6 @@ export const getDisabledFeatureMessage = (database: Database) => {
       { isUploadDb: true },
       () =>
         t`Database routing can't be enabled if uploads are enabled for this database.`,
-    )
-    .with(
-      { hasTableEditingEnabled: true },
-      () => t`Database routing can't be enabled when table editing is enabled.`,
     )
     .otherwise(() => undefined);
 };

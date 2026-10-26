@@ -174,3 +174,23 @@
                 (mt/with-current-user (mt/user->id :rasta)
                   (sync.field-values/update-field-values-for-on-demand-dbs! [(:id owner)]))
                 (is (= ["router-owner"] (:values (field-values/get-latest-full-field-values (:id owner)))))))))))))
+
+(deftest routed-admins-edit-router-tables-on-destination-test
+  (testing "a routed admin's table edits on a router go to their destination, like their queries"
+    (mt/with-premium-features #{:database-routing :table-data-editing}
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (met/with-user-attributes! :crowberto {"db_name" "destination-db-1"}
+          (e2e/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
+            (doseq [db [router-db dest-1]]
+              (e2e/execute-statement! db "CREATE TABLE \"acct\" (\"id\" INT PRIMARY KEY, \"owner\" TEXT)")
+              (e2e/execute-statement! db "GRANT ALL ON \"acct\" TO GUEST"))
+            (sync/sync-database! (u/the-id router-db) {:scan :schema})
+            (let [router-id (u/the-id router-db)
+                  table-id  (t2/select-one-pk :model/Table :db_id router-id :name "acct")]
+              (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}]
+                (mt/user-http-request :crowberto :post 200 "ee/action-v2/execute-bulk"
+                                      {:action :data-grid.row/create
+                                       :scope  {:table-id table-id}
+                                       :inputs [{"id" 1 "owner" "admin"}]})
+                (is (= [{:id 1 :owner "admin"}] (query-h2 dest-1 "SELECT * FROM \"acct\"")))
+                (is (= [] (query-h2 router-db "SELECT * FROM \"acct\"")))))))))))
