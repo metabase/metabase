@@ -34,6 +34,16 @@
           :sample_values   nil}
          overrides))
 
+(defn- classify-packet
+  "Classify every field of `packet` in chunks and wait for the result: a [[llm/submit-packet]] followed by a
+  [[llm/collect-packet]]."
+  [packet & {:as opts}]
+  (let [submitted (llm/submit-packet packet opts)]
+    (try
+      (llm/collect-packet submitted)
+      (finally
+        (llm/cancel-packet submitted)))))
+
 (defn- packet [fields]
   {:table  {:id 1 :name "PEOPLE" :schema "public" :display_name "People" :description "Registered users"
             :entity_type :entity/UserTable :db_id 1 :engine :postgres}
@@ -262,7 +272,7 @@
   (let [fields (for [i (range 130)] (field (str "F" i)))
         calls  (atom [])]
     (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)]
-      (let [result (llm/classify-packet (packet fields) :model "test/model")]
+      (let [result (classify-packet (packet fields) :model "test/model")]
         (testing "a 130-field packet takes three requests of at most 60 fields"
           (is (= 3 (:requests result)))
           (is (= [60 60 10] (sort > (map #(count (re-seq #"(?m)^- F\d+ \(" (:content (second (:messages %))))) @calls)))))
@@ -292,7 +302,7 @@
                    (field (str "F" i) :sample_values (subvec values 0 8) :cached_values (subvec values 8))))
         calls  (atom [])]
     (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)]
-      (let [result   (llm/classify-packet (packet fields) :model "test/model")
+      (let [result   (classify-packet (packet fields) :model "test/model")
             contents (map #(:content (second (:messages %))) @calls)]
         (testing "60 fields of 23 500-character values take more than one call"
           (is (< 1 (:requests result))))
@@ -330,7 +340,7 @@
         pkt    (assoc-in (packet fields) [:table :description] (apply str (repeat 50000 "x")))
         calls  (atom [])]
     (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)]
-      (let [result   (llm/classify-packet pkt :model "test/model")
+      (let [result   (classify-packet pkt :model "test/model")
             contents (map #(:content (second (:messages %))) @calls)]
         (testing "a 300-field table with a 50,000-character description takes 300/60 calls"
           (is (<= (:requests result) 5)))
@@ -342,7 +352,7 @@
 (deftest classify-packet-long-field-description-test
   (let [calls (atom [])]
     (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)]
-      (llm/classify-packet (packet [(field "BIG" :description (apply str (repeat 100000 "d")))]) :model "test/model")
+      (classify-packet (packet [(field "BIG" :description (apply str (repeat 100000 "d")))]) :model "test/model")
       (testing "a field with a 100,000-character description gives a user message within the per-call budget"
         (is (= 1 (count @calls)))
         (is (<= (count (:content (second (:messages (first @calls))))) llm/default-char-budget))))))
@@ -352,7 +362,7 @@
         fields   [(field "A") (field big-name) (field "B")]
         calls    (atom [])]
     (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)]
-      (let [result (llm/classify-packet (packet fields) :model "test/model" :char-budget 2000)]
+      (let [result (classify-packet (packet fields) :model "test/model" :char-budget 2000)]
         (testing "a field over the per-call budget alone is sent in a chunk of its own"
           (is (= #{["A"] [big-name] ["B"]}
                  (set (map #(mapv second (re-seq #"(?m)^- (\S+) \(" (:content (second (:messages %))))) @calls)))))
@@ -380,7 +390,7 @@
         in-flight (atom 0)
         peak      (atom 0)]
     (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (latched-call latch in-flight peak)]
-      (let [result (llm/classify-packet (packet fields) :model "test/model" :chunk-size 60)]
+      (let [result (classify-packet (packet fields) :model "test/model" :chunk-size 60)]
         (testing "the chunks of one table are in flight together"
           (is (zero? (.getCount latch)))
           (is (= 3 @peak)))
@@ -438,7 +448,7 @@
   (let [calls (atom [])]
     (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)
                                 metabot.settings/llm-mini-model              (constantly "conn/mini")]
-      (let [result (llm/classify-packet (packet [(field "A") (field "B")]))]
+      (let [result (classify-packet (packet [(field "A") (field "B")]))]
         (testing "the mini model is the default and one small table is one request"
           (is (= "conn/mini" (:model result)))
           (is (= "conn/mini" (:model (first @calls))))
@@ -447,7 +457,7 @@
 (deftest classify-packet-empty-test
   (let [calls (atom [])]
     (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)]
-      (let [result (llm/classify-packet (packet []) :model "test/model")]
+      (let [result (classify-packet (packet []) :model "test/model")]
         (is (= 0 (:requests result)))
         (is (empty? @calls))
         (is (= {} (:fields result)))))))
@@ -456,7 +466,7 @@
   (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace
                               (fn [& _] (throw (ex-info "limit" {:type :metabot/usage-limit-reached})))]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"limit"
-                          (llm/classify-packet (packet [(field "A")]) :model "test/model"))))
+                          (classify-packet (packet [(field "A")]) :model "test/model"))))
   (testing "a chunk failure surfaces as the chunk threw it, with its ex-data"
     (let [call (canned-call (atom []))]
       (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace
@@ -466,8 +476,8 @@
                                       (apply call model messages more)))]
         (is (= {:api-error true :status 429}
                (try
-                 (llm/classify-packet (packet (for [i (range 6)] (field (str "F" i))))
-                                      :model "test/model" :chunk-size 2)
+                 (classify-packet (packet (for [i (range 6)] (field (str "F" i))))
+                                  :model "test/model" :chunk-size 2)
                  nil
                  (catch clojure.lang.ExceptionInfo e
                    (ex-data e)))))))))
@@ -634,7 +644,7 @@
   (let [fields (for [i (range 50)] (field (str "F" i)))
         calls  (atom [])]
     (mt/with-dynamic-fn-redefs [metabot.self/call-llm-structured-with-trace (canned-call calls)]
-      (llm/classify-packet (packet fields) :model "test/model" :attributes everything)
+      (classify-packet (packet fields) :model "test/model" :attributes everything)
       (testing "a call with descriptions uses the description chunk size, its prompt, schema, and token budget"
         (is (= [40 10] (sort > (map #(count (re-seq #"(?m)^- F\d+ \(" (:content (second (:messages %))))) @calls))))
         (is (every? #(= (llm/system-prompt-for everything) (-> % :messages first :content)) @calls))
