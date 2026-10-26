@@ -2,8 +2,8 @@
   "Review of the pending AI proposals of a database or its tables: counts per table, the proposals, and apply. The
   review UI keeps the selection and the edits until apply, which takes the accepted proposals and the edited values
   in one request. Apply writes the accepted proposals as AI values, which readers see over the deterministic value
-  and under a person's value, and deletes their rows. Apply with `reject_all` marks every pending proposal of a
-  database `rejected`. A rejected proposal is hidden until the next run that covers its field and attribute.
+  and under a person's value, and deletes their rows. Apply with `reject_all` deletes every pending proposal of a
+  database.
 
   `source` and `current_value` are computed when a proposal is read or applied, from the value readers see now. A
   proposal with source `human` would replace a value a person set; apply of such a proposal clears the person's
@@ -159,7 +159,7 @@
 (mr/def ::apply-request
   "Give `accept` (ids) and `edits`, or `reject_all` with `database_id`. `edits` maps a proposal id to the value that
   replaces its proposed value; an edit also accepts its proposal. `proposed_values` maps a proposal id to the
-  proposed value that the client saw. `reject_all` rejects every pending proposal of the database `database_id`."
+  proposed value that the client saw. `reject_all` deletes every pending proposal of the database `database_id`."
   [:map {:closed true}
    [:accept          {:optional true} [:maybe [:sequential ms/PositiveInt]]]
    [:edits           {:optional true} [:maybe [:map-of ms/PositiveInt :string]]]
@@ -294,11 +294,11 @@
     (throw (core/bad-request (tru "Give accept and edits, or reject_all, not both.")))))
 
 (defn- reject-all!
-  "Mark every pending proposal of active fields of the database `database-id` `rejected`, decided by `user-id`."
-  [database-id user-id]
+  "Delete every pending proposal of active fields of the database `database-id`."
+  [database-id]
   (let [ids (mapv :id (db/pending-proposal-keys {:database_id database-id}))]
     {:written  0
-     :rejected (db/set-proposal-status! ids :rejected user-id)
+     :rejected (db/delete-proposals! ids)
      :failed   0
      :failures []}))
 
@@ -315,26 +315,24 @@
 
 (mu/defn apply! :- ::apply-result
   "Apply the review that `request` gives, as `user-id`: write the accepted proposals, the edited ones as the person's
-  values and the others as AI values, and delete their rows; or, with `reject_all`, mark every pending proposal of
-  the database `rejected`. Ids that name no proposal are ignored, unless `proposed_values` has them: then they are
-  listed in `failures` as `changed`, as is a proposal whose value is not the one in `proposed_values`, and a proposal
-  in `accept` that is not pending. An edit of a proposal that is not pending is applied. An invalid edit is a 400 and
-  nothing is written. Each table is one transaction. A proposal that cannot be written keeps its status and is listed
-  in `failures`."
+  values and the others as AI values, and delete their rows; or, with `reject_all`, delete every pending proposal of
+  the database. Ids that name no proposal are ignored, unless `proposed_values` has them: then they are listed in
+  `failures` as `changed`, as is a proposal whose value is not the one in `proposed_values`. An invalid edit is a 400
+  and nothing is written. Each table is one transaction. A proposal that cannot be written keeps its row and is
+  listed in `failures`."
   [request :- ::apply-request
    user-id :- ms/PositiveInt]
   (check-request request)
   (if (:reject_all request)
-    (reject-all! (:database_id request) user-id)
+    (reject-all! (:database_id request))
     (let [{:keys [accept edits proposed_values]} request
           seen      (or proposed_values {})
           ids       (vec (distinct (concat accept (keys edits))))
           by-id     (m/index-by :id (db/proposals-by-id ids))
           gone      (for [id ids :when (and (contains? seen id) (not (by-id id)))] {:id id})
           changed?  (fn [{:keys [id proposed_value]}] (and (contains? seen id) (not= (seen id) proposed_value)))
-          decided   (filter #(and (not (contains? edits (:id %))) (not= :pending (:status %))) (keep by-id accept))
           candidate (keep by-id ids)
-          changed   (m/distinct-by :id (concat decided (filter changed? candidate)))
+          changed   (filter changed? candidate)
           skip      (into #{} (map :id) changed)
           accepted  (->> (remove #(skip (:id %)) candidate)
                          (map #(assoc % :edited_value (get edits (:id %))))

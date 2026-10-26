@@ -264,22 +264,10 @@ databaseChangeLog:
               - column:
                   name: status
                   type: varchar(16)
-                  remarks: pending or rejected; the next run that covers the field and the attribute replaces or deletes a rejected proposal
+                  remarks: pending; apply and reject delete the row
                   defaultValue: pending
                   constraints:
                     nullable: false
-              - column:
-                  name: decided_by
-                  type: int
-                  remarks: The user who rejected the proposal
-                  constraints:
-                    nullable: true
-              - column:
-                  name: decided_at
-                  type: ${timestamp_type}
-                  remarks: When the proposal was rejected
-                  constraints:
-                    nullable: true
               - column:
                   name: created_at
                   type: ${timestamp_type}
@@ -294,20 +282,6 @@ databaseChangeLog:
                   defaultValueComputed: current_timestamp
                   constraints:
                     nullable: false
-
-  - changeSet:
-      id: g0ebym
-      author: tplude
-      comment: Add FK on metadata_generation_proposal.decided_by; SET NULL keeps the proposal when the user is deleted
-      changes:
-        - addForeignKeyConstraint:
-            baseTableName: metadata_generation_proposal
-            baseColumnNames: decided_by
-            referencedTableName: core_user
-            referencedColumnNames: id
-            constraintName: fk_metadata_generation_proposal_decided_by
-            onDelete: SET NULL
-      rollback: # dropped with table
 
   - changeSet:
       id: nbtkef
@@ -358,17 +332,4 @@ databaseChangeLog:
             columns:
               - column:
                   name: table_id
-      rollback: # dropped with table
-
-  - changeSet:
-      id: zcqadm
-      author: tplude
-      comment: Index metadata_generation_proposal.decided_by
-      changes:
-        - createIndex:
-            tableName: metadata_generation_proposal
-            indexName: idx_metadata_generation_proposal_decided_by
-            columns:
-              - column:
-                  name: decided_by
       rollback: # dropped with table

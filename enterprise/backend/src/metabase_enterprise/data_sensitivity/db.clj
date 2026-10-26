@@ -4,7 +4,6 @@
    [metabase-enterprise.data-sensitivity.models.metadata-generation-proposal :as proposal]
    [metabase-enterprise.data-sensitivity.models.metadata-generation-run :as run]
    [metabase.lib.schema.id :as lib.schema.id]
-   [metabase.models.interface :as mi]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -135,8 +134,8 @@
    [:proposals  [:sequential ::proposal/new-proposal]]])
 
 (defn- upsert-table-proposals!
-  "Make the proposals of `table_id` for `attributes` the ones in `proposals`: a new proposal replaces the pending or
-  rejected row of its field and attribute, and a row that `proposals` does not have is deleted. Rows of other tables
+  "Make the proposals of `table_id` for `attributes` the ones in `proposals`: a new proposal replaces the row of its
+  field and attribute, and a row that `proposals` does not have is deleted. Rows of other tables
   and other attributes do not change. When an apply deletes an existing row before its update, the new proposal is
   inserted."
   [{:keys [table_id attributes proposals]}]
@@ -154,11 +153,8 @@
                                         (let [id (existing ((juxt :field_id :attribute) p))]
                                           (or (nil? id)
                                               (zero? (t2/update! :model/MetadataGenerationProposal id
-                                                                 (assoc (select-keys p [:last_run_id :proposed_value
-                                                                                        :confidence :reasoning])
-                                                                        :status :pending
-                                                                        :decided_by nil
-                                                                        :decided_at nil)))))))
+                                                                 (select-keys p [:last_run_id :proposed_value
+                                                                                 :confidence :reasoning])))))))
                               proposals))]
       (t2/insert! :model/MetadataGenerationProposal inserts))))
 
@@ -275,18 +271,9 @@
   (when (seq ids)
     (t2/delete! :model/Dimension :id [:in ids])))
 
-(mu/defn set-proposal-status! :- :int
-  "Set `status` on the proposals with `ids`, decided by `user-id` now. Returns the number of rows updated."
-  [ids     :- [:sequential ms/PositiveInt]
-   status  :- ::proposal/status
-   user-id :- ms/PositiveInt]
-  (if (seq ids)
-    (t2/update! :model/MetadataGenerationProposal :id [:in ids]
-                {:status status :decided_by user-id :decided_at (mi/now)})
-    0))
-
-(mu/defn delete-proposals!
-  "Delete the proposals with `ids`."
+(mu/defn delete-proposals! :- :int
+  "Delete the proposals with `ids`. Returns the number of rows deleted."
   [ids :- [:sequential ms/PositiveInt]]
-  (when (seq ids)
-    (t2/delete! :model/MetadataGenerationProposal :id [:in ids])))
+  (if (seq ids)
+    (t2/delete! :model/MetadataGenerationProposal :id [:in ids])
+    0))

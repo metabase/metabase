@@ -61,8 +61,8 @@
   (mt/with-premium-features #{:data-sensitivity}
     (do-with-proposals!
      (fn [db-id {:keys [a b c]} {:keys [a1-ds]}]
-       (t2/update! :model/MetadataGenerationProposal a1-ds {:status :rejected})
-       (testing "pending proposals of all runs per table, without rejected ones"
+       (t2/delete! :model/MetadataGenerationProposal a1-ds)
+       (testing "pending proposals of all runs per table"
          (is (= [{:table_id a :table_name "A" :schema "S" :pending 2 :human_set_pending 1}
                  {:table_id b :table_name "B" :schema "S" :pending 1 :human_set_pending 0}
                  {:table_id c :table_name "C" :schema "T" :pending 1 :human_set_pending 0}]
@@ -99,12 +99,12 @@
                   {:id b1-sem}
                   {:id c1-sem}]
                  (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :database-id db-id))))
-       (testing "a rejected proposal is hidden"
-         (t2/update! :model/MetadataGenerationProposal a1-ds {:status :rejected})
+       (testing "a deleted proposal is left out"
+         (t2/delete! :model/MetadataGenerationProposal a1-ds)
          (is (= [a1-sem a2-human]
                 (map :id (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :table-id a)))))
        (testing "a table without pending proposals has none"
-         (t2/update! :model/MetadataGenerationProposal b1-sem {:status :rejected})
+         (t2/delete! :model/MetadataGenerationProposal b1-sem)
          (is (= [] (mt/user-http-request :crowberto :get 200 "ee/data-sensitivity/proposals" :table-id b))))))))
 
 (deftest inactive-field-proposals-test

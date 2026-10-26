@@ -221,7 +221,7 @@
   (mt/with-temp [:model/Database db    {}
                  :model/Table    table {:db_id (:id db) :name "ds_upsert" :active true}
                  :model/Field    _     {:table_id (:id table) :name "ds_a" :base_type :type/Text}
-                 :model/Field    b     {:table_id (:id table) :name "ds_b" :base_type :type/Text}
+                 :model/Field    _     {:table_id (:id table) :name "ds_b" :base_type :type/Text}
                  :model/Field    _     {:table_id (:id table) :name "ds_c" :base_type :type/Text
                                         :data_sensitivity :PUBLIC}
                  :model/Field    _     {:table_id (:id table) :name "ds_d" :base_type :type/Text}]
@@ -239,21 +239,16 @@
                    ["ds_c" :data_sensitivity] ["PII" :pending run-1]
                    ["ds_d" :data_sensitivity] ["PII" :pending run-1]}
                   (table-proposals (:id table))))
-           (t2/update! :model/MetadataGenerationProposal {:field_id (:id b)}
-                       {:status :rejected :decided_by (mt/user->id :crowberto) :decided_at :%now})
            (reset! entries {"ds_a" {:data_sensitivity "PHI"}
                             "ds_b" {:data_sensitivity "PHI"}
                             "ds_c" {:data_sensitivity "PUBLIC"}
                             "ds_d" {:data_sensitivity "UNSURE"}})
            (let [run-2 (:id (start! db {:attributes [:data_sensitivity]}))]
              (wait-ended run-2)
-             (testing "a second run replaces pending and rejected proposals, and deletes those it no longer makes"
+             (testing "a second run replaces the proposals, and deletes those it no longer makes"
                (is (= {["ds_a" :data_sensitivity] ["PHI" :pending run-2]
                        ["ds_b" :data_sensitivity] ["PHI" :pending run-2]}
-                      (table-proposals (:id table)))))
-             (testing "a replaced rejection loses its decision"
-               (is (=? {:decided_by nil :decided_at nil}
-                       (t2/select-one :model/MetadataGenerationProposal :field_id (:id b))))))
+                      (table-proposals (:id table))))))
            (testing "a run of other attributes leaves the proposals of the run's attributes alone"
              (reset! entries {"ds_a" {:data_sensitivity "PII" :semantic_type "type/Email"}})
              (let [run-3 (:id (start! db {:attributes [:semantic_type]}))]
