@@ -1,23 +1,12 @@
-import { setupEnterprisePlugins } from "__support__/enterprise";
-import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { PLUGIN_TENANTS } from "metabase/plugins";
-import { createMockTokenFeatures } from "metabase-types/api/mocks";
 
 /**
- * The OSS build never loads this plugin at all, so the slots an un-registered
- * PLUGIN_TENANTS exposes are exactly what OSS renders. One setup therefore
- * covers both an OSS instance and an enterprise instance whose token lacks the
- * feature.
+ * An OSS build never loads the tenants plugin, so this file deliberately
+ * registers nothing and imports nothing from `metabase-enterprise/tenants`.
+ * What it reads are the OSS defaults in `metabase/plugins/oss/tenants.ts`.
  */
-beforeAll(() => {
-  mockSettings({
-    "token-features": createMockTokenFeatures({ tenants: false }),
-  });
-  setupEnterprisePlugins();
-});
-
-describe("tenants plugin without the tenants token feature", () => {
+describe("tenants plugin on OSS", () => {
   it("stays disabled", () => {
     expect(PLUGIN_TENANTS.isEnabled).toBe(false);
   });
