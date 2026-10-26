@@ -345,6 +345,7 @@ const configs = [
     files: [
       "**/*.unit.spec.*",
       "frontend/src/metabase/admin/**/*",
+      "frontend/src/metabase/permissions/**/*",
       "frontend/src/metabase/embedding-hub/**/*",
       "frontend/src/metabase/embedding/settings/**/*",
       "frontend/src/metabase/embedding/themes/**/*",
