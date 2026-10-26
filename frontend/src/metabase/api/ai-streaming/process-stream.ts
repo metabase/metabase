@@ -53,6 +53,9 @@ export type AIStreamingConfig = {
   onToolErrorPart?: (event: ToolOutputErrorEvent) => void;
   onError?: (error: StreamedError) => void;
   onMessageMetadata?: (metadata: MessageMetadata) => void;
+  // Returns true while the user can see the reasoning of this stream.
+  // The pacer paces reasoning only then. See `smoothStreamEvents`.
+  shouldPaceReasoning?: () => boolean;
 };
 
 export interface ProcessedChatResponse {
@@ -93,7 +96,9 @@ export async function processChatResponse(
   const events = parseSSEStream(stream);
   const paced = isReducedMotionPreferred()
     ? events
-    : smoothStreamEvents(events);
+    : smoothStreamEvents(events, {
+        shouldPaceReasoning: config.shouldPaceReasoning,
+      });
 
   try {
     for await (const event of paced) {
