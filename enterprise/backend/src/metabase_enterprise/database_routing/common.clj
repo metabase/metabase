@@ -8,9 +8,11 @@
    [metabase.util.i18n :refer [tru]]))
 
 (defn- user-attribute
-  "Which user attribute should we use for this RouterDB?"
+  "The user attribute the router `db-or-id` routes on, read from the Database's metadata when it carries it."
   [db-or-id]
-  (database-routing.db/router-user-attribute (u/the-id db-or-id)))
+  (if (and (map? db-or-id) (contains? db-or-id :router-user-attribute))
+    (:router-user-attribute db-or-id)
+    (database-routing.db/router-user-attribute (u/the-id db-or-id))))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
 (def ^:dynamic ^:private *database-routing-on* :unset)
