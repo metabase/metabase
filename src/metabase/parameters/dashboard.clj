@@ -19,12 +19,16 @@
    [toucan2.core :as t2]))
 
 (defn- field-ref->endpoint
-  "Extract `{:table :field :join-alias}` from an MBQL `:field` clause."
+  "Extract `{:table :field :join-alias}` from an MBQL `:field` clause. Returns nil when `field-ref` names a column
+  by string (not a real field-id) or the field isn't present in the metadata provider — such refs can't be pinned
+  as FK edges in [[chain-filter]]."
   [mp field-ref]
   (let [field-id (lib/field-ref-id field-ref)]
-    {:table      (:table-id (lib.metadata/field mp field-id))
-     :field      field-id
-     :join-alias (:join-alias (lib/options field-ref))}))
+    (when (int? field-id)
+      (when-let [table-id (:table-id (lib.metadata/field mp field-id))]
+        {:table      table-id
+         :field      field-id
+         :join-alias (:join-alias (lib/options field-ref))}))))
 
 (defn- =-field-refs
   "If `condition` is an `:=` join condition between two `:field` refs, return `[a b]`; otherwise nil."
@@ -40,14 +44,15 @@
   "If `condition` is `[:= _opts <field> <field>]` where exactly one field carries `:join-alias = out-alias`, return
   `[in out]`. `out` is the hop we're walking *out of* (this join's side); `in` is the side
   we're walking *into* next — its `:join-alias` names the previous hop, or nil when we've reached the base table.
-  Return nil when the clause isn't a qualifying link."
+  Return nil when the clause isn't a qualifying link or either side can't be resolved to a concrete field — e.g. a
+  cross-stage join whose previous-stage side names an aggregation result column by string."
   [mp out-alias condition]
   (when-let [[a b] (=-field-refs condition)]
-    (let [ea (field-ref->endpoint mp a)
-          eb (field-ref->endpoint mp b)]
-      (cond
-        (and (= out-alias (:join-alias ea)) (not= out-alias (:join-alias eb))) [eb ea]
-        (and (= out-alias (:join-alias eb)) (not= out-alias (:join-alias ea))) [ea eb]))))
+    (when-let [ea (field-ref->endpoint mp a)]
+      (when-let [eb (field-ref->endpoint mp b)]
+        (cond
+          (and (= out-alias (:join-alias ea)) (not= out-alias (:join-alias eb))) [eb ea]
+          (and (= out-alias (:join-alias eb)) (not= out-alias (:join-alias ea))) [ea eb])))))
 
 (defn- source-field->via-path
   "If `target` carries `:source-field` (an implicit-join FK field-id), emit the one-hop FK edge the field ref names.
