@@ -17,7 +17,6 @@ describe("getOriginMismatch", () => {
   it("moves a loopback page to the site-url origin, keeping the path", () => {
     expect(
       getOriginMismatch(
-        true,
         "http://mb.localhost:3000",
         loc("http://localhost:3000", "/apps/sales", "?a=1", "#x"),
       ),
@@ -29,11 +28,7 @@ describe("getOriginMismatch", () => {
 
   it("moves an IPv6 loopback page too", () => {
     expect(
-      getOriginMismatch(
-        true,
-        "http://mb.localhost:3000",
-        loc("http://[::1]:3000"),
-      ),
+      getOriginMismatch("http://mb.localhost:3000", loc("http://[::1]:3000")),
     ).toEqual({
       kind: "redirect",
       url: "http://mb.localhost:3000/apps/sales",
@@ -43,7 +38,6 @@ describe("getOriginMismatch", () => {
   it("does nothing on the site-url origin", () => {
     expect(
       getOriginMismatch(
-        true,
         "http://mb.localhost:3000",
         loc("http://mb.localhost:3000"),
       ),
@@ -53,7 +47,6 @@ describe("getOriginMismatch", () => {
   it("does not move a page on another production host name, and links to the site URL instead", () => {
     expect(
       getOriginMismatch(
-        true,
         "https://metabase.acme.com",
         loc("https://bi.acme.com"),
       ),
@@ -63,16 +56,7 @@ describe("getOriginMismatch", () => {
     });
   });
 
-  it("does nothing in same-origin mode or without a site-url", () => {
-    expect(
-      getOriginMismatch(
-        false,
-        "http://mb.localhost:3000",
-        loc("http://localhost:3000"),
-      ),
-    ).toBeNull();
-    expect(
-      getOriginMismatch(true, null, loc("http://localhost:3000")),
-    ).toBeNull();
+  it("does nothing without a site-url", () => {
+    expect(getOriginMismatch(null, loc("http://localhost:3000"))).toBeNull();
   });
 });

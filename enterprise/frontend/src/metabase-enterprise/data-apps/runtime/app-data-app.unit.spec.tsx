@@ -1,7 +1,7 @@
 import { act, waitFor } from "@testing-library/react";
 
 import {
-  DATA_APP_BROKER_INIT,
+  DATA_APP_BROKER_INIT_MESSAGE_TYPE,
   DATA_APP_IFRAME_BROKER_HASH_KEY,
 } from "metabase-enterprise/data-apps/constants";
 
@@ -37,7 +37,7 @@ describe("data-app iframe entry, on a subpath deployment", () => {
     const hostPort = { postMessage: jest.fn<void, [BrokerPortMessage]>() };
     Object.defineProperty(window, "parent", {
       configurable: true,
-      value: { postMessage: jest.fn() },
+      value: { postMessage: jest.fn<void, [unknown, string]>() },
     });
     window.MetabaseRoot = "/mb/";
     history.replaceState(
@@ -54,7 +54,7 @@ describe("data-app iframe entry, on a subpath deployment", () => {
     });
 
     const init = new MessageEvent("message", {
-      data: { type: DATA_APP_BROKER_INIT },
+      data: { type: DATA_APP_BROKER_INIT_MESSAGE_TYPE },
       origin: HOST_ORIGIN,
     });
     Object.defineProperties(init, {

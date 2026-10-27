@@ -1,17 +1,19 @@
+import type * as SdkConfig from "metabase/embedding-sdk/config";
 import { isDataApp, isEmbeddingSdk } from "metabase/embedding-sdk/config";
+import type * as IframeUtils from "metabase/utils/iframe";
 import { isWithinIframe } from "metabase/utils/iframe";
 
 import { shouldLoadTilesWithFetch } from "./LeafletTilePinMap";
 
 jest.mock("metabase/embedding-sdk/config", () => ({
-  ...jest.requireActual("metabase/embedding-sdk/config"),
-  isDataApp: jest.fn(),
-  isEmbeddingSdk: jest.fn(),
+  ...jest.requireActual<typeof SdkConfig>("metabase/embedding-sdk/config"),
+  isDataApp: jest.fn<boolean, []>(),
+  isEmbeddingSdk: jest.fn<boolean, []>(),
 }));
 
 jest.mock("metabase/utils/iframe", () => ({
-  ...jest.requireActual("metabase/utils/iframe"),
-  isWithinIframe: jest.fn(),
+  ...jest.requireActual<typeof IframeUtils>("metabase/utils/iframe"),
+  isWithinIframe: jest.fn<boolean, []>(),
 }));
 
 type SetupOpts = {

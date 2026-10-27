@@ -4,13 +4,12 @@ import { t } from "ttag";
 import { MoreMenuButton } from "metabase/common/data-studio/components/MoreMenuButton";
 import { useConfirmation, useMetadataToasts } from "metabase/common/hooks";
 import { useOpenEmbedJsWizard } from "metabase/embedding/hooks/use-open-embed-js-wizard";
-import { useSetting } from "metabase/settings";
 import { Icon, Menu } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import { useSetDataAppEnabledMutation } from "metabase-enterprise/api";
 import type { DataApp } from "metabase-types/api";
 
-import { getCrossOriginDataAppHref } from "../../../host/lib/get-cross-origin-data-app-href";
+import { useCrossOriginDataAppHref } from "../../../host/lib/get-cross-origin-data-app-href";
 import { isDataAppOpenable } from "../../../utils";
 import { trackDataAppMadeDraft, trackDataAppMadeLive } from "../../analytics";
 
@@ -32,10 +31,9 @@ export function DataAppMoreMenu({ app }: DataAppMoreMenuProps) {
   const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
   const { show: showConfirmation, modalContent } = useConfirmation();
 
-  const isolatedOrigin = useSetting("isolated-origin");
-  const siteUrl = useSetting("site-url");
+  const getCrossOriginHref = useCrossOriginDataAppHref();
   const href =
-    getCrossOriginDataAppHref(app.name, isolatedOrigin, siteUrl) ??
+    getCrossOriginHref(app.name) ??
     Urls.getSubpathSafeUrl(Urls.dataApp(app.name));
 
   const handleToggleEnabled = () => {
