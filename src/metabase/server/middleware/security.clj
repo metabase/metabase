@@ -324,7 +324,10 @@
                                             ;; send the user's data off-origin. Use `'self'`, the admin's
                                             ;; "Allowed domains for images", blob:, and the app's
                                             ;; `allowed_hosts`. The external bootstrap shell allows
-                                            ;; HTTP(S) until the authorized app policy is installed.
+                                            ;; HTTP(S) until the authorized app policy is installed. On
+                                            ;; the isolated origin those hosts are `*` until the app's own
+                                            ;; policy narrows them: see `:data-app-connect-hosts` in
+                                            ;; [[add-security-headers*]].
                                             data-app-iframe?                  (into restricted data-app-connect-hosts)
                                             (server.settings/csp-img-enabled) restricted
                                             :else                             (into ["*"] always-allowed-resource-hosts))
