@@ -33,6 +33,8 @@
         saved   @entry]
     (reset! entry nil)
     (reset! @#'token-check/refresh-requested? false)
+    (reset! @#'token-check/last-failure nil)
+    (reset! @#'token-check/ticked-for-token-hash nil)
     (.close ^dev.failsafe.CircuitBreaker breaker)
     (try
       (binding [retry/*test-time-config-hook* #(assoc % :initial-interval-millis 1 :max-interval-millis 2)]
@@ -275,6 +277,37 @@
                             (token-check/refresh-now!)))
       (is (zero? @calls)))))
 
+(deftest fetch-is-capped-by-a-timeout-test
+  (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+    (with-redefs [token-check/fetch-timeout-ms 100]
+      (with-store [_ #(do (Thread/sleep 5000) good-status)]
+        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Token validation timed out"
+                              (token-check/refresh-now!)))))))
+
+(deftest checked-fetch-exceptions-are-unwrapped-test
+  (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+    (with-store [_ #(throw (java.net.ConnectException. "Connection refused"))]
+      (is (thrown-with-msg? java.net.ConnectException #"Connection refused" (token-check/refresh-now!))))))
+
+(deftest token-status-reports-the-latest-failure-test
+  (let [token (tu/random-token)]
+    (mt/with-temporary-raw-setting-values [premium-embedding-token token]
+      (with-store [_ #(throw (java.net.ConnectException. "Connection refused"))]
+        (premium-features/clear-cache!)
+        (is (=? {:valid false :canonical? false :error-details "Connection refused"}
+                (premium-features/token-status))))
+      (testing "a successful refresh clears it"
+        (with-store [_ (constantly good-status)]
+          (token-check/refresh-now!))
+        (is (=? {:valid true :status "ok"} (premium-features/token-status)))))
+    (testing "another token's failure is not reported"
+      (mt/with-temporary-raw-setting-values [premium-embedding-token token]
+        (with-store [_ #(throw (java.net.ConnectException. "Connection refused"))]
+          (premium-features/clear-cache!)))
+      (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+        (is (=? {:valid false :canonical? false :error-details #"No current token status is held.*"}
+                (premium-features/token-status)))))))
+
 (deftest clear-cache-refreshes-and-never-throws-test
   (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
     (with-store [_ (constantly good-status)]
@@ -357,6 +390,41 @@
          (premium-features/clear-local-cache!)
          (is (= 1 @calls))
          (is (premium-features/has-feature? :sandboxes)))))))
+
+(deftest read-for-a-newly-configured-token-ticks-early-test
+  (do-with-refresher-started!
+   (fn []
+     (let [calls (atom 0)]
+       ;; the tick runs on the refresher thread, which does not see `with-dynamic-fn-redefs`
+       #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+       (with-redefs [token-check/http-fetch (fn [& _]
+                                              (swap! calls inc)
+                                              {:status 200 :body (json/encode good-status)})]
+         (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+           (is (not (premium-features/has-feature? :sandboxes))
+               "the read itself does not wait for the fetch")
+           (is (true? (u/poll {:thunk       #(premium-features/has-feature? :sandboxes)
+                               :done?       true?
+                               :timeout-ms  5000
+                               :interval-ms 10})))
+           (is (= 1 @calls))
+           (testing "a token whose early tick already ran gets no second one"
+             (reset! @#'token-check/entry nil)
+             (premium-features/has-feature? :sandboxes)
+             (Thread/sleep 200)
+             (is (= 1 @calls)))))
+       (testing "a token whose refresh already failed waits for the scheduled tick"
+         (mt/with-temporary-raw-setting-values [premium-embedding-token (tu/random-token)]
+           ;; a tick, if one ran, would be on the refresher thread
+           #_{:clj-kondo/ignore [:metabase/prefer-with-dynamic-fn-redefs]}
+           (with-redefs [token-check/http-fetch (fn [& _]
+                                                  (swap! calls inc)
+                                                  (throw (java.net.ConnectException. "Connection refused")))]
+             (premium-features/refresh-at-startup!)
+             (reset! calls 0)
+             (premium-features/has-feature? :sandboxes)
+             (Thread/sleep 200)
+             (is (zero? @calls)))))))))
 
 (deftest clear-local-cache-whose-fetch-fails-does-not-throw-test
   (do-with-refresher-started!

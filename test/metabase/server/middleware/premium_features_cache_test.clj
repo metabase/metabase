@@ -131,7 +131,8 @@
                                                                   :body   (json/encode {:valid    true
                                                                                         :status   "ok"
                                                                                         :features ["sandboxes"]})})]
-              (is (false? (premium-features/has-feature? :sandboxes)))
+              ;; not a feature read: that would tick early on the refresher thread
+              (is (nil? @entry))
               (run-middleware (request-with-cookie (str (Instant/now))) {:status 200})
               (is (= 1 @calls))
               (is (true? (premium-features/has-feature? :sandboxes))))))

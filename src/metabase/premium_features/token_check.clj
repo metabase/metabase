@@ -35,8 +35,8 @@
    [toucan2.connection :as t2.conn]
    [toucan2.core :as t2])
   (:import
-   (dev.failsafe CircuitBreakerOpenException)
-   (java.util.concurrent Executors ScheduledExecutorService ThreadFactory TimeUnit)))
+   (dev.failsafe CircuitBreakerOpenException FailsafeException TimeoutExceededException)
+   (java.util.concurrent Executors RejectedExecutionException ScheduledExecutorService ThreadFactory TimeUnit)))
 
 (set! *warn-on-reflection* true)
 
@@ -394,6 +394,9 @@
 
 (defonce ^:private refresher-executor (atom nil))
 
+;; `{:token-hash, :message}` of the latest failed refresh, or nil
+(defonce ^:private last-failure (atom nil))
+
 (def ^:private retry-policy
   {:max-retries             2
    :initial-interval-millis 1000
@@ -403,21 +406,32 @@
 
 (defonce ^:private breaker
   (dh.cb/circuit-breaker {:failure-threshold 3
-                          :delay-ms          (u/minutes->ms 1)
+                          :delay-ms          (u/seconds->ms 30)
                           :on-open           (fn [_] (log/info "Engaging circuit breaker in token check"))
                           :on-close          (fn [_] (log/info "Token Check restored"))}))
+
+(def ^:private fetch-timeout-ms
+  "Caps a fetch, retries included. A blocked socket read is not interrupted: it ends at the HTTP client's own timeouts."
+  (u/seconds->ms 10))
 
 (defn- fetch-status
   [token & {:keys [retry?] :or {retry? true}}]
   (try
     (dh/with-circuit-breaker breaker
-      (if retry?
-        (retry/with-retry (assoc retry-policy
-                                 :on-retry (fn [_ e] (log/infof "Retrying token check after: %s" (ex-message e))))
-          (decode-token* token))
-        (decode-token* token)))
+      (dh/with-timeout {:timeout-ms fetch-timeout-ms
+                        :interrupt? true}
+        (if retry?
+          (retry/with-retry (assoc retry-policy
+                                   :on-retry (fn [_ e] (log/infof "Retrying token check after: %s" (ex-message e))))
+            (decode-token* token))
+          (decode-token* token))))
     (catch CircuitBreakerOpenException _e
-      (throw (ex-info (tru "Token validation is currently unavailable.") {})))))
+      (throw (ex-info (tru "Token validation is currently unavailable.") {})))
+    (catch TimeoutExceededException _e
+      (throw (ex-info (tru "Token validation timed out.") {})))
+    ;; Failsafe wraps checked exceptions, such as a `ConnectException`
+    (catch FailsafeException e
+      (throw (or (ex-cause e) e)))))
 
 (defn- install!
   [token status]
@@ -429,6 +443,7 @@
                      :status      status
                      :status-hash status-hash
                      :fetched-at  (t/instant)})
+      (reset! last-failure nil)
       (try
         (write-cache-to-db! token-hash status-hash)
         (catch Throwable e
@@ -450,6 +465,7 @@
           (catch Throwable e
             (log/errorf "Error refreshing the premium features token status: %s" (ex-message e))
             (analytics/inc! :metabase-token-check/attempt {:status :failure})
+            (reset! last-failure {:token-hash token-hash :message (ex-message e)})
             (deliver mine {:error e}))
           (finally
             (swap! in-flight dissoc token-hash))))
@@ -591,14 +607,32 @@
 ;;; |                                                     READER                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; hash of the last token [[tick-for-new-token!]] ticked for, so each new token gets one early tick
+(defonce ^:private ticked-for-token-hash (atom nil))
+
+(defn- tick-for-new-token!
+  "Have the refresher thread tick now for a token configured since the last refresh, as when another instance stored
+  it, instead of serving no features until the next scheduled tick. Does not wait for the tick. A token whose refresh
+  has already failed is left to the scheduled ticks."
+  [token-hash]
+  (when-let [^ScheduledExecutorService exec @refresher-executor]
+    (when (and (not= token-hash (:token-hash @last-failure))
+               (not= token-hash (first (reset-vals! ticked-for-token-hash token-hash))))
+      (try
+        (.execute exec ^Runnable safe-tick!)
+        (catch RejectedExecutionException _e
+          nil)))))
+
 (defn- current-status
   []
   (when-let [token (premium-features.settings/premium-embedding-token)]
-    (let [{:keys [token-hash status fetched-at]} @entry]
-      (when (and status
-                 (= token-hash (hash-token token))
-                 (t/before? (t/instant) (t/plus fetched-at grace-period)))
-        status))))
+    (let [{:keys [token-hash status fetched-at]} @entry
+          configured-hash (hash-token token)]
+      (if (not= token-hash configured-hash)
+        (do (tick-for-new-token! configured-hash)
+            nil)
+        (when (t/before? (t/instant) (t/plus fetched-at grace-period))
+          status)))))
 
 (defn unvalidated-status
   "The status reported for a token whose status could not be validated, with `error-details` saying why."
@@ -678,9 +712,12 @@
 (defn -token-status
   "Getter for the [[metabase.premium-features.settings/token-status]] setting."
   []
-  (when (premium-features.settings/premium-embedding-token)
+  (when-let [token (premium-features.settings/premium-embedding-token)]
     (or (current-status)
-        (unvalidated-status))))
+        (let [{:keys [token-hash message]} @last-failure]
+          (if (and message (= token-hash (hash-token token)))
+            (unvalidated-status message)
+            (unvalidated-status))))))
 
 (mu/defn plan-alias :- [:maybe :string]
   "Returns a string representing the instance's current plan, if included in the last token status request."
