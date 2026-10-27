@@ -143,6 +143,9 @@ Status:
   clause also needs a legacy schema entry: `:dialect-fn` and `:dialect-aggregation` have one, as pass-through clauses.
   `expand-named-stages` strips `:name` even from a plain chain.
 - The driver only reads `:native`, `:database` and `:info` at that point, so this is shape, not semantics.
+- Found by the port: the legacy form only accepts a new clause as a whole expression. `actors / sum(actors) OVER ()`
+  fails in the legacy round trip, because legacy arithmetic arguments don't know `:window`. Planners name the window
+  as its own expression and divide by a reference to it, which compiles to the same SQL.
 - Pays back: drivers take MBQL 5 at execution, and the conversion goes.
 
 ## D13: Week start and timezone come from settings
@@ -272,8 +275,7 @@ Status:
 
 ## D22: MBQL planners are not wired into the app yet
 
-- **budget**. Ported: habit histogram (with breakouts, scope), cohorts (all views, breakouts). Not yet: habit percent
-  and ratio, lifecycle, funnel, paths.
+- **budget**. Ported: habit (all measures), cohorts, lifecycle, each with breakouts. Not yet: funnel, paths.
 - Not ported in any analysis: drill-through members, breakout chart ordering (the oracle compares rows as bags), and
   `use-analysis-query` still runs the string planners' SQL.
 - Pays back: port the rest, then drills, then switch the app.

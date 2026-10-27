@@ -107,3 +107,39 @@ export const caseWhen = (branches: CaseBranches, fallback?: Expr): Clause =>
 
 export const asc = (expr: Expr): Clause => clause("asc", expr);
 export const desc = (expr: Expr): Clause => clause("desc", expr);
+
+export type FrameBound =
+  | "unbounded-preceding"
+  | "current-row"
+  | "unbounded-following"
+  | readonly ["preceding" | "following", number];
+
+/** Which rows around the current one a window function reads. */
+export interface Frame {
+  mode: "rows";
+  start: FrameBound;
+  end: FrameBound;
+}
+
+/**
+ * `fn OVER (PARTITION BY … ORDER BY … ROWS BETWEEN …)`. Only in the
+ * expressions of a stage with no aggregation or breakout.
+ */
+export const window = (
+  fn: Clause,
+  {
+    partitionBy = [],
+    orderBy = [],
+    frame,
+  }: { partitionBy?: Expr[]; orderBy?: Clause[]; frame?: Frame } = {},
+): Clause => [
+  "window",
+  options(frame !== undefined ? { frame } : {}),
+  fn,
+  clause("partition-by", ...partitionBy),
+  clause("order-by", ...orderBy),
+];
+
+/** `x` rounded to 4 decimal places, as the string planners round shares. */
+export const round4 = (x: Clause): Clause =>
+  clause("/", clause("round", clause("*", x, 10000)), 10000);

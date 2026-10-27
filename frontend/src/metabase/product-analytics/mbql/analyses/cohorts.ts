@@ -15,6 +15,7 @@ import {
   expression,
   expressionRef,
   field,
+  round4,
   value,
 } from "../clause";
 import { type Query, StageList, joinStage, stage } from "../query";
@@ -35,10 +36,6 @@ const offsetBetween = (
   later: Clause,
   period: Period,
 ): Clause => clause("datetime-diff", started, later, period);
-
-/** `x` rounded to 4 decimal places, as the string planners round shares. */
-const round4 = (x: Clause): Clause =>
-  clause("/", clause("round", clause("*", x, 10000)), 10000);
 
 const cohortsQuery = (
   spec: AnalysisSpec,

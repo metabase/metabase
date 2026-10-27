@@ -148,6 +148,8 @@ export const actorBreakoutStages = (
 export const withBreakout = (
   spec: AnalysisSpec,
   actor: Column,
+  /** The join the stage reads its actors through, if not its source. */
+  actorJoin?: string,
 ): { joins: Join[]; expressions: Clause[]; breakout: () => Clause[] } =>
   spec.breakout === undefined
     ? { joins: [], expressions: [], breakout: () => [] }
@@ -156,7 +158,7 @@ export const withBreakout = (
           joinStage(
             ACTOR_BREAKOUTS_CTE,
             BREAKOUT_JOIN,
-            [eq(col(actor), col(actor, BREAKOUT_JOIN))],
+            [eq(col(actor, actorJoin), col(actor, BREAKOUT_JOIN))],
             { strategy: "inner-join" },
           ),
         ],
