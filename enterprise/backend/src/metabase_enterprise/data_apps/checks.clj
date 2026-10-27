@@ -152,11 +152,11 @@
   nil)
 
 (defenterprise-schema check-action :- :nil
-  "Throws a 400 unless `action` is in `data-app`'s collection."
+  "Throws a 400 unless the action with `action-id` is in `data-app`'s collection, after a read check of the action."
   :feature :data-apps
-  [data-app :- ::data-apps.schema/data-app
-   action   :- :metabase.actions.schema/action]
-  (when-not (in-app-collection? data-app action)
+  [data-app  :- ::data-apps.schema/data-app
+   action-id :- ::lib.schema.id/action]
+  (when-not (in-app-collection? data-app (api/read-check :model/Action action-id))
     (throw (data-app-error (tru "A data app can run only the actions in its own collection, not the action {0}."
-                                (:id action)))))
+                                action-id))))
   nil)

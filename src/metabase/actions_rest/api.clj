@@ -179,10 +179,11 @@
    {:keys [parameters]} :- [:map {:closed true}
                             [:parameters ::actions.schema/prefetch-parameter-values]]
    request]
+  (some-> (data-apps/request-data-app request) (data-apps/check-action action-id))
   (actions/check-actions-enabled action-id)
-  (let [action (api/read-check (actions/select-action :id action-id :archived false))]
-    (some-> (data-apps/request-data-app request) (data-apps/check-action action))
-    (actions/fetch-values action parameters)))
+  (-> (actions/select-action :id action-id :archived false)
+      api/read-check
+      (actions/fetch-values parameters)))
 
 (defn- remap-parameter-keys
   "Translate incoming `parameters` keys to the destination parameter `:id` the
@@ -224,8 +225,8 @@
                                                [:parameters {:optional true} [:maybe ::actions.schema/execute-parameter-values]]]]
    request]
   (let [resolved-id (eid-translation/->id-or-404 :action id)
+        _           (some-> (data-apps/request-data-app request) (data-apps/check-action resolved-id))
         {:keys [type] :as action} (api/read-check (actions/select-action :id resolved-id :archived false))]
-    (some-> (data-apps/request-data-app request) (data-apps/check-action action))
     (analytics/track-event! :snowplow/action
                             {:event     :action-executed
                              :source    :model_detail
