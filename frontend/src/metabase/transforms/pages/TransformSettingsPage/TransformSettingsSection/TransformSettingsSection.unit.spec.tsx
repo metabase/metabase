@@ -9,7 +9,7 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
 import * as Urls from "metabase/urls";
-import type { Transform } from "metabase-types/api";
+import type { Transform, TransformId } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockTransform,
@@ -73,10 +73,11 @@ function setup({
   );
 }
 
-function getLastOwnerUpdateBody() {
-  const call = fetchMock.callHistory.lastCall("path:/api/transform/1", {
-    method: "PUT",
-  });
+function getLastOwnerUpdateBody(transformId: TransformId) {
+  const call = fetchMock.callHistory.lastCall(
+    `path:/api/transform/${transformId}`,
+    { method: "PUT" },
+  );
   return JSON.parse(String(call?.options.body));
 }
 
@@ -171,7 +172,7 @@ describe("OwnerSection", () => {
     expect(
       await screen.findByText("Transform owner updated"),
     ).toBeInTheDocument();
-    expect(getLastOwnerUpdateBody()).toEqual({
+    expect(getLastOwnerUpdateBody(transform.id)).toEqual({
       owner_email: null,
       owner_user_id: 2,
     });
@@ -191,7 +192,7 @@ describe("OwnerSection", () => {
     expect(
       await screen.findByText("Transform owner updated"),
     ).toBeInTheDocument();
-    expect(getLastOwnerUpdateBody()).toEqual({
+    expect(getLastOwnerUpdateBody(transform.id)).toEqual({
       owner_email: "external@example.com",
       owner_user_id: null,
     });
@@ -213,7 +214,7 @@ describe("OwnerSection", () => {
     expect(
       await screen.findByText("Transform owner updated"),
     ).toBeInTheDocument();
-    expect(getLastOwnerUpdateBody()).toEqual({
+    expect(getLastOwnerUpdateBody(transform.id)).toEqual({
       owner_email: null,
       owner_user_id: null,
     });

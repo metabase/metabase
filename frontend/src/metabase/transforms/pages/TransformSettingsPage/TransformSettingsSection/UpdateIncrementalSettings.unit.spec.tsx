@@ -27,6 +27,7 @@ import {
 import { UpdateIncrementalSettings } from "./UpdateIncrementalSettings";
 
 const DEBOUNCE_MS = 300;
+const TOAST_MOUNT_DELAY_MS = 1;
 const SUCCESS_MESSAGE = "Incremental transformation settings updated";
 const ERROR_MESSAGE = "Failed to update incremental transformation settings";
 
@@ -108,6 +109,7 @@ async function setup() {
     });
 
   return {
+    transform,
     user,
     incrementalSwitch,
     succeedNextUpdate: () =>
@@ -125,9 +127,9 @@ function advanceTimers(ms: number) {
   return act(() => jest.advanceTimersByTimeAsync(ms));
 }
 
-function getUpdateRequestBodies() {
+function getUpdateRequestBodies(transformId: TransformId) {
   return fetchMock.callHistory
-    .calls("path:/api/transform/1", { method: "PUT" })
+    .calls(`path:/api/transform/${transformId}`, { method: "PUT" })
     .map((call) => JSON.parse(String(call.options.body)));
 }
 
@@ -158,14 +160,15 @@ describe("UpdateIncrementalSettings", () => {
   });
 
   it("saves incremental settings with the first checkpoint field once the debounce delay elapses", async () => {
-    const { user, incrementalSwitch, succeedNextUpdate } = await setup();
+    const { transform, user, incrementalSwitch, succeedNextUpdate } =
+      await setup();
 
     await user.click(incrementalSwitch);
     await advanceTimers(DEBOUNCE_MS - 1);
-    expect(getUpdateRequestBodies()).toHaveLength(0);
+    expect(getUpdateRequestBodies(transform.id)).toHaveLength(0);
 
     await advanceTimers(1);
-    expect(getUpdateRequestBodies()).toEqual([
+    expect(getUpdateRequestBodies(transform.id)).toEqual([
       expect.objectContaining({
         source: expect.objectContaining({
           "source-incremental-strategy": expect.objectContaining({
@@ -196,10 +199,10 @@ describe("UpdateIncrementalSettings", () => {
     expect(screen.queryByText(ERROR_MESSAGE)).not.toBeInTheDocument();
 
     await failNextUpdate();
+    expect(incrementalSwitch).not.toBeChecked();
 
-    expect(incrementalSwitch).not.toBeChecked();
-    expect(await screen.findByText(ERROR_MESSAGE)).toBeInTheDocument();
-    expect(incrementalSwitch).not.toBeChecked();
+    await advanceTimers(TOAST_MOUNT_DELAY_MS);
+    expect(screen.getByText(ERROR_MESSAGE)).toBeInTheDocument();
   });
 
   it("shows the error toast and rolls back the switch together when the network fails", async () => {
@@ -211,14 +214,15 @@ describe("UpdateIncrementalSettings", () => {
     expect(screen.queryByText(ERROR_MESSAGE)).not.toBeInTheDocument();
 
     await dropNextUpdate();
+    expect(incrementalSwitch).not.toBeChecked();
 
-    expect(incrementalSwitch).not.toBeChecked();
-    expect(await screen.findByText(ERROR_MESSAGE)).toBeInTheDocument();
-    expect(incrementalSwitch).not.toBeChecked();
+    await advanceTimers(TOAST_MOUNT_DELAY_MS);
+    expect(screen.getByText(ERROR_MESSAGE)).toBeInTheDocument();
   });
 
   it("does not save a checkpoint field picked while a failing update is in flight", async () => {
-    const { user, incrementalSwitch, failNextUpdate } = await setup();
+    const { transform, user, incrementalSwitch, failNextUpdate } =
+      await setup();
 
     await user.click(incrementalSwitch);
     await advanceTimers(DEBOUNCE_MS);
@@ -228,13 +232,14 @@ describe("UpdateIncrementalSettings", () => {
     await failNextUpdate();
     await advanceTimers(DEBOUNCE_MS);
 
-    expect(getUpdateRequestBodies()).toHaveLength(1);
+    expect(getUpdateRequestBodies(transform.id)).toHaveLength(1);
     expect(screen.getByText(ERROR_MESSAGE)).toBeInTheDocument();
     expect(incrementalSwitch).not.toBeChecked();
   });
 
   it("saves only the latest checkpoint field picked while an update is in flight", async () => {
-    const { user, incrementalSwitch, succeedNextUpdate } = await setup();
+    const { transform, user, incrementalSwitch, succeedNextUpdate } =
+      await setup();
 
     await user.click(incrementalSwitch);
     await advanceTimers(DEBOUNCE_MS);
@@ -242,11 +247,11 @@ describe("UpdateIncrementalSettings", () => {
     await advanceTimers(DEBOUNCE_MS);
     await selectCheckpointField(user, "Tax");
     await advanceTimers(DEBOUNCE_MS);
-    expect(getUpdateRequestBodies()).toHaveLength(1);
+    expect(getUpdateRequestBodies(transform.id)).toHaveLength(1);
 
     await succeedNextUpdate();
-    expect(getUpdateRequestBodies()).toHaveLength(2);
-    expect(getUpdateRequestBodies()[1]).toEqual(
+    expect(getUpdateRequestBodies(transform.id)).toHaveLength(2);
+    expect(getUpdateRequestBodies(transform.id)[1]).toEqual(
       expect.objectContaining({
         source: expect.objectContaining({
           "source-incremental-strategy": expect.objectContaining({
