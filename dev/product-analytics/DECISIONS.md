@@ -14,9 +14,7 @@ Status:
 
 | #   | Simplification                                       | Pays back                                               |
 |-----|------------------------------------------------------|---------------------------------------------------------|
-| D3  | Select stages compile outside the QP                 | Retire select stages; every PA analysis is MBQL         |
-| D4  | PA endpoints demand native permissions               | Falls out of D3                                         |
-| D5  | PA endpoints accept ClickHouse only                  | Falls out of D3 + per-driver dialect lists              |
+| ~~D3–D5~~ | ~~Select stages, PA endpoints, native perms, ClickHouse only~~ | Paid: `dan/pa-mbql` has none of them (D21) |
 | D8  | Legacy conversion expands named stages into a tree   | Only execution still needs it (D18)                     |
 | D9  | Drivers without CTEs refuse named stages             | Subselect expansion in the compiler, or accept refusal  |
 | D11 | Dialect functions: no parametric calls, lambdas, windows | Grow the clause when a real analysis needs it        |
@@ -25,6 +23,8 @@ Status:
 | D15 | `auto-bucket-datetimes` re-buckets a dialect breakout | Skip clauses with an explicit `:base-type`              |
 | D16 | Saved PA cards store compiled SQL                    | Save the MBQL query (project A, saved queries)          |
 | D18 | Drivers run the legacy form; new clauses need legacy schema | Drivers take MBQL 5 at execution                |
+| D22 | MBQL planners: no drills, chart order, or app wiring yet | Port drills; switch `use-analysis-query` to MBQL   |
+| D23 | Cohort offsets come from periods that have events    | A date-axis source, if an empty period ever matters     |
 
 ## D1: Compile structured queries on the backend
 
@@ -250,3 +250,38 @@ Status:
   `MIN`, `COUNT(*) OVER ()`) matches hand-written SQL row for row on ClickHouse (DB 2, with
   `leadInFrame … ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING`) and Postgres (DB 81). Shares
   (`SUM(count) OVER ()` in the stage after a count) match on both.
+
+## D21: Rebuild on upstream, port the string planners straight to MBQL
+
+- **keep**. Branch `dan/pa-mbql` is `origin/product-analytics` (Kevin's funnel run query, `6907c3681f6`) plus the
+  MBQL commits cherry-picked from `dan/pa-structured-queries`.
+- The intermediate PA format (select stages, `/api/product-analytics`, its compiler) is left behind on the old branch.
+  The frontend builds MBQL 5 JSON (`frontend/src/metabase/product-analytics/mbql/`), with named stages, and runs it as
+  an ordinary query.
+- Why: upstream changed every SQL planner (funnel rewrite, breakout first touchpoint, disqualifiers). Rebasing the
+  select-stage port would mean porting those changes into a format we were retiring.
+- Oracle: `dev/product-analytics/mbql-variants.ts` writes each variant's SQL (the string planners, unchanged) and MBQL
+  query; `dev.product-analytics-mbql-diff/diff` runs both through the QP and compares rows. The string planners stay
+  the reference until each analysis is ported.
+- Rejected: a backend planner (Clojure) building MBQL from the spec. The frontend already owns the spec and the base
+  query from the query builder; the backend's job is to run MBQL, not to know analyses.
+- Found by the port (fixed, `f94d7ad11aa`): `nest-expressions`/`nest-breakouts` split a stage without keeping its name
+  and source, and implicit fields, implicit joins and remaps read the stage before instead of the stage named.
+- Found by the oracle: the string planners' habit at session grain names its count `sessions`, which ClickHouse
+  rejects. Not ours to fix; reported upstream.
+
+## D22: MBQL planners are not wired into the app yet
+
+- **budget**. Ported: habit histogram (with breakouts, scope), cohorts (all views, breakouts). Not yet: habit percent
+  and ratio, lifecycle, funnel, paths.
+- Not ported in any analysis: drill-through members, breakout chart ordering (the oracle compares rows as bags), and
+  `use-analysis-query` still runs the string planners' SQL.
+- Pays back: port the rest, then drills, then switch the app.
+
+## D23: Cohort offsets come from the periods that have events
+
+- **budget**. The string planner counts offsets with `ARRAY JOIN range(observable + 1)`. MBQL has no row generator,
+  so the MBQL planner joins each start to the periods with any event in scope, on `period >= start`.
+- A period with no event at all drops out of the triangle. That can't happen on real event volumes, and every cohort
+  variant matches.
+- Pays back: a calendar or numbers source in MBQL, if it ever matters.
