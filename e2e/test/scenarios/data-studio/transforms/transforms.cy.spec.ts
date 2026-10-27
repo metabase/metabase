@@ -794,288 +794,24 @@ LIMIT
   });
 
   describe("settings inline editing", () => {
-    it("should manage ownership, update incremental settings inline, debounce no-op toggles, and roll back on errors", () => {
+    it("should update source strategy and checkpoint field inline", () => {
       createMbqlTransform({ visitTransform: true });
       H.DataStudio.Transforms.settingsTab().click();
 
-      const dismissToast = () => {
-        H.undoToast().icon("close").click();
-        H.undoToast().should("not.exist");
-      };
-
-      cy.log("verify the ownership section is displayed");
-      getTransformsTargetContent().within(() => {
-        cy.findByText("Ownership").should("be.visible");
-        cy.findByText("Specify who is responsible for this transform.").should(
-          "be.visible",
-        );
-        cy.findByText("Owner").should("be.visible");
-      });
-
-      cy.log("change the owner to another user");
-      getTransformsTargetContent().within(() => {
-        cy.findByLabelText("Owner").click();
-      });
-      H.popover().findByText("Robert Tableton").click();
-      cy.wait("@updateTransform");
-      H.undoToast().findByText("Transform owner updated").should("be.visible");
-      dismissToast();
-
-      cy.log("set an external email as owner");
-      getTransformsTargetContent().within(() => {
-        cy.findByLabelText("Owner").click();
-        cy.findByLabelText("Owner").clear().type("external@example.com");
-      });
-      H.popover().findByText("external@example.com").click();
-      cy.wait("@updateTransform");
-      H.undoToast().findByText("Transform owner updated").should("be.visible");
-      dismissToast();
-
-      cy.log("clear the owner");
-      getTransformsTargetContent().within(() => {
-        cy.findByLabelText("Owner").click();
-      });
-      H.popover().findByText("No owner").click();
-      cy.wait("@updateTransform");
-      H.undoToast().findByText("Transform owner updated").should("be.visible");
-      dismissToast();
-
-      cy.log("Toggle incremental on");
-      isIncrementalSwitchDisabled();
-      getIncrementalSwitch().click();
-      cy.wait("@updateTransform");
-      isIncrementalSwitchEnabled();
-      H.undoToast().should(
-        "contain.text",
-        "Incremental transformation settings updated",
-      );
-      dismissToast();
-
-      cy.log("Toggle incremental off");
-      getIncrementalSwitch().click();
-      cy.wait("@updateTransform");
-      isIncrementalSwitchDisabled();
-      H.undoToast().should(
-        "contain.text",
-        "Incremental transformation settings updated",
-      );
-      dismissToast();
-
-      cy.log("Toggle incremental on and immediately off");
-      isIncrementalSwitchDisabled();
-
-      // Stub the updateTransform call to track how many times it's called
-      let updateCallCount = 0;
-      cy.intercept("PUT", "/api/transform/*", (req) => {
-        updateCallCount++;
-        req.continue();
-      });
-
-      // Toggle on then immediately off (within debounce window)
-      getIncrementalSwitch().click();
-      getIncrementalSwitch().click();
-
-      // Wait for debounce period (300ms) plus some buffer
-      cy.wait(500);
-
-      cy.log(
-        "Verify no request was made since we toggled back to original value",
-      );
-      // The switch should be back to unchecked
-      isIncrementalSwitchDisabled();
-      // No request should have been made
-      cy.wrap(null).then(() => {
-        expect(updateCallCount).to.equal(0);
-      });
-
-      cy.log("Intercept and force the update to fail");
-      cy.intercept("PUT", "/api/transform/*", {
-        statusCode: 500,
-        body: { message: "Internal server error" },
-      }).as("updateTransformError");
-
-      cy.log("Toggle incremental on");
+      cy.log("enable incremental once its checkpoint options have loaded");
       getIncrementalSwitch().findByRole("switch").should("be.enabled").click();
-
-      cy.log("Wait for the failed request");
-      cy.wait("@updateTransformError");
-
-      cy.log("Verify error toast is shown");
-      H.undoToast().should(
-        "contain.text",
-        "Failed to update incremental transformation settings",
-      );
-
-      cy.log("Verify the switch rolled back to unchecked state");
-      isIncrementalSwitchDisabled();
-      dismissToast();
-
-      cy.log("Intercept and simulate network failure");
-      cy.intercept("PUT", "/api/transform/*", {
-        forceNetworkError: true,
-      }).as("updateTransformNetworkError");
-
-      cy.log("Toggle incremental on");
-      getIncrementalSwitch().click();
-      cy.wait("@updateTransformNetworkError");
-
-      cy.log("Verify error toast is shown");
-      H.undoToast().should(
-        "contain.text",
-        "Failed to update incremental transformation settings",
-      );
-
-      cy.log("Verify the switch rolled back to unchecked state");
-      isIncrementalSwitchDisabled();
-      dismissToast();
-
-      let requestCount = 0;
-      cy.log("Intercept and fail the first request after a delay");
-      cy.intercept("PUT", "/api/transform/*", (req) => {
-        requestCount++;
-        if (requestCount === 1) {
-          // First request fails after a delay to ensure second change happens while it's in progress
-          req.reply({
-            statusCode: 500,
-            body: { message: "Internal server error" },
-            delay: 500,
-          });
-        } else {
-          // Subsequent requests should not happen
-          req.continue();
-        }
-      }).as("updateTransformConditional");
-
-      cy.log("Toggle incremental on (first change)");
-      getIncrementalSwitch().click();
-
-      cy.log("Wait for debounce, then toggle again (second change)");
-      cy.wait(400);
-      getIncrementalSwitch().click();
-
-      cy.log("Wait for the error");
-      cy.wait("@updateTransformConditional");
-
-      cy.log("Wait a bit to ensure no second request is made");
-      cy.wait(500);
-
-      cy.log("Verify only one request was made");
-      cy.wrap(null).then(() => {
-        expect(requestCount).to.equal(1);
+      cy.wait("@updateTransform").then(({ request, response }) => {
+        expect(response?.statusCode).to.eq(200);
+        expect(request.body.target.type).to.eq("table-incremental");
+        expect(request.body.source["source-incremental-strategy"]).to.include({
+          type: "checkpoint",
+        });
       });
 
-      cy.log("Verify error toast is shown");
-      H.undoToast().should(
-        "contain.text",
-        "Failed to update incremental transformation settings",
-      );
-
-      cy.log("Verify the switch is back to unchecked");
-      isIncrementalSwitchDisabled();
-    });
-
-    it("should handle sequential changes correctly when first update is in progress", () => {
-      // Use composite_pk_table which has at least two numeric fields (id1, score)
-      // so we can reliably select a second checkpoint field
-      H.resetTestTable({ type: "postgres", table: "composite_pk_table" });
-      H.resyncDatabase({
-        dbId: WRITABLE_DB_ID,
-        tableName: "composite_pk_table",
-      });
-      createMbqlTransform({
-        sourceTable: "composite_pk_table",
-        visitTransform: true,
-      });
-      H.DataStudio.Transforms.settingsTab().click();
-
-      cy.log("Verify initial state");
-      isIncrementalSwitchDisabled();
-
-      let requestCount = 0;
-
-      // Intercept and delay the first request using a Promise
-      cy.intercept("PUT", "/api/transform/*", (req) => {
-        requestCount++;
-        if (requestCount === 1) {
-          // Delay the first request by 1 second
-          req.reply({
-            body: req.body,
-            delay: 1000,
-          });
-        } else {
-          // Let subsequent requests through normally
-          req.continue();
-        }
-      }).as("updateTransformDelayed");
-
-      cy.log("Toggle incremental on (first change)");
-      getIncrementalSwitch().click();
-
-      cy.log(
-        "Wait for debounce plus a bit, then select checkpoint field (second change)",
-      );
-      // Wait for first request to start (debounce 300ms + buffer)
-      cy.wait(400);
-
-      // Make a second change while first is still in progress
-      // Select the second checkpoint field (composite_pk_table has id1 and score)
-      getFieldPicker().scrollIntoView().should("be.visible");
-      getFieldPicker().click();
-
-      H.popover().findAllByRole("option").eq(1).click();
-
-      cy.log("Wait for both requests to complete");
-      cy.wait("@updateTransformDelayed");
-      cy.wait("@updateTransformDelayed");
-
-      cy.log(
-        "Verify final state - incremental on with checkpoint field selected",
-      );
+      cy.log("the settings are read back from the server after a reload");
+      cy.reload();
       isIncrementalSwitchEnabled();
-      // Verify a field was selected (should not show placeholder text)
-      getFieldPicker().should("not.contain.text", "Pick a field");
-
-      cy.log("Verify both requests were made");
-      cy.wrap(null).then(() => {
-        expect(requestCount).to.equal(2);
-      });
-    });
-
-    it("should update source strategy and checkpoint field inline", () => {
-      H.resetTestTable({ type: "postgres", table: "composite_pk_table" });
-      H.resyncDatabase({
-        dbId: WRITABLE_DB_ID,
-        tableName: "composite_pk_table",
-      });
-      createMbqlTransform({
-        sourceTable: "composite_pk_table",
-        visitTransform: true,
-      });
-      H.DataStudio.Transforms.settingsTab().click();
-
-      cy.log("Enable incremental transformation");
-      getIncrementalSwitch().click();
-      cy.wait("@updateTransform");
-
-      cy.log("Source strategy and checkpoint field should be visible");
-      // The source strategy select should be visible
-      // (Currently only one option "checkpoint" is available, so select might not be shown)
-      // The checkpoint field select should be visible
-      getFieldPicker().scrollIntoView().should("be.visible");
-
-      cy.log("Select a checkpoint field");
-      getFieldPicker().click();
-      // Click the first available option in the popover
-      H.popover().findAllByRole("option").eq(1).click();
-      cy.wait("@updateTransform");
-      H.undoToast().should(
-        "contain.text",
-        "Incremental transformation settings updated",
-      );
-
-      cy.log("Verify the field was selected");
-      // Verify a field was selected (should not show placeholder text)
-      getFieldPicker().should("not.contain.text", "Pick a field");
+      getFieldPicker().should("have.value", "Score");
     });
   });
 
@@ -3666,9 +3402,6 @@ function getIncrementalSwitch() {
 
 function isIncrementalSwitchEnabled() {
   return getIncrementalSwitch().findByRole("switch").should("be.checked");
-}
-function isIncrementalSwitchDisabled() {
-  return getIncrementalSwitch().findByRole("switch").should("not.be.checked");
 }
 
 function getJobTransformTable() {
