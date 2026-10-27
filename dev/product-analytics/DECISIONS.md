@@ -17,13 +17,14 @@ Status:
 | D3  | Select stages compile outside the QP                 | Retire select stages; every PA analysis is MBQL         |
 | D4  | PA endpoints demand native permissions               | Falls out of D3                                         |
 | D5  | PA endpoints accept ClickHouse only                  | Falls out of D3 + per-driver dialect lists              |
-| D8  | Legacy conversion expands named stages into a tree   | Permissions on MBQL 5 (D12); then nothing needs it      |
+| D8  | Legacy conversion expands named stages into a tree   | Only execution still needs it (D18)                     |
 | D9  | Drivers without CTEs refuse named stages             | Subselect expansion in the compiler, or accept refusal  |
 | D11 | Dialect functions: no parametric calls, lambdas, windows | Grow the clause when a real analysis needs it        |
 | D13 | Week start and timezone come from settings, not the query | Query-level options (projects D and week start)    |
 | D14 | Editing helpers (`remove-replace`, next stage) assume a line | Teach them `source-stage` when the FE edits named stages |
 | D15 | `auto-bucket-datetimes` re-buckets a dialect breakout | Skip clauses with an explicit `:base-type`              |
 | D16 | Saved PA cards store compiled SQL                    | Save the MBQL query (project A, saved queries)          |
+| D18 | Drivers run the legacy form; new clauses need legacy schema | Drivers take MBQL 5 at execution                |
 
 ## D1: Compile structured queries on the backend
 
@@ -119,13 +120,30 @@ Status:
 
 ## D12: Permissions walk MBQL 5 directly
 
-- **open**.
-- Today `check-query-permissions*` and `source-ids*` convert to legacy first. Legacy conversion validates every
-  clause, so a query using `:dialect-fn` fails its permission check, though functions don't bear on permissions.
-- Evidence: the same four-key walk over MBQL 5 matches legacy on 132 cards (83 reading other cards), native SQL
-  and named stages, and handles `:dialect-fn`. No sandboxed queries were in that corpus.
-- Proposal: walk MBQL 5, converting legacy input to MBQL 5 on the way in. That also retires D8.
-- Blocks: deciding the legacy MBQL direction. We deferred that, but this would settle it for permissions.
+- **keep**.
+- `check-query-permissions*` no longer converts to legacy. `source-ids*` reads legacy and MBQL 5 as they are: the
+  four keys mean the same in both, and preprocessing marks each MBQL 5 stage that came from a Card or a sandbox.
+  `mbql5-required-perms` no longer round-trips through legacy.
+- Why: the legacy conversion validated every clause, so `:dialect-fn` failed the permission check, though
+  functions don't bear on permissions. It also expanded named stages into a tree, which dropped unread stages (D8).
+- Evidence:
+  - The walk matches legacy on 132 cards, 83 of which read other cards.
+  - Permission, sandboxing, block, audit and advanced-permissions suites: 331 tests. The 8 failures are identical on
+    baseline code in the dev JVM, so none is attributable to this change.
+  - A user with query-builder access to one table runs named stages plus a dialect function through
+    `/api/dataset`. A join to another table is denied, and so is native SQL.
+  - `mbql5-named-stages-query-test` fails closed on the old code.
+- Found on the way: EE `check-audit-db-permissions` destructured legacy `:type`/`:query` and got nil on MBQL 5. It
+  failed closed by accident. Every callee of the permission check has to be read for legacy shape assumptions.
+
+## D18: Drivers still run the legacy form of a query
+
+- **budget**.
+- `qp.execute/run` converts the compiled query to legacy before the driver sees it (Cam's TODO there). So each new
+  clause also needs a legacy schema entry: `:dialect-fn` and `:dialect-aggregation` have one, as pass-through clauses.
+  `expand-named-stages` strips `:name` even from a plain chain.
+- The driver only reads `:native`, `:database` and `:info` at that point, so this is shape, not semantics.
+- Pays back: drivers take MBQL 5 at execution, and the conversion goes.
 
 ## D13: Week start and timezone come from settings
 

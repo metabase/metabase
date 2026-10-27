@@ -377,7 +377,8 @@
   only understand trees, such as legacy MBQL."
   [query]
   (if-not (reads-named-stage? (:stages query))
-    query
+    ;; already a chain; only the names have to go
+    (update query :stages #(mapv (fn [stage] (dissoc stage :name)) %))
     (let [stages     (vec (:stages query))
           name->idx  (into {} (keep-indexed (fn [i stage] (when-let [n (:name stage)] [n i]))) stages)
           source-idx (fn [i]
