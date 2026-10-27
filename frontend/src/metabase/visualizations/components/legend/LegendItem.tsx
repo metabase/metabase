@@ -6,7 +6,7 @@ import { Box, Ellipsified, Flex, rem } from "metabase/ui";
 
 import S from "./Legend.module.css";
 import { LegendItemDot } from "./LegendItemDot";
-import { LEGEND_SIZES, type LegendSize } from "./sizes";
+import { LEGEND_SIZES, type LegendSizeTier } from "./sizes";
 
 export interface LegendItemData {
   key: string;
@@ -18,7 +18,7 @@ export interface LegendItemData {
 interface LegendItemProps {
   className?: string;
   item: LegendItemData;
-  size?: LegendSize;
+  size?: LegendSizeTier;
   index: number;
   isMuted?: boolean;
   isReversed?: boolean;
@@ -34,7 +34,7 @@ interface LegendItemProps {
 const LegendItemInner = ({
   className,
   item,
-  size = "sm",
+  size = "smallCard",
   index,
   isMuted,
   isReversed,

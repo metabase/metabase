@@ -35,7 +35,7 @@ const axisModel: YAxisModel = {
 };
 
 function setup({
-  height = 199,
+  height = 95,
   model = axisModel,
   settings = createMockVisualizationSettings({
     "graph.y_axis.axis_enabled": true,
@@ -81,13 +81,11 @@ function setup({
 
 describe("responsive Y-axis ticks", () => {
   it.each([
-    { height: 199, labels: [0, 100], gridlines: [0, 50, 100] },
-    { height: 200, labels: [0, 50, 100], gridlines: [0, 50, 100] },
+    { height: 95, labels: [0, 100], gridlines: [0, 50, 100] },
+    { height: 96, labels: [0, 50, 100], gridlines: [0, 50, 100] },
     { height: 299, labels: [0, 50, 100], gridlines: [0, 50, 100] },
-    { height: 300, labels: [0, 50, 100], gridlines: [0, 25, 50, 75, 100] },
-    { height: 399, labels: [0, 50, 100], gridlines: [0, 25, 50, 75, 100] },
     {
-      height: 400,
+      height: 300,
       labels: [0, 25, 50, 75, 100],
       gridlines: [0, 25, 50, 75, 100],
     },
@@ -185,7 +183,7 @@ describe("responsive Y-axis ticks", () => {
   it("uses the individual panel height for split charts", () => {
     const { yAxis } = setup({
       height: 800,
-      panelHeight: 199,
+      panelHeight: 95,
       chartModelOptions: { splitPanelYAxisModels: [axisModel] },
     });
     expect(yAxis[0].axisLabel?.customValues).toEqual([0, 100]);

@@ -10,7 +10,7 @@ import type { LegendItemData } from "./LegendItem";
 import { LegendItem } from "./LegendItem";
 import { LEGEND_PADDING } from "./constants";
 import { getOverflowLabel } from "./measure";
-import { LEGEND_SIZES, type LegendSize } from "./sizes";
+import { LEGEND_SIZES, type LegendSizeTier } from "./sizes";
 
 const POPOVER_BORDER = 1;
 const POPOVER_PADDING = 8;
@@ -23,7 +23,7 @@ interface LegendProps {
   visibleIndex?: number;
   visibleLength?: number;
   isVertical?: boolean;
-  size?: LegendSize;
+  size?: LegendSizeTier;
   onHoverChange?: (data?: HoveredObject | null) => void;
   onSelectSeries?: (
     event: React.MouseEvent,
@@ -41,7 +41,7 @@ export const Legend = ({
   visibleIndex = 0,
   visibleLength = originalItems.length,
   isVertical,
-  size = "sm",
+  size = "smallCard",
   onHoverChange,
   onSelectSeries,
   onToggleSeriesVisibility,

@@ -21,6 +21,8 @@ export type TicksRotation = "horizontal" | "vertical";
 
 export interface ChartLayout {
   padding: Padding;
+  /** Empty space at the chart container's left and right edges, not `padding`. */
+  internalInset: Pick<Padding, "left" | "right">;
   ticksDimensions: TicksDimensions;
   bounds: ChartBoundsCoords;
   boundaryWidth: number;
