@@ -1,0 +1,1 @@
+I only care about e2e/scenarios (standard e2e tests), do they have any special characteristics compared with other e2e tests?
