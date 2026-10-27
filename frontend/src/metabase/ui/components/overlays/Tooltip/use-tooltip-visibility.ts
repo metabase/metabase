@@ -9,7 +9,14 @@ import {
 
 type TooltipPhase = "closed" | "entering" | "open" | "exiting";
 
-let activeTooltipId: string | null = null;
+type ShownTooltip = { id: string; isExiting: boolean };
+
+/**
+ * In the order they appeared, so closing a tooltip reveals the one it replaced.
+ * Multiple tooltips can be "active" at the same time if e.g. one is hovered
+ * and another is focused.
+ */
+let shownTooltips: ShownTooltip[] = [];
 const listeners = new Set<() => void>();
 
 /**
@@ -27,15 +34,11 @@ export function useTooltipVisibility(
   const isShown = phase !== "closed";
   const isReplaced = useSyncExternalStore(
     subscribe,
-    () =>
-      !isControlled &&
-      isShown &&
-      activeTooltipId !== null &&
-      activeTooltipId !== id,
+    () => !isControlled && isShown && isOtherTooltipActive(id),
   );
 
   // A tooltip removed while it's showing never reaches `onExited`.
-  useEffect(() => () => releaseActiveTooltipId(id), [id]);
+  useEffect(() => () => releaseTooltip(id), [id]);
 
   const resolvedTransitionProps = useMemo(
     () => ({
@@ -43,8 +46,8 @@ export function useTooltipVisibility(
       onEnter: () => {
         setPhase("entering");
         if (!isControlled) {
-          setIsReplacing(activeTooltipId !== null && activeTooltipId !== id);
-          setActiveTooltipId(id);
+          setIsReplacing(isOtherTooltipActive(id));
+          showTooltip(id);
         }
         transitionProps?.onEnter?.();
       },
@@ -54,11 +57,12 @@ export function useTooltipVisibility(
       },
       onExit: () => {
         setPhase("exiting");
+        exitTooltip(id);
         transitionProps?.onExit?.();
       },
       onExited: () => {
         setPhase("closed");
-        releaseActiveTooltipId(id);
+        releaseTooltip(id);
         transitionProps?.onExited?.();
       },
     }),
@@ -73,15 +77,41 @@ export function useTooltipVisibility(
   };
 }
 
-function setActiveTooltipId(id: string | null) {
-  activeTooltipId = id;
+// The newest tooltip that isn't closing, or the newest closing one if they all are.
+function isOtherTooltipActive(id: string) {
+  const activeTooltip =
+    shownTooltips.findLast(({ isExiting }) => !isExiting) ??
+    shownTooltips.at(-1);
+  return activeTooltip !== undefined && activeTooltip.id !== id;
+}
+
+function setShownTooltips(nextShownTooltips: ShownTooltip[]) {
+  shownTooltips = nextShownTooltips;
   listeners.forEach((listener) => listener());
 }
 
-function releaseActiveTooltipId(id: string) {
-  if (activeTooltipId === id) {
-    setActiveTooltipId(null);
+function showTooltip(id: string) {
+  setShownTooltips([...withoutTooltip(id), { id, isExiting: false }]);
+}
+
+function exitTooltip(id: string) {
+  if (shownTooltips.some((tooltip) => tooltip.id === id)) {
+    setShownTooltips(
+      shownTooltips.map((tooltip) =>
+        tooltip.id === id ? { ...tooltip, isExiting: true } : tooltip,
+      ),
+    );
   }
+}
+
+function releaseTooltip(id: string) {
+  if (shownTooltips.some((tooltip) => tooltip.id === id)) {
+    setShownTooltips(withoutTooltip(id));
+  }
+}
+
+function withoutTooltip(id: string) {
+  return shownTooltips.filter((tooltip) => tooltip.id !== id);
 }
 
 function subscribe(listener: () => void) {

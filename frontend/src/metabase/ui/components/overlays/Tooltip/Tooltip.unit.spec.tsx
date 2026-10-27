@@ -160,6 +160,30 @@ describe("Tooltip", () => {
     });
   });
 
+  it("brings back a hidden tooltip that's still open as soon as the one that hid it closes", async () => {
+    const { user } = setupNeighbouringTargets();
+
+    await user.tab();
+    const firstTooltip = await screen.findByRole("tooltip", {
+      name: "First tooltip",
+    });
+
+    const secondTarget = screen.getByRole("button", { name: "Second" });
+    await user.hover(secondTarget);
+    const secondTooltip = await screen.findByRole("tooltip", {
+      name: "Second tooltip",
+    });
+    expect(firstTooltip).toHaveAttribute("data-replaced");
+
+    await user.unhover(secondTarget);
+    // Hidden rather than fading out, so the first tooltip shows at once.
+    await waitFor(() => {
+      expect(secondTooltip).toHaveAttribute("data-replaced");
+    });
+    expect(secondTooltip).toBeInTheDocument();
+    expect(firstTooltip).not.toHaveAttribute("data-replaced");
+  });
+
   it("neither hides nor is hidden by a tooltip whose owner controls whether it's open", async () => {
     const { user, openPinnedTooltip } = setupNeighbouringTargets();
 
