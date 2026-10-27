@@ -12,6 +12,11 @@
   [database-id :- ::lib.schema.id/database]
   (t2/select-one :model/Database :id database-id))
 
+(mu/defn database-exists?
+  "Whether a Database with `database-id` exists."
+  [database-id :- ::lib.schema.id/database]
+  (t2/exists? :model/Database :id database-id))
+
 (mu/defn database-name
   "The name of the Database with `database-id`."
   [database-id :- ::lib.schema.id/database]

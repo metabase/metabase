@@ -97,10 +97,10 @@
 
 (api.macros/defendpoint :get "/router-database/:id" :- [:map {:closed true}
                                                         [:has_transforms :boolean]]
-  "Facts about the Database with `id` that block database routing and that the Database itself does not hold.
-  `has_transforms` is true when a transform reads from the Database, including a transform in the Trash."
+  "Whether a transform reads from the Database with `id`, including a transform in the Trash. Database routing can't
+  be enabled while one does."
   [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
-  (api/check-404 (database-routing.db/database id))
+  (api/check-404 (database-routing.db/database-exists? id))
   {:has_transforms (database-routing.db/transform-exists-for-source-database? id)})
 
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
