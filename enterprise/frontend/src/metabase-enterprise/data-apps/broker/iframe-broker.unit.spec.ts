@@ -2,7 +2,7 @@ import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
 import {
-  DATA_APP_BROKER_INIT,
+  DATA_APP_BROKER_INIT_MESSAGE_TYPE,
   DATA_APP_IFRAME_BROKER_HASH_KEY,
   DATA_APP_IFRAME_LOCALE_HASH_KEY,
   DATA_APP_ROUTE_MESSAGE_TYPE,
@@ -58,7 +58,7 @@ describe("iframe broker, served from a separate isolated origin", () => {
 
     // The host answers the iframe's broker-ready message by handing over its port.
     const init = new MessageEvent("message", {
-      data: { type: DATA_APP_BROKER_INIT },
+      data: { type: DATA_APP_BROKER_INIT_MESSAGE_TYPE },
       origin: HOST_ORIGIN,
     });
     Object.defineProperties(init, {
@@ -251,6 +251,32 @@ describe("iframe broker, before the host hands over its port", () => {
   });
 });
 
+describe("iframe broker, started twice", () => {
+  it("asks the host for a port once, so the host doesn't close the port the first handshake got", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      `/embed/apps/sales#${DATA_APP_IFRAME_BROKER_HASH_KEY}=${encodeURIComponent(HOST_ORIGIN)}`,
+    );
+    const postToParent = jest
+      .spyOn(window.parent, "postMessage")
+      .mockImplementation(() => undefined);
+
+    try {
+      await jest.isolateModulesAsync(async () => {
+        const broker = await import("./iframe-broker");
+        broker.initDataAppBroker();
+        broker.initDataAppBroker();
+
+        expect(postToParent).toHaveBeenCalledTimes(1);
+      });
+    } finally {
+      postToParent.mockRestore();
+      window.history.replaceState({}, "", "/");
+    }
+  });
+});
+
 describe("iframe broker, offered a port by someone other than its host", () => {
   it("takes the port only from its parent window at the host's origin", async () => {
     window.history.replaceState(
@@ -270,7 +296,7 @@ describe("iframe broker, offered a port by someone other than its host", () => {
 
         const offer = (port: HostPort, origin: string, source: unknown) => {
           const init = new MessageEvent("message", {
-            data: { type: DATA_APP_BROKER_INIT },
+            data: { type: DATA_APP_BROKER_INIT_MESSAGE_TYPE },
             origin,
           });
           Object.defineProperties(init, {
