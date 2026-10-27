@@ -231,7 +231,7 @@
               (is (=? {:agent-error? true :foreign-message? true :status-code 400} (ex-data e))))))))))
 
 (deftest database-pipeline-error-is-not-relayed-test
-  (testing "a database or app DB failure inside the pipeline is rethrown unwrapped, so the LLM never reads its text"
+  (testing "a database or app DB failure inside the pipeline is marked internal, so the LLM never reads its text"
     (doseq [[label cause] [["a JDBC exception" (java.sql.SQLException. "relation \"report_card\" is locked")]
                            ["a toucan2 failure" (ex-info "Error executing query: SELECT * FROM report_card"
                                                          {:toucan2/context-trace []})]]]
@@ -250,7 +250,7 @@
                                 "aggregation"  [["count" {}]]}]}))
                 (is false "expected throw")
                 (catch clojure.lang.ExceptionInfo e
-                  (is (=? {:agent-error? (symbol "nil #_\"key is not present.\"")} (ex-data e))))))))))))
+                  (is (=? {:agent-error? true :internal-error? true :status-code 400} (ex-data e))))))))))))
 
 (deftest implicit-join-happy-path-test
   (testing "cross-table breakout gets auto-wired with a :source-field after repair"

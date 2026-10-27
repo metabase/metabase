@@ -828,6 +828,9 @@
     (doseq [[label e] [["an exception without the agent flag"
                         (ex-info "SELECT * FROM report_card WHERE id = 1 failed" {})]
                        ["a server error" (ex-info "SELECT * FROM report_card WHERE id = 1 failed" {:status-code 500})]
+                       ["an agent error marked internal"
+                        (ex-info "SELECT * FROM report_card WHERE id = 1 failed"
+                                 {:agent-error? true :internal-error? true :foreign-message? true :status-code 400})]
                        ["a JDBC exception" (java.sql.SQLException. "SELECT * FROM report_card WHERE id = 1 failed")]]]
       (testing label
         (is (=? {:type  :tool-output-available

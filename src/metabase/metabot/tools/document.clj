@@ -76,12 +76,13 @@
      :instructions instruction-text}))
 
 (defn- check-query
-  "If the query is valid, return nil. If the query or its database is at fault, return the error message.
+  "If one row of the query runs, return nil.
+  If the query or its database is at fault, return the error message.
   Rethrow a failure inside Metabase, such as an app DB lookup, so the tool executor logs it.
   The model never reads its text."
   [query]
   (try
-    (qp/process-query query)
+    (qp/process-query (assoc query :constraints {:max-results 1 :max-results-bare-rows 1}))
     nil
     (catch Exception e
       (if (query-execution/caller-facing-failure? (qp.catch-exceptions/exception-response e))

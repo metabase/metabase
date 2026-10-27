@@ -676,7 +676,7 @@
                    (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))
 
 (defn- as-agent-input-error
-  "Return a database failure unchanged; wrap any other exception as an agent-input error.
+  "Wrap `e` as an agent-input error.
 
   Tool callers look at `:agent-error?` to decide whether to relay the message to the LLM.
   HTTP callers additionally need a status code; default representation/repair failures to
@@ -684,18 +684,18 @@
   Existing statuses are preserved (notably permission 403s, which callers should normally
   avoid wrapping in the first place).
 
-  A [[database-error?]] is left unwrapped, so the tool executor logs it and the LLM reads a fixed sentence.
+  A [[database-error?]] gets `:internal-error? true`: Metabot logs it and the LLM reads a fixed sentence.
+  The Agent API and MCP still get it as a 400, as before.
   Any other exception the pipeline did not raise as an agent error, such as one from lib about the query, gets
   `:foreign-message? true`: Metabot did not write its message, so Metabot quotes it before the LLM reads it."
   [^clojure.lang.ExceptionInfo e]
-  (if (database-error? e)
-    e
-    (let [foreign? (not (:agent-error? (ex-data e)))
-          base     (cond-> (assoc (or (ex-data e) {}) :agent-error? true)
-                     foreign? (assoc :foreign-message? true))
-          data     (cond-> base
-                     (nil? (:status-code base)) (assoc :status-code 400))]
-      (ex-info (ex-message e) data e))))
+  (let [foreign? (not (:agent-error? (ex-data e)))
+        base     (cond-> (assoc (or (ex-data e) {}) :agent-error? true)
+                   (database-error? e) (assoc :internal-error? true)
+                   foreign?            (assoc :foreign-message? true))
+        data     (cond-> base
+                   (nil? (:status-code base)) (assoc :status-code 400))]
+    (ex-info (ex-message e) data e)))
 
 (defn- not-runnable-problem
   "What is wrong at a Malli schema `error`, phrased for the LLM, or nil when there is nothing to add

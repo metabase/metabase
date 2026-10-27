@@ -935,13 +935,17 @@
   An agent error that Metabot wrote passes as it is.
   An agent error marked `:foreign-message?`, which is about the query, and an API refusal are quoted by
   [[quoted-error-message]].
-  Any other exception comes from inside Metabase, and the LLM reads [[internal-error-message]] instead."
+  An error marked `:internal-error?`, and any other exception, comes from inside Metabase, and the LLM reads
+  [[internal-error-message]] instead."
   [^Exception e]
-  (let [{:keys [humanized agent-error? foreign-message?]} (ex-data e)]
+  (let [{:keys [humanized agent-error? foreign-message? internal-error?]} (ex-data e)]
     (cond
       ;; Malli validation error — produce a short summary the LLM can act on
       humanized
       (str "Invalid tool arguments: " (pr-str humanized))
+
+      internal-error?
+      internal-error-message
 
       (and agent-error? (not foreign-message?))
       (or (ex-message e) "Unknown error")
@@ -1083,6 +1087,10 @@
                            (cond
                              (nil? tool)
                              (log/debugf "Tool call %s: unknown tool" tool-call-id)
+
+                             ;; The LLM reads a fixed sentence for this one, so the log is the only place its text goes.
+                             (:internal-error? (ex-data e))
+                             (log/error e "Tool execution failed inside Metabase" {:tool-name safe-name})
 
                              (:agent-error? (ex-data e))
                              (log/debugf "Tool %s: agent validation error: %s" safe-name (ex-message e))
