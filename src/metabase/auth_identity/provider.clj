@@ -58,10 +58,12 @@
    [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
    [metabase.auth-identity.schema :as auth-identity.schema]
    [metabase.auth-identity.session :as auth-session]
+   [metabase.channel.email.messages :as messages]
    [metabase.events.core :as events]
    [metabase.notification.core :as notification]
    [metabase.premium-features.core :refer [defenterprise]]
    [metabase.request.schema :as request.schema]
+   [metabase.settings.core :as setting]
    [metabase.users.schema :as users.schema]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-tru]]
@@ -287,6 +289,7 @@
    [:authenticated-user {:optional true} [:maybe (ms/InstanceOfClass clojure.lang.IDeref)]]
    [:claims {:optional true} [:maybe ms/JWTClaims]]
    [:code {:optional true} [:maybe :string]]
+   [:created-new-user? {:optional true} [:maybe :boolean]]
    [:device-info {:optional true} [:maybe DeviceInfo]]
    [:email {:optional true} [:maybe :string]]
    [:error {:optional true} [:maybe :keyword]]
@@ -383,7 +386,17 @@
   [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
    :error :message :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor
    :jwt-data :claims
-   :tenant-slug :tenant-attributes :user-provisioning-enabled?])
+   :tenant-slug :tenant-attributes :user-provisioning-enabled? :created-new-user?])
+
+(defn- notify-admins-of-new-sso-user!
+  "Email admins that an SSO login provisioned a new user, if `send-new-sso-user-admin-email?` is enabled. A failure
+  to send is logged rather than failing a login whose user has already been committed."
+  [{user-id :id}]
+  (when (setting/get :send-new-sso-user-admin-email?)
+    (try
+      (messages/send-user-joined-admin-notification-email! (auth-identity.db/user user-id) :sso-auth? true)
+      (catch Exception e
+        (log/errorf e "Error sending new SSO user notification to admins for user %d" user-id)))))
 
 (methodical/defmethod login! :around ::provider
   [provider request]
@@ -407,6 +420,8 @@
     ;; user's tenant assignment was lost) must not leave a half-provisioned account behind (UXW-4898)
     (t2/with-transaction [_]
       (next-method provider $))
+    (cond-> $
+      (:created-new-user? $) (u/prog1 (notify-admins-of-new-sso-user! (:user <>))))
     (apply-inactive-check $)
     (apply-mfa-gate provider $)
     (cond-> $
@@ -461,18 +476,32 @@
           (events/publish-event! :event/user-invited {:object (assoc (auth-identity.db/user (:id <>))
                                                                      :sso_source (name provider))}))))))
 
+(defn- create-or-update-user!
+  [provider request]
+  (let [existing-user (:user request)
+        user-data     (:user-data request)]
+    (cond
+      existing-user
+      {:user              (cond-> existing-user
+                            user-data (update-user! user-data provider))
+       :created-new-user? false}
+
+      user-data
+      {:user              (create-user! user-data provider)
+       :created-new-user? true}
+
+      :else
+      {:user              nil
+       :created-new-user? false})))
+
 (methodical/defmethod login! ::create-user-if-not-exists
   [provider request]
-  (let [user (or (when-let [user (:user request)]
-                   (cond-> user
-                     (:user-data request) (update-user! (:user-data request) provider)))
-                 (when-let [user-data (:user-data request)]
-                   (create-user! user-data provider)))
-        redirect-url (or (:redirect-url request) "/")]
+  (let [{:keys [user created-new-user?]} (create-or-update-user! provider request)]
     (assoc request
-           :success? true
-           :user user
-           :redirect-url redirect-url)))
+           :success?          true
+           :user              user
+           :redirect-url      (or (:redirect-url request) "/")
+           :created-new-user? created-new-user?)))
 
 (methodical/prefer-method! #'login! ::provider ::create-user-if-not-exists)
 
