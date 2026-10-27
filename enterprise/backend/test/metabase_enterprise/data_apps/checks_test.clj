@@ -283,6 +283,43 @@
          (is (= "completed" (:status (mt/user-http-request :crowberto :post 202
                                                            (format "card/%d/query" elsewhere-id))))))))))
 
+(def ^:private static-parameter
+  "A parameter whose values are a static list, so loading them runs no query."
+  {:id                   "kind"
+   :slug                 "kind"
+   :name                 "Kind"
+   :type                 :string/=
+   :values_source_type   :static-list
+   :values_source_config {:values ["bar" "cafe"]}})
+
+(deftest card-parameter-endpoints-check-card-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (data-apps.tu/with-published-tables! [(mt/id :venues)]
+       (mt/with-temp [:model/Card {app-card-id :id}   {:collection_id collection-id
+                                                       :parameters    [static-parameter]
+                                                       :dataset_query (data-apps.tu/venues-query)}
+                      :model/Card {elsewhere-id :id} {:parameters    [static-parameter]
+                                                      :dataset_query (data-apps.tu/venues-query)}]
+         (testing "the app's card loads its parameter values"
+           (is (=? {:values [["bar"] ["cafe"]]}
+                   (mt/user-http-request :crowberto :get 200 (format "card/%d/params/kind/values" app-card-id) as-data-app)))
+           (is (=? {:values [["cafe"]]}
+                   (mt/user-http-request :crowberto :get 200 (format "card/%d/params/kind/search/caf" app-card-id)
+                                         as-data-app))))
+         (testing "a card outside the app's collection is refused"
+           (is (= (card-error elsewhere-id)
+                  (mt/user-http-request :crowberto :get 400 (format "card/%d/params/kind/values" elsewhere-id) as-data-app)))
+           (is (= (card-error elsewhere-id)
+                  (mt/user-http-request :crowberto :get 400 (format "card/%d/params/kind/search/caf" elsewhere-id)
+                                        as-data-app)))
+           (is (= (card-error elsewhere-id)
+                  (mt/user-http-request :crowberto :get 400 (format "card/%d/params/kind/remapping?value=bar" elsewhere-id)
+                                        as-data-app))))
+         (testing "a request that is not a data app's still loads the card's parameter values"
+           (is (=? {:values [["bar"] ["cafe"]]}
+                   (mt/user-http-request :crowberto :get 200 (format "card/%d/params/kind/values" elsewhere-id))))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
     (mt/with-premium-features #{}
