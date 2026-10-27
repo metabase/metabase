@@ -17,7 +17,6 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.options :as lib.options]
-   [metabase.lib.query :as lib.query]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -314,9 +313,9 @@
 (mu/defmethod lib.metadata.calculation/returned-columns-method :mbql/join :- ::lib.metadata.calculation/returned-columns
   [query                       :- ::lib.schema/query
    _stage-number               :- :int
-   {:keys [stages], :as _join} :- ::lib.schema.join/join
+   join                        :- ::lib.schema.join/join
    options                     :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
-  (let [join-query (assoc query :stages stages)]
+  (let [join-query (lib.util/join-query query join)]
     (lib.metadata.calculation/returned-columns join-query -1 -1 options)))
 
 ;;; TODO (Cam 9/5/25) -- rename this to `join-last-stage-returned-columns-relative-to-parent-stage` to make it's clear
@@ -356,7 +355,7 @@
   "The resolved `:fields` from a join, which we automatically append to the parent stage's `:fields`."
   [query                                                                    :- ::lib.schema/query
    stage-number                                                             :- :int
-   {:keys [fields stages], join-alias :alias, :or {fields :none}, :as join} :- ::lib.schema.join/join
+   {:keys [fields], join-alias :alias, :or {fields :none}, :as join} :- ::lib.schema.join/join
    options                                                                  :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
   (when-not (= fields :none)
     (let [cols  (join-returned-columns-relative-to-parent-stage query stage-number join options)
@@ -374,7 +373,7 @@
                         ;; should disallow refs with `:source-field`/remove it automatically.
                         :let      [field-ref (lib.options/update-options field-ref dissoc :source-field)
                                    match (or (lib.equality/find-matching-column field-ref cols)
-                                             (when-let [resolved (lib.metadata.calculation/metadata (-> (assoc query :stages (:stages join))
+                                             (when-let [resolved (lib.metadata.calculation/metadata (-> (lib.util/join-query query join)
                                                                                                         lib.stage.util/append-stage)
                                                                                                     (with-join-alias field-ref nil))]
                                                (when-not (:metabase.lib.field.resolution/fallback-metadata? resolved)
@@ -397,8 +396,8 @@
           cols' (concat
                  cols'
                  (lib.metadata.calculation/remapped-columns
-                  (assoc query :stages stages)
-                  0
+                  (lib.util/join-query query join)
+                  (if (:source-stage join) -1 0)
                   cols'
                   options))]
       ;; TODO (Cam 8/1/25) -- doesn't [[join-returned-columns-relative-to-parent-stage]] already
@@ -702,7 +701,7 @@
           home-cols   (lib.metadata.calculation/visible-columns query stage-number)
           join-alias  (default-alias query stage-number a-join stage home-cols)
           join-cols   (lib.metadata.calculation/returned-columns
-                       (lib.query/query-with-stages query (:stages a-join)))]
+                       (lib.util/join-query query a-join))]
       (cond-> a-join
         true (dissoc ::replace-alias)
         (not old-alias) (update :conditions

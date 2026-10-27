@@ -76,12 +76,19 @@
 (mr/def ::external-remappings
   [:sequential [:ref ::external-remapping]])
 
+(mr/def ::stage-name
+  "The name of a stage, which other stages of the query use to read from it."
+  ::common/non-blank-string)
+
 (mr/def ::stage.common
   [:map
    {:closed           true
     :decode/normalize normalize-stage-common
     :decode/api       common/remove-internal-keys
     :encode/serialize common/remove-internal-keys}
+   [:name               {:optional true} [:ref ::stage-name]]
+   ;; the stage this one reads, when it isn't the stage before it
+   [:source-stage       {:optional true} [:ref ::stage-name]]
    [:parameters         {:optional true} [:ref ::lib.schema.parameter/parameters]]
    [:lib/stage-metadata {:optional true} [:ref ::lib.schema.metadata/stage]]
    [:qp/stage-is-from-source-card {:optional true} [:ref ::id/card]]
@@ -502,6 +509,27 @@
                      (join-ref-error-for-stages stages))}
    (complement #'join-ref-error-for-stages)])
 
+(defn- stage-name-error
+  "An error message if a stage name is used twice, or a stage or join reads a stage that isn't an earlier one."
+  [stages]
+  (when (sequential? stages)
+    (loop [earlier #{}, i 0, [stage & more] stages]
+      (when (map? stage)
+        (let [reads (cons (:source-stage stage) (map :source-stage (:joins stage)))]
+          (or (when-let [unknown (some #(when (and % (not (earlier %))) %) reads)]
+                (str "Stage " i " reads stage " (pr-str unknown) ", which isn't an earlier stage"))
+              (when (and (:name stage) (earlier (:name stage)))
+                (str "Two stages are named " (pr-str (:name stage))))
+              (when (seq more)
+                (recur (cond-> earlier (:name stage) (conj (:name stage))) (inc i) more))))))))
+
+(mr/def ::stages.valid-stage-names
+  [:fn
+   {:error/message "Stages read only earlier stages, by unique names"
+    :error/fn      (fn [{stages :value} _]
+                     (stage-name-error stages))}
+   (complement #'stage-name-error)])
+
 (defn- normalize-stages [stages]
   (when (sequential? stages)
     (if (every? (some-fn :lib/type #(get % "lib/type")) stages)
@@ -525,7 +553,8 @@
    [:cat
     [:schema [:ref ::stage.initial]]
     [:* [:schema [:ref ::stage.additional]]]]
-   [:ref ::stages.valid-refs]])
+   [:ref ::stages.valid-refs]
+   [:ref ::stages.valid-stage-names]])
 
 (defn- normalize-query [query]
   (when-let [query (common/normalize-map query)]

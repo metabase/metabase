@@ -156,8 +156,8 @@
                         (= source :source/previous-stage)
                         (not (or fk-field-id join-alias))
                         (not (str/includes? field-display-name " → "))
-                        (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-                          (find-stage-index-and-clause-by-uuid query previous-stage-number source-uuid)))]
+                        (when-let [source-stage-number (lib.util/source-stage-number query stage-number)]
+                          (find-stage-index-and-clause-by-uuid query source-stage-number source-uuid)))]
           ;; The :display-name from the field metadata is probably not a :long display name, so
           ;; if the caller requested a :long name and we can lookup the original clause by the
           ;; source-uuid, use that to get the :long name. This allows display-info to get the

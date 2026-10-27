@@ -125,13 +125,13 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    options      :- [:maybe ::lib.metadata.calculation/visible-columns.options]]
-  (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+  (when-let [source-stage-number (lib.util/source-stage-number query stage-number)]
     (not-empty
      (into []
            (map lib.field.util/update-keys-for-col-from-previous-stage)
            (lib.metadata.calculation/returned-columns query
-                                                      previous-stage-number
-                                                      (lib.util/query-stage query previous-stage-number)
+                                                      source-stage-number
+                                                      (lib.util/query-stage query source-stage-number)
                                                       options)))))
 
 (mu/defn- saved-question-returned-columns :- [:maybe ::lib.metadata.calculation/returned-columns]
@@ -377,10 +377,10 @@
           source-description (str/join " + " (remove str/blank? (map part->description display-name-source-parts)))
           other-descriptions (map part->description display-name-other-parts)]
       (str/join ", " (remove str/blank? (cons source-description other-descriptions)))))
-   (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+   (when-let [source-stage-number (lib.util/source-stage-number query stage-number)]
      (lib.metadata.calculation/display-name query
-                                            previous-stage-number
-                                            (lib.util/query-stage query previous-stage-number)
+                                            source-stage-number
+                                            (lib.util/query-stage query source-stage-number)
                                             style))))
 
 (mu/defn ensure-extra-stage :- [:tuple ::lib.schema/query :int]

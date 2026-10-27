@@ -211,8 +211,8 @@
                               (when (:qp/is-implicit-join join)
                                 (:alias join))))
                       (:joins (lib.util/query-stage query stage-number)))]
-    (if-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-      (set/union aliases (implicit-join-aliases query previous-stage-number))
+    (if-let [source-stage-number (lib.util/source-stage-number query stage-number)]
+      (set/union aliases (implicit-join-aliases query source-stage-number))
       aliases)))
 
 (defn- remove-implicit-join-aliases

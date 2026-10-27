@@ -337,18 +337,83 @@
                       {:num-stages (count stages)})))
     stage-number'))
 
-(mu/defn previous-stage-number :- [:maybe [:int {:min 0}]]
-  "The index of the previous stage, if there is one. `nil` if there is no previous stage."
+(mu/defn stage-number-named :- [:int {:min 0}]
+  "The index of the stage of `query` named `stage-name`. Throws if there is none."
+  [query      :- ::legacy-or-mbql5-query
+   stage-name :- :string]
+  (or (some (fn [[i stage]] (when (= (:name stage) stage-name) i))
+            (map-indexed vector (:stages (pipeline query))))
+      (throw (ex-info (i18n/tru "No stage named {0}" (pr-str stage-name))
+                      {:stage-name stage-name}))))
+
+(mu/defn source-stage-number :- [:maybe [:int {:min 0}]]
+  "The index of the stage that stage `stage-number` reads: the one its `:source-stage` names, or else the stage before
+  it. `nil` for a stage that reads a table, a card or native SQL."
   [query        :- ::legacy-or-mbql5-query
    stage-number :- :int]
   (let [stage-number (canonical-stage-index query stage-number)]
-    (when (pos? stage-number)
-      (dec stage-number))))
+    (if-let [source-stage (:source-stage (nth (:stages (pipeline query)) stage-number))]
+      (stage-number-named query source-stage)
+      (when (pos? stage-number)
+        (dec stage-number)))))
+
+(defn join-query
+  "What `join` reads, as a query whose last stage is the join's last stage: the join's own `:stages`, or the stages of
+  `query` up to and including the one its `:source-stage` names."
+  [query join]
+  (if-let [source-stage (:source-stage join)]
+    (update query :stages #(subvec (vec %) 0 (inc (stage-number-named query source-stage))))
+    (assoc query :stages (:stages join))))
+
+(defn- reads-named-stage? [stages]
+  (some (fn [stage]
+          (or (:source-stage stage)
+              (some #(or (:source-stage %) (reads-named-stage? (:stages %))) (:joins stage))))
+        stages))
+
+(defn expand-named-stages
+  "`query` as a tree: every stage read by name is copied to where it is read, so each stage reads the stage before it
+  and each join reads its own stages. Stages the last stage doesn't read are dropped. For consumers of a query that
+  only understand trees, such as legacy MBQL."
+  [query]
+  (if-not (reads-named-stage? (:stages query))
+    query
+    (let [stages     (vec (:stages query))
+          name->idx  (into {} (keep-indexed (fn [i stage] (when-let [n (:name stage)] [n i]))) stages)
+          source-idx (fn [i]
+                       (if-let [source-stage (:source-stage (stages i))]
+                         (or (name->idx source-stage)
+                             (throw (ex-info (i18n/tru "No stage named {0}" (pr-str source-stage))
+                                             {:stage-name source-stage})))
+                         (when (pos? i) (dec i))))]
+      (letfn [(chain [i]
+                (loop [i i, acc ()]
+                  (let [acc (cons i acc)]
+                    (if-let [source (source-idx i)]
+                      (recur source acc)
+                      acc))))
+              (expand-join [join]
+                (if-let [source-stage (:source-stage join)]
+                  (-> join
+                      (dissoc :source-stage)
+                      (assoc :stages (expand-chain (name->idx source-stage))))
+                  (update join :stages #(mapv expand-stage %))))
+              (expand-stage [stage]
+                (-> stage
+                    (dissoc :name :source-stage)
+                    (m/update-existing :joins #(mapv expand-join %))))
+              (expand-chain [i]
+                (mapv (comp expand-stage stages) (chain i)))]
+        (assoc query :stages (expand-chain (dec (count stages))))))))
+
+(def ^{:arglists '([query stage-number])} previous-stage-number
+  "Deprecated: use [[source-stage-number]], which this is."
+  #'source-stage-number)
 
 (defn first-stage?
-  "Whether a `stage-number` is referring to the first stage of a query or not."
+  "Whether stage `stage-number` reads a table, a card or native SQL rather than another stage."
   [query stage-number]
-  (not (previous-stage-number query stage-number)))
+  (not (source-stage-number query stage-number)))
 
 (mu/defn next-stage-number :- [:maybe :int]
   "The index of the next stage, if there is one. `nil` if there is no next stage."

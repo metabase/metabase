@@ -2296,9 +2296,18 @@
     (binding [*inner-query* stage]
       (apply-top-level-clauses driver prev-from stage))))
 
+(defn- reads-named-stage? [stages]
+  (some (fn [stage]
+          (or (:source-stage stage)
+              (some :source-stage (:joins stage))))
+        stages))
+
 (defn- stages->honeysql-subselects
   "Compile `stages` to HoneySQL with each stage nested as a subselect in the `FROM` of the next one."
   [driver stages]
+  (when (reads-named-stage? stages)
+    (throw (ex-info (tru "A query whose stages read other stages by name needs a database that compiles stages to CTEs")
+                    {:type driver-api/qp.error-type.unsupported-feature, :driver driver})))
   (first
    (reduce
     (fn [[prev-hsql prev-stage] stage]
@@ -2338,14 +2347,30 @@
       [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
       [cte-name hsql])))
 
+(defn- source-stage-idx
+  "The index of the stage that stage `idx` reads: the one its `:source-stage` names, or else the stage before it."
+  [stages idx]
+  (if-let [source-stage (:source-stage (stages idx))]
+    (or (some (fn [[i stage]] (when (= (:name stage) source-stage) i))
+              (map-indexed vector stages))
+        (throw (ex-info (format "No stage named %s" (pr-str source-stage)) {:stage-name source-stage})))
+    (dec idx)))
+
 (defn- stages->honeysql-ctes
-  "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the next stage selects from.
+  "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the stages reading it select from.
    `level` is the CTE nesting level, it is added to each stage so that [[join-source]] can nest the joins properly"
   [driver stages level]
-  (let [stages   (vec stages)
+  (let [name->cte (into {}
+                        (keep-indexed (fn [i stage]
+                                        (when-let [stage-name (:name stage)]
+                                          [stage-name (stage-cte-name level i)])))
+                        stages)
+        stages   (mapv #(assoc % ::stage-name->cte name->cte) stages)
         last-idx (dec (count stages))
         cte-body (fn [idx]
-                   (let [prev-from (if (zero? idx) {} (cte-stage-source-form driver level (dec idx)))]
+                   (let [prev-from (if (and (zero? idx) (not (:source-stage (stages idx))))
+                                     {}
+                                     (cte-stage-source-form driver level (source-stage-idx stages idx)))]
                      (stage->honeysql driver prev-from (stages idx))))
         ctes     (mapv #(stage-cte level % (cte-body %) (stages %)) (range last-idx))]
     (update (cte-body last-idx) :with #(into ctes %))))
@@ -2358,8 +2383,13 @@
       (stages->honeysql-subselects driver stages))))
 
 (defmethod join-source :sql
-  [driver {:keys [stages]}]
-  (stages->honeysql driver stages (inc (::cte-level *inner-query* 0))))
+  [driver {:keys [stages source-stage]}]
+  (if source-stage
+    (->honeysql driver (h2x/identifier :table-alias
+                                       (or (get (::stage-name->cte *inner-query*) source-stage)
+                                           (throw (ex-info (format "No stage named %s" (pr-str source-stage))
+                                                           {:stage-name source-stage})))))
+    (stages->honeysql driver stages (inc (::cte-level *inner-query* 0)))))
 
 (defn- all-stages
   "`stages` together with the stages of every join in them"

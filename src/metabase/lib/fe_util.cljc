@@ -176,12 +176,12 @@
   somewhere upstream. Scoped to expression-parts; a broader display-name-level fix has a wider blast radius and
   is deferred to the Column Heritage effort."
   [query stage-number col]
-  (or (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+  (or (when-let [source-stage-number (lib.util/source-stage-number query stage-number)]
         (when-let [dedup-name (:lib/deduplicated-name col)]
           (when-let [prev-col (m/find-first #(= (:lib/deduplicated-name %) dedup-name)
-                                            (lib.metadata.calculation/returned-columns query previous-stage-number))]
+                                            (lib.metadata.calculation/returned-columns query source-stage-number))]
             (when-let [prev-source-uuid (:lib/source-uuid prev-col)]
-              (when (composite-clause-in-stages-0-to? query previous-stage-number prev-source-uuid)
+              (when (composite-clause-in-stages-0-to? query source-stage-number prev-source-uuid)
                 (assoc col :lib/source-uuid prev-source-uuid))))))
       col))
 

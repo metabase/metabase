@@ -763,7 +763,9 @@
 
 (defmethod ->legacy-MBQL :mbql/query [query]
   (try
-    (let [base        (merge (disqualify (dissoc query :info))
+    (let [;; legacy MBQL is a tree, so a stage read in two places is written out in both
+          query       (lib.util/expand-named-stages query)
+          base        (merge (disqualify (dissoc query :info))
                              (select-keys query [:info]))
           parameters  (:parameters base)
           inner-query (chain-stages (:stages base))

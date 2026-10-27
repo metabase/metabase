@@ -134,11 +134,12 @@
 
 (defn- escaped-source-alias [query stage-path join-alias source-column-alias]
   (or (if join-alias
-        (when-let [join (m/find-first #(= (:alias %) join-alias)
-                                      (:joins (get-in query stage-path)))]
-          (let [join-last-stage (last (:stages join))]
-            (get-in join-last-stage [::desired-alias->escaped source-column-alias])))
-        (when-let [previous-stage-path (lib.walk/previous-path stage-path)]
+        (when-let [[i join] (m/find-first #(= (:alias (second %)) join-alias)
+                                          (map-indexed vector (:joins (get-in query stage-path))))]
+          (let [join-path         (into (vec stage-path) [:joins i])
+                join-source-stage (get-in query (lib.walk/join-source-stage-path query join-path join))]
+            (get-in join-source-stage [::desired-alias->escaped source-column-alias])))
+        (when-let [previous-stage-path (lib.walk/source-stage-path query stage-path)]
           (let [previous-stage (get-in query previous-stage-path)]
             (get-in previous-stage [::desired-alias->escaped source-column-alias]))))
       source-column-alias))
@@ -341,19 +342,25 @@
         ;; resolution. Since there is no actual 'current stage' to use in this case, fake it by adding one more stage to
         ;; the join, which will let [[resolve-field-ref]] work as intended and resolve the ref relative to this extra
         ;; fake stage.
-        query'                (-> query
-                                  ;; update the cached `::original` query instead of query itself, since this is
-                                  ;; what [[resolve-field-ref]] uses.
-                                  (update-in (into [::original] join-path)
-                                             (fn [join]
-                                               (update join :stages (fn [stages]
-                                                                      (conj (vec stages) {:lib/type :mbql.stage/mbql}))))))
-        ;; e.g. if join has one stage, `join-last-stage-path` could be something like `[:stages 0 :joins 0 :stages 0]`
-        ;; and `join-extra-stage-path` would be `[:stages 0 :joins 0 :stages 1]`
-        join-last-stage-path  (lib.walk/join-last-stage-path join-path join)
-        join-extra-stage-path (-> (vec join-last-stage-path)
+        join-source-path      (lib.walk/join-source-stage-path query join-path join)
+        ;; e.g. if join has one stage, `join-source-path` could be something like `[:stages 0 :joins 0 :stages 0]`
+        ;; and `join-extra-stage-path` would be `[:stages 0 :joins 0 :stages 1]`. For a join that reads a top-level
+        ;; stage, e.g. `[:stages 2]`, the query is cut off after that stage so the extra stage is `[:stages 3]`.
+        join-extra-stage-path (-> (vec join-source-path)
                                   pop
-                                  (conj (inc (last join-last-stage-path))))
+                                  (conj (inc (last join-source-path))))
+        query'                (if (:source-stage join)
+                                (update-in query [::original :stages]
+                                           (fn [stages]
+                                             (conj (subvec (vec stages) 0 (inc (last join-source-path)))
+                                                   {:lib/type :mbql.stage/mbql})))
+                                (-> query
+                                    ;; update the cached `::original` query instead of query itself, since this is
+                                    ;; what [[resolve-field-ref]] uses.
+                                    (update-in (into [::original] join-path)
+                                               (fn [join]
+                                                 (update join :stages (fn [stages]
+                                                                        (conj (vec stages) {:lib/type :mbql.stage/mbql})))))))
         col                   (resolve-field-ref
                                query'
                                join-extra-stage-path
@@ -366,7 +373,7 @@
                                                    :join join
                                                    :ref  field-ref
                                                    :col  col})))
-        source-alias          (escaped-desired-alias query (lib.walk/join-last-stage-path join-path join) last-stage-alias)
+        source-alias          (escaped-desired-alias query join-source-path last-stage-alias)
         source-table          (escaped-join-alias query parent-stage-path (:join-alias opts))]
     ;; don't need to calculate `::desired-alias` because it may not be returned and even if it is it's not getting
     ;; returned in the join conditions

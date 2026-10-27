@@ -1721,6 +1721,8 @@
   normalized-mbql-version
   previous-stage
   previous-stage-number
+  source-stage-number
+  stage-number-named
   query-stage
   update-query-stage]
  [metabase.lib.util.unique-name-generator

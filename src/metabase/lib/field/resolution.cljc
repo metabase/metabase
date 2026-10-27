@@ -333,8 +333,8 @@
         (log/debugf "Join %s does not exist in stage %s, looking in previous stages"
                     (pr-str join-alias)
                     (pr-str stage-number))
-        (if-some [source-cols (or (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-                                    (lib.metadata.calculation/returned-columns query previous-stage-number))
+        (if-some [source-cols (or (when-some [source-stage-number (lib.util/source-stage-number query stage-number)]
+                                    (lib.metadata.calculation/returned-columns query source-stage-number))
                                   (when-some [source-card-id (:source-card (lib.util/query-stage query stage-number))]
                                     (when-some [card (lib.metadata/card query source-card-id)]
                                       (lib.metadata.calculation/returned-columns query card))))]
@@ -362,7 +362,7 @@
    stage-number      :- :int
    source-field-info :- ::lib.schema.ref/field.options
    id-or-name        :- ::id-or-name]
-  (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
+  (when-some [source-stage-number (lib.util/source-stage-number query stage-number)]
     (let [{:keys [source-field source-field-name source-field-join-alias]} source-field-info
           ;; only look for columns from the previous stage that were originally implicitly joined using the same FK.
           ;; (It is possible to implicitly join the same Table more than once with different FKs.)
@@ -377,7 +377,7 @@
                                              (or (nil? source-field-join-alias)
                                                  (= ((some-fn :fk-join-alias :lib/original-fk-join-alias) col)
                                                     source-field-join-alias))))
-                                      (lib.metadata.calculation/returned-columns query previous-stage-number))]
+                                      (lib.metadata.calculation/returned-columns query source-stage-number))]
       (resolve-in-previous-stage-returned-columns-and-update-keys query previous-stage-cols id-or-name))))
 
 (mu/defn- find-reified-implicit-join-with-fk-field-id :- [:maybe [:tuple ::lib.schema.join/join :int]]
@@ -391,8 +391,8 @@
                                        (= (:fk-field-id join) source-field-id))
                                      (:joins (lib.util/query-stage query stage-number)))]
         [join stage-number])
-      (when-some [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-        (recur query previous-stage-number source-field-id))))
+      (when-some [source-stage-number (lib.util/source-stage-number query stage-number)]
+        (recur query source-stage-number source-field-id))))
 
 (defn- resolve-name-in-implicit-join-this-stage
   "You REALLY shouldn't be specifying `:source-field` in a field name ref, since it makes resolution 10x harder. There's
@@ -480,10 +480,10 @@
 
 (mu/defn- resolve-in-previous-stage :- [:maybe ::lib.metadata.calculation/visible-column]
   [query                 :- ::lib.schema/query
-   previous-stage-number :- :int
+   source-stage-number :- :int
    id-or-name            :- ::id-or-name]
   (log/debugf "Resolving %s in previous stage returned columns" (pr-str id-or-name))
-  (when-some [previous-stage-columns (lib.metadata.calculation/returned-columns query previous-stage-number)]
+  (when-some [previous-stage-columns (lib.metadata.calculation/returned-columns query source-stage-number)]
     (resolve-in-previous-stage-returned-columns-and-update-keys query previous-stage-columns id-or-name)))
 
 (mu/defn- resolve-in-card-returned-columns :- [:maybe ::lib.metadata.calculation/visible-column]
@@ -583,8 +583,8 @@
     (when-some [col (resolve-in-source-card-metadata query stage-number id-or-name)]
       (u/assoc-default col :lib/source-column-alias (:name col)))
 
-    (lib.util/previous-stage-number query stage-number)
-    (resolve-in-previous-stage query (lib.util/previous-stage-number query stage-number) id-or-name)))
+    (lib.util/source-stage-number query stage-number)
+    (resolve-in-previous-stage query (lib.util/source-stage-number query stage-number) id-or-name)))
 
 (mu/defn- resolve-ref-missing-join-alias :- [:maybe ::lib.metadata.calculation/visible-column]
   "Try finding a match in joins (field ref is missing `:join-alias`)."

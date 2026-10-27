@@ -125,7 +125,9 @@
      :encode/serialize common/remove-internal-keys
      :closed           true}
     [:lib/type    [:= {:default :mbql/join, :decode/normalize common/normalize-keyword} :mbql/join]]
-    [:stages      [:ref :metabase.lib.schema/stages]]
+    [:stages      {:optional true} [:ref :metabase.lib.schema/stages]]
+    ;; a join reads either its own stages or an earlier stage of the query, by name
+    [:source-stage {:optional true} [:ref :metabase.lib.schema/stage-name]]
     [:conditions  ::conditions]
     [:alias       ::alias]
     [:fields   {:optional true} ::fields]
@@ -151,6 +153,9 @@
      :parameters         "join should not have top-level :parameters; these should belong to one of the join :stages"
      :ident              ":ident is deprecated and should not be included in joins"
      :lib/options        "A join should not have :lib/options"})
+   [:fn
+    {:error/message "A join must have exactly one of :stages or :source-stage"}
+    #(= 1 (count (filter % [:stages :source-stage])))]
    [:ref ::validate-field-aliases-match-join-alias]])
 
 (mr/def ::joins

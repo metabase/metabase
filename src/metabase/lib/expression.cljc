@@ -70,8 +70,8 @@
     expression-name :- ::lib.schema.common/non-blank-string]
    (or (maybe-resolve-expression query stage-number expression-name)
        (log/warnf "Expression does not exist in stage %d" (lib.util/canonical-stage-index query stage-number))
-       (when-let [previous-stage-number (lib.util/previous-stage-number query stage-number)]
-         (u/prog1 (resolve-expression query previous-stage-number expression-name)
+       (when-let [source-stage-number (lib.util/source-stage-number query stage-number)]
+         (u/prog1 (resolve-expression query source-stage-number expression-name)
            (when <>
              (log/warn "Found expression in previous stage"))))
        (when (lib.util/first-stage? query stage-number)

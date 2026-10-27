@@ -272,6 +272,15 @@
   (when (pos-int? (last path))
     (conj (vec (butlast path)) (dec (last path)))))
 
+(mu/defn source-stage-path :- [:maybe ::path]
+  "The path of the stage that the stage at `stage-path` reads: the top-level stage its `:source-stage` names, or else
+  the stage before it. `nil` for a stage that reads a table, a card or native SQL."
+  [query      :- ::lib.schema/query
+   stage-path :- ::path]
+  (if-let [source-stage (:source-stage (get-in query stage-path))]
+    [:stages (lib.util/stage-number-named query source-stage)]
+    (previous-path stage-path)))
+
 (mu/defn next-path :- [:maybe ::path]
   "Return to the next stage or join, if there is one; if not, returns `nil`."
   [query :- ::lib.schema/query
@@ -290,6 +299,16 @@
   [join-path :- ::path
    join      :- [:ref ::lib.schema.join/join]]
   (into (vec join-path) [:stages (dec (count (:stages join)))]))
+
+(mu/defn join-source-stage-path :- ::path
+  "The path of the stage whose columns `join` returns: the top-level stage its `:source-stage` names, or else its own
+  last stage."
+  [query     :- ::lib.schema/query
+   join-path :- ::path
+   join      :- [:ref ::lib.schema.join/join]]
+  (if-let [source-stage (:source-stage join)]
+    [:stages (lib.util/stage-number-named query source-stage)]
+    (join-last-stage-path join-path join)))
 
 (declare walk-clause* walk-clauses*)
 
