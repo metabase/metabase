@@ -23,6 +23,7 @@ import type {
   CardId,
   Collection,
   Database,
+  DatabaseId,
   SearchModel,
   Table,
   TableId,
@@ -231,6 +232,7 @@ interface SetupOpts {
     id: TableId;
     databaseId: number;
   };
+  selectedDatabaseId?: DatabaseId;
   selectedCardId?: CardId;
   entityTypes: EmbeddingEntityType[];
   libraryCollection?: Collection;
@@ -243,6 +245,7 @@ function setup({
   querySourceType,
   availableModels,
   selectedTable,
+  selectedDatabaseId = selectedTable?.databaseId,
   selectedCardId,
   entityTypes,
   libraryCollection,
@@ -382,7 +385,7 @@ function setup({
       isInitiallyOpen
       querySourceType={querySourceType}
       canChangeDatabase={!isJoinStep}
-      selectedDatabaseId={selectedTable ? selectedTable.databaseId : null}
+      selectedDatabaseId={selectedDatabaseId ?? null}
       selectedTableId={selectedTable ? selectedTable.id : undefined}
       selectedCardId={selectedCardId}
       canSelectModel={entityTypes.includes("model")}
@@ -580,7 +583,7 @@ describe("DataSourceSelector", () => {
       entityTypes: ["model", "table", "question", "metric", "semantic-layer"],
     };
 
-    it('should go back to the databases when reopened on a model and `entityTypes` = ["table"]', async () => {
+    it("should go back to the databases when reopened on a model with nested queries disabled", async () => {
       const model = createMockCard({
         id: 140,
         name: "Orders model",
@@ -590,7 +593,7 @@ describe("DataSourceSelector", () => {
 
       setup({
         ...setupOpts,
-        entityTypes: ["table"],
+        hasNestedQueriesEnabled: false,
         selectedCardId: model.id,
       });
 
@@ -601,6 +604,48 @@ describe("DataSourceSelector", () => {
 
       expect(await screen.findByText("Sample Database")).toBeInTheDocument();
       expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
+    it('should open the databases, not the models, when reopened on a model and `entityTypes` = ["table"]', async () => {
+      const model = createMockCard({
+        id: 140,
+        name: "Orders model",
+        type: "model",
+      });
+      setupCardEndpoints(model);
+      const otherDatabase = createMockDatabase({
+        id: OTHER_DB_ID,
+        name: "Other Database",
+        tables: [
+          createMockTable({ id: OTHER_DB_TABLE_ID, db_id: OTHER_DB_ID }),
+        ],
+      });
+
+      setup({
+        ...setupOpts,
+        entityTypes: ["table"],
+        databases: [createSampleDatabase(), otherDatabase],
+        selectedCardId: model.id,
+      });
+
+      expect(await screen.findByText("Sample Database")).toBeInTheDocument();
+      expect(screen.getByText("Other Database")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
+    it('should open the models, not the saved questions, when reopened on a question and `entityTypes` = ["model"]', async () => {
+      const question = createMockCard({ id: 140, name: "Orders question" });
+      setupCardEndpoints(question);
+
+      setup({
+        ...setupOpts,
+        entityTypes: ["model"],
+        selectedCardId: question.id,
+      });
+
+      expect(await screen.findByText("Our analytics")).toBeInTheDocument();
+      expect(screen.getByText("Models")).toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
     });
 
     it("should open the models, never the saved questions, when reopened on a model that is still loading", async () => {
@@ -750,6 +795,19 @@ describe("DataSourceSelector", () => {
       expect(screen.getByText("Models")).toBeInTheDocument();
     });
 
+    it('should open the tables, not the models, when joining data on a model and `entityTypes` = ["table"]', async () => {
+      setup({
+        ...setupOpts,
+        entityTypes: ["table"],
+        isJoinStep: true,
+        querySourceType: "model",
+        selectedDatabaseId: SAMPLE_DB_ID,
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Models")).not.toBeInTheDocument();
+    });
+
     it("should skip the bucket step and show the SavedEntityPicker right away if there is only models in the bucket step", async () => {
       setup({
         ...setupOpts,
@@ -788,6 +846,19 @@ describe("DataSourceSelector", () => {
 
       expect(await screen.findByText("Our analytics")).toBeInTheDocument();
       expect(screen.getByText("Saved Questions")).toBeInTheDocument();
+    });
+
+    it('should open the tables, not the saved questions, when joining data on a question and `entityTypes` = ["table"]', async () => {
+      setup({
+        ...setupOpts,
+        entityTypes: ["table"],
+        isJoinStep: true,
+        querySourceType: "question",
+        selectedDatabaseId: SAMPLE_DB_ID,
+      });
+
+      expect(await screen.findByText("Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Saved Questions")).not.toBeInTheDocument();
     });
 
     it("should return to the bucket step when closing the saved entity picker via its back button", async () => {
@@ -1192,6 +1263,37 @@ describe("DataSourceSelector", () => {
         await screen.findAllByTestId("data-bucket-list-item"),
       ).toHaveLength(2);
       expect(screen.queryByText("Finance Orders")).not.toBeInTheDocument();
+    });
+
+    it('should open a join on the Library\'s tables, with no way back to the raw tables, when `entityTypes` = ["semantic-layer"]', async () => {
+      setup({
+        ...setupOpts,
+        libraryCollection: LIBRARY_COLLECTION,
+        entityTypes: ["semantic-layer"],
+        isJoinStep: true,
+        selectedDatabaseId: SAMPLE_DB_ID,
+      });
+
+      expect(await screen.findByText("Published Orders")).toBeInTheDocument();
+      expect(screen.queryByText("Published Elsewhere")).not.toBeInTheDocument();
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
+      expect(screen.getByTestId("saved-entity-title")).toHaveTextContent(
+        "Data",
+      );
+    });
+
+    it('should open on the Library, not the raw tables, when reopened with a published table and `entityTypes` = ["semantic-layer"]', async () => {
+      setup({
+        ...setupOpts,
+        libraryCollection: LIBRARY_COLLECTION,
+        entityTypes: ["semantic-layer"],
+        selectedTable: { id: ORDERS_ID, databaseId: SAMPLE_DB_ID },
+      });
+
+      expect(await screen.findByText("Library")).toBeInTheDocument();
+      expect(await screen.findByText("Data")).toBeInTheDocument();
+      expect(screen.queryByText("Raw Data")).not.toBeInTheDocument();
+      expect(screen.queryByText("Orders")).not.toBeInTheDocument();
     });
 
     it("should return to the bucket step when closing the Library via its back button", async () => {
