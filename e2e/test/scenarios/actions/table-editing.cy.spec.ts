@@ -11,8 +11,8 @@ import {
 } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { resetSnowplow } from "e2e/support/helpers/e2e-snowplow-helpers";
-import { DataPermissionValue } from "metabase/admin/permissions/types";
 import { dayjs } from "metabase/dayjs";
+import { DataPermissionValue } from "metabase-types/api/permissions";
 
 const { H } = cy;
 const { ALL_USERS_GROUP } = USER_GROUPS;

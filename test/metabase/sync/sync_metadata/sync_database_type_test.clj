@@ -11,7 +11,7 @@
 (deftest update-database-type-test
   (testing "make sure that if a driver reports back a different database-type the Field gets updated accordingly"
     (mt/with-temp [:model/Database db (select-keys (mt/db) [:details :engine])]
-      (sync/sync-database! db)
+      (sync/sync-database! (:id db))
       (let [venues-table (t2/select-one :model/Table :db_id (u/the-id db), :display_name "Venues")]
         ;; ok, now give all the Fields `?` as their `database_type`. (This is what the DB migration does for existing
         ;; Fields)

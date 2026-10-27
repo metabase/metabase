@@ -5,6 +5,7 @@
    [clojure.walk :as walk]
    [metabase.actions.test-util :as actions.tu]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.core :as sync]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -49,13 +50,13 @@
 (defn sync-new-table!
   "Syncs a new table by name, returns the table id."
   [db table-name]
-  (let [table (sync/create-table! db {:name table-name
-                                      ;; todo figure out how to determine default schema from driver
-                                      :schema (case (:engine db) :postgres "public" nil)
-                                      :display_name table-name
-                                      :field_order  :database
-                                      :is_writable  true})]
-    (sync/sync-fields-for-table! db table)
+  (let [table (sync/create-table! (driver.u/lib-database (:id db)) {:name table-name
+                                                                    ;; todo figure out how to determine default schema from driver
+                                                                    :schema (case (:engine db) :postgres "public" nil)
+                                                                    :display_name table-name
+                                                                    :field_order  :database
+                                                                    :is_writable  true})]
+    (sync/sync-fields-for-table! table)
     (:id table)))
 
 (defn- create-test-table! [db table-name column-map create-table-opts]

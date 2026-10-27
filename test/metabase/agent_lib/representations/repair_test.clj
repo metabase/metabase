@@ -2001,12 +2001,11 @@
 
 (deftest ^:parallel idempotency-unwrapped-boolean-wrapper-test
   (testing "unwrapping a boolean wrapper that is the sole element of a parent vector stays idempotent"
-    ;; Regression for a non-idempotency the generative idempotency-property-test surfaced:
-    ;; `["true" {} x]` unwraps to `x`. For a scalar `x`, `unwrap-boolean-wrapper` emits a clause
-    ;; `[x {}]` rather than the bare scalar, so a sole-element parent stays `[[x {}]]` instead of
-    ;; collapsing to `[x]` - which a later `repair` pass would otherwise "fix" to `[x {}]`, breaking
-    ;; the fixed point. Any non-blank scalar triggered it (the shrunk counterexample minimised `x`
-    ;; to a single NUL char).
+    ;; Regression for a non-idempotency the generative idempotency-property-test surfaced: `["true" {} x]` unwraps to
+    ;; `x`. For a scalar `x`, emits a clause `[x {}]` rather than the bare scalar, so a sole-element parent stays `[[x
+    ;; {}]]` instead of collapsing to `[x]` - which a later `repair` pass would otherwise "fix" to `[x {}]`, breaking
+    ;; the fixed point. Any non-blank scalar triggered it (the shrunk counterexample minimised `x` to a single NUL
+    ;; char).
     (let [once (repair/repair trivial-mp [["true" {} "x"]])]
       (is (= [["x" {}]] once)
           "the wrapped scalar is emitted as a clause, leaving the parent vector intact")

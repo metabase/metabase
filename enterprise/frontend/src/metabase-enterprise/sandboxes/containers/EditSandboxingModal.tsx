@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { getGroupsBasePath } from "metabase/admin/permissions/utils/urls";
 import {
   skipToken,
   useGetGroupTableAccessPolicyQuery,
@@ -8,6 +7,7 @@ import {
 } from "metabase/api";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import type { ModalComponentProps } from "metabase/common/components/ModalRoute";
+import { getGroupsBasePath } from "metabase/permissions";
 import { useDispatch, useSelector } from "metabase/redux";
 import { parseIntParam } from "metabase/urls";
 import { getGroupTableAccessPolicy } from "metabase-enterprise/sandboxes/selectors";

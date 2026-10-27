@@ -56,7 +56,7 @@
 
   (handle [_ {:keys [query title display]} _ctx]
     (let [structured (:structured-output (tools/with-pipeline-errors
-                                           (construct/execute-representations-query query)))
+                                           (construct/execute-representations-query query {:preprocess-check? true})))
           viz        (cond-> {:query (:query structured)
                               :link  (streaming/query->question-url (:query structured) display)}
                        title   (assoc :title title)

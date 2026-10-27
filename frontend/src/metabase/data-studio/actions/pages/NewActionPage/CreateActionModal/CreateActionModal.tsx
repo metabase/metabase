@@ -65,7 +65,6 @@ export function CreateActionModal({
   }: NewActionValues) => {
     const action = await createAction({
       ...definition,
-      type: "query",
       name,
       description: description || null,
       collection_id,

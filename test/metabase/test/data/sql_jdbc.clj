@@ -5,6 +5,7 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+   [metabase.driver.util :as driver.u]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc.load-data :as load-data]
@@ -106,12 +107,12 @@
 
 (defmethod tx/create-view-of-table! :sql-jdbc/test-extensions
   [driver database view-name table-name options]
-  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                  (sql.tx/create-view-of-table-sql driver database view-name table-name options)
                  {:transaction? false}))
 
 (defmethod tx/drop-view! :sql-jdbc/test-extensions
   [driver database view-name options]
-  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+  (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                  (sql.tx/drop-view-sql driver database view-name options)
                  {:transaction? false}))

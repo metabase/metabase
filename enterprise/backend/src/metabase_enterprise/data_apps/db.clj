@@ -3,6 +3,7 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [metabase-enterprise.data-apps.schema :as data-apps.schema]
+   [metabase.collections.models.collection :as collection]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -26,13 +27,6 @@
   "The DataApp named `slug` without its bundle, or nil."
   [slug :- :string]
   (t2/select-one non-blob-model :name slug))
-
-(mu/defn data-apps
-  "Every DataApp without its bundle, ordered by display name; only the enabled ones when `available?`."
-  [available? :- [:maybe :boolean]]
-  (t2/select non-blob-model
-             (cond-> {:order-by [[:display_name :asc]]}
-               available? (assoc :where [:= :enabled true]))))
 
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
@@ -122,32 +116,29 @@
   [collection-id]
   (t2/delete! :model/Collection :id collection-id))
 
-(defn permissions-for-paths-excluding-group
-  "Permission grants for `paths`, excluding `group-id`."
-  [paths group-id]
-  (t2/select [:model/Permissions :group_id :object]
-             :object [:in paths]
-             :group_id [:not= group-id]))
+(mu/defn readable-data-app-ids-select
+  "A HoneySQL query of the ids of the DataApps that the User with `user-id` can read: every app for a superuser, else
+  the enabled apps whose resource collection they can read."
+  [user-id    :- ms/PositiveInt
+   superuser? :- :boolean]
+  (if superuser?
+    ^:allow-subquery {:select [:id] :from [(t2/table-name :model/DataApp)]}
+    ^:allow-subquery {:select [:id]
+                      :from   [(t2/table-name :model/DataApp)]
+                      :where  [:and
+                               [:= :enabled true]
+                               [:in :resource_collection_id
+                                (collection/visible-collection-query
+                                 {:permission-level :read :include-archived-items :all}
+                                 {:current-user-id user-id :is-superuser? false})]]}))
 
-(defn app-assignments
-  "Assignments for the requested apps."
-  [app-ids]
-  (if (seq app-ids)
-    (t2/select :model/DataAppGroupAssignment :data_app_id [:in app-ids])
-    []))
-
-(defn insert-assignments!
-  "Assign groups to an app. The unique constraint rejects concurrent duplicates."
-  [app-id group-ids]
-  (t2/insert! :model/DataAppGroupAssignment
-              (mapv (fn [group-id] {:data_app_id app-id :permission_group_id group-id}) group-ids)))
-
-(defn delete-assignments!
-  "Remove the requested group assignments from an app."
-  [app-id group-ids]
-  (if (seq group-ids)
-    (t2/delete! :model/DataAppGroupAssignment :data_app_id app-id :permission_group_id [:in group-ids])
-    0))
+(mu/defn readable-data-apps
+  "The DataApps that the User with `user-id` can read, without their bundles, ordered by display name."
+  [user-id    :- ms/PositiveInt
+   superuser? :- :boolean]
+  (t2/select non-blob-model
+             {:where    [:in :id (readable-data-app-ids-select user-id superuser?)]
+              :order-by [[:display_name :asc]]}))
 
 (defn permissions-for-warnings
   "View-data permission rows for the warning tables and their databases."

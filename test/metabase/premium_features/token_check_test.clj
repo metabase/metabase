@@ -379,25 +379,25 @@
       (reset! behavior :success)
       (Thread/sleep 100) ;; wait for circuit breaker to open back up (also outlasts the 50ms negative cache)
       (is (= good-response (token-check/-check-token checker token)))))
-  (testing "App db not setup yet does not invoke the circuit breaker (#65294)"
+  (testing "App db not setup yet does not invoke the circuit breaker (#65294), and the refusal is not cached past setup"
     (let [token          (tu/random-token)
+          call-count     (atom 0)
           good-response  {:valid      true
                           :status     "fake"
                           :features   ["feature1" "feature2"]
                           :canonical? true}
-          token-response (fn [_token]
-                           good-response)
           checker        (token-check/make-checker
                           {:base            (reify token-check/TokenChecker
-                                              (-check-token [_ token]
-                                                (token-response token))
+                                              (-check-token [_ _token]
+                                                (swap! call-count inc)
+                                                good-response)
                                               (-clear-cache! [_])
                                               (-clear-local-cache! [_]))
                            :circuit-breaker {:failure-threshold-ratio-in-period [4 4 1000]
                                              :delay-ms                          5000
                                              :success-threshold                 1}
                            :timeout-ms      100
-                           :local-ttl       (t/millis 50)
+                           :local-ttl       (t/seconds 10)
                            :soft-ttl        (t/millis 200)
                            :hard-ttl        (t/seconds 1)})]
       (mt/with-dynamic-fn-redefs [mdb/db-is-set-up? (constantly false)]
@@ -412,10 +412,13 @@
                 :status "Unable to validate token"
                 :error-details "Metabase DB is not yet set up"}
                (token-check/-check-token checker token))))
-      (testing "When the db-is-set-up? we are not blocked by the circuit breaker"
-        (Thread/sleep 60) ;; outlast the 50ms local-ttl — the not-set-up failure map is negative-cached
-        (mt/with-dynamic-fn-redefs [mdb/db-is-set-up? (constantly true)]
-          (is (= good-response (token-check/-check-token checker token))))))))
+      (testing "When the db-is-set-up? we are not blocked by the circuit breaker, and the first check reaches the store"
+        (try
+          (mt/with-dynamic-fn-redefs [mdb/db-is-set-up? (constantly true)]
+            (is (= good-response (token-check/-check-token checker token)))
+            (is (= 1 @call-count)))
+          (finally
+            (token-check/-clear-cache! checker)))))))
 
 (defn- age-cache-entry!
   "Rewrite the `updated_at` timestamp for `token` in the cache table to be `age-ms` milliseconds in the past.
