@@ -261,6 +261,11 @@
                 (mt/user-http-request :crowberto :post 400 (format "card/pivot/%d/query" elsewhere-id) as-data-app)))
          (is (= (card-error elsewhere-id)
                 (mt/user-http-request :crowberto :post 400 (format "card/%d/query/csv" elsewhere-id) as-data-app))))
+       (testing "an app without a collection runs no card, not even one in the root collection"
+         (mt/with-temp [:model/DataApp app {:name "wasps"}]
+           (t2/delete! :model/Collection (:resource_collection_id app))
+           (is (= (card-error elsewhere-id)
+                  (mt/user-http-request :crowberto :post 400 (format "card/%d/query" elsewhere-id) (as-app "wasps"))))))
        (testing "an ID of no card is not found, as for any request"
          (is (= "Not found." (mt/user-http-request :crowberto :post 404 "card/999999999/query" as-data-app))))
        (testing "a request that is not a data app's still runs the card"
