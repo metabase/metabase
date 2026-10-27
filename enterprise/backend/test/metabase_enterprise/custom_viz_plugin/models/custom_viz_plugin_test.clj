@@ -15,11 +15,22 @@
 
 (set! *warn-on-reflection* true)
 
+(defn- bundle-files
+  "The files of a minimal plugin bundle: the manifest, the JavaScript, and an `icon.<icon-type>` asset (`\"png\"` or
+  `\"svg\"`). `manifest` is merged over a default `:icon` naming that asset by its bare file name."
+  [manifest icon-type]
+  (let [icon-file (str "icon." icon-type)
+        icon-path (str "dist/assets/" icon-file)
+        icon      (case icon-type
+                    "png" (byte-array [0 0x80 0xff])
+                    "svg" (.getBytes "<svg xmlns='http://www.w3.org/2000/svg'/>" "UTF-8"))]
+    {"metabase-plugin.json" (.getBytes ^String (json/encode (merge {:icon icon-file} manifest)) "UTF-8")
+     "dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
+     icon-path              icon}))
+
 (deftest dot-path-bundle-round-trip-test
   (let [identifier "dot-path-viz"
-        files      {"metabase-plugin.json" (.getBytes ^String (json/encode {:name identifier :icon "./icon.png"}) "UTF-8")
-                    "dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
-                    "dist/assets/icon.png" (byte-array [0 (int 0x80) (int 0xff)])}
+        files      (bundle-files {:name identifier :icon "./icon.png"} "png")
         bundle     (cv.tu/make-tgz-bytes (map (fn [[path content]] [(str "./" path) content]) files))
         export     (get-in (serdes/make-spec "CustomVizPlugin" {}) [:transform :bundle :export-with-context])]
     (is (some? (cache/validate-bundle! bundle)))
@@ -139,10 +150,7 @@
           export   (let [f (get-in spec [:transform :bundle :export-with-context])]
                      (fn [bundle] (f {:identifier "my-viz"} :bundle bundle)))
           import   (get-in spec [:transform :bundle :import])
-          manifest (json/encode {:name "my-viz" :icon "icon.svg"})
-          files    {"metabase-plugin.json" (.getBytes ^String manifest "UTF-8")
-                    "dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
-                    "dist/assets/icon.svg" (.getBytes "<svg xmlns='http://www.w3.org/2000/svg'/>" "UTF-8")}]
+          files    (bundle-files {:name "my-viz"} "svg")]
       (is (= ::serdes/skip (export nil)))
       (is (= ::serdes/skip (export (.getBytes "not a tgz" "UTF-8"))) "a stored archive that can't be read is left out")
       (testing "a file that isn't there is left out of the archive"
