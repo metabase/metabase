@@ -14,6 +14,7 @@
    [metabase.metabot.agent.core :as agent]
    [metabase.metabot.agent.memory :as memory]
    [metabase.metabot.agent.profiles :as profiles]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.persistence :as metabot.persistence]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.self :as self]
@@ -155,12 +156,13 @@
   "Whether the turn starts with `run_query` among its tools, whether its system message says results can be read, and
    whether it declares `show_chart` on construct_notebook_query. Reads them where the decision is made rather than
    running a turn. The bindings stand in for the ones the agent loop makes."
-  [conversation-id capabilities]
+  [conversation-id capabilities metabot-id profile-id]
   (let [{:keys [tools system-msg]}
         (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
                   scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
           (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
-                               :profile-id      :internal
+                               :metabot-id      metabot-id
+                               :profile-id      profile-id
                                :conversation-id conversation-id
                                :context         {:capabilities capabilities}}))]
     {:tool?       (contains? tools "run_query")
@@ -174,17 +176,19 @@
 (deftest client-claimed-feature-capability-cannot-override-settings-test
   ;; In a conversation the user owns, so the setting decides and not the rule for shared conversations.
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
-        (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
-          (is (not (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))
-      (testing "the same request gets run_query once the admin turns it on"
-        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
-          (is (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))))
+    (let [offered? #(:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]
+                                                             metabot.config/internal-metabot-id :internal))]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+            (is (not (offered?)))))
+        (testing "the same request gets run_query once the admin turns it on"
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+            (is (offered?))))))))
 
 (deftest run-query-not-offered-where-others-can-read-the-conversation-test
   (let [rasta   (mt/user->id :rasta)
-        offered #(run-query-offered-at-turn-start % [])]
+        offered #(run-query-offered-at-turn-start % [] metabot.config/internal-metabot-id :internal)]
     (mt/with-temp [:model/MetabotConversation {own :id}     {:user_id rasta}
                    :model/MetabotConversation {thread :id}  {:user_id rasta, :slack_thread_ts "1.2"}
                    :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
@@ -199,6 +203,24 @@
               (is (= {:tool? false, :prompt? false, :show-chart? false} (offered someone)))))
           (testing "no conversation does none of them"
             (is (= {:tool? false, :prompt? false, :show-chart? false} (offered nil)))))))))
+
+(deftest run-query-not-offered-to-embedded-metabot-test
+  ;; The request names the profile, so an embedded Metabot can ask for one that offers run_query.
+  (let [rasta (mt/user->id :rasta)]
+    (mt/with-temp [:model/MetabotConversation {own :id} {:user_id rasta}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user rasta
+          (doseq [profile-id [:nlq :internal]]
+            (testing profile-id
+              (testing "the internal Metabot offers run_query"
+                (is (:tool? (run-query-offered-at-turn-start
+                             own [] metabot.config/internal-metabot-id profile-id))))
+              ;; A request can name the embedded Metabot by its UUID or by its entity ID.
+              (testing "the embedded Metabot does not, and its prompt does not promise results"
+                (doseq [embedded-id [metabot.config/embedded-metabot-id "embeddedmetabotmetabo"]]
+                  (testing embedded-id
+                    (is (=? {:tool? false, :prompt? false}
+                            (run-query-offered-at-turn-start own [] embedded-id profile-id)))))))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!

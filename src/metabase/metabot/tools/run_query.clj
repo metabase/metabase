@@ -8,6 +8,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.db :as metabot.db]
    [metabase.metabot.query-execution :as query-execution]
    [metabase.metabot.scope :as scope]
@@ -572,6 +573,9 @@
   (try
     (when-not (metabot.settings/metabot-query-execution-enabled?)
       (throw (refusal "Query execution is turned off for Metabot.")))
+    ;; The rows would be the embedding customer's end users' data.
+    (when (metabot.config/embedded-metabot-id? shared/*metabot-id*)
+      (throw (refusal "Metabot can't run queries in embedded apps.")))
     (check-private-conversation!)
     (let [{:keys [query saved-card]} (stored-query query_id allow-non-sql?)
           runnable                   (runnable-query query_id query allow-non-sql?)]

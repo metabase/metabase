@@ -1,5 +1,5 @@
 import { useDisclosure } from "@mantine/hooks";
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 import { match } from "ts-pattern";
 import { c, t } from "ttag";
 
@@ -7,12 +7,13 @@ import { skipToken, useGetCollectionQuery } from "metabase/api";
 import { canonicalCollectionId } from "metabase/common/collections/utils";
 import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { CollectionPickerModal } from "metabase/common/components/Pickers/CollectionPicker";
+import { SetByEnvVar } from "metabase/common/components/SetByEnvVar";
 import { useToast } from "metabase/common/hooks";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useUpdateMetabotMutation } from "metabase/metabot";
 import { FIXED_METABOT_ENTITY_IDS } from "metabase/metabot/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { useAdminSetting } from "metabase/settings";
+import { useAdminSetting, useSettingSwitch } from "metabase/settings";
 import { SettingHeader } from "metabase/settings-components";
 import {
   Box,
@@ -55,6 +56,8 @@ export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
       />
 
       <MetabotSettingsBody settingKey={enabledSettingKey}>
+        {!isEmbedMetabot && <MetabotQueryExecutionToggle />}
+
         <PLUGIN_MODERATION.MetabotVerifiedContentConfigurationPane
           metabot={metabot}
         />
@@ -71,6 +74,57 @@ export function MetabotSettingsPanel({ metabot }: { metabot: MetabotInfo }) {
         <MetabotPromptSuggestionPane metabot={metabot} />
       </MetabotSettingsBody>
     </Stack>
+  );
+}
+
+function MetabotQueryExecutionToggle() {
+  const { checked, envName, isBusy, onChange } = useSettingSwitch(
+    "metabot-query-execution-enabled?",
+  );
+  const label = t`Let Metabot run queries and read their results`;
+  const isSetByEnv = envName != null;
+  const descriptionId = useId();
+  const envMessageId = useId();
+
+  return (
+    <Box>
+      <SettingHeader
+        id="metabot-query-execution"
+        title={t`Query execution`}
+        description={
+          <span id={descriptionId}>
+            {t`Metabot can run queries and read their results to answer questions, using the permissions of the person asking. The result rows are sent to your AI provider. This doesn't apply to Metabot in Slack or in embedded apps.`}
+          </span>
+        }
+      />
+      <Flex align="center" gap="lg" mt="lg">
+        <Switch
+          id="metabot-query-execution"
+          aria-label={label}
+          aria-describedby={
+            isSetByEnv ? `${descriptionId} ${envMessageId}` : descriptionId
+          }
+          checked={checked}
+          disabled={isSetByEnv}
+          // aria-disabled, not disabled, so focus stays on the switch during a write
+          aria-disabled={isBusy || undefined}
+          onChange={(e) => {
+            if (!isBusy) {
+              onChange(e.target.checked);
+            }
+          }}
+          w="auto"
+        />
+        <Text c={checked ? "text-primary" : "text-secondary"} fw="500">
+          {label}
+        </Text>
+      </Flex>
+      {isSetByEnv && (
+        <Box id={envMessageId}>
+          <SetByEnvVar varName={envName} />
+        </Box>
+      )}
+    </Box>
   );
 }
 

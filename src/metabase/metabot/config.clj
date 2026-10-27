@@ -45,6 +45,12 @@
    embedded-metabot-id {:profile-id "embedding_next"
                         :entity-id "embeddedmetabotmetabo"}})
 
+(defn embedded-metabot-id?
+  "Whether `metabot-id` names the embedded Metabot, by its UUID from [[metabot-config]] or by its entity_id.
+  A request can name it either way."
+  [metabot-id]
+  (contains? #{embedded-metabot-id (get-in metabot-config [embedded-metabot-id :entity-id])} metabot-id))
+
 (defn metabot-id->profile-id
   "Return the profile-id for the Metabot instance with ID `metabot-id` or \"default\" if no profile-id is configured."
   [metabot-id]

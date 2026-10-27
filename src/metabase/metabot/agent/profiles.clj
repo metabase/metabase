@@ -117,7 +117,8 @@
 ;; iframe embeds — and has no SQL tools in any of them. The prompt decides per request whether there is
 ;; a Metabase UI around it to hand off to (see [[embedding-system-prompt-context]]).
 ;;
-;; TODO (Chris 2026-10-14) -- Offer run_query here once embedded Metabot has its own query execution setting.
+;; TODO (Chris 2026-10-14) -- Offer run_query here once embedded Metabot has its own query execution setting,
+;; and replace the embedded Metabot checks in `init-agent` and `run-query` with it.
 ;; Queries run as the signed-in user, so sandboxing and impersonation apply,
 ;; but the rows are the embedding customer's end users' data, and they go to the LLM provider.
 ;; An admin should be able to show results to their own staff without showing them in every embed.

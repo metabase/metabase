@@ -6,6 +6,7 @@
    [metabase.driver.settings :as driver.settings]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.metabot.config :as metabot.config]
    [metabase.metabot.scope :as scope]
    [metabase.metabot.tools :as tools]
    [metabase.metabot.tools.run-query :as run-query]
@@ -128,6 +129,11 @@
     (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
       (is (= {:output "Query execution is turned off for Metabot."}
              (call-tool! {:state {:queries {"q1" (venues-by-id)}}} {:query_id "q1"})))))
+  (testing "nothing runs for the embedded Metabot, even with query execution turned on"
+    (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+      (binding [shared/*metabot-id* metabot.config/embedded-metabot-id]
+        (is (= {:output "Metabot can't run queries in embedded apps."}
+               (call-tool-in-conversation! {:state {:queries {"q1" (venues-by-id)}}} {:query_id "q1"}))))))
   (testing "an unknown id lists the ids the model can use"
     (is (= {:output (str "No query with id nope. Known query ids: [q1]. Only a query you built, or a saved question "
                          "or model the user can read, runs by its id.")}
