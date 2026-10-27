@@ -13,7 +13,6 @@
         "graph.dimensions": ["X"],
         "graph.metrics": ["Y1", "Y2", "Y3"]
       },
-      "collection_preview": true,
       "entity_id": "aELXIy9sYQ0SB5FFZfD73",
       "display": "bar",
       "parameter_mappings": [],

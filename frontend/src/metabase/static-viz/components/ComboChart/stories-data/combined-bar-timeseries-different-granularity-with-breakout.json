@@ -156,7 +156,6 @@
       "parameter_mappings": [],
       "display": "bar",
       "entity_id": "bCvU_rZ_zMUWnhUAP04Uf",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": [
           "CREATED_AT",
@@ -677,7 +676,6 @@
       "parameter_mappings": [],
       "display": "bar",
       "entity_id": "kBTU0R4fPg1dSpKh2YAOn",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": [
           "CREATED_AT"

@@ -306,7 +306,6 @@
       "display": "sankey",
       "archived_directly": false,
       "entity_id": "JPzY0PY_I_MDYID54t0FA",
-      "collection_preview": true,
       "visualization_settings": {
         "sankey.source": "source",
         "sankey.target": "target",
