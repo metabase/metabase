@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import type { GlossaryItem } from "metabase/api";
 
-import { GlossaryTable } from "./GlossaryTable";
+import { GlossaryTable, type GlossaryTableProps } from "./GlossaryTable";
 
 function makeItem(overrides: Partial<GlossaryItem> = {}): GlossaryItem {
   return {
@@ -13,391 +13,320 @@ function makeItem(overrides: Partial<GlossaryItem> = {}): GlossaryItem {
   };
 }
 
+function setup(props: Partial<GlossaryTableProps> = {}) {
+  const onCreate = jest.fn();
+  const onEdit = jest.fn();
+  const onDelete = jest.fn();
+  renderWithProviders(
+    <>
+      <GlossaryTable
+        glossary={[]}
+        onCreate={onCreate}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        {...props}
+      />
+      <button>Outside</button>
+    </>,
+  );
+  return { onCreate, onEdit, onDelete };
+}
+
+function getDataRows() {
+  return within(screen.getByRole("table")).getAllByRole("row").slice(1);
+}
+
+function getFields(row: HTMLElement) {
+  const [term, definition] = within(row).getAllByRole("textbox");
+  return { term, definition };
+}
+
+function getValue(field: HTMLElement) {
+  return field instanceof HTMLTextAreaElement ? field.value : null;
+}
+
+function getFieldsByTerm(term: string) {
+  const row = getDataRows().find(
+    (row) => getValue(getFields(row).term) === term,
+  );
+  if (!row) {
+    throw new Error(`No row for term ${term}`);
+  }
+  return getFields(row);
+}
+
+function getTermValues() {
+  return getDataRows().map((row) => getValue(getFields(row).term));
+}
+
+const getNewTermField = () => screen.getByPlaceholderText("Boat");
+const getNewDefinitionField = () =>
+  screen.getByPlaceholderText(/a small vessel/i);
+const queryDuplicateWarning = () =>
+  screen.queryByText("This term already exists in the Glossary");
+
 describe("GlossaryTable", () => {
   it("shows empty state", () => {
-    renderWithProviders(
-      <GlossaryTable
-        className="test"
-        glossary={[]}
-        onCreate={jest.fn()}
-        onEdit={jest.fn()}
-        onDelete={jest.fn()}
-      />,
-    );
+    setup();
 
     expect(screen.getByText(/No terms yet/i)).toBeInTheDocument();
   });
 
-  it("creates a new record", async () => {
-    const user = userEvent.setup();
-    const onCreate = jest.fn();
+  describe("search", () => {
+    const glossary = [
+      makeItem({ id: 1, term: "ARR", definition: "Annual recurring revenue" }),
+      makeItem({ id: 2, term: "Churn", definition: "Customers who cancel" }),
+      makeItem({ id: 3, term: "MRR", definition: "Monthly Recurring Revenue" }),
+    ];
 
-    renderWithProviders(
-      <GlossaryTable
-        glossary={[makeItem({ id: 1 })]}
-        onCreate={onCreate}
-        onEdit={jest.fn()}
-        onDelete={jest.fn()}
-      />,
-    );
+    it("filters terms by term or definition, case-insensitively", async () => {
+      setup({ glossary, readOnly: true });
 
-    await user.click(screen.getByRole("button", { name: /new term/i }));
+      await userEvent.type(screen.getByPlaceholderText("Search..."), " churn ");
+      expect(getTermValues()).toEqual(["Churn"]);
 
-    const termInput = screen.getByPlaceholderText(/boat/i);
-    const defInput = screen.getByPlaceholderText(/a small vessel.*/i);
-    await user.clear(termInput);
-    await user.type(termInput, "  Bird  ");
-    await user.type(defInput, "  Flies sometimes  ");
-
-    const table0 = screen.getByRole("table");
-    const rows0 = within(table0).getAllByRole("row");
-    const createRow0 = rows0.find((r) =>
-      within(r).queryByPlaceholderText(/boat/i),
-    );
-    expect(createRow0).toBeTruthy();
-    // Unjustified type cast. FIXME
-    const saveInCreate = within(createRow0 as HTMLElement).getByRole("button", {
-      name: /save/i,
+      await userEvent.clear(screen.getByPlaceholderText("Search..."));
+      await userEvent.type(
+        screen.getByPlaceholderText("Search..."),
+        "recurring",
+      );
+      expect(getTermValues()).toEqual(["ARR", "MRR"]);
     });
 
-    expect(saveInCreate).toBeEnabled();
-    await user.click(saveInCreate);
+    it("shows a no-results message when nothing matches", async () => {
+      setup({ glossary, readOnly: true });
 
-    expect(onCreate).toHaveBeenCalledTimes(1);
-    expect(onCreate).toHaveBeenCalledWith("Bird", "Flies sometimes");
+      await userEvent.type(screen.getByPlaceholderText("Search..."), "zebra");
+
+      expect(screen.getByText('No results for "zebra"')).toBeInTheDocument();
+      expect(screen.queryByText(/No terms yet/i)).not.toBeInTheDocument();
+    });
+
+    it("keeps the new term row visible while searching", async () => {
+      setup({ glossary });
+
+      await userEvent.type(screen.getByPlaceholderText("Search..."), "zebra");
+      await userEvent.click(screen.getByRole("button", { name: /new term/i }));
+
+      expect(getNewTermField()).toBeInTheDocument();
+    });
   });
 
-  it("edits a record", async () => {
-    const user = userEvent.setup();
-    const item = makeItem({ id: 42, term: "Cat", definition: "Meows" });
-    const onEdit = jest.fn();
+  describe("creating", () => {
+    it("moves to the definition on Enter and saves trimmed values on the second Enter", async () => {
+      const { onCreate } = setup({ glossary: [makeItem()] });
 
-    renderWithProviders(
-      <GlossaryTable
-        glossary={[item]}
-        onCreate={jest.fn()}
-        onEdit={onEdit}
-        onDelete={jest.fn()}
-      />,
-    );
+      await userEvent.click(screen.getByRole("button", { name: /new term/i }));
+      expect(getNewTermField()).toHaveFocus();
 
-    await user.click(screen.getByText("Cat"));
+      await userEvent.type(getNewTermField(), "  Bird  {Enter}");
+      expect(getNewDefinitionField()).toHaveFocus();
+      expect(onCreate).not.toHaveBeenCalled();
 
-    const termInput = screen.getByPlaceholderText(/boat/i);
-    const defInput = screen.getByPlaceholderText(/a small vessel.*/i);
+      await userEvent.type(
+        getNewDefinitionField(),
+        "  Flies{Shift>}{Enter}{/Shift}sometimes  {Enter}",
+      );
 
-    await user.clear(termInput);
-    await user.type(termInput, "Kitten");
-    await user.clear(defInput);
-    await user.type(defInput, "Young cat");
+      expect(onCreate).toHaveBeenCalledTimes(1);
+      expect(onCreate).toHaveBeenCalledWith("Bird", "Flies\nsometimes");
+      expect(screen.queryByPlaceholderText("Boat")).not.toBeInTheDocument();
+    });
 
-    await user.click(screen.getByRole("button", { name: /save/i }));
+    it("saves when focus leaves a completed row", async () => {
+      const { onCreate } = setup();
 
-    expect(onEdit).toHaveBeenCalledTimes(1);
-    expect(onEdit).toHaveBeenCalledWith(42, "Kitten", "Young cat");
+      await userEvent.click(screen.getByRole("button", { name: /new term/i }));
+      await userEvent.type(getNewTermField(), "Bird");
+      await userEvent.click(getNewDefinitionField());
+      expect(onCreate).not.toHaveBeenCalled();
+
+      await userEvent.type(getNewDefinitionField(), "Flies");
+      await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+
+      expect(onCreate).toHaveBeenCalledWith("Bird", "Flies");
+    });
+
+    it("keeps an incomplete row open when focus leaves it", async () => {
+      const { onCreate } = setup();
+
+      await userEvent.click(screen.getByRole("button", { name: /new term/i }));
+      await userEvent.type(getNewTermField(), "Bird");
+      await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+
+      expect(onCreate).not.toHaveBeenCalled();
+      expect(getNewTermField()).toHaveValue("Bird");
+    });
+
+    it("discards an empty row when focus leaves it", async () => {
+      setup();
+
+      await userEvent.click(screen.getByRole("button", { name: /new term/i }));
+      await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+
+      expect(screen.queryByPlaceholderText("Boat")).not.toBeInTheDocument();
+    });
+
+    it("discards the row on Escape without saving", async () => {
+      const { onCreate } = setup();
+
+      await userEvent.click(screen.getByRole("button", { name: /new term/i }));
+      await userEvent.type(getNewTermField(), "Bird");
+      await userEvent.type(getNewDefinitionField(), "Flies{Escape}");
+
+      expect(onCreate).not.toHaveBeenCalled();
+      expect(screen.queryByPlaceholderText("Boat")).not.toBeInTheDocument();
+    });
+
+    it("blocks saving a term that already exists, case-insensitively", async () => {
+      const { onCreate } = setup({ glossary: [makeItem({ term: "Alpha" })] });
+
+      await userEvent.click(screen.getByRole("button", { name: /new term/i }));
+      await userEvent.type(getNewTermField(), "ALPHA");
+      expect(queryDuplicateWarning()).toBeInTheDocument();
+
+      await userEvent.type(getNewDefinitionField(), "Duplicate{Enter}");
+      await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+
+      expect(onCreate).not.toHaveBeenCalled();
+      expect(getNewTermField()).toHaveValue("ALPHA");
+    });
   });
 
-  it("focuses proper field when starting edit from term vs definition", async () => {
-    const user = userEvent.setup();
-    const item = makeItem({ term: "Dog", definition: "Barks" });
+  describe("editing", () => {
+    it("saves a trimmed term on Enter", async () => {
+      const item = makeItem({ id: 42, term: "Cat", definition: "Meows" });
+      const { onEdit } = setup({ glossary: [item] });
+      const { term } = getFieldsByTerm("Cat");
 
-    const { rerender } = renderWithProviders(
-      <GlossaryTable
-        glossary={[item]}
-        onCreate={jest.fn()}
-        onEdit={jest.fn()}
-        onDelete={jest.fn()}
-      />,
-    );
+      await userEvent.clear(term);
+      await userEvent.type(term, "  Kitten  {Enter}");
 
-    // Click term -> term input should be focused
-    await user.click(screen.getByText("Dog"));
-    const termInput = screen.getByPlaceholderText(/boat/i);
-    expect(termInput).toHaveFocus();
+      expect(onEdit).toHaveBeenCalledTimes(1);
+      expect(onEdit).toHaveBeenCalledWith(42, "Kitten", "Meows");
+      expect(term).not.toHaveFocus();
+    });
 
-    await user.click(screen.getByRole("button", { name: /cancel/i }));
+    it("saves the definition on Enter, keeping Shift+Enter line breaks", async () => {
+      const item = makeItem({ id: 42, term: "Cat", definition: "Meows" });
+      const { onEdit } = setup({ glossary: [item] });
+      const { definition } = getFieldsByTerm("Cat");
 
-    // Re-render to reset DOM state and click definition cell
-    rerender(
-      <GlossaryTable
-        glossary={[item]}
-        onCreate={jest.fn()}
-        onEdit={jest.fn()}
-        onDelete={jest.fn()}
-      />,
-    );
+      await userEvent.type(definition, "{Shift>}{Enter}{/Shift}Purrs{Enter}");
 
-    await user.click(screen.getByText("Barks"));
-    const defInput = screen.getByPlaceholderText(/a small vessel.*/i);
-    expect(defInput).toHaveFocus();
+      expect(onEdit).toHaveBeenCalledTimes(1);
+      expect(onEdit).toHaveBeenCalledWith(42, "Cat", "Meows\nPurrs");
+    });
+
+    it("saves the definition on blur", async () => {
+      const item = makeItem({ id: 42, term: "Cat", definition: "Meows" });
+      const { onEdit } = setup({ glossary: [item] });
+      const { definition } = getFieldsByTerm("Cat");
+
+      await userEvent.type(definition, " loudly");
+      await userEvent.click(screen.getByRole("button", { name: "Outside" }));
+
+      expect(onEdit).toHaveBeenCalledWith(42, "Cat", "Meows loudly");
+    });
+
+    it("reverts on Escape without saving", async () => {
+      const item = makeItem({ id: 42, term: "Cat", definition: "Meows" });
+      const { onEdit } = setup({ glossary: [item] });
+      const { definition } = getFieldsByTerm("Cat");
+
+      await userEvent.type(definition, " loudly{Escape}");
+
+      expect(onEdit).not.toHaveBeenCalled();
+      expect(definition).toHaveValue("Meows");
+    });
+
+    it("reverts a blank definition without saving", async () => {
+      const item = makeItem({ id: 42, term: "Cat", definition: "Meows" });
+      const { onEdit } = setup({ glossary: [item] });
+
+      await userEvent.clear(getFieldsByTerm("Cat").definition);
+      await userEvent.type(getFieldsByTerm("Cat").definition, "   {Enter}");
+
+      expect(onEdit).not.toHaveBeenCalled();
+      expect(getFieldsByTerm("Cat").definition).toHaveValue("Meows");
+    });
+
+    it("does not warn about the row's own term", async () => {
+      setup({ glossary: [makeItem({ term: "Alpha" })] });
+      const { term } = getFieldsByTerm("Alpha");
+
+      await userEvent.clear(term);
+      await userEvent.type(term, "alpha");
+
+      expect(queryDuplicateWarning()).not.toBeInTheDocument();
+    });
+
+    it("warns about and reverts a term that matches another entry", async () => {
+      const { onEdit } = setup({
+        glossary: [
+          makeItem({ id: 1, term: "Alpha", definition: "First" }),
+          makeItem({ id: 2, term: "Beta", definition: "Second" }),
+        ],
+      });
+      const { term } = getFieldsByTerm("Alpha");
+
+      await userEvent.clear(term);
+      await userEvent.type(term, "beta");
+      expect(queryDuplicateWarning()).toBeInTheDocument();
+
+      await userEvent.type(term, "{Enter}");
+
+      expect(onEdit).not.toHaveBeenCalled();
+      expect(queryDuplicateWarning()).not.toBeInTheDocument();
+      expect(getTermValues()).toEqual(["Alpha", "Beta"]);
+    });
   });
 
   it("sorts by term header", async () => {
-    const user = userEvent.setup();
-    const rows: GlossaryItem[] = [
-      makeItem({ id: 1, term: "Beta", definition: "Second" }),
-      makeItem({ id: 2, term: "Alpha", definition: "First" }),
-      makeItem({ id: 3, term: "Gamma", definition: "Third" }),
-    ];
-
-    renderWithProviders(
-      <GlossaryTable
-        glossary={rows}
-        onCreate={jest.fn()}
-        onEdit={jest.fn()}
-        onDelete={jest.fn()}
-      />,
-    );
-
+    setup({
+      glossary: [
+        makeItem({ id: 1, term: "Beta", definition: "Second" }),
+        makeItem({ id: 2, term: "Alpha", definition: "First" }),
+        makeItem({ id: 3, term: "Gamma", definition: "Third" }),
+      ],
+    });
     const termHeader = screen.getByRole("columnheader", { name: /^term$/i });
-    const getTermsOrder = (): string[] => {
-      const table = screen.getByRole("table");
-      const rowEls = within(table).getAllByRole("row");
-      const dataRows = rowEls.slice(1); // skip header row
-      return dataRows.map((r) => {
-        const firstCell = within(r).getAllByRole("cell")[0];
-        return firstCell.textContent?.trim() || "";
-      });
-    };
 
-    const orders: string[][] = [];
-    await user.click(within(termHeader).getByText(/^term$/i));
-    orders.push(getTermsOrder());
-    await user.click(within(termHeader).getByText(/^term$/i));
-    orders.push(getTermsOrder());
-    await user.click(within(termHeader).getByText(/^term$/i));
-    orders.push(getTermsOrder());
+    await userEvent.click(termHeader);
+    expect(getTermValues()).toEqual(["Alpha", "Beta", "Gamma"]);
 
-    const ASC = ["Alpha", "Beta", "Gamma"].join("|");
-    const DESC = ["Gamma", "Beta", "Alpha"].join("|");
-    const serialized = orders.map((o) => o.join("|"));
-
-    expect(serialized).toEqual(expect.arrayContaining([ASC, DESC, ASC]));
+    await userEvent.click(termHeader);
+    expect(getTermValues()).toEqual(["Gamma", "Beta", "Alpha"]);
   });
 
   it("deletes a record with confirmation", async () => {
-    const user = userEvent.setup();
-    const item = makeItem({
-      id: 7,
-      term: "DeleteMe",
-      definition: "To be removed",
+    const { onDelete } = setup({
+      glossary: [makeItem({ id: 7, term: "DeleteMe" })],
     });
-    const onDelete = jest.fn();
 
-    renderWithProviders(
-      <GlossaryTable
-        glossary={[item]}
-        onCreate={jest.fn()}
-        onEdit={jest.fn()}
-        onDelete={onDelete}
-      />,
+    await userEvent.click(screen.getByRole("button", { name: /delete/i }));
+    const modal = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(modal).getByRole("button", { name: /delete/i }),
     );
 
-    // Hover row to reveal delete icon: find the row that contains DeleteMe
-    const table = screen.getByRole("table");
-    const rows = within(table).getAllByRole("row");
-    const row = rows.find((r) => within(r).queryByText("DeleteMe"));
-    expect(row).toBeTruthy();
-    // Unjustified type cast. FIXME
-    await user.hover(row as HTMLElement);
-
-    await user.click(screen.getByRole("button", { name: /delete/i }));
-
-    // Confirm modal: scope search within the modal dialog
-    const modal = await screen.findByRole("dialog");
-    await user.click(within(modal).getByRole("button", { name: /delete/i }));
-
-    expect(onDelete).toHaveBeenCalledTimes(1);
     expect(onDelete).toHaveBeenCalledWith(7);
   });
 
-  it("disables Add until both fields are filled in create/edit mode", async () => {
-    const user = userEvent.setup();
-
-    renderWithProviders(
-      <GlossaryTable
-        glossary={[]}
-        onCreate={jest.fn()}
-        onEdit={jest.fn()}
-        onDelete={jest.fn()}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: /new term/i }));
-
-    // Add button (check icon) should be disabled until both fields filled
-    const table2 = screen.getByRole("table");
-    const rows2 = within(table2).getAllByRole("row");
-    const createRow = rows2.find((r) =>
-      within(r).queryByPlaceholderText(/boat/i),
-    );
-    expect(createRow).toBeTruthy();
-    // Unjustified type cast. FIXME
-    const saveBtn = within(createRow as HTMLElement).getByRole("button", {
-      name: /save/i,
-    });
-    expect(saveBtn).toBeDisabled();
-
-    // Fill only one field and still disabled
-    await user.type(screen.getByPlaceholderText(/boat/i), "Sparrow");
-    expect(saveBtn).toBeDisabled();
-
-    // Fill both fields and enabled
-    await user.type(
-      screen.getByPlaceholderText(/a small vessel.*/i),
-      "Flies sometimes",
-    );
-    expect(saveBtn).toBeEnabled();
-  });
-
-  it("shows duplicate warning when term matches existing term", async () => {
-    const user = userEvent.setup();
-    const existingItem = makeItem({
-      id: 1,
-      term: "Alpha",
-      definition: "First",
-    });
-
-    renderWithProviders(
-      <GlossaryTable
-        glossary={[existingItem]}
-        onCreate={jest.fn()}
-        onEdit={jest.fn()}
-        onDelete={jest.fn()}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: /new term/i }));
-
-    const termInput = screen.getByPlaceholderText(/boat/i);
-    await user.type(termInput, "Alpha");
-
-    // Should show duplicate warning message
-    expect(
-      screen.getByText(/this term already exists in the glossary/i),
-    ).toBeInTheDocument();
-
-    // Save button should be hidden
-    expect(
-      screen.queryByRole("button", { name: /save/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("detects duplicates case-insensitively", async () => {
-    const user = userEvent.setup();
-    const existingItem = makeItem({
-      id: 1,
-      term: "Alpha",
-      definition: "First",
-    });
-
-    renderWithProviders(
-      <GlossaryTable
-        glossary={[existingItem]}
-        onCreate={jest.fn()}
-        onEdit={jest.fn()}
-        onDelete={jest.fn()}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: /new term/i }));
-
-    const termInput = screen.getByPlaceholderText(/boat/i);
-    await user.type(termInput, "ALPHA");
-
-    // Should show duplicate warning (case insensitive)
-    expect(
-      screen.getByText(/this term already exists in the glossary/i),
-    ).toBeInTheDocument();
-  });
-
-  it("does not show duplicate warning when editing the same term", async () => {
-    const user = userEvent.setup();
-    const item = makeItem({ id: 1, term: "Alpha", definition: "First" });
-
-    renderWithProviders(
-      <GlossaryTable
-        glossary={[item]}
-        onCreate={jest.fn()}
-        onEdit={jest.fn()}
-        onDelete={jest.fn()}
-      />,
-    );
-
-    // Click on the term to edit it
-    await user.click(screen.getByText("Alpha"));
-
-    // The term input should have "Alpha" and no duplicate warning
-    const termInput = screen.getByPlaceholderText(/boat/i);
-    expect(termInput).toHaveValue("Alpha");
-
-    // Should NOT show duplicate warning when editing the same term
-    expect(
-      screen.queryByText(/this term already exists in the glossary/i),
-    ).not.toBeInTheDocument();
-
-    // Save button should be visible
-    expect(screen.getByRole("button", { name: /save/i })).toBeInTheDocument();
-  });
-
-  it("shows duplicate warning when editing term to match another existing term", async () => {
-    const user = userEvent.setup();
-    const items: GlossaryItem[] = [
-      makeItem({ id: 1, term: "Alpha", definition: "First" }),
-      makeItem({ id: 2, term: "Beta", definition: "Second" }),
-    ];
-
-    renderWithProviders(
-      <GlossaryTable
-        glossary={items}
-        onCreate={jest.fn()}
-        onEdit={jest.fn()}
-        onDelete={jest.fn()}
-      />,
-    );
-
-    // Click on "Alpha" to edit it
-    await user.click(screen.getByText("Alpha"));
-
-    const termInput = screen.getByPlaceholderText(/boat/i);
-    await user.clear(termInput);
-    await user.type(termInput, "Beta");
-
-    // Should show duplicate warning because "Beta" already exists
-    expect(
-      screen.getByText(/this term already exists in the glossary/i),
-    ).toBeInTheDocument();
-
-    // Save button should be hidden
-    expect(
-      screen.queryByRole("button", { name: /save/i }),
-    ).not.toBeInTheDocument();
-  });
-
   describe("readOnly", () => {
-    it("hides create, edit, and delete controls", async () => {
-      const user = userEvent.setup();
+    it("hides create and delete controls and disables editing", () => {
+      setup({ glossary: [makeItem({ term: "Alpha" })], readOnly: true });
 
-      renderWithProviders(
-        <GlossaryTable
-          glossary={[makeItem({ id: 1, term: "Alpha", definition: "First" })]}
-          readOnly
-        />,
-      );
-
-      // No "New term" button
       expect(
         screen.queryByRole("button", { name: /new term/i }),
       ).not.toBeInTheDocument();
-
-      // No delete action
       expect(
         screen.queryByRole("button", { name: /delete/i }),
       ).not.toBeInTheDocument();
 
-      // Clicking a term does not open the inline editor
-      await user.click(screen.getByText("Alpha"));
-      expect(screen.queryByPlaceholderText(/boat/i)).not.toBeInTheDocument();
+      const { term, definition } = getFieldsByTerm("Alpha");
+      expect(term).toBeDisabled();
+      expect(definition).toBeDisabled();
     });
   });
 });

@@ -77,9 +77,8 @@ async function assertCreateGlossaryTermFlow(server: GlossaryServer) {
   await userEvent.type(screen.getByPlaceholderText(/boat/i), "  Boat  ");
   await userEvent.type(
     screen.getByPlaceholderText(/a small vessel.*/i),
-    "  A small vessel for traveling on water.  ",
+    "  A small vessel for traveling on water.  {Enter}",
   );
-  await userEvent.click(screen.getByLabelText("Save"));
 
   await waitFor(() =>
     expect(
@@ -87,7 +86,7 @@ async function assertCreateGlossaryTermFlow(server: GlossaryServer) {
     ).toBe(true),
   );
   // The row shown while the request is pending is replaced by the server's row.
-  const pendingTerm = within(getTable()).getByText("Boat");
+  const pendingTerm = within(getTable()).getByDisplayValue("Boat");
   server.glossary = [BOAT];
   createResponse.resolve(BOAT);
   await waitFor(() => expect(pendingTerm).not.toBeInTheDocument());
@@ -96,34 +95,45 @@ async function assertCreateGlossaryTermFlow(server: GlossaryServer) {
     term: "Boat",
     definition: "A small vessel for traveling on water.",
   });
-  expect(within(getTable()).getByText("Boat")).toBeInTheDocument();
+  expect(within(getTable()).getByDisplayValue("Boat")).toBeInTheDocument();
   expect(
-    within(getTable()).getByText("A small vessel for traveling on water."),
+    within(getTable()).getByDisplayValue(
+      "A small vessel for traveling on water.",
+    ),
   ).toBeInTheDocument();
 }
 
 async function assertUpdateGlossaryTermFlow(server: GlossaryServer) {
   setupUpdateGlossaryEndpoint(KITTEN);
 
-  await userEvent.click(within(getTable()).getByText("Boat"));
-  await userEvent.clear(screen.getByPlaceholderText(/boat/i));
-  await userEvent.type(screen.getByPlaceholderText(/boat/i), "Kitten");
-  await userEvent.clear(screen.getByPlaceholderText(/a small vessel.*/i));
-  await userEvent.type(
-    screen.getByPlaceholderText(/a small vessel.*/i),
-    "Young cat",
+  server.glossary = [{ ...BOAT, term: KITTEN.term }];
+  const term = within(getTable()).getByDisplayValue("Boat");
+  await userEvent.clear(term);
+  await userEvent.type(term, "Kitten{Enter}");
+  await waitFor(() =>
+    expect(getRequestBody("path:/api/glossary/7", "PUT")).toEqual({
+      term: "Kitten",
+      definition: "A small vessel for traveling on water.",
+    }),
   );
-  server.glossary = [KITTEN];
-  await userEvent.click(screen.getByRole("button", { name: /save/i }));
 
+  server.glossary = [KITTEN];
+  const definition = within(getTable()).getByDisplayValue(
+    "A small vessel for traveling on water.",
+  );
+  await userEvent.clear(definition);
+  await userEvent.type(definition, "Young cat{Enter}");
   await waitFor(() =>
     expect(getRequestBody("path:/api/glossary/7", "PUT")).toEqual({
       term: "Kitten",
       definition: "Young cat",
     }),
   );
-  expect(await within(getTable()).findByText("Kitten")).toBeInTheDocument();
-  expect(within(getTable()).getByText("Young cat")).toBeInTheDocument();
+
+  expect(
+    await within(getTable()).findByDisplayValue("Kitten"),
+  ).toBeInTheDocument();
+  expect(within(getTable()).getByDisplayValue("Young cat")).toBeInTheDocument();
 }
 
 async function assertDeleteGlossaryTermFlow(server: GlossaryServer) {
@@ -147,7 +157,9 @@ async function assertDeleteGlossaryTermFlow(server: GlossaryServer) {
     ).toBe(true),
   );
   await waitFor(() =>
-    expect(within(getTable()).queryByText("Kitten")).not.toBeInTheDocument(),
+    expect(
+      within(getTable()).queryByDisplayValue("Kitten"),
+    ).not.toBeInTheDocument(),
   );
 }
 
@@ -155,14 +167,14 @@ describe("GlossaryContainer", () => {
   it("lets the user manage the glossary when the API reports it as writable", async () => {
     setup({ canWrite: true });
 
-    expect(await screen.findByText("ARR")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("ARR")).toBeInTheDocument();
     expect(getNewTermButton()).toBeInTheDocument();
   });
 
   it("makes the glossary read-only when the API reports it as not writable", async () => {
     setup({ canWrite: false });
 
-    expect(await screen.findByText("ARR")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("ARR")).toBeInTheDocument();
     expect(getNewTermButton()).not.toBeInTheDocument();
   });
 
