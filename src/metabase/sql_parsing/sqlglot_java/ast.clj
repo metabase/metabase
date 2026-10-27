@@ -11,7 +11,7 @@
    [metabase.util :as u])
   (:import
    (com.metabase.sqlglot SqlGlot)
-   (com.metabase.sqlglot.ast Ast AstNode Expr Expressions$Identifier Expressions$Table)
+   (com.metabase.sqlglot.ast Ast AstNode Expr Expressions$Identifier Expressions$Semicolon Expressions$Table)
    (com.metabase.sqlglot.reference Generator ParseError Tokenizer)
    (com.metabase.sqlglot.reference.dialects Dialect)
    (com.metabase.sqlglot.tokens Token)
@@ -26,6 +26,12 @@
   "Every statement in `sql`, as `sqlglot.parse` returns them: nil for the empty statement a stray semicolon leaves."
   ^List [^String sql ^String dialect]
   (SqlGlot/parse sql dialect))
+
+(defn nonempty-statements
+  "`stmts` from [[parse]] without the empty ones (`_nonempty_statements`): a stray semicolon parses as nil, and a
+  comment after a semicolon as a bare `Semicolon`."
+  [stmts]
+  (into [] (remove #(or (nil? %) (instance? Expressions$Semicolon %))) stmts))
 
 (defn parse-one
   "The single statement in `sql` (`sqlglot.parse_one`)."

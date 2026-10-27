@@ -73,7 +73,8 @@
 
 (defn transpile-sql
   "`sql` rewritten from `from-dialect` into `to-dialect` and pretty-printed, as `{:transpiled_sql :status}`, or
-  `{:status \"error\" :error_message}`. Templated SQL, or a missing dialect, is passed through as skipped.
+  `{:status \"error\" :error_message}`, with `:reason \"multiple_statements\"` when `sql` holds more than one
+  statement. Templated SQL, or a missing dialect, is passed through as skipped.
 
   Identifiers keep the quoting they were written with, so the database folds an unquoted one exactly as it would
   have folded the input; quoting everything would freeze the written casing, which breaks on dialects that fold
@@ -90,11 +91,13 @@
     :else
     (try
       (Dialect/getOrRaise ^String to-dialect)
-      (let [stmts (ast/parse sql from-dialect)]
+      (let [stmts (ast/nonempty-statements (ast/parse sql from-dialect))]
         (if (> (count stmts) 1)
-          {:status "error" :error_message "Multiple SQL statements are not supported. Please provide a single query."}
+          {:status        "error"
+           :reason        "multiple_statements"
+           :error_message "Multiple SQL statements are not supported. Please provide a single query."}
           (let [stmt (or (first stmts)
-                         (throw (ex-info "'NoneType' object has no attribute 'find_all'" {})))]
+                         (throw (ex-info "list index out of range" {})))]
             {:transpiled_sql (ast/pretty-sql (quote-reserved-identifiers! stmt to-dialect) to-dialect)
              :status         "success"})))
       (catch Exception e

@@ -46,6 +46,18 @@
         :when (instance? clojure.lang.MultiFn @v)]
     [sym @v]))
 
+(deftest empty-statements-match-graalpy-test
+  (testing "a stray semicolon, or a comment after one, is not a statement; the two parsers agree on what is left"
+    (let [graal (sql-parsing/parser :sqlglot)
+          java  (sql-parsing/parser :sqlglot-java)]
+      (doseq [sql ["SELECT 1" "SELECT 1;" "SELECT 1; -- done" "SELECT 1;;" "SELECT 1; SELECT 2" "" ";"]]
+        (testing (pr-str sql)
+          (is (= (protocol/transpile-sql graal sql "postgres" "mysql")
+                 (protocol/transpile-sql java sql "postgres" "mysql")))
+          (is (= (protocol/single-stmt-of-type graal "postgres" sql "read-only")
+                 (protocol/single-stmt-of-type java "postgres" sql "read-only")))))
+      (is (= "multiple_statements" (:reason (protocol/transpile-sql java "SELECT 1; SELECT 2" "postgres" "mysql")))))))
+
 (deftest backend-dispatch-test
   (testing "every sql-tools multimethod runs its :sqlglot method for :sqlglot-java, through the backend hierarchy"
     (is (= 10 (count (interface-multimethods))))

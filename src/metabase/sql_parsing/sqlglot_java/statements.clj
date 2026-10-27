@@ -8,7 +8,7 @@
   (:import
    (com.metabase.sqlglot.ast Expressions$Anonymous Expressions$Column Expressions$Delete Expressions$Dot Expressions$Func
                              Expressions$Insert Expressions$Parameter Expressions$PropertyEQ Expressions$Query
-                             Expressions$Select Expressions$Semicolon Expressions$SetOperation Expressions$Subquery
+                             Expressions$Select Expressions$SetOperation Expressions$Subquery
                              Expressions$Table Expressions$Update Expressions$WithTableHint)
    (com.metabase.sqlglot.reference ParseError)))
 
@@ -235,7 +235,7 @@
         result          (volatile! {:is_single_stmt? false, :allowed_stmt_type? false})]
     (try
       (let [stmts   (cond->> (vec (ast/parse (split-placeholder-casts sql dialect) dialect))
-                      read-only-type? (into [] (remove #(or (nil? %) (instance? Expressions$Semicolon %)))))
+                      read-only-type? ast/nonempty-statements)
             allowed (if (#{"read" "read-only"} stmt-type) read-classes write-classes)
             problem (when read-only-type? (not-read-only-reason stmts sql dialect))
             [stmt]  stmts]
