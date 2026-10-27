@@ -249,6 +249,86 @@
           request' (#'mw.session/merge-current-user-info nil (wrapped-handler request))]
       (is (nil? (:metabase-user-id request'))))))
 
+(defn- current-user-id-for-cookie-header
+  "The id `GET /api/user/current` answers with when the request's `Cookie` header is `cookie-header`, or nil when the
+  request is not authenticated."
+  [cookie-header]
+  (try
+    (:id (mt/client :get "user/current" {:request-options {:headers {"cookie" cookie-header}}}))
+    (catch clojure.lang.ExceptionInfo e
+      (when-not (= 401 (:status-code (ex-data e)))
+        (throw e)))))
+
+(deftest second-session-cookie-does-not-authenticate-test
+  (testing "with two session cookies, the request is not authenticated as the second one"
+    (let [own-session-key    (str (random-uuid))
+          tossed-session-key (str (random-uuid))]
+      (with-session-for
+        :crowberto own-session-key
+        (fn []
+          (with-session-for
+            :rasta tossed-session-key
+            (fn []
+              (testing "each session cookie alone authenticates its own user"
+                (is (= (mt/user->id :crowberto)
+                       (current-user-id-for-cookie-header (str session-cookie "=" own-session-key))))
+                (is (= (mt/user->id :rasta)
+                       (current-user-id-for-cookie-header (str session-cookie "=" tossed-session-key)))))
+              (is (not= (mt/user->id :rasta)
+                        (current-user-id-for-cookie-header (str session-cookie "=" own-session-key "; "
+                                                                session-cookie "=" tossed-session-key)))))))))))
+
+(deftest session-cookie-hidden-after-a-comma-does-not-authenticate-test
+  (testing "a session cookie written after a comma in another cookie's value is part of that value, not a session"
+    (let [own-session-key    (str (random-uuid))
+          tossed-session-key (str (random-uuid))]
+      (with-session-for
+        :crowberto own-session-key
+        (fn []
+          (with-session-for
+            :rasta tossed-session-key
+            (fn []
+              (is (= (mt/user->id :crowberto)
+                     (current-user-id-for-cookie-header (str session-cookie "=" own-session-key "; x=1,"
+                                                             session-cookie "=" tossed-session-key))))
+              (testing "and alone it gives no session"
+                (is (nil? (current-user-id-for-cookie-header (str "x=1," session-cookie "=" tossed-session-key))))))))))))
+
+(defn- session-cookie-deletions
+  "The `Set-Cookie` headers that delete a `metabase.SESSION` cookie in the answer to `GET /api/user/current` with two
+  session cookies and `headers`, each as a map of attribute name to value."
+  [headers]
+  (let [cookie   (str session-cookie "=" (random-uuid) "; " session-cookie "=" (random-uuid))
+        response (mt/client-full-response :get 401 "user/current"
+                                          {:request-options {:headers (merge {"cookie" cookie} headers)}})]
+    (for [set-cookie (get-in response [:headers "Set-Cookie"])
+          :when      (str/starts-with? set-cookie (str session-cookie "=;"))]
+      (into {} (for [attribute (rest (str/split set-cookie #";\s*"))]
+                 (let [[k v] (str/split attribute #"=" 2)]
+                   [k v]))))))
+
+(defn- deletes? [deletions attributes]
+  (some #(= attributes (select-keys % (keys attributes))) deletions))
+
+(deftest stray-session-cookie-at-a-trailing-slash-path-or-partitioned-is-deleted-test
+  (testing "the answer deletes a stray session cookie set for the parent domain at a path that ends in a slash"
+    (is (deletes? (session-cookie-deletions {"host" "mb.example.com"})
+                  {"Domain" "example.com", "Path" "/api/"})))
+  (testing "over HTTPS, the answer deletes a stray Partitioned session cookie, which only a Partitioned deletion matches"
+    (is (deletes? (session-cookie-deletions {"host" "mb.example.com", "x-forwarded-proto" "https"})
+                  {"Domain" "example.com", "Path" "/", "Partitioned" nil}))))
+
+(deftest stray-session-cookie-is-deleted-behind-a-host-rewriting-proxy-test
+  (testing "behind a proxy that rewrites Host, the answer deletes a stray cookie for the forwarded host's parent domain"
+    (is (deletes? (session-cookie-deletions {"host" "metabase-internal:3000", "x-forwarded-host" "mb.example.com"})
+                  {"Domain" "example.com", "Path" "/"}))))
+
+(deftest stray-session-cookie-is-deleted-on-a-subpath-deployment-test
+  (testing "on a subpath deployment, the answer deletes a stray cookie at the site URL path"
+    (mt/with-temporary-setting-values [site-url "https://mb.example.com/metabase"]
+      (is (deletes? (session-cookie-deletions {"host" "mb.example.com"})
+                    {"Domain" "example.com", "Path" "/metabase"})))))
+
 (deftest current-user-info-for-api-key-test
   (mt/with-temp [:model/ApiKey {api-key-id :id} {:name                  "An API Key"
                                                  :user_id               (mt/user->id :lucky)

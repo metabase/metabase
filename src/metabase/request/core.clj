@@ -65,6 +65,7 @@
   embed?
   embedded?
   geocode-ip-addresses
+  host-names
   https-state
   internal-data-app?
   public?
