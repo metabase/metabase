@@ -272,7 +272,9 @@
                  :cache-creation-tokens cache-creation
                  :cache-read-tokens     cache-read
                  :conversation-id       session-id
-                 :profile-id            profile-id
+                 ;; ai_usage_log names only the profiles its analytics views label, so a profile outside that
+                 ;; list is logged without one rather than failing the turn.
+                 :profile-id            (usage/valid-usage-profile-id profile-id)
                  :request-id            request-id
                  :ai-proxied            (boolean ai-proxy?)})))
            part))))

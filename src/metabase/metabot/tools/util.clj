@@ -8,27 +8,38 @@
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.metabot.db :as metabot.db]
+   [metabase.metabot.self.core :as self.core]
    [metabase.models.interface :as mi]
-   [metabase.util :as u]))
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
 
 (defn handle-agent-error
   "Return an agent output for agent errors, re-throw `e` otherwise.
-   Preserves :status-code and :terminal-error? from ex-data."
+   Preserves :status-code and :terminal-error? from ex-data.
+   A message marked `:foreign-message?` is quoted by [[self.core/quoted-error-message]].
+   An error marked `:internal-error?` is logged, and the output is [[self.core/internal-error-message]]."
   [e]
-  (let [{:keys [agent-error? status-code terminal-error?]} (ex-data e)]
+  (let [{:keys [agent-error? foreign-message? internal-error? status-code terminal-error?]} (ex-data e)]
+    (when internal-error?
+      (log/error e "Metabot tool failed inside Metabase"))
     (if agent-error?
-      (cond-> {:output (ex-message e)}
+      (cond-> {:output (cond
+                         internal-error?  self.core/internal-error-message
+                         foreign-message? (self.core/quoted-error-message e)
+                         :else            (ex-message e))}
         status-code     (assoc :status-code status-code)
         terminal-error? (assoc :terminal-error? true))
       (throw e))))
 
 (defn handle-agent-or-api-error
   "Return an agent output for agent errors and API check refusals, re-throw `e` otherwise. A refusal is an exception
-  with a 4xx `:status-code`, like the 403 or 404 from [[api/read-check]]."
+  with a 4xx `:status-code`, like the 403 or 404 from [[api/read-check]].
+  A refusal's message can name stored content, such as a card's name, so it is quoted by
+  [[self.core/quoted-error-message]]."
   [e]
   (let [{:keys [agent-error? status-code]} (ex-data e)]
-    (if (and (not agent-error?) (int? status-code) (<= 400 status-code 499))
-      {:output (ex-message e) :status-code status-code}
+    (if (and (not agent-error?) (self.core/api-refusal? e))
+      {:output (self.core/quoted-error-message e) :status-code status-code}
       (handle-agent-error e))))
 
 (defn convert-field-type

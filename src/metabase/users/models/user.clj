@@ -395,16 +395,6 @@
                                invite-target (assoc :invite_target invite-target))
                              :details {:invitor (select-keys invitor [:email :first_name])}}))))
 
-;;; TODO -- this should probably be moved into [[metabase.sso.google]]
-(mu/defn create-new-google-auth-user!
-  "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
-  admins will receive an email right away."
-  [new-user :- users.schema/NewUser]
-  (u/prog1 (users.db/insert-user! new-user)
-    ;; send an email to everyone including the site admin if that's set
-    (when (setting/get :send-new-sso-user-admin-email?)
-      ((requiring-resolve 'metabase.channel.email.messages/send-user-joined-admin-notification-email!) <>, :google-auth? true))))
-
 (defn form-password-reset-url
   "Generate a properly formed password reset url given a password reset token."
   [reset-token]

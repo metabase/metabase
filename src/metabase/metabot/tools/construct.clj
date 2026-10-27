@@ -3,6 +3,7 @@
   (:require
    [clojure.string :as str]
    [malli.error :as me]
+   [malli.util :as mut]
    [metabase.agent-lib.representations :as repr]
    [metabase.agent-lib.representations.repair :as repr.repair]
    [metabase.agent-lib.representations.resolve :as repr.resolve]
@@ -21,6 +22,7 @@
    [metabase.metabot.tmpl :as te]
    [metabase.metabot.tools.charts.create :as create-chart-tools]
    [metabase.metabot.tools.recovery-hints :as recovery-hints]
+   [metabase.metabot.tools.shared :as shared]
    [metabase.metabot.tools.shared.content-store :as shared.content-store]
    [metabase.metabot.tools.shared.instructions :as instructions]
    [metabase.metabot.tools.shared.llm-shape :as llm-shape]
@@ -33,7 +35,9 @@
    [metabase.util.json :as json]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.match :as match]))
+   [metabase.util.match :as match])
+  (:import
+   (java.sql SQLException)))
 
 (set! *warn-on-reflection* true)
 
@@ -126,8 +130,19 @@
    [:reasoning {:optional true} :string]
    [:query LLMQueryArgument]
    [:visualization {:optional true} construct-visualization-schema]
+   [:show_chart {:optional true
+                 :description (str "Pass false for a query you build only to read its values with run_query: "
+                                   "the user is then shown no chart. Defaults to true.")}
+    [:maybe :boolean]]
    [:title :string]
    [:description :string]])
+
+(defn without-show-chart
+  "Returns the construct_notebook_query tool definition `tool` with `show_chart` left out of its `:schema`, so the
+   model is not told about the argument."
+  [tool]
+  (update tool :schema (fn [[arrow [cat args-schema] output]]
+                         [arrow [cat (mut/dissoc args-schema :show_chart)] output])))
 
 ;;; ---------------------------------------- Source resolution ----------------------------------------
 
@@ -641,6 +656,25 @@
 
 ;;; ---------------------------------------- Query execution ----------------------------------------
 
+(defn- input-error-data?
+  "Whether ex-data `data` marks an error in the LLM's input: a 4xx status, or an agent error with no status."
+  [{:keys [status-code agent-error?]}]
+  (or (and status-code (<= 400 status-code 499))
+      (and (nil? status-code) agent-error?)))
+
+(defn- database-error?
+  "Whether `e` is a failure of a database or the app DB rather than of the LLM's input.
+  A JDBC exception or a toucan2 failure anywhere in its cause chain marks one.
+  Its message can carry app DB SQL and stored values, so it is never relayed to the LLM."
+  [e]
+  (let [{:keys [status-code] :as data} (ex-data e)
+        causes                         (u/full-exception-chain e)]
+    (boolean
+     (and (not (and status-code (<= 400 status-code 499)))
+          (or (some #(instance? SQLException %) causes)
+              (and (not (input-error-data? data))
+                   (some #(contains? (ex-data %) :toucan2/context-trace) causes)))))))
+
 (defn- as-agent-input-error
   "Wrap `e` as an agent-input error.
 
@@ -648,11 +682,19 @@
   HTTP callers additionally need a status code; default representation/repair failures to
   400 so individual repair passes don't all have to repeat `:status-code 400` in ex-data.
   Existing statuses are preserved (notably permission 403s, which callers should normally
-  avoid wrapping in the first place)."
+  avoid wrapping in the first place).
+
+  A [[database-error?]] gets `:internal-error? true`: Metabot logs it and the LLM reads a fixed sentence.
+  The Agent API and MCP still get it as a 400, as before.
+  Any other exception the pipeline did not raise as an agent error, such as one from lib about the query, gets
+  `:foreign-message? true`: Metabot did not write its message, so Metabot quotes it before the LLM reads it."
   [^clojure.lang.ExceptionInfo e]
-  (let [base   (assoc (or (ex-data e) {}) :agent-error? true)
-        data   (cond-> base
-                 (nil? (:status-code base)) (assoc :status-code 400))]
+  (let [foreign? (not (:agent-error? (ex-data e)))
+        base     (cond-> (assoc (or (ex-data e) {}) :agent-error? true)
+                   (database-error? e) (assoc :internal-error? true)
+                   foreign?            (assoc :foreign-message? true))
+        data     (cond-> base
+                   (nil? (:status-code base)) (assoc :status-code 400))]
     (ex-info (ex-message e) data e)))
 
 (defn- not-runnable-problem
@@ -894,7 +936,7 @@
                              :query          pmbql-query
                              :query-json     exported-repr
                              :result-columns (result-columns-for-query pmbql-query mp)}
-         :instructions      (instructions/query-created-instructions-for query-id)})
+         :instructions      (instructions/query-created-instructions-for query-id false)})
       (catch clojure.lang.ExceptionInfo e
         ;; Permission failures are not LLM-input repair errors. Preserve the original 403 so
         ;; HTTP callers get the standard forbidden response instead of an agent-error payload.
@@ -976,6 +1018,12 @@
     :queries                [(structured->query-data structured)]
     :visualization_settings {:chart_type (if chart-type (name chart-type) "table")}}))
 
+(defn- tool-output
+  "The text the model sees: `result-xml` followed by `instruction-text`."
+  [result-xml instruction-text]
+  (str "<result>\n" result-xml "\n</result>\n"
+       "<instructions>\n" instruction-text "\n</instructions>"))
+
 ;;; ---------------------------------------- Main tool ----------------------------------------
 
 (mu/defn ^{:tool-name "construct_notebook_query"
@@ -988,7 +1036,7 @@
   one- or two-sentence `description` of what the chart shows (the metric, the grouping, and
   any notable filter); it is used as the saved question's description. See
   `resources/metabot/prompts/tools/construct_notebook_query.md` for the prompt contract."
-  [{:keys [_reasoning query visualization title description]} :- construct-notebook-query-args-schema]
+  [{:keys [_reasoning query visualization show_chart title description]} :- construct-notebook-query-args-schema]
   (try
     (let [normalized-visualization (some-> visualization (update-keys (comp keyword u/->kebab-case-en name)))
           chart-type              (or (chart-type->keyword (:chart-type normalized-visualization))
@@ -996,8 +1044,30 @@
           query-result            (execute-representations-query
                                    query
                                    {:recovery-hint recovery-hints/recovery-hint})
-          structured              (or (:structured-output query-result) (:structured_output query-result))]
-      (if (and structured (:query-id structured) (:query structured))
+          structured              (or (:structured-output query-result) (:structured_output query-result))
+          ;; A query built only to be read needs run_query, so without it the chart is the one way the user sees
+          ;; anything and is always shown.
+          show-chart?             (not (and (false? show_chart) (shared/tool-offered? "run_query")))]
+      (cond
+        (not (and structured (:query-id structured) (:query structured)))
+        ;; query-result may already have :output (error) or only :structured-output
+        (if structured
+          (let [query-xml        (llm-shape/query->xml (structured->query-data structured))
+                instruction-text (instructions/query-created-instructions-for (:query-id structured) false)]
+            (assoc query-result :output (tool-output query-xml instruction-text)))
+          query-result)
+
+        (not show-chart?)
+        (let [instruction-text (te/lines
+                                "Your query has been created. The user has not been shown it."
+                                ""
+                                (str "To read its values, call `run_query` with `query_id` `"
+                                     (:query-id structured) "`."))]
+          {:output            (tool-output (llm-shape/query->xml (structured->query-data structured)) instruction-text)
+           :structured-output (assoc structured :result-type :query)
+           :instructions      instruction-text})
+
+        :else
         (let [chart-result (create-chart-tools/create-chart
                             {:query-id      (:query-id structured)
                              :chart-type    chart-type
@@ -1017,8 +1087,7 @@
                  (str "- Always provide a direct link using: `" link "` where Chart is a meaningful link text")
                  "- If creating multiple charts, present all chart links"))
               chart-xml (structured->chart-xml structured (:chart-id chart-result) chart-type)]
-          {:output (str "<result>\n" chart-xml "\n</result>\n"
-                        "<instructions>\n" instruction-text "\n</instructions>")
+          {:output            (tool-output chart-xml instruction-text)
            :data-parts        [(streaming/viz-part
                                 {:entity-id   (:chart-id chart-result)
                                  :query-id    (:query-id structured)
@@ -1027,14 +1096,6 @@
                                  :title       title
                                  :description description})]
            :structured-output full-structured
-           :instructions      instruction-text})
-        ;; query-result may already have :output (error) or only :structured-output
-        (if-let [s (or (:structured-output query-result) (:structured_output query-result))]
-          (let [query-xml        (llm-shape/query->xml (structured->query-data s))
-                instruction-text (instructions/query-created-instructions-for (:query-id s))]
-            (assoc query-result
-                   :output (str "<result>\n" query-xml "\n</result>\n"
-                                "<instructions>\n" instruction-text "\n</instructions>")))
-          query-result)))
+           :instructions      instruction-text})))
     (catch Exception e
       (tools.u/handle-agent-or-api-error e))))
