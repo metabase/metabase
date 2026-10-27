@@ -226,8 +226,10 @@
     (is (nil? (manifest/directory-name-error "demo-viz")))
     (is (nil? (manifest/directory-name-error "Demo_Viz.2")))
     (is (nil? (manifest/directory-name-error "9lives")))
-    (doseq [identifier ["demo viz" "demo/viz" "demo\\viz" ".demo" "-demo" "_demo" "" "demo\tviz" "démo" "demo@viz"]]
-      (is (= (format "Plugin identifier \"%s\" must be letters, digits, \".\", \"_\" or \"-\", starting with a letter or digit"
+    (is (nil? (manifest/directory-name-error "Calendar Heatmap")))
+    (doseq [identifier ["demo " " demo" "demo/viz" "demo\\viz" ".demo" "-demo" "_demo" "" "demo\tviz" "démo" "demo@viz"]]
+      (is (= (format (str "Plugin identifier \"%s\" must be letters, digits, spaces, \".\", \"_\" or \"-\", starting with a "
+                          "letter or digit and not ending with a space")
                      identifier)
              (manifest/directory-name-error identifier))
           identifier)))

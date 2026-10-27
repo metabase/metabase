@@ -134,7 +134,7 @@
                                             :status         :active
                                             :dev_bundle_url "http://localhost:4000/"}))
       (testing "an identifier that can't name a directory, from before upload refused it, is left out"
-        (insert-plugin! "bad identifier" (cv.tu/valid-bundle-bytes "bad identifier")))
+        (insert-plugin! "bad/identifier" (cv.tu/valid-bundle-bytes "bad/identifier")))
       (export! dump-dir)
       (is (= ["exported"] (vec (.list (io/file dump-dir "custom_viz_plugins"))))))))
 
@@ -272,6 +272,22 @@
                      (files-in (io/file dump-dir-2 "custom_viz_plugins" "thumbs"))))
               (import! dump-dir-2)
               (is (= imported-hash (t2/select-one-fn :bundle_hash :model/CustomVizPlugin :identifier "thumbs"))))))))))
+
+(deftest round-trip-keeps-an-identifier-with-spaces-test
+  (mt/with-model-cleanup [:model/CustomVizPlugin]
+    (ts/with-random-dump-dir [dump-dir "custom-viz-round-trip-"]
+      (let [files  (plugin-files "Calendar Heatmap")
+            plugin (insert-plugin! "Calendar Heatmap" (cv.tu/make-tgz-bytes files))]
+        (export! dump-dir)
+        (testing "the directory is the identifier verbatim, spaces included"
+          (is (= ["Calendar Heatmap"] (vec (.list (io/file dump-dir "custom_viz_plugins"))))))
+        (t2/delete! :model/CustomVizPlugin :id (:id plugin))
+        (import! dump-dir)
+        (testing "the import registers the plugin under that identifier with its files"
+          (is (= (update-vals files seq)
+                 (some-> (t2/select-one-fn :bundle :model/CustomVizPlugin :identifier "Calendar Heatmap")
+                         cache/bundle->files
+                         (update-vals seq)))))))))
 
 (deftest tar-export-holds-the-bundles-files-test
   (mt/with-model-cleanup [:model/CustomVizPlugin]

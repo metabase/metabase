@@ -55,8 +55,9 @@
 
 (def ^:private directory-name-pattern
   "The identifiers the representation format accepts: an identifier names the plugin's directory in a repository, so
-   letters, digits, `.`, `_` and `-`, starting with a letter or digit."
-  #"[A-Za-z0-9][A-Za-z0-9._-]*")
+   letters, digits, spaces, `.`, `_` and `-`, starting with a letter or digit and not ending with a space. The same
+   pattern is the `identifier` schema in `@metabase/representations`."
+  #"[A-Za-z0-9](?:[A-Za-z0-9 ._-]*[A-Za-z0-9._-])?")
 
 (defn directory-name-error
   "Why `identifier` can't name a plugin's directory in a repository, or nil. Stricter than `identifier-error`, which
@@ -65,7 +66,8 @@
   [identifier]
   (or (identifier-error identifier)
       (when (and (string? identifier) (not (re-matches directory-name-pattern identifier)))
-        (format "Plugin identifier \"%s\" must be letters, digits, \".\", \"_\" or \"-\", starting with a letter or digit"
+        (format (str "Plugin identifier \"%s\" must be letters, digits, spaces, \".\", \"_\" or \"-\", starting with a "
+                     "letter or digit and not ending with a space")
                 identifier))))
 
 ;;; ------------------------------------------------ Version ------------------------------------------------

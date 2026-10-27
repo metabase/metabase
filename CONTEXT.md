@@ -15,7 +15,7 @@ The string that names a Custom Viz Plugin on an instance, in `custom:<identifier
 _Avoid_: Slug, name (ambiguous with display name), plugin id
 
 **Directory Name**:
-An Identifier a repository can hold: letters, digits, `.`, `_` and `-`, starting with a letter or digit. Registration refuses anything else; export leaves such a plugin out and says so in the log rather than renaming it.
+An Identifier a repository can hold: letters, digits, spaces, `.`, `_` and `-`, starting with a letter or digit and not ending with a space. Registration refuses anything else; export leaves such a plugin out and says so in the log rather than renaming it.
 _Avoid_: Valid identifier, safe identifier
 
 **Bundle**:

@@ -230,7 +230,7 @@
     (testing "an identifier a repository can't name is refused at upload"
       (is (re-find #"must be letters, digits"
                    (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
-                                      (cvp.tu/valid-bundle-bytes "a b")))))
+                                      (cvp.tu/valid-bundle-bytes "a/b")))))
     (testing "an identifier that is an existing one in another case is refused, it would share a repository directory"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "Thumbs"
                                                :display_name "Thumbs"
@@ -475,7 +475,7 @@
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (str/includes? resp "must not contain \":\"")))))
         (testing "dev plugin registration rejects an identifier a repository can't name"
-          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "a b"})]
+          (mt/with-dynamic-fn-redefs [cache/fetch-dev-manifest (constantly {:name "a/b"})]
             (let [resp (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
                                              {:dev_bundle_url "http://localhost:5174"})]
               (is (str/includes? resp "must be letters, digits")))))))))
