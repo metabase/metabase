@@ -379,7 +379,7 @@
   "A Card as serialization writes it, with portable references in place of ids."
   [:schema {:registry lib-be.schema/external-registry}
    [:merge
-    [:select-keys ::card [:archived :archived_directly :collection_position :collection_preview :description :display
+    [:select-keys ::card [:archived :archived_directly :collection_position :description :display
                           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
                           :card_schema :result_metadata :database_id :collection_id :dimensions :creator_id
                           :dataset_query :dimension_mappings :parameter_mappings :visualization_settings :parameters
