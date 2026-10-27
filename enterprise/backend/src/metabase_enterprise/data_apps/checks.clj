@@ -198,3 +198,17 @@
     (throw (data-app-error (tru "A data app can read only databases with tables published to the Library, not the database {0}."
                                 (str database-id)))))
   nil)
+(def ^:private sdk-user-key-values
+  "The user key-values, as `[namespace key]`, that the SDK reads and writes inside a data app."
+  #{["last_download_format" "download_format_preference"]})
+
+(defenterprise-schema check-user-key-value :- :nil
+  "Throws a 400 unless the user key-value `k` in `nmspace` is one the SDK uses inside a data app."
+  :feature :data-apps
+  [_data-app :- ::data-apps.schema/data-app
+   nmspace   :- :string
+   k         :- :string]
+  (when-not (contains? sdk-user-key-values [nmspace k])
+    (throw (data-app-error (tru "A data app can use only the user key-values of the SDK, not the key {0} in the namespace {1}."
+                                k nmspace))))
+  nil)

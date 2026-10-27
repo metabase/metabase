@@ -750,6 +750,23 @@
                 (testing "with a Library that does not publish the table, a data app does not find it"
                   (is (not (contains? (search-found as-data-app) ["table" (:id unpublished)])))))))))))))
 
+(deftest user-key-value-endpoints-allow-only-sdk-keys-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (let [sdk-key "user-key-value/namespace/last_download_format/key/download_format_preference"
+           other   "user-key-value/namespace/user_acknowledgement/key/seen"]
+       (testing "a data app reads, writes and clears the key the SDK uses"
+         (mt/user-http-request :crowberto :put 200 sdk-key as-data-app {:value {:last_download_format       "csv"
+                                                                                :last_table_download_format "csv"}})
+         (is (= {:last_download_format "csv" :last_table_download_format "csv"}
+                (mt/user-http-request :crowberto :get 200 sdk-key as-data-app)))
+         (mt/user-http-request :crowberto :delete 200 sdk-key as-data-app))
+       (testing "a data app is refused any other key"
+         (doseq [[method body] [[:put {:value true}] [:get nil] [:delete nil]]]
+           (is (= "A data app can use only the user key-values of the SDK, not the key seen in the namespace user_acknowledgement."
+                  (apply mt/user-http-request :crowberto method 400 other as-data-app (when body [body])))
+               (name method))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
     (mt/with-premium-features #{}
