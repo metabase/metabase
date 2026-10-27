@@ -2,11 +2,16 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import type {
   Collection,
   CollectionId,
+  ListTransformJobRunsResponse,
   PythonTransformTableAliases,
+  RunTransformResponse,
   SchemaName,
   TemplateTags,
   TransformId,
+  TransformJobId,
+  TransformJobRunId,
   TransformRun,
+  TransformRunId,
   TransformRunStatus,
   TransformSourceCheckpointStrategy,
   TransformTagId,
@@ -15,6 +20,30 @@ import type {
 import { createTransform } from "./api";
 import { getTableId } from "./e2e-qa-databases-helpers";
 import { retryRequest } from "./e2e-request-helpers";
+
+const TERMINAL_RUN_STATUSES = [
+  "succeeded",
+  "failed",
+  "timeout",
+  "canceled",
+] as const satisfies readonly TransformRunStatus[];
+
+type TerminalRunStatus = (typeof TERMINAL_RUN_STATUSES)[number];
+
+const RUN_STATUS_TEXT: Record<TerminalRunStatus, RegExp> = {
+  succeeded: /^Last ran .*successfully\./,
+  failed: /^Last run failed/,
+  timeout: /^Last run timed out/,
+  canceled: /^Last run was canceled/,
+};
+
+type RunWaitOptions = {
+  timeout?: number;
+};
+
+function isTerminalRunStatus(status: string | null | undefined) {
+  return TERMINAL_RUN_STATUSES.some((terminal) => terminal === status);
+}
 
 export function createTransformCollection({
   name,
@@ -36,19 +65,19 @@ export function visitTransform(transformId: TransformId) {
 }
 
 export function runTransform(transformId: TransformId) {
-  return cy.request("POST", `/api/transform/${transformId}/run`);
+  return cy.request<RunTransformResponse>(
+    "POST",
+    `/api/transform/${transformId}/run`,
+  );
 }
 
 export function runTransformAndWaitForStatus(
   transformId: TransformId,
-  status: TransformRunStatus,
+  status: TerminalRunStatus,
 ) {
-  return runTransform(transformId).then(({ body: run }) => {
-    return retryRequest(
-      () => cy.request("GET", `/api/transform/run/${run.run_id}`),
-      (response) => response.status === 200 && response.body.status === status,
-    );
-  });
+  return runTransform(transformId).then(({ body }) =>
+    waitForTransformRunStatus(body.run_id, status),
+  );
 }
 
 export function runTransformAndWaitForSuccess(transformId: TransformId) {
@@ -72,6 +101,117 @@ export function waitForSucceededTransformRuns() {
   return waitForTransformRuns((runs) =>
     runs.some((run) => run.status === "succeeded"),
   );
+}
+
+/**
+ * Polls the transform run until it ends and checks that it ended with `status`, so a run that ends
+ * with another status fails right away instead of exhausting the retries.
+ */
+export function waitForTransformRunStatus(
+  runId: TransformRunId,
+  status: TerminalRunStatus,
+  { timeout }: RunWaitOptions = {},
+) {
+  return retryRequest(
+    () => cy.request<TransformRun>("GET", `/api/transform/run/${runId}`),
+    ({ body }) => isTerminalRunStatus(body.status),
+    timeout,
+  ).then(({ body }) => {
+    expect(body.status, `status of transform run ${runId}`).to.eq(status);
+  });
+}
+
+/**
+ * Polls the job run until it ends and checks that it ended with `status`.
+ */
+export function waitForTransformJobRunStatus(
+  jobId: TransformJobId,
+  jobRunId: TransformJobRunId,
+  status: TerminalRunStatus,
+  { timeout }: RunWaitOptions = {},
+) {
+  const getJobRunStatus = ({ body }: { body: ListTransformJobRunsResponse }) =>
+    body.data.find((jobRun) => jobRun.id === jobRunId)?.status;
+
+  return retryRequest(
+    () =>
+      cy.request<ListTransformJobRunsResponse>(
+        "GET",
+        `/api/transform-job/${jobId}/runs`,
+      ),
+    (response) => isTerminalRunStatus(getJobRunStatus(response)),
+    timeout,
+  ).then((response) => {
+    expect(getJobRunStatus(response), `status of job run ${jobRunId}`).to.eq(
+      status,
+    );
+  });
+}
+
+/**
+ * Clicks the run button on a transform's run page, waits until the run that this click started ends
+ * with `status`, then checks that the page shows that status.
+ */
+export function runTransformFromUiAndWaitForStatus(
+  status: TerminalRunStatus,
+  options: RunWaitOptions = {},
+) {
+  cy.intercept("POST", "/api/transform/*/run").as("runTransformFromUi");
+  getRunButton().click();
+  cy.wait<unknown, RunTransformResponse>("@runTransformFromUi").then(
+    ({ response }) => {
+      expect(response?.statusCode).to.eq(202);
+      expect(response?.body.run_id, "accepted run id").to.be.a("number");
+      if (response?.body.run_id != null) {
+        waitForTransformRunStatus(response.body.run_id, status, options);
+      }
+    },
+  );
+  assertRunStatusShown(status);
+}
+
+/**
+ * Clicks the run button on a job page, waits until the job run that this click started ends with
+ * `status`, then checks that the page shows that status.
+ */
+export function runTransformJobFromUiAndWaitForStatus(
+  status: TerminalRunStatus,
+  options: RunWaitOptions = {},
+) {
+  cy.intercept("POST", "/api/transform-job/*/run").as("runTransformJobFromUi");
+  getRunButton().click();
+  cy.wait<unknown, RunTransformJobResponse>("@runTransformJobFromUi").then(
+    ({ request, response }) => {
+      expect(response?.statusCode).to.eq(202);
+      const jobId = getJobIdFromRunUrl(request.url);
+      const jobRunId = response?.body.job_run_id;
+      expect(jobRunId, "accepted job run id").to.be.a("number");
+      if (jobRunId != null) {
+        waitForTransformJobRunStatus(jobId, jobRunId, status, options);
+      }
+    },
+  );
+  assertRunStatusShown(status);
+}
+
+type RunTransformJobResponse = {
+  job_run_id: TransformJobRunId | null;
+};
+
+function getJobIdFromRunUrl(url: string): TransformJobId {
+  const [, jobId] =
+    new URL(url).pathname.match(/\/api\/transform-job\/(\d+)\/run$/) ?? [];
+  return Number(jobId);
+}
+
+function getRunButton() {
+  return cy.findAllByTestId("run-button").eq(0);
+}
+
+function assertRunStatusShown(status: TerminalRunStatus) {
+  cy.findByTestId("run-status")
+    .invoke("text")
+    .should("match", RUN_STATUS_TEXT[status]);
 }
 
 export function createMbqlTransform({
@@ -319,8 +459,7 @@ export function createAndRunSqlTransform({
     visitTransform: false,
     wrapId: false,
   }).then(({ body: transform }) => {
-    cy.request("POST", `/api/transform/${transform.id}/run`);
-    waitForSucceededTransformRuns();
+    runTransformAndWaitForSuccess(transform.id);
 
     return cy.wrap({
       transformId: transform.id,

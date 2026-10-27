@@ -418,8 +418,7 @@ function createAndRunMbqlJoinTransform({
         },
       })
         .then(({ body: transform }) => {
-          cy.request("POST", `/api/transform/${transform.id}/run`);
-          H.waitForSucceededTransformRuns();
+          H.runTransformAndWaitForSuccess(transform.id);
           return cy.wrap({ transformId: transform.id });
         })
         .then(({ transformId }) => {
