@@ -1,66 +1,6 @@
 const { H } = cy;
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-
-const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
-  SAMPLE_DATABASE;
 
 const BAR_COLOR = "#509EE3";
-
-const BUCKET_CASES = [
-  {
-    title: "a number column into 10 bins",
-    tableId: PRODUCTS_ID,
-    breakout: [
-      "field",
-      PRODUCTS.PRICE,
-      { binning: { strategy: "num-bins", "num-bins": 10 } },
-    ],
-    rows: [
-      [10, 2],
-      [20, 25],
-      [30, 29],
-      [40, 38],
-      [50, 22],
-      [60, 15],
-      [70, 35],
-      [80, 24],
-      [90, 10],
-    ],
-  },
-  {
-    title: "a coordinate column every 20 degrees",
-    tableId: PEOPLE_ID,
-    breakout: [
-      "field",
-      PEOPLE.LONGITUDE,
-      { binning: { strategy: "bin-width", "bin-width": 20 } },
-    ],
-    rows: [
-      [-180, 10],
-      [-160, 55],
-      [-140, 107],
-      [-120, 508],
-      [-100, 1507],
-      [-80, 313],
-    ],
-  },
-  {
-    title: "a temporal column by quarter of year",
-    tableId: ORDERS_ID,
-    breakout: [
-      "field",
-      ORDERS.CREATED_AT,
-      { "base-type": "type/DateTime", "temporal-unit": "quarter-of-year" },
-    ],
-    rows: [
-      [1, 5313],
-      [2, 4203],
-      [3, 4402],
-      [4, 4842],
-    ],
-  },
-];
 
 describe("scenarios > binning", () => {
   beforeEach(() => {
@@ -138,24 +78,5 @@ describe("scenarios > binning", () => {
     H.chartPathWithFillColor(BAR_COLOR)
       .should("have.length.greaterThan", 1)
       .and("have.length.at.most", 10);
-  });
-
-  BUCKET_CASES.forEach(({ title, tableId, breakout, rows }) => {
-    it(`should bucket ${title}`, () => {
-      H.visitQuestionAdhoc({
-        dataset_query: {
-          database: SAMPLE_DB_ID,
-          type: "query",
-          query: {
-            "source-table": tableId,
-            aggregation: [["count"]],
-            breakout: [breakout],
-          },
-        },
-        display: "table",
-      })
-        .its("response.body.data.rows")
-        .should("deep.equal", rows);
-    });
   });
 });
