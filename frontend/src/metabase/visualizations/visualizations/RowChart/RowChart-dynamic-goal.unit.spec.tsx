@@ -182,28 +182,23 @@ describe("row chart dynamic goal", () => {
     expect(getGraphicsSymbols("goal line")).toHaveLength(0);
   });
 
-  it("draws the goal line at 0 when fetching the reference fails", async () => {
+  it("draws no goal line when fetching the reference fails", async () => {
     setupCardDataset({ status: 500 });
     setup();
 
-    const goalLine = await findGoalLine();
-
-    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
-      getExpectedRowChartGoalX(document.body, 0, MAX_COUNT),
-      0,
+    await waitFor(() =>
+      expect(getGraphicsSymbols("bar")).toHaveLength(ROWS.length),
     );
-    expect(getGraphicsSymbols("bar")).toHaveLength(ROWS.length);
+    expect(getGraphicsSymbols("goal line")).toHaveLength(0);
   });
 
-  it("draws the goal line at 0 when the dataset reports the reference as failed", async () => {
+  it("draws no goal line when the dataset reports the reference as failed", async () => {
     setup({ referencedEntities: FAILED });
 
-    const goalLine = await findGoalLine();
-
-    expect(getRowChartGoalLineX(goalLine)).toBeCloseTo(
-      getExpectedRowChartGoalX(document.body, 0, MAX_COUNT),
-      0,
+    await waitFor(() =>
+      expect(getGraphicsSymbols("bar")).toHaveLength(ROWS.length),
     );
+    expect(getGraphicsSymbols("goal line")).toHaveLength(0);
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 });

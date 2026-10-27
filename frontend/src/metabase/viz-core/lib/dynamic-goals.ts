@@ -24,6 +24,7 @@ import {
 } from "metabase-types/guards";
 
 import type {
+  ComputedVisualizationSettings,
   GoalCard,
   GoalData,
   GoalRefError,
@@ -231,6 +232,16 @@ export function needsGraphGoalResolution(
     !isGoalStaticValue(goal) &&
     isDynamicGoalSetting(display, "graph.goal_value")
   );
+}
+
+// no goal line is better than one at a made-up value
+export function applyGraphGoalValue(
+  settings: ComputedVisualizationSettings,
+  value: number | null,
+): ComputedVisualizationSettings {
+  return value == null
+    ? { ...settings, "graph.show_goal": false, "graph.goal_value": null }
+    : { ...settings, "graph.goal_value": value };
 }
 
 function validGoalSegments(segments: unknown): GoalSegment[] {

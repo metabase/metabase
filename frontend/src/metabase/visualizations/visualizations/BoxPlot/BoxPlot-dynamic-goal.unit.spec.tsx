@@ -93,21 +93,22 @@ describe("box plot dynamic goal", () => {
     });
   });
 
-  it("draws the goal line at 0 when fetching the reference fails", async () => {
+  it("draws no goal line when fetching the reference fails", async () => {
     setupCardDataset({ status: 500 });
 
     await setup(createSeries());
 
-    await waitFor(() => expect(queryEChartsGoalLine()).toBeInTheDocument());
-    expect(screen.getByText("Gadget")).toBeInTheDocument();
+    expect(await screen.findByText("Gadget")).toBeInTheDocument();
+    expect(queryEChartsGoalLine()).not.toBeInTheDocument();
+    expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
   });
 
-  it("draws the goal line at 0 when the dataset reports the reference as failed", async () => {
+  it("draws no goal line when the dataset reports the reference as failed", async () => {
     await setup(createSeries(FAILED));
 
-    expect(queryEChartsGoalLine()).toBeInTheDocument();
     expect(screen.getByText("Gadget")).toBeInTheDocument();
-    expect(screen.queryByText("250")).not.toBeInTheDocument();
+    expect(queryEChartsGoalLine()).not.toBeInTheDocument();
+    expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
   });
 });

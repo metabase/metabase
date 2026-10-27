@@ -25,6 +25,11 @@ const REFERENCED_SETTINGS: ComputedVisualizationSettings = {
   "graph.goal_value": { type: "card", id: 9, column: "goal" },
 };
 
+const HIDDEN_GOAL_SETTINGS: ComputedVisualizationSettings = {
+  "graph.show_goal": false,
+  "graph.goal_value": null,
+};
+
 function setup(
   card: Card,
   settings: ComputedVisualizationSettings,
@@ -114,7 +119,7 @@ describe("useResolvedGoalSettings", () => {
       const { result } = setup(card, REFERENCED_SETTINGS);
       expect(result.current).toEqual({
         status: "resolving",
-        settings: { ...REFERENCED_SETTINGS, "graph.goal_value": null },
+        settings: HIDDEN_GOAL_SETTINGS,
         errors: [],
       });
 
@@ -127,7 +132,7 @@ describe("useResolvedGoalSettings", () => {
       );
     });
 
-    it("falls back to 0 and reports the error when the reference cannot be resolved", async () => {
+    it("hides the goal line and reports the error when the reference cannot be resolved", async () => {
       setupCardDataset({ status: 500 });
 
       const { result } = setup(card, REFERENCED_SETTINGS);
@@ -135,13 +140,13 @@ describe("useResolvedGoalSettings", () => {
       await waitFor(() =>
         expect(result.current).toMatchObject({
           status: "resolved",
-          settings: { ...REFERENCED_SETTINGS, "graph.goal_value": 0 },
+          settings: HIDDEN_GOAL_SETTINGS,
           errors: [{ reason: "query-failed" }],
         }),
       );
     });
 
-    it("falls back to 0 and reports the error for a reference the dataset reports as failed", () => {
+    it("hides the goal line and reports the error for a reference the dataset reports as failed", () => {
       const data = createMockDatasetData({
         ...DATA,
         referenced_entities: createMockFailedReferencedEntitiesResults({
@@ -153,7 +158,7 @@ describe("useResolvedGoalSettings", () => {
 
       expect(result.current).toEqual({
         status: "resolved",
-        settings: { ...REFERENCED_SETTINGS, "graph.goal_value": 0 },
+        settings: HIDDEN_GOAL_SETTINGS,
         errors: [
           {
             type: "card",

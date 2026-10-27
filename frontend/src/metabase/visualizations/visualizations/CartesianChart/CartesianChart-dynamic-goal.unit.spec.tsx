@@ -103,21 +103,22 @@ describe.each(DYNAMIC_GOAL_CARTESIAN_DISPLAYS)(
       });
     });
 
-    it("draws the goal line at 0 when fetching the reference fails", async () => {
+    it("draws no goal line when fetching the reference fails", async () => {
       setupCardDataset({ status: 500 });
 
       await setup(createSeries(display));
 
-      await waitFor(() => expect(queryEChartsGoalLine()).toBeInTheDocument());
-      expect(screen.getByText("Jan")).toBeInTheDocument();
+      expect(await screen.findByText("Jan")).toBeInTheDocument();
+      expect(queryEChartsGoalLine()).not.toBeInTheDocument();
+      expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
     });
 
-    it("draws the goal line at 0 when the dataset reports the reference as failed", async () => {
+    it("draws no goal line when the dataset reports the reference as failed", async () => {
       await setup(createSeries(display, FAILED));
 
-      expect(queryEChartsGoalLine()).toBeInTheDocument();
       expect(screen.getByText("Jan")).toBeInTheDocument();
-      expect(screen.queryByText("250")).not.toBeInTheDocument();
+      expect(queryEChartsGoalLine()).not.toBeInTheDocument();
+      expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
       expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
     });
   },
