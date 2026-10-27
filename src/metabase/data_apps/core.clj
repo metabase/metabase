@@ -1,5 +1,6 @@
 (ns metabase.data-apps.core
   (:require
+   [metabase.actions.schema :as actions.schema]
    [metabase.analytics.core :as analytics]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.macros.scope :as scope]
@@ -94,3 +95,10 @@
   [_data-app  :- ::data-apps.schema/data-app
    _action-id :- ::lib.schema.id/action]
   nil)
+
+(defenterprise-schema data-app-actions :- [:sequential ::actions.schema/action]
+  "The `actions` that `data-app` may use; all of them without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app :- ::data-apps.schema/data-app
+   actions   :- [:sequential ::actions.schema/action]]
+  actions)

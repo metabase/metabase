@@ -541,6 +541,29 @@
                      (mt/user-http-request :crowberto :post 200 (format "action/%d/execute" elsewhere-id)
                                            {:parameters {}})))))))))))
 
+(deftest action-read-endpoints-hold-to-app-actions-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (do-with-app-collection
+     (fn [collection-id]
+       (do-with-rename-action!
+        collection-id
+        (fn [action-id]
+          (mt/with-temp [:model/Collection {elsewhere-collection-id :id} {:namespace :data-actions}]
+            (do-with-rename-action!
+             elsewhere-collection-id
+             (fn [elsewhere-id]
+               (testing "the action list holds only the app's actions"
+                 (is (= [action-id] (map :id (mt/user-http-request :crowberto :get 200 "action" as-data-app)))))
+               (testing "the app's action is readable"
+                 (is (=? {:id action-id} (mt/user-http-request :crowberto :get 200 (format "action/%d" action-id) as-data-app))))
+               (testing "an action outside the app's collection is refused"
+                 (is (= (action-error elsewhere-id)
+                        (mt/user-http-request :crowberto :get 400 (format "action/%d" elsewhere-id) as-data-app))))
+               (testing "a request that is not a data app's lists and reads both"
+                 (is (= #{action-id elsewhere-id}
+                        (set (filter #{action-id elsewhere-id} (map :id (mt/user-http-request :crowberto :get 200 "action"))))))
+                 (is (=? {:id elsewhere-id} (mt/user-http-request :crowberto :get 200 (format "action/%d" elsewhere-id))))))))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
     (mt/with-premium-features #{}

@@ -6,6 +6,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase.actions.schema :as actions.schema]
    [metabase.api.common :as api]
    [metabase.collections.core :as collections]
    [metabase.data-apps.core :as data-apps]
@@ -160,3 +161,10 @@
     (throw (data-app-error (tru "A data app can run only the actions in its own collection, not the action {0}."
                                 action-id))))
   nil)
+
+(defenterprise-schema data-app-actions :- [:sequential ::actions.schema/action]
+  "The `actions` in `data-app`'s collection."
+  :feature :data-apps
+  [data-app :- ::data-apps.schema/data-app
+   actions  :- [:sequential ::actions.schema/action]]
+  (filterv (partial in-app-collection? data-app) actions))

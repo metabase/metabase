@@ -867,7 +867,8 @@
   data-apps
   {:team "Embedding"
    :api #{metabase.data-apps.core}
-   :uses #{analytics
+   :uses #{actions
+           analytics
            api
            api-scope
            lib.be
