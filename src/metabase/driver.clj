@@ -1139,6 +1139,11 @@
   [driver _feature database]
   (database-supports? driver :regex database))
 
+;; by default a driver supports `:stage-ctes/nested` if it supports `:stage-ctes`
+(defmethod database-supports? [::driver :stage-ctes/nested]
+  [driver _feature database]
+  (database-supports? driver :stage-ctes database))
+
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
   existing columns; aggregate functions and other expressions; joined tables; and joined subqueries; be sure to return
