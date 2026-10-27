@@ -223,6 +223,9 @@
      (or
       ;; 1a. columns returned by previous stage
       (visible-columns-from-previous-stage-returned-columns query stage-number options)
+      ;; 1a'. the columns of the stage's own literal rows
+      (when (:values this-stage)
+        (lib.util/values-columns this-stage))
       ;; 1b: default visible Fields for the source Table
       (when source-table
         (assert (integer? source-table))

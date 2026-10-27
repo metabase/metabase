@@ -352,14 +352,29 @@
 
 (mu/defn source-stage-number :- [:maybe [:int {:min 0}]]
   "The index of the stage that stage `stage-number` reads: the one its `:source-stage` names, or else the stage before
-  it. `nil` for a stage that reads a table, a card or native SQL."
+  it. `nil` for a stage that reads a table, a card, native SQL or its own `:values`."
   [query        :- ::legacy-or-mbql5-query
    stage-number :- :int]
-  (let [stage-number (canonical-stage-index query stage-number)]
-    (if-let [source-stage (:source-stage (nth (:stages (pipeline query)) stage-number))]
-      (stage-number-named query source-stage)
-      (when (pos? stage-number)
-        (dec stage-number)))))
+  (let [stage-number (canonical-stage-index query stage-number)
+        stage        (nth (:stages (pipeline query)) stage-number)]
+    (cond
+      (:values stage)       nil
+      (:source-stage stage) (stage-number-named query (:source-stage stage))
+      (pos? stage-number)   (dec stage-number))))
+
+(defn values-columns
+  "The columns a stage with `:values` gets from its rows. They are named, like the columns of a stage it reads, so they
+  have `:lib/source :source/previous-stage`."
+  [{:keys [values], :as _stage}]
+  (mapv (fn [{column-name :name, base-type :base-type}]
+          {:lib/type                :metadata/column
+           :lib/source              :source/previous-stage
+           :lib/source-column-alias column-name
+           :name                    column-name
+           :display-name            column-name
+           :base-type               base-type
+           :effective-type          base-type})
+        (:columns values)))
 
 (defn split-stage
   "`stage`, split in two by a query transformation, as `[first-stage second-stage]` in the same place among the stages:
@@ -402,10 +417,12 @@
           branches)))
 
 (defn- reads-named-stage? [stages]
-  (some (fn [stage]
-          (or (seq (stage-reads stage))
-              (some #(reads-named-stage? (:stages %)) (:joins stage))))
-        stages))
+  (or (some (fn [stage]
+              (or (seq (stage-reads stage))
+                  (some #(reads-named-stage? (:stages %)) (:joins stage))))
+            stages)
+      ;; a `:values` stage after the first starts a chain of its own
+      (some :values (rest stages))))
 
 (defn expand-named-stages
   "`query` as a tree: every stage read by name is copied to where it is read, so each stage reads the stage before it
@@ -418,11 +435,18 @@
     (let [stages     (vec (:stages query))
           name->idx  (into {} (keep-indexed (fn [i stage] (when-let [n (:name stage)] [n i]))) stages)
           source-idx (fn [i]
-                       (if-let [source-stage (:source-stage (stages i))]
-                         (or (name->idx source-stage)
-                             (throw (ex-info (i18n/tru "No stage named {0}" (pr-str source-stage))
-                                             {:stage-name source-stage})))
-                         (when (pos? i) (dec i))))]
+                       (cond
+                         (:values (stages i))
+                         nil
+
+                         (:source-stage (stages i))
+                         (let [source-stage (:source-stage (stages i))]
+                           (or (name->idx source-stage)
+                               (throw (ex-info (i18n/tru "No stage named {0}" (pr-str source-stage))
+                                               {:stage-name source-stage}))))
+
+                         (pos? i)
+                         (dec i)))]
       (letfn [(chain [i]
                 (loop [i i, acc ()]
                   (let [acc (cons i acc)]
@@ -451,7 +475,7 @@
   #'source-stage-number)
 
 (defn first-stage?
-  "Whether stage `stage-number` reads a table, a card or native SQL rather than another stage."
+  "Whether stage `stage-number` reads a table, a card, native SQL or its own `:values` rather than another stage."
   [query stage-number]
   (not (source-stage-number query stage-number)))
 

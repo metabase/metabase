@@ -1725,6 +1725,7 @@
   stage-number-named
   stage-reads
   union-all-stage-numbers
+  values-columns
   query-stage
   update-query-stage]
  [metabase.lib.util.unique-name-generator

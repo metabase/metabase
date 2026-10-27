@@ -59,7 +59,8 @@
                  :window-functions/cumulative
                  :window-functions/offset
                  :window-functions/general
-                 :union-all-stages]]
+                 :union-all-stages
+                 :values-stages]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 ;; True when the driver's `run-transform!` `:rows-affected` reflects rows actually written.

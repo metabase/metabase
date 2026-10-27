@@ -1345,7 +1345,8 @@
           metabase.lib.schema.temporal-bucketing
           metabase.lib.schema.test-spec
           metabase.lib.schema.util
-          metabase.lib.schema.validate}
+          metabase.lib.schema.validate
+          metabase.lib.schema.values}
    :uses #{lib lib.types util}}
 
   lib.source-swap

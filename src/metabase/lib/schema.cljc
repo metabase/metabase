@@ -34,6 +34,7 @@
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as template-tag]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.schema.values :as values]
    [metabase.util.malli.registry :as mr]
    [metabase.util.match :as match]
    [metabase.util.performance :refer [every? select-keys some empty? get-in]]))
@@ -378,6 +379,8 @@
      [:order-by           {:optional true} [:ref ::order-by/order-bys]]
      [:source-table       {:optional true} [:ref ::id/table]]
      [:source-card        {:optional true} [:ref ::id/card]]
+     ;; literal rows, in place of a source table, card or stage
+     [:values             {:optional true} [:ref ::values/values]]
      [:page               {:optional true} [:ref ::page]]
      [:limit              {:optional true} nat-int?]
      [:pivot              {:optional true} [:ref ::pivot]]]]
@@ -387,6 +390,11 @@
    [:ref ::stage.valid-refs]
    [:ref ::stage.page-and-limit-are-mutually-exclusive]
    [:ref :metabase.lib.schema.expression.window/stage.valid-windows]
+   [:fn
+    {:error/message "A stage with :values reads nothing else: no :source-table, :source-card, :source-stage or :union-all"}
+    (fn [stage]
+      (not (and (:values stage)
+                (some #(contains? stage %) [:source-table :source-card :source-stage :union-all]))))]
    (common/disallowed-keys
     {:native             ":native is not allowed in an MBQL stage."
      :aggregation-idents ":aggregation-idents is deprecated and should not be used"
@@ -451,8 +459,8 @@
            :error/message "Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"}
    [:mbql.stage/native [:fn {:error/message "Initial native stage"} map?]]
    [:mbql.stage/mbql   [:fn
-                        {:error/message "Initial MBQL stage must have either :source-table or :source-card (but not both)"}
-                        (some-fn :source-table :source-card)]]])
+                        {:error/message "Initial MBQL stage must have either :source-table, :source-card or :values"}
+                        (some-fn :source-table :source-card :values)]]])
 
 (mr/def ::stage.additional
   [:multi {:dispatch      lib-type

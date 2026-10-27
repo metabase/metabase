@@ -573,6 +573,10 @@
       (m/find-first #(= (:name %) id-or-name)
                     (lib.metadata.calculation/returned-columns query table)))
 
+    (:values stage)
+    (when (string? id-or-name)
+      (m/find-first #(= (:name %) id-or-name) (lib.util/values-columns stage)))
+
     (= (:lib/type stage) :mbql.stage/native)
     (when-some [col (resolve-in-current-stage-metadata query stage-number id-or-name)]
       (-> col

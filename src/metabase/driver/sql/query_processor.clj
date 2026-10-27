@@ -2375,6 +2375,21 @@
 (defn- reads-named-stage? [stages]
   (some (comp seq lib.util/stage-reads) stages))
 
+(defn- values-source-form
+  "The `FROM` of a stage with `:values`: its literal rows, compiled as literals of their column's type,
+
+    FROM (SELECT 1 AS step, 'a' AS label UNION ALL SELECT 2 AS step, 'b' AS label) AS __mb_source"
+  [driver {{:keys [columns rows]} :values}]
+  (let [select-row (fn [row]
+                     {:select (mapv (fn [{column-name :name, base-type :base-type} value]
+                                      [(->honeysql driver [:value {:base-type base-type, :effective-type base-type} value])
+                                       [(->honeysql driver (h2x/identifier :field-alias column-name))]])
+                                    columns row)})]
+    {:from [[(if (= (count rows) 1)
+               (select-row (first rows))
+               {:union-all (mapv select-row rows)})
+             [(->honeysql driver (h2x/identifier :table-alias source-query-alias))]]]}))
+
 (defn- stages->honeysql-subselects
   "Compile `stages` to HoneySQL with each stage nested as a subselect in the `FROM` of the next one."
   [driver stages]
@@ -2384,7 +2399,9 @@
   (first
    (reduce
     (fn [[prev-hsql prev-stage] stage]
-      (let [prev-from (stage-source-form driver prev-hsql prev-stage)]
+      (let [prev-from (if (:values stage)
+                        (values-source-form driver stage)
+                        (stage-source-form driver prev-hsql prev-stage))]
         [(stage->honeysql driver prev-from stage) stage]))
     [nil nil]
     stages)))
@@ -2493,6 +2510,9 @@
         compiled (reduce (fn [compiled idx]
                            (let [stage     (stages idx)
                                  prev-from (cond
+                                             (:values stage)
+                                             (values-source-form driver stage)
+
                                              (seq (:union-all stage))
                                              (union-all-source-form driver level stages compiled idx)
 

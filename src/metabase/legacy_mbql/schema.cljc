@@ -38,6 +38,7 @@
    [metabase.lib.schema.settings :as lib.schema.settings]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
+   [metabase.lib.schema.values :as lib.schema.values]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -2263,6 +2264,9 @@
      ;; MBQL 5 `:union-all`, as [[metabase.lib.util/expand-named-stages]] writes it out: one source query per appended
      ;; branch. Here only because drivers still run the legacy form of a query.
      [:union-all    {:optional true} [:sequential [:ref ::SourceQuery]]]
+     ;; MBQL 5 `:values`: literal rows in place of a source table or query. Here only because drivers still run the
+     ;; legacy form of a query.
+     [:values       {:optional true} [:ref ::lib.schema.values/values]]
      [:source-metadata
       {:optional    true
        :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is
@@ -2288,9 +2292,9 @@
    ;; CONSTRAINTS
    ;;
    [:fn
-    {:error/message "Query must specify either `:source-table` or `:source-query`, but not both."}
+    {:error/message "Query must specify one of `:source-table`, `:source-query` or `:values`."}
     (fn [query]
-      (= 1 (count (select-keys query [:source-query :source-table]))))]
+      (= 1 (count (select-keys query [:source-query :source-table :values]))))]
    [:ref ::RemoveFieldRefsFromFieldsAlreadyInBreakout]
    ;; `disallowed-keys` will remove these keys if we see them automatically during normalization.
    (lib.schema.common/disallowed-keys

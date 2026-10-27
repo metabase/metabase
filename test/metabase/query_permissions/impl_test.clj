@@ -327,6 +327,31 @@
               :perms/create-queries (zipmap table-ids (repeat :query-builder))}
              (query-perms/required-perms-for-query query :already-preprocessed? true))))))
 
+(deftest ^:parallel mbql5-values-stage-query-test
+  (let [uuid   #(str (random-uuid))
+        values {:columns [{:name "step" :base-type :type/Integer}] :rows [[1] [2]]}
+        query  #(lib/query (mt/metadata-provider) {:lib/type :mbql/query, :database (mt/id), :stages %})]
+    (testing "A stage of literal rows reads no table, so it needs no data permissions"
+      (is (empty? (query-perms/required-perms-for-query
+                   (query [{:lib/type :mbql.stage/mbql, :values values}])
+                   :already-preprocessed? true))))
+    (testing "Joined to a table, the query needs exactly that table's permissions"
+      (is (= {:perms/view-data      {(mt/id :venues) :unrestricted}
+              :perms/create-queries {(mt/id :venues) :query-builder}}
+             (query-perms/required-perms-for-query
+              (query [{:lib/type :mbql.stage/mbql, :name "steps", :values values}
+                      {:lib/type     :mbql.stage/mbql
+                       :source-stage "steps"
+                       :joins        [{:lib/type   :mbql/join
+                                       :alias      "v"
+                                       :strategy   :inner-join
+                                       :stages     [{:lib/type :mbql.stage/mbql, :source-table (mt/id :venues)}]
+                                       :conditions [[:>= {:lib/uuid (uuid)}
+                                                     [:field {:lib/uuid (uuid), :base-type :type/Integer, :join-alias "v"} "PRICE"]
+                                                     [:field {:lib/uuid (uuid), :base-type :type/Integer} "step"]]]}]
+                       :aggregation  [[:count {:lib/uuid (uuid)}]]}])
+              :already-preprocessed? true))))))
+
 (deftest ^:parallel mbql5-native-query-test
   (testing "Should be able to calculate permissions for a MBQL 5 native query (#39024)"
     (let [metadata-provider (mt/metadata-provider)

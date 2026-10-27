@@ -276,12 +276,14 @@
 
 (mu/defn source-stage-path :- [:maybe ::path]
   "The path of the stage that the stage at `stage-path` reads: the top-level stage its `:source-stage` names, or else
-  the stage before it. `nil` for a stage that reads a table, a card or native SQL."
+  the stage before it. `nil` for a stage that reads a table, a card, native SQL or its own `:values`."
   [query      :- ::lib.schema/query
    stage-path :- ::path]
-  (if-let [source-stage (:source-stage (get-in query stage-path))]
-    [:stages (lib.util/stage-number-named query source-stage)]
-    (previous-path stage-path)))
+  (let [stage (get-in query stage-path)]
+    (cond
+      (:values stage)       nil
+      (:source-stage stage) [:stages (lib.util/stage-number-named query (:source-stage stage))]
+      :else                 (previous-path stage-path))))
 
 (mu/defn next-path :- [:maybe ::path]
   "Return to the next stage or join, if there is one; if not, returns `nil`."

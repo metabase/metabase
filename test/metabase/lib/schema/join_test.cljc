@@ -19,7 +19,7 @@
   (is (=? {:lib/type "missing required key"
            :stages [[{:joins [{:stages     ["Invalid stage :lib/type: expected :mbql.stage/native or :mbql.stage/mbql"]
                                :conditions "should have at least 1 elements"}]}
-                     "Initial MBQL stage must have either :source-table or :source-card (but not both)"]]}
+                     "Initial MBQL stage must have either :source-table, :source-card or :values"]]}
           (mu.humanize/humanize (mr/explain ::lib.schema/query {:stages [{:lib/type :mbql.stage/mbql
                                                                           :joins    [{:lib/type :mbql/join
                                                                                       :stages   [{}]

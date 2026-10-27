@@ -41,6 +41,8 @@
          (vswap! required-features conj! (:strategy stage-or-join)))
        (when (and (= path-type :lib.walk/stage) (seq (:union-all stage-or-join)))
          (vswap! required-features conj! :union-all-stages))
+       (when (and (= path-type :lib.walk/stage) (:values stage-or-join))
+         (vswap! required-features conj! :values-stages))
        nil))
     (persistent! @required-features)))
 

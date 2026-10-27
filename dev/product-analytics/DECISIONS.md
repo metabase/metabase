@@ -287,3 +287,46 @@ Status:
 - A period with no event at all drops out of the triangle. That can't happen on real event volumes, and every cohort
   variant matches.
 - Pays back: a calendar or numbers source in MBQL, if it ever matters.
+
+## D24: A stage of literal rows, `:values`
+
+- **keep**, shape; **budget**, the items below.
+- Shape: `{:lib/type :mbql.stage/mbql :name "steps" :values {:columns [{:name "step" :base-type :type/Integer} …]
+  :rows [[1 "1. Viewed pricing"] …]}}`. `:values` is the stage's source, in place of `:source-table`, `:source-card`
+  or the stage it reads; the stage's own clauses (fields, filters, …) apply on top, as on a table. It may sit at any
+  position, and later stages read it by name.
+- Change from the starting design: `:values` is a source, not a whole stage kind. The QP adds `:fields` and `:limit`
+  to stages, so a stage that could hold nothing else would fight the middleware.
+- Validation (`metabase.lib.schema.values`): at least one column and one row; unique column names; each row has one
+  value per column; values are number, string, boolean or nil, loosely checked against the base type (numbers for
+  numeric types, strings for text and temporal, booleans for boolean). A `:values` stage can't also have
+  `:source-table`, `:source-card`, `:source-stage` or `:union-all`. Stage 0 may have `:values` instead of a table.
+- Lib: `source-stage-number` and `lib.walk/source-stage-path` are nil for a values stage, so nothing treats it as
+  reading the previous stage. `lib.util/values-columns` gives the declared columns with
+  `:lib/source :source/previous-stage`: they are named columns of the stage's `FROM` subquery, which is exactly what
+  that source means to `add-alias-info` (`__mb_source.step`). Field resolution and `add-implicit-clauses` read them.
+- Compile: `FROM (SELECT 1 AS step, ? AS label UNION ALL SELECT 2 AS step, ? AS label) AS __mb_source`. Each value
+  compiles as `[:value {:base-type …} v]`, the existing literal path: numbers inline, text as parameters. Works in the
+  CTE compiler and as stage 0 of the subselect compiler.
+- Permissions: the D12 walk finds no table in a values stage. A values-only query needs no data permission; joined to
+  a table, it needs exactly that table's.
+- Gate: `:values-stages`, true for `:sql`.
+- Legacy (D18): the legacy inner query accepts `:values` in place of `:source-table`/`:source-query`, and
+  `expand-named-stages` treats a values stage as the start of a chain, so a join to it gets a source query of just the
+  rows. The round trip back to MBQL 5 keeps it (tested).
+- Why: the funnel's `ARRAY JOIN` unpivot and D23's offset axis need a few literal rows. A union of n branches
+  recomputes the funnel per branch on ClickHouse; a native stage needs native permissions (D12).
+- Rejected:
+  - `:source/values` as a new `:lib/source`. It touches the column-source enum, its validators and every `case` on
+    `:lib/source`, in Lib and the frontend, to say what `:source/previous-stage` already says.
+  - `VALUES (…), (…)` as a table constructor. Postgres and ClickHouse spell it differently (ClickHouse's is a table
+    function with a type string); `SELECT … UNION ALL` is portable.
+  - `ARRAY JOIN` as a clause: ClickHouse-only.
+- Budget:
+  - A values-only query needs no data permission at all, so anyone who can query the database's connection can make it
+    evaluate literal `SELECT`s. That reads no data, but it does not fail closed.
+  - All-NULL columns get the database's default type (text on Postgres); values aren't cast to their base type.
+  - Drivers that need `FROM dual` (Oracle) or reject `SELECT` without `FROM` need an override.
+- Evidence: a per-person max funnel level joined to three literal steps with `level >= step` counts 22123 / 5077 /
+  1598 on ClickHouse (DB 2) and Postgres (DB 81), matching hand-written SQL. A values-only query returns its rows on
+  both.

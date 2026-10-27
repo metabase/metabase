@@ -32,8 +32,14 @@
    path                                       :- ::lib.walk/path
    {source-table-id :source-table, :as stage} :- ::lib.schema/stage]
   (when (should-add-implicit-fields? stage)
-    (let [cols        (if source-table-id
+    (let [cols        (cond
+                        source-table-id
                         (lib/returned-columns query (lib.metadata/table query source-table-id))
+
+                        (:values stage)
+                        (lib/values-columns stage)
+
+                        :else
                         (for [col (lib.walk/apply-f-for-stage-at-path
                                    lib/returned-columns
                                    query
