@@ -120,6 +120,9 @@ export function DataAppView({
   const { isolatedOrigin, frameOrigin, originMismatch } =
     useDataAppFrameOrigin();
   const isCrossOrigin = isolatedOrigin !== null;
+  const isIsolatedOriginMisconfigured = useSetting(
+    "isolated-origin-misconfigured?",
+  );
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeEl, setIframeElState] = useState<HTMLIFrameElement | null>(null);
@@ -296,6 +299,17 @@ export function DataAppView({
       <NotFound
         title={t`Data app not found`}
         message={t`This data app doesn’t exist or has been disabled.`}
+      />
+    );
+  }
+
+  // The server refuses the app's document then, so the frame would never report back.
+  if (isIsolatedOriginMisconfigured) {
+    return (
+      <CenteredEmptyState
+        title={t`Data apps are unavailable`}
+        message={t`MB_ISOLATED_ORIGIN is set to a value that can’t be used, so data apps are turned off. The server log says why.`}
+        illustrationElement={<Icon name="warning" size={64} />}
       />
     );
   }
