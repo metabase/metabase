@@ -42,19 +42,19 @@
 (defn- invoke!
   "Call `run_query` through `tool-var` as the agent loop does.
 
-   Include `other-tools` in the profile and use `memory` as the agent memory. Return the tool's result,
-   or `{:output <the text the model reads> :error {:class :code}}` on failure.
+   Include `other-tools` in the profile, run as `metabot`, and use `memory` as the agent memory.
+   Return the tool's result, or `{:output <the text the model reads> :error {:class :code}}` on failure.
    Allow the runtime's scope check to pass so tests can vary the tool's SQL scope check independently."
-  [tool-var other-tools memory args]
+  [tool-var other-tools metabot memory args]
   (let [entries (binding [scope/*current-user-scope* api-scope/unrestricted]
-                  (tools/->entries (cons tool-var other-tools) (atom memory) nil :internal))]
+                  (tools/->entries (cons tool-var other-tools) (atom memory) metabot :internal))]
     ((:fn (get entries "run_query")) args)))
 
 (defn- call-tool!
   "Call Chat's `run_query` as rasta with `memory` as the agent memory."
   [memory args]
   (mt/with-current-user (mt/user->id :rasta)
-    (invoke! #'tools/run-query-tool chat-tools memory args)))
+    (invoke! #'tools/run-query-tool chat-tools nil memory args)))
 
 (defn- call-tool-in-conversation!
   "[[call-tool!]] in a conversation of rasta's own."
@@ -179,6 +179,16 @@
     (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
       (is (= (refusal ::run-query/query-execution-off "Query execution is turned off for Metabot.")
              (call-tool! {:state {:queries {"q1" (venues-by-id)}}} {:query_id "q1"})))))
+  (testing "nothing runs for the embedded Metabot, even with query execution turned on"
+    (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :rasta)}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user (mt/user->id :rasta)
+          (is (= (refusal ::run-query/embedded-metabot "Metabot can't run queries in embedded apps.")
+                 (invoke! #'tools/run-query-tool
+                          chat-tools
+                          (t2/select-one :model/Metabot :entity_id metabot.config/embedded-metabot-id)
+                          {:conversation-id conversation-id, :state {:queries {"q1" (venues-by-id)}}}
+                          {:query_id "q1"})))))))
   (testing "an unknown id lists the ids the model can use"
     (is (= (refusal ::recoverable.common/unknown-query-id
                     (str "Query \"nope\" was not found. Available query IDs: \"q1\". Use the ID of a query that you "
@@ -451,6 +461,7 @@
           (is (= database-not-found
                  (invoke! #'tools/run-query-tool
                           chat-tools
+                          nil
                           {:conversation-id conversation-id
                            :state           {:queries {"q1" {:database Integer/MAX_VALUE
                                                              :type     :query
@@ -645,6 +656,7 @@
                              (mt/with-current-user (mt/user->id :rasta)
                                (invoke! #'tools/run-query-tool
                                         other-tools
+                                        nil
                                         {:conversation-id conversation-id
                                          :state           {:queries {"q1" query}}}
                                         {:query_id "q1"})))))
@@ -963,6 +975,7 @@
     (mt/with-current-user (mt/user->id :rasta)
       (invoke! #'tools/run-sql-query-tool
                [#'tools/create-sql-query-tool]
+               nil
                (assoc memory :conversation-id conversation-id)
                args))))
 
