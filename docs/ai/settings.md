@@ -140,13 +140,15 @@ Toggling off Metabot only turns off in-app Metabot features. People can still us
 
 _Internal tab._
 
-This setting determines whether Metabot can run queries and read their _results_, so it can answer questions about values in the results. Query execution is on by default.
+This setting determines whether Metabot can run queries and read their _results_, so Metabot can answer questions about values in the results.
 
-When query execution is off, Metabot can still build queries and charts for you, but it can't read their results.
+Metabot runs queries with the permissions of the person asking, and may send the result rows to your AI provider in order to respond to a prompt.
 
-Metabot runs queries with the permissions of the person asking, and sends the result rows to your AI provider. See [AI privacy](./privacy.md#when-query-execution-is-on-metabot-sends-query-results-to-the-ai-provider).
+When this setting is off, Metabot can still build queries and charts for you, but it can't read their results.
 
 Metabot in Slack and in embedded apps doesn't read query results, regardless of this setting.
+
+See [AI privacy](./privacy.md#by-default-metabot-sends-query-results-to-the-ai-provider).
 
 If [`MB_METABOT_QUERY_EXECUTION_ENABLED`](../configuring-metabase/environment-variables.md#mb_metabot_query_execution_enabled) is set, the toggle shows its value and is locked.
 

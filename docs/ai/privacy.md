@@ -21,7 +21,7 @@ When using the Metabase AI service, the data we send includes:
 
 How Metabase the company processes this data is covered by your agreement with Metabase. Only Metabase Cloud customers have access to the Metabase AI Service.
 
-## When query execution is on, Metabot sends query results to the AI provider
+## By default, Metabot sends query results to the AI provider
 
 When query execution is on, Metabot can run queries and read their results, so it can answer with actual values from your data. Metabase sends those results to the AI provider.
 
@@ -29,7 +29,7 @@ Metabot can run queries on your behalf, including ones it wrote itself, the one 
 
 These can be query builder or SQL queries, but admins can disable SQL for Metabot.
 
-Query execution is on by default. Admins can turn it off in [AI settings](./settings.md#allow-metabot-to-read-query-results).
+Admins can prevent Metabot from reading query results in [AI settings](./settings.md#allow-metabot-to-read-query-results).
 
 For each query Metabot runs, Metabase sends part of the result to the AI provider, like the column names and a limited number of rows. Metabot can run many queries in one conversation.
 
