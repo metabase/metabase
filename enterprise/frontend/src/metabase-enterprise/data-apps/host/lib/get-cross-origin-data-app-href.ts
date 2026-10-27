@@ -1,3 +1,6 @@
+import { useCallback } from "react";
+
+import { useSetting } from "metabase/settings";
 import * as Urls from "metabase/urls";
 
 /**
@@ -19,4 +22,15 @@ export function getCrossOriginDataAppHref(
   } catch {
     return null;
   }
+}
+
+/** [[getCrossOriginDataAppHref]] with this instance's settings. */
+export function useCrossOriginDataAppHref(): (name: string) => string | null {
+  const isolatedOrigin = useSetting("isolated-origin");
+  const siteUrl = useSetting("site-url");
+
+  return useCallback(
+    (name: string) => getCrossOriginDataAppHref(name, isolatedOrigin, siteUrl),
+    [isolatedOrigin, siteUrl],
+  );
 }

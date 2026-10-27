@@ -13,7 +13,7 @@ import { loadLocaleCatalog } from "metabase/utils/localization";
  * a signed-in user; its catalogue is then loaded.
  */
 export async function applyDocumentLocales(
-  userLocale?: string | null,
+  userLocale: string | null = null,
 ): Promise<void> {
   const documentLocales = window.MetabaseLocales;
   const user = userLocale ?? documentLocales?.user ?? "en";

@@ -20,6 +20,7 @@ import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useParams } from "metabase/router";
 import { useSetting } from "metabase/settings";
 import { Box, Button, Flex, Icon } from "metabase/ui";
+import { replaceLocation } from "metabase/utils/dom";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 
 import { installHostBroker } from "../../../broker/host-broker";
@@ -59,6 +60,33 @@ const CenteredEmptyState = ({
 );
 
 /**
+ * Where the app's iframe is served from: the isolated origin when `MB_ISOLATED_ORIGIN`
+ * is set, and this page then makes the app's instance requests (see
+ * `broker/host-broker`). Only the site URL's origin may frame the app there, so a page
+ * on another origin gets an `originMismatch`, and a loopback one is moved at once.
+ */
+function useDataAppFrameOrigin() {
+  const isolatedOrigin = useSetting("isolated-origin");
+  const siteUrl = useSetting("site-url");
+  const originMismatch = useMemo(
+    () => (isolatedOrigin ? getOriginMismatch(siteUrl, window.location) : null),
+    [isolatedOrigin, siteUrl],
+  );
+
+  useEffect(() => {
+    if (originMismatch?.kind === "redirect") {
+      replaceLocation(originMismatch.url);
+    }
+  }, [originMismatch]);
+
+  return {
+    isolatedOrigin,
+    frameOrigin: isolatedOrigin ?? window.location.origin,
+    originMismatch,
+  };
+}
+
+/**
  * /apps/:name(/*) — renders the requested data-app inside an isolated
  * iframe, mirroring the iframe's internal route into the parent's URL.
  *
@@ -89,27 +117,9 @@ export function DataAppView({
   const name = nameProp ?? nameParam;
   const validName = name.length > 0;
 
-  // With `MB_ISOLATED_ORIGIN` set, the iframe is served from that origin, and this page
-  // makes its instance requests for it (see `broker/host-broker`).
-  const isolatedOrigin = useSetting("isolated-origin");
-  const siteUrl = useSetting("site-url");
-  const isCrossOrigin = Boolean(isolatedOrigin);
-  const frameOrigin = useMemo(
-    () =>
-      isolatedOrigin ? new URL(isolatedOrigin).origin : window.location.origin,
-    [isolatedOrigin],
-  );
-
-  const originMismatch = useMemo(
-    () => getOriginMismatch(isCrossOrigin, siteUrl, window.location),
-    [isCrossOrigin, siteUrl],
-  );
-
-  useEffect(() => {
-    if (originMismatch?.kind === "redirect") {
-      window.location.replace(originMismatch.url);
-    }
-  }, [originMismatch]);
+  const { isolatedOrigin, frameOrigin, originMismatch } =
+    useDataAppFrameOrigin();
+  const isCrossOrigin = isolatedOrigin !== null;
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeEl, setIframeElState] = useState<HTMLIFrameElement | null>(null);
@@ -135,13 +145,8 @@ export function DataAppView({
   }, [name]);
 
   // Read parent path → iframe src ONCE; never re-derive on later renders.
-  const src = useMemo(
-    () =>
-      validName
-        ? deriveIframeSrc(name, isCrossOrigin ? frameOrigin : null)
-        : "",
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+  const [src] = useState(() =>
+    validName ? deriveIframeSrc(name, isolatedOrigin) : "",
   );
 
   const {
@@ -293,6 +298,10 @@ export function DataAppView({
         message={t`This data app doesn’t exist or has been disabled.`}
       />
     );
+  }
+
+  if (originMismatch?.kind === "redirect") {
+    return <LoadingAndErrorWrapper loading />;
   }
 
   if (originMismatch?.kind === "wrong-origin") {
