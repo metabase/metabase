@@ -433,6 +433,35 @@
                                                  :dependent-types "card")]
               (is (empty? response)))))))))
 
+(deftest ^:synchronized dependents-archived-transform-test
+  (testing "GET /api/ee/dependencies/graph/dependents excludes archived transforms"
+    (mt/with-premium-features #{:dependencies :transforms-basic :advanced-permissions}
+      (mt/with-model-cleanup [:model/Dependency :model/DependencyStatus]
+        (let [mp       (mt/metadata-provider)
+              products (lib.metadata/table mp (mt/id :products))]
+          (mt/with-temp [:model/Transform {live-id :id} {:name   "Live transform on products"
+                                                         :source {:type "query" :query (lib/query mp products)}
+                                                         :target {:type "table" :name (mt/random-name)}}
+                         :model/Transform {archived-id :id} {:name     "Archived transform on products"
+                                                             :source   {:type "query" :query (lib/query mp products)}
+                                                             :target   {:type "table" :name (mt/random-name)}
+                                                             :archived true}]
+            (deps.test/synchronously-run-dependency-job!)
+            (let [dependent-ids (fn [user]
+                                  (set (map :id (mt/user-http-request user :get 200 "ee/dependencies/graph/dependents"
+                                                                      :type            "table"
+                                                                      :id              (mt/id :products)
+                                                                      :dependent-types "transform"))))]
+              (testing "for a superuser"
+                (let [ids (dependent-ids :crowberto)]
+                  (is (contains? ids live-id))
+                  (is (not (contains? ids archived-id)))))
+              (testing "for a data analyst"
+                (mt/with-data-analyst-role! (mt/user->id :rasta)
+                  (let [ids (dependent-ids :rasta)]
+                    (is (contains? ids live-id))
+                    (is (not (contains? ids archived-id)))))))))))))
+
 (deftest ^:synchronized dependents-inactive-table-test
   (testing "inactive tables are always included as dependents and in node counts"
     (mt/with-premium-features #{:dependencies :transforms-basic :hosting}

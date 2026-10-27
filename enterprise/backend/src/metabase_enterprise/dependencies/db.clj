@@ -52,7 +52,7 @@
     sandboxed users.
   - Table: filters by table visibility permissions. Tables are NOT filtered by active/visibility_type regardless
     of `include-archived-items`, so dependencies broken by dropped or hidden tables stay visible.
-  - Transform: analysts can view any transform they have source view permission to.
+  - Transform: analysts can view any transform they have source view permission to. Filters by archived status.
   - Data app: the apps the user can read, none without the data apps feature."
   [entity-type-field :- Column
    entity-id-field   :- Column
@@ -70,25 +70,35 @@
                        [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]])
 
                     :model/Transform
-                    (cond
-                      is-superuser?
-                      [:and
-                       [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field ^:allow-subquery {:select [:id] :from [table-name]}]]
+                    (let [archived-column (u/qualified-key table-name :archived)
+                          archived-clause (case include-archived-items
+                                            :exclude [:= archived-column false]
+                                            :only    [:= archived-column true]
+                                            :all     nil)]
+                      (cond
+                        is-superuser?
+                        [:and
+                         [:= entity-type-field (name entity-type)]
+                         [:in entity-id-field
+                          (cond-> ^:allow-subquery {:select [:id]
+                                                    :from   [table-name]}
+                            archived-clause (assoc :where archived-clause))]]
 
-                      is-data-analyst?
-                      [:and
-                       [:= entity-type-field (name entity-type)]
-                       [:in entity-id-field
-                        ^:allow-subquery
-                        {:select [:id]
-                         :from   [table-name]
-                         :where  [:in :source_database_id
-                                  (perms/visible-database-filter-select
-                                   {:user-id          user-id
-                                    :is-superuser?    is-superuser?
-                                    :is-data-analyst? is-data-analyst?}
-                                   {:perms/create-queries :query-builder})]}]])
+                        is-data-analyst?
+                        [:and
+                         [:= entity-type-field (name entity-type)]
+                         [:in entity-id-field
+                          ^:allow-subquery
+                          {:select [:id]
+                           :from   [table-name]
+                           :where  [:and
+                                    [:in :source_database_id
+                                     (perms/visible-database-filter-select
+                                      {:user-id          user-id
+                                       :is-superuser?    is-superuser?
+                                       :is-data-analyst? is-data-analyst?}
+                                      {:perms/create-queries :query-builder})]
+                                    archived-clause]}]]))
 
                     (:model/Card :model/Dashboard :model/Document :model/NativeQuerySnippet :model/Action)
                     (let [archived-column (u/qualified-key table-name :archived)
