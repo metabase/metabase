@@ -52,7 +52,7 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
       return t`Revised drill-throughs`;
     },
     get description() {
-      return t`The "rows bar, summary pills" layout with the chart's click menu rebuilt. The menu says what you clicked ("Gizmo · March 2025", "Count: 523"), and every option names its value: "Only Gizmo", "Everything except Gizmo", "Only Gizmo in March 2025", "Add Widget" when a category is already picked. Never a bare = ≠ < > on a bar. The measure only offers "Only bars at 523 or more / or less", and only when there are 5+ bars. Hover an option to preview how many rows or bars it leaves. Switch "New click menu" off to compare with today's popover.`;
+      return t`The "rows bar, summary pills" layout with the chart's click menu revised. Today's drill-throughs stay on top as they are ("See these Orders", "See this month by week", "Break out by…", "Automatic insights…", "Copy value"); only the bare = ≠ < > buttons go. Under them, two short lists split by where the filter lands. "Filter" goes to the filter bar and names its value: "Only Gizmo", "Except Gizmo", "Only Gizmo in March 2025", "Add Widget" when a category is already picked. "Show if…" goes to the summary, with 5+ bars: "Count is at least 523". Hover a line for the exact condition and how many rows or bars it leaves. Switch "New click menu" off to compare with today's popover.`;
     },
     Component: ExpressionBarSplitPrototype,
     Canvas: DrillMenuCanvas,

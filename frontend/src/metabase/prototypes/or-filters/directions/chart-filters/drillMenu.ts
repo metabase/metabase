@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import type { IconName } from "metabase/ui";
 import { formatValue } from "metabase/value-formatting";
 import * as Lib from "metabase-lib";
 import type { DatasetColumn, RowValue } from "metabase-types/api";
@@ -20,11 +21,24 @@ export type DrillOption = {
   apply: (query: Lib.Query) => Lib.Query;
 };
 
+/** One of today's drill-throughs, kept as is at the top of the menu. */
+export type DrillAction = {
+  id: string;
+  icon: IconName;
+  title: string;
+  apply?: () => Lib.Query;
+  /** A side effect instead of a new query, like copying. */
+  onSelect?: () => void;
+  children?: DrillAction[];
+};
+
 export type DrillMenuModel = {
   /** The clicked dimension values, e.g. ["Gizmo", "March 2025"]. */
   header: string[];
   /** The clicked measure, e.g. "Count: 523". */
   measure?: string;
+  /** Today's drill-throughs, minus the operator buttons. */
+  actions: DrillAction[];
   options: DrillOption[];
 };
 
@@ -139,7 +153,7 @@ function rowOptions(
       options.push({
         id: `except-${index}`,
         target: "rows",
-        title: t`Everything except ${label}`,
+        title: t`Except ${label}`,
         detail: t`${Lib.displayInfo(drilled, ROWS_STAGE, parts.column).longDisplayName} is not ${parts.values.join(", ")}`,
         apply: (current) =>
           addRowFilter(
@@ -155,7 +169,11 @@ function rowOptions(
       id: "only-all",
       target: "rows",
       title: t`Only ${labels.join(" in ")}`,
-      detail: t`Both conditions above`,
+      detail: newFilters
+        .map(
+          (filter) => Lib.displayInfo(drilled, ROWS_STAGE, filter).displayName,
+        )
+        .join(t` and `),
       apply: (current) => newFilters.reduce(addRowFilter, current),
     });
   }
@@ -205,35 +223,119 @@ function summaryOptions(
     {
       id: "at-least",
       target: "summary",
-      title: t`Only ${markNoun} at ${formattedValue} or more`,
-      detail: t`${measureName} ≥ ${formattedValue}, after summarizing`,
+      title: t`${measureName} is at least ${formattedValue}`,
+      detail: t`Hides the ${markNoun} under ${formattedValue}`,
       apply: withThreshold(">="),
     },
     {
       id: "at-most",
       target: "summary",
-      title: t`Only ${markNoun} at ${formattedValue} or less`,
-      detail: t`${measureName} ≤ ${formattedValue}, after summarizing`,
+      title: t`${measureName} is at most ${formattedValue}`,
+      detail: t`Hides the ${markNoun} over ${formattedValue}`,
       apply: withThreshold("<="),
     },
   ];
 }
 
-function recordsOption(
-  rowsQuery: Lib.Query,
-  drill: Lib.DrillThru,
-): DrillOption | undefined {
-  const info = Lib.displayInfo(rowsQuery, -1, drill);
-  if (info.type !== "drill-thru/underlying-records") {
-    return undefined;
-  }
+const PIVOT_TYPES: Record<
+  Lib.PivotType,
+  { icon: IconName; title: () => string }
+> = {
+  category: { icon: "string", title: () => t`Category` },
+  location: { icon: "location", title: () => t`Location` },
+  time: { icon: "calendar", title: () => t`Time` },
+};
+
+function pivotAction(rowsQuery: Lib.Query, drill: Lib.DrillThru): DrillAction {
+  const { pivotTypes, stageIndex } = Lib.pivotDrillDetails(drill);
+  const byType = pivotTypes.map((pivotType) => ({
+    id: `pivot-${pivotType}`,
+    ...PIVOT_TYPES[pivotType],
+    title: PIVOT_TYPES[pivotType].title(),
+    children: Lib.pivotColumnsForType(drill, pivotType).map((column) => {
+      const info = Lib.displayInfo(rowsQuery, stageIndex, column);
+      return {
+        id: `pivot-${pivotType}-${info.longDisplayName}`,
+        icon: PIVOT_TYPES[pivotType].icon,
+        title: info.displayName,
+        apply: () => Lib.drillThru(rowsQuery, -1, undefined, drill, column),
+      };
+    }),
+  }));
   return {
-    id: "records",
-    target: "records",
-    title: t`See these ${info.rowCount.toLocaleString()} ${info.tableName.toLowerCase()}`,
-    detail: t`The rows behind this value`,
-    apply: () => Lib.drillThru(rowsQuery, -1, undefined, drill),
+    id: "pivot",
+    icon: "arrow_split",
+    title: t`Break out by…`,
+    children: byType.length === 1 ? byType[0].children : byType,
   };
+}
+
+const ACTION_ORDER = [
+  "records",
+  "drill-thru/zoom-in",
+  "pivot",
+  "automatic-insights",
+  "copy-value",
+];
+
+/** Opens the X-ray choices like today; the prototype doesn't navigate. */
+const AUTOMATIC_INSIGHTS: DrillAction = {
+  id: "automatic-insights",
+  icon: "bolt",
+  get title() {
+    return t`Automatic insights…`;
+  },
+  get children() {
+    return [
+      { id: "xray", icon: "bolt", title: t`X-ray` },
+      { id: "compare", icon: "segment", title: t`Compare to the rest` },
+    ] satisfies DrillAction[];
+  },
+};
+
+function copyValueAction(value: string): DrillAction {
+  return {
+    id: "copy-value",
+    icon: "copy",
+    title: t`Copy value`,
+    onSelect: () => navigator.clipboard.writeText(value),
+  };
+}
+
+/** Today's popover, in its order, without the `=` `≠` `<` `>` buttons. */
+function currentActions(
+  rowsQuery: Lib.Query,
+  drills: Lib.DrillThru[],
+): DrillAction[] {
+  const actions = drills.flatMap((drill): DrillAction[] => {
+    const info = Lib.displayInfo(rowsQuery, -1, drill);
+    const apply = () => Lib.drillThru(rowsQuery, -1, undefined, drill);
+    switch (info.type) {
+      case "drill-thru/underlying-records":
+        return [
+          {
+            id: "records",
+            icon: "table",
+            title: t`See these ${info.rowCount.toLocaleString()} ${info.tableName}`,
+            apply,
+          },
+        ];
+      case "drill-thru/zoom-in.timeseries":
+        return [
+          { id: info.type, icon: "zoom_in", title: info.displayName, apply },
+        ];
+      case "drill-thru/zoom-in.binning":
+      case "drill-thru/zoom-in.geographic":
+        return [{ id: info.type, icon: "zoom_in", title: t`Zoom in`, apply }];
+      case "drill-thru/pivot":
+        return [pivotAction(rowsQuery, drill)];
+      default:
+        return [];
+    }
+  });
+  const rank = (action: DrillAction) =>
+    ACTION_ORDER.findIndex((prefix) => action.id.startsWith(prefix));
+  return [...actions].sort((a, b) => rank(a) - rank(b));
 }
 
 type GetDrillMenuOpts = {
@@ -312,12 +414,18 @@ export function getDrillMenu({
     );
   }
 
-  const records = underlying ? recordsOption(rowsQuery, underlying) : undefined;
-  if (records) {
-    options.push(records);
-  }
+  const clickedValue =
+    formattedMeasure ??
+    (clicked.column && clicked.value != null
+      ? formatPlain(clicked.value, clicked.column)
+      : undefined);
+  const actions = [
+    ...currentActions(rowsQuery, drills),
+    AUTOMATIC_INSIGHTS,
+    ...(clickedValue ? [copyValueAction(clickedValue)] : []),
+  ];
 
-  if (options.length === 0) {
+  if (options.length === 0 && actions.length === 0) {
     return undefined;
   }
   return {
@@ -326,6 +434,7 @@ export function getDrillMenu({
       clicked.column && formattedMeasure
         ? `${clicked.column.display_name}: ${formattedMeasure}`
         : undefined,
+    actions,
     options,
   };
 }

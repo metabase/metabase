@@ -11,7 +11,7 @@ import { t } from "ttag";
 import { useGetAdhocQueryQuery } from "metabase/api";
 import { getErrorMessage } from "metabase/api/utils";
 import { useMetadataProviderUnfiltered } from "metabase/metadata-store";
-import { Box, Loader, Menu, Text } from "metabase/ui";
+import { Box, Group, Icon, Loader, Menu, Text } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import * as Lib from "metabase-lib";
 import type {
@@ -24,6 +24,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import { FILTER_DRILLS_CLICK_MODE } from "../../harness/drillMode";
 
 import {
+  type DrillAction,
   type DrillMenuModel,
   type DrillOption,
   type DrillOptionTarget,
@@ -32,12 +33,6 @@ import {
 } from "./drillMenu";
 
 const CHART_HEIGHT = 420;
-
-const SECTION_TITLES: Record<DrillOptionTarget, () => string> = {
-  rows: () => t`Narrow the rows`,
-  summary: () => t`Hide groups`,
-  records: () => t`Look closer`,
-};
 
 type QuestionChartProps = {
   query: Lib.Query;
@@ -180,6 +175,10 @@ export function QuestionChart({
               setMenu(undefined);
               onPick(option.apply(pickQuery), option.target);
             }}
+            onAction={(nextQuery) => {
+              setMenu(undefined);
+              onPick(nextQuery, "records");
+            }}
           />
         )}
       </Box>
@@ -251,75 +250,141 @@ function useLegendEnd(
   return legendEnd;
 }
 
+/** Row filters land in the filter bar; thresholds land in the summary's "Show if". */
+const OPTION_SECTIONS = [
+  { target: "rows", title: () => t`Filter` },
+  { target: "summary", title: () => t`Show if…` },
+] as const;
+
 type DrillMenuProps = {
   menu: OpenMenu;
   query: Lib.Query;
   markNoun: string;
   onClose: () => void;
   onPick: (option: DrillOption) => void;
+  onAction: (query: Lib.Query) => void;
 };
 
-function DrillMenu({ menu, query, markNoun, onClose, onPick }: DrillMenuProps) {
+/**
+ * Today's drill-throughs on top, unchanged except for the operator buttons;
+ * under them, one short line per filter, each naming its value.
+ */
+function DrillMenu({
+  menu,
+  query,
+  markNoun,
+  onClose,
+  onPick,
+  onAction,
+}: DrillMenuProps) {
   const [previewId, setPreviewId] = useState<string>();
   const { model } = menu;
-  const sections = (["rows", "summary", "records"] as const)
-    .map((target) => ({
-      target,
-      options: model.options.filter((option) => option.target === target),
-    }))
-    .filter(({ options }) => options.length > 0);
 
   return (
     <Menu
       opened
       onChange={(opened) => !opened && onClose()}
       position="bottom-start"
-      width={320}
+      width={260}
     >
       <Menu.Target>
         <Box pos="fixed" left={menu.x} top={menu.y} w={1} h={1} />
       </Menu.Target>
       <Menu.Dropdown>
-        <Box px="sm" pt="xs" pb="sm">
-          <Text fw="bold">{model.header.join(" · ")}</Text>
+        <Group px="sm" pt="xs" pb="xs" gap="xs" wrap="nowrap">
+          <Text fw="bold" size="sm" truncate>
+            {model.header.join(" · ")}
+          </Text>
           {model.measure && (
-            <Text size="sm" c="text-secondary">
+            <Text size="sm" c="text-secondary" ml="auto" truncate>
               {model.measure}
             </Text>
           )}
-        </Box>
-        {sections.map(({ target, options }) => (
-          <Box key={target}>
-            <Menu.Divider />
-            <Menu.Label>{SECTION_TITLES[target]()}</Menu.Label>
-            {options.map((option) => (
-              <Menu.Item
-                key={option.id}
-                onMouseEnter={() => setPreviewId(option.id)}
-                onFocus={() => setPreviewId(option.id)}
-                onClick={() => onPick(option)}
-                rightSection={
-                  previewId === option.id && option.target !== "records" ? (
-                    <PreviewCount
-                      query={option.apply(query)}
-                      target={option.target}
-                      markNoun={markNoun}
-                    />
-                  ) : undefined
-                }
-              >
-                <Text fw="bold" size="sm">
-                  {option.title}
-                </Text>
-                <Text size="xs" c="text-secondary">
-                  {option.detail}
-                </Text>
-              </Menu.Item>
-            ))}
-          </Box>
+        </Group>
+        {model.actions.map((action) => (
+          <DrillActionItem key={action.id} action={action} onPick={onAction} />
         ))}
+        {OPTION_SECTIONS.map(({ target, title }) => {
+          const options = model.options.filter(
+            (option) => option.target === target,
+          );
+          if (options.length === 0) {
+            return null;
+          }
+          return (
+            <Box key={target}>
+              <Menu.Divider />
+              <Menu.Label>{title()}</Menu.Label>
+              {options.map((option) => (
+                <Menu.Item
+                  key={option.id}
+                  py="xs"
+                  title={option.detail}
+                  leftSection={
+                    target === "rows" ? (
+                      <Icon name="filter" color="core-brand" />
+                    ) : undefined
+                  }
+                  onMouseEnter={() => setPreviewId(option.id)}
+                  onFocus={() => setPreviewId(option.id)}
+                  onClick={() => onPick(option)}
+                  rightSection={
+                    previewId === option.id ? (
+                      <PreviewCount
+                        query={option.apply(query)}
+                        target={option.target}
+                        markNoun={markNoun}
+                      />
+                    ) : undefined
+                  }
+                >
+                  <Text size="sm">{option.title}</Text>
+                </Menu.Item>
+              ))}
+            </Box>
+          );
+        })}
       </Menu.Dropdown>
     </Menu>
+  );
+}
+
+type DrillActionItemProps = {
+  action: DrillAction;
+  onPick: (query: Lib.Query) => void;
+};
+
+function DrillActionItem({ action, onPick }: DrillActionItemProps) {
+  const icon = <Icon name={action.icon} color="core-brand" />;
+  if (!action.children) {
+    return (
+      <Menu.Item
+        leftSection={icon}
+        onClick={() =>
+          action.apply ? onPick(action.apply()) : action.onSelect?.()
+        }
+      >
+        <Text size="sm" fw="bold">
+          {action.title}
+        </Text>
+      </Menu.Item>
+    );
+  }
+  return (
+    <Menu.Sub position="right-start">
+      <Menu.Sub.Target>
+        <Menu.Sub.Item leftSection={icon}>
+          <Text size="sm" fw="bold">
+            {action.title}
+          </Text>
+        </Menu.Sub.Item>
+      </Menu.Sub.Target>
+      <Menu.Sub.Dropdown mah="60vh" style={{ overflowY: "auto" }}>
+        {action.children.map((child) => (
+          <DrillActionItem key={child.id} action={child} onPick={onPick} />
+        ))}
+      </Menu.Sub.Dropdown>
+    </Menu.Sub>
   );
 }
 
