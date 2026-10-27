@@ -2408,6 +2408,7 @@
     [:user-parameters                      {:optional true} [:maybe [:ref ::lib.schema.parameter/parameters]]]
     [:qp/source-card-id                    {:optional true} [:ref ::lib.schema.id/card]]
     [:qp/skip-result-metadata-persistence  {:optional true} :boolean]
+    [:qp/non-default-parameterized?        {:optional true} :boolean]
     [:qp.pivot/unremapped-breakout-combination {:optional true} [:sequential [:int {:min 0}]]]
     [:qp.pivot/remapped-breakout-combination   {:optional true} [:maybe [:sequential [:int {:min 0}]]]]
     [:qp.pivot/num-remapped-cols               {:optional true} [:int {:min 0}]]
