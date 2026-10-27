@@ -1,0 +1,37 @@
+name: Jest runner act warning sweep
+
+on:
+  push:
+    branches:
+      - jest-runner-act-sweep
+
+jobs:
+  sweep:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+        copy: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build cljs
+        run: bun run build-pure:cljs
+      - name: Run the shard and list failed tests
+        run: |
+          node_modules/.bin/jest --ignoreProjects ci-scripts --silent --shard=${{ matrix.shard }}/2 --reporters=./frontend/test/harness/jest-agent-reporter.ts --runner ./frontend/test/harness/jest-runner.ts > run.log 2>&1 || true
+          grep -E "^SUMMARY" run.log
+          grep -E "^FAIL" run.log | sed 's/ |.*//' | sed "s/^/SWEEP shard=${{ matrix.shard }} copy=${{ matrix.copy }} /" | tee failures.txt
+          { echo '```'; grep -E "^SUMMARY" run.log; cat failures.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: sweep-${{ matrix.shard }}-${{ matrix.copy }}
+          path: |
+            run.log
+            node_modules/.cache/test-harness/last-run
