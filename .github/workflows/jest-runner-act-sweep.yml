@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         shard: [2]
-        copy: [F, G]
+        copy: [A, B, shard1, shard2, shard3]
     steps:
       - uses: actions/checkout@v7
       - name: Prepare front-end environment
@@ -23,11 +23,18 @@ jobs:
       - name: Build cljs
         run: bun run build-pure:cljs
       - name: Run the file sequence in one worker
+        if: ${{ !startsWith(matrix.copy, 'shard') }}
         run: |
           for i in 1 2 3; do
             echo "SEQ round $i sequence ${{ matrix.copy }}"
-            node .github/sweep/seq-run.ts .github/sweep/${{ matrix.copy }}.txt 2>&1 | grep -E "^SEQ|PROBE" || true
+            node .github/sweep/seq-run.ts .github/sweep/${{ matrix.copy }}.txt 2>&1 | grep -E "^SEQ (FAIL|   )" || true
           done
+      - name: Run the shard
+        if: ${{ startsWith(matrix.copy, 'shard') }}
+        run: |
+          node_modules/.bin/jest --ignoreProjects ci-scripts --silent --shard=2/2 --reporters=./frontend/test/harness/jest-agent-reporter.ts --runner ./frontend/test/harness/jest-runner.ts > run.log 2>&1 || true
+          grep -E "^SUMMARY" run.log
+          grep -E "^FAIL" run.log | sed 's/ |.*//' | sed "s/^/SWEEP ${{ matrix.copy }} /" || true
       - uses: actions/upload-artifact@v7
         if: always()
         with:
