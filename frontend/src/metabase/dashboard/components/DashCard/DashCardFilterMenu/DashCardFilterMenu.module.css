@@ -19,12 +19,22 @@
     outline-offset: 2px;
   }
 
+  /* The light-filter button tokens arrive with the Button restyle (#82236),
+     which this release does not have, so the tints are inlined here. */
   &[data-active] {
-    color: var(--mb-color-core-filter-strong);
-    background: var(--mb-color-button-light-filter-default);
+    color: var(--mb-color-text-filter);
+    background: color-mix(
+      in srgb,
+      var(--mb-color-core-filter) 15%,
+      transparent
+    );
 
     &:hover {
-      background: var(--mb-color-button-light-filter-hover);
+      background: color-mix(
+        in srgb,
+        var(--mb-color-core-filter) 30%,
+        transparent
+      );
     }
   }
 }
