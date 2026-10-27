@@ -32,26 +32,12 @@ jobs:
       dev_server: ${{ fromJson(steps.config.outputs.result).metastoreDevServer }}
       package_manager: ${{ fromJson(steps.config.outputs.result).packageManager }}
       cypress_grep_flag: ${{ fromJson(steps.config.outputs.result).cypressGrepFlag }}
-      sdk_component_specs: ${{ steps.sdk-specs.outputs.specs }}
     steps:
       - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
             .github
-      - name: Check out the release component tests
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ inputs.commit }}
-          path: release-checkout
-          sparse-checkout: e2e/test-component
-      - name: Find pre-release Embedding SDK component tests
-        id: sdk-specs
-        working-directory: release-checkout
-        run: |
-          specs=$(grep -rl --include='*.cy.spec.tsx' "@prerelease" e2e/test-component/scenarios/embedding-sdk | paste -sd, - || true)
-          echo "Pre-release Embedding SDK component specs: ${specs:-none}"
-          echo "specs=$specs" >> "$GITHUB_OUTPUT"
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       # note: this block can be removed after we stop needing to be able to test versions before v55
@@ -191,6 +177,13 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ needs.release-artifact.outputs.commit }}
+      - name: Find pre-release Embedding SDK component tests
+        id: sdk-specs
+        if: ${{ matrix.edition == 'ee' }}
+        run: |
+          specs=$(grep -rl --include='*.cy.spec.tsx' "@prerelease" e2e/test-component/scenarios/embedding-sdk | paste -sd, - || true)
+          echo "Pre-release Embedding SDK component specs: ${specs:-none}"
+          echo "specs=$specs" >> "$GITHUB_OUTPUT"
       - name: Prepare Docker containers
         uses: ./.github/actions/e2e-prepare-containers
         with:
@@ -206,7 +199,7 @@ jobs:
       - name: Compile CLJS
         run: ${{ needs.test-mode-config.outputs.package_manager }} run build-pure:cljs
       - name: Build Embedding SDK package
-        if: ${{ matrix.edition == 'ee' && needs.test-mode-config.outputs.sdk_component_specs != '' }}
+        if: ${{ matrix.edition == 'ee' && steps.sdk-specs.outputs.specs != '' }}
         run: ${{ needs.test-mode-config.outputs.package_manager }} run build-embedding-sdk-package
       - name: Prepare Cypress environment
         id: cypress-prep
@@ -254,10 +247,10 @@ jobs:
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
       - name: Run a few important Embedding SDK component tests as sanity check
-        if: ${{ !cancelled() && matrix.edition == 'ee' && needs.test-mode-config.outputs.sdk_component_specs != '' }}
+        if: ${{ !cancelled() && matrix.edition == 'ee' && steps.sdk-specs.outputs.specs != '' }}
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-          SPECS: ${{ needs.test-mode-config.outputs.sdk_component_specs }}
+          SPECS: ${{ steps.sdk-specs.outputs.specs }}
           CYPRESS_VIDEO: "false"
         run: |
           node e2e/runner/run_cypress_ci.js component \
