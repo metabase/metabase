@@ -102,32 +102,34 @@ describe("scenarios > navigation > navbar", () => {
           }),
         )
         .then(({ body: collection }) =>
-          H.createQuestion(
-            {
-              name: "People model",
-              type: "model",
-              collection_id: collection.id,
-              query: { "source-table": PEOPLE_ID },
-            },
-            { wrapId: true, idAlias: "modelId" },
-          ),
-        );
+          H.createQuestion({
+            name: "People model",
+            type: "model",
+            collection_id: collection.id,
+            query: { "source-table": PEOPLE_ID },
+          }),
+        )
+        .then(({ body: model }) => {
+          cy.log("Collection path on the model page");
+          H.visitModel(model.id);
+          assertBreadcrumbIsNotTruncated("Examples");
+          assertBreadcrumbIsTruncated(LONG_COLLECTION_NAME);
+          H.appBar().findByText(LONG_COLLECTION_NAME).realHover();
+          H.tooltip()
+            .should("be.visible")
+            .and("have.text", LONG_COLLECTION_NAME);
 
-      cy.log("Collection path on the model page");
-      cy.get("@modelId").then((modelId) => H.visitModel(modelId));
-      assertBreadcrumbIsNotTruncated("Examples");
-      assertBreadcrumbIsTruncated(LONG_COLLECTION_NAME);
-      H.appBar().findByText(LONG_COLLECTION_NAME).realHover();
-      H.tooltip().should("be.visible").and("have.text", LONG_COLLECTION_NAME);
-
-      cy.log("Full trail in the object detail view");
-      cy.get("@modelId").then((modelId) => H.DetailView.visitModel(modelId, 1));
-      assertBreadcrumbIsNotTruncated("Examples");
-      assertBreadcrumbIsNotTruncated("People model");
-      assertBreadcrumbIsNotTruncated("Hudson Borer");
-      assertBreadcrumbIsTruncated(LONG_COLLECTION_NAME);
-      H.appBar().findByText(LONG_COLLECTION_NAME).realHover();
-      H.tooltip().should("be.visible").and("have.text", LONG_COLLECTION_NAME);
+          cy.log("Full trail in the object detail view");
+          H.DetailView.visitModel(model.id, 1);
+          assertBreadcrumbIsNotTruncated("Examples");
+          assertBreadcrumbIsNotTruncated("People model");
+          assertBreadcrumbIsNotTruncated("Hudson Borer");
+          assertBreadcrumbIsTruncated(LONG_COLLECTION_NAME);
+          H.appBar().findByText(LONG_COLLECTION_NAME).realHover();
+          H.tooltip()
+            .should("be.visible")
+            .and("have.text", LONG_COLLECTION_NAME);
+        });
     });
   });
 
@@ -172,6 +174,7 @@ describe("scenarios > navigation > navbar", () => {
   });
 });
 
+/** @param {string} name */
 function assertBreadcrumbIsNotTruncated(name) {
   H.appBar()
     .findByText(name)
@@ -179,6 +182,7 @@ function assertBreadcrumbIsNotTruncated(name) {
     .and(($element) => H.assertIsNotEllipsified($element[0]));
 }
 
+/** @param {string} name */
 function assertBreadcrumbIsTruncated(name) {
   H.appBar()
     .findByText(name)
