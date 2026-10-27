@@ -1,0 +1,1 @@
+check https://github.com/metabase/metabase/pull/83655, was any e2e coverage lost?
