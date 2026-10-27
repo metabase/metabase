@@ -997,6 +997,7 @@
            app-db
            batch-processing
            models
+           parameters.schema
            premium-features
            server
            settings
@@ -2074,6 +2075,8 @@
            metabase.public-sharing.init
            metabase.public-sharing.validation}
    :uses #{api
+           embedding
+           lib.schema
            settings
            util}
    :model-imports #{:model/Action
@@ -3355,6 +3358,7 @@
            app-db
            collections
            database-routing
+           documents
            driver
            events
            lib
@@ -3364,6 +3368,7 @@
            models
            permissions
            premium-features
+           public-sharing
            queries
            request
            sample-data

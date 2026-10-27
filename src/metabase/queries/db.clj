@@ -94,6 +94,11 @@
   [card-id :- ::lib.schema.id/card]
   (t2/select-one-fn :parameters [:model/Card :parameters] :id card-id))
 
+(mu/defn card-parameters-for-cards
+  "The id, `:parameters`, and `:embedding_params` of the Cards with `card-ids`."
+  [card-ids :- [:sequential ::lib.schema.id/card]]
+  (t2/select [:model/Card :id :parameters :embedding_params] :id [:in card-ids]))
+
 (mu/defn raw-card-dimensions
   "The raw `:dimensions` row of the Card with `card-id`."
   [card-id :- ::lib.schema.id/card]

@@ -499,6 +499,32 @@
      (into {} (for [card-id (some->> dashboard :parameters (keep (comp :card_id :values_source_config)))]
                 {["Card" card-id] {"Dashboard" dash-id}})))))
 
+(defmethod public-sharing/rendered-card-ids :model/Dashboard
+  [_model dashboard-id->surfaces]
+  ;; An anonymous user who can open a dashboard reaches a database in three ways:
+  ;; - a dashcard whose Card runs against it,
+  ;; - a dashcard with a series Card that runs against it, and
+  ;; - a filter whose value list comes from a Card that runs against it.
+  (let [dashboard-ids          (keys dashboard-id->surfaces)
+        dashcard-card-ids      (public-sharing/card-ids-by :dashboard_id :card_id
+                                                           (dashboards.db/dashcard-cards-for-dashboards dashboard-ids))
+        series-card-ids        (public-sharing/card-ids-by :dashboard_id :card_id
+                                                           (dashboards.db/dashcard-series-cards-for-dashboards
+                                                            dashboard-ids))
+        filter-source-card-ids (into {}
+                                     (keep (fn [{:keys [id parameters], embedding-params :embedding_params}]
+                                             (when-let [by-surface (not-empty
+                                                                    (public-sharing/value-list-card-ids-by-surface
+                                                                     (get dashboard-id->surfaces id)
+                                                                     embedding-params
+                                                                     parameters
+                                                                     queries/values-source-card-ids))]
+                                               [id by-surface])))
+                                     (dashboards.db/parameters-for-dashboards dashboard-ids))]
+    (public-sharing/rendered-cards dashboard-id->surfaces
+                                   (merge-with into dashcard-card-ids series-card-ids)
+                                   filter-source-card-ids)))
+
 (defmethod serdes/serialization-dependencies "Dashboard" [_model-name dashboard]
   ;; a raw Dashboard has its dashcards/series in separate tables; hydrate them into the inlined shape dashboard-deps
   ;; expects, then reuse the same walk as deserialization.
