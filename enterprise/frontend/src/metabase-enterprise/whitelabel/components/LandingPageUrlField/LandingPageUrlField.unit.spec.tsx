@@ -49,7 +49,7 @@ describe("LandingPageUrlField", () => {
 
     expect(await screen.findByText("Changes saved")).toBeInTheDocument();
     const [put] = await findRequests("PUT");
-    expect(put.url).toContain("/api/setting/landing-page");
+    expect(put.url).toMatch(/\/api\/setting\/landing-page$/);
     expect(put.body).toEqual({ value: "/test-1" });
   });
 
