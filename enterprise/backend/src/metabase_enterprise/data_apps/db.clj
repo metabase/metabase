@@ -29,11 +29,6 @@
   [slug :- :string]
   (t2/select-one non-blob-model :name slug))
 
-(mu/defn enabled-data-app-by-slug
-  "The enabled DataApp named `slug` without its bundle, or nil."
-  [slug :- :string]
-  (t2/select-one non-blob-model :name slug :enabled true))
-
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
   [data-app-id :- ms/PositiveInt]
