@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-apps.checks-test
-  "The checks that hold a data app's ad-hoc queries and card runs to its own cards and the Library, through the
-  endpoints that run them."
+  "The checks that hold a data app's ad-hoc queries and card runs to its own cards and the Library, and its action runs
+  to its own actions, through the endpoints that run them."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -29,7 +29,8 @@
    :metrics  "A data app can use only metrics from the Library, not the metrics %s."
    :tables   "A data app can read only tables published to the Library, not the tables %s."
    :segments "A data app can use only segments of tables published to the Library, not the segments %s."
-   :measures "A data app can use only measures of tables published to the Library, not the measures %s."})
+   :measures "A data app can use only measures of tables published to the Library, not the measures %s."
+   :actions  "A data app can run only the actions of its own app, not the actions %s."})
 
 (defn- error-message
   "The error message for a data app's use of the entities of `kind` with `ids`."
@@ -271,6 +272,63 @@
        (testing "a request that is not a data app's still runs the card"
          (is (= "completed" (:status (mt/user-http-request :crowberto :post 202
                                                            (format "card/%d/query" elsewhere-id))))))))))
+
+(defn- do-with-rename-action!
+  "Call `f` with the ID of a temp query action, on no model, that renames a category to itself, in the collection with
+  `collection-id`."
+  [collection-id f]
+  (mt/with-temp [:model/Action      {action-id :id} {:name          "Rename category"
+                                                     :type          :query
+                                                     :collection_id collection-id}
+                 :model/QueryAction _               {:action_id     action-id
+                                                     :database_id   (mt/id)
+                                                     :dataset_query (lib/native-query
+                                                                     (mt/metadata-provider)
+                                                                     "UPDATE categories SET name = name WHERE id = 1")}]
+    (f action-id)))
+
+(deftest app-action-runs-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (do-with-app-collection
+     (fn [collection-id]
+       (do-with-rename-action!
+        collection-id
+        (fn [action-id]
+          (testing "the app's action runs, and its values load"
+            (is (= {:rows-affected 1}
+                   (mt/user-http-request :crowberto :post 200 (format "action/%d/execute" action-id) as-data-app
+                                         {:parameters {}})))
+            (is (= {}
+                   (mt/user-http-request :crowberto :post 200 (format "action/%d/execute/values" action-id)
+                                         as-data-app {:parameters {}}))))
+          (testing "by its entity ID too"
+            (is (= {:rows-affected 1}
+                   (mt/user-http-request :crowberto :post 200
+                                         (format "action/%s/execute"
+                                                 (t2/select-one-fn :entity_id :model/Action :id action-id))
+                                         as-data-app
+                                         {:parameters {}}))))))))))
+
+(deftest other-action-runs-are-refused-test
+  (mt/with-actions-test-data-and-actions-enabled
+    (do-with-app-collection
+     (fn [_collection-id]
+       (mt/with-temp [:model/Collection {elsewhere-collection-id :id} {:namespace :data-actions}]
+         (do-with-rename-action!
+          elsewhere-collection-id
+          (fn [elsewhere-id]
+            (testing "an action outside the app's collection, or of no action at all, is refused alike"
+              (doseq [other-id [elsewhere-id 999999999]]
+                (is (= (error-message :actions other-id)
+                       (mt/user-http-request :crowberto :post 400 (format "action/%d/execute" other-id) as-data-app
+                                             {:parameters {}})))
+                (is (= (error-message :actions other-id)
+                       (mt/user-http-request :crowberto :post 400 (format "action/%d/execute/values" other-id)
+                                             as-data-app {:parameters {}})))))
+            (testing "a request that is not a data app's still runs the action"
+              (is (= {:rows-affected 1}
+                     (mt/user-http-request :crowberto :post 200 (format "action/%d/execute" elsewhere-id)
+                                           {:parameters {}})))))))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
