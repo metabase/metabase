@@ -52,7 +52,7 @@
 
 (deftest validate-bundle-requires-manifest-test
   (testing "archive without metabase-plugin.json is rejected"
-    (let [bytes (cvp.tu/make-tgz-bytes [["dist/index.js" "console.log('hi')"]])]
+    (let [bytes (cvp.tu/make-tgz-bytes [["dist/index.js" "{}"]])]
       (is (thrown-with-msg? Exception #"metabase-plugin\.json"
                             (cache/validate-bundle! bytes))))))
 
@@ -67,7 +67,7 @@
   (testing "manifest without :name is rejected"
     (let [bytes (cvp.tu/make-tgz-bytes
                  [["metabase-plugin.json" (json/encode {:icon "icon.svg"})]
-                  ["dist/index.js" "console.log('hi')"]])]
+                  ["dist/index.js" "{}"]])]
       (is (thrown-with-msg? Exception #"\"name\""
                             (cache/validate-bundle! bytes))))))
 
@@ -75,7 +75,7 @@
   (testing "a name containing `:` is rejected, it is the viz-settings key separator"
     (let [bytes (cvp.tu/make-tgz-bytes
                  [["metabase-plugin.json" (json/encode {:name "a:b"})]
-                  ["dist/index.js" "console.log('hi')"]])]
+                  ["dist/index.js" "{}"]])]
       (is (thrown-with-msg? Exception #"must not contain \":\""
                             (cache/validate-bundle! bytes))))))
 
@@ -84,14 +84,14 @@
             plugin registered before the rule does not"
     (let [bytes (cvp.tu/make-tgz-bytes
                  [["metabase-plugin.json" (json/encode {:name "a b"})]
-                  ["dist/index.js" "console.log('hi')"]])]
+                  ["dist/index.js" "{}"]])]
       (is (= "a b" (get-in (cache/validate-bundle! bytes) [:manifest :name]))))))
 
 (deftest validate-bundle-rejects-invalid-json-manifest-test
   (testing "non-JSON manifest is rejected"
     (let [bytes (cvp.tu/make-tgz-bytes
                  [["metabase-plugin.json" "not json at all"]
-                  ["dist/index.js" "console.log('hi')"]])]
+                  ["dist/index.js" "{}"]])]
       (is (thrown-with-msg? Exception #"not valid JSON"
                             (cache/validate-bundle! bytes))))))
 
@@ -113,7 +113,7 @@
     (let [bomb-payload (byte-array (* 32 1024 1024))
           bytes        (cvp.tu/make-tgz-bytes
                         [["metabase-plugin.json" (json/encode {:name "bomb-viz"})]
-                         ["dist/index.js" "console.log('hi')"]
+                         ["dist/index.js" "{}"]
                          ["dist/assets/big.bin" bomb-payload]])]
       (is (thrown-with-msg? clojure.lang.ExceptionInfo
                             #"max uncompressed bytes"
@@ -140,7 +140,7 @@
   (testing "a non-string name is rejected before the blank-name check can choke on it"
     (let [bytes (cvp.tu/make-tgz-bytes
                  [["metabase-plugin.json" (json/encode {:name 123})]
-                  ["dist/index.js" "console.log('hi')"]])]
+                  ["dist/index.js" "{}"]])]
       (is (thrown-with-msg? Exception #"metabase-plugin\.json is invalid"
                             (cache/validate-bundle! bytes))))))
 
@@ -213,8 +213,8 @@
                                 (cache/fetch-dev-bundle "http://localhost:5174")))))))
   (testing "the content types the CLI's own dev server serves are accepted"
     (with-redefs [http/get (constantly {:headers {:content-type "application/javascript; charset=utf-8"}
-                                        :body    "export default {}"})]
-      (is (= "export default {}" (:content (cache/fetch-dev-bundle "http://localhost:5174")))
+                                        :body    "{}"})]
+      (is (= "{}" (:content (cache/fetch-dev-bundle "http://localhost:5174")))
           "a charset parameter on the header is stripped before comparison"))))
 
 (deftest set-or-clear-dev-bundle!-test

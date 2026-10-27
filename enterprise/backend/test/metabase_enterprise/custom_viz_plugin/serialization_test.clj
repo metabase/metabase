@@ -31,7 +31,7 @@
   "Bundle files with a binary icon."
   [identifier]
   {"metabase-plugin.json" (.getBytes ^String (json/encode {:name identifier :icon "icon.png" :metabase {:version ">=1.60"}}) "UTF-8")
-   "dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
+   "dist/index.js"        (.getBytes "{}" "UTF-8")
    "dist/assets/icon.png" icon-bytes})
 
 (defn- insert-plugin! [identifier ^bytes bundle & {:as extra}]
@@ -151,7 +151,7 @@
         (write-plugin-files! dump-dir "thumbs" (plugin-yaml "thumbs")
                              (assoc files
                                     "deploy/config.yaml" "a: [unterminated"
-                                    "src/index.tsx" "export default () => null;"
+                                    "src/index.tsx" "{}"
                                     "dist/assets/unused.png" "ignored"))
         (import! dump-dir)
         (testing "import derives metadata from the manifest"

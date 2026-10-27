@@ -345,7 +345,7 @@
                                                  :icon     "icon.svg"
                                                  :metabase {:version ">=1.59.0"}
                                                  :sdk      {:version "2.0.0"}})]
-                       ["dist/index.js" "console.log('hi')"]])
+                       ["dist/index.js" "{}"]])
                 resp (multipart-upload! :crowberto 200 "ee/custom-viz-plugin/" zip)
                 row  (t2/select-one :model/CustomVizPlugin :identifier "new-register-viz")]
             (is (= "new-register-viz" (:identifier resp)))
@@ -389,7 +389,7 @@
   (mt/with-premium-features #{:custom-viz}
     (mt/with-model-cleanup [:model/CustomVizPlugin]
       (testing "POST returns 400 when zip is missing metabase-plugin.json"
-        (let [zip  (cvp.tu/make-tgz-bytes [["dist/index.js" "console.log('hi')"]])
+        (let [zip  (cvp.tu/make-tgz-bytes [["dist/index.js" "{}"]])
               resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
           (is (re-find #"metabase-plugin\.json" (or (:message resp) (str resp)))))))))
 
@@ -408,7 +408,7 @@
       (testing "POST returns 400 when manifest has no name field"
         (let [zip  (cvp.tu/make-tgz-bytes
                     [["metabase-plugin.json" (json/encode {:icon "icon.svg"})]
-                     ["dist/index.js" "console.log('hi')"]])
+                     ["dist/index.js" "{}"]])
               resp (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/" zip)]
           (is (re-find #"\"name\"" (or (:message resp) (str resp)))))))))
 
@@ -733,9 +733,9 @@
                                                     :bundle_hash  "abc123"}]
       (testing "returns bundle with correct content-type and ETag"
         (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)
-                                    cache/resolve-bundle     (constantly {:content "console.log('hello')" :hash "deadbeef"})]
+                                    cache/resolve-bundle     (constantly {:content "{}" :hash "deadbeef"})]
           (let [resp (mt/user-http-request :crowberto :get 200 (str "ee/custom-viz-plugin/" id "/bundle"))]
-            (is (= "console.log('hello')" resp)))))
+            (is (= "{}" resp)))))
       (testing "returns 503 when bundle is not available"
         (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)
                                     cache/resolve-bundle     (constantly nil)]
@@ -750,9 +750,9 @@
                                                     :enabled      true
                                                     :bundle_hash  "abc123"}]
       (mt/with-dynamic-fn-redefs [cache/resolve-dev-bundle (constantly nil)
-                                  cache/resolve-bundle     (constantly {:content "console.log('hi')" :hash "h1"})]
+                                  cache/resolve-bundle     (constantly {:content "{}" :hash "h1"})]
         (testing "authenticated non-admin user can access /bundle"
-          (is (= "console.log('hi')"
+          (is (= "{}"
                  (mt/user-http-request :rasta :get 200 (str "ee/custom-viz-plugin/" id "/bundle")))))
         (testing "unauthenticated user cannot access /bundle"
           (is (= "Unauthenticated"

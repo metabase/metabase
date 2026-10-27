@@ -25,7 +25,7 @@
                     "png" (byte-array [0 0x80 0xff])
                     "svg" (.getBytes "<svg xmlns='http://www.w3.org/2000/svg'/>" "UTF-8"))]
     {"metabase-plugin.json" (.getBytes ^String (json/encode (merge {:icon icon-file} manifest)) "UTF-8")
-     "dist/index.js"        (.getBytes "console.log('hi')" "UTF-8")
+     "dist/index.js"        (.getBytes "{}" "UTF-8")
      icon-path              icon}))
 
 (deftest dot-path-bundle-round-trip-test
@@ -217,7 +217,7 @@
                 (t2/select-one :model/CustomVizPlugin :identifier "imported-viz"))))))
   (testing "loading a plugin whose files have no manifest makes it :error, keeping the files and their hash"
     (mt/with-model-cleanup [:model/CustomVizPlugin]
-      (let [script (.getBytes "console.log('hi')" "UTF-8")
+      (let [script (.getBytes "{}" "UTF-8")
             packed (cache/files->bundle {"dist/index.js" script})]
         (serdes/load-one! (ingested-plugin "broken-viz" nil :serdes/resources {"metabase-plugin.json" nil
                                                                                "dist/index.js"        script})
