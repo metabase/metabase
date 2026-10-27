@@ -7,17 +7,12 @@ import {
   getRawTableFieldId,
 } from "metabase/metadata/utils/field";
 import {
-  Flex,
-  Icon,
   Select,
-  SelectItem,
+  SelectItemWithDescription,
   type SelectProps,
-  Text,
 } from "metabase/ui";
 import { isFK } from "metabase-lib/v1/types/utils/isa";
 import type { Field, FieldId } from "metabase-types/api";
-
-import S from "./FkTargetPicker.module.css";
 
 // Only the type-classification + FK target fields are read on the input
 // `field`; the rich `Field.table` shape is only needed on the candidate
@@ -127,26 +122,11 @@ export const FkTargetPicker = ({
         const selected = getFieldIdFromValue(item.option.value) === value;
 
         return (
-          <SelectItem selected={selected}>
-            <Icon name={selected ? "check" : "empty"} />
-
-            <Flex direction="column" flex="1" gap="xxs">
-              <Text c="inherit" component="span" lh="1rem">
-                {item.option.label}
-              </Text>
-
-              {field?.description && (
-                <Text
-                  c="text-disabled"
-                  className={S.description}
-                  component="span"
-                  lh="1rem"
-                >
-                  {field.description}
-                </Text>
-              )}
-            </Flex>
-          </SelectItem>
+          <SelectItemWithDescription
+            selected={selected}
+            label={item.option.label}
+            description={field?.description}
+          />
         );
       }}
       searchable
