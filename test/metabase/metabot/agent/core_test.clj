@@ -384,19 +384,15 @@
                 "the refusal is emitted as assistant text — a tool result is not rendered to the user")
             (is (some #(= :data (:type %)) parts)
                 "state data part still closes the turn")))
-        (testing (str ":internal stops on the same denial. The class decides, not the profile: only "
-                      "the user can grant this permission, so there is nothing for the agent to do "
-                      "with the turn. This used to continue, and the model paraphrased the refusal "
-                      "in its own words — nicer wording, bought with an extra LLM call, a profile "
-                      "exception, and a model that might have said something else entirely.")
+        (testing (str ":internal has the notebook builder, so the agent is told to build the question "
+                      "there and the turn continues")
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :internal builder-db)]
-            (is (= 1 llm-calls)
-                "one call, where the profile gate used to allow a second")
-            (is (= :terminal-error (:finish-reason (last parts))))
-            (is (some #(and (= :text (:type %))
-                            (str/includes? (:text %) "do not have permission"))
-                      parts)
-                "the tool's own `:user-message`, which is authored and specific")))
+            (is (= 2 llm-calls))
+            (is (=? {:type   :tool-output
+                     :result {:error  {:class :recoverable}
+                              :output #"(?s).*Build the question with `construct_notebook_query`.*"}}
+                    (some #(when (= :tool-output (:type %)) %) parts)))
+            (is (not= :terminal-error (:finish-reason (last parts))))))
         (testing "a database the user cannot read at all stops the turn the same way"
           (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql unreadable-db)]
             (is (= 1 llm-calls)

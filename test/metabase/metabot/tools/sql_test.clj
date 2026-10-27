@@ -25,11 +25,13 @@
 (defn- invoke-sql-tool
   [profile memory tool-name args]
   (binding [scope/*current-user-scope* api-scope/unrestricted]
-    (let [entries (tools/->entries [#'tools/edit-sql-query-tool #'tools/replace-sql-query-tool
-                                    (if (= profile :sql)
-                                      #'tools/create-sql-query-code-edit-tool
-                                      #'tools/create-sql-query-tool)
-                                    #'tools/read-resource-tool]
+    (let [entries (tools/->entries (cond-> [#'tools/edit-sql-query-tool #'tools/replace-sql-query-tool
+                                            (if (= profile :sql)
+                                              #'tools/create-sql-query-code-edit-tool
+                                              #'tools/create-sql-query-tool)
+                                            #'tools/read-resource-tool]
+                                     ;; Like the real profiles: :internal has the notebook builder, :sql does not.
+                                     (= profile :internal) (conj #'tools/construct-notebook-query-tool))
                                    (atom memory) nil profile)]
       ((get-in entries [tool-name :fn])
        (merge {:title "Birds"}
@@ -227,15 +229,21 @@
       (mt/with-current-user (mt/user->id :rasta)
         (mt/with-db db
           (let [query (lib/native-query (mt/metadata-provider) "SELECT 1")]
-            (doseq [tool-name ["edit_sql_query" "replace_sql_query"]]
-              (let [result (invoke-sql-tool :sql {:state {:queries {"q1" query}}} tool-name
-                                            {:edits [{:old_string "1" :new_string "2"}]
-                                             :new_query "SELECT 2"})]
-                (is (= {:class :unrecoverable
-                        :code ::sql.common/no-native-permission
-                        :user-message "You do not have permission to write SQL queries against this database. Native query permissions are required."}
-                       (:error result)))
-                (is (str/includes? (:output result) "Don't retry"))))))))))
+            (doseq [tool-name ["edit_sql_query" "replace_sql_query"]
+                    :let [invoke #(invoke-sql-tool % {:state {:queries {"q1" query}}} tool-name
+                                                   {:edits [{:old_string "1" :new_string "2"}]
+                                                    :new_query "SELECT 2"})]]
+              (testing (str tool-name " without the notebook builder")
+                (let [result (invoke :sql)]
+                  (is (= {:class :unrecoverable
+                          :code ::sql.common/no-native-permission
+                          :user-message "You do not have permission to write SQL queries against this database. Native query permissions are required."}
+                         (:error result)))
+                  (is (str/includes? (:output result) "Don't retry"))))
+              (testing (str tool-name " with the notebook builder")
+                (let [result (invoke :internal)]
+                  (is (= {:class :recoverable :code ::sql/no-native-permission} (:error result)))
+                  (is (str/includes? (:output result) "Build the question with `construct_notebook_query`")))))))))))
 
 (deftest missing-sql-editor-test
   (doseq [memory [nil {} {:context {:user_is_viewing [{:type "code_editor" :buffers []}]}}]]
@@ -273,22 +281,29 @@
   (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
     (mt/with-no-data-perms-for-all-users!
       (perms/set-database-permission! (perms-group/all-users) db-id :perms/view-data :unrestricted)
-      (doseq [[permission expected-error]
-              [[:query-builder-and-native nil]
-               [:query-builder {:class :unrecoverable
-                                :code ::sql.common/no-native-permission
-                                :user-message "You do not have permission to write SQL queries against this database. Native query permissions are required."}]
-               [:no {:class :unrecoverable
-                     :code ::sql.create/database-access-denied
-                     :user-message "You do not have access to this database."}]]]
+      (doseq [[permission profile expected-error]
+              [[:query-builder-and-native :internal nil]
+               [:query-builder-and-native :sql nil]
+               [:query-builder :internal {:class :recoverable
+                                          :code ::sql/no-native-permission}]
+               [:query-builder :sql {:class :unrecoverable
+                                     :code ::sql.common/no-native-permission
+                                     :user-message "You do not have permission to write SQL queries against this database. Native query permissions are required."}]
+               [:no :internal {:class :unrecoverable
+                               :code ::sql.create/database-access-denied
+                               :user-message "You do not have access to this database."}]
+               [:no :sql {:class :unrecoverable
+                          :code ::sql.create/database-access-denied
+                          :user-message "You do not have access to this database."}]]]
         (perms/set-database-permission! (perms-group/all-users) db-id :perms/create-queries permission)
         (mt/with-current-user (mt/user->id :rasta)
-          (doseq [editor? [false true]]
-            (let [result (invoke-sql-tool (if editor? :sql :internal) editor-memory "create_sql_query" {:database_id db-id})]
+          (testing (str permission " " profile)
+            (let [result (invoke-sql-tool profile editor-memory "create_sql_query" {:database_id db-id})]
               (is (= expected-error (:error result)))
-              (if expected-error
-                (is (str/includes? (:output result) "Don't retry"))
-                (is (some? (:structured-output result)))))))))))
+              (case (:class expected-error)
+                nil            (is (some? (:structured-output result)))
+                :recoverable   (is (str/includes? (:output result) "Build the question with `construct_notebook_query`"))
+                :unrecoverable (is (str/includes? (:output result) "Don't retry"))))))))))
 
 (deftest creation-delivers-query-to-the-profile-test
   (mt/with-current-user (mt/user->id :crowberto)
