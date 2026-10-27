@@ -197,9 +197,11 @@
    (every? #(and
              (mi/can-read? :model/Card (u/the-id %))
              (can-read-attachments? %)) cards)
-   ;; if we're trying to create this Pulse inside a Collection, and it is not a dashboard subscription,
-   ;; make sure we have write permissions for that collection
-   (or (nil? collection-id) (mi/can-write? :model/Collection collection-id))
+   ;; A dashboard subscription does not need write access to a collection. `before-insert` sets its
+   ;; `collection_id` from the dashboard, so the value in the request is ignored (see
+   ;; https://github.com/metabase/metabase/pull/17722). Any other pulse that names a collection needs
+   ;; write access to that collection.
+   (or (some? dashboard-id) (nil? collection-id) (mi/can-write? :model/Collection collection-id))
    ;; prohibit creating dashboard subs if the the user doesn't have at least read access for the dashboard
    (or (nil? dashboard-id) (mi/can-read? :model/Dashboard dashboard-id))))
 
