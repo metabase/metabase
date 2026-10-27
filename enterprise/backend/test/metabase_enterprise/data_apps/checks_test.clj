@@ -90,10 +90,9 @@
 (deftest request-must-name-readable-app-test
   (do-with-app-card!
    (fn [card-id _collection-id]
-     (testing "a data app's request that names no app is refused"
-       (is (re-find #"must name a data app" (run-query 400 (card-query card-id) (as-app nil)))))
-     (testing "an app that doesn't exist is not found"
-       (is (= "Not found." (run-query 404 (card-query card-id) (as-app "no-such-app")))))
+     (testing "a data app's request that names no app, or an app that doesn't exist, is not found"
+       (doseq [options [(as-app nil) (as-app "no-such-app")]]
+         (is (= "Not found." (run-query 404 (card-query card-id) options)))))
      (testing "an app the user can't read is refused"
        (is (= "You don't have permissions to do that."
               (mt/user-http-request :rasta :post 403 "dataset" as-data-app (card-query card-id))))))))
