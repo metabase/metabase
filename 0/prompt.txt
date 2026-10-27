@@ -1,0 +1,1 @@
+use linear to create subissues for each subfolder of embedding, parent ticket is https://linear.app/metabase/issue/DEV-3941/consolidate-embedding-e2e-tests
