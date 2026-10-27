@@ -1,10 +1,12 @@
 (ns metabase-enterprise.data-apps.checks
-  "The checks that hold a data app's queries to its own cards and the Library: no SQL, source cards from the app's
-  collection, published tables, Library metrics, and segments and measures of published tables."
+  "The checks that hold a data app's ad-hoc queries to its own cards and the Library: no native or internal queries,
+  source cards from the app's collection, tables published to the Library, Library metrics, and segments and measures of
+  published tables."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.data-apps.db :as data-apps.db]
+   [metabase.api.common :as api]
    [metabase.data-apps.core :as data-apps]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib-be.schema :as lib-be.schema]
@@ -20,11 +22,13 @@
   (ex-info message {:status-code 400}))
 
 (defenterprise request-data-app
-  "The data app whose slug a data-app `request` names, by [[data-apps/data-app-slug]]; throws a 400 when it names none."
+  "The enabled data app, readable by the current user, whose slug a data-app `request` names by
+  [[data-apps/data-app-slug]]; throws a 400 when it names none and a 404 when there is no such app."
   :feature :data-apps
   [request]
-  (or (some-> (data-apps/data-app-slug request) data-apps.db/data-app-by-slug)
-      (throw (data-app-error (tru "A data app request must name a data app on this instance.")))))
+  (let [slug (or (data-apps/data-app-slug request)
+                 (throw (data-app-error (tru "A data app request must name a data app on this instance."))))]
+    (api/read-check (data-apps.db/enabled-data-app-by-slug slug))))
 
 (defn- format-ids
   "`ids` in order, for an error message."
@@ -32,8 +36,8 @@
   (str/join ", " (sort ids)))
 
 (defenterprise-schema check-query :- :nil
-  "Throws a 400 unless `query`, an MBQL or internal query as the `/api/dataset` endpoints take it, is an MBQL query with
-  source cards of `data-app`, source tables published to the Library, metrics from the Library, and segments and
+  "Throws a 400 unless `query`, as the `/api/dataset` endpoints normalize it, is neither internal nor native and uses only
+  cards in `data-app`'s collection, tables published to the Library (joins included), Library metrics, and segments and
   measures of published tables."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app
@@ -45,7 +49,7 @@
     (when (lib/any-native-stage? query)
       (throw (data-app-error (tru "A data app cannot run native queries."))))
     (when-let [external (some->> card-ids (data-apps.db/external-card-ids (:resource_collection_id data-app)) not-empty)]
-      (throw (data-app-error (tru "A data app can use only the cards of its own app, not the cards {0}." (format-ids external)))))
+      (throw (data-app-error (tru "A data app can use only the cards in its own collection, not the cards {0}." (format-ids external)))))
     (when-let [external (some-> metric-ids data-apps.db/external-metric-ids not-empty)]
       (throw (data-app-error (tru "A data app can use only metrics from the Library, not the metrics {0}." (format-ids external)))))
     (when-let [external (some-> (lib/all-source-table-ids query) data-apps.db/external-table-ids not-empty)]

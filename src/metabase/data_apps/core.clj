@@ -5,8 +5,7 @@
    [metabase.api.macros.scope :as scope]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib-be.schema :as lib-be.schema]
-   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
-   [metabase.util.i18n :refer [tru]]))
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
 
 (defenterprise visible-data-app-filter-select
   "A HoneySQL query of the ids of the data apps that the user described by `user-info` (`:user-id`, `:is-superuser?`)
@@ -16,8 +15,8 @@
   nil)
 
 (defn data-app-header?
-  "Whether `request` carries the `X-Metabase-Client` header of a published data app, which confines it to the data-app
-  scope."
+  "Whether `request` carries the `X-Metabase-Client: data-app` header, which a data app sends both published and in its
+  dev preview."
   [request]
   (analytics/data-app-client? (get-in request [:headers "x-metabase-client"])))
 
@@ -26,31 +25,41 @@
   [request]
   (not-empty (get-in request [:headers "x-metabase-client-identifier"])))
 
+(defn full-access?
+  "Whether `token-scopes` grant the whole REST API: a session's nil scopes, an unrestricted credential, or a granted
+  `\"*\"`, which [[metabase.api-scope.core/scope-matches?]] treats as satisfying every required scope."
+  [token-scopes]
+  (or (nil? token-scopes)
+      (contains? token-scopes ::scope/unrestricted)
+      (contains? token-scopes "*")))
+
 (defn data-app-request?
   "Whether `request` is confined to the data-app scope: marked by the data-app scope middleware, or authorized by a token
   whose scopes, short of full access, grant it."
   [{:keys [data-app-scoped? token-scopes]}]
-  (let [granted (into #{} (filter string?) token-scopes)]
-    (boolean
-     (or data-app-scoped?
-         (and (not (contains? token-scopes ::scope/unrestricted))
-              (not (contains? granted "*"))
-              (scope/scope-satisfied? granted api-scope/data-app))))))
-
-(defn- unavailable
-  "The error refusing a data-app request where data apps aren't available."
-  []
-  (ex-info (tru "Data apps aren''t available on this instance.") {:status-code 403}))
+  (boolean
+   (or data-app-scoped?
+       (and (not (full-access? token-scopes))
+            (scope/scope-satisfied? (into #{} (filter string?) token-scopes) api-scope/data-app)))))
 
 (defenterprise request-data-app
-  "The data app whose slug a data-app `request` names, by [[data-app-slug]]; throws a 400 when it names none."
+  "The enabled data app, readable by the current user, whose slug a data-app `request` names by [[data-app-slug]], or
+  nil without the data-apps feature."
   metabase-enterprise.data-apps.checks
   [_request]
-  (throw (unavailable)))
+  nil)
 
 (defenterprise-schema check-query :- :nil
-  "Throws a 400 unless `data-app` may run `query`, an MBQL or internal query as the `/api/dataset` endpoints take it."
+  "Throws a 400 unless `data-app` may run `query`, an MBQL or internal query as the `/api/dataset` endpoints take it;
+  does nothing without the data-apps feature."
   metabase-enterprise.data-apps.checks
   [_data-app :- ::data-apps.schema/data-app
    _query    :- ::lib-be.schema/maybe-legacy-or-internal-query]
-  (throw (unavailable)))
+  nil)
+
+(defn check-request
+  "Call `check` with the data app of `request` followed by `args` when `request` is a data app's."
+  [request check & args]
+  (when-let [data-app (and (data-app-request? request) (request-data-app request))]
+    (apply check data-app args))
+  nil)

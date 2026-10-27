@@ -15,8 +15,16 @@
     (doseq [scopes [nil #{:metabase.api.macros.scope/unrestricted} #{"*"} #{"agent:search"}]]
       (is (not (data-apps/data-app-request? {:token-scopes scopes})) (pr-str scopes)))))
 
+(deftest ^:parallel full-access?-test
+  (testing "a session, an unrestricted credential, or a granted \"*\" has full access"
+    (doseq [scopes [nil #{:metabase.api.macros.scope/unrestricted} #{"*"} #{"*" "agent:search"}]]
+      (is (data-apps/full-access? scopes) (pr-str scopes))))
+  (testing "scopes short of \"*\" don't"
+    (doseq [scopes [#{} #{"data-apps:base"} #{"agent:search"}]]
+      (is (not (data-apps/full-access? scopes)) (pr-str scopes)))))
+
 (deftest ^:parallel data-app-header?-test
-  (testing "only a published data app's client header confines a request"
+  (testing "only the data-app client header marks a request as a data app's"
     (is (data-apps/data-app-header? {:headers {"x-metabase-client" "data-app"}}))
     (doseq [client [nil "embedding-sdk-react" "data-app-dev"]]
       (is (not (data-apps/data-app-header? {:headers {"x-metabase-client" client}})) (pr-str client)))))

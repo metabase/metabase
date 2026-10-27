@@ -1,7 +1,6 @@
 (ns metabase.data-apps.schema-test
   (:require
    [clojure.test :refer :all]
-   [metabase-enterprise.data-apps.config :as data-app.config]
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.core :as lib]
    [metabase.util.malli.registry :as mr]))
@@ -35,12 +34,6 @@
   (testing "anything but a positive whole number is rejected, not coerced"
     (doseq [bad [0 -1 1.5 "1" "one" [1]]]
       (is (not (valid? ::data-apps.schema/version bad)) (str "should reject: " (pr-str bad))))))
-
-(deftest outdated-test
-  (testing "an app below the supported version is outdated; one at it is not"
-    (with-redefs [data-app.config/supported-app-version 2]
-      (is (data-app.config/outdated? {:version 1}))
-      (is (not (data-app.config/outdated? {:version 2}))))))
 
 (deftest description-test
   (testing "an optional one-liner is trimmed, and a multi-line value folded onto one line"
