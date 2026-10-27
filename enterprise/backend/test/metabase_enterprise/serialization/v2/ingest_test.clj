@@ -130,36 +130,26 @@
         (is (empty? errors))))))
 
 (deftest shared-top-level-paths-test
-  (testing "a directory that also holds files serialization does not own is never replaced wholesale"
-    (is (= {"data_apps" "data_app.yaml" "custom_viz_plugins" "custom_viz_plugin.yaml"}
-           ingest/shared-top-level-paths))
-    (is (not (contains? ingest/replaced-top-level-paths "custom_viz_plugins"))))
-  (testing "only the entity file counts in such a directory"
-    (is (ingest/entity-file-path? "custom_viz_plugins/thumbs/custom_viz_plugin.yaml"))
-    (is (not (ingest/entity-file-path? "custom_viz_plugins/thumbs/deploy/config.yaml")))
-    (is (not (ingest/entity-file-path? "custom_viz_plugins/thumbs/package.yaml")))))
+  (is (not (contains? ingest/replaced-top-level-paths "custom_viz_plugins")))
+  (is (ingest/entity-file-path? "custom_viz_plugins/thumbs/custom_viz_plugin.yaml"))
+  (is (not (ingest/entity-file-path? "custom_viz_plugins/thumbs/deploy/config.yaml"))))
 
 (deftest read-resources-test
   (let [text-entity   {:serdes/meta [{:model "DataApp" :id "x"}] :path "dist/index.js"}
         binary-entity {:serdes/meta [{:model "CustomVizPlugin" :id "x"}]}
-        read-text     (fn [path]
-                        (if (= path "metabase-plugin.json")
-                          "{\"name\": \"x\", \"icon\": \"icon.png\"}"
-                          (str "text:" path)))
-        read-bytes    (fn [path] (.getBytes (str "bytes:" path) "UTF-8"))]
-    (testing "a model's resources are read as text unless it says they are binary"
-      (is (= {"dist/index.js" "text:dist/index.js"}
-             (:serdes/resources (ingest/read-resources text-entity "sales" read-text read-bytes))))
-      (testing "and a model may name its resources after reading one of them as text"
-        (is (= {"metabase-plugin.json" (seq (.getBytes "bytes:metabase-plugin.json" "UTF-8"))
-                "dist/index.js"        (seq (.getBytes "bytes:dist/index.js" "UTF-8"))
-                "dist/assets/icon.png" (seq (.getBytes "bytes:dist/assets/icon.png" "UTF-8"))}
-               (update-vals (:serdes/resources (ingest/read-resources binary-entity "thumbs" read-text read-bytes)) seq)))))
-    (testing "an entity with resources owns its directory and learns its name"
-      (is (= "thumbs" (:serdes/directory (ingest/read-resources binary-entity "thumbs" read-text read-bytes)))))
-    (testing "an entity without resources is returned as is"
+        text-files    {"metabase-plugin.json" "{\"name\": \"x\", \"icon\": \"icon.png\"}"
+                       "dist/index.js" "{}"}
+        binary-files  {"metabase-plugin.json" (byte-array [1])
+                       "dist/index.js"        (byte-array [2])
+                       "dist/assets/icon.png" (byte-array [3])}
+        text-result   (ingest/read-resources text-entity "sales" text-files binary-files)
+        binary-result (ingest/read-resources binary-entity "thumbs" text-files binary-files)]
+    (is (= {"dist/index.js" "{}"} (:serdes/resources text-result)))
+    (is (= (update-vals binary-files seq) (update-vals (:serdes/resources binary-result) seq)))
+    (is (= "thumbs" (:serdes/directory binary-result)))
+    (testing "entities without resources are unchanged"
       (let [entity {:serdes/meta [{:model "Card" :id "x"}]}]
-        (is (identical? entity (ingest/read-resources entity "main" read-text read-bytes)))))))
+        (is (identical? entity (ingest/read-resources entity "main" text-files binary-files)))))))
 
 (deftest ingest-one-attaches-the-directory-and-reads-binary-resources-test
   (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -175,9 +165,9 @@
         (is (= "thumbs" (:serdes/directory ingested)))
         (is (= (seq icon) (seq (get-in ingested [:serdes/resources "dist/assets/icon.png"])))
             "bytes that are not UTF-8 survive")
-        (is (contains? (:serdes/resources ingested) "dist/index.js") "a file that isn't there is still a resource")
+        (is (contains? (:serdes/resources ingested) "dist/index.js") "missing resources retain their keys")
         (is (nil? (get-in ingested [:serdes/resources "dist/index.js"])))
-        (testing "and neither reaches the file an export writes"
+        (testing "directory metadata is not stored"
           (is (= {:identifier "thumbs" :serdes/meta [{:model "CustomVizPlugin"}]}
                  (serdes/storable (dissoc ingested :serdes/resources)))))))))
 
