@@ -1,0 +1,4 @@
+frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionDataSource/utils.unit.spec.ts
+frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionFiltersHeader/QuestionFiltersHeader.unit.spec.tsx
+frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/tests/premium.unit.spec.tsx
+frontend/src/metabase/query_builder/containers/QueryBuilder.beforeunload-events.unit.spec.tsx

@@ -1,0 +1,12 @@
+frontend/src/metabase/metrics/components/MetricDimensions/utils.unit.spec.ts
+frontend/src/metabase/metrics/components/MetricPageShell/MetricPageShell.unit.spec.tsx
+frontend/src/metabase/models/containers/NewModelOptions/tests/common.unit.spec.tsx
+frontend/src/metabase/models/containers/NewModelOptions/tests/enterprise.unit.spec.tsx
+frontend/src/metabase/monitor/components/LogsViewer/LogsViewer.unit.spec.tsx
+frontend/src/metabase/monitor/components/MonitorLayout/SidebarResizableBox/SidebarResizableBox.unit.spec.tsx
+frontend/src/metabase/monitor/routes.unit.spec.tsx
+frontend/src/metabase/monitor/tools/components/Logs/utils.unit.spec.ts
+frontend/src/metabase/monitor/tools/components/ModelPersistenceLogJobs/ModelPersistenceLogJobs.unit.spec.tsx
+frontend/src/metabase/monitor/tools/components/TaskRunDetailsPage/TaskRunDetailsPage.unit.spec.tsx
+frontend/src/metabase/monitor/tools/notifications/NotificationsAdminPage/NotificationsAdminPage.unit.spec.tsx
+frontend/src/metabase/query_builder/containers/QueryBuilder.beforeunload-events.unit.spec.tsx

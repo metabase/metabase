@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         shard: [2]
-        copy: [1]
+        copy: [A, B, C, D, E]
     steps:
       - uses: actions/checkout@v7
       - name: Prepare front-end environment
@@ -22,17 +22,12 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Build cljs
         run: bun run build-pure:cljs
-      - name: Run the beforeunload spec alone
+      - name: Run the file sequence in one worker
         run: |
-          F=frontend/src/metabase/query_builder/containers/QueryBuilder.beforeunload-events.unit.spec.tsx
-          for i in 1 2 3 4 5; do
-            node_modules/.bin/jest $F --ignoreProjects ci-scripts --silent --runner ./frontend/test/harness/jest-runner.ts > run-$i.log 2>&1 || true
-            echo "ALONE run $i: $(grep -E '^Tests:' run-$i.log)"
+          for i in 1 2 3; do
+            echo "SEQ round $i sequence ${{ matrix.copy }}"
+            node .github/sweep/seq-run.ts .github/sweep/${{ matrix.copy }}.txt 2>&1 | grep "^SEQ" || true
           done
-          echo "JEST: $(node_modules/.bin/jest $F --ignoreProjects ci-scripts --silent 2>&1 | grep -E '^Tests:')"
-          grep -c "^===" act-stacks.txt || true
-          grep "^===" act-stacks.txt | sort | uniq -c || true
-          awk '/^===/{n++} n<=2' act-stacks.txt | sed 's|.*/node_modules/[^ ]*/node_modules/||' | head -140 || true
       - uses: actions/upload-artifact@v7
         if: always()
         with:
