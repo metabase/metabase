@@ -12,6 +12,7 @@ import {
   getVersionType,
   isEnterpriseVersion,
   isPatchVersion,
+  isPreReleaseVersion,
 } from "./version-helpers";
 
 const generateVersionInfo = ({ version }: { version: string }): VersionInfo => {
@@ -169,6 +170,43 @@ export async function getSupportedMajors(
   )) as VersionInfoFile;
 
   return getSupportedMajorVersions(versionInfo, today);
+}
+
+const getStartOfWeek = (today: string) => {
+  const date = new Date(`${today}T00:00:00Z`);
+  const daysSinceMonday = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - daysSinceMonday);
+  return date.toISOString().slice(0, 10);
+};
+
+export const hasMinorReleaseInWeek = (
+  versionInfo: VersionInfoFile,
+  majorVersion: number,
+  today: string = new Date().toISOString().slice(0, 10),
+): boolean => {
+  const startOfWeek = getStartOfWeek(today);
+
+  return [versionInfo.latest, ...(versionInfo.older ?? [])].some(
+    (info) =>
+      !!info &&
+      ["major", "minor"].includes(getVersionType(info.version)) &&
+      !isPreReleaseVersion(info.version) &&
+      getMajorVersion(info.version) === String(majorVersion) &&
+      info.released >= startOfWeek &&
+      info.released <= today,
+  );
+};
+
+export async function hasMinorReleaseThisWeek(
+  majorVersion: number,
+  today: string = new Date().toISOString().slice(0, 10),
+): Promise<boolean> {
+  const url = getVersionInfoUrl("v0");
+  const versionInfo = (await fetch(url).then((r) =>
+    r.json(),
+  )) as VersionInfoFile;
+
+  return hasMinorReleaseInWeek(versionInfo, majorVersion, today);
 }
 
 // for promoting a released version to `latest` in version-info.json

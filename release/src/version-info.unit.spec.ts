@@ -6,6 +6,8 @@ import {
   getSupportedMajorVersions,
   getSupportedMajors,
   getVersionInfoUrl,
+  hasMinorReleaseInWeek,
+  hasMinorReleaseThisWeek,
   isLtsVersion,
   updateVersionInfoLatest,
   updateVersionInfoLatestJson,
@@ -433,6 +435,117 @@ describe("version-info", () => {
         "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json",
       );
       expect(majors).toEqual([60]);
+    });
+  });
+
+  describe("hasMinorReleaseInWeek", () => {
+    const release = (version: string, released: string) => ({
+      version,
+      released,
+      patch: true,
+      highlights: [],
+    });
+
+    const fileWith = (...releases: ReturnType<typeof release>[]) =>
+      ({
+        latest: releases[0],
+        older: releases.slice(1),
+      }) as VersionInfoFile;
+
+    it("is true when a minor of that major shipped since Monday", () => {
+      const versionInfo = fileWith(
+        release("v0.65.2", "2026-10-26"),
+        release("v0.64.3", "2026-10-20"),
+      );
+
+      expect(hasMinorReleaseInWeek(versionInfo, 65, "2026-10-27")).toBe(true);
+    });
+
+    it("is true for a minor shipped earlier on the same day", () => {
+      const versionInfo = fileWith(release("v0.65.2", "2026-10-27"));
+
+      expect(hasMinorReleaseInWeek(versionInfo, 65, "2026-10-27")).toBe(true);
+    });
+
+    it("finds releases in the older list", () => {
+      const versionInfo = fileWith(
+        release("v0.66.1", "2026-10-27"),
+        release("v0.58.38", "2026-10-26"),
+      );
+
+      expect(hasMinorReleaseInWeek(versionInfo, 58, "2026-10-27")).toBe(true);
+    });
+
+    it("is false when the last minor shipped the week before", () => {
+      const versionInfo = fileWith(release("v0.64.3", "2026-10-25"));
+
+      expect(hasMinorReleaseInWeek(versionInfo, 64, "2026-10-27")).toBe(false);
+    });
+
+    it("ignores other majors", () => {
+      const versionInfo = fileWith(release("v0.65.2", "2026-10-27"));
+
+      expect(hasMinorReleaseInWeek(versionInfo, 64, "2026-10-27")).toBe(false);
+    });
+
+    it("skips v0.66.2 on Tuesday when v0.66.1 shipped on Monday", () => {
+      const versionInfo = fileWith(
+        release("v0.66.1", "2026-11-02"),
+        release("v0.66.0", "2026-10-26"),
+      );
+
+      expect(hasMinorReleaseInWeek(versionInfo, 66, "2026-11-03")).toBe(true);
+    });
+
+    it("counts a gold release", () => {
+      const versionInfo = fileWith(release("v0.66.0", "2026-10-26"));
+
+      expect(hasMinorReleaseInWeek(versionInfo, 66, "2026-10-27")).toBe(true);
+    });
+
+    it("ignores patches and pre-releases", () => {
+      const versionInfo = fileWith(
+        release("v0.66.0-beta", "2026-10-26"),
+        release("v0.65.2.1", "2026-10-27"),
+        release("v0.65.3-rc1", "2026-10-27"),
+      );
+
+      expect(hasMinorReleaseInWeek(versionInfo, 66, "2026-10-27")).toBe(false);
+      expect(hasMinorReleaseInWeek(versionInfo, 65, "2026-10-27")).toBe(false);
+    });
+
+    it("treats Sunday as the end of the week", () => {
+      const versionInfo = fileWith(release("v0.65.2", "2026-10-26"));
+
+      expect(hasMinorReleaseInWeek(versionInfo, 65, "2026-11-01")).toBe(true);
+      expect(hasMinorReleaseInWeek(versionInfo, 65, "2026-11-02")).toBe(false);
+    });
+  });
+
+  describe("hasMinorReleaseThisWeek", () => {
+    beforeEach(() => {
+      process.env.AWS_S3_STATIC_BUCKET = "my.metabase.com";
+      process.env.AWS_REGION = "us-north-9";
+      mockFetch.mockReset();
+    });
+
+    it("fetches the OSS version-info.json", async () => {
+      mockFetch.mockResolvedValue({
+        json: async () => ({
+          latest: {
+            version: "v0.65.2",
+            released: "2026-10-27",
+            patch: true,
+            highlights: [],
+          },
+          older: [],
+        }),
+      } as Awaited<ReturnType<typeof fetch>>);
+
+      expect(await hasMinorReleaseThisWeek(65, "2026-10-27")).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json",
+      );
     });
   });
 

@@ -26,20 +26,36 @@ jobs:
         env:
           AWS_S3_STATIC_BUCKET: ${{ vars.AWS_S3_STATIC_BUCKET }}
           AWS_REGION: ${{ vars.AWS_REGION }}
+          SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
         with:
           script: | # js
             // Every supported major line gets regular minor releases so the
             // branches we backport into don't go stale. Support is read from
             // `major_version_support` in version-info.json via getSupportedMajors —
             // the same source the auto-backport workflow uses to pick its targets.
-            const { getSupportedMajors } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const {
+              getSupportedMajors,
+              hasMinorReleaseThisWeek,
+              sendSlackMessage,
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
 
             const majors = await getSupportedMajors();
             console.log('supported majors', majors);
 
             // release-auto.yml releases one major per dispatch.
-            await Promise.all(majors.map(version =>
-              github.rest.actions.createWorkflowDispatch({
+            await Promise.all(majors.map(async version => {
+              if (await hasMinorReleaseThisWeek(version)) {
+                const message = `Minor version already released this week, skipping automatic minor release for v${version}`;
+                console.log(message);
+                await sendSlackMessage({
+                  channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
+                  message,
+                }).catch(console.error);
+                return;
+              }
+
+              await github.rest.actions.createWorkflowDispatch({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 workflow_id: 'release-auto.yml',
@@ -48,5 +64,5 @@ jobs:
                   version: String(version),
                   kind: 'minor',
                 },
-              }).catch(console.error)
-            ));
+              }).catch(console.error);
+            }));
