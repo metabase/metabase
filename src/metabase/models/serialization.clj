@@ -594,8 +594,7 @@
       (and self (not (contains? self :id))) (assoc :serdes/meta (ingested-path model ingested)))))
 
 (defn storable
-  "`entity` as its file stores it: `:serdes/meta` reduced to `[{:model ...}]`, and removed from nested entities, and
-  without the `:serdes/directory` ingestion attaches to an entity that owns its directory."
+  "Prepare an entity for storage, keeping only its model metadata and removing ingestion-only directory metadata."
   [entity]
   (let [model (-> entity :serdes/meta last :model)]
     (-> (walk/postwalk #(cond-> % (map? %) (dissoc :serdes/meta)) entity)
@@ -603,9 +602,8 @@
         (assoc :serdes/meta [{:model model}]))))
 
 (defmulti resource-paths
-  "Paths of the `:serdes/resources` stored next to an ingested entity's YAML file, relative to its directory.
-  `read-text` reads a file at such a path as a UTF-8 string, nil when there is none, for a model whose resources are
-  named by one of them: a custom viz plugin's manifest names its assets."
+  "Resource paths relative to the entity's directory. Models may use `read-text` to discover assets from a manifest;
+  it returns UTF-8 text, or nil for missing files."
   {:arglists '([ingested read-text])}
   (fn [ingested _read-text] (ingested-model ingested)))
 
@@ -613,8 +611,7 @@
   nil)
 
 (defmulti binary-resources?
-  "Whether the [[resource-paths]] of an ingested entity hold bytes rather than UTF-8 text: ingestion then reads them,
-  and storage writes them, as byte arrays."
+  "Whether resources are read and written as byte arrays rather than text."
   {:arglists '([ingested])}
   ingested-model)
 
