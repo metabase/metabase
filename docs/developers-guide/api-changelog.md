@@ -16,6 +16,12 @@ title: API changelog
   (`sensitive`). Pass the new `include_sensitive_fields=true` to get them, for tables whose data model the current user
   can edit, as with `GET /api/table/:id/query_metadata`.
 
+- `GET /api/transform` no longer returns transforms that are in the trash. This also applies with the `database-id`
+  query parameter. `GET /api/transform/:id` still returns a trashed transform, with `archived: true`.
+
+- `GET /api/collection/:id/items` for a transforms folder no longer lists the transforms in it that are in the trash.
+  `GET /api/collection/:trash-id/items` lists them instead.
+
 ## Metabase 0.65.0
 
 - `POST /api/transform` and `PUT /api/transform/:id` answer a target table that already exists with
