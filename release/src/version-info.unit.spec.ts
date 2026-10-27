@@ -6,8 +6,8 @@ import {
   getSupportedMajorVersions,
   getSupportedMajors,
   getVersionInfoUrl,
-  hasMinorReleaseInWeek,
-  hasMinorReleaseThisWeek,
+  hasRecentMinorRelease,
+  hasRecentMinorReleaseIn,
   isLtsVersion,
   updateVersionInfoLatest,
   updateVersionInfoLatestJson,
@@ -438,7 +438,7 @@ describe("version-info", () => {
     });
   });
 
-  describe("hasMinorReleaseInWeek", () => {
+  describe("hasRecentMinorReleaseIn", () => {
     const release = (version: string, released: string) => ({
       version,
       released,
@@ -452,19 +452,53 @@ describe("version-info", () => {
         older: releases.slice(1),
       }) as VersionInfoFile;
 
-    it("is true when a minor of that major shipped since Monday", () => {
+    it("skips v0.66.2 on Tuesday when v0.66.1 shipped on Monday", () => {
       const versionInfo = fileWith(
-        release("v0.65.2", "2026-10-26"),
-        release("v0.64.3", "2026-10-20"),
+        release("v0.66.1", "2026-11-02"),
+        release("v0.66.0", "2026-10-26"),
       );
 
-      expect(hasMinorReleaseInWeek(versionInfo, 65, "2026-10-27")).toBe(true);
+      expect(hasRecentMinorReleaseIn(versionInfo, 66, 3, "2026-11-03")).toBe(
+        true,
+      );
     });
 
-    it("is true for a minor shipped earlier on the same day", () => {
+    it("includes the first and last day of the window", () => {
+      expect(
+        hasRecentMinorReleaseIn(
+          fileWith(release("v0.65.2", "2026-10-31")),
+          65,
+          3,
+          "2026-11-03",
+        ),
+      ).toBe(true);
+      expect(
+        hasRecentMinorReleaseIn(
+          fileWith(release("v0.65.2", "2026-11-03")),
+          65,
+          3,
+          "2026-11-03",
+        ),
+      ).toBe(true);
+    });
+
+    it("ignores releases before the window", () => {
+      const versionInfo = fileWith(release("v0.65.2", "2026-10-30"));
+
+      expect(hasRecentMinorReleaseIn(versionInfo, 65, 3, "2026-11-03")).toBe(
+        false,
+      );
+    });
+
+    it("uses the window size it is given", () => {
       const versionInfo = fileWith(release("v0.65.2", "2026-10-27"));
 
-      expect(hasMinorReleaseInWeek(versionInfo, 65, "2026-10-27")).toBe(true);
+      expect(hasRecentMinorReleaseIn(versionInfo, 65, 3, "2026-11-03")).toBe(
+        false,
+      );
+      expect(hasRecentMinorReleaseIn(versionInfo, 65, 7, "2026-11-03")).toBe(
+        true,
+      );
     });
 
     it("finds releases in the older list", () => {
@@ -473,34 +507,25 @@ describe("version-info", () => {
         release("v0.58.38", "2026-10-26"),
       );
 
-      expect(hasMinorReleaseInWeek(versionInfo, 58, "2026-10-27")).toBe(true);
-    });
-
-    it("is false when the last minor shipped the week before", () => {
-      const versionInfo = fileWith(release("v0.64.3", "2026-10-25"));
-
-      expect(hasMinorReleaseInWeek(versionInfo, 64, "2026-10-27")).toBe(false);
+      expect(hasRecentMinorReleaseIn(versionInfo, 58, 3, "2026-10-27")).toBe(
+        true,
+      );
     });
 
     it("ignores other majors", () => {
       const versionInfo = fileWith(release("v0.65.2", "2026-10-27"));
 
-      expect(hasMinorReleaseInWeek(versionInfo, 64, "2026-10-27")).toBe(false);
-    });
-
-    it("skips v0.66.2 on Tuesday when v0.66.1 shipped on Monday", () => {
-      const versionInfo = fileWith(
-        release("v0.66.1", "2026-11-02"),
-        release("v0.66.0", "2026-10-26"),
+      expect(hasRecentMinorReleaseIn(versionInfo, 64, 3, "2026-10-27")).toBe(
+        false,
       );
-
-      expect(hasMinorReleaseInWeek(versionInfo, 66, "2026-11-03")).toBe(true);
     });
 
     it("counts a gold release", () => {
       const versionInfo = fileWith(release("v0.66.0", "2026-10-26"));
 
-      expect(hasMinorReleaseInWeek(versionInfo, 66, "2026-10-27")).toBe(true);
+      expect(hasRecentMinorReleaseIn(versionInfo, 66, 3, "2026-10-27")).toBe(
+        true,
+      );
     });
 
     it("ignores patches and pre-releases", () => {
@@ -510,19 +535,27 @@ describe("version-info", () => {
         release("v0.65.3-rc1", "2026-10-27"),
       );
 
-      expect(hasMinorReleaseInWeek(versionInfo, 66, "2026-10-27")).toBe(false);
-      expect(hasMinorReleaseInWeek(versionInfo, 65, "2026-10-27")).toBe(false);
+      expect(hasRecentMinorReleaseIn(versionInfo, 66, 3, "2026-10-27")).toBe(
+        false,
+      );
+      expect(hasRecentMinorReleaseIn(versionInfo, 65, 3, "2026-10-27")).toBe(
+        false,
+      );
     });
 
-    it("treats Sunday as the end of the week", () => {
-      const versionInfo = fileWith(release("v0.65.2", "2026-10-26"));
+    it("throws on an invalid window", () => {
+      const versionInfo = fileWith(release("v0.65.2", "2026-10-27"));
 
-      expect(hasMinorReleaseInWeek(versionInfo, 65, "2026-11-01")).toBe(true);
-      expect(hasMinorReleaseInWeek(versionInfo, 65, "2026-11-02")).toBe(false);
+      expect(() =>
+        hasRecentMinorReleaseIn(versionInfo, 65, NaN, "2026-10-27"),
+      ).toThrow(/Invalid window/);
+      expect(() =>
+        hasRecentMinorReleaseIn(versionInfo, 65, -1, "2026-10-27"),
+      ).toThrow(/Invalid window/);
     });
   });
 
-  describe("hasMinorReleaseThisWeek", () => {
+  describe("hasRecentMinorRelease", () => {
     beforeEach(() => {
       process.env.AWS_S3_STATIC_BUCKET = "my.metabase.com";
       process.env.AWS_REGION = "us-north-9";
@@ -542,7 +575,7 @@ describe("version-info", () => {
         }),
       } as Awaited<ReturnType<typeof fetch>>);
 
-      expect(await hasMinorReleaseThisWeek(65, "2026-10-27")).toBe(true);
+      expect(await hasRecentMinorRelease(65, 3, "2026-10-27")).toBe(true);
       expect(mockFetch).toHaveBeenCalledWith(
         "http://my.metabase.com.s3.us-north-9.amazonaws.com/version-info.json",
       );

@@ -28,6 +28,7 @@ jobs:
           AWS_REGION: ${{ vars.AWS_REGION }}
           SLACK_RELEASE_CHANNEL: ${{ vars.SLACK_RELEASE_CHANNEL }}
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          RECENT_MINOR_WINDOW_DAYS: 3
         with:
           script: | # js
             // Every supported major line gets regular minor releases so the
@@ -36,17 +37,19 @@ jobs:
             // the same source the auto-backport workflow uses to pick its targets.
             const {
               getSupportedMajors,
-              hasMinorReleaseThisWeek,
+              hasRecentMinorRelease,
               sendSlackMessage,
             } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const windowDays = Number(process.env.RECENT_MINOR_WINDOW_DAYS);
 
             const majors = await getSupportedMajors();
             console.log('supported majors', majors);
 
             // release-auto.yml releases one major per dispatch.
             await Promise.all(majors.map(async version => {
-              if (await hasMinorReleaseThisWeek(version)) {
-                const message = `Minor version already released this week, skipping automatic minor release for v${version}`;
+              if (await hasRecentMinorRelease(version, windowDays)) {
+                const message = `Minor version already released in the last ${windowDays} days, skipping automatic minor release for v${version}`;
                 console.log(message);
                 await sendSlackMessage({
                   channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',

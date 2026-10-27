@@ -172,19 +172,23 @@ export async function getSupportedMajors(
   return getSupportedMajorVersions(versionInfo, today);
 }
 
-const getStartOfWeek = (today: string) => {
-  const date = new Date(`${today}T00:00:00Z`);
-  const daysSinceMonday = (date.getUTCDay() + 6) % 7;
-  date.setUTCDate(date.getUTCDate() - daysSinceMonday);
+const subtractDays = (day: string, days: number) => {
+  const date = new Date(`${day}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - days);
   return date.toISOString().slice(0, 10);
 };
 
-export const hasMinorReleaseInWeek = (
+export const hasRecentMinorReleaseIn = (
   versionInfo: VersionInfoFile,
   majorVersion: number,
+  windowDays: number,
   today: string = new Date().toISOString().slice(0, 10),
 ): boolean => {
-  const startOfWeek = getStartOfWeek(today);
+  if (!Number.isInteger(windowDays) || windowDays < 0) {
+    throw new Error(`Invalid window in days: ${windowDays}`);
+  }
+
+  const windowStart = subtractDays(today, windowDays);
 
   return [versionInfo.latest, ...(versionInfo.older ?? [])].some(
     (info) =>
@@ -192,13 +196,14 @@ export const hasMinorReleaseInWeek = (
       ["major", "minor"].includes(getVersionType(info.version)) &&
       !isPreReleaseVersion(info.version) &&
       getMajorVersion(info.version) === String(majorVersion) &&
-      info.released >= startOfWeek &&
+      info.released >= windowStart &&
       info.released <= today,
   );
 };
 
-export async function hasMinorReleaseThisWeek(
+export async function hasRecentMinorRelease(
   majorVersion: number,
+  windowDays: number,
   today: string = new Date().toISOString().slice(0, 10),
 ): Promise<boolean> {
   const url = getVersionInfoUrl("v0");
@@ -206,7 +211,7 @@ export async function hasMinorReleaseThisWeek(
     r.json(),
   )) as VersionInfoFile;
 
-  return hasMinorReleaseInWeek(versionInfo, majorVersion, today);
+  return hasRecentMinorReleaseIn(versionInfo, majorVersion, windowDays, today);
 }
 
 // for promoting a released version to `latest` in version-info.json
