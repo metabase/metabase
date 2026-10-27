@@ -155,9 +155,9 @@
         (assoc :requestable_indexes (requestable-indexes transform))
         transforms.u/add-source-readable)))
 
-(defn- check-folder-in-trash!
-  "Reject a create or a move into a folder in the Trash, and a restore of a transform whose folder is in the Trash.
-  `old` is nil for a create."
+(defn check-folder-in-trash!
+  "Reject a create or a move of a transform from `old` to `new` into a folder in the Trash, and a restore of a
+  transform whose folder is in the Trash. `old` is nil for a create."
   [old new]
   (when-let [folder-id (:collection_id new)]
     (when (get (collections/collection-archived-flags [folder-id]) folder-id)

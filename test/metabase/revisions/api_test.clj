@@ -203,6 +203,45 @@
 
 ;;; # POST /revision/revert
 
+(deftest transform-revert-keeps-trash-state-test
+  (mt/with-premium-features #{:advanced-permissions :transforms-basic :hosting}
+    (mt/with-temp [:model/Collection {folder-id :id}       {:name "Folder" :namespace :transforms}
+                   :model/Collection {other-folder-id :id} {:name "Other" :namespace :transforms}
+                   :model/Transform  {transform-id :id}    {:name "First" :collection_id folder-id}]
+      (let [push!     (fn []
+                        (create-transform-revision! transform-id false :crowberto)
+                        (t2/select-one-pk :model/Revision :model "Transform" :model_id transform-id {:order-by [[:id :desc]]}))
+            revert!   (fn [status revision-id]
+                        (mt/user-http-request :crowberto :post status "revision/revert"
+                                              {:entity "transform" :id transform-id :revision_id revision-id}))
+            transform #(t2/select-one [:model/Transform :name :archived :archived_directly :collection_id] transform-id)
+            first-id  (push!)]
+        (t2/update! :model/Transform transform-id {:name "Second"})
+        (push!)
+        (testing "a revert does not take a transform out of a folder in the trash"
+          ;; a folder trash archives the transform and records no revision
+          (t2/update! :model/Collection folder-id {:archived true})
+          (t2/update! :model/Transform transform-id {:archived true :archived_directly false})
+          (revert! 200 first-id)
+          (is (=? {:name "First" :archived true :archived_directly false} (transform))))
+        (t2/update! :model/Collection folder-id {:archived false})
+        (t2/update! :model/Transform transform-id {:archived true :archived_directly true})
+        (let [trashed-id (push!)]
+          (t2/update! :model/Transform transform-id {:name "Third" :archived false :archived_directly false})
+          (push!)
+          (testing "a revert to a revision taken in the trash does not trash the transform"
+            (revert! 200 trashed-id)
+            (is (=? {:archived false :archived_directly false} (transform)))))
+        (t2/update! :model/Transform transform-id {:collection_id other-folder-id})
+        (let [other-folder-revision-id (push!)]
+          (t2/update! :model/Transform transform-id {:name "Fourth" :collection_id folder-id})
+          (push!)
+          (t2/update! :model/Collection other-folder-id {:archived true})
+          (testing "a revert into a folder in the trash fails"
+            (is (= "You can't move a transform into a folder that is in the trash."
+                   (revert! 400 other-folder-revision-id)))
+            (is (=? {:name "Fourth" :collection_id folder-id} (transform)))))))))
+
 (defn- strip-ids
   [objects]
   (mapv #(dissoc % :id) objects))
