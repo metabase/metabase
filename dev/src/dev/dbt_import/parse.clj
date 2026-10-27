@@ -10,7 +10,10 @@
   * a metric's `label` falls back to its name when missing or blank;
   * `filter` and `fill_nulls_with` may sit on the metric or on its input measure, and either counts.
 
-  Only simple metrics are parsed. Anything else is reported in `:unsupported` with a reason."
+  Simple, cumulative, ratio and derived metrics are parsed. What is structurally beyond Metabase is reported in
+  `:unsupported` with a reason here: a cumulative metric with a window or `grain_to_date`, an input with an offset,
+  and conversion metrics. Whether the metrics a ratio or derived metric refers to exist is the resolve stage's
+  business."
   (:require
    [better-cond.core :as b]
    [clojure.java.io :as io]
@@ -133,17 +136,105 @@
    :non-additive-dimension non_additive_dimension
    :agg-time-dimension     (or agg_time_dimension (:default-agg-time-dimension semantic-model))})
 
-(mu/defn parse-metric :- [:or ::ir/metric ::ir/unsupported]
-  "Parse one manifest metric into an `::ir/metric`, or an `::ir/unsupported` record saying why it could not be.
-  `semantic-models` is keyed by semantic model unique ID, which is how the metric's `depends_on` refers to it."
+(mu/defn- metric-common :- ::ir/metric.common
+  "The part of the IR every kind of metric shares."
+  [metric-type :- [:enum :simple :cumulative :ratio :derived]
+   {metric-name :name, metric-filter :filter, metric-meta :meta, :keys [unique_id label description]}
+   :- ::dbt-manifest/metric]
+  {:type        metric-type
+   :name        metric-name
+   :unique-id   unique_id
+   :label       (if (str/blank? label) metric-name label)
+   :description description
+   :filters     (filter-templates metric-filter)
+   :meta        metric-meta})
+
+(mu/defn- parse-metric-input :- ::ir/metric-input
+  [{metric-name :name, :keys [alias filter]} :- ::dbt-manifest/metric-input]
+  {:metric  metric-name
+   :alias   alias
+   :filters (filter-templates filter)})
+
+(mu/defn- offset-reason :- [:maybe :string]
+  "Why a ratio or derived metric with `inputs` cannot be converted: the first input shifted in time, if any. MBQL's
+  `offset` is relative to the rows of the result, not to a span of time, so period-over-period comparisons have no
+  faithful equivalent."
+  [inputs :- [:sequential ::dbt-manifest/metric-input]]
+  (some (fn [{metric-name :name, :keys [alias offset_window offset_to_grain]}]
+          (let [input-name (or alias metric-name)]
+            (cond
+              offset_window
+              (format "input %s has an offset_window of %d %s: period-over-period comparisons have no Metabase equivalent"
+                      (pr-str input-name) (:count offset_window) (:granularity offset_window))
+
+              offset_to_grain
+              (format "input %s has an offset_to_grain of %s: comparisons with the start of a period have no Metabase equivalent"
+                      (pr-str input-name) (pr-str offset_to_grain)))))
+        inputs))
+
+(mu/defn- parse-ratio :- [:or ::ir/metric.ratio ::ir/unsupported]
+  [{:keys [type_params] :as metric} :- ::dbt-manifest/metric]
+  (let [{:keys [numerator denominator]} type_params]
+    (b/cond
+      (or (nil? numerator) (nil? denominator))
+      (unsupported metric "ratio metric without a numerator and a denominator")
+
+      :let [reason (offset-reason [numerator denominator])]
+
+      reason
+      (unsupported metric reason)
+
+      :else
+      (assoc (metric-common :ratio metric)
+             :numerator   (parse-metric-input numerator)
+             :denominator (parse-metric-input denominator)))))
+
+(mu/defn- parse-derived :- [:or ::ir/metric.derived ::ir/unsupported]
+  [{:keys [type_params] :as metric} :- ::dbt-manifest/metric]
+  (let [{:keys [expr metrics]} type_params]
+    (b/cond
+      (str/blank? expr)
+      (unsupported metric "derived metric without an expr")
+
+      (empty? metrics)
+      (unsupported metric "derived metric without input metrics")
+
+      :let [reason (offset-reason metrics)]
+
+      reason
+      (unsupported metric reason)
+
+      :else
+      (assoc (metric-common :derived metric)
+             :expr   expr
+             :inputs (mapv parse-metric-input metrics)))))
+
+(mu/defn- cumulative-reason :- [:maybe :string]
+  "Why a cumulative metric cannot be converted: a window or a `grain_to_date`, written the 1.12 way in
+  `cumulative_type_params` or the legacy way directly in `type_params`. Without either it is a running total over
+  everything, which Metabase has."
+  [{:keys [window grain_to_date cumulative_type_params]} :- ::dbt-manifest/metric-type-params]
+  (let [window        (or window (:window cumulative_type_params))
+        grain-to-date (or grain_to_date (:grain_to_date cumulative_type_params))]
+    (cond
+      window
+      (format "a cumulative metric with a window of %d %s has no Metabase equivalent: MBQL has no rolling-window aggregation"
+              (:count window) (:granularity window))
+
+      grain-to-date
+      (format "a cumulative metric with grain_to_date %s has no Metabase equivalent: a running total that resets at each %s needs a breakout the metric cannot require"
+              (pr-str grain-to-date) grain-to-date))))
+
+(mu/defn- parse-simple :- [:or ::ir/metric.simple ::ir/unsupported]
+  "A simple or cumulative metric, which aggregate one measure of one semantic model."
   [semantic-models :- [:map-of :string ::ir/semantic-model]
-   {metric-name :name, metric-type :type, metric-filter :filter, metric-meta :meta
-    :keys       [unique_id label description type_params depends_on]
-    :as         metric}
+   {metric-name :name, metric-type :type, :keys [type_params depends_on] :as metric}
    :- ::dbt-manifest/metric]
   (b/cond
-    (not= metric-type :simple)
-    (unsupported metric (format "metric type %s is not supported yet (QRES-5)" (name metric-type)))
+    :let [reason (when (= metric-type :cumulative) (cumulative-reason type_params))]
+
+    reason
+    (unsupported metric reason)
 
     :let [semantic-model-id (m/find-first #(str/starts-with? % "semantic_model.") (:nodes depends_on))
           semantic-model    (get semantic-models semantic-model-id)]
@@ -169,17 +260,24 @@
 
     :else
     (merge aggregation
-           {:name              metric-name
-            :unique-id         unique_id
-            :label             (if (str/blank? label) metric-name label)
-            :description       description
-            :semantic-model    (:name semantic-model)
+           (metric-common metric-type metric)
+           {:semantic-model    (:name semantic-model)
             :measure           (:name measure)
-            :filters           (into (filter-templates metric-filter)
+            :filters           (into (filter-templates (:filter metric))
                                      (filter-templates (:filter input-measure)))
             :fill-nulls-with   (or (:fill_nulls_with type_params) (:fill_nulls_with input-measure))
-            :join-to-timespine (boolean (or (:join_to_timespine type_params) (:join_to_timespine input-measure)))
-            :meta              metric-meta})))
+            :join-to-timespine (boolean (or (:join_to_timespine type_params) (:join_to_timespine input-measure)))})))
+
+(mu/defn parse-metric :- [:or ::ir/metric ::ir/unsupported]
+  "Parse one manifest metric into an `::ir/metric`, or an `::ir/unsupported` record saying why it could not be.
+  `semantic-models` is keyed by semantic model unique ID, which is how a simple metric's `depends_on` refers to it."
+  [semantic-models :- [:map-of :string ::ir/semantic-model]
+   {metric-type :type, :as metric} :- ::dbt-manifest/metric]
+  (case metric-type
+    (:simple :cumulative) (parse-simple semantic-models metric)
+    :ratio                (parse-ratio metric)
+    :derived              (parse-derived metric)
+    :conversion           (unsupported metric "conversion metrics are out of scope: a per-entity funnel is nothing a Metabase metric expresses")))
 
 (mu/defn parse-manifest :- ::ir/manifest
   "Parse a decoded manifest (see [[read-manifest]]) into the IR. Metrics that cannot be parsed land in `:unsupported`

@@ -44,12 +44,17 @@
    thunk             :- fn?]
   (binding [serdes/*export-database-fk* (fn [_id] (metadata/database-name metadata-provider))
             serdes/*export-table-fk*    (fn [table-id] (metadata/portable-table-ref metadata-provider table-id))
-            serdes/*export-field-fk*    (fn [field-id] (metadata/portable-field-ref metadata-provider field-id))]
+            serdes/*export-field-fk*    (fn [field-id] (metadata/portable-field-ref metadata-provider field-id))
+            ;; the only other ids in a metric's query are the `[:metric id]` references of a ratio or derived metric
+            serdes/*export-fk*          (fn [card-id model]
+                                          (when-not (#{'Card :model/Card} model)
+                                            (throw (ex-info (str "unexpected foreign key to " model) {:id card-id})))
+                                          (metadata/portable-card-ref metadata-provider card-id))]
     (thunk)))
 
 (mu/defn dataset-query :- :map
   "A resolved metric's query as serdes writes it: `serdes/export-mbql` strips the clause ids and turns the provider's
-  ids into names."
+  ids into names, and a `[:metric id]` reference into the referenced metric's `entity_id`."
   [{:keys [metadata-provider query]} :- ::resolved/metric]
   (with-portable-refs metadata-provider #(serdes/export-mbql query)))
 

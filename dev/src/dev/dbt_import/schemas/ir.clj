@@ -82,23 +82,65 @@
    [:dimensions                 [:sequential ::dimension]]
    [:measures                   [:map-of :string ::measure]]])
 
-(mr/def ::metric
+(mr/def ::metric-input
+  "A reference from a ratio or derived metric to another metric: by name, with the alias a derived `expr` uses for it
+  (nil means its name) and the unrendered filter templates that apply to this use of it only."
+  [:map
+   [:metric  :string]
+   [:alias   [:maybe :string]]
+   [:filters [:sequential :string]]])
+
+(mr/def ::metric.common
+  "What every metric has. `label` falls back to the name. `filters` holds unrendered filter templates (QRES-3) on the
+  metric itself; empty means none."
+  [:map
+   [:type        [:enum :simple :cumulative :ratio :derived]]
+   [:name        :string]
+   [:unique-id   :string]
+   [:label       :string]
+   [:description [:maybe :string]]
+   [:filters     [:sequential :string]]
+   [:meta        [:maybe :map]]])
+
+(mr/def ::metric.simple
   "A simple metric: one aggregation over one semantic model, flattened so the emitter does not have to chase the
-  measure. `label` falls back to the name. `filters` holds unrendered filter templates (QRES-3); empty means none.
-  `measure` names the source measure for reporting, or is nil when the metric carried its own aggregation."
+  measure. A cumulative metric is the same with its aggregation running over everything up to each row. `measure`
+  names the source measure for reporting, or is nil when the metric carried its own aggregation."
   [:merge
+   ::metric.common
    ::aggregation
    [:map
-    [:name              :string]
-    [:unique-id         :string]
-    [:label             :string]
-    [:description       [:maybe :string]]
+    [:type              [:enum :simple :cumulative]]
     [:semantic-model    :string]
     [:measure           [:maybe :string]]
-    [:filters           [:sequential :string]]
     [:fill-nulls-with   [:maybe :int]]
-    [:join-to-timespine :boolean]
-    [:meta              [:maybe :map]]]])
+    [:join-to-timespine :boolean]]])
+
+(mr/def ::metric.ratio
+  "A ratio of two other metrics."
+  [:merge
+   ::metric.common
+   [:map
+    [:type        [:= :ratio]]
+    [:numerator   ::metric-input]
+    [:denominator ::metric-input]]])
+
+(mr/def ::metric.derived
+  "Arithmetic, as SQL in `expr`, over other metrics, which `expr` names by their alias or name."
+  [:merge
+   ::metric.common
+   [:map
+    [:type   [:= :derived]]
+    [:expr   :string]
+    [:inputs [:sequential ::metric-input]]]])
+
+(mr/def ::metric
+  "A metric of any kind, see `type`."
+  [:multi {:dispatch :type}
+   [:simple     ::metric.simple]
+   [:cumulative ::metric.simple]
+   [:ratio      ::metric.ratio]
+   [:derived    ::metric.derived]])
 
 (mr/def ::unsupported
   "A metric the parser could not turn into a `::metric`, and why. Reported rather than thrown so one bad metric does
@@ -116,7 +158,7 @@
 
 (mr/def ::manifest
   "Everything parsed from one semantic layer. `semantic-models` is keyed by semantic model name; `metrics` is sorted
-  by name."
+  by name (the resolve stage puts a metric after the metrics it refers to)."
   [:map
    [:source          ::manifest.source]
    [:semantic-models [:map-of :string ::semantic-model]]

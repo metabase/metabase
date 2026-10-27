@@ -6,6 +6,7 @@
    [metabase.lib-metric.schema :as lib-metric.schema]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util.malli.registry :as mr]))
 
@@ -46,10 +47,12 @@
 (mr/def ::metric
   "An IR metric bound to Metabase: the Lib query that computes it and its curated dimensions and mappings, built
   against the [[dev.dbt-import.metadata]] provider for its database, which is what turns their ids back into names
-  when they are written out. `unsupported-dimensions` lists the dbt dimensions that could not be curated dimensions."
+  when they are written out. `unsupported-dimensions` lists the dbt dimensions that could not be curated dimensions.
+  `card-id` is the metric's id in that provider, which a ratio or derived metric's `[:metric id]` references use."
   [:map
    [:metric                 ::ir/metric]
    [:entity-id              ::entity-id]
+   [:card-id                ::lib.schema.id/card]
    [:metadata-provider      ::lib.schema.metadata/metadata-provider]
    [:query                  ::lib.schema/query]
    [:dimensions             ::lib-metric.schema/persisted-dimensions]
