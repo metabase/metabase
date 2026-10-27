@@ -5,6 +5,7 @@ import { setupCardDataset } from "__support__/server-mocks";
 import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { OnUpdateGoalWarning } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import type { DatasetData, RawSeries } from "metabase-types/api";
 import {
@@ -43,9 +44,21 @@ const ANSWERED = createMockReferencedEntitiesResults({
 
 const FAILED = createMockFailedReferencedEntitiesResults();
 
-async function setup(rawSeries: RawSeries) {
+type SetupOpts = {
+  onUpdateGoalWarning?: OnUpdateGoalWarning;
+};
+
+async function setup(
+  rawSeries: RawSeries,
+  { onUpdateGoalWarning }: SetupOpts = {},
+) {
   jest.useFakeTimers();
-  renderWithProviders(<Visualization rawSeries={rawSeries} />);
+  renderWithProviders(
+    <Visualization
+      rawSeries={rawSeries}
+      onUpdateGoalWarning={onUpdateGoalWarning}
+    />,
+  );
   // ExplicitSize sets the chart dimensions after mounting
   await act(async () => {
     jest.advanceTimersByTime(0);
@@ -110,6 +123,22 @@ describe("box plot dynamic goal", () => {
     expect(queryEChartsGoalLine()).not.toBeInTheDocument();
     expect(screen.queryByText(GOAL_LABEL)).not.toBeInTheDocument();
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+
+  it("reports a goal warning when the reference cannot be resolved", async () => {
+    const onUpdateGoalWarning = jest.fn();
+
+    await setup(createSeries(FAILED), { onUpdateGoalWarning });
+
+    expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true);
+  });
+
+  it("reports no goal warning when the reference resolves", async () => {
+    const onUpdateGoalWarning = jest.fn();
+
+    await setup(createSeries(ANSWERED), { onUpdateGoalWarning });
+
+    expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(false);
   });
 });
 

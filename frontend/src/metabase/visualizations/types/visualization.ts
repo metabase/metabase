@@ -48,6 +48,8 @@ export type OnOpenChartSettings = (data: {
   showSidebarTitle?: boolean;
 }) => void;
 
+export type OnUpdateGoalWarning = (hasGoalWarning: boolean) => void;
+
 export type OnBrush = (options: {
   clickObject: BrushClickObject;
   openClickActions: (clicked: ClickObject | null) => void;
@@ -131,6 +133,7 @@ export interface VisualizationProps {
 
   canToggleSeriesVisibility?: boolean;
   onUpdateWarnings?: any;
+  onUpdateGoalWarning?: OnUpdateGoalWarning;
 
   dispatch: Dispatch;
 

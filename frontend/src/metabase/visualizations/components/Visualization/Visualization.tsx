@@ -44,6 +44,7 @@ import {
   type ClickObject,
   type OnBrush,
   type OnOpenChartSettings,
+  type OnUpdateGoalWarning,
   type VisualizationPassThroughProps,
   isRegularClickAction,
 } from "metabase/visualizations/types";
@@ -183,6 +184,7 @@ type VisualizationOwnProps = {
     question?: Question,
   ) => void;
   onUpdateWarnings?: (warnings: string[]) => void;
+  onUpdateGoalWarning?: OnUpdateGoalWarning;
   onVisualizationRendered?: (series: Series) => void;
   onSameOriginNavigation?: (location: Partial<Path>) => void;
   /** When true, internal click behaviors (dashboard/question links) are preserved */
@@ -701,6 +703,7 @@ class Visualization extends PureComponent<
       onTogglePreviewing,
       onUpdateVisualizationSettings = () => {},
       onUpdateWarnings,
+      onUpdateGoalWarning,
       titleMenuItems,
       zoomedRowIndex,
       onZoomRow,
@@ -996,6 +999,7 @@ class Visualization extends PureComponent<
                         onUpdateVisualizationSettings
                       }
                       onUpdateWarnings={onUpdateWarnings}
+                      onUpdateGoalWarning={onUpdateGoalWarning}
                       onVisualizationClick={this.handleVisualizationClick}
                       onHeaderColumnReorder={this.props.onHeaderColumnReorder}
                       titleMenuItems={hasHeader ? undefined : titleMenuItems}

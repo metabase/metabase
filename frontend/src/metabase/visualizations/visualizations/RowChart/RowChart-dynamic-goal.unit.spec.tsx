@@ -16,6 +16,7 @@ import {
 } from "__support__/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
 import { registerVisualizations } from "metabase/visualizations/register";
+import type { OnUpdateGoalWarning } from "metabase/visualizations/types";
 import { loadVisualizationComponents } from "metabase/viz-core";
 import type {
   RawSeries,
@@ -62,9 +63,14 @@ const FAILED = createMockFailedReferencedEntitiesResults();
 type SetupOpts = {
   settings?: VisualizationSettings;
   referencedEntities?: ReferencedEntitiesResults;
+  onUpdateGoalWarning?: OnUpdateGoalWarning;
 };
 
-function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
+function setup({
+  settings = SETTINGS,
+  referencedEntities,
+  onUpdateGoalWarning,
+}: SetupOpts = {}) {
   const series: RawSeries = [
     createMockSingleSeries(
       createMockCard({ display: "row", visualization_settings: settings }),
@@ -78,7 +84,12 @@ function setup({ settings = SETTINGS, referencedEntities }: SetupOpts = {}) {
     ),
   ];
 
-  renderWithProviders(<Visualization rawSeries={series} />);
+  renderWithProviders(
+    <Visualization
+      rawSeries={series}
+      onUpdateGoalWarning={onUpdateGoalWarning}
+    />,
+  );
 
   return { series };
 }
@@ -200,6 +211,29 @@ describe("row chart dynamic goal", () => {
     );
     expect(getGraphicsSymbols("goal line")).toHaveLength(0);
     expect(fetchMock.callHistory.calls("path:/api/dataset")).toHaveLength(0);
+  });
+
+  it("reports a goal warning when the reference cannot be resolved", async () => {
+    const onUpdateGoalWarning = jest.fn();
+    setup({ referencedEntities: FAILED, onUpdateGoalWarning });
+
+    await waitFor(() =>
+      expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(true),
+    );
+  });
+
+  it("reports no goal warning when the reference resolves", async () => {
+    const onUpdateGoalWarning = jest.fn();
+    setup({
+      referencedEntities: createMockReferencedEntitiesResults({
+        column: "goal",
+        value: GOAL,
+      }),
+      onUpdateGoalWarning,
+    });
+
+    await findGoalLine();
+    expect(onUpdateGoalWarning).toHaveBeenLastCalledWith(false);
   });
 });
 
