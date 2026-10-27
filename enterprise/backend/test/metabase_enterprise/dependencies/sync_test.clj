@@ -32,7 +32,7 @@
         (doseq [statement ["CREATE TABLE \"test_table\" (\"id\" INTEGER PRIMARY KEY, \"filter_col\" VARCHAR);"
                            "INSERT INTO \"test_table\" (\"id\", \"filter_col\") VALUES (1, 'value1'), (2, 'value2');"]]
           (jdbc/execute! one-off-dbs/*conn* [statement]))
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (let [table-id        (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "test_table")
               filter-field-id (t2/select-one-fn :id :model/Field :table_id table-id :name "filter_col")
               mp              (lib-be/application-database-metadata-provider (mt/id))
@@ -62,7 +62,7 @@
     (with-syncable-db!
       (fn [{:keys [card-id filter-field-id]}]
         (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" DROP COLUMN \"filter_col\";"])
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (is (false? (t2/select-one-fn :active :model/Field :id filter-field-id)))
         (is (pending? card-id))
         (deps.test/synchronously-run-dependency-job!)
@@ -78,7 +78,7 @@
     (with-syncable-db!
       (fn [{:keys [card-id]}]
         (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"test_table\" DROP COLUMN \"filter_col\";"])
-        (sync/sync-db-metadata! (mt/db))
+        (sync/sync-db-metadata! (mt/id))
         (is (pending? card-id))))))
 
 (deftest ^:synchronized sync-without-changes-does-not-trigger-reanalysis-test
@@ -87,7 +87,7 @@
       (fn [{:keys [card-id filter-field-id table-id]}]
         (let [table-before        (into {} (t2/select-one :model/Table :id table-id))
               filter-field-before (into {} (t2/select-one :model/Field :id filter-field-id))]
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/id))
           (is (= table-before (into {} (t2/select-one :model/Table :id table-id))))
           (is (= filter-field-before (into {} (t2/select-one :model/Field :id filter-field-id))))
           (is (not (pending? card-id)))
@@ -109,13 +109,13 @@
     (with-syncable-db!
       (fn [{:keys [card-id]}]
         (jdbc/execute! one-off-dbs/*conn* ["CREATE TABLE \"ref_table\" (\"id\" INTEGER PRIMARY KEY, \"test_id\" INTEGER);"])
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (let [ref-table-id (t2/select-one-fn :id :model/Table :db_id (mt/id) :name "ref_table")
               ref-field-id (t2/select-one-fn :id :model/Field :table_id ref-table-id :name "test_id")]
           (t2/insert! :model/Dependency {:from_entity_type :card :from_entity_id card-id
                                          :to_entity_type   :table :to_entity_id ref-table-id})
           (record-processed! card-id)
           (jdbc/execute! one-off-dbs/*conn* ["ALTER TABLE \"ref_table\" ADD FOREIGN KEY (\"test_id\") REFERENCES \"test_table\"(\"id\");"])
-          (sync/sync-database! (mt/db))
+          (sync/sync-database! (mt/id))
           (is (some? (t2/select-one-fn :fk_target_field_id :model/Field :id ref-field-id)))
           (is (pending? card-id)))))))
