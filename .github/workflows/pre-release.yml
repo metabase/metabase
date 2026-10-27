@@ -157,7 +157,7 @@ jobs:
 
   run-sanity-check:
     runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     needs: [test-mode-config, release-artifact]
     strategy:
       matrix:
@@ -205,6 +205,9 @@ jobs:
         uses: ./.github/actions/prepare-backend
       - name: Compile CLJS
         run: ${{ needs.test-mode-config.outputs.package_manager }} run build-pure:cljs
+      - name: Build Embedding SDK package
+        if: ${{ matrix.edition == 'ee' && needs.test-mode-config.outputs.sdk_component_specs != '' }}
+        run: ${{ needs.test-mode-config.outputs.package_manager }} run build-embedding-sdk-package
       - name: Prepare Cypress environment
         id: cypress-prep
         uses: ./.github/actions/prepare-cypress
@@ -250,87 +253,12 @@ jobs:
             "$CYPRESS_GREP_FLAG" grepTags="@prerelease+-@OSS" \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)'
 
-      - name: Upload Cypress Artifacts upon failure
-        uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: cypress-failed-tests-recording
-          path: |
-            ./cypress
-            ./logs/test.log
-          if-no-files-found: ignore
-
-  run-sdk-sanity-check:
-    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
-    timeout-minutes: 45
-    needs: [test-mode-config, release-artifact]
-    if: ${{ needs.test-mode-config.outputs.sdk_component_specs != '' }}
-    env:
-      MB_EDITION: ee
-      DISPLAY: ""
-      MB_RUN_MODE: ${{ needs.test-mode-config.outputs.run_mode }}
-      METASTORE_DEV_SERVER_URL: ${{ needs.test-mode-config.outputs.dev_server }}
-      CYPRESS_GREP_FLAG: ${{ needs.test-mode-config.outputs.cypress_grep_flag }}
-      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
-      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
-      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
-      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
-      CYPRESS_VIDEO: "false"
-      TERM: xterm
-    steps:
-      - name: Check out the code
-        uses: actions/checkout@v7
-        with:
-          ref: ${{ needs.release-artifact.outputs.commit }}
-      - name: Prepare Docker containers
-        uses: ./.github/actions/e2e-prepare-containers
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-          maildev: true
-          openldap: false
-          webhook: false
-          snowplow: true
-          metaplow: true
-          postgres: false
-          mysql: false
-          mongo: false
-      - name: Prepare front-end environment
-        uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-      - name: Build Embedding SDK package
-        run: ${{ needs.test-mode-config.outputs.package_manager }} run build-embedding-sdk-package
-      - name: Compile CLJS
-        run: ${{ needs.test-mode-config.outputs.package_manager }} run build-pure:cljs
-      - name: Prepare Cypress environment
-        id: cypress-prep
-        uses: ./.github/actions/prepare-cypress
-      - uses: actions/download-artifact@v8
-        name: Retrieve uberjar artifact for ee
-        with:
-          name: metabase-test-ee-uberjar
-      - name: Get the version info
-        run: |
-          jar xf metabase.jar version.properties
-          mv version.properties resources/
-      - name: Move jar
-        run: mkdir -p ./target/uberjar && cp metabase.jar ./target/uberjar/metabase.jar
-
-      - name: Run Metabase
-        run: node e2e/runner/run_cypress_ci.js start
-
-      - name: Make app db snapshot
-        env:
-          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
-        run: |
-          node e2e/runner/run_cypress_ci.js snapshot \
-            --spec "e2e/snapshot-creators/default.cy.snap.js"
-
       - name: Run a few important Embedding SDK component tests as sanity check
+        if: ${{ !cancelled() && matrix.edition == 'ee' && needs.test-mode-config.outputs.sdk_component_specs != '' }}
         env:
           CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
           SPECS: ${{ needs.test-mode-config.outputs.sdk_component_specs }}
+          CYPRESS_VIDEO: "false"
         run: |
           node e2e/runner/run_cypress_ci.js component \
             "$CYPRESS_GREP_FLAG" grepTags="@prerelease" \
@@ -340,7 +268,7 @@ jobs:
         uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: cypress-failed-sdk-component-tests-recording
+          name: cypress-failed-tests-recording
           path: |
             ./cypress
             ./logs/test.log
@@ -374,7 +302,6 @@ jobs:
     needs:
       [
         run-sanity-check,
-        run-sdk-sanity-check,
         check-uberjar-health,
         containerize-ee,
         containerize-oss,
@@ -399,7 +326,6 @@ jobs:
 
             const allJobsSuccessful =
               '${{ needs.run-sanity-check.result }}' === 'success' &&
-              ['success', 'skipped'].includes('${{ needs.run-sdk-sanity-check.result }}') &&
               '${{ needs.check-uberjar-health.result }}' === 'success' &&
               '${{ needs.containerize-ee.result }}' === 'success' &&
               '${{ needs.containerize-oss.result }}' === 'success';
