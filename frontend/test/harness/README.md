@@ -87,11 +87,12 @@ fails when such a call is still running after its `afterEach` hooks, or when
 one starts after the test ended. The message names the call in the spec. jest
 does not have this check.
 
-| Message                                         | What to do                                                                                                  |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| An async waitFor, findBy or user-event call ... | Add `await` to the call, or to the async function that makes it. Usually that is `setup()`.                 |
-| An async act() ...                              | Add `await` to the `act()`.                                                                                 |
-| An act() that a waitFor started ...             | Under fake timers, a `waitFor` with an async callback ends before its last `act()`. Make the callback sync. |
+| Message                                           | What to do                                                                                                  |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| An async waitFor, findBy or user-event call ...   | Add `await` to the call, or to the async function that makes it. Usually that is `setup()`.                 |
+| An async act() ...                                | Add `await` to the `act()`.                                                                                 |
+| An act() that a waitFor started ...               | Under fake timers, a `waitFor` with an async callback ends before its last `act()`. Make the callback sync. |
+| A findBy or waitFor inside a waitFor callback ... | Use a `getBy` query in a synchronous callback. The outer `waitFor` retries it.                              |
 
 ## Debug a spec
 
