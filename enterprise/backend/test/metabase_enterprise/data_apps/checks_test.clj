@@ -1,5 +1,6 @@
 (ns metabase-enterprise.data-apps.checks-test
-  "The checks that hold a data app's ad-hoc queries to its own cards and the Library, through the endpoints that run them."
+  "The checks that hold a data app's ad-hoc queries and card runs to its own cards and the Library, through the
+  endpoints that run them."
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
@@ -34,6 +35,11 @@
   "The error message for a data app's use of the entities of `kind` with `ids`."
   [kind & ids]
   (format (error-formats kind) (str/join ", " (sort ids))))
+
+(defn- card-error
+  "The error message for a data app's run of the card with `card-id`."
+  [card-id]
+  (format "A data app can run only the cards in its own collection, not the card %d." card-id))
 
 (defn- run-query
   "The response to a data app's request to run `query` through `POST /api/dataset`, expecting `status`."
@@ -229,7 +235,7 @@
                (doseq [query [(with-segment categories) (with-measure categories)]]
                  (is (= "completed" (:status (run-query 202 query)))))))))))))
 
-(deftest app-card-runs-test
+(deftest card-endpoints-run-app-card-test
   (do-with-app-card!
    (fn [card-id _collection-id]
      (testing "the app's card runs, pivots and exports"
@@ -244,18 +250,19 @@
                                                                  (t2/select-one-fn :entity_id :model/Card :id card-id))
                                                          as-data-app))))))))
 
-(deftest other-card-runs-are-refused-test
+(deftest card-endpoints-refuse-other-cards-test
   (do-with-app-card!
    (fn [_card-id _collection-id]
      (mt/with-temp [:model/Card {elsewhere-id :id} {:name "Venues elsewhere" :dataset_query (data-apps.tu/venues-query)}]
-       (testing "a card outside the app's collection, or of no card at all, is refused alike"
-         (doseq [other-id [elsewhere-id 999999999]]
-           (is (= (error-message :cards other-id)
-                  (mt/user-http-request :crowberto :post 400 (format "card/%d/query" other-id) as-data-app)))
-           (is (= (error-message :cards other-id)
-                  (mt/user-http-request :crowberto :post 400 (format "card/pivot/%d/query" other-id) as-data-app)))
-           (is (= (error-message :cards other-id)
-                  (mt/user-http-request :crowberto :post 400 (format "card/%d/query/csv" other-id) as-data-app)))))
+       (testing "a card outside the app's collection is refused"
+         (is (= (card-error elsewhere-id)
+                (mt/user-http-request :crowberto :post 400 (format "card/%d/query" elsewhere-id) as-data-app)))
+         (is (= (card-error elsewhere-id)
+                (mt/user-http-request :crowberto :post 400 (format "card/pivot/%d/query" elsewhere-id) as-data-app)))
+         (is (= (card-error elsewhere-id)
+                (mt/user-http-request :crowberto :post 400 (format "card/%d/query/csv" elsewhere-id) as-data-app))))
+       (testing "an ID of no card is not found, as for any request"
+         (is (= "Not found." (mt/user-http-request :crowberto :post 404 "card/999999999/query" as-data-app))))
        (testing "a request that is not a data app's still runs the card"
          (is (= "completed" (:status (mt/user-http-request :crowberto :post 202
                                                            (format "card/%d/query" elsewhere-id))))))))))

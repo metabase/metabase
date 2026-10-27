@@ -817,13 +817,10 @@
         [:maybe [:enum "value_asc" "value_desc" "label_asc" "label_desc"]]]]
    request]
   (let [resolved-card-id (eid-translation/->id-or-404 :card card-id)
-        _                (when (data-apps/data-app-request? request)
-                           (-> (data-apps/request-data-app request) (data-apps/check-card resolved-card-id)))
-        card             (api/check-404 (queries-rest.db/card resolved-card-id))]
+        card             (api/read-check (api/check-404 (queries-rest.db/card resolved-card-id)))]
+    (data-apps/check-request request data-apps/check-card card)
     (if stored_result_id
-      (do
-        (api/read-check card)
-        (serve-cached-stored-result resolved-card-id stored_result_id sort))
+      (serve-cached-stored-result resolved-card-id stored_result_id sort)
       (do
         (when dashboard_id
           (api/read-check :model/Dashboard dashboard_id))
@@ -871,20 +868,20 @@
        [:pivot_results {:default false} ms/BooleanValue]
        [:csv_include_bom {:default false} ms/BooleanValue]]
    request]
-  (when (data-apps/data-app-request? request)
-    (-> (data-apps/request-data-app request) (data-apps/check-card card-id)))
-  (qp.card/process-query-for-card
-   (api/check-404 (queries-rest.db/card card-id)) export-format
-   :parameters  parameters
-   :constraints nil
-   :context     (api.dataset/export-format->context export-format)
-   :middleware  {:process-viz-settings?  true
-                 :skip-results-metadata? true
-                 :ignore-cached-results? true
-                 :format-rows?           format-rows?
-                 :pivot?                 pivot-results?
-                 :csv-include-bom?        (if (some? csv-include-bom?) csv-include-bom? false)
-                 :js-int-to-string?      false}))
+  (let [card (api/read-check (api/check-404 (queries-rest.db/card card-id)))]
+    (data-apps/check-request request data-apps/check-card card)
+    (qp.card/process-query-for-card
+     card export-format
+     :parameters  parameters
+     :constraints nil
+     :context     (api.dataset/export-format->context export-format)
+     :middleware  {:process-viz-settings?  true
+                   :skip-results-metadata? true
+                   :ignore-cached-results? true
+                   :format-rows?           format-rows?
+                   :pivot?                 pivot-results?
+                   :csv-include-bom?        (if (some? csv-include-bom?) csv-include-bom? false)
+                   :js-int-to-string?      false})))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
@@ -958,9 +955,8 @@
                                     [:dashboard_id {:optional true} [:maybe ms/PositiveInt]]
                                     [:parameters   {:optional true} [:maybe [:sequential ::parameters.schema/parameter-with-value]]]]
    request]
-  (when (data-apps/data-app-request? request)
-    (-> (data-apps/request-data-app request) (data-apps/check-card card-id)))
-  (let [card (api/check-404 (queries-rest.db/card card-id))]
+  (let [card (api/read-check (api/check-404 (queries-rest.db/card card-id)))]
+    (data-apps/check-request request data-apps/check-card card)
     (when dashboard_id
       (api/read-check :model/Dashboard dashboard_id))
     (qp.card/process-query-for-card card :api
