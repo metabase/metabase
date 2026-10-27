@@ -11,7 +11,7 @@ summary: Data apps let you build small internal tools on your Metabase data, lik
 
 > **Beta:** Data apps are in beta.
 
-Data apps let you build app like portals, review queues, and forms with Metabase, without having to stand up a separate app and backend. A data app reads questions and metrics built on your [Library](../data-modeling/semantic-layer/library.md), and writes data through data actions that insert, update, or delete rows.
+Data apps let you build apps like portals, review queues, and forms with Metabase, without having to stand up a separate app and backend. A data app reads questions and metrics built on your [Library](../data-modeling/semantic-layer/library.md), and writes data through data actions that insert, update, or delete rows.
 
 You describe the app, and your AI coding agent builds the app locally with [Metabase CLI](../installation-and-operation/metabase-cli.md). You [ship the app to production](#ship-the-app-to-production-with-remote-sync) with Remote Sync, and admins [manage it in Data Studio](./manage.md).
 
@@ -54,6 +54,15 @@ The agent starts a preview of the app at a `localhost` address on your computer.
 
 The preview needs an admin [API key](../people-and-groups/api-keys.md). The agent creates the key on your development Metabase, writes it into a `.env.local` file that Git ignores, and deletes the key when it's done. Since the preview uses an admin key, it shows what an admin can see, not what the app's viewers can see.
 
+If your agent can't create the key, for example because its permission settings block it, [create an API key](../people-and-groups/api-keys.md#create-an-api-key) in the **Administrators** group yourself. Then put it in a `.env.local` file in the app's directory, next to `package.json`:
+
+```text
+DATA_APP_MB_URL=<your development Metabase URL>
+DATA_APP_MB_API_KEY=<your API key>
+```
+
+Delete the key when you no longer need the preview.
+
 > **The preview changes your data:** The local preview runs the app's actions against your database. Use test data when you try out adds, edits, or deletes.
 
 ## Editing a data app
@@ -72,7 +81,7 @@ When [Remote Sync](../installation-and-operation/remote-sync.md) is on, it alway
 
 Remote Sync doesn't sync an app's status (live or draft) or its group access, so each Metabase keeps its own. A new app starts live on your production Metabase, and only admins can open it until you add groups there.
 
-Your production Metabase also needs the Library content that the app reads, so [sync your Library](../installation-and-operation/remote-sync.md#you-choose-what-to-sync) too. If your app usese actions, [enable actions](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the production databases that the app writes to.
+Your production Metabase also needs the Library content that the app reads, so [sync your Library](../installation-and-operation/remote-sync.md#you-choose-what-to-sync) too. If your app uses actions, [enable actions](../data-modeling/models/actions/introduction.md#enabling-actions-for-a-database) on the production databases that the app writes to.
 
 ### What syncs with a data app
 
