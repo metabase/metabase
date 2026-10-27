@@ -313,16 +313,13 @@ export const AnalysisWorkspace = <K extends AnalysisKind>({
             onHintPeopleSegments={setIsPeopleSegmentsHinted}
             setupLabel={config.setupLabel}
             sql={query.sql}
-            canSave={canSave}
+            // Only a new analysis has Save; a saved one has no Save button.
+            canSave={canSave && savedCard === undefined}
             isSaveDisabled={isSaveDisabled}
             isSetupOpen={isSetupOpen}
             onToggleSetup={() => setPanel(isSetupOpen ? null : "setup")}
             onHintSetup={setIsSetupHinted}
             onSave={handleSave}
-            onRefresh={query.rerun}
-            isRefreshDisabled={
-              query.datasetQuery === undefined || query.isLoading
-            }
             actionsMenu={
               <AnalysisActionsMenu
                 savedCard={savedCard}
