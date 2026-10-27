@@ -1,23 +1,24 @@
 // Turns the weekly Eastwood run's warnings into a Linear report that names the commit behind each finding.
 //
-//   bun eastwood-report.ts attribute <findings.json> <base-sha or ""> <previous-findings.json or ""> <target>=<warnings.txt> ...
+//   bun eastwood-report.ts attribute <findings.json> <base-sha|""> <previous.json|""> <target>=<warnings.txt>...
 //   bun eastwood-report.ts bisect-targets <findings.json>
-//   bun eastwood-report.ts report <findings.json> <bisected.txt> <final-findings.json>
-//   bun eastwood-report.ts sync <report.md> <final-findings.json>
+//   bun eastwood-report.ts report <findings.json> <bisected.txt> <final.json>
+//   bun eastwood-report.ts sync <report.md> <final.json>
 //
-// A target is `source` or `tests`, the Eastwood alias that produced the warnings file (its `:out`). The base is
-// the commit the previous weekly run linted, and the previous findings are what that run reported.
+// A target is `source` or `tests`, the Eastwood alias that produced the warnings file (its `:out`).
+// The base is the commit the previous weekly run linted, and `previous.json` holds what that run reported.
 //
-// `attribute` carries over the findings the previous run already reported, with their causes. It blames each
-// new finding's line: a line changed since the base names its commit. The rest are left for `bisect-targets`,
-// which lists one `<target> <namespace> <linter>` per line for the workflow to bisect. The workflow writes each
-// result to `bisected.txt` as `<target> <namespace> <linter> <sha>`, and `report` folds them in.
+// `attribute` carries over the findings the previous run already reported, with their causes.
+// It blames each new finding's line: a line changed since the base names its commit.
+// The rest are left for `bisect-targets`, which lists one `<target> <namespace> <linter>` per line to bisect.
+// The workflow writes each result to `bisected.txt` as `<target> <namespace> <linter> <sha>`.
+// `report` folds those in.
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 import { reportIssue } from "./report-issue";
 
-export type Cause = { sha: string; subject: string };
+type Cause = { sha: string; subject: string };
 
 export type Finding = {
   target: string;
@@ -36,17 +37,19 @@ export type Finding = {
   carried?: boolean;
 };
 
-/** How many namespaces one run bisects. Each step loads the namespace in a fresh JVM, a few minutes in CI. */
+/** How many namespaces one run bisects. Each step lints the namespace in a fresh JVM. */
 export const MAX_BISECTS = 3;
-const MAX_LISTED = 300;
-const MAX_MSG = 300;
+/** How many findings the report lists. */
+export const MAX_LISTED = 300;
+/** How long a listed message can be before it is cut. */
+export const MAX_MSG = 300;
 
 const WARNING = /^(.+?):(\d+):(\d+): ([a-z-]+)(?: \{:kind \S+\})?: (.*)$/;
 const POSITION = /^(.+?):\d+:\d+: /;
 const SOURCE_ROOT =
   /^(?:enterprise\/backend\/(?:src|test)|modules\/drivers\/[^/]+\/(?:src|test)|dev\/(?:src|test)|src|test)\/(.+)\.clj[cs]?$/;
 
-/** The namespace a source file defines, by Clojure's path convention, or undefined outside our source roots. */
+/** The namespace a source file defines by Clojure's path convention, or undefined outside our source roots. */
 export function namespaceOf(file: string): string | undefined {
   const match = SOURCE_ROOT.exec(file);
   return match?.[1].replaceAll("/", ".").replaceAll("_", "-");
@@ -80,6 +83,32 @@ export function parseWarnings(target: string, text: string): Finding[] {
   return findings;
 }
 
+/** The items grouped by key, in the order each key first appears. */
+function groupBy<T>(items: T[], keyOf: (item: T) => string): Map<string, T[]> {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const key = keyOf(item);
+    const group = groups.get(key);
+    if (group) {
+      group.push(item);
+    } else {
+      groups.set(key, [item]);
+    }
+  }
+  return groups;
+}
+
+/** What identifies a finding across runs. */
+const matchKey = (finding: Finding) => `${finding.target} ${finding.key}`;
+
+/** What one bisect covers, in the `<target> <namespace> <linter>` form the workflow passes around. */
+const bisectKey = ({
+  target,
+  namespace,
+  linter,
+}: Pick<Finding, "target" | "namespace" | "linter">) =>
+  `${target} ${namespace} ${linter}`;
+
 /**
  * The current findings, with those the previous run reported marked as carried and given its cause and
  * first-seen date. Findings match by target and key, each previous one at most once.
@@ -89,13 +118,9 @@ export function carryOver(
   previous: Finding[],
   today: string,
 ): Finding[] {
-  const unmatched = new Map<string, Finding[]>();
-  for (const finding of previous) {
-    const id = `${finding.target} ${finding.key}`;
-    unmatched.set(id, [...(unmatched.get(id) ?? []), finding]);
-  }
+  const unmatched = groupBy(previous, matchKey);
   return current.map((finding) => {
-    const match = unmatched.get(`${finding.target} ${finding.key}`)?.shift();
+    const match = unmatched.get(matchKey(finding))?.shift();
     return match
       ? {
           ...finding,
@@ -113,9 +138,7 @@ export function bisectTargets(findings: Finding[]): string[] {
     .filter(
       (finding) => !finding.carried && !finding.cause && finding.namespace,
     )
-    .map(
-      (finding) => `${finding.target} ${finding.namespace} ${finding.linter}`,
-    );
+    .map(bisectKey);
   return [...new Set(keys)].slice(0, MAX_BISECTS);
 }
 
@@ -129,13 +152,11 @@ export function applyBisected(
   for (const line of bisected.split("\n")) {
     const [target, namespace, linter, sha] = line.trim().split(/\s+/);
     if (sha) {
-      culprits.set(`${target} ${namespace} ${linter}`, sha);
+      culprits.set(bisectKey({ target, namespace, linter }), sha);
     }
   }
   return findings.map((finding) => {
-    const sha = culprits.get(
-      `${finding.target} ${finding.namespace} ${finding.linter}`,
-    );
+    const sha = culprits.get(bisectKey(finding));
     return finding.carried || finding.cause || !sha
       ? finding
       : { ...finding, cause: { sha, subject: subjectOf(sha) } };
@@ -174,17 +195,13 @@ function item(finding: Finding, { repoUrl, headSha }: ReportContext): string {
   return `- ${where} \`${finding.linter}\`: ${message(finding)}`;
 }
 
-/** Findings grouped under their cause, as a heading and items each: the biggest group first, no cause last. */
+/** Findings grouped under their cause as a heading and its items, the biggest group first and no cause last. */
 function byCause(
   findings: Finding[],
   context: ReportContext,
   withFirstSeen: boolean,
 ): string[][] {
-  const groups = new Map<string, Finding[]>();
-  for (const finding of findings) {
-    const key = finding.cause?.sha ?? "";
-    groups.set(key, [...(groups.get(key) ?? []), finding]);
-  }
+  const groups = groupBy(findings, (finding) => finding.cause?.sha ?? "");
   return [...groups.entries()]
     .sort(
       ([a, x], [b, y]) =>
@@ -286,7 +303,10 @@ function blame(finding: Finding): string | undefined {
 
 const subjectOf = (sha: string) => git("log", "-1", "--format=%s", sha);
 
-/** New findings blamed: without a base, on the last change to the line; with one, only on a change since it. */
+/**
+ * The findings with each new one blamed on the last change to its line.
+ * With a base, only a change since the base counts.
+ */
 function attribute(findings: Finding[], baseSha: string): Finding[] {
   return findings.map((finding) => {
     if (finding.carried) {

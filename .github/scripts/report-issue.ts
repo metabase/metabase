@@ -1,10 +1,10 @@
-// Keeps one open Linear issue per scheduled check, found by its title. A non-empty report opens the issue or
-// replaces its description; an empty one closes it with a comment. Slack hears when it opens or closes, and on
-// an update when the caller has something to say.
+// Keeps one open Linear issue per scheduled check, found by its title.
+// A non-empty report opens the issue or replaces its description; an empty one closes it with a comment.
+// Slack hears when it opens or closes, and on an update when the caller has something to say.
 //
-// Needs LINEAR_API_KEY, LINEAR_TEAM_ID, SLACK_BOT_TOKEN, SLACK_CHANNEL and RUN_URL in the environment.
+// Needs LINEAR_API_KEY, LINEAR_TEAM_ID, SLACK_BOT_TOKEN and SLACK_CHANNEL in the environment.
 
-export type Issue = { id: string; identifier: string; url: string };
+type Issue = { id: string; identifier: string; url: string };
 
 export type ReportIssueOptions = {
   title: string;

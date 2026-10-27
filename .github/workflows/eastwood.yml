@@ -39,7 +39,7 @@ jobs:
         id: lint
         continue-on-error: true
         run: ${{ matrix.command }} :out '"warnings.txt"'
-      - name: Show the warnings
+      - name: Save the outcome and show the warnings
         run: |
           echo "${{ steps.lint.outcome }}" > outcome.txt
           touch warnings.txt
@@ -91,8 +91,8 @@ jobs:
           done
           $ran
 
-      # The latest earlier run on this branch that saved a report, passing or not. A run that couldn't lint saves
-      # none, so the comparison skips it.
+      # The latest earlier run on this branch that saved a report, passing or not.
+      # A run that couldn't lint saves none, so the comparison skips it.
       - name: Fetch the previous run's report
         id: previous
         env:
