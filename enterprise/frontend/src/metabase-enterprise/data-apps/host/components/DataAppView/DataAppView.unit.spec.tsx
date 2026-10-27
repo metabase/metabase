@@ -1,15 +1,22 @@
 import { act } from "@testing-library/react";
 
+import { createMockSettingsState, createMockState } from "__support__/state";
 import { renderWithProviders, screen } from "__support__/ui";
 import { Route } from "metabase/router";
+import type * as DomUtils from "metabase/utils/dom";
+import { replaceLocation } from "metabase/utils/dom";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
+import type { Settings } from "metabase-types/api";
 import { createMockDataApp } from "metabase-types/api/mocks";
 
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,
   DATA_APP_LOAD_TIMEOUT_MS,
   DATA_APP_READY_MESSAGE_TYPE,
+  DATA_APP_ROUTE_MESSAGE_TYPE,
 } from "../../../constants";
+import type * as GetOriginMismatch from "../../lib/get-origin-mismatch";
+import { getOriginMismatch } from "../../lib/get-origin-mismatch";
 
 import { DataAppView } from "./DataAppView";
 
@@ -18,7 +25,33 @@ jest.mock("metabase-enterprise/api", () => ({
   useGetDataAppQuery: jest.fn(),
 }));
 
+// jsdom always runs on a loopback origin, so a page on another host name is stubbed.
+jest.mock("../../lib/get-origin-mismatch", () => {
+  const actual = jest.requireActual<typeof GetOriginMismatch>(
+    "../../lib/get-origin-mismatch",
+  );
+  return { getOriginMismatch: jest.fn(actual.getOriginMismatch) };
+});
+
+jest.mock("metabase/utils/dom", () => ({
+  ...jest.requireActual<typeof DomUtils>("metabase/utils/dom"),
+  replaceLocation: jest.fn(),
+}));
+
+const { getOriginMismatch: actualGetOriginMismatch } = jest.requireActual<
+  typeof GetOriginMismatch
+>("../../lib/get-origin-mismatch");
+
 const mockedGetApp = jest.mocked(useGetDataAppQuery);
+const mockedGetOriginMismatch = jest.mocked(getOriginMismatch);
+const mockedReplaceLocation = jest.mocked(replaceLocation);
+
+const ISOLATED_ORIGIN = "https://apps.example.com";
+const ISOLATED_ORIGIN_SETTINGS: Partial<Settings> = {
+  "isolated-origin": ISOLATED_ORIGIN,
+  // The page's own origin, so the loopback-origin redirect stays put.
+  "site-url": window.location.origin,
+};
 
 type SetupOpts = {
   name?: string;
@@ -26,6 +59,8 @@ type SetupOpts = {
   isLoading?: boolean;
   error?: unknown;
   enableDrafts?: boolean;
+  enableUrlMirroring?: boolean;
+  settings?: Partial<Settings>;
 };
 
 function setup({
@@ -34,6 +69,8 @@ function setup({
   isLoading = false,
   error,
   enableDrafts,
+  enableUrlMirroring,
+  settings,
 }: SetupOpts = {}) {
   // RTK Query's hook result is a wide discriminated union (refetch, status,
   // isFetching, …); the component reads only these three fields.
@@ -46,13 +83,32 @@ function setup({
   renderWithProviders(
     <>
       {/* The empty-name case has no `:name` segment to match. */}
-      <Route path="/" element={<DataAppView enableDrafts={enableDrafts} />} />
+      <Route
+        path="/"
+        element={
+          <DataAppView
+            enableDrafts={enableDrafts}
+            enableUrlMirroring={enableUrlMirroring}
+          />
+        }
+      />
       <Route
         path=":name"
-        element={<DataAppView enableDrafts={enableDrafts} />}
+        element={
+          <DataAppView
+            enableDrafts={enableDrafts}
+            enableUrlMirroring={enableUrlMirroring}
+          />
+        }
       />
     </>,
-    { withRouter: true, initialRoute: `/${name}` },
+    {
+      withRouter: true,
+      initialRoute: `/${name}`,
+      storeInitialState: createMockState({
+        settings: createMockSettingsState(settings),
+      }),
+    },
   );
 }
 
@@ -138,12 +194,28 @@ describe("DataAppView", () => {
     expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
   });
 
+  it("says at once that data apps are off when MB_ISOLATED_ORIGIN can't be used, instead of waiting for the load timeout", () => {
+    setup({
+      data: createMockDataApp({ display_name: "Sales" }),
+      settings: {
+        "isolated-origin": null,
+        "isolated-origin-misconfigured?": true,
+      },
+    });
+
+    expect(screen.getByText("Data apps are unavailable")).toBeInTheDocument();
+    expect(screen.getByText(/MB_ISOLATED_ORIGIN/)).toBeInTheDocument();
+    expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
+  });
+
   it("renders the app inside an iframe once metadata resolves", () => {
     setup({ data: createMockDataApp({ display_name: "Sales" }) });
 
     const iframe = screen.getByTitle("Sales");
     expect(iframe).toBeInTheDocument();
     expect(iframe).toHaveAttribute("src", "/embed/apps/sales");
+    // Cross-origin iframes lose the default clipboard permission; delegate it.
+    expect(iframe).toHaveAttribute("allow", "clipboard-write");
   });
 
   /** Post a `message` event as if it came from `source`. */
@@ -159,8 +231,8 @@ describe("DataAppView", () => {
     });
   }
 
-  function setupIframe() {
-    setup({ data: createMockDataApp({ display_name: "Sales" }) });
+  function setupIframe({ settings }: Pick<SetupOpts, "settings"> = {}) {
+    setup({ data: createMockDataApp({ display_name: "Sales" }), settings });
     return screen.getByTitle<HTMLIFrameElement>("Sales");
   }
 
@@ -280,6 +352,35 @@ describe("DataAppView", () => {
       await screen.findByText("Show error details");
     });
 
+    it("ignores CSP violations for other frames", () => {
+      setupIframe();
+
+      dispatchFrameSrcViolation("https://not-the-isolated-origin.example.com");
+
+      expect(screen.getByTestId("data-app-loading")).toBeInTheDocument();
+    });
+
+    describe("served from a separate isolated origin", () => {
+      it("shows an error when framing the isolated origin is blocked by CSP", async () => {
+        setupIframe({ settings: ISOLATED_ORIGIN_SETTINGS });
+
+        dispatchFrameSrcViolation("https://apps.example.com/embed/apps/sales");
+
+        expect(
+          screen.getByText("Couldn’t load this data app"),
+        ).toBeInTheDocument();
+        await screen.findByText("Show error details");
+      });
+
+      it("ignores a CSP violation for a frame on the page's own origin", () => {
+        setupIframe({ settings: ISOLATED_ORIGIN_SETTINGS });
+
+        dispatchFrameSrcViolation(window.location.origin);
+
+        expect(screen.getByTestId("data-app-loading")).toBeInTheDocument();
+      });
+    });
+
     it("shows an error when the iframe never signals it loaded", async () => {
       jest.useFakeTimers();
       try {
@@ -343,6 +444,91 @@ describe("DataAppView", () => {
         jest.useRealTimers();
       }
       await screen.findByText("Show error details");
+    });
+  });
+
+  describe("served from a separate isolated origin", () => {
+    const settings = ISOLATED_ORIGIN_SETTINGS;
+
+    afterEach(() => {
+      window.history.replaceState({}, "", "/");
+      mockedGetOriginMismatch.mockImplementation(actualGetOriginMismatch);
+      mockedReplaceLocation.mockClear();
+    });
+
+    it("mirrors the route the app reports into the page URL", () => {
+      setup({
+        data: createMockDataApp({ display_name: "Sales" }),
+        enableUrlMirroring: true,
+        settings,
+      });
+      const iframe = screen.getByTitle<HTMLIFrameElement>("Sales");
+
+      postMessage(
+        iframe.contentWindow,
+        {
+          type: DATA_APP_ROUTE_MESSAGE_TYPE,
+          path: "/embed/apps/sales/orders/42",
+        },
+        ISOLATED_ORIGIN,
+      );
+
+      expect(window.location.pathname).toBe("/apps/sales/orders/42");
+    });
+
+    it("ignores a route report from another origin", () => {
+      setup({
+        data: createMockDataApp({ display_name: "Sales" }),
+        enableUrlMirroring: true,
+        settings,
+      });
+      const iframe = screen.getByTitle<HTMLIFrameElement>("Sales");
+      const pathnameBefore = window.location.pathname;
+
+      postMessage(
+        iframe.contentWindow,
+        {
+          type: DATA_APP_ROUTE_MESSAGE_TYPE,
+          path: "/embed/apps/sales/orders/42",
+        },
+        "https://elsewhere.example.com",
+      );
+
+      expect(window.location.pathname).toBe(pathnameBefore);
+    });
+
+    it("shows a link to the site URL at once on another host name, instead of waiting for the load timeout", () => {
+      mockedGetOriginMismatch.mockReturnValue({
+        kind: "wrong-origin",
+        url: "https://mb.example.com/apps/sales",
+      });
+
+      setup({
+        data: createMockDataApp({ display_name: "Sales" }),
+        settings,
+      });
+
+      expect(
+        screen.getByRole("link", { name: "Open data app" }),
+      ).toHaveAttribute("href", "https://mb.example.com/apps/sales");
+      expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
+    });
+
+    it("moves a loopback page to the site URL, without loading the app here first", () => {
+      mockedGetOriginMismatch.mockReturnValue({
+        kind: "redirect",
+        url: "http://mb.localhost:3000/apps/sales",
+      });
+
+      setup({
+        data: createMockDataApp({ display_name: "Sales" }),
+        settings,
+      });
+
+      expect(mockedReplaceLocation).toHaveBeenCalledWith(
+        "http://mb.localhost:3000/apps/sales",
+      );
+      expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
     });
   });
 });
