@@ -37,6 +37,18 @@
                         {:request-options {:headers {"content-type" "multipart/form-data"}}}
                         {:file bundle-bytes}))
 
+(defn- admin-listed-plugin
+  "The plugin `identifier` as GET / lists it for an admin, or nil when it isn't listed."
+  [identifier]
+  (->> (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
+       (filter #(= identifier (:identifier %)))
+       first))
+
+(defn- warning-types
+  "The set of warning types GET / lists for the plugin `identifier`."
+  [identifier]
+  (into #{} (map :type) (:warnings (admin-listed-plugin identifier))))
+
 ;;; ------------------------------------------------ Auth & Permissions ------------------------------------------------
 
 (deftest authorization-test
@@ -163,27 +175,16 @@
                                                :status         :active
                                                :enabled        true
                                                :dev_bundle_url "http://localhost:5174"}]
-        (let [plugins    (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
-              warn-types (fn [identifier]
-                           (->> plugins
-                                (filter #(= identifier (:identifier %)))
-                                first
-                                :warnings
-                                (map :type)
-                                set))]
-          (is (contains? (warn-types "colon:viz") "invalid-identifier"))
-          (is (contains? (warn-types "colon:dev-viz") "invalid-identifier")
-              "dev-only plugins are exempt from version warnings but not from this one"))))
+        (is (contains? (warning-types "colon:viz") "invalid-identifier"))
+        (is (contains? (warning-types "colon:dev-viz") "invalid-identifier")
+            "dev-only plugins are exempt from version warnings but not from this one")))
     (testing "GET / does not flag a legacy plugin whose identifier a repository can't name, it is still served"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "My/Heatmap"
                                                :display_name "My Heatmap"
                                                :status       :active
                                                :enabled      true
                                                :bundle_hash  "slash-hash"}]
-        (let [plugin (->> (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
-                          (filter #(= "My/Heatmap" (:identifier %)))
-                          first)]
-          (is (not (contains? (set (map :type (:warnings plugin))) "invalid-identifier"))))))))
+        (is (not (contains? (warning-types "My/Heatmap") "invalid-identifier")))))))
 
 (deftest admin-listing-error-plugin-has-no-version-warnings-test
   (mt/with-premium-features #{:custom-viz}
@@ -194,10 +195,7 @@
                                                :error_message "metabase-plugin.json not found in bundle"
                                                :enabled       true
                                                :bundle_hash   "broken-hash"}]
-        (is (= [] (->> (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/")
-                       (filter #(= "broken-viz" (:identifier %)))
-                       first
-                       :warnings)))))))
+        (is (= [] (:warnings (admin-listed-plugin "broken-viz"))))))))
 
 (deftest bundle-bytes-not-exposed-test
   (mt/with-premium-features #{:custom-viz}
