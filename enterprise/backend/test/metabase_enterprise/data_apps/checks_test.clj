@@ -337,6 +337,69 @@
            (is (=? {:values [["bar"] ["cafe"]]}
                    (mt/user-http-request :crowberto :get 200 (format "card/%d/params/kind/values" elsewhere-id))))))))))
 
+(defn- legacy-field-ref
+  "The legacy ref of the field with `field-id`, as parameters store it."
+  [field-id]
+  (let [mp (mt/metadata-provider)]
+    (lib/->legacy-MBQL (lib/ref (lib.metadata/field mp field-id)))))
+
+(defn- card-source-parameter
+  "A parameter whose values come from the names of the venues card with `card-id`."
+  [card-id]
+  {:id                   "venue"
+   :slug                 "venue"
+   :name                 "Venue"
+   :type                 :string/=
+   :values_source_type   :card
+   :values_source_config {:card_id card-id :value_field (legacy-field-ref (mt/id :venues :name))}})
+
+(deftest card-parameter-endpoints-check-values-source-card-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (data-apps.tu/with-published-tables! [(mt/id :venues)]
+       (mt/with-temp [:model/Card {source-id :id} {:collection_id collection-id
+                                                   :dataset_query (data-apps.tu/venues-query)}
+                      :model/Card {card-id :id}   {:collection_id collection-id
+                                                   :parameters    [(card-source-parameter source-id)]
+                                                   :dataset_query (data-apps.tu/venues-query)}]
+         (testing "a parameter whose values come from a card of the app loads them"
+           (is (seq (:values (mt/user-http-request :crowberto :get 200 (format "card/%d/params/venue/values" card-id)
+                                                   as-data-app)))))
+         (testing "a parameter whose values come from a card outside the app's collection is refused"
+           (t2/update! :model/Card source-id {:collection_id nil})
+           (doseq [url ["card/%d/params/venue/values" "card/%d/params/venue/search/Red" "card/%d/params/venue/remapping?value=Red"]]
+             (is (= (card-error source-id)
+                    (mt/user-http-request :crowberto :get 400 (format url card-id) as-data-app))
+                 url))))))))
+
+(defn- field-parameter
+  "A parameter whose values come from the field with `field-id`."
+  [field-id]
+  {:id     "field"
+   :slug   "field"
+   :name   "Field"
+   :type   :string/=
+   :target [:dimension (legacy-field-ref field-id)]})
+
+(deftest card-parameter-endpoints-check-values-source-field-test
+  (do-with-app-collection
+   (fn [collection-id]
+     (data-apps.tu/with-published-tables! [(mt/id :venues)]
+       (mt/with-temp [:model/Card {published-id :id}   {:collection_id collection-id
+                                                        :parameters    [(field-parameter (mt/id :venues :name))]
+                                                        :dataset_query (data-apps.tu/venues-query)}
+                      :model/Card {unpublished-id :id} {:collection_id collection-id
+                                                        :parameters    [(field-parameter (mt/id :checkins :date))]
+                                                        :dataset_query (data-apps.tu/venues-query)}]
+         (testing "a parameter whose values come from a field of a published table loads them"
+           (is (seq (:values (mt/user-http-request :crowberto :get 200 (format "card/%d/params/field/values" published-id)
+                                                   as-data-app)))))
+         (testing "a parameter whose values come from a field of an unpublished table is refused"
+           (is (= (format "A data app can read only fields of tables published to the Library, not the field %d."
+                          (mt/id :checkins :date))
+                  (mt/user-http-request :crowberto :get 400 (format "card/%d/params/field/values" unpublished-id)
+                                        as-data-app)))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
     (mt/with-premium-features #{}

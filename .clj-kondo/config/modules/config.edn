@@ -3855,6 +3855,7 @@
            lib.schema
            lib.types
            models
+           parameters
            permissions
            premium-features
            remote-sync
@@ -3868,6 +3869,7 @@
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
+                    :model/Field
                     :model/Measure
                     :model/Segment
                     :model/Table}

@@ -991,7 +991,7 @@
    _query-params
    _body
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-card card-id))
+  (some-> (data-apps/request-data-app request) (data-apps/check-card-parameter card-id param-key))
   (binding [qp.perms/*param-values-query* true]
     (queries/card-param-values (api/read-check :model/Card card-id) param-key)))
 
@@ -1014,7 +1014,7 @@
    _query-params
    _body
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-card card-id))
+  (some-> (data-apps/request-data-app request) (data-apps/check-card-parameter card-id param-key))
   (binding [qp.perms/*param-values-query* true]
     (queries/card-param-values (api/read-check :model/Card card-id) param-key query)))
 
@@ -1034,7 +1034,7 @@
    {:keys [value]}        :- [:map {:closed true} [:value :string]]
    _body
    request]
-  (some-> (data-apps/request-data-app request) (data-apps/check-card id))
+  (some-> (data-apps/request-data-app request) (data-apps/check-card-parameter id param-key))
   (binding [qp.perms/*param-values-query* true]
     (-> (api/read-check :model/Card id)
         (queries/card-param-remapped-value param-key (codec/url-decode value)))))

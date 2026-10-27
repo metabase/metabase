@@ -12,6 +12,8 @@
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
+   [metabase.parameters.params :as params]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.util.i18n :refer [tru]]))
 
@@ -72,11 +74,47 @@
                                   (format-ids external))))))
   nil)
 
+(defn- read-checked-app-card
+  "The card with `card-id`, after a read check; throws a 400 unless it is in `data-app`'s collection."
+  [data-app card-id]
+  (let [card (api/read-check :model/Card card-id)]
+    (when-not (in-app-collection? data-app card)
+      (throw (data-app-error (tru "A data app can use only the cards in its own collection, not the card {0}." card-id))))
+    card))
+
 (defenterprise-schema check-card :- :nil
   "Throws a 400 unless the card with `card-id` is in `data-app`'s collection, after a read check of the card."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app
    card-id  :- ::lib.schema.id/card]
-  (when-not (in-app-collection? data-app (api/read-check :model/Card card-id))
-    (throw (data-app-error (tru "A data app can use only the cards in its own collection, not the card {0}." card-id))))
+  (read-checked-app-card data-app card-id)
+  nil)
+
+(defn- published-table?
+  "Whether the table with `table-id` is published to the Library."
+  [table-id]
+  (empty? (data-apps.db/external-table-ids #{table-id})))
+
+(defn- check-published-field
+  "Throws a 400 unless the field with `field-id` belongs to a table published to the Library, after a read check of
+  the field."
+  [field-id]
+  (when-not (published-table? (:table_id (api/read-check :model/Field field-id)))
+    (throw (data-app-error (tru "A data app can read only fields of tables published to the Library, not the field {0}."
+                                field-id)))))
+
+(defenterprise-schema check-card-parameter :- :nil
+  "Throws a 400 unless the card with `card-id` is in `data-app`'s collection and its parameter `param-key` takes its
+  values from a static list, a card in that collection, or a field of a table published to the Library, after read
+  checks of each."
+  :feature :data-apps
+  [data-app  :- ::data-apps.schema/data-app
+   card-id   :- ::lib.schema.id/card
+   param-key :- ::lib.schema.parameter/id]
+  (let [card      (read-checked-app-card data-app card-id)
+        parameter (some #(when (= param-key (:id %)) %) (:parameters card))]
+    (case (some-> (:values_source_type parameter) keyword)
+      :static-list nil
+      :card        (some->> (get-in parameter [:values_source_config :card_id]) (read-checked-app-card data-app))
+      (some-> (params/param-target->field-id (:target parameter) card) check-published-field)))
   nil)

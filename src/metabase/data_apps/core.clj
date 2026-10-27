@@ -6,6 +6,7 @@
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
 
 (defenterprise visible-data-app-filter-select
@@ -64,4 +65,13 @@
   metabase-enterprise.data-apps.checks
   [_data-app :- ::data-apps.schema/data-app
    _card-id  :- ::lib.schema.id/card]
+  nil)
+
+(defenterprise-schema check-card-parameter :- :nil
+  "Throws a 400 unless `data-app` may use the card with `card-id` and the card its parameter `param-key` takes its
+  values from, after read checks of both; does nothing without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app  :- ::data-apps.schema/data-app
+   _card-id   :- ::lib.schema.id/card
+   _param-key :- ::lib.schema.parameter/id]
   nil)
