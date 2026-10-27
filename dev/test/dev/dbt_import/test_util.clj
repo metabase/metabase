@@ -14,11 +14,11 @@
    [dev.dbt-import.resolve :as resolve]
    [dev.dbt-import.schemas.dbt-manifest :as dbt-manifest]
    [medley.core :as m]
+   [metabase.util :as u]
    [metabase.util.json :as json])
   (:import
    (java.nio.file Files)
-   (java.nio.file.attribute FileAttribute)
-   (java.util UUID)))
+   (java.nio.file.attribute FileAttribute)))
 
 (set! *warn-on-reflection* true)
 
@@ -65,7 +65,7 @@
   "The id Metabase gives a dimension group, derived from its type and display name the same way
   `metabase.lib-metric.dimension.jvm/group-id` does, so the converter's groups are the groups the instance computes."
   [group-type display-name]
-  (str (UUID/nameUUIDFromBytes (.getBytes (str group-type "/" display-name) "UTF-8"))))
+  (u/name-uuid (str group-type "/" display-name)))
 
 (def pg-columns
   "Columns of `fact_sales`: name, declared Postgres `data_type`, the base type Postgres sync gives it, and a coarse

@@ -16,6 +16,8 @@
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.v2.storage.util :as storage.util]
    [metabase.lib.core :as lib]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.metrics.core :as metrics]
    [metabase.models.serialization :as serdes]
    [metabase.queries.models.card :as card]
    [metabase.util :as u]
@@ -35,14 +37,32 @@
    [:entity ::entity]
    [:metric {:optional true} ::resolved/metric]])
 
-(mu/defn dataset-query :- :map
-  "A resolved metric's query as serdes writes it: `serdes/export-mbql` strips the clause ids and, through the lookups
-  bound here, turns the provider's made-up database, table and field ids into names."
-  [{:keys [metadata-provider query]} :- ::resolved/metric]
+(mu/defn- with-portable-refs
+  "Run `thunk` with serdes' id lookups bound to `metadata-provider`, so what it exports names the provider's made-up
+  database, table and field ids the way a real export names an instance's."
+  [metadata-provider :- ::lib.schema.metadata/metadata-provider
+   thunk             :- fn?]
   (binding [serdes/*export-database-fk* (fn [_id] (metadata/database-name metadata-provider))
             serdes/*export-table-fk*    (fn [table-id] (metadata/portable-table-ref metadata-provider table-id))
             serdes/*export-field-fk*    (fn [field-id] (metadata/portable-field-ref metadata-provider field-id))]
-    (serdes/export-mbql query)))
+    (thunk)))
+
+(mu/defn dataset-query :- :map
+  "A resolved metric's query as serdes writes it: `serdes/export-mbql` strips the clause ids and turns the provider's
+  ids into names."
+  [{:keys [metadata-provider query]} :- ::resolved/metric]
+  (with-portable-refs metadata-provider #(serdes/export-mbql query)))
+
+(mu/defn dimensions :- [:map
+                        [:dimensions         [:sequential :map]]
+                        [:dimension_mappings [:sequential :map]]]
+  "A resolved metric's curated dimensions and mappings as serdes writes them on a Card, through the metrics module's
+  own export, which turns the field ids in a dimension's `:sources` and a mapping's `:table-id` and `:target` into
+  names."
+  [{:keys [metadata-provider dimensions dimension-mappings]} :- ::resolved/metric]
+  (with-portable-refs metadata-provider
+    #(do {:dimensions         (metrics/export-dimensions dimensions)
+          :dimension_mappings (metrics/export-dimension-mappings dimension-mappings)})))
 
 (mu/defn- collection-entity :- ::entity
   [{collection-name :name, :keys [entity-id]} :- ::resolved/collection]
@@ -57,22 +77,24 @@
   [config     :- ::resolved/config
    collection :- ::resolved/collection
    {:keys [metric entity-id] :as resolved-metric} :- ::resolved/metric]
-  {:serdes/meta            [{:model "Card" :id entity-id :label (:label metric)}]
-   :name                   (:label metric)
-   :description            (:description metric)
-   :entity_id              entity-id
-   :type                   :metric
-   :display                :scalar
-   :collection_id          (:entity-id collection)
-   :creator_id             (:creator-email config)
-   :dataset_query          (dataset-query resolved-metric)
-   :parameters             []
-   :parameter_mappings     []
-   :visualization_settings {}
-   :archived               false
-   :enable_embedding       false
-   :collection_preview     true
-   :card_schema            card/current-card-schema-version})
+  (merge
+   {:serdes/meta            [{:model "Card" :id entity-id :label (:label metric)}]
+    :name                   (:label metric)
+    :description            (:description metric)
+    :entity_id              entity-id
+    :type                   :metric
+    :display                :scalar
+    :collection_id          (:entity-id collection)
+    :creator_id             (:creator-email config)
+    :dataset_query          (dataset-query resolved-metric)
+    :parameters             []
+    :parameter_mappings     []
+    :visualization_settings {}
+    :archived               false
+    :enable_embedding       false
+    :collection_preview     true
+    :card_schema            card/current-card-schema-version}
+   (dimensions resolved-metric)))
 
 (mu/defn files :- [:sequential ::file]
   "The files of the serdes tree for a resolved manifest: the collection first, then one card per metric. Card file

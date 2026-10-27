@@ -122,7 +122,7 @@
 (defn- defaults-of
   "The names of the default dimensions of the metric [[tu/convert]] builds from `tweaks`."
   [tweaks]
-  (keys (m/filter-vals :default (tu/dimension-set tweaks))))
+  (vec (keys (m/filter-vals :default (tu/dimension-set tweaks)))))
 
 (defn- reason-for
   "The reason `dimension-name` was reported in `reasons` (see [[tu/unsupported-dimensions]]); a string saying it was
