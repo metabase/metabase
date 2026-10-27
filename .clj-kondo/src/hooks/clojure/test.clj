@@ -181,7 +181,6 @@
          "main-test" ; bin/release-list
          "metabase.deps-edn-test"
          "metabase.driver."
-         "metabase.linters." ; linter tooling in test/metabase/linters
          "metabase.test."
          "metabase.test.data."
          "metabuild-common."])) ; utils for build scripts
