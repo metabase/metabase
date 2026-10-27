@@ -50,9 +50,7 @@ export const defaultSpec = (kind: AnalysisKind): AnalysisSpec => {
           ],
           exclusions: [],
           window: { value: 30, unit: "day" },
-          anchor: "first",
           ordering: "loose",
-          allowRetry: false,
         },
         output: { funnelView: "steps" },
       };

@@ -79,9 +79,7 @@ export interface FunnelSpec {
   steps: Step[];
   exclusions: Exclusion[];
   window: Duration;
-  anchor: "first" | "each";
   ordering: "strict" | "loose" | "any";
-  allowRetry: boolean;
 }
 
 /**

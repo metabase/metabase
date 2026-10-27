@@ -25,6 +25,7 @@ import type {
 import type { DrillPoint } from "../sql/compose";
 
 import type { Breakout, BreakoutView } from "./breakout";
+import type { FunnelDisqualifier } from "./funnel-disqualifiers";
 
 /** The table the person column links to, with its metadata loaded. */
 export type UsersTable = {
@@ -69,8 +70,7 @@ export type FunnelSettings = CommonSettings & {
   "funnel.view": NonNullable<OutputSpec["funnelView"]>;
   "funnel.window": Duration;
   "funnel.ordering": FunnelSpec["ordering"];
-  "funnel.anchor": FunnelSpec["anchor"];
-  "funnel.allow_retry": boolean;
+  "funnel.disqualifiers": FunnelDisqualifier[];
 };
 
 export type PathsSettings = CommonSettings & {

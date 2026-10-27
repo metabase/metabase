@@ -257,6 +257,20 @@ re-sync the database in Metabase so new columns like `trial_source` and
 `person_role` get fingerprints, since insights only consider fingerprinted
 columns.
 
+## Benchmark the funnel queries
+
+```bash
+bun run dev/product-analytics/bench-funnel.ts          # 3 and 10 steps
+bun run dev/product-analytics/bench-funnel.ts 3 5 10
+```
+
+Compares `windowFunnel` with the two window-function shapes in
+[`context/funnel-querying.md`](context/funnel-querying.md) on synthetic data in
+temporary tables: 20k typical people, and one bot with
+`PA_BENCH_BOT_EVENTS` events (4.3M by default). It checks both shapes give
+everyone the same level as `windowFunnel`, then prints each shape's time and
+memory from `system.query_log`.
+
 ## What the generator deliberately does *not* copy from Track
 
 Columns are filled with the meanings they **should** have:

@@ -63,7 +63,7 @@ describe("buildSql", () => {
     expect(built.sql).toMatch(
       /FROM \(\s+SELECT person_id, created_at, ev_1, ev_2, ev_3 FROM events\s+\) AS base/,
     );
-    expect(built.sql).toContain("windowFunnel");
+    expect(built.sql).toContain("funnel_runs AS");
     expect(built.sql).toContain("Viewed pricing");
     expect(built.ctes[0]?.name).toBe("events_base");
   });

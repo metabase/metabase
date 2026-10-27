@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { SegmentedControl } from "metabase/ui";
 import { color } from "metabase/ui/colors";
@@ -6,13 +6,18 @@ import type { ColorName } from "metabase/ui/colors/types";
 import * as Lib from "metabase-lib";
 import type { VisualizationSettings } from "metabase-types/api";
 
+import { DisqualifierListWidget } from "../components/settings/DisqualifierListWidget";
 import { DurationWidget } from "../components/settings/DurationWidget";
 import { EventDefinitionListWidget } from "../components/settings/EventDefinitionListWidget";
 import { formatPeriod } from "../drills/describe";
 import { withWidgetProps } from "../settings/with-widget-props";
-import { parseStepLabel, pointString } from "../sql/analyses/base";
+import { pointString } from "../sql/analyses/base";
 import { BREAKOUT_COLUMN } from "../sql/analyses/breakout";
-import { TIME_TO_CONVERT_COLUMN } from "../sql/analyses/funnel";
+import {
+  TIME_TO_CONVERT_COLUMN,
+  getFunnelStepLabels,
+  getFunnelStepNumber,
+} from "../sql/analyses/funnel";
 import { grainLabel, grainTitle } from "../sql/compile/grain";
 import { DROPPED_OFF_POINT_KEY } from "../sql/compose";
 
@@ -24,6 +29,10 @@ import {
 } from "./breakout";
 import { commonSettings } from "./common-settings";
 import {
+  getDisqualifierSteps,
+  isFunnelDisqualifierList,
+} from "./funnel-disqualifiers";
+import {
   SERIES_COLOR_KEY,
   getAxisTitleSettings,
   getConversionColumnSettings,
@@ -34,7 +43,6 @@ import {
   getCommonSpec,
   getEventDefinitionProps,
   incomplete,
-  isBoolean,
   isEventDefinitionList,
   isOneOf,
   isPositiveDuration,
@@ -59,7 +67,6 @@ const ORDERINGS: readonly FunnelSettings["funnel.ordering"][] = [
   "loose",
   "any",
 ];
-const ANCHORS: readonly FunnelSettings["funnel.anchor"][] = ["first", "each"];
 
 // Over time draws a line per step, so they start in different colors.
 const LINE_COLOR_NAMES: readonly ColorName[] = [
@@ -89,9 +96,22 @@ const getStepColor = (
     ? color(LINE_COLOR_NAMES[index % LINE_COLOR_NAMES.length])
     : color("core-brand"));
 
-// Keep in sync with the planner's step labels, which `parseStepLabel` reads.
-const getStepLabel = (index: number, name: string): string =>
-  `${index + 1}. ${name}`;
+const getStepLabels = (settings: FunnelSettings): string[] =>
+  getFunnelStepLabels(
+    settings["funnel.steps"].map((step) => step.name),
+    settings["funnel.ordering"],
+  );
+
+/** Which step a clicked label is, numbered from 1, and its event's name. */
+const getClickedStep = (
+  settings: FunnelSettings,
+  label: unknown,
+): { step: number; name: string } | null => {
+  const step = getFunnelStepNumber(getStepLabels(settings), label);
+  const name =
+    step !== null ? settings["funnel.steps"][step - 1]?.name : undefined;
+  return step !== null && name !== undefined ? { step, name } : null;
+};
 
 // Hourly starts are noise next to a completion window that's usually days.
 const { breakout_view: breakoutView, ...common } = commonSettings({
@@ -143,18 +163,6 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
     getDefault: () => ({ value: 7, unit: "day" }),
     isValid: (value) => isPositiveDuration(value),
   },
-  "funnel.anchor": {
-    getSection: () => "advanced",
-    widget: "radio",
-    getDefault: () => "first",
-    isValid: (value) => isOneOf(ANCHORS, value),
-    getProps: () => ({
-      options: [
-        { name: t`Counted from their first step`, value: "first" },
-        { name: t`Counted from the last step they completed`, value: "each" },
-      ],
-    }),
-  },
   "funnel.ordering": {
     getTitle: () => t`How strictly in order do they need to do each step?`,
     getSection: () => "advanced",
@@ -169,14 +177,21 @@ const SETTINGS: AnalysisSettingDefinitions<FunnelSettings> = {
       ],
     }),
   },
-  "funnel.allow_retry": {
-    getTitle: () => t`Allow retrying a step`,
+  // Only in order with other actions allowed: in strict order, every other
+  // event already interrupts, and in any order there's no "between steps".
+  "funnel.disqualifiers": withWidgetProps({
+    getTitle: () => t`What disqualifies someone partway through the funnel?`,
     getSection: () => "advanced",
-    inline: true,
-    widget: "toggle",
-    getDefault: () => false,
-    isValid: (value) => isBoolean(value),
-  },
+    widget: DisqualifierListWidget,
+    getDefault: () => [],
+    isValid: (value) => isFunnelDisqualifierList(value),
+    getHidden: (_context, settings) => settings["funnel.ordering"] !== "loose",
+    readDependencies: ["funnel.ordering", "funnel.steps"],
+    getProps: (context, settings) => ({
+      ...getEventDefinitionProps(context),
+      stepCount: settings["funnel.steps"].length,
+    }),
+  }),
   // Last in setup, under the steps and view it shows. Over time's line per
   // group already reads like a table's columns.
   breakout_view: {
@@ -268,11 +283,15 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
           flag: events.flagFor(event),
           label: event.name,
         })),
-        exclusions: [],
+        exclusions:
+          settings["funnel.ordering"] === "loose"
+            ? settings["funnel.disqualifiers"].map(({ event, between }) => ({
+                flag: events.flagFor(event),
+                ...getDisqualifierSteps(between, steps.length),
+              }))
+            : [],
         window: settings["funnel.window"],
-        anchor: settings["funnel.anchor"],
         ordering: settings["funnel.ordering"],
-        allowRetry: settings["funnel.allow_retry"],
       },
       output: { funnelView: settings["funnel.view"] },
     });
@@ -316,9 +335,9 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
           "graph.metrics": ["conversion"],
           // One line per step after the first, keyed by its label.
           series_settings: Object.fromEntries(
-            steps
-              .map((step, index) => [
-                getStepLabel(index, step.name),
+            getStepLabels(settings)
+              .map((label, index) => [
+                label,
                 { color: getStepColor(view, index, colors) },
               ])
               .slice(1),
@@ -347,9 +366,9 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
     if (view === "timeToConvert") {
       return [getSeriesColorSlot(colors)];
     }
-    const slots: ColorSlot[] = settings["funnel.steps"].map((step, index) => ({
+    const slots: ColorSlot[] = getStepLabels(settings).map((label, index) => ({
       key: getStepColorKey(index),
-      label: getStepLabel(index, step.name),
+      label,
       color: getStepColor(view, index, colors),
     }));
     // Over time has no line for the first step.
@@ -358,12 +377,27 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
   describePoint: (settings, point) => {
     switch (settings["funnel.view"]) {
       case "steps": {
-        const parsed = parseStepLabel(point.label);
-        if (parsed === null) {
+        const clicked = getClickedStep(settings, point.label);
+        if (clicked === null) {
           return null;
         }
-        const { step, name } = parsed;
-        if (point[DROPPED_OFF_POINT_KEY] === true && step > 1) {
+        const { step, name } = clicked;
+        const isDroppedOff = point[DROPPED_OFF_POINT_KEY] === true && step > 1;
+        if (settings["funnel.ordering"] === "any") {
+          const done = step - 1;
+          return isDroppedOff
+            ? ngettext(
+                msgid`Completed only ${done} step`,
+                `Completed only ${done} steps`,
+                done,
+              )
+            : ngettext(
+                msgid`Completed ${step} step`,
+                `Completed ${step} steps`,
+                step,
+              );
+        }
+        if (isDroppedOff) {
           return t`Dropped off before step ${step}: ${name}`;
         }
         return step === 1
@@ -372,10 +406,18 @@ export const FUNNEL_CONFIG: AnalysisConfig<"funnel"> = {
       }
       case "overTime": {
         const period = formatPeriod(point.period, settings.granularity);
-        const parsed = parseStepLabel(point.label);
-        return parsed === null
-          ? t`Started the funnel in ${period}`
-          : t`Started the funnel in ${period} and reached step ${parsed.step}: ${parsed.name}`;
+        const clicked = getClickedStep(settings, point.label);
+        if (clicked === null) {
+          return t`Started the funnel in ${period}`;
+        }
+        const { step, name } = clicked;
+        return settings["funnel.ordering"] === "any"
+          ? ngettext(
+              msgid`Started the funnel in ${period} and completed ${step} step`,
+              `Started the funnel in ${period} and completed ${step} steps`,
+              step,
+            )
+          : t`Started the funnel in ${period} and reached step ${step}: ${name}`;
       }
       case "timeToConvert": {
         const duration = pointString(point[TIME_TO_CONVERT_COLUMN]);

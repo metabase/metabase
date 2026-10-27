@@ -164,7 +164,7 @@ describe("analysis settings", () => {
         "funnel.steps": [{ name: "No query" }],
         "funnel.window": { value: -1, unit: "day" },
         "funnel.view": "sideways",
-        "funnel.allow_retry": "yes",
+        "funnel.ordering": "backwards",
         counting: null,
       },
     });
@@ -172,7 +172,7 @@ describe("analysis settings", () => {
     expect(computed["funnel.steps"]).toEqual([]);
     expect(computed["funnel.window"]).toEqual({ value: 7, unit: "day" });
     expect(computed["funnel.view"]).toBe("steps");
-    expect(computed["funnel.allow_retry"]).toBe(false);
+    expect(computed["funnel.ordering"]).toBe("loose");
     expect(computed.counting).toBe("person");
   });
 
@@ -215,6 +215,56 @@ describe("analysis settings", () => {
         "granularity",
       ),
     ).toBe(false);
+  });
+
+  describe("funnel disqualifiers", () => {
+    const STARTED_TRIAL = createMockEventDefinition({ name: "Started trial" });
+    const HIT_AN_ERROR = createMockEventDefinition({ name: "Hit an error" });
+    const CANCELLED = createMockEventDefinition({ name: "Cancelled" });
+    const stored = {
+      "funnel.steps": [SIGNED_UP, STARTED_TRIAL, PURCHASED],
+      "funnel.disqualifiers": [
+        { event: HIT_AN_ERROR, between: null },
+        { event: CANCELLED, between: { fromStep: 1, toStep: 5 } },
+      ],
+    };
+
+    it("disqualify anywhere in the funnel, or between steps up to the last", () => {
+      const { specResult, isHidden } = setup({ kind: "funnel", stored });
+
+      expect(isHidden("funnel.disqualifiers")).toBe(false);
+      expect(getReadySpec(specResult).funnel?.exclusions).toEqual([
+        { flag: "ev_4", fromStep: 0, toStep: 2 },
+        { flag: "ev_5", fromStep: 1, toStep: 2 },
+      ]);
+    });
+
+    it.each(["strict", "any"])(
+      "are hidden and left out in %s order",
+      (ordering) => {
+        const { specResult, isHidden } = setup({
+          kind: "funnel",
+          stored: { ...stored, "funnel.ordering": ordering },
+        });
+
+        expect(isHidden("funnel.disqualifiers")).toBe(true);
+        expect(getReadySpec(specResult).funnel?.exclusions).toEqual([]);
+      },
+    );
+
+    it("fall back to none when a range is backwards", () => {
+      const { computed } = setup({
+        kind: "funnel",
+        stored: {
+          ...stored,
+          "funnel.disqualifiers": [
+            { event: HIT_AN_ERROR, between: { fromStep: 2, toStep: 1 } },
+          ],
+        },
+      });
+
+      expect(computed["funnel.disqualifiers"]).toEqual([]);
+    });
   });
 
   it("hides granularity for analyses without a time grain", () => {

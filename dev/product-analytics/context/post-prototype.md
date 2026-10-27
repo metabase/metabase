@@ -82,50 +82,19 @@ Lifecycle insights compare people by the event table's saved segments: whether t
 
 Real tables can have hundreds of segments, most of them rarely used. The plan is a notion of **popular events**: the segments (and later, raw event names) that enough people do often enough to be worth comparing by, picked from a cheap pass over recent data. Insights would only look at those.
 
-## Funnel timing that scales
+## Funnel querying
 
-The funnel counts people with ClickHouse's `windowFunnel`, which makes one pass over each person's events. Anything that measures time, though (the "How long it took" view, the median time between steps in the tooltip, the period in "Over time", and the funnel's Paths), needs to know *which* run through the steps was counted. `windowFunnel` only returns how far someone got.
+How the funnel finds each person's run through the steps, what we measured, and the open questions for production are in [funnel-querying.md](funnel-querying.md#after-the-prototype). The open questions are join or no join per engine, database-specific fast paths, and heavy tails.
 
-### What the prototype does
+## Heavy-tailed data
 
-`funnel_chains` in `sql/analyses/funnel.ts` tries a run from every one of a person's first-step events, using `arrayFold`, and keeps the run that gets furthest. Its work and memory both grow with (first-step events × step events) per person, so it's quadratic for a person whose first step is something frequent, like a pageview. Measured on the dev ClickHouse:
+Prototype analyses lean on ClickHouse in ways that may not hold up when a few people have very many events:
 
-| | `windowFunnel` | `funnel_chains` |
-|---|---|---|
-| Sample data, 1.68M events, 23k people | ~13 ms | ~1.4 s |
-| One person, 10k first-step events | ~3 ms | ~2.7 s |
-| One person, 30k first-step events | ~3 ms | out of memory (~12 GiB) |
+- per-person `groupArray` (paths);
+- `ARRAY JOIN` row multiplication (funnel steps, time buckets);
+- a `countIf` per flag (insights).
 
-A single bot or heavy user can take the whole query down.
-
-The shortcut it replaced, which was timing from each step's first-ever event (`minIf(ts, step_k)`), is fast but wrong. A run that went nowhere, such as an early visit, stretches the times past the funnel's window. `dev/product-analytics/check.ts` has fixture checks for this.
-
-### Proposal: next-step lookups with window functions
-
-Most of each run's work is the same across starts, because a run takes the first next-step event after the current one. Precompute that per event:
-
-1. For every event and every step k, the time of the first step-k event after it: `MIN(CASE WHEN step_k THEN ts END) OVER (PARTITION BY actor ORDER BY ts ROWS BETWEEN 1 FOLLOWING AND UNBOUNDED FOLLOWING)`.
-2. A run from a first-step event at `s` is then n − 1 lookups: `c_2` is the event's next step 2, `c_3` is the next step 3 after the event at `c_2`, and so on. Each lookup is an equi-join on (actor, ts).
-3. Keep the runs within the window, and pick one per person.
-
-That costs about (events × steps) with a sort per person, and it keeps today's choice of run. "Counted from each step", which goes on from a step's latest repeat, needs a "latest step-k event before" lookup as well, built the same way.
-
-### Other databases
-
-`windowFunnel` and `arrayFold` are ClickHouse-only:
-
-| Warehouse | Funnel building blocks |
-|---|---|
-| ClickHouse | `windowFunnel`, `sequenceMatch`, `arrayFold` |
-| Snowflake, Oracle, Trino/Athena | `MATCH_RECOGNIZE` matches the steps and returns their rows and times. Snowflake also has `REDUCE`. |
-| Databricks, DuckDB | Array folds (`aggregate`, `list_reduce`) |
-| BigQuery, Postgres, Redshift, MySQL | Window functions and joins only |
-
-Window functions and equi-joins exist everywhere, so the proposal above is also the portable one: it works for counting how far people got, not just for timing. It fits MBQL better than per-warehouse funnel functions, though MBQL would still need window-function support to express it.
-
-### More generally
-
-Other prototype analyses lean on ClickHouse in the same ways: per-person `groupArray` (paths), `ARRAY JOIN` row multiplication (funnel steps, time buckets), and a `countIf` per flag (insights). Before choosing each analysis's MBQL shape, benchmark it against a heavy-tailed dataset, meaning a few people with very many events, not only typical volumes.
+Before choosing each analysis's MBQL shape, benchmark it against a heavy-tailed dataset, not only typical volumes.
 
 ## Draft segments
 

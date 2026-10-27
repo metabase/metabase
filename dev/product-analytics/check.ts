@@ -909,22 +909,6 @@ const RETURNING: FixtureEvent[] = [
   { actor: "returning", flag: FLAG.trial, at: "2026-01-11 01:00:00" },
   { actor: "returning", flag: FLAG.checkout, at: "2026-01-13 00:00:00" },
 ];
-// Started a trial a day after viewing pricing, again 9 days later, and
-// purchased a day after that.
-const RETRYING: FixtureEvent[] = [
-  { actor: "retrying", flag: FLAG.pricing, at: "2026-01-01 00:00:00" },
-  { actor: "retrying", flag: FLAG.trial, at: "2026-01-02 00:00:00" },
-  { actor: "retrying", flag: FLAG.trial, at: "2026-01-11 00:00:00" },
-  { actor: "retrying", flag: FLAG.checkout, at: "2026-01-12 00:00:00" },
-];
-// Viewed pricing twice, started a trial an hour after the second view, and
-// purchased 2 days later.
-const REVIEWING: FixtureEvent[] = [
-  { actor: "reviewing", flag: FLAG.pricing, at: "2026-01-01 00:00:00" },
-  { actor: "reviewing", flag: FLAG.pricing, at: "2026-01-03 00:00:00" },
-  { actor: "reviewing", flag: FLAG.trial, at: "2026-01-03 01:00:00" },
-  { actor: "reviewing", flag: FLAG.checkout, at: "2026-01-05 00:00:00" },
-];
 // From the fastest anyone took to the end of the window, with no one past it.
 const TOOK_TWO_DAYS = [
   { time_to_convert: "2d–3d", people: 1 },
@@ -960,23 +944,226 @@ checkRows(
     { period: String(returningWeek?.period), conversion: 1 },
   ],
 );
+const [firstVisitWeek] = await chJson(
+  `SELECT toString(toStartOfInterval(toDateTime('2026-01-01 00:00:00'), INTERVAL 1 WEEK)) AS period`,
+);
 checkRows(
-  "counted from each step, a step done again goes on from its latest time",
-  await funnelFixtureRows(RETRYING, { anchor: "each" }, "steps"),
+  "someone who keeps starting and goes no further is in the period they first started",
+  await funnelFixtureRows(
+    [
+      { actor: "browsing", flag: FLAG.pricing, at: "2026-01-01 00:00:00" },
+      { actor: "browsing", flag: FLAG.pricing, at: "2026-01-20 00:00:00" },
+    ],
+    {},
+    "overTime",
+  ),
   [
-    { people: 1, median_seconds_from_previous: null },
-    { people: 1, median_seconds_from_previous: DAY_SECONDS },
-    { people: 1, median_seconds_from_previous: DAY_SECONDS },
+    { period: String(firstVisitWeek?.period), conversion: 0 },
+    { period: String(firstVisitWeek?.period), conversion: 0 },
+  ],
+);
+
+// Who got how far, on hand-written events, as `people` per step. Pricing,
+// trial and checkout are steps 1 to 3, signup is anything else, and error
+// is the disqualifier.
+const fixtureEvents = (
+  actor: string,
+  steps: [(typeof FLAG)[keyof typeof FLAG], string][],
+): FixtureEvent[] => steps.map(([flag, at]) => ({ actor, flag, at }));
+const reached = (...people: number[]) =>
+  people.map((count) => ({ people: count }));
+const disqualifiedBy = (fromStep: number, toStep: number) => ({
+  exclusions: [{ flag: FLAG.error, fromStep, toStep }],
+});
+
+console.log("\nfunnel attempts");
+checkRows(
+  "steps done before the first step don't count",
+  await funnelFixtureRows(
+    fixtureEvents("early", [
+      [FLAG.trial, "2026-01-01 00:00:00"],
+      [FLAG.checkout, "2026-01-01 01:00:00"],
+      [FLAG.pricing, "2026-01-03 00:00:00"],
+      [FLAG.trial, "2026-01-03 01:00:00"],
+    ]),
+    {},
+    "steps",
+  ),
+  reached(1, 1, 0),
+);
+checkRows(
+  "steps at the same time count in step order",
+  await funnelFixtureRows(
+    fixtureEvents("tied", [
+      [FLAG.checkout, "2026-01-01 00:00:00"],
+      [FLAG.trial, "2026-01-01 00:00:00"],
+      [FLAG.pricing, "2026-01-01 00:00:00"],
+    ]),
+    {},
+    "steps",
+  ),
+  reached(1, 1, 1),
+);
+checkRows(
+  "one event does one step, even when two steps are the same event",
+  await funnelFixtureRows(
+    [
+      ...fixtureEvents("once", [
+        [FLAG.pricing, "2026-01-01 00:00:00"],
+        [FLAG.checkout, "2026-01-01 01:00:00"],
+      ]),
+      ...fixtureEvents("twice", [
+        [FLAG.pricing, "2026-01-01 00:00:00"],
+        [FLAG.pricing, "2026-01-01 00:30:00"],
+        [FLAG.checkout, "2026-01-01 01:00:00"],
+      ]),
+    ],
+    {
+      steps: [
+        { index: 0, flag: FLAG.pricing, label: "Viewed pricing" },
+        { index: 1, flag: FLAG.pricing, label: "Viewed pricing again" },
+        { index: 2, flag: FLAG.checkout, label: "Purchased" },
+      ],
+    },
+    "steps",
+  ),
+  reached(2, 1, 1),
+);
+checkRows(
+  "in strict order, an attempt someone else's event interrupted can start over",
+  await funnelFixtureRows(
+    fixtureEvents("interrupted", [
+      [FLAG.pricing, "2026-01-01 00:00:00"],
+      [FLAG.signup, "2026-01-01 00:10:00"],
+      [FLAG.pricing, "2026-01-01 00:20:00"],
+      [FLAG.trial, "2026-01-01 00:30:00"],
+      [FLAG.checkout, "2026-01-01 00:40:00"],
+    ]),
+    { ordering: "strict" },
+    "steps",
+  ),
+  reached(1, 1, 1),
+);
+checkRows(
+  "in strict order, doing a step again interrupts",
+  await funnelFixtureRows(
+    fixtureEvents("repeated", [
+      [FLAG.pricing, "2026-01-01 00:00:00"],
+      [FLAG.trial, "2026-01-01 00:10:00"],
+      [FLAG.trial, "2026-01-01 00:20:00"],
+      [FLAG.checkout, "2026-01-01 00:30:00"],
+    ]),
+    { ordering: "strict" },
+    "steps",
+  ),
+  reached(1, 1, 0),
+);
+const DISQUALIFIED_EARLY = fixtureEvents("disqualified", [
+  [FLAG.pricing, "2026-01-01 00:00:00"],
+  [FLAG.error, "2026-01-01 00:10:00"],
+  [FLAG.trial, "2026-01-01 00:20:00"],
+  [FLAG.checkout, "2026-01-01 00:30:00"],
+]);
+checkRows(
+  "a disqualifier cuts the attempt off at the step before it",
+  await funnelFixtureRows(DISQUALIFIED_EARLY, disqualifiedBy(0, 2), "steps"),
+  reached(1, 0, 0),
+);
+checkRows(
+  "a disqualifier outside its steps doesn't count",
+  await funnelFixtureRows(DISQUALIFIED_EARLY, disqualifiedBy(1, 2), "steps"),
+  reached(1, 1, 1),
+);
+checkRows(
+  "a disqualifier between later steps cuts the attempt off there",
+  await funnelFixtureRows(
+    fixtureEvents("disqualified late", [
+      [FLAG.pricing, "2026-01-01 00:00:00"],
+      [FLAG.trial, "2026-01-01 00:10:00"],
+      [FLAG.error, "2026-01-01 00:20:00"],
+      [FLAG.checkout, "2026-01-01 00:30:00"],
+    ]),
+    disqualifiedBy(0, 2),
+    "steps",
+  ),
+  reached(1, 1, 0),
+);
+checkRows(
+  "a disqualified attempt doesn't stop a later clean one",
+  await funnelFixtureRows(
+    fixtureEvents("clean later", [
+      [FLAG.pricing, "2026-01-01 00:00:00"],
+      [FLAG.error, "2026-01-01 00:10:00"],
+      [FLAG.pricing, "2026-01-01 00:20:00"],
+      [FLAG.trial, "2026-01-01 00:30:00"],
+      [FLAG.checkout, "2026-01-01 00:40:00"],
+    ]),
+    disqualifiedBy(0, 2),
+    "steps",
+  ),
+  reached(1, 1, 1),
+);
+checkRows(
+  "a disqualifier at the same time as a step is before it",
+  await funnelFixtureRows(
+    [
+      ...fixtureEvents("with the first step", [
+        [FLAG.pricing, "2026-01-01 00:00:00"],
+        [FLAG.error, "2026-01-01 00:00:00"],
+        [FLAG.trial, "2026-01-01 00:10:00"],
+        [FLAG.checkout, "2026-01-01 00:20:00"],
+      ]),
+      ...fixtureEvents("with the second step", [
+        [FLAG.pricing, "2026-01-01 00:00:00"],
+        [FLAG.error, "2026-01-01 00:10:00"],
+        [FLAG.trial, "2026-01-01 00:10:00"],
+        [FLAG.checkout, "2026-01-01 00:20:00"],
+      ]),
+    ],
+    disqualifiedBy(0, 2),
+    "steps",
+  ),
+  reached(2, 1, 1),
+);
+checkRows(
+  "in any order, any of the steps count, within one window",
+  await funnelFixtureRows(
+    [
+      ...fixtureEvents("skipped one", [
+        [FLAG.pricing, "2026-01-01 00:00:00"],
+        [FLAG.checkout, "2026-01-01 01:00:00"],
+      ]),
+      ...fixtureEvents("too slow", [
+        [FLAG.pricing, "2026-01-01 00:00:00"],
+        [FLAG.checkout, "2026-01-11 00:00:00"],
+        [FLAG.trial, "2026-01-11 01:00:00"],
+      ]),
+      ...fixtureEvents("backwards", [
+        [FLAG.checkout, "2026-01-01 00:00:00"],
+        [FLAG.trial, "2026-01-01 01:00:00"],
+        [FLAG.pricing, "2026-01-01 02:00:00"],
+      ]),
+    ],
+    { ordering: "any" },
+    "steps",
+  ),
+  [
+    { label: "Completed 1 step", people: 3 },
+    { label: "Completed 2 steps", people: 3 },
+    { label: "Completed 3 steps", people: 1 },
   ],
 );
 checkRows(
-  "counted from each step, a run can take longer than the window",
-  await funnelFixtureRows(RETRYING, { anchor: "each" }, "timeToConvert"),
-  [{ time_to_convert: "7d+", people: 1 }],
-);
-checkRows(
-  "counted from each step, a run starts at the last first step before going on",
-  await funnelFixtureRows(REVIEWING, { anchor: "each" }, "timeToConvert"),
+  "in any order, the time runs from the first step done to the last",
+  await funnelFixtureRows(
+    fixtureEvents("backwards", [
+      [FLAG.checkout, "2026-01-01 00:00:00"],
+      [FLAG.trial, "2026-01-02 00:00:00"],
+      [FLAG.pricing, "2026-01-03 00:00:00"],
+    ]),
+    { ordering: "any" },
+    "timeToConvert",
+  ),
   TOOK_TWO_DAYS,
 );
 

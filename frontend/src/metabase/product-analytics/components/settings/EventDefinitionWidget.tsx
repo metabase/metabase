@@ -22,6 +22,8 @@ type EventDefinitionWidgetProps = SettingWidgetProps<EventDefinition | null> & {
   table: Table | undefined;
   /** What an empty value means, when it's a valid choice rather than a gap. */
   emptyLabel?: string;
+  /** The label of the button that clears the event. */
+  removeLabel?: string;
 };
 
 /**
@@ -35,6 +37,7 @@ export const EventDefinitionWidget = ({
   onChange,
   table,
   emptyLabel,
+  removeLabel = t`Clear`,
 }: EventDefinitionWidgetProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const { isPaletteOpen } = useSegmentDrag();
@@ -98,7 +101,7 @@ export const EventDefinitionWidget = ({
       empty={value === null}
       draggableEvent={value ?? undefined}
       disabled={tableQuery === undefined}
-      removeLabel={t`Clear`}
+      removeLabel={removeLabel}
       dropTarget={{ accepts: isEventSegment, onDrop: handleDropSegment }}
       onEdit={() => setIsEditing(true)}
       onRemove={value !== null ? handleClear : undefined}
