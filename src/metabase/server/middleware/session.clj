@@ -31,9 +31,11 @@
    [metabase.server.db :as server.db]
    [metabase.session.core :as session]
    [metabase.settings.core :as setting]
+   [metabase.system.core :as system]
    [metabase.tracing.core :as tracing]
    [metabase.util :as u]
    [metabase.util.encryption :as encryption]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -82,15 +84,81 @@
      (wrap-session-key-with-strategy strategy request))
    [:header :embedded-cookie :normal-cookie]))
 
+(defn- session-cookie-values
+  "The values of the `metabase.SESSION` cookies in the request's `Cookie` header, or nil when it has none. A browser
+  separates cookies with `;` only. Ring's `:cookies` also splits on `,`, which a cookie value may contain, and keeps
+  only the last value of a name."
+  [request]
+  (when-let [header (get-in request [:headers "cookie"])]
+    (vec (for [pair  (str/split header #";")
+               :let  [[cookie-name value] (str/split (str/trim pair) #"=" 2)]
+               :when (= request/metabase-session-cookie cookie-name)]
+           (str/trim (or value ""))))))
+
+(defn- expired-stray-session-cookies
+  "`Set-Cookie` values that delete each `metabase.SESSION` cookie this request could carry other than the browser's
+  own, which is host-only at `/`: one set with a `Domain` (by another host of the same site, at any parent domain of
+  this host, `Partitioned` too on HTTPS) or at a deeper path. Paths are taken with and without a trailing slash and the
+  site URL's path, which a proxy removes before the request reaches Metabase."
+  [{:keys [uri] :as request}]
+  (let [domains  (distinct (for [host  (request/host-names request)
+                                 :when (not (u.http/ip-literal? host))
+                                 :let  [labels (str/split host #"\.")]
+                                 n     (range (dec (count labels)))]
+                             (str/join "." (drop n labels))))
+        prefixes (->> (str/split (or uri "/") #"/")
+                      (remove str/blank?)
+                      (reductions #(str %1 "/" %2) ""))
+        paths    (distinct (for [base   (distinct ["" (system/site-path)])
+                                 prefix prefixes
+                                 path   [(str base prefix) (str base prefix "/")]]
+                             (if (= "" path) "/" path)))
+        https?   (#{:https :unknown} (request/https-state request))
+        expire   (fn [attributes]
+                   (str request/metabase-session-cookie "=; " attributes
+                        "Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT"))]
+    (concat (for [domain      domains
+                  path        paths
+                  partitioned (if https? ["" "Secure; Partitioned; "] [""])]
+              (expire (format "Domain=%s; Path=%s; %s" domain path partitioned)))
+            (for [path  paths
+                  :when (not= "/" path)]
+              (expire (format "Path=%s; " path))))))
+
+(defn- add-set-cookies [response cookies]
+  (let [existing (get-in response [:headers "Set-Cookie"])]
+    (assoc-in response [:headers "Set-Cookie"]
+              (vec (concat (if (string? existing) [existing] existing) cookies)))))
+
+(defn- with-session-cookie-from-header
+  "`request` with the `metabase.SESSION` cookie of its `Cookie` header in `:cookies`, or without one when the header
+  carries none or several."
+  [request [session & more :as values]]
+  (cond
+    (nil? values)            request
+    (and session (not more)) (assoc-in request [:cookies request/metabase-session-cookie] {:value session})
+    :else                    (update request :cookies dissoc request/metabase-session-cookie)))
+
 (defn wrap-session-key
   "Middleware that sets the `:metabase-session-key` keyword on the request if a session id can be found.
   We first check the http headers for `X-METABASE-SESSION`, then if no header is found we look in the request
-  :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request."
+  :cookies for `metabase.SESSION`. If neither is found then no keyword is bound to the request.
+
+  A request with more than one `metabase.SESSION` cookie gets no session from that cookie: another host of the same
+  site can set one for this host, and the server could not tell it from the user's. The response deletes the extra
+  ones."
   [handler]
   (fn [request respond raise]
-    (let [request (or (wrap-session-key-with-strategy :best request)
-                      request)]
-      (handler request respond raise))))
+    (let [values   (session-cookie-values request)
+          request' (with-session-cookie-from-header request values)
+          request' (or (wrap-session-key-with-strategy :best request') request')]
+      (if (< 1 (count values))
+        (handler request'
+                 (fn [response]
+                   (respond (cond-> response
+                              (map? response) (add-set-cookies (expired-stray-session-cookies request)))))
+                 raise)
+        (handler request' respond raise)))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             wrap-current-user-info                                             |
