@@ -358,6 +358,23 @@
         (is (deletes? deletions {"Domain" "example.com", "Path" "/api"}))
         (is (deletes? deletions {"Domain" "example.com", "Path" "/api/"}))))))
 
+(deftest ^:parallel cookie-domains-test
+  (is (= ["mb.corp.example.com" "corp.example.com" "example.com" "mb.example.com"]
+         (#'mw.session/cookie-domains ["mb.corp.example.com" "localhost" "127.0.0.1" "mb.example.com"]))))
+
+(deftest ^:parallel cookie-paths-test
+  (testing "shallowest first, with and without a trailing slash"
+    (is (= ["/" "/api" "/api/" "/api/user" "/api/user/"]
+           (#'mw.session/cookie-paths "/api/user" ""))))
+  (testing "also under the site URL's path"
+    (is (= ["/" "/metabase" "/metabase/" "/api" "/api/" "/metabase/api" "/metabase/api/"]
+           (#'mw.session/cookie-paths "/api" "/metabase")))))
+
+(deftest ^:parallel take-within-bytes-test
+  (testing "counts each value's whole `Set-Cookie: ...` header line"
+    (is (= ["aaaa" "bbbb"] (#'mw.session/take-within-bytes 36 ["aaaa" "bbbb" "cccc"])))
+    (is (= ["aaaa"] (#'mw.session/take-within-bytes 35 ["aaaa" "bbbb" "cccc"])))))
+
 (deftest stray-session-cookie-is-deleted-on-a-subpath-deployment-test
   (testing "on a subpath deployment, the answer deletes a stray cookie at the site URL path"
     (mt/with-temporary-setting-values [site-url "https://mb.example.com/metabase"]
