@@ -37,8 +37,8 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
     H.queryBuilderMain().within(() => {
       cy.findByLabelText("Legend").findByText("Gadget").should("exist");
       H.echartsContainer()
-        .should("contain.text", "July 2025")
-        .and("contain.text", "January 2026");
+        .should("contain.text", "April 2025")
+        .and("contain.text", "April 2026");
     });
 
     cy.log("Chart drills");
@@ -300,7 +300,7 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       { visitQuestion: true },
     );
 
-    H.echartsContainer().contains("January 2028");
+    H.echartsContainer().contains("May 2028");
     // drill into a recent week
     H.cartesianChartCircle().should("have.length.gte", 4).eq(-4).click();
 
