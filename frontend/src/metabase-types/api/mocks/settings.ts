@@ -191,6 +191,7 @@ export const createMockSettings = (
   "custom-viz-plugin-dev-mode-enabled": false,
   "allowed-iframe-hosts": "*",
   "isolated-origin": null,
+  "isolated-origin-misconfigured?": false,
   "csp-img-allowed-hosts": "",
   "csp-img-enabled": false,
   "anon-tracking-enabled": false,

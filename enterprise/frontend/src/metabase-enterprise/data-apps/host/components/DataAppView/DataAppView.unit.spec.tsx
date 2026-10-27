@@ -194,6 +194,20 @@ describe("DataAppView", () => {
     expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
   });
 
+  it("says at once that data apps are off when MB_ISOLATED_ORIGIN can't be used, instead of waiting for the load timeout", () => {
+    setup({
+      data: createMockDataApp({ display_name: "Sales" }),
+      settings: {
+        "isolated-origin": null,
+        "isolated-origin-misconfigured?": true,
+      },
+    });
+
+    expect(screen.getByText("Data apps are unavailable")).toBeInTheDocument();
+    expect(screen.getByText(/MB_ISOLATED_ORIGIN/)).toBeInTheDocument();
+    expect(screen.queryByTitle("Sales")).not.toBeInTheDocument();
+  });
+
   it("renders the app inside an iframe once metadata resolves", () => {
     setup({ data: createMockDataApp({ display_name: "Sales" }) });
 
