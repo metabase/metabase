@@ -54,22 +54,26 @@ describe(
 
     [{ strictMode: false }, { strictMode: true }].forEach(({ strictMode }) => {
       describe(`Common cases ${strictMode ? "with" : "without"} strict mode`, () => {
-        it("should display an SDK question", () => {
-          mountSdkContent(
-            <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
-            { strictMode },
-          );
+        it(
+          "should display an SDK question",
+          { tags: strictMode ? [] : ["@prerelease"] },
+          () => {
+            mountSdkContent(
+              <InteractiveQuestion questionId={ORDERS_QUESTION_ID} />,
+              { strictMode },
+            );
 
-          getSdkRoot().within(() => {
-            cy.findByText(
-              /The loading state is `Loaded` but the SDK bundle is not loaded yet/,
-            ).should("not.exist");
+            getSdkRoot().within(() => {
+              cy.findByText(
+                /The loading state is `Loaded` but the SDK bundle is not loaded yet/,
+              ).should("not.exist");
 
-            cy.findByText("Orders").should("exist");
+              cy.findByText("Orders").should("exist");
 
-            cy.findByTestId("visualization-root").should("be.visible");
-          });
-        });
+              cy.findByTestId("visualization-root").should("be.visible");
+            });
+          },
+        );
 
         it("should add and cleanup the MetabaseProviderPropsStore in a global object", () => {
           const metabaseProviderElement = (

@@ -32,12 +32,26 @@ jobs:
       dev_server: ${{ fromJson(steps.config.outputs.result).metastoreDevServer }}
       package_manager: ${{ fromJson(steps.config.outputs.result).packageManager }}
       cypress_grep_flag: ${{ fromJson(steps.config.outputs.result).cypressGrepFlag }}
+      sdk_component_specs: ${{ steps.sdk-specs.outputs.specs }}
     steps:
       - uses: actions/checkout@v7
         with:
           sparse-checkout: |
             release
             .github
+      - name: Check out the release component tests
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.commit }}
+          path: release-checkout
+          sparse-checkout: e2e/test-component
+      - name: Find pre-release Embedding SDK component tests
+        id: sdk-specs
+        working-directory: release-checkout
+        run: |
+          specs=$(grep -rl --include='*.cy.spec.tsx' "@prerelease" e2e/test-component/scenarios/embedding-sdk | paste -sd, - || true)
+          echo "Pre-release Embedding SDK component specs: ${specs:-none}"
+          echo "specs=$specs" >> "$GITHUB_OUTPUT"
       - name: Prepare release scripts
         uses: ./.github/actions/prepare-release-scripts
       # note: this block can be removed after we stop needing to be able to test versions before v55
@@ -246,6 +260,92 @@ jobs:
             ./logs/test.log
           if-no-files-found: ignore
 
+  run-sdk-sanity-check:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 45
+    needs: [test-mode-config, release-artifact]
+    if: ${{ needs.test-mode-config.outputs.sdk_component_specs != '' }}
+    env:
+      MB_EDITION: ee
+      DISPLAY: ""
+      MB_RUN_MODE: ${{ needs.test-mode-config.outputs.run_mode }}
+      METASTORE_DEV_SERVER_URL: ${{ needs.test-mode-config.outputs.dev_server }}
+      CYPRESS_GREP_FLAG: ${{ needs.test-mode-config.outputs.cypress_grep_flag }}
+      CYPRESS_MB_ALL_FEATURES_TOKEN: ${{ secrets.STAGING_MB_ALL_FEATURES_TOKEN }}
+      CYPRESS_MB_STARTER_CLOUD_TOKEN: ${{ secrets.STAGING_MB_STARTER_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_CLOUD_TOKEN: ${{ secrets.STAGING_MB_PRO_CLOUD_TOKEN }}
+      CYPRESS_MB_PRO_SELF_HOSTED_TOKEN: ${{ secrets.STAGING_MB_PRO_SELF_HOSTED_TOKEN }}
+      CYPRESS_VIDEO: "false"
+      TERM: xterm
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.release-artifact.outputs.commit }}
+      - name: Prepare Docker containers
+        uses: ./.github/actions/e2e-prepare-containers
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          maildev: true
+          openldap: false
+          webhook: false
+          snowplow: true
+          metaplow: true
+          postgres: false
+          mysql: false
+          mongo: false
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build Embedding SDK package
+        run: ${{ needs.test-mode-config.outputs.package_manager }} run build-embedding-sdk-package
+      - name: Compile CLJS
+        run: ${{ needs.test-mode-config.outputs.package_manager }} run build-pure:cljs
+      - name: Prepare Cypress environment
+        id: cypress-prep
+        uses: ./.github/actions/prepare-cypress
+      - uses: actions/download-artifact@v8
+        name: Retrieve uberjar artifact for ee
+        with:
+          name: metabase-test-ee-uberjar
+      - name: Get the version info
+        run: |
+          jar xf metabase.jar version.properties
+          mv version.properties resources/
+      - name: Move jar
+        run: mkdir -p ./target/uberjar && cp metabase.jar ./target/uberjar/metabase.jar
+
+      - name: Run Metabase
+        run: node e2e/runner/run_cypress_ci.js start
+
+      - name: Make app db snapshot
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+        run: |
+          node e2e/runner/run_cypress_ci.js snapshot \
+            --spec "e2e/snapshot-creators/default.cy.snap.js"
+
+      - name: Run a few important Embedding SDK component tests as sanity check
+        env:
+          CYPRESS_BROWSER: ${{ steps.cypress-prep.outputs.chrome-path }}
+          SPECS: ${{ needs.test-mode-config.outputs.sdk_component_specs }}
+        run: |
+          node e2e/runner/run_cypress_ci.js component \
+            "$CYPRESS_GREP_FLAG" grepTags="@prerelease" \
+            --spec "$SPECS"
+
+      - name: Upload Cypress Artifacts upon failure
+        uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: cypress-failed-sdk-component-tests-recording
+          path: |
+            ./cypress
+            ./logs/test.log
+          if-no-files-found: ignore
+
   containerize-oss:
     needs: release-artifact
     uses: ./.github/workflows/containerize-jar.yml
@@ -274,6 +374,7 @@ jobs:
     needs:
       [
         run-sanity-check,
+        run-sdk-sanity-check,
         check-uberjar-health,
         containerize-ee,
         containerize-oss,
@@ -298,6 +399,7 @@ jobs:
 
             const allJobsSuccessful =
               '${{ needs.run-sanity-check.result }}' === 'success' &&
+              ['success', 'skipped'].includes('${{ needs.run-sdk-sanity-check.result }}') &&
               '${{ needs.check-uberjar-health.result }}' === 'success' &&
               '${{ needs.containerize-ee.result }}' === 'success' &&
               '${{ needs.containerize-oss.result }}' === 'success';
