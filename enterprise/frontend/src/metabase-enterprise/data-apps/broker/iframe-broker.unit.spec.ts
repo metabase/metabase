@@ -251,6 +251,59 @@ describe("iframe broker, before the host hands over its port", () => {
   });
 });
 
+describe("iframe broker, offered a port by someone other than its host", () => {
+  it("takes the port only from its parent window at the host's origin", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      `/embed/apps/sales#${DATA_APP_IFRAME_BROKER_HASH_KEY}=${encodeURIComponent(HOST_ORIGIN)}`,
+    );
+    const fetchBeforeInstall = window.fetch;
+    const otherFrame = document.createElement("iframe");
+    document.body.append(otherFrame);
+
+    try {
+      await jest.isolateModulesAsync(async () => {
+        const broker = await import("./iframe-broker");
+        broker.initDataAppBroker();
+        broker.installDataAppFetchBroker();
+
+        const offer = (port: HostPort, origin: string, source: unknown) => {
+          const init = new MessageEvent("message", {
+            data: { type: DATA_APP_BROKER_INIT },
+            origin,
+          });
+          Object.defineProperties(init, {
+            source: { value: source },
+            ports: { value: [port] },
+          });
+          window.dispatchEvent(init);
+        };
+        const strangerPort: HostPort = {
+          onmessage: null,
+          postMessage: jest.fn(),
+        };
+        const parentPort: HostPort = {
+          onmessage: null,
+          postMessage: jest.fn(),
+        };
+
+        offer(strangerPort, "https://evil.example.com", window.parent);
+        offer(strangerPort, HOST_ORIGIN, otherFrame.contentWindow);
+        void window.fetch("/api/user/current");
+        offer(parentPort, HOST_ORIGIN, window.parent);
+
+        await waitFor(() => expect(parentPort.postMessage).toHaveBeenCalled());
+        expect(strangerPort.postMessage).not.toHaveBeenCalled();
+      });
+    } finally {
+      window.fetch = fetchBeforeInstall;
+      otherFrame.remove();
+      window.history.replaceState({}, "", "/");
+    }
+  });
+});
+
 describe("iframe broker, with the user's locale from the top page", () => {
   const launch = (locale: string) =>
     window.history.replaceState(

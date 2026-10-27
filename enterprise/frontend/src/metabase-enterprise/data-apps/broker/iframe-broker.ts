@@ -5,12 +5,14 @@ import {
   DATA_APP_IFRAME_LOCALE_HASH_KEY,
   DATA_APP_ROUTE_MESSAGE_TYPE,
 } from "metabase-enterprise/data-apps/constants";
+import { isDataAppMessage } from "metabase-enterprise/data-apps/host/lib/is-data-app-message";
 
 import {
   type BrokerCancelMessage,
   type BrokerRequestMessage,
   type BrokerResponseMessage,
   getBrokerableApiPath,
+  isBrokerResponseMessage,
 } from "./protocol";
 
 const HOST_ORIGIN_STORAGE_KEY = "metabase.data-app.broker-host-origin";
@@ -133,20 +135,23 @@ export function initDataAppBroker(): void {
     return;
   }
 
-  window.addEventListener("message", (event) => {
+  window.addEventListener("message", (event: MessageEvent<unknown>) => {
     if (event.origin !== hostOrigin || event.source !== window.parent) {
       return;
     }
 
-    if (event.data?.type !== DATA_APP_BROKER_INIT || !event.ports[0]) {
+    if (
+      !isDataAppMessage(event.data, DATA_APP_BROKER_INIT) ||
+      !event.ports[0]
+    ) {
       return;
     }
 
     const port = event.ports[0];
-    port.onmessage = (messageEvent) => {
-      // The other end is the top page, which the origin check above established.
-      const message = messageEvent.data as BrokerResponseMessage;
-      pending.get(message.id)?.(message);
+    port.onmessage = ({ data }: MessageEvent<unknown>) => {
+      if (isBrokerResponseMessage(data)) {
+        pending.get(data.id)?.(data);
+      }
     };
 
     resolveReady(port);

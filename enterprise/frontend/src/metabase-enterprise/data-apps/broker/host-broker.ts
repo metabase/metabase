@@ -7,6 +7,7 @@ import {
   DATA_APP_BROKER_INIT,
   DATA_APP_BROKER_READY,
 } from "metabase-enterprise/data-apps/constants";
+import { isDataAppMessage } from "metabase-enterprise/data-apps/host/lib/is-data-app-message";
 
 import {
   type BrokerRequestMessage,
@@ -81,26 +82,26 @@ export async function handleBrokerRequest(
     );
   }
 
-  // The marker is stamped here rather than forwarded: it confines the request to the
-  // `data-apps:base` scope, so letting the app choose its own client would let a
-  // compromised one opt out of that confinement.
-  const outbound = new Request(
-    new URL(parsed.pathname + parsed.search, window.location.origin),
-    {
-      method,
-      headers: {
-        ...safeRequestHeaders(headers),
-        // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
-        "X-Metabase-Client": DATA_APP_CLIENT,
-      },
-      body: body ?? undefined,
-      credentials: "include",
-      signal,
-    },
-  );
-  addAntiCsrfToken(outbound);
-
   try {
+    // The marker is stamped here rather than forwarded: it confines the request to the
+    // `data-apps:base` scope, so letting the app choose its own client would let a
+    // compromised one opt out of that confinement.
+    const outbound = new Request(
+      new URL(parsed.pathname + parsed.search, window.location.origin),
+      {
+        method,
+        headers: {
+          ...safeRequestHeaders(headers),
+          // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+          "X-Metabase-Client": DATA_APP_CLIENT,
+        },
+        body: body ?? undefined,
+        credentials: "include",
+        signal,
+      },
+    );
+    addAntiCsrfToken(outbound);
+
     const response = await fetch(outbound);
 
     // Capture a rotated token for the host; strip it from what reaches the app.
@@ -134,17 +135,34 @@ export function installHostBroker(
   iframe: HTMLIFrameElement,
   frameOrigin: string,
 ): () => void {
-  const onMessage = (event: MessageEvent) => {
+  let current: {
+    port: MessagePort;
+    inFlight: Map<number, AbortController>;
+  } | null = null;
+
+  // A port can outlive the document it was handed to (app code can transfer it), so the
+  // host closes it rather than trusting it to go away.
+  const closeCurrent = () => {
+    current?.inFlight.forEach((controller) => controller.abort());
+    current?.port.close();
+    current = null;
+  };
+
+  const onMessage = (event: MessageEvent<unknown>) => {
     if (
       event.origin !== frameOrigin ||
       event.source !== iframe.contentWindow ||
-      event.data?.type !== DATA_APP_BROKER_READY
+      !isDataAppMessage(event.data, DATA_APP_BROKER_READY)
     ) {
       return;
     }
 
+    // A reloaded frame asks again, and only its new document should be answered.
+    closeCurrent();
+
     const channel = new MessageChannel();
     const inFlight = new Map<number, AbortController>();
+    current = { port: channel.port1, inFlight };
 
     channel.port1.onmessage = async ({ data }: MessageEvent<unknown>) => {
       if (!isBrokerPortMessage(data)) {
@@ -174,5 +192,8 @@ export function installHostBroker(
   };
 
   window.addEventListener("message", onMessage);
-  return () => window.removeEventListener("message", onMessage);
+  return () => {
+    window.removeEventListener("message", onMessage);
+    closeCurrent();
+  };
 }

@@ -3,8 +3,63 @@ import { setBasename } from "metabase/utils/basename";
 import {
   getBrokerableApiPath,
   isBrokerPortMessage,
+  isBrokerResponseMessage,
   isBrokerableApiPath,
 } from "./protocol";
+
+describe("isBrokerResponseMessage", () => {
+  it("accepts a response and a network error", () => {
+    expect(
+      isBrokerResponseMessage({
+        id: 1,
+        status: 200,
+        statusText: "OK",
+        headers: { "content-type": "application/json" },
+        body: new ArrayBuffer(2),
+      }),
+    ).toBe(true);
+    expect(
+      isBrokerResponseMessage({
+        id: 1,
+        status: 204,
+        statusText: "No Content",
+        headers: {},
+        body: null,
+      }),
+    ).toBe(true);
+    expect(
+      isBrokerResponseMessage({
+        id: 1,
+        networkError: "TypeError: Failed to fetch",
+      }),
+    ).toBe(true);
+  });
+
+  it("refuses anything else", () => {
+    expect(isBrokerResponseMessage(null)).toBe(false);
+    expect(isBrokerResponseMessage({ status: 200 })).toBe(false);
+    expect(isBrokerResponseMessage({ id: "1", networkError: "x" })).toBe(false);
+    expect(isBrokerResponseMessage({ id: 1, networkError: 1 })).toBe(false);
+    expect(
+      isBrokerResponseMessage({
+        id: 1,
+        status: 200,
+        statusText: "OK",
+        headers: { a: 1 },
+        body: null,
+      }),
+    ).toBe(false);
+    expect(
+      isBrokerResponseMessage({
+        id: 1,
+        status: 200,
+        statusText: "OK",
+        headers: {},
+        body: "text",
+      }),
+    ).toBe(false);
+  });
+});
 
 describe("isBrokerableApiPath", () => {
   it("relays API paths", () => {
