@@ -5,13 +5,16 @@ name: Test gate
 #
 # `force-run` and `force-skip` are global overrides; `defer` hands the decision
 # to the paths filter, which is the only path that pays for a checkout.
+# `stack-skip` runs nothing, but callers still enter each suite so that its
+# result job reports the required check.
 #
 # In a stack of PRs, only the ends run CI: the lowest unmerged PR (the one whose
 # base ref is the stack base) and the top PR (the one at the last position).
-# Every PR in between is force-skipped and gets tested once it reaches the
-# bottom of the stack, unless it carries the `ci:run-all` label. The top diffs
-# against `diff-base`, where the stack forked from its base, so the whole stack
-# decides what runs and not just the top PR's own slice.
+# Every PR in between receives a verdict of `stack-skip` which skips tests so it
+# is only tested once it reaches the bottom of the stack, unless it carries the
+# `ci:run-all` label. The top diffs against `diff-base`, where the stack forked
+# from its base, so the whole stack decides what runs and not just the top PR's
+# own slice.
 on:
   workflow_call:
     inputs:
@@ -27,6 +30,7 @@ on:
         description: Whether the calling suite should run.
         value: >-
           ${{ jobs.should-run.outputs.verdict != 'force-skip'
+          && jobs.should-run.outputs.verdict != 'stack-skip'
           && (inputs.filters == ''
           || jobs.should-run.outputs.verdict == 'force-run'
           || jobs.files-changed.outputs.any == 'true') }}
@@ -41,7 +45,7 @@ on:
         description: Whether the suite should run in full, ignoring the diff.
         value: ${{ jobs.should-run.outputs.verdict == 'force-run' }}
       verdict:
-        description: force-run, force-skip, or defer.
+        description: force-run, force-skip, stack-skip, or defer.
         value: ${{ jobs.should-run.outputs.verdict }}
       diff-base:
         description: >-
@@ -71,7 +75,7 @@ jobs:
             || contains(github.event.pull_request.labels.*.name, 'ci:skip') && 'force-skip'
             || (github.event.pull_request.stack != null
             && github.event.pull_request.stack.base.ref != github.event.pull_request.base.ref
-            && github.event.pull_request.stack.position != github.event.pull_request.stack.size) && 'force-skip'
+            && github.event.pull_request.stack.position != github.event.pull_request.stack.size) && 'stack-skip'
             || 'defer' }}
         run: |
           echo "verdict=$VERDICT" | tee -a "$GITHUB_OUTPUT"
