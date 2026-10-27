@@ -209,8 +209,8 @@
                     (let [old  (transforms.db/transform id)
                           ;; A broken transform must still go to the Trash, so a trash, restore or move skips the
                           ;; source and target validation, as a card update checks only the columns that change.
-                          ;; It also skips the premium feature check, so an instance whose license was downgraded
-                          ;; can still trash, restore or move a transform whose type it can no longer edit.
+                          ;; The premium feature still applies: the write check below fails without it, so a
+                          ;; transform whose feature is off cannot be trashed, as it cannot be edited or deleted.
                           archive-or-move-only? (every? #{:archived :collection_id} (keys body))
                           body (api/updates-with-archived-directly old body)
                           new  (merge old body)
