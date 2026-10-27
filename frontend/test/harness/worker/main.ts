@@ -25,6 +25,7 @@ import { recordEnvironmentBaseline, recordRealmBaseline } from "./realm.ts";
 import { captureConsole, recordFailure, takeFileResult } from "./results.ts";
 import {
   captureUncaughtExceptions,
+  guardActEnvironment,
   runFile,
   setRepositoryReset,
 } from "./run-file.ts";
@@ -57,6 +58,7 @@ function installEnvironment(): void {
   loadSchedulerWithRealTimers();
   trackTimers();
   runSetupFiles();
+  guardActEnvironment();
   recordRealmBaseline();
   recordEnvironmentBaseline();
   setRepositoryReset(loadRepositoryReset());

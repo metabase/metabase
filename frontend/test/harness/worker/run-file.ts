@@ -1,5 +1,6 @@
 // Runs one spec file: collects its tests, runs them as node:test subtests in
 // jest's order with jest's hooks, and then resets the worker for the next file.
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createRequire } from "node:module";
 import path from "node:path";
 import type { TestContext } from "node:test";
@@ -98,6 +99,31 @@ let pendingUncaught: Failure | null = null;
 // was given.
 let actEnvironmentForFile: unknown;
 
+// The file whose code is running, as seen from each async callback.
+const fileScope = new AsyncLocalStorage<string>();
+let runningFile = "";
+
+/**
+ * An act() or waitFor that a file did not wait for can finish during a later
+ * file. It then restores the act environment flag that it saw when it
+ * started, and can switch the flag off or on under the later file's own
+ * waitFor. Such writes from an earlier file are ignored.
+ */
+export function guardActEnvironment(): void {
+  let isActEnvironment: unknown = globals.IS_REACT_ACT_ENVIRONMENT;
+  Object.defineProperty(globalThis, "IS_REACT_ACT_ENVIRONMENT", {
+    configurable: true,
+    enumerable: true,
+    get: () => isActEnvironment,
+    set: (value: unknown) => {
+      const writer = fileScope.getStore();
+      if (writer === undefined || writer === runningFile) {
+        isActEnvironment = value;
+      }
+    },
+  });
+}
+
 export function setRepositoryReset(reset: () => void): void {
   repositoryReset = reset;
 }
@@ -117,7 +143,12 @@ export function captureUncaughtExceptions(): void {
   });
 }
 
-export async function runFile(t: TestContext, file: string): Promise<void> {
+export function runFile(t: TestContext, file: string): Promise<void> {
+  runningFile = file;
+  return fileScope.run(file, () => runFileInScope(t, file));
+}
+
+async function runFileInScope(t: TestContext, file: string): Promise<void> {
   const startedAt = Date.now();
   recordSetupMocks();
   startSnapshots(file);
