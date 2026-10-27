@@ -172,9 +172,8 @@
 ;;; ------------------------------------------------ Asset Paths ------------------------------------------------
 
 (deftest ^:parallel asset-paths-test
-  (testing "returns normalized paths for icons with dot segments"
-    (is (= ["icon.png"] (manifest/asset-paths {:icon "./icon.png"})))
-    (is (= ["images/icon.png"] (manifest/asset-paths {:icon "./images/./icon.png"}))))
+  (testing "returns an icon with dot segments as written, as the frontend requests it"
+    (is (= ["./icon.png"] (manifest/asset-paths {:icon "./icon.png"}))))
   (testing "returns the icon when it's a safe image"
     (is (= ["icon.svg"] (manifest/asset-paths {:icon "icon.svg"})))
     (is (= ["icon.png"] (manifest/asset-paths {:icon "icon.png"}))))

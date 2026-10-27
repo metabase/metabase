@@ -150,7 +150,7 @@
   [manifest]
   (when-let [icon (:icon manifest)]
     (when (and (image-file? icon) (safe-relative-path? icon))
-      [(str (.normalize (java.nio.file.Path/of icon (into-array String []))))])))
+      [icon])))
 
 (defn asset-content-type
   "Return the MIME content type for an image asset file, or nil if not recognized.

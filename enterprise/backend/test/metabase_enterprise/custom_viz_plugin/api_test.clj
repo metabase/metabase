@@ -331,6 +331,22 @@
           (mt/user-http-request :crowberto :get 404 "ee/custom-viz-plugin/99999/asset"
                                 :path "icon.svg"))))))
 
+(deftest asset-endpoint-serves-icon-with-dot-segments-test
+  (mt/with-premium-features #{:custom-viz}
+    (let [icon   (byte-array [0 (int 0x80) (int 0xff)])
+          bundle (cvp.tu/make-tgz-bytes [["metabase-plugin.json" (json/encode {:name "dot-icon" :icon "./icon.png"})]
+                                         ["dist/index.js" "{}"]
+                                         ["dist/assets/icon.png" icon]])]
+      (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "dot-icon"
+                                                      :display_name "dot-icon"
+                                                      :status       :active
+                                                      :bundle       bundle
+                                                      :bundle_hash  (cvp.tu/bundle-hash bundle)
+                                                      :manifest     {:name "dot-icon" :icon "./icon.png"}}]
+        (testing "the icon is served at the path the manifest names"
+          (mt/user-http-request :crowberto :get 200 (str "ee/custom-viz-plugin/" id "/asset")
+                                :path "./icon.png"))))))
+
 ;;; ------------------------------------------------ Plugin Registration ------------------------------------------------
 
 (deftest register-plugin-test

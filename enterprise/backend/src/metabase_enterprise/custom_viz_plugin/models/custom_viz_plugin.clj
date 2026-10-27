@@ -79,12 +79,17 @@
   [asset-name]
   (str "dist/assets/" asset-name))
 
+(defn- normalize-path
+  "`path` without dot segments"
+  [^String path]
+  (str (.normalize (java.nio.file.Path/of path (into-array String [])))))
+
 (defn- served-paths
   "The archive paths an instance serves from a bundle, which are the files a repository holds: the manifest, the
   JavaScript, and the icon the manifest names. `read-text` reads an archive path as a string, or nil."
   [read-text]
   (into [(manifest/manifest-path) index-file]
-        (map asset-file)
+        (map (comp asset-file normalize-path))
         (manifest/asset-paths (some-> (read-text (manifest/manifest-path)) manifest/parse-manifest))))
 
 (defn- served-files
