@@ -154,7 +154,7 @@ If you [duplicate a dashboard](../../dashboards/introduction.md#duplicating-a-da
 
 ## Versioning the Library
 
-You can [sync Library content to version control](../../installation-and-operation/remote-sync.md), giving you change history and the ability to publish content across environments. When you sync the Library, Metabase also syncs your SQL snippets, [data actions](../models/actions/data-actions.md), and [glossary](glossary.md) terms.
+You can [sync Library content to version control](../../installation-and-operation/remote-sync.md), giving you change history and the ability to publish content across environments. When you sync the Library, Metabase also syncs your SQL snippets, [data actions](../data-actions.md), and [glossary](glossary.md) terms.
 
 ## Library permissions
 

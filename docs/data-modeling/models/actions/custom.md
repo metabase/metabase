@@ -19,7 +19,7 @@ Only admins can create custom actions.
 3. Click **Actions**.
 4. Click **New action**.
 
-To write an action without a model, see [Data actions](./data-actions.md).
+To write an action without a model, see [Data actions](../../data-actions.md).
 
 In the action editor, you can write your own code to create an action, like writing an action that would only update a subset of the columns in a table. See [Example actions](#example-custom-actions).
 

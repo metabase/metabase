@@ -22,7 +22,7 @@ Here are a few ideas for what you can do with actions:
 - Let team members remove redundant data.
 - Create a customer feedback form and embed it on your website.
 
-Actions can belong to a [model](../../../data-modeling/models/models.md), or live in Data Studio without a model as [data actions](./data-actions.md). Either way, actions only run on the raw tables in your database (so actions will never edit your [model definition](../../../data-modeling/models/models.md#edit-a-models-query)).
+Actions can belong to a [model](../../../data-modeling/models/models.md), or live in Data Studio without a model as [data actions](../../data-actions.md). Either way, actions only run on the raw tables in your database (so actions will never edit your [model definition](../../../data-modeling/models/models.md#edit-a-models-query)).
 
 If you're an admin who just wants to edit data in your tables, check out [Editable table data](../../../data-modeling/editable-tables.md).
 
@@ -30,13 +30,13 @@ If you're an admin who just wants to edit data in your tables, check out [Editab
 
 For actions to work, you'll first need to do the following two things:
 
-1. **Enable data actions for the database connection**. To enable actions for a database connection, admins should click on the **grid** icon in the upper right and navigate to **Admin** > **Databases**, then click on the database you want to create actions for. In the **Data actions** section, turn on the **Data actions** toggle. For actions to work, the database user account (the account you're using to connect to the database) must have [write permissions](../../../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). And for now, actions are only supported on PostgreSQL and MySQL databases. This toggle covers both model actions and [data actions](./data-actions.md).
-2. **For actions on models, create at least one model from that database.** Model actions are associated with models, so you'll need to have created (or have access to) at least one model before you can start creating them. [Data actions](./data-actions.md) don't need a model.
+1. **Enable data actions for the database connection**. To enable actions for a database connection, admins should click on the **grid** icon in the upper right and navigate to **Admin** > **Databases**, then click on the database you want to create actions for. In the **Data actions** section, turn on the **Data actions** toggle. For actions to work, the database user account (the account you're using to connect to the database) must have [write permissions](../../../databases/users-roles-privileges.md#privileges-to-enable-actions-and-editable-table-data). And for now, actions are only supported on PostgreSQL and MySQL databases. This toggle covers both model actions and [data actions](../../data-actions.md).
+2. **For actions on models, create at least one model from that database.** Model actions are associated with models, so you'll need to have created (or have access to) at least one model before you can start creating them. [Data actions](../../data-actions.md) don't need a model.
 
 ## Who can use actions
 
 - **To create, edit, or delete an action**, you must be an admin. But people with Curate access to a model's collection can delete the model's actions by [moving the model to the trash](#deleting-a-model-deletes-its-actions).
-- **To run an action**, all you need is view access to the action's model or [data actions](./data-actions.md) folder (or a link to a public action). To run an action from a [dashboard button](../../../dashboards/actions.md), you also need view access to the dashboard. But people with [row and column security](../../../permissions/row-and-column-security.md#people-with-row-and-column-security-cant-run-actions) on any table in a database can't run actions on that database.
+- **To run an action**, all you need is view access to the action's model or [data actions](../../data-actions.md) folder (or a link to a public action). To run an action from a [dashboard button](../../../dashboards/actions.md), you also need view access to the dashboard. But people with [row and column security](../../../permissions/row-and-column-security.md#people-with-row-and-column-security-cant-run-actions) on any table in a database can't run actions on that database.
 
 ## Types of actions
 
@@ -52,7 +52,7 @@ There are multiple ways to run actions:
 - [From the model details page](../../../data-modeling/models/models.md#model-details) by clicking the **run** button.
 - From a [public form](./custom.md#make-public) of an action.
 - From a [button on dashboard](../../../dashboards/actions.md).
-- From the **Run** tab of a [data action](./data-actions.md#edit-and-run-a-data-action) in Data Studio.
+- From the **Run** tab of a [data action](../../data-actions.md#edit-and-run-a-data-action) in Data Studio.
 
 ## Deleting a model deletes its actions
 
@@ -66,7 +66,7 @@ This includes people who aren't admins: anyone with [Curate access](../../../per
 
 Restoring the model from the trash doesn't bring its actions back.
 
-[Data actions](./data-actions.md) don't belong to a model, so they work differently: when you archive a data actions folder, Metabase archives its actions too, and unarchiving the folder brings them back. See [Organize and archive data actions](./data-actions.md#organize-and-archive-data-actions).
+[Data actions](../../data-actions.md) don't belong to a model, so they work differently: when you archive a data actions folder, Metabase archives its actions too, and unarchiving the folder brings them back. See [Organize and archive data actions](../../data-actions.md#organize-and-archive-data-actions).
 
 ## Auditing actions
 
