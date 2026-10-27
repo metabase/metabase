@@ -112,6 +112,17 @@
   (keep u.http/host-name [(some-> (get headers "x-forwarded-host") (str/split #",") first)
                           (get headers "host")]))
 
+(defn cookie-header-entries
+  "The `[name value]` pairs of `request`'s `Cookie` header in order, or nil when it has none. Ring's `:cookies` keeps
+  only the last value of a name, and also splits on `,`, which a value may contain; a browser separates cookies with
+  `;` only. An entry without `=` is a cookie with no name, which a browser sends as its value alone."
+  [request]
+  (when-let [header (get-in request [:headers "cookie"])]
+    (vec (for [entry (map str/trim (str/split header #";"))
+               :when (seq entry)
+               :let  [[cookie-name value] (str/split entry #"=" 2)]]
+           (if value [cookie-name value] ["" cookie-name])))))
+
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."
   [:map {:closed true}
