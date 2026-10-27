@@ -3,7 +3,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
-   [metabase.models.interface :as mi]
    [metabase.notification.send :as notification.send]
    [metabase.notification.test-util :as notification.tu]
    [metabase.pulse.send :as pulse.send]
@@ -123,7 +122,8 @@
 (deftest with-task-run-prevents-nesting-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "nested with-task-run does not create a new run"
-      (let [outer-run-id (atom nil)
+      (let [runs-before  (t2/count :model/TaskRun)
+            outer-run-id (atom nil)
             inner-run-id (atom nil)]
         (task-history/with-task-run {:run_type    :sync
                                      :entity_type :database
@@ -134,14 +134,15 @@
                                        :entity_id   2}
             (reset! inner-run-id (task-history/current-run-id))))
         (is (= @outer-run-id @inner-run-id) "inner run uses same run-id")
-        (is (= 1 (t2/count :model/TaskRun)) "only one run created")))))
+        (is (= (inc runs-before) (t2/count :model/TaskRun)) "only one run created")))))
 
 (deftest with-task-run-nil-info-test
   (mt/with-model-cleanup [:model/TaskRun]
     (testing "with-task-run with nil run-info just executes body"
-      (task-history/with-task-run nil
-        (is (nil? (task-history/current-run-id)) "run-id remains nil"))
-      (is (zero? (t2/count :model/TaskRun)) "no run created"))))
+      (let [runs-before (t2/count :model/TaskRun)]
+        (task-history/with-task-run nil
+          (is (nil? (task-history/current-run-id)) "run-id remains nil"))
+        (is (= runs-before (t2/count :model/TaskRun)) "no run created")))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          complete-task-run! tests                                              |
@@ -266,7 +267,7 @@
 (deftest sync-creates-task-run-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
     (testing "sync-operation creates a task run with type :sync"
-      (let [mock-db    (mi/instance :model/Database {:name "test" :id 999 :engine :h2})
+      (let [mock-db    {:lib/type :metadata/database :name "test" :id 999 :engine :h2}
             step-name  (mt/random-name)
             sync-steps [(sync-util/create-sync-step step-name (fn [_] {:total-tables 1}))]]
         (sync-util/sync-operation :sync-metadata mock-db "Test sync"
@@ -281,7 +282,7 @@
 (deftest analyze-creates-fingerprint-run-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
     (testing "analyze operation creates a task run with type :fingerprint"
-      (let [mock-db    (mi/instance :model/Database {:name "test" :id 998 :engine :h2})
+      (let [mock-db    {:lib/type :metadata/database :name "test" :id 998 :engine :h2}
             step-name  (mt/random-name)
             sync-steps [(sync-util/create-sync-step step-name (fn [_] {:total-tables 1}))]]
         (sync-util/sync-operation :analyze mock-db "Test analyze"
@@ -294,7 +295,7 @@
 (deftest nested-sync-operations-share-run-test
   (mt/with-model-cleanup [:model/TaskRun :model/TaskHistory]
     (testing "nested sync operations don't create multiple task runs"
-      (let [mock-db     (mi/instance :model/Database {:name "test" :id 997 :engine :h2})
+      (let [mock-db     {:lib/type :metadata/database :name "test" :id 997 :engine :h2}
             outer-step  (mt/random-name)
             inner-step  (mt/random-name)
             outer-steps [(sync-util/create-sync-step outer-step

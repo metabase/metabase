@@ -467,8 +467,8 @@
   :asynchronous)
 
 (defn- scan-and-sync-table!
-  [database table]
-  (sync/sync-fields-for-table! database table)
+  [table]
+  (sync/sync-fields-for-table! table)
   (case *auxiliary-sync-steps*
     :asynchronous (future (sync/sync-table! table))
     :synchronous (sync/sync-table! table)
@@ -525,7 +525,7 @@
         (ex-info (tru "You don''t have permissions to do that.")
                  {:status-code 403})
         (and (some? schema-name)
-             (not (driver.s/include-schema? db schema-name)))
+             (not (driver.s/include-schema? (driver.u/lib-database (:id db)) schema-name)))
         (ex-info (tru "The schema {0} is not syncable." schema-name)
                  {:status-code 422}))
       (can-use-uploads-error db)))
@@ -572,12 +572,13 @@
           ;; have unrestricted access to this schema (see `can-create-upload-error`) -- gets a table that inherits
           ;; the schema's permissions rather than failing safe to `:blocked` the way a sync-discovered table would
           ;; (UXW-3217). `mark-table-upload!` below re-asserts it along with the other upload columns.
-          table                   (sync/create-table! db {:name         table-name
-                                                          :schema       (not-empty schema)
-                                                          :display_name display-name
-                                                          :data_source  :upload})
+          table                   (sync/create-table! (driver.u/lib-database (:id db))
+                                                      {:name         table-name
+                                                       :schema       (not-empty schema)
+                                                       :display_name display-name
+                                                       :data_source  :upload})
           _set_is_upload          (upload.db/mark-table-upload! (:id table))
-          _sync                   (scan-and-sync-table! db table)
+          _sync                   (scan-and-sync-table! table)
           _set_names              (set-display-names! (:id table) columns)
           ;; Set the display_name of the auto-generated primary key column to the same as its name, so that if users
           ;; download results from the table as a CSV and reupload, we'll recognize it as the same column
@@ -867,7 +868,7 @@
               (add-columns! driver database table
                             {auto-pk-column-keyword ::upload-types/auto-incrementing-int-pk}
                             :primary-key [auto-pk-column-keyword]))
-            (scan-and-sync-table! database table)
+            (scan-and-sync-table! table)
             (set-display-names! (:id table) (zipmap column-names display-names))
             (when create-auto-pk?
               (let [auto-pk-field (table-id->auto-pk-column driver (:id table))]

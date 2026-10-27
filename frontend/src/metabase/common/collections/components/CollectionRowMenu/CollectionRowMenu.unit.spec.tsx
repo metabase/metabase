@@ -72,12 +72,14 @@ const setup = ({
       "token-features": createMockTokenFeatures({
         library: true,
         remote_sync: true,
+        snippet_collections: true,
       }),
     }),
     currentUser: createMockUser({ is_superuser: isAdmin }),
   });
   setupEnterpriseOnlyPlugin("library");
   setupEnterpriseOnlyPlugin("remote_sync");
+  setupEnterpriseOnlyPlugin("snippets");
 
   return renderWithProviders(
     <CollectionRowMenusWithModal
@@ -116,19 +118,35 @@ describe("CollectionRowMenu", () => {
     expect(queryMenuItem(/Change permissions/)).not.toBeInTheDocument();
   });
 
-  it("renders nothing if collection is not writable", () => {
-    setup({ collection: { can_write: false } });
+  it("renders nothing for non-admins if collection is not writable", () => {
+    setup({ collection: { can_write: false }, isAdmin: false });
     expect(
       screen.queryByRole("button", { name: "Collection options" }),
     ).not.toBeInTheDocument();
   });
 
-  it("renders nothing if remote sync is set to read-only", () => {
-    setup({ remoteSyncType: "read-only" });
+  it("renders nothing for non-admins if remote sync is set to read-only", () => {
+    setup({ remoteSyncType: "read-only", isAdmin: false });
     expect(
       screen.queryByRole("button", { name: "Collection options" }),
     ).not.toBeInTheDocument();
   });
+
+  it.each([
+    { namespace: "snippets", label: "Snippet folder options" },
+    { namespace: "data-actions", label: "Folder options" },
+  ] as const)(
+    "renders only the permissions option for $namespace folders if remote sync is set to read-only",
+    async ({ namespace, label }) => {
+      setup({ remoteSyncType: "read-only", collection: { namespace } });
+
+      await userEvent.click(screen.getByRole("button", { name: label }));
+
+      expect(getMenuItem(/Change permissions/)).toBeInTheDocument();
+      expect(queryMenuItem(/Edit folder details/)).not.toBeInTheDocument();
+      expect(queryMenuItem(/Archive/)).not.toBeInTheDocument();
+    },
+  );
 
   it("uses snippet folder labels for snippet collections", async () => {
     setup({ collection: { namespace: "snippets" } });
@@ -146,6 +164,16 @@ describe("CollectionRowMenu", () => {
     await openMenu();
 
     expect(queryMenuItem(/Change permissions/)).not.toBeInTheDocument();
+  });
+
+  it("renders the permissions option for data actions folders", async () => {
+    setup({ collection: { namespace: "data-actions" } });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Folder options" }),
+    );
+
+    expect(getMenuItem(/Change permissions/)).toBeInTheDocument();
   });
 
   it("archives a collection after confirmation", async () => {

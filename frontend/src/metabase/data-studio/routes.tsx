@@ -112,7 +112,7 @@ export function getDataStudioRoutes(IsAdmin: RouteComponent) {
           </Route>
           {getDataStudioGlossaryRoutes()}
           {getDataStudioSnippetRoutes()}
-          {getDataStudioActionRoutes()}
+          {getDataStudioActionRoutes(IsAdmin)}
           {PLUGIN_DATA_APPS.isEnabled &&
             PLUGIN_DATA_APPS.getDataStudioRoutes(IsAdmin)}
           {getDataStudioSettingsRoutes()}

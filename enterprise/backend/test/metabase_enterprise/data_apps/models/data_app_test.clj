@@ -8,6 +8,7 @@
    [metabase.api.common :as api]
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
+   [metabase.permissions.core :as perms]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -40,11 +41,12 @@
 
 (deftest insert-creates-the-resources-the-app-owns-test
   (mt/with-model-cleanup [:model/DataApp :model/Collection :model/PermissionsGroup]
-    (let [{:keys [id resource_collection_id]} (t2/select-one :model/DataApp (insert-app!))]
+    (let [{:keys [resource_collection_id]} (t2/select-one :model/DataApp (insert-app!))]
       (is (=? {:name "Data App: m" :namespace :data-apps :location "/"}
               (t2/select-one :model/Collection :id resource_collection_id))
           "the collection is the app's own, in the data-apps namespace")
-      (is (not (t2/exists? :model/DataAppGroupAssignment :data_app_id id))))))
+      (is (= #{} (perms/collection-read-access-group-ids resource_collection_id))
+          "no group but Administrators can read the new collection"))))
 
 (deftest insert-publishes-the-creation-of-the-collection-test
   (testing "the collection is created the way any collection is, so what listens to collection events (remote sync,
@@ -142,13 +144,20 @@
              (:allowed_hosts (t2/select-one :model/DataApp :name "n")))))))
 
 (deftest permissions-test
-  (testing "a superuser can read, write, and create"
-    (binding [api/*is-superuser?* true]
-      (is (mi/can-read? :model/DataApp 1))
-      (is (mi/can-write? :model/DataApp 1))
-      (is (mi/can-create? :model/DataApp {}))))
-  (testing "an unassigned user cannot read, write, or create"
-    (binding [api/*is-superuser?* false]
-      (is (not (mi/can-read? :model/DataApp 1)))
-      (is (not (mi/can-write? :model/DataApp 1)))
-      (is (not (mi/can-create? :model/DataApp {}))))))
+  (mt/with-model-cleanup [:model/DataApp :model/Collection]
+    (let [id (insert-app!)]
+      (testing "a superuser can read, write, and create"
+        (mt/with-premium-features #{:data-apps}
+          (binding [api/*is-superuser?* true]
+            (is (mi/can-read? :model/DataApp id))
+            (is (mi/can-write? :model/DataApp id))
+            (is (mi/can-create? :model/DataApp {})))))
+      (testing "without the data apps feature, a superuser cannot read"
+        (mt/with-premium-features #{}
+          (binding [api/*is-superuser?* true]
+            (is (not (mi/can-read? :model/DataApp id))))))
+      (testing "a user without access to the app's collection cannot read, write, or create"
+        (binding [api/*is-superuser?* false]
+          (is (not (mi/can-read? :model/DataApp id)))
+          (is (not (mi/can-write? :model/DataApp id)))
+          (is (not (mi/can-create? :model/DataApp {}))))))))

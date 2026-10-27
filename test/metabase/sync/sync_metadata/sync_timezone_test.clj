@@ -5,6 +5,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.sync.sync-metadata.sync-timezone :as sync-tz]
    [metabase.sync.util-test :as sync.util-test]
    [metabase.test :as mt]
@@ -53,7 +54,7 @@
                 tz-after-update                  (db-timezone db)
                 ;; It looks like we can get some stale timezone information depending on which thread is used for querying the
                 ;; database in sync. Clearing the connection pool to ensure we get the most updated TZ data
-                _                                (driver/notify-database-updated driver/*driver* db)
+                _                                (driver/notify-database-updated driver/*driver* (driver.u/lib-database (:id db)))
                 {:keys [step-info task-history]} (sync.util-test/sync-database! "sync-timezone" (assoc db :timezone nil))]
             (testing "only step keys"
               (is (= {:timezone-id "UTC"}

@@ -34,16 +34,19 @@
    [metabase.metabot.tools.recovery-hints :as v1-hints]
    [metabase.metabot.tools.resources :as resources]
    [metabase.metabot.tools.runtime :as tools.runtime]
+   [metabase.metabot.tools.slackbot-query :as slackbot-query]
    [metabase.metabot.tools.util :as metabot.tools.util]
    [metabase.models.interface :as mi]
    [metabase.models.serialization.resolve :as serdes.resolve]
    [metabase.models.serialization.resolve.mp :as resolve.mp]
    [metabase.permissions.core :as perms]
    [metabase.permissions.models.permissions-group :as perms-group]
-   [metabase.query-processor :as qp]
+   [metabase.query-processor.core :as qp]
+   [metabase.query-processor.middleware.add-implicit-clauses :as qp.add-implicit-clauses]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [metabase.util.json :as json]
+   [metabase.util.log.capture :as log.capture]
    [metabase.util.malli.registry :as mr]
    [toucan2.core :as t2])
   (:import
@@ -402,6 +405,28 @@
             (is (= 201 (nth breakout-field 2))))
           (testing "source-field is populated with ORDERS.PRODUCT_ID (102)"
             (is (= 102 (:source-field field-opts)))))))))
+
+(deftest ambiguous-field-recovery-hint-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [ambiguous-mp (lib.tu/mock-metadata-provider
+                          {:database (lib.metadata/database mp)
+                           :tables   [(lib.metadata/table mp 10)]
+                           :fields   (conj (vec (lib.metadata/fields mp 10))
+                                           (assoc (lib.metadata/field mp 101) :id 103))})]
+        (mt/with-dynamic-fn-redefs [lib-be/application-database-metadata-provider (constantly ambiguous-mp)]
+          (let [e (try
+                    (construct/execute-representations-query
+                     (query-data {"lib/type" "mbql/query"
+                                  "stages" [{"source-table" ["Sample" "PUBLIC" "ORDERS"]
+                                             "fields" [["field" {} ["Sample" "PUBLIC" "ORDERS" "TOTAL"]]]}]})
+                     {:recovery-hint v1-hints/recovery-hint})
+                    (catch clojure.lang.ExceptionInfo e e))]
+            (is (=? {:error :ambiguous-field :agent-error? true} (ex-data e)))
+            (is (str/ends-with? (ex-message e)
+                                (str "The field name matches more than one column in this table, "
+                                     "so it cannot be referenced by name. "
+                                     "Tell the user about the ambiguous column name.")))))))))
 
 (deftest implicit-join-ambiguous-surfaces-agent-error-test
   (with-ambiguous-mp-and-stubs!
@@ -3332,6 +3357,130 @@
       (is (not (re-find hint (explain (invalid :a) (missing :alias))))))
     (testing "an explanation with no errors falls back to a generic sentence and the usual causes"
       (is (str/starts-with? (explain) "the query does not match the query builder's schema. This usually means")))))
+
+(deftest construct-tools-reject-invalid-filter-literals-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (doseq [[field-name value code message]
+            [["CREATED_AT" "2024-13-45" :invalid-temporal-literal #"(?s).*2024-13-45.*"]
+             ["TOTAL" "abc" :query-preprocessing-failed #"(?s).*unable to parse String.*"]]
+            tool [construct/construct-notebook-query-tool
+                  slackbot-query/slackbot-construct-notebook-query-tool]]
+      (testing (str (type tool) " " field-name)
+        (let [db-name (:name (mt/db))
+              query   {:lib/type "mbql/query"
+                       :stages   [{:lib/type     "mbql.stage/mbql"
+                                   :source-table [db-name "PUBLIC" "ORDERS"]
+                                   :filters      [["=" {} ["field" {} [db-name "PUBLIC" "ORDERS" field-name]]
+                                                   value]]}]}]
+          (when (= code :query-preprocessing-failed)
+            (let [built (get-in (construct/execute-representations-query query) [:structured-output :query])]
+              (is (thrown-with-msg? clojure.lang.ExceptionInfo message (qp/preprocess built)))))
+          (is (=? {:class :recoverable
+                   :code  (keyword "metabase.metabot.tools.recoverable.pipeline" (name code))
+                   :text  message}
+                  (test-util/tool-failure tool {:query query :reasoning "filter orders"}))))))))
+
+(deftest preprocessing-check-is-opt-in-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [seen  (atom [])
+            query {:lib/type "mbql/query"
+                   :stages [{:lib/type "mbql.stage/mbql" :source-table ["Sample" "PUBLIC" "ORDERS"]}]}]
+        (mt/with-dynamic-fn-redefs [qp/preprocess (fn [query]
+                                                    (swap! seen conj query)
+                                                    (lib/limit query 1))]
+          (construct/execute-representations-query query)
+          (is (empty? @seen))
+          (let [built (construct/execute-representations-query query {:preprocess-check? true})]
+            (is (= 1 (count @seen)))
+            (is (= (first @seen) (get-in built [:structured-output :query])))))))))
+
+(deftest unrecognized-preprocessing-failures-allow-construction-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [query {:lib/type "mbql/query"
+                   :stages [{:lib/type "mbql.stage/mbql" :source-table ["Sample" "PUBLIC" "ORDERS"]}]}
+            wrap  (fn [cause] (ex-info "Error preprocessing query in middleware: private detail"
+                                       {:type :qp :fn #'qp/preprocess} cause))
+            forbidden (ex-info "private permission detail" {:status-code 403})]
+        (doseq [e [(wrap (ex-info "another wrapper" {:type :invalid-query} forbidden))
+                   (ex-info "private setup failure" {})
+                   (wrap (RuntimeException. "private programming failure"))
+                   (wrap (ex-info "private DB failure" {:type :invalid-query}
+                                  (java.sql.SQLException. "private JDBC detail")))
+                   (wrap (ex-info "private app DB failure"
+                                  {:type :invalid-query :toucan2/context-trace []}))]
+                tool [construct/construct-notebook-query-tool
+                      slackbot-query/slackbot-construct-notebook-query-tool]]
+          (mt/with-dynamic-fn-redefs [qp/preprocess (fn [_] (throw e))]
+            (log.capture/with-log-messages-for-level [logs [metabase.metabot.tools.construct :warn]]
+              (let [result (test-util/call-tool tool {:query query :reasoning "count orders"})]
+                (is (map? (get-in result [:structured-output :query])))
+                (is (not (str/includes? (pr-str result) "private"))))
+              (is (= [e] (map :e (logs)))))))))))
+
+(deftest preprocessing-rejections-quote-bounded-diagnostics-test
+  (with-mp-and-stubs!
+    (fn []
+      (let [long-diagnostic (str "Bad literal: " (apply str (repeat 400 "\u00e9")))
+            boundary-prefix (apply str (repeat 299 "x"))
+            query {:lib/type "mbql/query"
+                   :stages [{:lib/type "mbql.stage/mbql" :source-table ["Sample" "PUBLIC" "ORDERS"]}]}]
+        (doseq [[diagnostic quoted-diagnostic]
+                [[long-diagnostic (str "\"" (subs long-diagnostic 0 300) "\"")]
+                 ["Bad literal:\n\"abc\"" "\"Bad literal:\\n\\\"abc\\\"\""]
+                 [(str boundary-prefix "\n\"tail") (str "\"" boundary-prefix "\\n\"")]]
+                error-type [:invalid-query :unsupported-feature]
+                tool [construct/construct-notebook-query-tool
+                      slackbot-query/slackbot-construct-notebook-query-tool]]
+          (mt/with-dynamic-fn-redefs [qp/preprocess (fn [_]
+                                                      (throw (ex-info "Error preprocessing query in middleware"
+                                                                      {:type :qp :fn #'qp/preprocess}
+                                                                      (ex-info diagnostic {:type error-type}))))]
+            (let [{:keys [class code text]} (test-util/tool-failure tool {:query query :reasoning "count orders"})]
+              (is (= :recoverable class))
+              (is (= :metabase.metabot.tools.recoverable.pipeline/query-preprocessing-failed code))
+              (is (= (str "Metabase could not prepare this query to run: "
+                          quoted-diagnostic "\nFix that part of the query and retry.")
+                     text)))))))))
+
+(deftest preprocessing-permission-failure-allows-construction-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [forbidden (ex-info "private permission detail" {:status-code 403})
+          query     {:lib/type "mbql/query"
+                     :stages [{:lib/type "mbql.stage/mbql"
+                               :source-table [(:name (mt/db)) "PUBLIC" "ORDERS"]}]}]
+      (mt/with-dynamic-fn-redefs [qp.add-implicit-clauses/add-implicit-clauses (fn [_] (throw forbidden))]
+        (is (map? (get-in (construct/execute-representations-query query {:preprocess-check? true})
+                          [:structured-output :query])))))))
+
+(deftest construct-tools-reject-misplaced-metrics-test
+  (mt/with-current-user (mt/user->id :crowberto)
+    (let [mp           (mt/metadata-provider)
+          metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
+                           (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :products :price)))))]
+      (mt/with-temp [:model/Card {entity-id :entity_id} {:name "Products price"
+                                                         :type :metric
+                                                         :database_id (mt/id)
+                                                         :dataset_query (lib/prepare-for-serialization metric-query)}]
+        (doseq [[stages message]
+                [[[{:lib/type "mbql.stage/mbql"
+                    :source-table [(:name (mt/db)) "PUBLIC" "ORDERS"]}
+                   {:lib/type "mbql.stage/mbql"
+                    :aggregation [["metric" {} entity-id]]}]
+                  #"(?s).*run: A metric is incompatible.*stage's source.*Fix that part.*"]
+                 [[{:lib/type "mbql.stage/mbql"
+                    :source-table [(:name (mt/db)) "PUBLIC" "PRODUCTS"]
+                    :aggregation [["count" {}]]
+                    :filters [[">" {} ["metric" {} entity-id] 100]]}]
+                  #"(?s).*run: Metabase could not expand a metric reference.*in an aggregation.*Fix that part.*"]]
+                tool [construct/construct-notebook-query-tool
+                      slackbot-query/slackbot-construct-notebook-query-tool]]
+          (is (=? {:class :recoverable
+                   :code  :metabase.metabot.tools.recoverable.pipeline/query-preprocessing-failed
+                   :text  message}
+                  (test-util/tool-failure tool {:query {:lib/type "mbql/query" :stages stages}
+                                                :reasoning "use a metric"}))))))))
 
 (deftest structural-validation-locations-end-to-end-test
   (with-mp-and-stubs!

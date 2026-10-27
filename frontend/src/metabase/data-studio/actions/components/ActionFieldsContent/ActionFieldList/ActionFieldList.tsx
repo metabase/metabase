@@ -14,7 +14,8 @@ import { ActionFieldItem } from "./ActionFieldItem";
 type ActionFieldListProps = {
   fields: ActionField[];
   activeFieldId: string | undefined;
-  readOnly: boolean;
+  description: string;
+  isDraggable: boolean;
   getFieldUrl: (fieldId: string) => string;
   onReorder: (fieldIds: string[]) => void;
 };
@@ -24,14 +25,14 @@ const getFieldId = (field: ActionField) => field.parameter.id;
 export function ActionFieldList({
   fields,
   activeFieldId,
-  readOnly,
+  description,
+  isDraggable,
   getFieldUrl,
   onReorder,
 }: ActionFieldListProps) {
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
-  const isDraggable = !readOnly && fields.length > 1;
 
   const handleSortEnd = ({ itemIds }: DragEndEvent) => {
     onReorder(itemIds.map(String));
@@ -41,9 +42,7 @@ export function ActionFieldList({
     <Stack gap="lg" py="xl">
       <Stack gap="xs">
         <Title order={4}>{t`Fields`}</Title>
-        <Text c="text-secondary">
-          {getFieldsDescription(fields.length, isDraggable)}
-        </Text>
+        <Text c="text-secondary">{description}</Text>
       </Stack>
       <Stack gap="md" role="list">
         <SortableList<ActionField>
@@ -64,13 +63,4 @@ export function ActionFieldList({
       </Stack>
     </Stack>
   );
-}
-
-function getFieldsDescription(fieldCount: number, isDraggable: boolean) {
-  if (fieldCount === 0) {
-    return t`This action has no variables in its SQL.`;
-  }
-  return isDraggable
-    ? t`One field per {{variable}} in the SQL. Drag to reorder the form.`
-    : t`One field per {{variable}} in the SQL.`;
 }

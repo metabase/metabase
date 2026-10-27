@@ -72,8 +72,8 @@
   [model archived?]
   [:= (search.config/column-with-model-alias model :archived) archived?])
 
-;; Databases, transforms, and indexed-entities can't be archived
-(doseq [model ["database" "transform" "indexed-entity"]]
+;; Databases, transforms, indexed-entities, and data apps can't be archived
+(doseq [model ["database" "transform" "indexed-entity" "data-app"]]
   (defmethod archived-clause model
     [_model archived?]
     (if archived?
@@ -148,7 +148,7 @@
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
 
-(doseq [model ["card" "dataset" "metric" "dashboard" "action"]]
+(doseq [model ["card" "dataset" "metric" "dashboard" "action" "data-app"]]
   (defmethod build-optional-filter-query [:id model]
     [_filter model query ids]
     (sql.helpers/where query [:in (search.config/column-with-model-alias model :id) ids])))
@@ -276,7 +276,7 @@
       [:and [:>= dt-col start] [:< dt-col end]])))
 
 (doseq [model ["collection" "database" "table" "dashboard" "card" "dataset" "metric" "action" "document"
-               "transform" "measure" "exploration"]]
+               "transform" "measure" "exploration" "data-app"]]
   (defmethod build-optional-filter-query [:created-at model]
     [_filter model query created-at]
     (sql.helpers/where query (date-range-filter-clause

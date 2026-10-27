@@ -180,6 +180,7 @@
    :module-exports #{analytics.interface
                      analytics.internal-stats}
    :api  #{metabase.analytics.api
+           metabase.analytics.api.metaplow-proxy
            metabase.analytics.api.proxy
            metabase.analytics.core
            metabase.analytics.event
@@ -889,7 +890,7 @@
   database-routing
   {:team "UX West"
    :api  #{metabase.database-routing.core}
-   :uses #{premium-features}}
+   :uses #{lib.schema premium-features}}
 
   dependencies
   {:team "Graphy"
@@ -961,6 +962,7 @@
            appearance
            audit-app
            auth-provider
+           database-routing
            events
            lib
            lib.be
@@ -2532,6 +2534,7 @@
            appearance
            audit-app
            collections
+           data-apps
            events
            health-inspector
            lib
@@ -2554,6 +2557,7 @@
    :model-imports #{:model/Card
                     :model/Collection
                     :model/Dashboard
+                    :model/DataApp
                     :model/Database
                     :model/Table
                     :model/User}}
@@ -2628,7 +2632,6 @@
            app-db
            appearance
            core.initialization-status
-           data-apps
            driver
            embedding
            lib.be
@@ -2830,7 +2833,7 @@
   {:team "Cloud"
    :api  #{metabase.store-api.core
            metabase.store-api.init}
-   :uses #{settings util util.config}}
+   :uses #{settings util.config}}
 
   sync
   {:team "Graphy"
@@ -2851,7 +2854,6 @@
            driver
            events
            interestingness
-           lib.be
            lib.metadata
            lib.schema
            models
@@ -3114,6 +3116,7 @@
    :ns-prefix "metabase.indexes-rest"
    :api #{metabase.indexes-rest.api}
    :uses #{api
+           driver
            lib.schema
            transforms.base
            transforms.indexes
@@ -3337,6 +3340,7 @@
    :model-imports #{:model/Action
                     :model/Card
                     :model/Field
+                    :model/ImplicitAction
                     :model/QueryAction
                     :model/Table
                     :model/User}}
@@ -3399,6 +3403,7 @@
            app-db
            audit-app
            collections
+           database-routing
            driver
            lib
            lib.be
@@ -3423,9 +3428,11 @@
                     :model/FieldValues
                     :model/Table
                     :model/TableUserSettings}
-   :model-imports #{:model/Card
+   :model-imports #{:model/Action
+                    :model/Card
                     :model/Collection
                     :model/Database
+                    :model/ImplicitAction
                     :model/Measure
                     :model/Segment
                     :model/Transform
@@ -3839,8 +3846,8 @@
            premium-features
            remote-sync
            request
+           search
            settings
-           users
            util
            util.graph
            warehouse-schema-overlay
@@ -3849,7 +3856,6 @@
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Permissions
                     :model/Table}
    :model-exports #{:model/DataApp}}
 
@@ -3876,7 +3882,6 @@
   {:team "UX West"
    :api  #{metabase-enterprise.database-routing.api}
    :uses #{api
-           database-routing
            driver
            events
            lib.metadata
@@ -3901,6 +3906,7 @@
            app-db
            batch-processing
            collections
+           data-apps
            database-routing
            documents
            driver
@@ -3936,12 +3942,14 @@
                     :model/DashboardCard
                     :model/DashboardCardSeries
                     :model/DashboardTab
+                    :model/DataApp
                     :model/Database
                     :model/Dimension
                     :model/Document
                     :model/Field
                     :model/FieldUserSettings
                     :model/FieldValues
+                    :model/ImplicitAction
                     :model/Measure
                     :model/NativeQuerySnippet
                     :model/QueryAction
@@ -4222,7 +4230,7 @@
            warehouses.schema
            enterprise/permissions.sandbox}
    :model-exports #{:model/ConnectionImpersonation}
-   :model-imports #{:model/DataPermissions :model/Database :model/PermissionsGroupMembership}}
+   :model-imports #{:model/DataPermissions :model/PermissionsGroupMembership}}
 
   enterprise/permissions.sandbox
   {:team "UX West"
@@ -4576,8 +4584,7 @@
            sql-tools.parsing
            task
            transforms.base
-           util
-           warehouses}
+           util}
    :model-exports #{:model/TransformTest}
    :model-imports #{:model/Collection
                     :model/Database

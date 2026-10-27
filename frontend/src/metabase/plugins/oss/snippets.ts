@@ -39,12 +39,6 @@ export type SnippetCollectionPickerModalProps = {
   onClose: () => void;
 };
 
-export type SnippetCollectionPermissionsModalProps = {
-  opened: boolean;
-  collectionId: CollectionId;
-  onClose: () => void;
-};
-
 export type MoveSnippetModalProps = {
   snippet: NativeQuerySnippet;
   onClose: () => void;
@@ -53,7 +47,6 @@ export type MoveSnippetModalProps = {
 export type SnippetFoldersPlugin = {
   isEnabled: boolean;
   CollectionPickerModal: ComponentType<SnippetCollectionPickerModalProps>;
-  CollectionPermissionsModal: ComponentType<SnippetCollectionPermissionsModalProps>;
   MoveSnippetModal: ComponentType<MoveSnippetModalProps>;
 };
 
@@ -62,9 +55,6 @@ export const getDefaultPluginSnippetFolders = () => ({
   CollectionPickerModal:
     // Unjustified type cast. FIXME
     PluginPlaceholder as ComponentType<SnippetCollectionPickerModalProps>,
-  CollectionPermissionsModal:
-    // Unjustified type cast. FIXME
-    PluginPlaceholder as ComponentType<SnippetCollectionPermissionsModalProps>,
   // Unjustified type cast. FIXME
   MoveSnippetModal: PluginPlaceholder as ComponentType<MoveSnippetModalProps>,
 });
