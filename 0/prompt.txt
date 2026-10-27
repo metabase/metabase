@@ -1,0 +1,11 @@
+<task-notification>
+<task-id>a2706a360dd2ee78d</task-id>
+<tool-use-id>toolu_01PthaNwR8TvHsV8TGNR59ws</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-chris-Repos-metabase/43e4888b-b154-4848-8fe2-3a1c694f5ccd/tasks/a2706a360dd2ee78d.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit alert and invite specs" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>This agent's report was delivered to you as a message from "a2706a360dd2ee78d" (its SubagentHandback call). Read it there; it is not repeated here.
+</result>
+<usage><subagent_tokens>122753</subagent_tokens><tool_uses>43</tool_uses><duration_ms>314750</duration_ms></usage>
+</task-notification>
