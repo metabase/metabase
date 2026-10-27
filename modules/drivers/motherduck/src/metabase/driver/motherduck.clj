@@ -183,11 +183,27 @@
                (sql.qp.u/nfc-field->parent-identifier unwrapped-identifier nfc-field)
                [:inline json-path]])))
 
-;; DuckDB's substring accepts a position, not the regex pattern used by Postgres.
-;; regexp_extract returns the full match with its default group of 0.
+(defn- capturing-group-count
+  "Count the capturing groups in regex `pattern`. Java's syntax covers the RE2 syntax DuckDB accepts, except
+  RE2's `(?P<name>...)` named groups, which are rewritten to Java's `(?<name>...)` first. Return 0 when the
+  pattern still doesn't compile in Java; DuckDB reports any real syntax error when the query runs."
+  [pattern]
+  (try
+    (.groupCount (.matcher (java.util.regex.Pattern/compile (str/replace pattern "(?P<" "(?<")) ""))
+    (catch java.util.regex.PatternSyntaxException _
+      0)))
+
+;; DuckDB's substring accepts a position, not the regex pattern used by Postgres. Match Postgres
+;; substring(x FROM pattern) semantics with regexp_extract: return the first capturing group if the pattern
+;; has one, otherwise the whole match, and NULL rather than DuckDB's empty string when nothing matches.
 (defmethod sql.qp/->honeysql [:motherduck :regex-match-first]
   [driver [_ _opts arg pattern]]
-  [:regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)])
+  (let [arg-hsql     (sql.qp/->honeysql driver arg)
+        pattern-hsql (sql.qp/->honeysql driver pattern)
+        group        (if (and (string? pattern) (pos? (capturing-group-count pattern))) 1 0)]
+    [:case
+     [:regexp_matches arg-hsql pattern-hsql]
+     [:regexp_extract arg-hsql pattern-hsql [:inline group]]]))
 
 ;; DuckDB parses formatted timestamps with strptime rather than Postgres to_timestamp(text, text).
 ;; Cast the result to TIMESTAMPTZ to interpret it in the session time zone, matching Postgres.

@@ -11,6 +11,10 @@
    [metabase.driver.motherduck-test.util :as motherduck-test.util]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.query-processor :as qp]
+   [metabase.test :as mt]
    [metabase.util.honey-sql-2 :as h2x]))
 
 (defn- test-details
@@ -42,6 +46,26 @@
 
         {:nfc-path [:bleh "meh"] :database-type "timestamp"}
         "CAST(JSON_EXTRACT_STRING(\"boop\".\"bleh\", '$.\"meh\"') AS timestamp)"))))
+
+;; DuckDB's regexp_extract returns the whole match and '' on no match. regexExtract must return the first
+;; capturing group, like Postgres substring(x FROM pattern), and NULL on no match.
+(deftest ^:mb/driver-tests regex-match-first-semantics-test
+  (mt/test-driver :motherduck
+    (let [mp         (mt/metadata-provider)
+          venue-name (lib.metadata/field mp (mt/id :venues :name))
+          extract    (fn [pattern]
+                       (let [query (-> (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                       (lib/expression "extracted" (lib/regex-match-first venue-name pattern))
+                                       (lib/filter (lib/= venue-name "Red Medicine")))]
+                         (->> (lib/with-fields query [(lib/expression-ref query "extracted")])
+                              qp/process-query
+                              mt/rows)))]
+      (are [pattern expected] (= [[expected]] (extract pattern))
+        "^Red (\\w+)$"     "Medicine"     ; capturing group, not the whole match
+        "^Red \\w+$"       "Red Medicine" ; no group: the whole match
+        "^(?:Red) (\\w+)$" "Medicine"     ; non-capturing groups don't count
+        "(?P<w>Med\\w+)"   "Medicine"     ; RE2 named group
+        "^Blue"            nil))))        ; no match: NULL, not ''
 
 (deftest connection-spec-forces-sslmode-require-test
   (testing "the :motherduck connection spec forces sslmode=require"
