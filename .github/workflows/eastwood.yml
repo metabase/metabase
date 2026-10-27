@@ -125,7 +125,7 @@ jobs:
             git bisect start HEAD "$LAST_GOOD"
             git bisect run "$check" "$target" "$namespace" "$linter" 2>&1 | tee "$log" || true
             # When every candidate was skipped, bisect names no commit.
-            if grep -q "is the first bad commit" "$log"; then
+            if grep -qE "is the first '?bad'? commit" "$log"; then
               echo "$target $namespace $linter $(git rev-parse refs/bisect/bad)" >> bisected.txt
             fi
             git bisect reset
