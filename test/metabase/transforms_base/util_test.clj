@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.config.core :as config]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.sync :as sync]
    [metabase.test :as mt]
    [metabase.transforms-base.util :as transforms-base.u]
@@ -57,7 +58,7 @@
     (mt/with-premium-features #{}
       (is (nil? (transforms-base.u/throw-if-db-routing-enabled!
                  {:name "OSS transform"}
-                 (mt/db))))))
+                 (lib.metadata/database (mt/metadata-provider)))))))
   (when config/ee-available?
     (testing "with :database-routing premium feature enabled, the check throws on a routing-enabled database"
       (mt/with-premium-features #{:database-routing}
@@ -68,7 +69,7 @@
                #".*database routing turned on"
                (transforms-base.u/throw-if-db-routing-enabled!
                 {:name "Routing transform"}
-                (mt/db)))))))))
+                (lib.metadata/database (mt/metadata-provider))))))))))
 
 (deftest activate-table-syncs-despite-disable-auto-sync-test
   (testing "disable-auto-sync gates *automatic* syncs only; a transform finalizing its"
@@ -80,7 +81,7 @@
           (mt/with-dynamic-fn-redefs [sync/sync-table! (fn [_] (swap! calls inc))]
             (mt/with-temporary-setting-values [disable-auto-sync true]
               (transforms-base.u/activate-table-and-mark-computed!
-               (mt/db)
+               (lib.metadata/database (mt/metadata-provider))
                {:type "table" :schema nil :name "disable_auto_sync_target"}))
             (is (= 1 @calls)
                 "Expected the transform path to run sync/sync-table! exactly once with disable-auto-sync on.")))))))

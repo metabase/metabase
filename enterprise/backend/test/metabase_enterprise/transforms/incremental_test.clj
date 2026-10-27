@@ -11,6 +11,7 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -186,7 +187,7 @@
   "Insert new products into the transforms_products table."
   [products]
   (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
-        spec      (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+        spec      (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
         table-sql (sql.u/quote-name driver/*driver* :table schema source-table-name)
         field-sql #(sql.u/quote-name driver/*driver* :field %)]
     (if (#{:clickhouse :snowflake} driver/*driver*)
@@ -216,7 +217,7 @@
 (defn- delete-test-products!
   [products]
   (let [[schema source-table-name] (t2/select-one-fn (juxt :schema :name) :model/Table (mt/id :transforms_products))
-        spec (sql-jdbc.conn/db->pooled-connection-spec (mt/id))
+        spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
         delete-sql (format "DELETE FROM %s WHERE %s IN (%s)"
                            (sql.u/quote-name driver/*driver* :table schema source-table-name)
                            (sql.u/quote-name driver/*driver* :field "name")
@@ -511,7 +512,7 @@
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [target-table "empty_table_target"]
           (let [db-id   (mt/id)
-                db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
+                db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
                 table-id (mt/id :transforms_products)
                 checkpoint-field-id (t2/select-one-pk :model/Field :name "id" :table_id table-id)
                 ;; Query that returns no rows but has the checkpoint column
@@ -621,7 +622,7 @@
       (mt/dataset transforms-dataset/transforms-test
         (with-transform-cleanup! [target-table "change_table_target"]
           (let [db-id   (mt/id)
-                db-spec (sql-jdbc.conn/db->pooled-connection-spec db-id)
+                db-spec (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
                 table-id (mt/id :transforms_products)
                 checkpoint-field-id (t2/select-one-pk :model/Field :name "id" :table_id table-id)
                 make-source (fn [query-sql]

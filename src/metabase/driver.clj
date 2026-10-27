@@ -1241,9 +1241,9 @@
 ;; TODO -- shouldn't this be called `notify-database-updated!`, since the expectation is that it is done for side
 ;; effects? issue: https://github.com/metabase/metabase/issues/39367
 (defmulti notify-database-updated
-  "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
-  specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
-  release ALL related resources when this is called."
+  "Notify the driver that the attributes of `database`, the Lib metadata of a Database, have changed, or that it was
+  deleted. This is specifically relevant in the event that the driver was doing some caching or connection pooling;
+  the driver should release ALL related resources when this is called."
   {:added "0.32.0" :arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

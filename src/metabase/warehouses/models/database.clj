@@ -221,26 +221,26 @@
                                 (select-keys database [:let-user-control-scheduling :is_full_sync :is_on_demand]))))))
 
 (defn should-sync?
-  "Should this database be synced at all? Destination (router-child) databases are never synced.
+  "Should the Database with `database-id` be synced at all? Destination (router-child) databases are never synced.
   This is the gate for *explicit*, user-requested syncs (e.g. the Sync-now button), which run
   regardless of the `disable-auto-sync` setting. For automatically-triggered syncs use
   [[should-auto-sync?]]."
-  [db]
-  (not (is-destination? db)))
+  [database-id]
+  (nil? (warehouses.db/router-database-id database-id)))
 
 (defn should-auto-sync?
   "Should this database be synced *automatically* — scheduled sync/analyze, the post-add initial
   sync, and Quartz trigger registration? False when the database isn't syncable at all, or when
   auto-sync is globally suppressed via the `disable-auto-sync` setting."
-  [db]
-  (and (should-sync? db)
+  [database-id]
+  (and (should-sync? database-id)
        (not (warehouses.settings/disable-auto-sync))))
 
 (defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
-    (when (should-auto-sync? database)
+    (when (should-auto-sync? (u/the-id database))
       (sync-databases-trigger/check-and-schedule-tasks-for-db! database))
     (catch Throwable e
       (log/errorf "Error scheduling tasks for DB: %s" (ex-message e)))))
@@ -321,14 +321,10 @@
                  (catch Throwable provider-e
                    (log/warnf "Error during provider detection for database {:id %d}: %s" (:id database) (ex-message provider-e)))))))
          (when (driver.conn/database-write-data-details lib-db)
-           (let [write-details (driver.conn/without-resolution-telemetry
-                                (driver.conn/with-write-connection
-                                  (driver.conn/effective-details database)))]
+           (let [write-details (merge details (driver.conn/details-for-exact-type lib-db :write-data))]
              (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data")))
          (when (driver.conn/database-admin-details lib-db)
-           (let [admin-details (driver.conn/without-resolution-telemetry
-                                (driver.conn/with-admin-connection
-                                  (driver.conn/effective-details database)))]
+           (let [admin-details (merge details (driver.conn/details-for-exact-type lib-db :admin))]
              (check-connection! database driver engine-str (assoc admin-details :engine engine-str) "admin"))))))))
 
 (defn- health-check-candidates
@@ -453,7 +449,7 @@
   (when (not= :postgres (mdb/db-type))
     (warehouses.db/delete-cards-for-database! id))
   (try
-    (driver/notify-database-updated driver database)
+    (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
     (catch Throwable e
       (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
 

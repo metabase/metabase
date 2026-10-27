@@ -20,7 +20,6 @@
    [metabase.driver.sql.normalize :as sql.normalize]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -205,10 +204,10 @@
            (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
                     {:type driver-api/qp.error-type.db})))))))
 
-(defn- make-h2-parser
-  "Returns an H2 Parser object for the given (H2) database ID"
-  ^Parser [h2-database-or-id]
-  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-database-or-id))]
+(mu/defn- make-h2-parser :- [:maybe (driver-api/instance-of-class Parser)]
+  "Returns an H2 Parser object for the Lib metadata `h2-database` of an H2 Database."
+  [h2-database :- ::lib.schema.metadata/database]
+  (with-open [conn (.getConnection (sql-jdbc.execute/datasource-with-diagnostic-info! :h2 h2-database))]
     ;; The H2 Parser class is created from the H2 JDBC session, but these fields are not public
     (let [^org.h2.jdbc.JdbcConnection inner (try
                                               ;; May be a wrapper, get the innermost object that has session field
@@ -216,7 +215,7 @@
                                                 (assert (instance? org.h2.jdbc.JdbcConnection <>)))
                                               (catch java.sql.SQLException e
                                                 (throw (ex-info "Not an H2 connection. Are we sure this is an H2 database?"
-                                                                {:database h2-database-or-id
+                                                                {:database (:id h2-database)
                                                                  :conn     conn}
                                                                 e))))
           session (get-field inner "session")]
@@ -229,7 +228,7 @@
                              [:map
                               [:command-types [:vector pos-int?]]
                               [:remaining-sql [:maybe :string]]]]
-  "Takes an h2 db id, and a query, returns the command-types from `query` and any remaining sql.
+  "Takes the Lib metadata of an h2 Database, and a query, returns the command-types from `query` and any remaining sql.
    More info on command types here:
    https://github.com/h2database/h2database/blob/master/h2/src/main/org/h2/command/CommandInterface.java
 
@@ -238,11 +237,9 @@
   - Each `command-type` corresponds to a value in org.h2.command.CommandInterface, and match the commands from `query` in order.
   - `remaining-sql` is a nillable sql string that is unable to be classified without running preceding queries first.
     Usually if `remaining-sql` exists we will deny the query."
-  [database-or-id :- [:or
-                      ::lib.schema.id/database
-                      ::lib.schema.metadata/database]
-   ^String query  :- :string]
-  (when-let [h2-parser (make-h2-parser database-or-id)]
+  [database      :- ::lib.schema.metadata/database
+   ^String query :- :string]
+  (when-let [^Parser h2-parser (make-h2-parser database)]
     (try
       (let [command            (.prepareCommand h2-parser query)
             first-command-type (.getCommandType command)
@@ -327,7 +324,9 @@
 (defn- check-action-commands-allowed [{:keys [database] {:keys [query]} :native}]
   (when query
     (check-no-unsupported-functions query)
-    (when-let [query-classification (classify-query database query)]
+    (when-let [query-classification (classify-query (driver-api/with-metadata-provider database
+                                                      (driver-api/database (driver-api/metadata-provider)))
+                                                    query)]
       (when-not (every-command-allowed-for-actions? query-classification)
         (throw (ex-info "DDL commands are not allowed to be used with H2."
                         {:classification query-classification}))))))

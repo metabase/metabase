@@ -138,7 +138,7 @@
               (log/info "Created stub database; skipping sync.")
 
               (advanced-config.settings/config-from-file-sync-databases)
-              (quick-task/submit-task! (fn [] (sync/sync-database! db)))
+              (quick-task/submit-task! (fn [] (sync/sync-database! (u/the-id db))))
 
               :else
               (log/info "Sync on database creation when initializing from file is disabled. Skipping sync."))))))))

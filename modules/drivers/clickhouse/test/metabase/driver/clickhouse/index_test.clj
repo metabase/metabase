@@ -13,6 +13,7 @@
    [metabase.driver :as driver]
    [metabase.driver.clickhouse :as clickhouse]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.driver.util :as driver.u]
    [metabase.test :as mt]
    [metabase.util.malli.registry :as mr]))
 
@@ -164,7 +165,7 @@
                       (jdbc/execute! conn-spec (into [sql] params))
                       (is (= expected (sorting-key conn-spec "default" ctas-table)))
                       (testing "and fetch-table-indexes reports it, with the schema named"
-                        (is (=? fetched (driver/fetch-table-indexes :clickhouse db "default" ctas-table)))))
+                        (is (=? fetched (driver/fetch-table-indexes :clickhouse (driver.u/lib-database (:id db)) "default" ctas-table)))))
                     (finally (drop! ctas-table))))
                 (testing "CREATE TABLE seam (create-table!): create the table, read the sorting key back"
                   (drop! crt-table)
@@ -173,7 +174,7 @@
                                           order-by-columns {:indexes indexes})
                     (is (= expected (sorting-key conn-spec "default" crt-table)))
                     (testing "and fetch-table-indexes reports it, with a blank schema (the session database)"
-                      (is (=? fetched (driver/fetch-table-indexes :clickhouse db nil crt-table))))
+                      (is (=? fetched (driver/fetch-table-indexes :clickhouse (driver.u/lib-database (:id db)) nil crt-table))))
                     (finally (drop! crt-table))))))))))))
 
 (deftest ^:synchronized skip-index-live-test
@@ -208,7 +209,7 @@
                         :key-columns       ["a"]
                         :include-columns   []
                         :partial-predicate nil}]
-                      (driver/fetch-table-indexes :clickhouse db "default" table))))
+                      (driver/fetch-table-indexes :clickhouse (driver.u/lib-database (:id db)) "default" table))))
             (finally (drop!))))))))
 
 (deftest ^:synchronized escaped-names-live-test
@@ -229,7 +230,7 @@
                                          (driver/compile-create-index :clickhouse nil table index))
             (is (=? [{:name "ix`tick" :kind :skip-index :key-columns [column]}
                      {:name nil :kind :order-by :key-columns [column]}]
-                    (driver/fetch-table-indexes :clickhouse db "default" table)))
+                    (driver/fetch-table-indexes :clickhouse (driver.u/lib-database (:id db)) "default" table)))
             (finally (drop!))))))))
 
 (deftest ^:synchronized restricted-user-live-test
@@ -258,7 +259,7 @@
             (testing "fetch-table-indexes still reads both index kinds"
               (is (=? [{:name "evt_minmax" :kind :skip-index :access-method "minmax" :key-columns ["a"]}
                        {:name nil :kind :order-by :key-columns ["a" "b"]}]
-                      (driver/fetch-table-indexes :clickhouse db "default" table))))
+                      (driver/fetch-table-indexes :clickhouse (driver.u/lib-database (:id db)) "default" table))))
             (finally
               (exec! (format "DROP TABLE IF EXISTS `%s`" table))
               (exec! (format "DROP USER IF EXISTS `%s`" user)))))))))

@@ -381,7 +381,7 @@
 (deftest timezone-id-test
   (mt/test-driver :oracle
     (is (= (t/zone-id "Z")
-           (-> (driver/db-default-timezone :oracle (mt/db))
+           (-> (driver/db-default-timezone :oracle (lib.metadata/database (mt/metadata-provider)))
                t/zone-id
                .normalized)))))
 
@@ -483,7 +483,7 @@
               (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
               (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
               (binding [oracle.tx/*override-describe-database-to-filter-by-db-name?* false]
-                (sync/sync-database! (mt/db) {:scan :schema}))
+                (sync/sync-database! (mt/id) {:scan :schema}))
               (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
                     id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
                 (testing "The CLOB is synced as a text field"
@@ -610,7 +610,7 @@
                                                            :details details}]
                     (mt/with-db database
                       (testing " can sync correctly"
-                        (sync/sync-database! database {:scan :schema})
+                        (sync/sync-database! (:id database) {:scan :schema})
                         ;; should be four tables from test-data
                         (is (= 8 (t2/count :model/Table :db_id (u/the-id database) :name [:like "test_data%"])))
                         (binding [api/*current-user-id* orig-user-id ; restore original user-id to avoid perm errors
@@ -684,7 +684,7 @@
             sql        (format "SELECT CAST(TIMESTAMP '%s' AS TIMESTAMP WITH LOCAL TIME ZONE) AS timestamp_tz FROM dual" test-date)
             query      (-> (mt/native-query {:query sql})
                            (assoc-in [:middleware :format-rows?] false))
-            spec       #(sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            spec       #(sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
             old-format (-> (jdbc/query (spec) "SELECT value FROM NLS_SESSION_PARAMETERS WHERE PARAMETER = 'NLS_TIMESTAMP_TZ_FORMAT'")
                            ffirst
                            val)
@@ -854,7 +854,7 @@
 (deftest table-privileges-test
   (mt/test-driver :oracle
     (testing "`current-user-table-privileges` returns correct structure and privileges"
-      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+      (let [conn-spec   (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
             privileges  (sql-jdbc.sync/current-user-table-privileges :oracle conn-spec)]
         (is (seq privileges) "Should return at least one table")
         (doseq [priv privileges]

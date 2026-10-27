@@ -165,12 +165,38 @@
   (t2/resolve-model :model/Database) ; for side-effects
   model)
 
+(methodical/defmethod t2.query/apply-kv-arg [#_model          :metadata/database
+                                             #_resolved-query clojure.lang.IPersistentMap
+                                             #_k              :default]
+  "Qualify unqualified kv-args when fetching a `:metadata/database`."
+  [model honeysql k v]
+  (let [k (if (not (qualified-key? k))
+            (keyword "database" (name k))
+            k)]
+    (next-method model honeysql k v)))
+
 (methodical/defmethod t2.pipeline/build [#_query-type     :toucan.query-type/select.*
                                          #_model          :metadata/database
                                          #_resolved-query clojure.lang.IPersistentMap]
   [query-type model parsed-args honeysql]
-  (merge (next-method query-type model parsed-args honeysql)
-         {:select [:id :engine :name :dbms_version :settings :is_audit :is_attached_dwh :details :write_data_details :admin_details :timezone :router_database_id]}))
+  (merge
+   (next-method query-type model parsed-args honeysql)
+   {:select    [:database/id
+                :database/engine
+                :database/name
+                :database/dbms_version
+                :database/settings
+                :database/is_audit
+                :database/is_attached_dwh
+                :database/details
+                :database/write_data_details
+                :database/admin_details
+                :database/timezone
+                :database/router_database_id
+                [:router/user_attribute :router_user_attribute]]
+    :from      [[(t2/table-name :model/Database) :database]]
+    :left-join [[:db_router :router]
+                [:= :router/database_id :database/id]]}))
 
 (t2/define-after-select :metadata/database
   [database]

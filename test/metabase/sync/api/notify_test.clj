@@ -148,7 +148,7 @@
                                {:request-options api-headers}
                                (merge {:synchronous? true}
                                       payload)))))
-                sync!    #(sync/sync-database! database)]
+                sync!    #(sync/sync-database! (:id database))]
             ;; Create the initial table and sync it.
             (exec! spec ["CREATE TABLE public.FOO (val bigint NOT NULL);"])
             (sync!)
@@ -208,7 +208,7 @@
                                             payload)))))]
                   ;; Create the initial table and sync it.
                   (exec! spec ["CREATE TABLE public.FOO (val bigint NOT NULL);"])
-                  (sync/sync-database! database)
+                  (sync/sync-database! (:id database))
                   (let [tables (tableset database)]
                     (is (= #{"public.foo"} tables)))
                   (testing "We can sync an existing database"

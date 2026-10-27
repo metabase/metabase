@@ -84,17 +84,17 @@
                   (catch Throwable e
                     e))]
       (log/warnf "Cannot sync Database %d: %s" database-id (ex-message ex))
-      (database-routing/with-database-routing-off
+      (database-routing/with-anonymous-router-access
         (let [db-id            (:id database)
               metadata-results (tracing/with-span :sync "sync.metadata" {:db/id db-id}
-                                 (sync-metadata/sync-db-metadata! database))
+                                 (sync-metadata/sync-db-metadata! db-id))
               analyze-results  (when (:is_full_sync database)
                                  (tracing/with-span :sync "sync.analyze" {:db/id db-id}
-                                   (analyze/analyze-db! database)))
+                                   (analyze/analyze-db! db-id)))
               refingerprint-results (when (and (:refingerprint database)
                                                (should-refingerprint-fields? analyze-results))
                                       (tracing/with-span :sync "sync.refingerprint" {:db/id db-id}
-                                        (analyze/refingerprint-db! database)))]
+                                        (analyze/refingerprint-db! db-id)))]
           (cond-> {:metadata-results metadata-results}
             analyze-results (assoc :analyze-results analyze-results)
             refingerprint-results (assoc :refingerprint-results refingerprint-results)))))))
@@ -140,7 +140,7 @@
                                   (sync-databases-trigger/unschedule-tasks-for-db! (mi/instance :model/Database {:id database-id}))
                                   (log/warnf "Cannot update Field values for Database %d: Database does not exist." database-id)))]
           (if (:is_full_sync database)
-            (sync.field-values/update-field-values! database)
+            (sync.field-values/update-field-values! database-id)
             (log/infof "Skipping update, automatic Field value updates are disabled for Database %d." database-id)))))))
 
 (task/defjob ^{org.quartz.DisallowConcurrentExecution true

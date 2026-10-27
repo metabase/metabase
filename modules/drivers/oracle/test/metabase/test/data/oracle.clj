@@ -10,6 +10,8 @@
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.test :as mt]
    [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
@@ -334,7 +336,7 @@
                  "airports_region"}
                (into #{}
                      (map :name)
-                     (:tables (driver/describe-database :oracle (mt/db))))))))))
+                     (:tables (driver/describe-database :oracle (lib.metadata/database (mt/metadata-provider)))))))))))
 
 (defmethod tx/drop-view! :oracle
   [driver database view-name {:keys [materialized?]}]
@@ -342,7 +344,7 @@
         qualified-view (sql.tx/qualify-and-quote driver database-name (name view-name))]
     (u/ignore-exceptions
       ;; If exists does not exist in oracle
-      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec database)
+      (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database database))
                      (sql/format
                       {(if materialized? :drop-materialized-view :drop-view) [[[:raw qualified-view]]]}
                       :dialect (sql.qp/quote-style driver))

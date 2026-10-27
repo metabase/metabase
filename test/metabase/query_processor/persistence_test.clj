@@ -46,7 +46,7 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :persist-models)
       (testing (str driver/*driver* " can persist")
         (mt/dataset test-data
-          (let [[success? error] (ddl.i/check-can-persist (mt/db))]
+          (let [[success? error] (ddl.i/check-can-persist (lib.metadata/database (mt/metadata-provider)))]
             (is success? (str "Not able to persist on " driver/*driver*))
             (is (= :persist.check/valid error)))
           (testing "Populates the `cache_info` table with v1 information"

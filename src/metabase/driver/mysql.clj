@@ -27,6 +27,7 @@
    [metabase.driver.sql.query-processor.like-escape-char-built-in :as like-escape-char-built-in]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -1025,26 +1026,26 @@
     (t/local-date-time offset-time zone-id)))
 
 (defmulti ^:private value->string
-  "Convert a value into a string that's safe for insertion"
-  {:arglists '([driver val])}
-  (fn [_ val] (type val)))
+  "Convert a value into a string that's safe for insertion into `database`."
+  {:arglists '([driver database val])}
+  (fn [_ _ val] (type val)))
 
 (defmethod value->string :default
-  [_driver val]
+  [_driver _database val]
   (str val))
 
 (defmethod value->string nil
-  [_driver _val]
+  [_driver _database _val]
   nil)
 
 (defmethod value->string Boolean
-  [_driver val]
+  [_driver _database val]
   (if val
     "1"
     "0"))
 
 (defmethod value->string LocalDateTime
-  [_driver val]
+  [_driver _database val]
   (t/format :iso-local-date-time val))
 
 (let [zulu-fmt         "yyyy-MM-dd'T'HH:mm:ss"
@@ -1052,14 +1053,13 @@
       zulu-formatter   (DateTimeFormatter/ofPattern zulu-fmt)
       offset-formatter (DateTimeFormatter/ofPattern (str zulu-fmt offset-fmt))]
   (defmethod value->string OffsetDateTime
-    [driver ^OffsetDateTime val]
-    (let [uploads-db (driver-api/current-database)]
-      (if (mariadb? uploads-db)
-        (offset-datetime->unoffset-datetime driver uploads-db val)
-        (t/format (if (.equals (.getOffset val) ZoneOffset/UTC)
-                    zulu-formatter
-                    offset-formatter)
-                  val)))))
+    [driver database ^OffsetDateTime val]
+    (if (mariadb? database)
+      (offset-datetime->unoffset-datetime driver database val)
+      (t/format (if (.equals (.getOffset val) ZoneOffset/UTC)
+                  zulu-formatter
+                  offset-formatter)
+                val))))
 
 (defn- sanitize-value
   ;; Per https://dev.mysql.com/doc/refman/8.0/en/load-data.html#load-data-field-line-handling
@@ -1075,11 +1075,11 @@
                                    "\t" "\\t"})))
 
 (defn- row->tsv
-  [driver column-count row]
+  [driver database column-count row]
   (when (not= column-count (count row))
     (throw (Exception. (format "ERROR: missing data in row \"%s\"" (str/join "," row)))))
   (->> row
-       (map (comp sanitize-value (partial value->string driver)))
+       (map (comp sanitize-value (partial value->string driver database)))
        (str/join "\t")))
 
 (defn- get-global-variable
@@ -1088,7 +1088,7 @@
   [db-id var-name]
   (:value
    (first
-    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db-id)
+    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))
                 ["show global variables like ?" var-name]))))
 
 (defmethod driver/insert-into! :mysql
@@ -1101,7 +1101,8 @@
     (let [temp-file (File/createTempFile (name table-name) ".tsv")
           file-path (.getAbsolutePath temp-file)]
       (try
-        (let [tsvs    (map (partial row->tsv driver (count column-names)) values)
+        (let [database (driver.u/lib-database db-id)
+              tsvs     (map (partial row->tsv driver database (count column-names)) values)
               dialect (sql.qp/quote-style driver)
               sql     (sql/format {::load   [file-path (keyword table-name)]
                                    :columns (quote-columns driver column-names)}

@@ -2,6 +2,7 @@
   "Logic for verifying that test data was loaded correctly."
   (:require
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor.core :as qp]
    [metabase.test.data.interface :as tx]
    [metabase.util :as u]
@@ -18,12 +19,12 @@
 (defn- loaded-tables
   "Actual Tables loaded into `database`. Returns a set of `[schema-name table-name]` pairs."
   [{:keys [driver database]}]
-  (into #{} (map (juxt :schema :name)) (:tables (driver/describe-database driver database))))
+  (into #{} (map (juxt :schema :name)) (:tables (driver/describe-database driver (driver.u/ensure-lib-database database)))))
 
 (defn- loaded-fields
   "Actual Fields loaded into a Table. Returns set of field names."
   [{:keys [driver database actual-schema actual-table-name]}]
-  (->> (driver/describe-table driver database {:schema actual-schema, :name actual-table-name, :db_id (:id database)})
+  (->> (driver/describe-table driver (driver.u/ensure-lib-database database) {:schema actual-schema, :name actual-table-name, :db_id (:id database)})
        :fields
        (map :name)
        set))

@@ -87,12 +87,12 @@
   (mt/test-drivers (mt/normal-drivers)
     (if (driver/database-supports? driver/*driver* :schemas (mt/db))
       (testing "`describe-database` should return schemas with tables if the database supports schemas"
-        (is (some? (->> (driver/describe-database driver/*driver* (mt/db))
+        (is (some? (->> (driver/describe-database driver/*driver* (lib.metadata/database (mt/metadata-provider)))
                         :tables
                         (into [])
                         (some :schema)))))
       (testing "`describe-database` should not return schemas with tables if the database doesn't support schemas"
-        (is (nil? (->> (driver/describe-database driver/*driver* (mt/db))
+        (is (nil? (->> (driver/describe-database driver/*driver* (lib.metadata/database (mt/metadata-provider)))
                        :tables
                        (into [])
                        (some :schema))))))))
@@ -122,7 +122,7 @@
               (is (true? (binding [driver.settings/*allow-testing-h2-connections* true]
                            (driver/can-connect? driver/*driver* details)))))
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
-            (driver/notify-database-updated driver/*driver* db)
+            (driver/notify-database-updated driver/*driver* (driver.u/lib-database (:id db)))
             (testing "after deleting a database, can-connect? should return false or throw an exception"
               (let [;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
                     ;; so fake it by changing the database details
@@ -164,7 +164,7 @@
                 (is (= {:status "ok"}
                        (mt/user-http-request :crowberto :post 200 (str "/database/" (u/the-id db) "/sync_schema"))))))
             ;; release db resources like connection pools so we don't have to wait to finish syncing before destroying the db
-            (driver/notify-database-updated driver/*driver* db)
+            (driver/notify-database-updated driver/*driver* (driver.u/lib-database (:id db)))
             ;; destroy the db
             (if (driver/database-supports? driver/*driver* :test/cannot-destroy-db (mt/db))
               ;; in the case of some cloud databases, the test database is never created, and can't or shouldn't be destroyed.
@@ -184,7 +184,7 @@
 
 (deftest ^:parallel supports-table-privileges-matches-implementations-test
   (mt/test-drivers (mt/normal-drivers-with-feature :table-privileges)
-    (is (some? (driver/current-user-table-privileges driver/*driver* (mt/db))))))
+    (is (some? (driver/current-user-table-privileges driver/*driver* (lib.metadata/database (mt/metadata-provider)))))))
 
 (deftest ^:parallel mongo-prettify-native-form-test
   (mt/test-driver :mongo
@@ -274,9 +274,9 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :metadata/table-existence-check)
       (let [venues-table (t2/select-one :model/Table :id (mt/id :venues))
             fake-table {:name "fake_table_xyz123" :schema (:schema venues-table)}]
-        (is (driver/table-exists? driver/*driver* (mt/db) venues-table)
+        (is (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) venues-table)
             (str "Driver " driver/*driver* " should detect that venues table exists"))
-        (is (not (driver/table-exists? driver/*driver* (mt/db) fake-table))
+        (is (not (driver/table-exists? driver/*driver* (lib.metadata/database (mt/metadata-provider)) fake-table))
             (str "Driver " driver/*driver* " should detect that fake table doesn't exist"))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -287,10 +287,10 @@
   (sort-by :database-position
            (if (driver/database-supports? driver/*driver* :describe-fields db)
              (mapv #(dissoc % :table-name :table-schema)
-                   (driver/describe-fields driver/*driver* db
+                   (driver/describe-fields driver/*driver* (driver.u/ensure-lib-database db)
                                            :schema-names [(:schema table)]
                                            :table-names [(:name table)]))
-             (:fields (driver/describe-table driver/*driver* db table)))))
+             (:fields (driver/describe-table driver/*driver* (driver.u/ensure-lib-database db) table)))))
 
 (deftest ^:parallel describe-fields-or-table-test
   (testing "test `describe-fields` or `describe-table` returns some basic metadata"
@@ -394,10 +394,10 @@
             orders        (t2/select-one :model/Table (mt/id :orders))
             products      (t2/select-one :model/Table (mt/id :products))
             people        (t2/select-one :model/Table (mt/id :people))
-            entire-db-fks (driver/describe-fks driver/*driver* db)
-            schema-db-fks (driver/describe-fks driver/*driver* db
+            entire-db-fks (driver/describe-fks driver/*driver* (driver.u/ensure-lib-database db))
+            schema-db-fks (driver/describe-fks driver/*driver* (driver.u/ensure-lib-database db)
                                                :schema-names (when (:schema orders) [(:schema orders)]))
-            table-db-fks  (driver/describe-fks driver/*driver* db
+            table-db-fks  (driver/describe-fks driver/*driver* (driver.u/ensure-lib-database db)
                                                :schema-names (when (:schema orders) [(:schema orders)])
                                                :table-names [(:name orders)])]
         (doseq [[description orders-fks]

@@ -7,6 +7,7 @@
    [metabase.app-db.core :as mdb]
    [metabase.config.core :as config]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.permissions.core :as perms]
    [metabase.plugins.impl :as plugins]
    [metabase.query-processor :as qp]
@@ -37,7 +38,7 @@
   {:style/indent 1}
   [[db-binding] & body]
   `(mt/with-temp [:model/Database db# (sample-database-db)]
-     (sync/sync-database! db#)
+     (sync/sync-database! (:id db#))
      (let [~db-binding db#]
        ~@body)))
 
@@ -61,7 +62,7 @@
       (let [h2-db (t2/insert-returning-instance! :model/Database
                                                  {:name "Sample Database" :engine :h2 :is_sample true
                                                   :details (#'sample-data/try-to-extract-sample-database! :h2)})]
-        (sync/sync-database! h2-db)
+        (sync/sync-database! (:id h2-db))
         (let [orders-id  (t2/select-one-pk :model/Table :db_id (:id h2-db) :name "ORDERS")
               total-id   (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL")
               user-card  (t2/insert-returning-instance! :model/Card
@@ -98,7 +99,7 @@
       (let [sqlite-db (t2/insert-returning-instance! :model/Database
                                                      {:name "Sample Database" :engine :sqlite :is_sample true
                                                       :details (#'sample-data/try-to-extract-sample-database! :sqlite)})]
-        (sync/sync-database! sqlite-db)
+        (sync/sync-database! (:id sqlite-db))
         (let [orders-id (t2/select-one-pk :model/Table :db_id (:id sqlite-db) :name "ORDERS")
               total-id  (t2/select-one-pk :model/Field :table_id orders-id :name "TOTAL")
               user-card (t2/insert-returning-instance! :model/Card
@@ -155,7 +156,7 @@
         (let [h2-db (t2/insert-returning-instance! :model/Database
                                                    {:name "Sample Database" :engine :h2 :is_sample true
                                                     :details (#'sample-data/try-to-extract-sample-database! :h2)})]
-          (sync/sync-database! h2-db)
+          (sync/sync-database! (:id h2-db))
           (let [db-id     (:id h2-db)
                 orders-id (t2/select-one-pk :model/Table :db_id db-id :name "ORDERS")
                 people-id (t2/select-one-pk :model/Table :db_id db-id :name "PEOPLE")]
@@ -234,9 +235,9 @@
 (deftest sample-database-is-read-only-test
   (testing "The Sample Database connection is read-only: reads succeed but INSERT/UPDATE/DELETE are rejected"
     (mt/with-temp [:model/Database db (sample-database-db)]
-      (sync/sync-database! db)
+      (sync/sync-database! (:id db))
       (mt/with-db db
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
           (testing "reads succeed"
             (is (= [2]
                    (->> (jdbc/query conn-spec "SELECT QUANTITY FROM ORDERS WHERE ID = 1;")

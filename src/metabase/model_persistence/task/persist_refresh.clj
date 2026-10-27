@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.util :as driver.u]
    [metabase.events.core :as events]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.model-persistence.db :as model-persistence.db]
@@ -131,7 +132,9 @@
   "Seam for tests to pass in specific deletables to drop."
   [refresher deletables]
   (when (seq deletables)
-    (let [db-id->db    (m/index-by :id (model-persistence.db/databases (map :database_id deletables)))
+    (let [db-id->db    (into {}
+                             (map (fn [{:keys [id]}] [id (driver.u/lib-database id)]))
+                             (model-persistence.db/databases (distinct (map :database_id deletables))))
           unpersist-fn (fn []
                          (reduce (fn [stats persisted-info]
                                    ;; Since this could be long running, double check state just before deleting
@@ -183,7 +186,7 @@
   [database-id refresher trigger]
   (log/infof "Starting persisted model refresh task for Database %s." database-id)
   (persisted-info/ready-unpersisted-models! database-id)
-  (let [database  (model-persistence.db/database database-id)
+  (let [database  (driver.u/lib-database database-id)
         persisted (refreshable-models database-id)
         thunk     (fn []
                     (reduce (partial refresh-with-stats! refresher database)
@@ -197,8 +200,8 @@
   "Refresh an individual model based on [[PersistedInfo]]."
   [persisted-info-id refresher trigger]
   (let [persisted-info (model-persistence.db/persisted-info persisted-info-id)
-        database       (when persisted-info
-                         (model-persistence.db/database (:database_id persisted-info)))]
+        database       (when (and persisted-info (model-persistence.db/database (:database_id persisted-info)))
+                         (driver.u/lib-database (:database_id persisted-info)))]
     (if (and persisted-info database)
       (do
         (save-task-history! "persist-refresh" (u/the-id database)

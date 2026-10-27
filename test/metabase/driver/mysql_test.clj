@@ -26,6 +26,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.sql.query-processor :as sql.qp]
+   [metabase.driver.util :as driver.u]
    [metabase.lib-be.core :as lib-be]
    [metabase.lib.card :as lib.card]
    [metabase.lib.core :as lib]
@@ -166,7 +167,7 @@
           (jdbc/execute! spec [sql]))
         ;; create & sync MB DB
         (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
-          (sync/sync-database! database)
+          (sync/sync-database! (:id database))
           (mt/with-db database
             ;; run the query
             (is (= [[1 nil]]
@@ -193,7 +194,7 @@
                 :let  [sql (str/join "\n" lines)]]
           (jdbc/execute! spec [sql]))
         (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
-          (sync/sync-database! database)
+          (sync/sync-database! (:id database))
           (is (= [{:pk-table-schema nil
                    :pk-table-name   "foo"
                    :pk-column-name  "id"
@@ -202,7 +203,7 @@
                    :fk-column-name  "foo_id"}]
                  (into []
                        (driver/describe-fks driver/*driver*
-                                            (lib-be/instance->metadata database :metadata/database)
+                                            (driver.u/ensure-lib-database (lib-be/instance->metadata database :metadata/database))
                                             {:table-names #{"foo" "bar"}})))))))))
 
 (deftest multiple-schema-test
@@ -217,9 +218,9 @@
       (doseq [details [(tx/dbdef->connection-details :mysql :db {:database-name "dbone"})
                        (set/rename-keys (tx/dbdef->connection-details :mysql :db {:database-name "dbone"}) {:db :dbname})]]
         (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
-          (sync/sync-database! database)
+          (sync/sync-database! (:id database))
           (is (= #{"dbone_a" "dbone_b" "dbone_c"}
-                 (into #{} (map :name) (driver/describe-fields :mysql database)))))))))
+                 (into #{} (map :name) (driver/describe-fields :mysql (driver.u/ensure-lib-database database))))))))))
 
 (deftest ^:parallel hour-bucketing-time-without-database-type-test
   (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
@@ -286,7 +287,7 @@
   (mt/test-driver :mysql
     (mt/dataset tiny-int-ones
       ;; trigger a full sync on this database so fields are categorized correctly
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (testing "By default TINYINT(1) should be a boolean"
         (is (= #{{:name "number-of-cans", :base_type :type/Boolean, :semantic_type nil}
                  {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
@@ -296,7 +297,7 @@
         (mt/with-temp [:model/Database db {:engine  "mysql"
                                            :details (assoc (:details (mt/db))
                                                            :additional-options "tinyInt1isBit=false")}]
-          (sync/sync-database! db)
+          (sync/sync-database! (:id db))
           (is (= #{{:name "number-of-cans", :base_type :type/Integer, :semantic_type :type/Quantity}
                    {:name "id", :base_type :type/Integer, :semantic_type :type/PK}
                    {:name "thing", :base_type :type/Text, :semantic_type :type/Category}}
@@ -306,7 +307,7 @@
   (mt/test-driver :mysql
     (mt/dataset tiny-int-ones
       ;; trigger a full sync on this database so fields are categorized correctly
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (testing "Can filter on TINYINT(1) boolean columns in models (metabase#65826)"
         (let [mp (as-> (mt/metadata-provider) $mp
                    (lib.tu/mock-metadata-provider $mp {:cards
@@ -357,7 +358,7 @@
                                                              (str/includes? sql-args "GLOBAL.time_zone"))
                                                       [result-row]
                                                       (apply orig spec sql-args options))))]
-                         (driver/db-default-timezone driver/*driver* db))))]
+                         (driver/db-default-timezone driver/*driver* (driver.u/ensure-lib-database db)))))]
       (testing "Should use global timezone by default"
         (is (= "US/Pacific"
                (timezone {:global_tz "US/Pacific", :system_tz "UTC"}))))
@@ -375,7 +376,7 @@
                (timezone {:global_tz "PDT", :system_tz "UTC", :offset "00:00"})))))
     (testing "real timezone query doesn't fail"
       (is (nil? (try
-                  (driver/db-default-timezone driver/*driver* (mt/db))
+                  (driver/db-default-timezone driver/*driver* (lib.metadata/database (mt/metadata-provider)))
                   nil
                   (catch Throwable e
                     e)))))))
@@ -588,7 +589,7 @@
                           (throw se))))]
         (when compat
           (mt/with-temp [:model/Database database {:engine "mysql", :details details}]
-            (sync/sync-database! database)
+            (sync/sync-database! (:id database))
             (is (= [{:name   "src1"
                      :fields [{:name      "id"
                                :base_type :type/Integer}
@@ -612,7 +613,7 @@
   (mt/test-driver :mysql
     (mt/with-empty-db
       (create-enums-table! (mt/db))
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (testing "ENUM columns are synced with the correct base and semantic types"
         (is (=? {:base_type     :type/MySQLEnum
                  :semantic_type :type/Category}
@@ -629,7 +630,7 @@
     (testing "actions with enums"
       (mt/with-empty-db
         (create-enums-table! (mt/db))
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (mt/with-actions-enabled
           (mt/with-actions [model {:type          :model
                                    :dataset_query (mt/mbql-query birds)}
@@ -777,7 +778,7 @@
             (mt/with-temp
               [:model/Database database {:name "composite_pks_test" :engine driver/*driver* :details details}]
               (mt/with-db database
-                (sync-tables/sync-tables-and-database! database)
+                (sync-tables/sync-tables-and-database! (driver.u/lib-database (:id database)))
                 (is (= #{{:name              "json_val → int_turn_string",
                           :database-type     "text"
                           :base-type         :type/Text
@@ -787,7 +788,7 @@
                           :nfc-path          [:json_val "int_turn_string"]}}
                        (sql-jdbc.sync/describe-nested-field-columns
                         driver/*driver*
-                        database
+                        (driver.u/lib-database (:id database))
                         (t2/select-one :model/Table :db_id (mt/id) :name "json_table"))))))))))))
 
 (deftest json-unfolding-ignores-table-differing-only-in-case-test
@@ -802,7 +803,7 @@
                              "INSERT INTO `orders` VALUES (1, '{\"a\": 1}');"]]
             (jdbc/execute! spec [statement]))
           (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
-            (sync/sync-database! database {:scan :schema})
+            (sync/sync-database! (:id database) {:scan :schema})
             (is (= #{"id" "data" "data → a"}
                    (t2/select-fn-set :name :model/Field
                                      :table_id (t2/select-one-pk :model/Table :db_id (:id database) :name "orders")
@@ -865,7 +866,7 @@
 (deftest ddl-execute-with-timeout-test
   (mt/test-driver :mysql
     (mt/dataset json
-      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (mt/db))]
+      (let [db-spec (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))]
         (testing "When the query takes longer that the timeout, it is killed."
           (is (thrown-with-msg?
                Exception
@@ -879,7 +880,7 @@
     (testing "`syncable-schemas` should return an empty set because mysql doesn't support schemas"
       (mt/with-empty-db
         (is (= #{}
-               (driver/syncable-schemas driver/*driver* (mt/db))))))))
+               (driver/syncable-schemas driver/*driver* (lib.metadata/database (mt/metadata-provider)))))))))
 
 ;;; ------------------------------------------------ Actions related ------------------------------------------------
 
@@ -953,7 +954,7 @@
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details) [stmt]))
         (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
           (mt/with-db database
-            (sync/sync-database! database)
+            (sync/sync-database! (:id database))
             (mt/with-actions-enabled
               (testing "when creating with invalid email"
                 (is (=? {:errors      {}
@@ -985,7 +986,7 @@
           (jdbc/execute! (sql-jdbc.conn/connection-details->spec driver/*driver* details) [stmt]))
         (mt/with-temp [:model/Database database {:engine driver/*driver* :details details}]
           (mt/with-db database
-            (sync/sync-database! database)
+            (sync/sync-database! (:id database))
             (mt/with-actions-enabled
               (testing "when creating"
                 (is (=? {:type        :metabase.actions.error/violate-unique-constraint
@@ -1150,7 +1151,7 @@
             (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
               (sql-jdbc.execute/do-with-connection-with-options
                driver/*driver*
-               (mt/db)
+               (mt/id)
                nil
                (fn [^java.sql.Connection conn]
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
@@ -1180,7 +1181,7 @@
                                                  :ssl true
                                                  :additional-options "trustServerCertificate=true")]
               (mt/with-temp [:model/Database database {:engine "mysql", :details user-connection-details}]
-                (sync/sync-database! database)
+                (sync/sync-database! (:id database))
                 (testing "only fullaccess table has writeable permissions"
                   (is (= {"readonly_table"   false
                           "readwrite_table"  false
@@ -1189,7 +1190,7 @@
                 (testing "After granting full access to all tables and re-syncing"
                   (doseq [table-name ["readonly_table" "readwrite_table"]]
                     (jdbc/execute! spec (format "GRANT INSERT, UPDATE, DELETE ON sync_writable_test.`%s` TO 'sync_writable_test_user'" table-name)))
-                  (sync/sync-database! database)
+                  (sync/sync-database! (:id database))
                   (is (= {"readonly_table"   true
                           "readwrite_table"  true
                           "fullaccess_table" true}
@@ -1223,7 +1224,7 @@
                   (jdbc/execute! spec "SET GLOBAL partial_revokes = OFF;")
                   (is (true? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
                       "Should support metadata/table-writable-check when partial_revokes is OFF")
-                  (sync/sync-database! database)
+                  (sync/sync-database! (:id database))
                   (is (= {"writable_table" true, "revoked_table" true}
                          (t2/select-fn->fn :name :is_writable :model/Table :db_id (:id database)))))
                 (testing "With partial_revokes ON and INSERT revoked on one table, the check stays enabled"
@@ -1231,7 +1232,7 @@
                   (jdbc/execute! spec "REVOKE INSERT ON partial_revokes_test.revoked_table FROM 'partial_revokes_test_user';")
                   (is (true? (driver/database-supports? driver/*driver* :metadata/table-writable-check database))
                       "Should still support metadata/table-writable-check when partial_revokes is ON")
-                  (sync/sync-database! database)
+                  (sync/sync-database! (:id database))
                   ;; The bug (metabase#73276): turning partial_revokes ON disabled the writable check for the whole
                   ;; database, so *every* table became uneditable. The fix removes that blanket gate, so writability is
                   ;; computed per-table from the GRANT lines again: the untouched table stays writable, and the table

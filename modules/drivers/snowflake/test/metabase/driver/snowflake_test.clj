@@ -154,7 +154,7 @@
               :json-unfolding false
               :database-position 5}]
             (sort-by :database-position
-                     (into [] (fetch-metadata/fields-metadata (mt/db) {:table-names ["venues"]})))))))
+                     (into [] (fetch-metadata/fields-metadata (lib.metadata/database (mt/metadata-provider)) {:table-names ["venues"]})))))))
 
 (deftest ^:parallel quote-name-test
   (is (nil? (#'driver.snowflake/quote-name nil)))
@@ -496,7 +496,7 @@
             (let [pool-cache @#'sql-jdbc.conn/pool-cache-key->connection-pool
                   cache-key  [(:id db) :default]
                   query!     (fn []
-                               (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec db)
+                               (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec (driver.u/ensure-lib-database db))
                                            ["SELECT CURRENT_USER() AS \"user\""]))]
               (testing "initial query works with token-a"
                 (is (= [{:user wif-user}] (query!))))
@@ -619,7 +619,7 @@
     (qp.store/with-metadata-provider (mt/id)
       (sql-jdbc.execute/do-with-connection-with-options
        :snowflake
-       (mt/db)
+       (mt/id)
        nil
        (fn [^java.sql.Connection conn]
          (is (sql-jdbc.sync/have-select-privilege? :snowflake conn "PUBLIC" "venues")))))))
@@ -681,16 +681,16 @@
                                   {:name "airport", :schema "PUBLIC", :description nil}}]
             (testing "should work with normal details"
               (is (= expected-tables
-                     (into #{} (:tables (driver/describe-database :snowflake (mt/db)))))))
+                     (into #{} (:tables (driver/describe-database :snowflake (lib.metadata/database (mt/metadata-provider))))))))
             (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
               (is (= expected-tables
-                     (into #{} (:tables (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))))
+                     (into #{} (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database (update (mt/db) :details set/rename-keys {:db :dbname}))))))))
             (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
               (is (thrown? Exception
-                           (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :xyz})))))
+                           (driver/describe-database :snowflake (driver.u/ensure-lib-database (update (mt/db) :details set/rename-keys {:db :xyz}))))))
             (testing "should use the NAME FROM DETAILS instead of the DB DISPLAY NAME to fetch metadata (#8864)"
               (is (= expected-tables
-                     (:tables (driver/describe-database :snowflake (assoc (mt/db) :name "ABC"))))))))))))
+                     (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database (assoc (mt/db) :name "ABC")))))))))))))
 
 (deftest describe-database-default-schema-test
   (testing "describe-database should include Tables from all schemas even if the DB has a default schema (#38135)"
@@ -722,7 +722,7 @@
         ;; fetch metadata
         (mt/with-temp [:model/Database database {:engine :snowflake, :details details}]
           (is (=? {:tables #{{:name table-name, :schema schema-name, :description nil}}}
-                  (driver/describe-database :snowflake database))))))))
+                  (driver/describe-database :snowflake (driver.u/ensure-lib-database database)))))))))
 
 (deftest describe-database-views-test
   (mt/test-driver :snowflake
@@ -736,7 +736,7 @@
           (jdbc/execute! spec [stmt] {:transaction? false}))
         ;; create the DB object
         (mt/with-temp [:model/Database database {:engine :snowflake, :details details}]
-          (let [sync! #(sync/sync-database! database)]
+          (let [sync! #(sync/sync-database! (:id database))]
             ;; create a view
             (doseq [statement [(format "CREATE VIEW \"%s\".\"PUBLIC\".\"example_view\" AS SELECT 'hello world' AS \"name\";" db-name)
                                (format "GRANT SELECT ON \"%s\".\"PUBLIC\".\"example_view\" TO PUBLIC;" db-name)]]
@@ -763,7 +763,7 @@
                      [(format "CREATE OR REPLACE DYNAMIC TABLE \"%s\".\"PUBLIC\".\"metabase_fan\" target_lag = DOWNSTREAM warehouse = 'COMPUTE_WH' AS
                               SELECT * FROM \"%s\".\"PUBLIC\".\"metabase_users\" WHERE \"%s\".\"PUBLIC\".\"metabase_users\".\"name\" LIKE 'MB_%%';"
                               db-name db-name db-name)])
-      (sync/sync-database! (t2/select-one :model/Database (mt/id)) {:scan :schema})
+      (sync/sync-database! (:id (t2/select-one :model/Database (mt/id))) {:scan :schema})
       (thunk))))
 
 (defmacro with-dynamic-table!
@@ -790,7 +790,7 @@
       (with-dynamic-table!
         (sql-jdbc.execute/do-with-connection-with-options
          :snowflake
-         (mt/db)
+         (mt/id)
          nil
          (fn [conn]
            (let [dynamic-table (or (t2/select-one :model/Table :name "metabase_fan" :db_id (mt/id))
@@ -845,11 +845,11 @@
 (deftest ^:synchronized describe-table-fields-uuid-column-test
   (mt/test-driver :snowflake
     (testing "Snowflake tables with UUID columns should sync successfully (#71595)"
-      (let [db-name    (#'driver.snowflake/db-name (mt/db))
+      (let [db-name    (#'driver.snowflake/db-name (lib.metadata/database (mt/metadata-provider)))
             table-name (str "uuid_test_" (u.random/random-name))]
         (sql-jdbc.execute/do-with-connection-with-options
          :snowflake
-         (mt/db)
+         (mt/id)
          nil
          (fn [^java.sql.Connection conn]
            (try
@@ -889,12 +889,12 @@
              the new base_type and clear stale coercion_strategy/semantic_type. Reproduces the
              in-place update path (repro v1 from the Linear issue) where Metabase's Field row is
              preserved across the schema change."
-        (let [db-name    (#'driver.snowflake/db-name (mt/db))
+        (let [db-name    (#'driver.snowflake/db-name (lib.metadata/database (mt/metadata-provider)))
               table-name (str "ghy_3388_" (u.random/random-name))
               run-sql!   (fn [stmts]
                            (sql-jdbc.execute/do-with-connection-with-options
                             :snowflake
-                            (mt/db)
+                            (mt/id)
                             nil
                             (fn [^java.sql.Connection conn]
                               (doseq [stmt stmts]
@@ -906,7 +906,7 @@
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
             ;; step 2: sync — Metabase creates Table + Field rows for our new table
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (let [original-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
                   _              (is (some? original-table) "table should be synced")
                   original-field (t2/select-one :model/Field :table_id (:id original-table) :name "text_column")]
@@ -919,7 +919,7 @@
                                       "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
                                  qualified qualified)])
               ;; step 4: sync again
-              (sync/sync-database! (mt/db))
+              (sync/sync-database! (mt/id))
               (let [new-field (t2/select-one :model/Field :id (:id original-field))]
                 (testing "after sync, base_type and effective_type both reflect the new numeric column,
                        and stale coercion/semantic type are cleared"
@@ -939,11 +939,11 @@
               (t2/delete! :model/Table :id (:id original-table)))
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
                                     "SELECT \"id\", TRY_TO_NUMBER(\"text_column\", 38, 2) AS \"text_column\" FROM %s;")
                                qualified qualified)])
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (let [fresh-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
                   fresh-field (t2/select-one :model/Field :table_id (:id fresh-table) :name "text_column")]
               (testing "after fresh-state CREATE OR REPLACE to numeric, base_type and effective_type
@@ -964,7 +964,7 @@
               (t2/delete! :model/Table :id (:id fresh-table)))
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (let [pre-coerce-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
                   pre-coerce-field (t2/select-one :model/Field :table_id (:id pre-coerce-table) :name "text_column")]
               ;; user enables coercion: this TEXT column is really an integer
@@ -974,7 +974,7 @@
               (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
                                       "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
                                  qualified qualified)])
-              (sync/sync-database! (mt/db))
+              (sync/sync-database! (mt/id))
               (let [after-field (t2/select-one :model/Field :id (:id pre-coerce-field))]
                 (testing "after the underlying TEXT column becomes a native number, the previously
                        user-set coercion strategy should be cleared and effective_type should
@@ -996,7 +996,7 @@
               (t2/delete! :model/Table :id (:id stale-table)))
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (let [v4-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
                   v4-field (t2/select-one :model/Field :table_id (:id v4-table) :name "text_column")]
               (field-user-settings/upsert-user-settings v4-field
@@ -1008,7 +1008,7 @@
               (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
                                       "SELECT \"id\", TRY_TO_NUMBER(\"text_column\") AS \"text_column\" FROM %s;")
                                  qualified qualified)])
-              (sync/sync-database! (mt/db))
+              (sync/sync-database! (mt/id))
               (let [after-field         (t2/select-one :model/Field :id (:id v4-field))
                     after-user-settings (t2/select-one :model/FieldUserSettings :field_id (:id v4-field))]
                 (testing "after CREATE OR REPLACE to numeric, the user-set coercion stored in
@@ -1035,7 +1035,7 @@
               (t2/delete! :model/Table :id (:id stale-table)))
             (run-sql! [(format "CREATE OR REPLACE TRANSIENT TABLE %s (\"id\" INTEGER, \"text_column\" TEXT);" qualified)
                        (format "INSERT INTO %s (\"id\", \"text_column\") VALUES (1, '100'), (2, '200'), (3, '300');" qualified)])
-            (sync/sync-database! (mt/db))
+            (sync/sync-database! (mt/id))
             (let [v5-table (t2/select-one :model/Table :db_id (mt/id) :name table-name)
                   v5-field (t2/select-one :model/Field :table_id (:id v5-table) :name "text_column")]
               (run-sql! [(format (str "CREATE OR REPLACE TABLE %s AS "
@@ -1080,7 +1080,7 @@
                          :database-is-nullable       false
                          :database-required          true
                          :json-unfolding             false}]}
-              (-> (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (t2/select-one :model/Table :id (mt/id :categories)))
+              (-> (driver/describe-table :snowflake (driver.u/ensure-lib-database (assoc (mt/db) :name "ABC")) (t2/select-one :model/Table :id (mt/id :categories)))
                   (update :fields (partial sort-by :name))))))))
 
 (deftest ^:synchronized describe-fks-test
@@ -1096,8 +1096,8 @@
                (into []
                      (driver/describe-fks
                       :snowflake
-                      (-> (lib.metadata/database (mt/metadata-provider))
-                          (assoc :name "ABC"))
+                      (driver.u/ensure-lib-database (-> (lib.metadata/database (mt/metadata-provider))
+                                                        (assoc :name "ABC")))
                       {:schema-names [(:schema table)]
                        :table-names  [(:name table)]}))))))))
 
@@ -1770,7 +1770,7 @@
                (sort-by last
                         (into []
                               (map (juxt :name :database-type :base-type :database-position))
-                              (fetch-metadata/fields-metadata (mt/db)))))))))
+                              (fetch-metadata/fields-metadata (lib.metadata/database (mt/metadata-provider))))))))))
 
   ;; The test needs user with no report timezone set and database timezone other than UTC. That's the reason for redefs
   ;; prior to dataset generation.
@@ -1894,7 +1894,7 @@
             (binding [sql-jdbc.describe-database/*select-probe-query-timeout-seconds* 1]
               (sql-jdbc.execute/do-with-connection-with-options
                driver/*driver*
-               (mt/db)
+               (mt/id)
                nil
                (fn [^java.sql.Connection conn]
                  (is (true? (sql-jdbc.sync.interface/have-select-privilege?
@@ -2148,7 +2148,7 @@
                      {:name "region",       :schema "PUBLIC", :description nil}
                      {:name "country",      :schema "PUBLIC", :description nil}
                      {:name "airport",      :schema "PUBLIC", :description nil}}
-                   (:tables (driver/describe-database :snowflake db)))))))))))
+                   (:tables (driver/describe-database :snowflake (driver.u/ensure-lib-database db))))))))))))
 
 ;;; ------------------------------------------------ Fake Sync Tests ------------------------------------------------
 ;; Tests to validate that fake sync produces correct metadata for Snowflake.
