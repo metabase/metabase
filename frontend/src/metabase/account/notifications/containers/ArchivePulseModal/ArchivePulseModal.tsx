@@ -4,7 +4,6 @@ import {
   useGetSubscriptionQuery,
   useUpdateSubscriptionMutation,
 } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useSearchParams } from "metabase/router";
@@ -37,13 +36,11 @@ export function ArchivePulseModal({ params, onClose }: ArchivePulseModalProps) {
     await updateSubscription({ id: item.id, archived });
   };
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
-  return pulse && user ? (
+  return user ? (
     <ArchiveNotificationModal
       item={pulse}
+      loading={isLoading}
+      error={error}
       type="pulse"
       user={user}
       hasUnsubscribed={Boolean(searchParams.get("unsubscribed"))}

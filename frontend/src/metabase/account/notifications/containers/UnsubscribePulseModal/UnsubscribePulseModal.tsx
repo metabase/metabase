@@ -1,7 +1,6 @@
 import { skipToken } from "@reduxjs/toolkit/query/react";
 
 import { useGetSubscriptionQuery, useUnsubscribeMutation } from "metabase/api";
-import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { getUser } from "metabase/current-user";
 import { useSelector } from "metabase/redux";
 import { useNavigate } from "metabase/router";
@@ -43,13 +42,11 @@ export function UnsubscribePulseModal({
     navigate(getArchiveUrl(item, "pulse", hasUnsubscribed));
   };
 
-  if (isLoading || error) {
-    return <LoadingAndErrorWrapper loading={isLoading} error={error} />;
-  }
-
-  return pulse && user ? (
+  return user ? (
     <UnsubscribeModal
       item={pulse}
+      loading={isLoading}
+      error={error}
       type="pulse"
       user={user}
       onUnsubscribe={handleUnsubscribe}

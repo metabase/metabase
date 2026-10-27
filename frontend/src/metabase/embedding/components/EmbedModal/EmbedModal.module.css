@@ -1,9 +1,3 @@
-.embedModalHeader {
-  --modal-header-text-color: var(--mb-color-text-secondary);
-
-  border-bottom: 1px solid var(--mb-color-border-neutral);
-}
-
 /* As tall as the viewport allows, so the header stays put and the columns below scroll on their own */
 .content {
   display: flex;
@@ -12,9 +6,24 @@
   overflow: hidden;
 }
 
+.header {
+  border-bottom: 1px solid var(--mb-color-border-neutral);
+}
+
+/* The setup pane runs edge to edge below the header */
 .body {
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   min-height: 0;
+  padding: 0;
+}
+
+.backButton {
+  display: flex;
+  color: var(--mb-color-text-disabled);
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
 }

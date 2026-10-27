@@ -1,17 +1,19 @@
 import { type JSX, useCallback, useState } from "react";
 import { t } from "ttag";
 
-import { ModalContent } from "metabase/common/components/ModalContent";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
 import { FormMessage } from "metabase/forms";
 import type { NotificationType } from "metabase/notifications/types";
 import { formatChannelRecipients } from "metabase/pulse";
-import { Box, Button, Stack } from "metabase/ui";
+import { Box, Button, Modal, Stack } from "metabase/ui";
 import Settings from "metabase/utils/settings";
 import { formatDateTimeWithUnit } from "metabase/value-formatting";
 import type { Alert, DashboardSubscription, User } from "metabase-types/api";
 
 type ArchiveModalProps = {
-  item: Alert | DashboardSubscription;
+  item: Alert | DashboardSubscription | undefined;
+  loading?: boolean;
+  error?: unknown;
   type: NotificationType;
   user: User;
   hasUnsubscribed: boolean;
@@ -24,12 +26,50 @@ type ArchiveModalProps = {
 
 function ArchiveNotificationModal({
   item,
+  loading = false,
+  error,
+  hasUnsubscribed,
+  type,
+  onClose,
+  ...props
+}: ArchiveModalProps): JSX.Element {
+  return (
+    <Modal
+      opened
+      size="lg"
+      title={getTitleMessage(type, hasUnsubscribed)}
+      onClose={onClose}
+    >
+      {loading || error || !item ? (
+        <LoadingAndErrorWrapper loading={loading} error={error} />
+      ) : (
+        <ArchiveModalBody
+          {...props}
+          item={item}
+          type={type}
+          hasUnsubscribed={hasUnsubscribed}
+          onClose={onClose}
+        />
+      )}
+    </Modal>
+  );
+}
+
+type ArchiveModalBodyProps = Omit<
+  ArchiveModalProps,
+  "item" | "loading" | "error"
+> & {
+  item: Alert | DashboardSubscription;
+};
+
+function ArchiveModalBody({
+  item,
   type,
   user,
   hasUnsubscribed,
   onArchive,
   onClose,
-}: ArchiveModalProps): JSX.Element {
+}: ArchiveModalBodyProps): JSX.Element {
   const [error, setError] = useState<unknown>();
 
   const handleArchiveClick = useCallback(async () => {
@@ -42,24 +82,7 @@ function ArchiveNotificationModal({
   }, [item, onArchive, onClose]);
 
   return (
-    <ModalContent
-      title={getTitleMessage(type, hasUnsubscribed)}
-      footer={[
-        error ? <FormMessage key="message" formError={error} /> : null,
-        <Button key="cancel" onClick={onClose}>
-          {getCancelMessage(hasUnsubscribed)}
-        </Button>,
-        <Button
-          key="submit"
-          variant="filled"
-          color="negative"
-          onClick={handleArchiveClick}
-        >
-          {getSubmitMessage(type, hasUnsubscribed)}
-        </Button>,
-      ]}
-      onClose={onClose}
-    >
+    <>
       <Stack gap="lg">
         {isCreator(item, user) && hasUnsubscribed && (
           <Box data-server-date>
@@ -72,7 +95,18 @@ function ArchiveNotificationModal({
           {getRecipientsMessage(item)}
         </Box>
       </Stack>
-    </ModalContent>
+      <Modal.Footer>
+        {error ? (
+          <Box flex={1}>
+            <FormMessage formError={error} noPadding />
+          </Box>
+        ) : null}
+        <Button onClick={onClose}>{getCancelMessage(hasUnsubscribed)}</Button>
+        <Button variant="filled" color="negative" onClick={handleArchiveClick}>
+          {getSubmitMessage(type, hasUnsubscribed)}
+        </Button>
+      </Modal.Footer>
+    </>
   );
 }
 
