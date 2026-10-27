@@ -28,7 +28,7 @@ import type { Dispatch, State } from "metabase/redux/store";
 import type { Path } from "metabase/router";
 import { getTokenFeature } from "metabase/settings";
 import { getFont } from "metabase/styled-components/selectors";
-import type { IconProps } from "metabase/ui";
+import { Box, type IconProps } from "metabase/ui";
 import { isQuestionCard } from "metabase/utils/dashboard";
 import { formatNumber } from "metabase/utils/formatting";
 import { memoize } from "metabase/utils/memoize";
@@ -36,6 +36,7 @@ import { getVisualizationComponent } from "metabase/visualizations";
 import ChartCaption from "metabase/visualizations/components/ChartCaption";
 import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
 import { ConnectedClickActionsPopover } from "metabase/visualizations/components/ClickActions";
+import { getScalarSizeTier } from "metabase/visualizations/components/ScalarValue/sizing";
 import { performDefaultAction } from "metabase/visualizations/lib/action";
 import { hasNoResults } from "metabase/visualizations/lib/no-results";
 import {
@@ -124,6 +125,7 @@ type VisualizationRawSeries = (
 
 type VisualizationOwnProps = {
   actionButtons?: ReactNode | null;
+  cardLevelFilters?: ReactNode | null;
   className?: string;
   dashboard?: Dashboard;
   dashcard?: DashboardCard;
@@ -634,6 +636,7 @@ class Visualization extends PureComponent<
     const {
       actionButtons,
       autoAdjustSettings,
+      cardLevelFilters,
       canToggleSeriesVisibility,
       className,
       dashboard,
@@ -793,6 +796,7 @@ class Visualization extends PureComponent<
         {actionButtons}
       </VisualizationActionButtonsContainer>
     );
+    const cardLevelFiltersOffset = getScalarSizeTier(width, height).menuOffset;
 
     let { gridSize, gridUnit } = this.props;
     if (
@@ -848,6 +852,19 @@ class Visualization extends PureComponent<
           data-viz-ui-name={visualization?.getUiName?.()}
           ref={this.props.forwardedRef}
         >
+          {cardLevelFilters && !replacementContent && (
+            <Box pos="relative" h={0} flex="0 0 auto">
+              <Box
+                pos="absolute"
+                top={cardLevelFiltersOffset.top}
+                left={cardLevelFiltersOffset.right}
+                style={{ zIndex: 1 }}
+                data-testid="card-level-filters"
+              >
+                {cardLevelFilters}
+              </Box>
+            </Box>
+          )}
           {!!hasHeader && (
             <VisualizationHeader>
               <ChartCaption
