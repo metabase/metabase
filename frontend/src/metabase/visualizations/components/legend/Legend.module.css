@@ -1,3 +1,7 @@
+.pinnedRowItem {
+  flex-shrink: 0;
+}
+
 .horizontalRoot {
   overflow: hidden;
 }

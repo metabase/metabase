@@ -6,7 +6,7 @@ import { Box, Ellipsified, Flex, rem } from "metabase/ui";
 
 import S from "./Legend.module.css";
 import { LegendItemDot } from "./LegendItemDot";
-import { LEGEND_SIZES, type LegendSize } from "./layout";
+import { LEGEND_SIZES, type LegendSize } from "./sizes";
 
 export interface LegendItemData {
   key: string;
@@ -16,6 +16,7 @@ export interface LegendItemData {
 }
 
 interface LegendItemProps {
+  className?: string;
   item: LegendItemData;
   size?: LegendSize;
   index: number;
@@ -31,6 +32,7 @@ interface LegendItemProps {
 }
 
 const LegendItemInner = ({
+  className,
   item,
   size = "sm",
   index,
@@ -59,7 +61,12 @@ const LegendItemInner = ({
   };
 
   return (
-    <Flex align="center" miw={0} data-testid="legend-item">
+    <Flex
+      className={className}
+      align="center"
+      miw={0}
+      data-testid="legend-item"
+    >
       <Flex
         className={cx(S.itemLabel, {
           [S.hoverableLabel]: onHoverChange != null,

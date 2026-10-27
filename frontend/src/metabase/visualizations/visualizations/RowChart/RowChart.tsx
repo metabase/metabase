@@ -289,6 +289,7 @@ const RowChartVisualization = ({
         width={outerWidth}
         height={outerHeight}
         hasLegend={hasLegend}
+        legendPosition={settings["legend.position"]}
         alwaysVisible={isVisualizer}
         items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}

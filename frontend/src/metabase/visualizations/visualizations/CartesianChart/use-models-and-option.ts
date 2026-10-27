@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 
 import { useTranslateContent } from "metabase/content-translation/hooks";
 import { isReducedMotionPreferred } from "metabase/utils/dom";
+import type { LegendChart } from "metabase/visualizations/components/legend/plots";
 import { getTooltipOption } from "metabase/visualizations/echarts/cartesian/option/tooltip";
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
@@ -106,6 +107,16 @@ export function useModelsAndOption(
     tc,
   ]);
 
+  const legendChart: LegendChart = useMemo(
+    () => ({
+      layoutInput: chartModel,
+      settings,
+      hasTimelineEvents,
+      renderingContext,
+    }),
+    [chartModel, settings, hasTimelineEvents, renderingContext],
+  );
+
   const chartLayout = useMemo(
     () =>
       getChartLayout(
@@ -208,6 +219,7 @@ export function useModelsAndOption(
   return {
     chartModel,
     chartLayout,
+    legendChart,
     timelineEventsModel,
     option,
     renderingContext,
