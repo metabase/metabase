@@ -1,11 +1,10 @@
 import { act, waitFor } from "@testing-library/react";
 
-import {
-  DATA_APP_BROKER_INIT_MESSAGE_TYPE,
-  DATA_APP_IFRAME_BROKER_HASH_KEY,
-} from "metabase-enterprise/data-apps/constants";
+import { mockSettings } from "__support__/settings";
+import { DATA_APP_BROKER_INIT_MESSAGE_TYPE } from "metabase-enterprise/data-apps/constants";
 
 import type {
+  BrokerInitMessage,
   BrokerPortMessage,
   BrokerResponseMessage,
 } from "../broker/protocol";
@@ -50,11 +49,11 @@ describe("data-app iframe entry, served from a separate isolated origin", () => 
       configurable: true,
       value: { postMessage: jest.fn<void, [unknown, string]>() },
     });
-    window.history.replaceState(
-      {},
-      "",
-      `/embed/apps/sales#${DATA_APP_IFRAME_BROKER_HASH_KEY}=${encodeURIComponent(HOST_ORIGIN)}`,
-    );
+    mockSettings({
+      "isolated-origin": window.location.origin,
+      "site-url": HOST_ORIGIN,
+    });
+    window.history.replaceState({}, "", "/embed/apps/sales");
     const root = document.createElement("div");
     root.id = "root";
     document.body.append(root);
@@ -63,10 +62,11 @@ describe("data-app iframe entry, served from a separate isolated origin", () => 
       await import("./app-data-app");
     });
 
-    const init = new MessageEvent("message", {
-      data: { type: DATA_APP_BROKER_INIT_MESSAGE_TYPE },
-      origin: HOST_ORIGIN,
-    });
+    const data: BrokerInitMessage = {
+      type: DATA_APP_BROKER_INIT_MESSAGE_TYPE,
+      locale: null,
+    };
+    const init = new MessageEvent("message", { data, origin: HOST_ORIGIN });
     Object.defineProperties(init, {
       source: { value: window.parent },
       ports: { value: [hostPort] },

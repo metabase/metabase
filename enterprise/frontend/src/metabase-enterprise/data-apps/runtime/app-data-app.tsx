@@ -41,7 +41,7 @@ const init = async () => {
 
   // The document carries the catalogues. On the isolated origin it is served without a
   // signed-in user, so the top page passes the user's locale.
-  await applyDocumentLocales(getDataAppUserLocale());
+  await applyDocumentLocales(await getDataAppUserLocale());
 
   const rootElement = document.getElementById("root");
 
