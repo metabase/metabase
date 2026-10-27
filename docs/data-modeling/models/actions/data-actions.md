@@ -13,7 +13,7 @@ You can't add data actions to [dashboard buttons](../../../dashboards/actions.md
 
 ## Create a data action
 
-Only admins can create data actions. The **New** button only shows up if an admin has [turned on data actions](./introduction.md#enabling-actions-for-a-database) for at least one database.
+Only admins can create data actions. The **New** button only shows up if an admin has [turned on data actions](./introduction.md#enabling-actions-for-a-database) for at least one database. If you sync the Library with Remote Sync, you can't create or edit data actions on a Metabase in [Read-only mode](../../../installation-and-operation/remote-sync.md#remote-sync-has-two-modes-for-different-roles).
 
 ### Create a data action from a SQL query
 
@@ -46,13 +46,15 @@ Go to **Data Studio** > **Data actions** and click an action. Each action has th
 ## Organize and archive data actions
 
 - **Create a folder**: Click **New** > **Collection**.
-- **Move or archive an action**: Open the action, click the **three-dot** menu next to its name, and select **Move** or **Archive**. Public forms that use an archived action stop working.
+- **Move or archive an action**: Open the action, click the **three-dot** menu next to its name, and select **Move** or **Archive**. Public forms that use an archived action stop working until you unarchive the action.
 - **Archive a folder**: Click the **three-dot** menu next to the folder, and select **Archive**. Metabase archives the folder's actions with it.
 - **Unarchive an action or folder**: Click the **three-dot** menu next to the **New** button, select **View archived actions**, and click the **Unarchive action** or **Unarchive folder** icon. Unarchiving a folder brings back the actions that Metabase archived with it, but not actions that someone archived on their own.
 
 ## Data action permissions
 
-Anyone who can view a data action's folder can run the action. Only admins can create, edit, move, archive, or unarchive data actions and their folders. You can't give other groups [Curate access](../../../permissions/collections.md#collection-permission-levels) to data actions folders.
+Anyone who can view a data action's folder can run the action. In Metabase, people run data actions from Data Studio, so they also need [access to Data Studio](../../data-studio.md#permissions-for-data-studio). To let other people run a data action, make it public (see **Settings** in [Edit and run a data action](#edit-and-run-a-data-action)).
+
+Only admins can create, edit, move, archive, or unarchive data actions and their folders. You can't give other groups [Curate access](../../../permissions/collections.md#collection-permission-levels) to data actions folders.
 
 ## Further reading
 

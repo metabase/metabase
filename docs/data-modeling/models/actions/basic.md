@@ -58,7 +58,7 @@ The Update basic action requires you to pass a value for the entity key.
 
 See [Actions in dashboards](../../../dashboards/actions.md).
 
-## Archiving basic actions
+## Disable basic actions
 
 You can't archive basic actions, or delete them one at a time. Instead, admins can turn off all of a model's basic actions at once:
 

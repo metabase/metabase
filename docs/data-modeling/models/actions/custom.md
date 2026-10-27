@@ -63,11 +63,13 @@ The appearance tab in the action editor modal will display a preview of the vari
 
 ## Action settings
 
-From the model detail page, click on the **three dot menu** (...) next to the action. Once in the action editor, click on the **gear** icon to bring up the action settings.
+To change an action's settings, open the action and click the **gear** icon (**Action settings**).
 
 ### Make public
 
 Creates a publicly shareable link to the action form. Anyone with access to that link can fill out the form and run the action. Useful for creating surveys.
+
+Only admins can make an action public, and [public sharing](../../../embedding/public-links.md) must be on.
 
 ![Public action form](./images/public-form.png)
 
@@ -79,7 +81,7 @@ If something goes wrong, Metabase will display the error message it received fro
 
 ## Deleting a custom action
 
-Only admins can delete a custom action, and deleting it also removes any dashboard buttons and public forms that use it. Moving the model to the trash also deletes all of its actions, and anyone with Curate access to the model's collection can do that. See [Deleting a model deletes its actions](./introduction.md#deleting-a-model-deletes-its-actions).
+Only admins can delete a custom action. Deleting it also removes any dashboard buttons and public forms that use it. Moving the model to the trash also deletes its actions; see [Deleting a model deletes its actions](./introduction.md#deleting-a-model-deletes-its-actions).
 
 1. Visit the model, click the **info** button, and click **Actions**.
 2. Click the **...** next to the action, and select **Delete**.
