@@ -336,7 +336,7 @@ describe("scenarios > data apps > isolated origin", () => {
       .should("eq", 403);
   });
 
-  it("refuses data apps when the isolated origin can't be used", () => {
+  it("refuses data apps when the isolated origin can't be used, and the page says why at once", () => {
     H.mockDataApp(APP_NAME, {
       displayName: APP_DISPLAY_NAME,
       testEnv: TEST_ENV,
@@ -347,9 +347,14 @@ describe("scenarios > data apps > isolated origin", () => {
     cy.request({ url: `/embed/apps/${APP_NAME}`, failOnStatusCode: false })
       .its("status")
       .should("eq", 503);
-    cy.request("/api/session/properties")
-      .its("body")
-      .should("have.property", "isolated-origin", null);
+    cy.request("/api/session/properties").its("body").should("deep.include", {
+      "isolated-origin": null,
+      "isolated-origin-misconfigured?": true,
+    });
+
+    H.openDataApp(APP_NAME);
+    H.main().findByText("Data apps are unavailable").should("be.visible");
+    appIframe().should("not.exist");
   });
 
   it("mirrors the app's routes into the page URL, starts on a deep link, and keeps working after the frame reloads", () => {
@@ -381,7 +386,7 @@ describe("scenarios > data apps > isolated origin", () => {
     });
     cy.location("pathname").should("eq", `/apps/${APP_NAME}/details`);
 
-    cy.log("reload the frame, whose URL no longer has the page's origin");
+    cy.log("reload the frame, which finds its host in its own document again");
     appIframe()
       .its("0.contentWindow")
       .then((win: Window) => {
