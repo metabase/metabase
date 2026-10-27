@@ -76,7 +76,3 @@ mb data-app delete <slug>
 ```
 
 Deleting an app also deletes its collection (with its questions and actions), its bundle, and its group access.
-
-## What you can change in Read-only mode
-
-If your Metabase uses [Remote Sync](../installation-and-operation/remote-sync.md) in Read-only mode, [pulls](./build.md#ship-the-app-to-production-with-remote-sync) are the only way to change an app. You can't create, edit, or delete apps, upload bundles, or edit an app's collection. A pull deletes an app when the app's files are gone from the repository. You can still make an app live or a draft, and choose its groups.
