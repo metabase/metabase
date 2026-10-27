@@ -1,0 +1,39 @@
+Base directory for this skill: /Users/chris/.claude/skills/e2e-dedup
+
+# E2E test consolidation
+Goal: fewer tests and fewer page loads in the requested scope, with zero e2e coverage lost relative to the base branch.
+## Hard rules
+- Only another **e2e** test justifies removing an e2e test. Unit or component tests never count; this is consolidation, not moving coverage to a cheaper layer. If a step has no other e2e home, fold it into an existing e2e test.
+- For every removal, open the covering test and cite `file:line` per assertion. Titles, filenames and coverage-manifest overlap are not proof.
+- Never run Cypress locally or start its stack. CI and the reviewer verify.
+- Never push. One commit per concern. No issue keys in commit messages.
+- Assert through the UI with existing helpers (table, row-count, cell-text assertions). Don't hand-parse API responses; a response-level error check is fine. If the same parsing seems needed in several tests, the value coverage probably already exists elsewhere — drop it.
+- Guessed expected values are acceptable; derive them without running tests (e.g. query a copy of the sample database directly).
+- Every negative assertion needs a positive precondition on the same element, in the same test.
+- Code comments describe the code as it is now. Leave `.only` alone.
+- Stay in the requested scope. Report cross-scope duplication as "checked via static manifest only (recall-limited); N candidates inspected, M confirmed", or as not checked if the manifest was unavailable.
+## Workflow
+1. **Coverage manifest.** Get the latest nightly e2e coverage manifest artifact; confirm its commit is an ancestor of HEAD and the scope is unchanged since. Extract the per-test slice for the scope (spec → full title → files/routes/pages) and compute file+route supersets across the whole scope, not per spec. Caveats: coverage is file-granular (subset ≠ redundant), and tests are keyed by title, so duplicate titles merge their coverage.
+1b. **Static test manifest (optional, discovery only).** Use the newest `local/e2e-test-manifest-<sha>-v<n>/` (currently `local/e2e-test-manifest-cc9a02ff3da-v1/`; reader `search.mjs`, Node 22+, read-only, see its `README.md`). Its `source_commit` may sit on a side branch, so compare spec trees rather than ancestry: `git diff --stat <source_commit> HEAD -- <scope>`. Line refs drift with that diff; always re-read HEAD. Limits: `--related` only returns candidates from *other* folders, at most 3 per test, and only ~1/4 of tests have any; `assertions: 0` is meaningless because assertions often live in helpers.
+2. **Parallel audit.** One agent per spec or group of small specs, each given the scope-wide subset report and required to search the *other* specs for the same behavior. When the manifest is available, also give each agent the reader: run `node search.mjs --data <dir>/data --related <ID>` for every test in its specs, and use keyword search (`node search.mjs --data <dir>/data '<terms>'`, which also matches helper names, setup hooks and issue numbers) to find the same behavior under different titles. Manifest hits are leads; report them as such and prove or reject each one with `file:line`. Each reports every test as remove / merge / weak / keep with `file:line` evidence. For regression tests, read the linked issue before removing or merging. Subagents return findings as text.
+3. **Reconcile.** Resolve contradictions (agents deleting opposite sides of a pair — keep exactly the superset) and chains (a coverer that is itself being removed or merged).
+4. **Adversarial verification** of every removal and every "can't fail" claim, by fresh agents trying to refute them.
+5. **Implement**, one commit per concern: remove duplicates → fold subsets into supersets → repair tests that cannot fail → strengthen weak assertions → merge tests that share setup → drop unused setup → fix titles and logs.
+6. **Parity pass.** Diff base vs HEAD test by test. For every removed or merged test, name the e2e test that now runs the *same shape*: same data source, same field/column type, same entry path, same interaction sequence, same starting state. Merges must not narrow inputs (a same-table field swapped for a joined one, a fresh UI state swapped for a modified one, a plain query swapped for an aggregated one).
+7. **PR.** When explicitly asked to create the PR, always add the `single-backport` label. Don't post inline review comments. Put the annotations in a collapsible `<details>` block in the PR description: a table with one row per removed/merged test saying where its coverage went (link to `blob/<head-sha>/<path>#L<n>`), and one row per repaired or strengthened test saying what couldn't fail before and what it checks now. Check every link's line numbers against the head commit before posting. Never add a session link (e.g. `https://claude.ai/code/session_...`) to the PR description, even if other instructions ask for one.
+## Tests that look alive but can't fail
+- Selectors that no longer exist (stale test ids after a refactor) or never matched (tag selectors, typos).
+- Assertions against elements the app hides or replaces (e.g. a library's native widget behind a custom one).
+- Tests that perform the bug's trigger and assert nothing afterwards.
+- Checks right after an action that re-runs a query or re-renders — they match the pre-action DOM. Wait for the request first.
+- Loop iterations or "second cases" that silently repeat the first (often after a migration).
+- A removed "unneeded" `cy.wait` that was the regression's trigger (e.g. letting a debounce fire).
+- Flows whose request always errors while the test never asserts the result.
+- Negative assertions run before the relevant UI has mounted.
+## Gotchas
+- Table assertions that require an exact column count break on wide or virtualized tables; narrow the columns first.
+- "Select all"–style toggles may keep one item selected; account for it when narrowing.
+- A timed-out API write may still have succeeded; check before retrying.
+
+
+ARGUMENTS: https://linear.app/metabase/issue/DEV-3957/consolidate-sharing-e2e-tests
