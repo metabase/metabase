@@ -43,8 +43,8 @@
             (scope/scope-satisfied? (into #{} (filter string?) token-scopes) api-scope/data-app)))))
 
 (defenterprise request-data-app
-  "The data app, readable by the current user, whose slug a data-app `request` names by [[data-app-slug]], or nil
-  without the data-apps feature."
+  "The data app, readable by the current user, whose slug a data-app `request` names by [[data-app-slug]]; nil for a
+  request that is not a data app's, or without the data-apps feature."
   metabase-enterprise.data-apps.checks
   [_request]
   nil)
@@ -55,11 +55,4 @@
   metabase-enterprise.data-apps.checks
   [_data-app :- ::data-apps.schema/data-app
    _query    :- ::lib-be.schema/maybe-legacy-or-internal-query]
-  nil)
-
-(defn check-request
-  "Call `check` with the data app of `request` followed by `args` when `request` is a data app's."
-  [request check & args]
-  (when-let [data-app (and (data-app-request? request) (request-data-app request))]
-    (apply check data-app args))
   nil)

@@ -109,7 +109,7 @@
    _query-params
    query :- ::lib-be.schema/maybe-legacy-or-internal-query
    request]
-  (data-apps/check-request request data-apps/check-query query)
+  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
   (run-streaming-query
    (-> query
        (dissoc :cache-strategy)
@@ -164,7 +164,7 @@
        [:pivot_results          {:default false} ms/BooleanValue]
        [:csv_include_bom         {:default false} ms/BooleanValue]]
    request]
-  (data-apps/check-request request data-apps/check-query query)
+  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
   (let [viz-settings                  (-> visualization-settings
                                           mi/normalize-visualization-settings
                                           mb.viz/norm->db)
@@ -203,7 +203,7 @@
    _query-params
    query :- ::lib-be.schema/maybe-legacy-query
    request]
-  (data-apps/check-request request data-apps/check-query query)
+  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
   (queries/batch-fetch-query-metadata
    [query]
    (when-some [include-sensitive-fields (get-in query [:settings :include-sensitive-fields])]
@@ -222,7 +222,7 @@
                                            [:pretty {:default true} [:maybe :boolean]]
                                            [::mc/default ::lib-be.schema/maybe-legacy-query]]
    request]
-  (data-apps/check-request request data-apps/check-query (dissoc query :pretty))
+  (some-> (data-apps/request-data-app request) (data-apps/check-query (dissoc query :pretty)))
   (model-persistence/with-persisted-substituion-disabled
     (let [query (-> (lib-be/normalize-query (dissoc query :pretty))
                     (dissoc :constraints :middleware)
@@ -257,7 +257,7 @@
    _query-params
    {:keys [database] :as query} :- ::lib-be.schema/maybe-legacy-query
    request]
-  (data-apps/check-request request data-apps/check-query query)
+  (some-> (data-apps/request-data-app request) (data-apps/check-query query))
   (api/read-check :model/Database database)
   (let [info {:executed-by api/*current-user-id*
               :context     :ad-hoc}]

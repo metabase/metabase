@@ -22,13 +22,15 @@
   (ex-info message {:status-code 400}))
 
 (defenterprise request-data-app
-  "The data app, readable by the current user, whose slug a data-app `request` names by [[data-apps/data-app-slug]];
-  throws a 400 when it names none, and as [[api/read-check]] does when the app is missing or unreadable."
+  "The data app, readable by the current user, whose slug a data-app `request` names by [[data-apps/data-app-slug]], or
+  nil for a request that is not a data app's; throws a 400 when a data-app request names none, and as
+  [[api/read-check]] does when the app is missing or unreadable."
   :feature :data-apps
   [request]
-  (let [slug (or (data-apps/data-app-slug request)
-                 (throw (data-app-error (tru "A data app request must name a data app on this instance."))))]
-    (api/read-check (data-apps.db/data-app-by-slug slug))))
+  (when (data-apps/data-app-request? request)
+    (let [slug (or (data-apps/data-app-slug request)
+                   (throw (data-app-error (tru "A data app request must name a data app on this instance."))))]
+      (api/read-check (data-apps.db/data-app-by-slug slug)))))
 
 (defn- format-ids
   "`ids` in order, for an error message."
