@@ -870,7 +870,6 @@
            api
            api-scope
            lib.be
-           lib.schema
            premium-features
            util}}
 

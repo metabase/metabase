@@ -1,7 +1,7 @@
 (ns metabase-enterprise.data-apps.checks
-  "The checks that hold a data app's ad-hoc queries to its own cards and the Library: no native or internal queries,
-  source cards from the app's collection, tables published to the Library, Library metrics, and segments and measures of
-  published tables."
+  "The checks that hold a data app's ad-hoc queries and card runs to its own cards and the Library: no native or
+  internal queries, cards from the app's collection, tables published to the Library, Library metrics, and segments and
+  measures of published tables."
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -11,7 +11,6 @@
    [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib-be.schema :as lib-be.schema]
    [metabase.lib.core :as lib]
-   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.util.i18n :refer [tru]]))
 
@@ -35,14 +34,11 @@
   [ids]
   (str/join ", " (sort ids)))
 
-(defn- check-card-ids
-  "Throws a 400 unless every one of `card-ids` is a card of `data-app`."
-  [data-app card-ids]
-  (when-let [external (some->> (not-empty card-ids)
-                               (data-apps.db/external-card-ids (:resource_collection_id data-app))
-                               not-empty)]
-    (throw (data-app-error (tru "A data app can use only the cards in its own collection, not the cards {0}."
-                                (format-ids external))))))
+(defn- in-app-collection?
+  "Whether `entity` is in `data-app`'s collection."
+  [data-app entity]
+  (let [collection-id (:resource_collection_id data-app)]
+    (and (some? collection-id) (= collection-id (:collection_id entity)))))
 
 (defenterprise-schema check-query :- :nil
   "Throws a 400 unless `query`, as the `/api/dataset` endpoints normalize it, is neither internal nor native and uses only
@@ -57,7 +53,11 @@
         card-ids   (set/difference (set (lib/all-source-card-ids query)) metric-ids)]
     (when (lib/any-native-stage? query)
       (throw (data-app-error (tru "A data app cannot run native queries."))))
-    (check-card-ids data-app card-ids)
+    (when-let [external (some->> (not-empty card-ids)
+                                 (data-apps.db/external-card-ids (:resource_collection_id data-app))
+                                 not-empty)]
+      (throw (data-app-error (tru "A data app can use only the cards in its own collection, not the cards {0}."
+                                  (format-ids external)))))
     (when-let [external (some-> metric-ids data-apps.db/external-metric-ids not-empty)]
       (throw (data-app-error (tru "A data app can use only metrics from the Library, not the metrics {0}." (format-ids external)))))
     (when-let [external (some-> (lib/all-source-table-ids query) data-apps.db/external-table-ids not-empty)]
@@ -72,9 +72,10 @@
   nil)
 
 (defenterprise-schema check-card :- :nil
-  "Throws a 400 unless the card with `card-id` is a card of `data-app`."
+  "Throws a 400 unless `card` is in `data-app`'s collection."
   :feature :data-apps
   [data-app :- ::data-apps.schema/data-app
-   card-id  :- ::lib.schema.id/card]
-  (check-card-ids data-app #{card-id})
+   card     :- :metabase.queries.schema/card]
+  (when-not (in-app-collection? data-app card)
+    (throw (data-app-error (tru "A data app can run only the cards in its own collection, not the card {0}." (:id card)))))
   nil)
