@@ -427,6 +427,23 @@
   [dialect sql table-name]
   (protocol/add-into-clause (parser) dialect sql table-name))
 
+(defn add-insert-clause
+  "Make an INSERT INTO statement from a SELECT statement, with any WITH clause before INSERT INTO.
+
+   Transforms: 'WITH c AS (SELECT 1 AS x) SELECT x FROM c'
+   Into:       'WITH c AS (SELECT 1 AS x) INSERT INTO \"TABLE\" SELECT x FROM c'
+
+   Used by SQL Server compile-insert, because SQL Server does not allow `INSERT INTO ... WITH`.
+
+   Parameters:
+   - dialect: SQLGlot dialect string (e.g., \"tsql\" for SQL Server)
+   - sql: The SELECT SQL query string
+   - table-name: The target table name (already formatted/quoted)
+
+   Returns: The INSERT INTO SQL string"
+  [dialect sql table-name]
+  (protocol/add-insert-clause (parser) dialect sql table-name))
+
 (defn- convert-field-type
   "Convert field type string (snake_case) to keyword (kebab-case)."
   [type-str]

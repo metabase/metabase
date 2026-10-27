@@ -549,6 +549,29 @@ def add_into_clause(sql: str, table_name: str, dialect: str = None) -> str:
     return ast.sql(dialect=dialect)
 
 
+def add_insert_clause(sql: str, table_name: str, dialect: str = None) -> str:
+    """
+    Make an INSERT INTO statement that inserts the result of a SELECT statement into a table.
+
+    If the SELECT has a WITH clause, the WITH clause goes before INSERT INTO, as SQL Server requires.
+
+    :param sql: The SELECT SQL query string
+    :param table_name: The target table name (already formatted/quoted)
+    :param dialect: SQL dialect (e.g., "tsql" for SQL Server)
+    :return: The INSERT INTO SQL string
+
+    Examples:
+        add_insert_clause("WITH c AS (SELECT 1 AS x) SELECT x FROM c", '"T"', "tsql")
+        => 'WITH c AS (SELECT 1 AS x) INSERT INTO [T] SELECT x FROM c'
+    """
+    ast = sqlglot.parse_one(sql, read=dialect)
+
+    if not isinstance(ast, exp.Query):
+        raise ValueError("SQL must be a SELECT statement")
+
+    return exp.insert(ast, exp.to_table(table_name)).sql(dialect=dialect)
+
+
 def returned_columns_lineage(dialect, sql, default_table_schema, sqlglot_schema_json):
     """
     Extract column lineage from SQL query.

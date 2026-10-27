@@ -73,7 +73,7 @@
                               :index/standalone-create                true
                               :now                                    true
                               :regex                                  false
-                              :stage-ctes                             false
+                              :stage-ctes                             true
                               :stage-ctes/nested                      false
                               :test/jvm-timezone-setting              false
                               :metadata/table-existence-check         true
@@ -1295,7 +1295,7 @@
   [driver {:keys [query output-table]}]
   (let [{sql-query :query sql-params :params} query
         ^String table-name (first (sql.qp/format-honeysql driver (keyword output-table)))]
-    [(format "INSERT INTO %s %s" table-name sql-query) sql-params]))
+    [(sql-tools/add-insert-clause driver sql-query table-name) sql-params]))
 
 (defmethod driver/run-transform! [:sqlserver :table-incremental]
   [driver transform-details opts]

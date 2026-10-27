@@ -172,14 +172,16 @@
                       ["1971-01-01T00:00:00Z" "2017-01-01T00:00:00Z" 20]]
                      (mt/formatted-rows [u.date/temporal-str->iso8601-str u.date/temporal-str->iso8601-str int]
                                         (qp/process-query query))))))))
-      (testing "question on a native question that starts with WITH"
-        (let [query (lib/query mp (lib.metadata/card mp 2))]
-          (mt/with-native-query-testing-context query
-            (let [query-result (qp/process-query query)]
-              (is (= [[1]]
-                     (mt/formatted-rows [int] query-result)))
-              (if (driver/database-supports? driver/*driver* :stage-ctes/nested (mt/db))
-                (is (re-find #"WITH.*__mb_stage"
-                             (-> query-result :data :native_form :query)))
-                (is (not (re-find #"WITH.*__mb_stage"
-                                  (-> query-result :data :native_form :query))))))))))))
+      ;; SQL Server does not allow a `WITH` clause in a subquery or a CTE body
+      (when-not (= driver/*driver* :sqlserver)
+        (testing "question on a native question that starts with WITH"
+          (let [query (lib/query mp (lib.metadata/card mp 2))]
+            (mt/with-native-query-testing-context query
+              (let [query-result (qp/process-query query)]
+                (is (= [[1]]
+                       (mt/formatted-rows [int] query-result)))
+                (if (driver/database-supports? driver/*driver* :stage-ctes/nested (mt/db))
+                  (is (re-find #"WITH.*__mb_stage"
+                               (-> query-result :data :native_form :query)))
+                  (is (not (re-find #"WITH.*__mb_stage"
+                                    (-> query-result :data :native_form :query)))))))))))))
