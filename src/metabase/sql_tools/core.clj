@@ -246,7 +246,9 @@
   Comments and a trailing semicolon are allowed.
   SQL that does not parse in `driver`'s dialect is not read-only, and neither is SQL too long to check or holding a
   literal list too large to parse whole.
-  A function this does not name, a user-defined one included, passes: only the database's own permissions stop it."
+  A function this does not name, a user-defined one included, passes when called by its name.
+  Only the database's own permissions stop it.
+  A call through Snowflake's `IDENTIFIER(...)` is refused whatever it names."
   [driver :- :keyword
    sql    :- :string]
   (true? (:allowed-stmt-type? (is-single-stmt-of-type? driver sql "read-only"))))
