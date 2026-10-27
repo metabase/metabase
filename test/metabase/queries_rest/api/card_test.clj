@@ -5522,3 +5522,31 @@
                     (is (pos-int? (:id (mt/user-http-request :rasta :post 200 "card"
                                                              (-> (joining (str "card__" source-id))
                                                                  (assoc-in [:dataset_query :query :joins] []))))))))))))))))
+
+(deftest sql-change-preserves-metadata-when-required-param-has-no-default-test
+  (testing "editing a native card with a required-no-default parameter preserves existing result_metadata on save (#83734)"
+    (let [mp                    (mt/metadata-provider)
+          state-tag             {:id           "_STATE_"
+                                 :name         "state"
+                                 :display-name "State"
+                                 :type         :text
+                                 :required     true}
+          query-with-default    (-> (lib/native-query mp "SELECT ID, NAME, EMAIL FROM PEOPLE WHERE STATE = {{state}}")
+                                    (lib/with-template-tags {"state" (assoc state-tag :default "CA")}))
+          query-without-default (-> (lib/native-query
+                                     mp
+                                     "SELECT ID, NAME, EMAIL FROM PEOPLE WHERE STATE = {{state}}\n-- edited")
+                                    (lib/with-template-tags {"state" state-tag}))]
+      (mt/with-temp [:model/Card {card-id :id} {:dataset_query query-with-default}]
+        ;; First, run the card with the default value so result_metadata gets populated server-side.
+        (mt/user-http-request :rasta :post 202 (format "card/%d/query" card-id))
+        (let [metadata-before (t2/select-one-fn :result_metadata :model/Card card-id)]
+          (is (seq metadata-before)
+              "baseline: a run with the default value should populate result_metadata")
+          ;; Now edit the SQL and remove the default — the recompute at save time can't run the query
+          (mt/user-http-request :crowberto :put 200 (format "card/%d" card-id)
+                                {:dataset_query query-without-default})
+          (let [metadata-after (t2/select-one-fn :result_metadata :model/Card card-id)]
+            (is (= (map :name metadata-before)
+                   (map :name metadata-after))
+                "result_metadata should be preserved across SQL edits when the recompute cannot run")))))))

@@ -117,15 +117,12 @@
                                          (not= value default)))))]
         (some non-default-param? params)))))
 
-(defn- maybe-skip-result-metadata-persistence
-  "Sets :qp/skip-result-metadata-persistence to true/false."
+(defn- mark-non-default-parameterized
+  "Set `:qp/non-default-parameterized?` to true when any stage carries parameters whose values diverge from
+  their template tag defaults."
   [query]
-  (->> (:stages query)
-       (some stage-has-non-default-params?)
-       boolean
-       ;; `qp/skip-result-metadata-persistence` is used by [[metabase.query-processor.middleware.results-metadata/record-metadata!]]
-       ;; to decide whether to record metadata.
-       (assoc query :qp/skip-result-metadata-persistence)))
+  (assoc query :qp/non-default-parameterized?
+         (boolean (some stage-has-non-default-params? (:stages query)))))
 
 (mu/defn- move-top-level-params-to-stage :- ::lib.schema/query
   "Move any top-level parameters to the stage they affect."
@@ -145,7 +142,7 @@
 
     (seq parameters)
     (-> (move-top-level-params-to-stage* parameters)
-        maybe-skip-result-metadata-persistence)))
+        mark-non-default-parameterized)))
 
 (mu/defn- expand-parameters :- ::lib.schema/query
   "If any parameters were supplied then substitute them into the query."
