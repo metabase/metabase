@@ -35,6 +35,40 @@
                                         #(deliver response %))
     (deref response 10000 ::timed-out)))
 
+(defn- cookie-seen-by-handler
+  "The `Cookie` header the inner handler gets for `request` on the main host while the isolated origin is set."
+  [request]
+  (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly isolated-origin)]
+    (let [handler (mw.isolated-origin/isolated-origin-middleware
+                   (fn [req respond _raise] (respond (get-in req [:headers "cookie"]))))
+          result  (atom nil)]
+      (handler request #(reset! result %) #(reset! result %))
+      @result)))
+
+(deftest same-site-write-with-a-hidden-origin-runs-without-the-session-test
+  (let [cookie  "metabase.SESSION=a; metabase.EMBEDDED_SESSION=b; metabase.DEVICE=c"
+        request (fn [method headers]
+                  (-> (req "mb.example.com" "/api/user")
+                      (assoc :request-method method)
+                      (update :headers merge {"cookie" cookie} headers)))]
+    (testing "app code on a same-site isolated origin can send `Origin: null`, so such a write gets no session cookie"
+      (is (= "metabase.DEVICE=c"
+             (cookie-seen-by-handler (request :post {"origin" "null", "sec-fetch-site" "same-site"})))))
+    (testing "the session cookie stays on"
+      (testing "a cross-site write, which carries it only under `SameSite=None`, where any site can send one"
+        (is (= cookie (cookie-seen-by-handler (request :post {"origin" "null", "sec-fetch-site" "cross-site"})))))
+      (testing "a read"
+        (is (= cookie (cookie-seen-by-handler (request :get {"sec-fetch-site" "same-site"})))))
+      (testing "a write that names its origin"
+        (is (= cookie (cookie-seen-by-handler (request :post {"origin"         "https://mb.example.com"
+                                                              "sec-fetch-site" "same-origin"}))))))))
+
+(deftest without-a-site-url-the-setting-is-off-test
+  (testing "without a site URL nothing tells the main host from the isolated origin, so the setting does nothing"
+    (mt/with-temporary-setting-values [site-url nil]
+      (mt/with-temp-env-var-value! [mb-isolated-origin "http://localhost:3001"]
+        (is (= :passed-through (run (req "localhost:3000" "/api/session/properties"))))))))
+
 (deftest unset-is-a-no-op-test
   (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly nil)]
     (is (= :passed-through (run (req "mb.example.com" "/embed/apps/sales"))))
@@ -69,10 +103,11 @@
 (deftest main-host-redirect-uses-the-normalized-isolated-origin-test
   (testing "a trailing slash in MB_ISOLATED_ORIGIN doesn't reach the redirect, where the apps
             host would refuse the resulting `//embed/apps/...`"
-    (mt/with-temp-env-var-value! [mb-isolated-origin "https://apps.example.com/"]
-      (is (= "https://apps.example.com/embed/apps/sales"
-             (get-in (run (req "mb.example.com" "/embed/apps/sales"))
-                     [:headers "Location"]))))))
+    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+      (mt/with-temp-env-var-value! [mb-isolated-origin "https://apps.example.com/"]
+        (is (= "https://apps.example.com/embed/apps/sales"
+               (get-in (run (req "mb.example.com" "/embed/apps/sales"))
+                       [:headers "Location"])))))))
 
 (deftest main-host-redirect-keeps-the-site-url-path-test
   (testing "on a subpath deployment the redirect keeps the site URL path, as the iframe src does"
@@ -103,12 +138,13 @@
 (deftest isolated-origin-is-matched-in-a-forwarded-host-list-test
   (testing "a proxy chain's comma-separated X-Forwarded-Host that names the isolated origin first is the isolated
             origin"
-    (mt/with-temp-env-var-value! [mb-isolated-origin isolated-origin]
-      (let [forwarded (fn [uri]
-                        (assoc-in (req "metabase:3000" uri)
-                                  [:headers "x-forwarded-host"] "apps.example.com, edge.internal"))]
-        (is (= :passed-through (run (forwarded "/embed/apps/sales"))))
-        (is (=? {:status 404} (run (forwarded "/api/session/properties"))))))))
+    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+      (mt/with-temp-env-var-value! [mb-isolated-origin isolated-origin]
+        (let [forwarded (fn [uri]
+                          (assoc-in (req "metabase:3000" uri)
+                                    [:headers "x-forwarded-host"] "apps.example.com, edge.internal"))]
+          (is (= :passed-through (run (forwarded "/embed/apps/sales"))))
+          (is (=? {:status 404} (run (forwarded "/api/session/properties")))))))))
 
 (deftest main-app-works-when-the-isolated-origin-shares-its-host-name-test
   (testing "an isolated origin on another port of the main host is refused, and main-host requests pass through"
@@ -148,7 +184,13 @@
                                     :key_hashed (session/hash-session-key session-key)
                                     :user_id    (mt/user->id :rasta)})
         (testing "the app document is refused when a live session reaches the isolated origin"
-          (is (=? {:status 403} (doc-with-cookie (str "metabase.SESSION=" session-key)))))
+          (let [response (doc-with-cookie (str "metabase.SESSION=" session-key))]
+            (is (=? {:status 403} response))
+            (testing "and the refusal deletes the cookie if it is the isolated origin's own, left from when the host
+                      served Metabase: a cookie the main host leaks with a `Domain` stays, and keeps the app refused"
+              (is (some #(and (str/starts-with? % "metabase.SESSION=;")
+                              (not (str/includes? % "Domain=")))
+                        (get-in response [:headers "Set-Cookie"]))))))
         (testing "a session cookie that is no live session does not block the app: app code can plant one"
           (is (=? {:status 200, :body "DATA-APP"} (doc-with-cookie (str "metabase.SESSION=" (random-uuid))))))
         (testing "an unrelated cookie does not block the app"
@@ -190,16 +232,17 @@
 
 (deftest main-host-refuses-requests-from-the-isolated-origin-test
   (testing "the app document sends no requests to the main host, so the main host refuses anything from its origin"
-    (mt/with-temp-env-var-value! [mb-isolated-origin isolated-origin]
-      (doseq [method [:get :post]]
-        (is (=? {:status 403}
-                (run (-> (req "mb.example.com" "/api/user")
-                         (assoc :request-method method)
-                         (assoc-in [:headers "origin"] isolated-origin))))
-            method))
-      (testing "but not requests from the main host itself"
-        (is (= :passed-through (run (assoc-in (req "mb.example.com" "/api/user") [:headers "origin"]
-                                              "https://mb.example.com"))))))))
+    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+      (mt/with-temp-env-var-value! [mb-isolated-origin isolated-origin]
+        (doseq [method [:get :post]]
+          (is (=? {:status 403}
+                  (run (-> (req "mb.example.com" "/api/user")
+                           (assoc :request-method method)
+                           (assoc-in [:headers "origin"] isolated-origin))))
+              method))
+        (testing "but not requests from the main host itself"
+          (is (= :passed-through (run (assoc-in (req "mb.example.com" "/api/user") [:headers "origin"]
+                                                "https://mb.example.com")))))))))
 
 (deftest unusable-setting-fails-closed-test
   (testing "with MB_ISOLATED_ORIGIN set to a value it can't use, data apps are refused rather than served without it"
@@ -208,26 +251,6 @@
         (is (=? {:status 503} (run (req "mb.example.com" "/embed/apps/sales"))))
         (testing "the rest of the main app keeps working"
           (is (= :passed-through (run (req "mb.example.com" "/api/session/properties")))))))))
-
-(deftest isolated-origin-warns-once-when-site-url-missing-test
-  (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly isolated-origin)]
-    (reset! @#'mw.isolated-origin/warned-missing-site-url? false)
-    (mt/with-temporary-setting-values [site-url nil]
-      (testing "logs once when MB_ISOLATED_ORIGIN is set without a site URL"
-        (mt/with-log-messages-for-level [messages [metabase.server.middleware.isolated-origin :error]]
-          (run (req "mb.example.com" "/api/dataset"))
-          (is (some #(str/includes? (:message %) "MB_ISOLATED_ORIGIN is set but the site URL is not")
-                    (messages)))))
-      (testing "and does not repeat the warning on later requests"
-        (mt/with-log-messages-for-level [messages [metabase.server.middleware.isolated-origin :error]]
-          (run (req "mb.example.com" "/api/dataset"))
-          (is (empty? (messages))))))
-    (testing "no warning when a site URL is configured"
-      (reset! @#'mw.isolated-origin/warned-missing-site-url? false)
-      (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
-        (mt/with-log-messages-for-level [messages [metabase.server.middleware.isolated-origin :error]]
-          (run (req "mb.example.com" "/api/dataset"))
-          (is (empty? (messages))))))))
 
 (deftest isolated-origin-serves-the-document-without-a-session-test
   (testing "the isolated origin serves the app document to a request without the session cookie, which never reaches it"

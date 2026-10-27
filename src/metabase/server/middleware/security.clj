@@ -321,14 +321,17 @@
                                                                (map-tile-server->hosts))
                                                    config/is-dev? (conj frontend-address))]
                                   (cond-> (cond
-                                            ;; A sandboxed data-app document NEVER gets `*`: an ungated
-                                            ;; `new Image()`/`<img>` under `img-src *` would beacon the viewing
-                                            ;; user's data off-origin (the `img` tag can't be blocked — the SDK
-                                            ;; uses it). Always use the restricted allowlist: `'self'` (the
+                                            ;; A sandboxed data-app document doesn't get the instance's `*`: an
+                                            ;; ungated `new Image()`/`<img>` under `img-src *` would beacon the
+                                            ;; viewing user's data off-origin (the `img` tag can't be blocked — the
+                                            ;; SDK uses it). Always use the restricted allowlist: `'self'` (the
                                             ;; instance) + the admin's "Allowed domains for images"
                                             ;; (`csp-img-allowed-hosts`, so custom viz still renders) + blob:, plus
                                             ;; the app's own `allowed_hosts` (mirroring connect-src/frame-src —
-                                            ;; the app can already fetch those, so this adds no exfil channel).
+                                            ;; the app can already fetch those, so this adds no exfil channel). On
+                                            ;; the isolated origin those hosts are `*` until the app's own policy
+                                            ;; narrows them: see `:data-app-connect-hosts` in
+                                            ;; [[add-security-headers*]].
                                             data-app-iframe?                  (into restricted data-app-connect-hosts)
                                             (server.settings/csp-img-enabled) restricted
                                             :else                             (into ["*"] always-allowed-resource-hosts))

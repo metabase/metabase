@@ -59,6 +59,13 @@
               (is (true? (server.settings/isolated-origin-misconfigured?)))
               (is (= 1 (count (messages)))))))))))
 
+(deftest isolated-origin-needs-a-site-url-test
+  (testing "without a site URL the value can't be used, and data apps are off"
+    (mt/with-temporary-setting-values [site-url nil]
+      (mt/with-temp-env-var-value! [mb-isolated-origin "http://localhost:3001"]
+        (is (nil? (server.settings/isolated-origin)))
+        (is (true? (server.settings/isolated-origin-misconfigured?)))))))
+
 (deftest isolated-origin-unset-is-not-misconfigured-test
   (mt/with-temp-env-var-value! [mb-isolated-origin nil]
     (is (nil? (server.settings/isolated-origin)))
