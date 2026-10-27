@@ -283,3 +283,7 @@ export interface UpdateDatabaseRouterRequest {
   id: DatabaseId;
   user_attribute: string | null;
 }
+
+export interface RouterDatabaseInfo {
+  has_transforms: boolean;
+}

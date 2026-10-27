@@ -9,11 +9,23 @@ import type {
   DatabaseId,
   DatabaseUsageInfo,
   Engine,
+  RouterDatabaseInfo,
   SchemaName,
 } from "metabase-types/api";
 
 import { PERMISSION_ERROR } from "./constants";
 import { setupTableEndpoints } from "./table";
+
+export function setupRouterDatabaseInfoEndpoint(
+  databaseId: DatabaseId,
+  info: RouterDatabaseInfo,
+) {
+  fetchMock.get(
+    `path:/api/ee/database-routing/router-database/${databaseId}`,
+    info,
+    { name: `router-database-${databaseId}-info` },
+  );
+}
 
 export function setupDatabaseEndpoints(db: Database) {
   fetchMock.get(`path:/api/database/${db.id}`, db);

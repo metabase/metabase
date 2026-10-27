@@ -95,6 +95,14 @@
       (database-routing.db/update-router-user-attribute! db-id user-attribute)
       (database-routing.db/insert-router! db-id user-attribute))))
 
+(api.macros/defendpoint :get "/router-database/:id" :- [:map {:closed true}
+                                                        [:has_transforms :boolean]]
+  "Facts about the Database with `id` that block database routing and that the Database itself does not hold.
+  `has_transforms` is true when a transform reads from the Database, including a transform in the Trash."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (api/check-404 (database-routing.db/database id))
+  {:has_transforms (database-routing.db/transform-exists-for-source-database? id)})
+
 ;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
 ;; use our API + we will need it when we make auto-TypeScript-signature generation happen
 ;;

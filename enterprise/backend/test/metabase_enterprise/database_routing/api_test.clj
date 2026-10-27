@@ -97,7 +97,30 @@
     (mt/with-temp [:model/Database {db-id :id} {}]
       (mt/with-model-cleanup [:model/DatabaseRouter]
         (mt/user-http-request :rasta :put 403 (str "ee/database-routing/router-database/" db-id)
-                              {:user_attribute "foo"})))))
+                              {:user_attribute "foo"}))))
+  (testing "GET /api/ee/database-routing/router-database/:id"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (mt/user-http-request :rasta :get 403 (str "ee/database-routing/router-database/" db-id)))))
+
+(deftest router-database-has-transforms-test
+  (testing "GET /api/ee/database-routing/router-database/:id"
+    (mt/with-temp [:model/Database {db-id :id} {}]
+      (testing "is false when no transform reads from the database"
+        (is (= {:has_transforms false}
+               (mt/user-http-request :crowberto :get 200 (str "ee/database-routing/router-database/" db-id)))))
+      (testing "is true when a transform reads from the database"
+        (mt/with-temp [:model/Transform _ {:source_database_id db-id :name "Live Transform"}]
+          (is (= {:has_transforms true}
+                 (mt/user-http-request :crowberto :get 200 (str "ee/database-routing/router-database/" db-id))))))
+      (testing "is true when the only transform that reads from the database is in the Trash"
+        (mt/with-temp [:model/Transform _ {:source_database_id db-id :name "Trashed Transform" :archived true}]
+          (is (= {:has_transforms true}
+                 (mt/user-http-request :crowberto :get 200 (str "ee/database-routing/router-database/" db-id))))
+          (is (= "Cannot enable database routing for a database with transforms"
+                 (mt/user-http-request :crowberto :put 400 (str "ee/database-routing/router-database/" db-id)
+                                       {:user_attribute "db_name"})))))))
+  (testing "returns 404 for a database that does not exist"
+    (mt/user-http-request :crowberto :get 404 (str "ee/database-routing/router-database/" Integer/MAX_VALUE))))
 
 (deftest router-databases-have-a-router-user-attribute-on-the-get-api
   (mt/with-temp [:model/Database {db-id :id} {}

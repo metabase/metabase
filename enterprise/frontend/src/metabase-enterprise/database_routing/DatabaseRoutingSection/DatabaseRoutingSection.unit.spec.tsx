@@ -1,7 +1,9 @@
+import fetchMock from "fetch-mock";
+
 import {
   setupDatabasesEndpoints,
   setupEnginesEndpoint,
-  setupListTransformsEndpoint,
+  setupRouterDatabaseInfoEndpoint,
   setupUserAttributesEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
@@ -20,15 +22,19 @@ import { DatabaseRoutingSection } from "./DatabaseRoutingSection";
 interface SetupOpts {
   database?: Database;
   isAdmin?: boolean;
+  hasTransforms?: boolean;
 }
 
 const setup = ({
   database = createMockDatabase(),
   isAdmin = true,
+  hasTransforms = false,
 }: SetupOpts = {}) => {
   setupUserAttributesEndpoint(["cool_guy", "boss_gal"]);
   setupDatabasesEndpoints([database]);
-  setupListTransformsEndpoint([]);
+  setupRouterDatabaseInfoEndpoint(database.id, {
+    has_transforms: hasTransforms,
+  });
   setupEnginesEndpoint(
     createMockEngines({
       "bigquery-cloud-sdk": createMockEngine({
@@ -164,5 +170,35 @@ describe("DatabaseRoutingSection", () => {
         "Database routing can't be enabled when a Writable Connection is enabled.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("should disable routing when a transform reads from the database", async () => {
+    setup({
+      database: createMockDatabase({
+        engine: "postgres",
+        features: ["database-routing"],
+      }),
+      hasTransforms: true,
+    });
+
+    expect(
+      await screen.findByText(
+        "Database routing can't be enabled when transforms exist.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Enable database routing")).toBeDisabled();
+  });
+
+  it("should not request the routing info for a non-admin", async () => {
+    const database = createMockDatabase({
+      engine: "postgres",
+      features: ["database-routing"],
+    });
+    setup({ database, isAdmin: false });
+
+    expect(await screen.findByText("Database routing")).toBeInTheDocument();
+    expect(
+      fetchMock.callHistory.called(`router-database-${database.id}-info`),
+    ).toBe(false);
   });
 });

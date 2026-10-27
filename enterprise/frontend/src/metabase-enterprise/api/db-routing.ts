@@ -4,6 +4,8 @@ import { idTag, invalidateTags, listTag } from "metabase/api/tags";
 import type {
   CreateDestinationDatabaseRequest,
   Database,
+  DatabaseId,
+  RouterDatabaseInfo,
   UpdateDatabaseRouterRequest,
 } from "metabase-types/api";
 
@@ -11,6 +13,14 @@ import { EnterpriseApi } from "./api";
 
 export const dbRoutingApi = EnterpriseApi.injectEndpoints({
   endpoints: (builder) => ({
+    getRouterDatabaseInfo: builder.query<RouterDatabaseInfo, DatabaseId>({
+      query: (id) => ({
+        method: "GET",
+        url: `/api/ee/database-routing/router-database/${id}`,
+      }),
+      // `has_transforms` changes when a transform is created or deleted
+      providesTags: () => [listTag("transform")],
+    }),
     updateRouterDatabase: builder.mutation<void, UpdateDatabaseRouterRequest>({
       query: ({ id, ...body }) => ({
         method: "PUT",
@@ -58,6 +68,7 @@ export const dbRoutingApi = EnterpriseApi.injectEndpoints({
 });
 
 export const {
+  useGetRouterDatabaseInfoQuery,
   useCreateDestinationDatabaseMutation,
   useUpdateRouterDatabaseMutation,
 } = dbRoutingApi;
