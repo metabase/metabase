@@ -163,7 +163,6 @@ export function initDataAppBroker(): void {
 const abortReason = (signal: AbortSignal): unknown =>
   signal.reason ?? new DOMException("The operation was aborted.", "AbortError");
 
-/** The broker port, or a rejection when `signal` aborts first. */
 function waitForPort(signal: AbortSignal | null): Promise<MessagePort> {
   if (!signal) {
     return ready;
@@ -185,7 +184,6 @@ function waitForPort(signal: AbortSignal | null): Promise<MessagePort> {
   });
 }
 
-/** Send a request to the top page over the broker port and rebuild its Response. */
 async function brokeredFetch(
   request: Request,
   signal: AbortSignal | null,

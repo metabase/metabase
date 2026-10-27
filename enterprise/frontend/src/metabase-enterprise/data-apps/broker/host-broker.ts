@@ -30,10 +30,7 @@ const FORWARDED_REQUEST_HEADERS = new Set([
 
 const ANTI_CSRF_HEADER = "x-metabase-anti-csrf-token";
 
-/**
- * The client a brokered request reports itself as. Matches
- * `metabase.analytics.sdk/data-app-client` — typed off the SDK config so a typo cannot compile.
- */
+/** Matches `metabase.analytics.sdk/data-app-client`; typed off the SDK config so a typo can't compile. */
 const DATA_APP_CLIENT: (typeof EMBEDDING_SDK_CONFIG)["metabaseClientRequestHeader"] =
   "data-app";
 
@@ -104,7 +101,6 @@ export async function handleBrokerRequest(
 
     const response = await fetch(outbound);
 
-    // Capture a rotated token for the host; strip it from what reaches the app.
     updateAntiCsrfToken(response);
 
     const responseHeaders = Object.fromEntries(response.headers.entries());
