@@ -79,7 +79,38 @@ The output is a serdes tree, `collections/main/<collection>.yaml` plus one card 
 MB_DB_CONNECTION_URI=... clojure -M:run:ee import /path/to/serdes-out -e
 ```
 
-Then open each metric in the UI, run it, and compare the number against a hand-written SQL query.
+Then open each metric in the UI, run it, and compare the number against a hand-written SQL query. The end-to-end
+test below does the same thing against a test instance.
+
+## The end-to-end test
+
+`dev/test/dev/dbt_import/e2e_test.clj` is the import of QRES-2 as a test: it loads the project's mart tables into a
+Postgres test dataset, converts the fixture manifest for that database, imports the YAML with serdes, and checks that
+every converted metric returns the number a hand-written SQL query does, that the curated dimensions break a metric
+out through their implicit joins, that the cards came through with result metadata, and that importing a second time
+updates the cards instead of duplicating them. It runs on Postgres only: the manifest names its tables
+`public.fact_sales` and so on, serdes binds a field ref by exact name, and a Postgres test dataset is called exactly
+that, where H2 would upper-case it. Like the other tests in `dev/test`, it is not picked up by the default test run,
+so run it by name with the Postgres driver enabled:
+
+```sh
+./bin/test-agent --drivers=postgres :only '[dev.dbt-import.e2e-test]'
+```
+
+The dataset is `dev/resources/dbt_import/flexanalytics_marts.edn`, the four mart tables the semantic models are defined
+on (`fact_sales`, `dim_customer`, `dim_product`, `dim_order`; `dim_date` has no semantic model), in the format of
+`test/metabase/test/data/dataset_definitions/*.edn`, with dbt's surrogate keys as primary and foreign keys so a sync
+knows the joins. Regenerate it after the checkout changes, from a REPL at the repo root with a Postgres to build the
+project in (the connection defaults to the test suite's `MB_POSTGRESQL_TEST_*` settings; the database `dbt_bi` has
+to exist):
+
+```clojure
+(dev.dbt-import.marts/regenerate!)
+(dev.dbt-import.marts/regenerate! {:connection {:port 15432, :user "postgres", :password "password"}})
+```
+
+It copies the clone to a scratch directory like `dev.dbt-import.fixture/regenerate!` does, runs `dbt seed` and
+`dbt run` there against that Postgres, and dumps the tables.
 
 ## The test fixture
 

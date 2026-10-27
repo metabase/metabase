@@ -29,7 +29,7 @@
    (com.fasterxml.jackson.core JsonFactory StreamWriteFeature)
    (com.fasterxml.jackson.core.json JsonWriteFeature)
    (com.fasterxml.jackson.core.util DefaultIndenter DefaultPrettyPrinter Separators Separators$Spacing)
-   (com.fasterxml.jackson.databind DeserializationFeature ObjectMapper)
+   (com.fasterxml.jackson.databind DeserializationFeature ObjectMapper ObjectWriter)
    (java.io File)
    (java.nio.file Files)
    (java.nio.file.attribute FileAttribute)
@@ -45,7 +45,7 @@
 (def ^:private node-keys ["unique_id" "resource_type" "name" "database" "schema" "alias" "relation_name" "description" "columns"])
 (def ^:private column-keys ["name" "description" "data_type"])
 
-(mu/defn- copy-project
+(mu/defn copy-project
   "Copy the tracked files of the checkout at `project`, plus its installed packages so `dbt deps` need not run, into
   `scratch`."
   [^File project :- (ms/InstanceOfClass File)
@@ -84,21 +84,21 @@
     (zero? (:exit (sh/sh "sh" "-c" "command -v uvx"))) ["uvx" "--from" "dbt-core" "--with" "dbt-postgres" "dbt"]
     :else (throw (ex-info "neither dbt nor uvx is on PATH; see the README" {}))))
 
-(mu/defn- dbt!
-  "Run `dbt <subcommand>` in `scratch`, failing with its output when it does."
+(mu/defn dbt!
+  "Run `dbt args...` in `scratch`, failing with its output when it does."
   [^File scratch :- (ms/InstanceOfClass File)
-   subcommand    :- :string]
-  (let [{:keys [exit out err]} (apply sh/sh (concat (dbt-command) [subcommand "--no-use-colors" :dir scratch]))]
+   & args        :- [:* :string]]
+  (let [{:keys [exit out err]} (apply sh/sh (concat (dbt-command) args ["--no-use-colors" :dir scratch]))]
     (when-not (zero? exit)
-      (throw (ex-info (format "dbt %s failed (exit %d)" subcommand exit) {:out out, :err err})))))
+      (throw (ex-info (format "dbt %s failed (exit %d)" (str/join " " args) exit) {:out out, :err err})))))
 
-(def ^:private reader
+(def ^:private ^ObjectMapper reader
   "Reads JSON objects as `LinkedHashMap`s, so key order is kept, and floats as `BigDecimal`s, so they are written back
   as they were."
   (doto (ObjectMapper.)
     (.enable DeserializationFeature/USE_BIG_DECIMAL_FOR_FLOATS)))
 
-(def ^:private writer
+(def ^:private ^ObjectWriter writer
   "Writes JSON the way Python's `json.dump(indent=1)`, which `dbt` uses, does."
   (let [indenter   (DefaultIndenter. " " "\n")
         separators (-> (Separators/createDefaultInstance)
@@ -149,7 +149,9 @@
       (.put "semantic_models" (.get manifest "semantic_models"))
       (.put "metrics" (.get manifest "metrics")))))
 
-(defn- delete-recursively! [^File dir]
+(defn delete-recursively!
+  "Delete `dir` and everything under it."
+  [^File dir]
   (run! io/delete-file (reverse (file-seq dir))))
 
 (mu/defn regenerate! :- :string
