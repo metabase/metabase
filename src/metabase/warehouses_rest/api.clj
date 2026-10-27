@@ -85,9 +85,8 @@
   (if (empty? dbs)
     dbs
     (let [db-ids        (map :id dbs)
-          rows          (if exclude-unpublished-tables?
-                          (filter :is_published (warehouses-rest.db/active-visible-tables-for-databases db-ids))
-                          (warehouses-rest.db/active-visible-schemas-for-databases db-ids))
+          rows          (cond->> (warehouses-rest.db/active-visible-schemas-for-databases db-ids)
+                          exclude-unpublished-tables? (filter :is_published))
           schemas-by-db (reduce
                          (fn [m {:keys [db_id schema]}]
                            (update m db_id (fnil conj []) schema))

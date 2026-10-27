@@ -634,6 +634,9 @@
              (let [dbs (:data (mt/user-http-request :crowberto :get 200 "database?include=tables" as-data-app))]
                (is (= [(mt/id)] (map :id dbs)))
                (is (= [(mt/id :venues)] (map :id (:tables (first dbs)))))))
+           (testing "with only the schemas of its published tables"
+             (is (= [(str schema)]
+                    (:schemas (first (:data (mt/user-http-request :crowberto :get 200 "database?include=schemas" as-data-app)))))))
            (testing "and not the saved-questions virtual database"
              (is (= [(mt/id)] (map :id (:data (mt/user-http-request :crowberto :get 200 "database?saved=true" as-data-app))))))
            (testing "a database with published tables lists only those, in only their schemas"
