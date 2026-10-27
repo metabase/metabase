@@ -1,10 +1,8 @@
-import cx from "classnames";
 import type React from "react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { uniqueId } from "underscore";
 
-import Animation from "metabase/css/core/animation.module.css";
 import { Modal, type ModalOverlayProps, Stack } from "metabase/ui";
 
 import Styles from "./sidesheet.module.css";
@@ -36,6 +34,18 @@ const sizes: Record<SidesheetSize, string> = {
   auto: "auto",
 };
 
+// Mantine's Drawer defaults for `position="right"`: the content slides in
+// with `slide-left` (250ms, Transition default) and the overlay fades (200ms).
+const transitionProps = { transition: "slide-left" } as const;
+
+// The theme gives every modal CSS keyframe animations, which override the
+// inline styles Mantine's Transition applies.
+const noThemeAnimationStyles = {
+  overlay: { animation: "none" },
+  content: { animation: "none" },
+  inner: { animation: "none" },
+};
+
 export function Sidesheet({
   title,
   isOpen,
@@ -49,14 +59,38 @@ export function Sidesheet({
   offset,
 }: SidesheetProps) {
   const titleId = useMemo(() => uniqueId("sidesheet-title"), []);
+
+  // Mantine's Portal renders its children one commit after it mounts, which
+  // is the same commit in which consumers flip `isOpen` on mount. The
+  // Transition would then start out open and skip the enter animation, so
+  // wait a frame until it has rendered closed.
+  const [isReady, setIsReady] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setIsReady(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  // Consumers usually unmount the sheet in `onClose`, so play the exit
+  // transition first and only then tell them.
+  const [isClosing, setIsClosing] = useState(false);
+  const handleExitTransitionEnd = () => {
+    if (isClosing) {
+      setIsClosing(false);
+      onClose();
+    }
+  };
+
   return (
     <Modal.Root
       variant="sidesheet"
-      opened={isOpen}
-      onClose={onClose}
+      opened={isOpen && isReady && !isClosing}
+      onClose={() => setIsClosing(true)}
+      onExitTransitionEnd={handleExitTransitionEnd}
       closeOnEscape={closeOnEscape}
       shadow="xs_outline"
       h="100dvh"
+      transitionProps={transitionProps}
+      styles={noThemeAnimationStyles}
     >
       {withOverlay && (
         <Modal.Overlay
@@ -66,7 +100,6 @@ export function Sidesheet({
         />
       )}
       <Modal.Content
-        transitionProps={{ duration: 0 }}
         px={0}
         w={sizes[size]}
         pos="fixed"
@@ -76,9 +109,7 @@ export function Sidesheet({
         bg="background_surface-primary"
         data-testid="sidesheet"
         data-offset={offset || undefined}
-        classNames={{
-          content: cx(Styles.SidesheetContent, Animation.slideLeft),
-        }}
+        classNames={{ content: Styles.SidesheetContent }}
         aria-labelledby={titleId}
       >
         <Modal.Header
