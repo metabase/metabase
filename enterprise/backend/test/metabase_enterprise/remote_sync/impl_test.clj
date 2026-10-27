@@ -445,6 +445,41 @@
           (is (= card-path (t2/select-one-fn :file_path :model/RemoteSyncObject :model_type "Card" :model_id card-id))
               "the card's row records the file it was imported from"))))))
 
+(deftest import!-card-with-legacy-collection-preview-test
+  (testing "importing a card file written before collection_preview was removed ignores the key"
+    (let [card-eid    "legacy-preview-cardxx"
+          test-files  {"main" {"collections/main/test_collection_1/test_collection_1.yaml"
+                               (test-helpers/generate-collection-yaml "test-collection-1xxxx" "Test Collection 1")
+                               "collections/main/test_collection_1/legacy_preview_card.yaml"
+                               (str (test-helpers/generate-card-yaml card-eid "Legacy Preview Card" "test-collection-1xxxx")
+                                    "collection_preview: false\n")}}
+          mock-source (test-helpers/create-mock-source :initial-files test-files)]
+      (mt/with-model-cleanup [:model/Card :model/Collection :model/RemoteSyncTask]
+        (let [task-id (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "import" :initiated_by (mt/user->id :rasta)})
+              result  (impl/import! (source.p/snapshot mock-source) task-id)]
+          (is (= :success (:status result)))
+          (is (=? {:name "Legacy Preview Card"}
+                  (t2/select-one :model/Card :entity_id card-eid))))))))
+
+(deftest export!-card-omits-collection-preview-test
+  (testing "exported card files no longer carry collection_preview"
+    (mt/with-temporary-setting-values [remote-sync-type :read-write]
+      (mt/with-temp [:model/Collection {coll-id :id} {:name "Test Collection" :is_remote_synced true :entity_id "test-collection-1xxxx" :location "/"}
+                     :model/Card {card-id :id} {:name "Test Card" :collection_id coll-id :entity_id "test-card-1xxxxxxxxxx"}]
+        (t2/insert! :model/RemoteSyncObject
+                    [{:model_type "Collection" :model_id coll-id :model_name "Test Collection"
+                      :status "create" :status_changed_at (t/offset-date-time)}
+                     {:model_type "Card" :model_id card-id :model_name "Test Card"
+                      :status "create" :status_changed_at (t/offset-date-time)}])
+        (let [mock-source (test-helpers/create-mock-source)
+              task-id     (t2/insert-returning-pk! :model/RemoteSyncTask {:sync_task_type "export" :initiated_by (mt/user->id :rasta)})
+              result      (impl/export! (source.p/snapshot mock-source) task-id "Test export")
+              card-yaml   (some (fn [[path content]] (when (str/includes? path "test_card") content))
+                                (get @(:files-atom mock-source) "main"))]
+          (is (= :success (:status result)))
+          (is (=? {:entity_id "test-card-1xxxxxxxxxx"} (yaml/parse-string card-yaml)))
+          (is (not (contains? (yaml/parse-string card-yaml) :collection_preview))))))))
+
 (deftest error-handling-propagation-through-private-functions-test
   (testing "error handling propagation through private functions"
     (let [mock-source (test-helpers/create-mock-source :fail-mode :network-error)

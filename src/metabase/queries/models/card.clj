@@ -1739,7 +1739,7 @@
 
 (defmethod serdes/make-spec "Card"
   [_model-name _opts]
-  {:copy [:archived :archived_directly :collection_position :collection_preview :description :display
+  {:copy [:archived :archived_directly :collection_position :description :display
           :embedding_params :enable_embedding :embedding_type :entity_id :public_uuid :type :name
           :card_schema]
    :skip [;; instance-specific build version; serializing it produces spurious remote-sync diffs, and the
@@ -1790,7 +1790,6 @@
     :dimension_mappings     {:export metrics/export-dimension-mappings :import metrics/import-dimension-mappings}}
    :defaults {:archived            false
               :archived_directly   false
-              :collection_preview  true
               :enable_embedding    false}})
 
 (defn- card-deps
