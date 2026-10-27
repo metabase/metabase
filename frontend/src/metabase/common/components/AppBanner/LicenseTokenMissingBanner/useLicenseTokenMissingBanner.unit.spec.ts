@@ -2,6 +2,7 @@ import { act } from "@testing-library/react";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
+  countRequests,
   findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
@@ -189,9 +190,8 @@ describe("useLicenseTokenMissingBanner", () => {
       act(() => {
         result.current.dismissBanner();
       });
-      await waitFor(async () => {
-        const [{ url }] = await findRequests("PUT");
-        expect(url).toContain(SETTINGS_ENDPOINT);
+      await waitFor(() => {
+        expect(countRequests("PUT", SETTINGS_ENDPOINT)).toBe(1);
       });
     });
 
@@ -213,12 +213,8 @@ describe("useLicenseTokenMissingBanner", () => {
         result.current.dismissBanner();
       });
 
-      let dismissalTimestamp;
-
-      await waitFor(async () => {
-        const [{ url, body }] = await findRequests("PUT");
-        expect(url).toContain(SETTINGS_ENDPOINT);
-        dismissalTimestamp = body.value[1];
+      await waitFor(() => {
+        expect(countRequests("PUT", SETTINGS_ENDPOINT)).toBe(1);
       });
 
       const puts = await findRequests("PUT");
@@ -226,7 +222,7 @@ describe("useLicenseTokenMissingBanner", () => {
       const [{ url, body }] = puts;
       expect(url).toContain(SETTINGS_ENDPOINT);
       expect(body).toEqual({
-        value: [SECOND_DISMISSAL.toISOString(), dismissalTimestamp],
+        value: [SECOND_DISMISSAL.toISOString(), expect.any(String)],
       });
     });
   });
