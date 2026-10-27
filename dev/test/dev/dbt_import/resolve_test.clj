@@ -475,34 +475,34 @@
 (deftest ^:parallel filter-comparison-test
   (testing "a dimension reached through the model's own primary entity is one of its columns"
     (are [template clause] (= clause (filter-of template))
-      "{{ Dimension('fact_sales_key__status') }} = 'Shipped'"                  [:= {} status "Shipped"]
-      "{{ Dimension('fact_sales_key__status') }} != 'Cancelled'"               [:!= {} status "Cancelled"]
-      "{{ Dimension('fact_sales_key__status') }} <> 'Cancelled'"               [:!= {} status "Cancelled"]
-      "{{ Dimension('fact_sales_key__status') }} IN ('Shipped', 'Delivered')"  [:in {} status "Shipped" "Delivered"]
-      "{{ Dimension('fact_sales_key__status') }} NOT IN ('Cancelled')"         [:not-in {} status "Cancelled"]
-      "{{ Dimension('fact_sales_key__status') }} IS NULL"                      [:is-null {} status]
-      "{{ Dimension('fact_sales_key__status') }} IS NOT NULL"                  [:not-null {} status]
-      "{{ Dimension('fact_sales_key__amount') }} > 100"                        [:> {} amount 100]
-      "{{ Dimension('fact_sales_key__amount') }} >= 0.5"                       [:>= {} amount 0.5]
-      "{{ Dimension('fact_sales_key__amount') }} < 100"                        [:< {} amount 100]
-      "{{ Dimension('fact_sales_key__amount') }} <= 100"                       [:<= {} amount 100]
-      "{{ Dimension('fact_sales_key__amount') }} = -1"                         [:= {} amount -1]
-      "{{ Dimension('fact_sales_key__amount') }} BETWEEN 10 AND 100"           [:between {} amount 10 100]
-      "{{ Dimension('fact_sales_key__amount') }} NOT BETWEEN 10 AND 100"       [:not {} [:between {} amount 10 100]]))
+      "{{ Dimension('fact_sales_key__status') }} = 'Shipped'"                 [:= {} status "Shipped"]
+      "{{ Dimension('fact_sales_key__status') }} != 'Cancelled'"              [:!= {} status "Cancelled"]
+      "{{ Dimension('fact_sales_key__status') }} <> 'Cancelled'"              [:!= {} status "Cancelled"]
+      "{{ Dimension('fact_sales_key__status') }} IN ('Shipped', 'Delivered')" [:in {} status "Shipped" "Delivered"]
+      "{{ Dimension('fact_sales_key__status') }} NOT IN ('Cancelled')"        [:not-in {} status "Cancelled"]
+      "{{ Dimension('fact_sales_key__status') }} IS NULL"                     [:is-null {} status]
+      "{{ Dimension('fact_sales_key__status') }} IS NOT NULL"                 [:not-null {} status]
+      "{{ Dimension('fact_sales_key__amount') }} > 100"                       [:> {} amount 100]
+      "{{ Dimension('fact_sales_key__amount') }} >= 0.5"                      [:>= {} amount 0.5]
+      "{{ Dimension('fact_sales_key__amount') }} < 100"                       [:< {} amount 100]
+      "{{ Dimension('fact_sales_key__amount') }} <= 100"                      [:<= {} amount 100]
+      "{{ Dimension('fact_sales_key__amount') }} = -1"                        [:= {} amount -1]
+      "{{ Dimension('fact_sales_key__amount') }} BETWEEN 10 AND 100"          [:between {} amount 10 100]
+      "{{ Dimension('fact_sales_key__amount') }} NOT BETWEEN 10 AND 100"      [:not {} [:between {} amount 10 100]]))
   (testing "string literals"
     (are [template clause] (= clause (filter-of template))
-      "{{ Dimension('fact_sales_key__status') }} = 'O''Reilly'"        [:= {} status "O'Reilly"]
-      "{{ Dimension('fact_sales_key__status') }} = '😀'"               [:= {} status "😀"]
-      "{{ Dimension('fact_sales_key__status') }} = ''"                 [:= {} status ""]
-      "{{ Dimension('fact_sales_key__status') }} = '{{ not jinja }}'"  [:= {} status "{{ not jinja }}"]))
+      "{{ Dimension('fact_sales_key__status') }} = 'O''Reilly'"       [:= {} status "O'Reilly"]
+      "{{ Dimension('fact_sales_key__status') }} = '😀'"              [:= {} status "😀"]
+      "{{ Dimension('fact_sales_key__status') }} = ''"                [:= {} status ""]
+      "{{ Dimension('fact_sales_key__status') }} = '{{ not jinja }}'" [:= {} status "{{ not jinja }}"]))
   (testing "LIKE with a simple pattern"
     (are [template clause] (= clause (filter-of template))
-      "{{ Dimension('fact_sales_key__status') }} LIKE '%Inc%'"      [:contains {} status "Inc"]
-      "{{ Dimension('fact_sales_key__status') }} LIKE 'acme%'"      [:starts-with {} status "acme"]
-      "{{ Dimension('fact_sales_key__status') }} LIKE '%acme'"      [:ends-with {} status "acme"]
-      "{{ Dimension('fact_sales_key__status') }} LIKE 'acme'"       [:= {} status "acme"]
-      "{{ Dimension('fact_sales_key__status') }} ILIKE 'acme%'"     [:starts-with {:case-sensitive false} status "acme"]
-      "{{ Dimension('fact_sales_key__status') }} NOT LIKE '%Inc%'"  [:not {} [:contains {} status "Inc"]])))
+      "{{ Dimension('fact_sales_key__status') }} LIKE '%Inc%'"     [:contains {} status "Inc"]
+      "{{ Dimension('fact_sales_key__status') }} LIKE 'acme%'"     [:starts-with {} status "acme"]
+      "{{ Dimension('fact_sales_key__status') }} LIKE '%acme'"     [:ends-with {} status "acme"]
+      "{{ Dimension('fact_sales_key__status') }} LIKE 'acme'"      [:= {} status "acme"]
+      "{{ Dimension('fact_sales_key__status') }} ILIKE 'acme%'"    [:starts-with {:case-sensitive false} status "acme"]
+      "{{ Dimension('fact_sales_key__status') }} NOT LIKE '%Inc%'" [:not {} [:contains {} status "Inc"]])))
 
 (deftest ^:parallel filter-boolean-logic-test
   (are [template clause] (= clause (filter-of template))
@@ -549,9 +549,9 @@
     (are [template reason] (re-find reason (filter-reason template))
       "{{ TimeDimension('metric_time', 'nanosecond') }} = '2024-01-01'"       #"granularity \"nanosecond\" has no Metabase temporal unit"
       "{{ TimeDimension('metric_time', 'hour') }} = '2024-01-01'"             #"granularity \"hour\" has no Metabase temporal unit"
-      "{{ TimeDimension('fact_sales_key__status', 'day') }} = '2024-01-01'"     #"\"status\" is not a time dimension"
-      "{{ TimeDimension('fact_sales_key__next_day', 'day') }} = '2024-01-01'"   #"cannot bucket the SQL expression \"date_day \+ 1\""
-      "{{ TimeDimension('metric_time', 'week') }} < current_date"               #"current_date")))
+      "{{ TimeDimension('fact_sales_key__status', 'day') }} = '2024-01-01'"   #"\"status\" is not a time dimension"
+      "{{ TimeDimension('fact_sales_key__next_day', 'day') }} = '2024-01-01'" #"cannot bucket the SQL expression \"date_day \+ 1\""
+      "{{ TimeDimension('metric_time', 'week') }} < current_date"             #"current_date")))
 
 (deftest ^:parallel filter-entity-test
   (are [template clause] (= clause (filter-of template))
@@ -565,18 +565,30 @@
     (is (= [:= {} [:case {} [[[:> {} (fld "sales" :type/Float) 100] 1]] 0] 1]
            (filter-of "{{ Dimension('fact_sales_key__is_big_sale') }} = 1")))))
 
+(def ^:private order-status
+  "`dim_order.status`, reached from `fact_sales` through the `order` entity's column."
+  (tu/joined-fld "order_key" "dim_order" "status" :type/Text))
+
 (deftest ^:parallel filter-cross-model-test
-  (testing "a dimension reached through another entity lives on another semantic model"
-    (are [template] (re-find #"needs a join \(QRES-4\)" (filter-reason template))
-      "{{ Dimension('order__status') }} = 'Shipped'"
-      "{{ Dimension('customer__name') }} LIKE '%Inc%'"
-      "{{ Dimension('customer__region__country') }} = 'US'"
-      "{{ TimeDimension('order__ordered_at', 'month') }} = '2024-03-01'"))
-  (testing "references the model cannot satisfy"
+  (testing "a dimension reached through a foreign entity is on the semantic model that entity is primary for, joined implicitly through the entity's column"
+    (are [template clause] (= clause (filter-of template))
+      "{{ Dimension('order__order_status_dim') }} = 'Shipped'"
+      [:= {} order-status "Shipped"]
+      "{{ Dimension('product__product_category_dim') }} IN ('Planes', 'Trains')"
+      [:in {} (tu/joined-fld "product_key" "dim_product" "product_category" :type/Text) "Planes" "Trains"]
+      "{{ TimeDimension('order__order_date', 'month') }} = '2024-03-01'"
+      [:= {} (assoc-in (tu/joined-fld "order_key" "dim_order" "order_date" :type/Date) [1 :temporal-unit] :month) "2024-03-01"]
+      ;; a SQL dimension on the joined model is converted inline, its columns reached the same way
+      "{{ Dimension('order__is_cancelled_order') }} = 1"
+      [:= {} [:case {} [[[:= {} order-status "Cancelled"] 1]] 0] 1]))
+  (testing "references no join can satisfy"
     (are [template reason] (re-find reason (filter-reason template))
-      "{{ Dimension('nope__status') }} = 'Shipped'"        #"entity \"nope\" is not on semantic model \"fact_sales\""
+      "{{ Dimension('customer__name') }} LIKE '%Inc%'"      #"no semantic model has entity \"customer\" as its primary entity"
+      "{{ Dimension('customer__region__country') }} = 'US'" #"more than one entity"
+      "{{ Dimension('order__nope') }} = 'Shipped'"          #"dimension \"nope\" is not on semantic model \"dim_order\""
+      "{{ Dimension('nope__status') }} = 'Shipped'"         #"entity \"nope\" is not on semantic model \"fact_sales\""
       "{{ Dimension('fact_sales_key__nope') }} = 'Shipped'" #"dimension \"nope\" is not on semantic model \"fact_sales\""
-      "{{ Dimension('nope') }} = 'Shipped'"                #"dimension \"nope\" is not on semantic model"))
+      "{{ Dimension('nope') }} = 'Shipped'"                 #"dimension \"nope\" is not on semantic model"))
   (testing "filters on other metrics are QRES-5"
     (are [template] (re-find #"QRES-5" (filter-reason template))
       "{{ Metric('order_total', group_by=['customer']) }} > 1000"
@@ -584,14 +596,14 @@
 
 (deftest ^:parallel filter-unsupported-sql-test
   (are [template reason] (re-find reason (filter-reason template))
-    "lower({{ Dimension('fact_sales_key__status') }}) = 'acme'"                       #"the function lower"
-    "{{ Dimension('fact_sales_key__status') }} LIKE 'a_c%'"                            #"LIKE pattern \"a_c%\""
-    "{{ Dimension('fact_sales_key__status') }} ILIKE 'acme'"                           #"ILIKE without a wildcard"
-    "{{ Dimension('fact_sales_key__status') }} IN (SELECT status FROM x)"              #"IN over"
-    "1 = 1"                                                                            #"references no dimension or entity"
-    "{{ Dimension('fact_sales_key__status') }} = 'Shipped'; DROP TABLE fact_sales"     #"could not parse"
-    "{{ var('x') }} = 1"                                                               #"references no dimension or entity"
-    "   "                                                                              #"references no dimension or entity"))
+    "lower({{ Dimension('fact_sales_key__status') }}) = 'acme'"                    #"the function lower"
+    "{{ Dimension('fact_sales_key__status') }} LIKE 'a_c%'"                        #"LIKE pattern \"a_c%\""
+    "{{ Dimension('fact_sales_key__status') }} ILIKE 'acme'"                       #"ILIKE without a wildcard"
+    "{{ Dimension('fact_sales_key__status') }} IN (SELECT status FROM x)"          #"IN over"
+    "1 = 1"                                                                        #"references no dimension or entity"
+    "{{ Dimension('fact_sales_key__status') }} = 'Shipped'; DROP TABLE fact_sales" #"could not parse"
+    "{{ var('x') }} = 1"                                                           #"references no dimension or entity"
+    "   "                                                                          #"references no dimension or entity"))
 
 (deftest ^:parallel filter-syntax-test
   (testing "spellings of the same filter"
@@ -639,6 +651,11 @@
 (defn- edit-relation [k v]
   (fn [m] (assoc-in m [:semantic_models tu/sm-id :node_relation k] v)))
 
+(defn- query-of
+  "The query parts of what [[tu/convert]] builds from `tweaks`."
+  [tweaks]
+  (select-keys (tu/convert tweaks) [:aggregation :filters :source-table]))
+
 (deftest ^:parallel relation-test
   (testing "a relation with no database (Spark, some Databricks setups) cannot be mapped"
     (is (re-find #"no Metabase database configured" (tu/unsupported {:edit (edit-relation :database nil)}))))
@@ -649,17 +666,17 @@
     (is (= {:aggregation  [:sum {} (fld "PUBLIC" "fact_sales" "sales" :type/Float)]
             :filters      []
             :source-table [tu/db "PUBLIC" "fact_sales"]}
-           (tu/convert {:edit (edit-relation :schema_name "PUBLIC")}))))
+           (query-of {:edit (edit-relation :schema_name "PUBLIC")}))))
   (testing "an alias that differs from the model name is the table"
     (is (= {:aggregation  [:sum {} (fld "public" "fct_sales_v2" "sales" :type/Float)]
             :filters      []
             :source-table [tu/db "public" "fct_sales_v2"]}
-           (tu/convert {:edit (fn [m]
-                                (-> m
-                                    ((edit-relation :alias "fct_sales_v2"))
-                                    (assoc-in [:nodes tu/model-id :alias] "fct_sales_v2")))}))))
+           (query-of {:edit (fn [m]
+                              (-> m
+                                  ((edit-relation :alias "fct_sales_v2"))
+                                  (assoc-in [:nodes tu/model-id :alias] "fct_sales_v2")))}))))
   (testing "a schema containing a dot is one name"
     (is (= {:aggregation  [:sum {} (fld "analytics.v2" "fact_sales" "sales" :type/Float)]
             :filters      []
             :source-table [tu/db "analytics.v2" "fact_sales"]}
-           (tu/convert {:edit (edit-relation :schema_name "analytics.v2")})))))
+           (query-of {:edit (edit-relation :schema_name "analytics.v2")})))))
