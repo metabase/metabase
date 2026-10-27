@@ -466,7 +466,7 @@
   (for [row rows]
     (dissoc row
             :description :display :authority_level :moderated_status :icon :personal_owner_id :namespace
-            :collection_preview :dataset_query :table_id :query_type :is_upload :collection_namespace)))
+            :dataset_query :table_id :query_type :is_upload :collection_namespace)))
 
 (defenterprise snippets-collection-children-query
   "Collection children query for snippets on OSS. Returns all snippets regardless of collection, because snippet
@@ -520,7 +520,7 @@
   (for [row rows]
     (-> (dissoc row
                 :collection_position :display :authority_level :moderated_status :icon :personal_owner_id
-                :collection_preview :dataset_query :table_id :query_type :is_upload :namespace)
+                :dataset_query :table_id :query_type :is_upload :namespace)
         (update :archived api/bit->boolean)
         (update :archived_directly api/bit->boolean)
         (assoc :collection_namespace (some-> (:namespace collection) name)))))
@@ -530,20 +530,20 @@
   (for [row rows]
     (dissoc row
             :description :display :collection_position :authority_level :moderated_status
-            :collection_preview :dataset_query :table_id :query_type :is_upload :namespace)))
+            :dataset_query :table_id :query_type :is_upload :namespace)))
 
 (defmethod post-process-collection-children :snippet
   [_ _options _collection rows]
   (for [row rows]
     (-> (dissoc row
                 :description :collection_position :display :authority_level
-                :moderated_status :icon :personal_owner_id :collection_preview
+                :moderated_status :icon :personal_owner_id
                 :dataset_query :table_id :query_type :is_upload :namespace)
         (assoc :collection_namespace "snippets"))))
 
 (defn- card-query [card-type collection {:keys [archived? pinned-state show-dashboard-questions? created-by-id]}]
   (-> {:select    (cond->
-                   [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                   [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display
                     :dashboard_id
                     :last_used_at
                     :c.collection_id
@@ -622,7 +622,6 @@
       ;; pad, and out of the response body.
       (assoc :document_id nil)
       (update :dataset_query (:out lib-be/transform-query))
-      (update :collection_preview api/bit->boolean)
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)))
 
@@ -714,7 +713,7 @@
       (update :archived api/bit->boolean)
       (update :archived_directly api/bit->boolean)
       (t2/hydrate :can_write :can_restore :can_delete :is_remote_synced :collection_namespace)
-      (dissoc :display :authority_level :icon :personal_owner_id :collection_preview
+      (dissoc :display :authority_level :icon :personal_owner_id
               :dataset_query :table_id :query_type :is_upload)))
 
 (defmethod post-process-collection-children :dashboard
@@ -904,7 +903,7 @@
             (update :is_remote_synced api/bit->boolean)
             (t2/hydrate :can_write :effective_location :can_restore :can_delete :is_shared_tenant_collection)
             (dissoc :collection_position :display :moderated_status :icon
-                    :collection_preview :dataset_query :table_id :query_type :is_upload)
+                    :dataset_query :table_id :query_type :is_upload)
             (assoc :type type-value)
             update-personal-collection)))))
 
@@ -998,7 +997,7 @@
   "All columns that need to be present for the union-all. Generated with the comment form below. Non-text columns that
   are optional (not id, but last_edit_user for example) must have a type so that the union-all can unify the nil with
   the correct column type."
-  [:id :name :description :entity_id :display [:collection_preview :boolean] :dataset_query
+  [:id :name :description :entity_id :display :dataset_query
    :collection_id
    [:dashboard_id :integer]
    [:archived_directly :boolean]

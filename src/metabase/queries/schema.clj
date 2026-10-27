@@ -197,7 +197,6 @@
    [:entity_id                                 {:optional true} [:maybe :string]]
    [:parameters                                {:optional true} [:maybe [:sequential ::card.parameter]]]
    [:parameter_mappings                        {:optional true} [:maybe [:sequential ::card.parameter-mapping]]]
-   [:collection_preview                        {:optional true} [:maybe :boolean]]
    [:metabase_version                          {:optional true} [:maybe :string]]
    [:type                                      {:optional true} [:maybe ::lib.schema.metadata/card.type]]
    [:initially_published_at                    {:optional true} [:maybe ms/TemporalInstant]]

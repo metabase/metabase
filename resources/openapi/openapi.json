@@ -4934,13 +4934,6 @@
               "type" : "null"
             } ]
           },
-          "collection_preview" : {
-            "oneOf" : [ {
-              "type" : "boolean"
-            }, {
-              "type" : "null"
-            } ]
-          },
           "copy" : {
             "type" : "boolean"
           },
@@ -17793,13 +17786,6 @@
             "application/json" : {
               "schema" : {
                 "properties" : {
-                  "collection_preview" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
                   "dashboard_id" : {
                     "oneOf" : [ {
                       "description" : "value must be an integer greater than zero.",
@@ -18034,13 +18020,6 @@
                       "description" : "value must be an integer greater than zero.",
                       "minimum" : 1,
                       "type" : "integer"
-                    }, {
-                      "type" : "null"
-                    } ]
-                  },
-                  "collection_preview" : {
-                    "oneOf" : [ {
-                      "type" : "boolean"
                     }, {
                       "type" : "null"
                     } ]
