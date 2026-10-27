@@ -294,18 +294,32 @@
               (testing "and alone it gives no session"
                 (is (nil? (current-user-id-for-cookie-header (str "x=1," session-cookie "=" tossed-session-key))))))))))))
 
+(deftest nameless-cookie-is-not-a-session-cookie-test
+  (testing "a cookie without `=` has no name and the value `metabase.SESSION`, so it is no second session cookie"
+    (let [own-session-key (str (random-uuid))]
+      (with-session-for
+        :crowberto own-session-key
+        (fn []
+          (is (= (mt/user->id :crowberto)
+                 (current-user-id-for-cookie-header (str session-cookie "=" own-session-key "; " session-cookie)))))))))
+
+(defn- stray-session-cookie-response
+  "The answer to `GET /api/<path>` with two session cookies and `headers`."
+  [path headers]
+  (let [cookie (str session-cookie "=" (random-uuid) "; " session-cookie "=" (random-uuid))]
+    (mt/client-full-response :get 401 path {:request-options {:headers (merge {"cookie" cookie} headers)}})))
+
 (defn- session-cookie-deletions
-  "The `Set-Cookie` headers that delete a `metabase.SESSION` cookie in the answer to `GET /api/user/current` with two
-  session cookies and `headers`, each as a map of attribute name to value."
-  [headers]
-  (let [cookie   (str session-cookie "=" (random-uuid) "; " session-cookie "=" (random-uuid))
-        response (mt/client-full-response :get 401 "user/current"
-                                          {:request-options {:headers (merge {"cookie" cookie} headers)}})]
-    (for [set-cookie (get-in response [:headers "Set-Cookie"])
-          :when      (str/starts-with? set-cookie (str session-cookie "=;"))]
-      (into {} (for [attribute (rest (str/split set-cookie #";\s*"))]
-                 (let [[k v] (str/split attribute #"=" 2)]
-                   [k v]))))))
+  "The `Set-Cookie` headers that delete a `metabase.SESSION` cookie in [[stray-session-cookie-response]] (for
+  `GET /api/user/current` unless `path` is given), each as a map of attribute name to value."
+  ([headers]
+   (session-cookie-deletions "user/current" headers))
+  ([path headers]
+   (for [set-cookie (get-in (stray-session-cookie-response path headers) [:headers "Set-Cookie"])
+         :when      (str/starts-with? set-cookie (str session-cookie "=;"))]
+     (into {} (for [attribute (rest (str/split set-cookie #";\s*"))]
+                (let [[k v] (str/split attribute #"=" 2)]
+                  [k v]))))))
 
 (defn- deletes? [deletions attributes]
   (some #(= attributes (select-keys % (keys attributes))) deletions))
@@ -322,6 +336,27 @@
   (testing "behind a proxy that rewrites Host, the answer deletes a stray cookie for the forwarded host's parent domain"
     (is (deletes? (session-cookie-deletions {"host" "metabase-internal:3000", "x-forwarded-host" "mb.example.com"})
                   {"Domain" "example.com", "Path" "/"}))))
+
+(deftest stray-session-cookie-is-deleted-for-the-site-url-domain-test
+  (testing "behind a proxy that rewrites Host and sends no X-Forwarded-Host, the answer deletes a stray cookie for the
+            site URL's parent domain"
+    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
+      (is (deletes? (session-cookie-deletions {"host" "metabase-internal:3000"})
+                    {"Domain" "example.com", "Path" "/"})))))
+
+(deftest stray-session-cookie-deletions-fit-a-proxy-header-buffer-test
+  (let [path    "dashboard/1/params/abc/values"
+        headers {"host" "mb.example.com", "x-forwarded-proto" "https"}]
+    (testing "on a deep path, the answer's headers fit nginx's default 4 KB `proxy_buffer_size`"
+      (is (> 4096 (reduce + (for [[k v] (:headers (stray-session-cookie-response path headers))
+                                  v     (if (sequential? v) v [v])]
+                              (+ (count k) (count v) 4))))))
+    (testing "and the deletions that fit are those of the cookies that reach the most requests"
+      (let [deletions (session-cookie-deletions path headers)]
+        (is (deletes? deletions {"Domain" "example.com", "Path" "/"}))
+        (is (deletes? deletions {"Domain" "example.com", "Path" "/", "Partitioned" nil}))
+        (is (deletes? deletions {"Domain" "example.com", "Path" "/api"}))
+        (is (deletes? deletions {"Domain" "example.com", "Path" "/api/"}))))))
 
 (deftest stray-session-cookie-is-deleted-on-a-subpath-deployment-test
   (testing "on a subpath deployment, the answer deletes a stray cookie at the site URL path"
