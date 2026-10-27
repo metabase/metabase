@@ -18,6 +18,7 @@
    [metabase.parameters.schema :as parameters.schema]
    [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -148,4 +149,14 @@
     :static-list nil
     :card        (some->> (get-in parameter [:values_source_config :card_id]) (check-values-source-card data-app))
     (run! check-published-field field-ids))
+  nil)
+
+(defenterprise-schema check-action :- :nil
+  "Throws a 400 unless the action with `action-id` is an action of `data-app`."
+  :feature :data-apps
+  [data-app  :- ::data-apps.schema/data-app
+   action-id :- ms/PositiveInt]
+  (when-let [external (not-empty (data-apps.db/external-action-ids (:resource_collection_id data-app) #{action-id}))]
+    (throw (data-app-error (tru "A data app can run only the actions of its own app, not the actions {0}."
+                                (format-ids external)))))
   nil)

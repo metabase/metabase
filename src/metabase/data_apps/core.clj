@@ -8,7 +8,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.parameters.schema :as parameters.schema]
-   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]))
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
+   [metabase.util.malli.schema :as ms]))
 
 (defenterprise visible-data-app-filter-select
   "A HoneySQL query of the ids of the data apps that the user described by `user-info` (`:user-id`, `:is-superuser?`)
@@ -84,4 +85,11 @@
   [_data-app  :- ::data-apps.schema/data-app
    _parameter :- ::parameters.schema/parameter
    _field-ids :- [:maybe [:sequential ::lib.schema.id/field]]]
+  nil)
+
+(defenterprise-schema check-action :- :nil
+  "Throws a 400 unless `data-app` may run the action with `action-id`; does nothing without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app  :- ::data-apps.schema/data-app
+   _action-id :- ms/PositiveInt]
   nil)
