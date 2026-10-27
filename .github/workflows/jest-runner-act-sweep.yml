@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         shard: [2]
-        copy: [A, B, C, D, E]
+        copy: [F, G]
     steps:
       - uses: actions/checkout@v7
       - name: Prepare front-end environment
@@ -26,7 +26,7 @@ jobs:
         run: |
           for i in 1 2 3; do
             echo "SEQ round $i sequence ${{ matrix.copy }}"
-            node .github/sweep/seq-run.ts .github/sweep/${{ matrix.copy }}.txt 2>&1 | grep "^SEQ" || true
+            node .github/sweep/seq-run.ts .github/sweep/${{ matrix.copy }}.txt 2>&1 | grep -E "^SEQ|PROBE" || true
           done
       - uses: actions/upload-artifact@v7
         if: always()

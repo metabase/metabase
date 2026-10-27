@@ -1,0 +1,2 @@
+frontend/src/metabase/query_builder/components/view/sidebars/QuestionInfoSidebar/tests/premium.unit.spec.tsx
+frontend/src/metabase/zz-probe/timers-probe.unit.spec.ts
