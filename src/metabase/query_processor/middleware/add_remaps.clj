@@ -284,8 +284,8 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    {:keys [fields order-by breakout], :as stage} :- ::lib.schema/stage]
-  (let [previous-stage-remaps (when-let [previous-path (lib.walk/previous-path path)]
-                                (::remaps (get-in query previous-path)))]
+  (let [previous-stage-remaps (when-let [source-path (lib.walk/source-stage-path query path)]
+                                (::remaps (get-in query source-path)))]
     ;; fetch remapping column pairs if any exist...
     (if-let [infos (remap-column-infos query path)]
       ;; if they do, update `:fields`, `:order-by` and `:breakout` clauses accordingly and add to the query

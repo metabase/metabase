@@ -12,6 +12,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.util :as lib.schema.util]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.query-processor.middleware.add-remaps :as-alias add-remaps]
    [metabase.util.malli :as mu]
@@ -176,9 +177,12 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/stage-path
    stage :- ::lib.schema/stage]
-  (let [first-stage (new-first-stage stage)]
-    [first-stage
-     (new-second-stage query path stage first-stage)]))
+  (let [[first-stage] (lib.util/split-stage stage (new-first-stage stage) {})]
+    (lib.util/split-stage stage
+                          first-stage
+                          ;; while the second stage's refs are resolved, the first stands alone in `stage`'s place, so
+                          ;; it also keeps the name later stages read it by
+                          (new-second-stage query path stage (m/assoc-some first-stage :name (:name stage))))))
 
 (mu/defn nest-breakouts-in-stages-with-window-aggregation :- ::lib.schema/query
   "Some picky databases like BigQuery don't let you use anything inside `ORDER BY` in `OVER` expressions except for

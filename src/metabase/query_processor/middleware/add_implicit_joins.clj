@@ -154,9 +154,9 @@
         (comp cat
               (m/distinct-by :alias))
         [joins
-         (when-let [previous-path (lib.walk/previous-path path)]
-           (let [previous-stage (get-in query previous-path)]
-             (visible-joins query previous-path previous-stage)))]))
+         (when-let [source-path (lib.walk/source-stage-path query path)]
+           (let [source (get-in query source-path)]
+             (visible-joins query source-path source)))]))
 
 (mu/defn- construct-fk-field-info->join-alias :- [:map-of
                                                   ::fk-field-info
@@ -209,9 +209,9 @@
    join                        :- ::join]
   (or (some #(= (lib/current-join-alias %) (:alias join))
             joins)
-      (when-let [previous-path (lib.walk/previous-path path)]
-        (let [previous-stage (get-in query previous-path)]
-          (recur query previous-path previous-stage join)))))
+      (when-let [source-path (lib.walk/source-stage-path query path)]
+        (let [source (get-in query source-path)]
+          (recur query source-path source join)))))
 
 (mu/defn- add-condition-fields-from-next-stage :- ::lib.schema/stage
   "Add any fields that are needed for newly-added join conditions in the next stage if they're not already present in

@@ -361,6 +361,18 @@
       (when (pos? stage-number)
         (dec stage-number)))))
 
+(defn split-stage
+  "`stage`, split in two by a query transformation, as `[first-stage second-stage]` in the same place among the stages:
+  the first reads what `stage` read, and the second has `stage`'s name, so later stages that read it by name read the
+  second."
+  [stage first-stage second-stage]
+  [(-> first-stage
+       (dissoc :name :source-stage)
+       (m/assoc-some :source-stage (:source-stage stage)))
+   (-> second-stage
+       (dissoc :name :source-stage)
+       (m/assoc-some :name (:name stage)))])
+
 (defn join-query
   "What `join` reads, as a query whose last stage is the join's last stage: the join's own `:stages`, or the stages of
   `query` up to and including the one its `:source-stage` names."

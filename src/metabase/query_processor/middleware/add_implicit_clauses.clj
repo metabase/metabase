@@ -37,7 +37,7 @@
                         (for [col (lib.walk/apply-f-for-stage-at-path
                                    lib/returned-columns
                                    query
-                                   (or (lib.walk/previous-path path)
+                                   (or (lib.walk/source-stage-path query path)
                                        (throw (ex-info "Expected :source-card to be spliced into the query by now"
                                                        {:type qp.error-type/invalid-query}))))]
                           (lib/update-keys-for-col-from-previous-stage col)))

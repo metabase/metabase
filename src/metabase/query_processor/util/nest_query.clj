@@ -11,6 +11,7 @@
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.options :as lib.options]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.walk :as lib.walk]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -111,9 +112,13 @@
   [query :- ::lib.schema/query
    path  :- ::lib.walk/path
    stage :- ::lib.schema/stage.mbql]
-  (let [new-first-stage (new-first-stage query path stage)]
-    [new-first-stage
-     (new-second-stage (assoc-in query path new-first-stage) path stage)]))
+  (let [[new-first-stage] (lib.util/split-stage stage (new-first-stage query path stage) {})
+        ;; while the second stage's refs are resolved, the first stands alone in `stage`'s place, so it also keeps the
+        ;; name later stages read it by
+        alone             (m/assoc-some new-first-stage :name (:name stage))]
+    (lib.util/split-stage stage
+                          new-first-stage
+                          (new-second-stage (assoc-in query path alone) path stage))))
 
 (mu/defn nest-expressions :- ::lib.schema/query
   "For queries with `expressions` in the final stage, adds an additional stage and moves the breakouts, aggregations,
