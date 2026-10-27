@@ -101,3 +101,19 @@
   [_data-app :- ::data-apps.schema/data-app
    actions   :- [:sequential ::actions.schema/action]]
   actions)
+
+(defenterprise-schema check-table :- :nil
+  "Throws a 400 unless `data-app` may read the table with `table-id`, after a read check of the table; does nothing
+  without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app :- ::data-apps.schema/data-app
+   _table-id :- ::lib.schema.id/table]
+  nil)
+
+(defenterprise-schema check-field :- :nil
+  "Throws a 400 unless `data-app` may read the field with `field-id`, after a read check of the field; does nothing
+  without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app :- ::data-apps.schema/data-app
+   _field-id :- ::lib.schema.id/field]
+  nil)

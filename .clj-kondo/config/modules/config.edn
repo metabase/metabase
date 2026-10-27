@@ -4261,6 +4261,7 @@
            api-scope
            app-db
            audit-app
+           data-apps
            driver
            lib
            lib.be

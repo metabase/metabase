@@ -167,3 +167,22 @@
   [data-app :- ::data-apps.schema/data-app
    actions  :- [:sequential ::actions.schema/action]]
   (filterv (partial in-app-collection? data-app) actions))
+
+(defenterprise-schema check-table :- :nil
+  "Throws a 400 unless the table with `table-id` is published to the Library, after a read check of the table."
+  :feature :data-apps
+  [_data-app :- ::data-apps.schema/data-app
+   table-id  :- ::lib.schema.id/table]
+  (api/read-check :model/Table table-id)
+  (when-not (published-table? table-id)
+    (throw (data-app-error (tru "A data app can read only tables published to the Library, not the table {0}." table-id))))
+  nil)
+
+(defenterprise-schema check-field :- :nil
+  "Throws a 400 unless the field with `field-id` belongs to a table published to the Library, after a read check of
+  the field."
+  :feature :data-apps
+  [_data-app :- ::data-apps.schema/data-app
+   field-id  :- ::lib.schema.id/field]
+  (check-published-field field-id)
+  nil)

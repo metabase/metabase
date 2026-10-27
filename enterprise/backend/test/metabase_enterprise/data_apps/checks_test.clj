@@ -583,6 +583,45 @@
                      (mt/user-http-request :crowberto :post 400 (format "action/%d/execute" elsewhere-id) (as-app "wasps")
                                            {:parameters {}})))))))))))
 
+(deftest table-and-field-endpoints-check-published-tables-test
+  (do-with-app-collection
+   (fn [_collection-id]
+     (data-apps.tu/with-published-tables! [(mt/id :venues)]
+       (let [venues   (mt/id :venues)
+             id       (mt/id :venues :id)
+             vname    (mt/id :venues :name)
+             checkins (mt/id :checkins)
+             date     (mt/id :checkins :date)]
+         (testing "a published table and its fields are readable"
+           (doseq [url [(format "table/%d" venues)
+                        (format "table/%d/query_metadata" venues)
+                        (format "table/%d/fks" venues)
+                        (format "field/%d" vname)
+                        (format "field/%d/summary" vname)
+                        (format "field/%d/values" vname)
+                        (format "field/%d/search/%d?value=Re" vname vname)
+                        (format "field/%d/remapping/%d?value=1" id vname)
+                        (format "field/%d/related" vname)]]
+             (mt/user-http-request :crowberto :get 200 url as-data-app)))
+         (testing "an unpublished table and its fields are refused"
+           (doseq [url [(format "table/%d" checkins)
+                        (format "table/%d/query_metadata" checkins)
+                        (format "table/%d/fks" checkins)]]
+             (is (= (format "A data app can read only tables published to the Library, not the table %d." checkins)
+                    (mt/user-http-request :crowberto :get 400 url as-data-app))
+                 url))
+           (doseq [url [(format "field/%d" date)
+                        (format "field/%d/summary" date)
+                        (format "field/%d/values" date)
+                        (format "field/%d/related" date)
+                        (format "field/%d/search/%d?value=Re" vname date)
+                        (format "field/%d/remapping/%d?value=1" id date)]]
+             (is (= (format "A data app can read only fields of tables published to the Library, not the field %d." date)
+                    (mt/user-http-request :crowberto :get 400 url as-data-app))
+                 url)))
+         (testing "a request that is not a data app's still reads an unpublished table"
+           (mt/user-http-request :crowberto :get 200 (format "table/%d" checkins))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
     (mt/with-premium-features #{}
