@@ -45,9 +45,9 @@
        first))
 
 (defn- warning-types
-  "The set of warning types GET / lists for the plugin `identifier`."
-  [identifier]
-  (into #{} (map :type) (:warnings (admin-listed-plugin identifier))))
+  "Warning types for a listed plugin."
+  [plugin]
+  (into #{} (map :type) (:warnings plugin)))
 
 ;;; ------------------------------------------------ Auth & Permissions ------------------------------------------------
 
@@ -135,14 +135,6 @@
                                                :bundle_hash  "colon-hash"}]
         (let [identifiers (set (map :identifier (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")))]
           (is (not (contains? identifiers "colon:viz"))))))
-    (testing "/list still serves a legacy plugin whose identifier a repository can't name"
-      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "My/Heatmap"
-                                               :display_name "My Heatmap"
-                                               :status       :active
-                                               :enabled      true
-                                               :bundle_hash  "slash-hash"}]
-        (let [identifiers (set (map :identifier (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")))]
-          (is (contains? identifiers "My/Heatmap")))))
     (testing "/list does not expose the raw bundle blob"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "bundle-viz"
                                                :display_name "Bundle Viz"
@@ -164,7 +156,7 @@
 
 (deftest admin-listing-flags-invalid-identifier-test
   (mt/with-premium-features #{:custom-viz}
-    (testing "GET / flags a legacy plugin whose identifier contains \":\" with an invalid-identifier warning"
+    (testing "GET / warns about colon identifiers for uploaded and dev plugins"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "colon:viz"
                                                :display_name "Colon Viz"
                                                :status       :active
@@ -175,20 +167,29 @@
                                                :status         :active
                                                :enabled        true
                                                :dev_bundle_url "http://localhost:5174"}]
-        (is (contains? (warning-types "colon:viz") "invalid-identifier"))
-        (is (contains? (warning-types "colon:dev-viz") "invalid-identifier")
-            "dev-only plugins are exempt from version warnings but not from this one")))
-    (testing "GET / does not flag a legacy plugin whose identifier a repository can't name, it is still served"
-      (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "My/Heatmap"
-                                               :display_name "My Heatmap"
-                                               :status       :active
-                                               :enabled      true
-                                               :bundle_hash  "slash-hash"}]
-        (is (not (contains? (warning-types "My/Heatmap") "invalid-identifier")))))))
+        (let [plugins (into {} (map (juxt :identifier identity))
+                            (mt/user-http-request :crowberto :get 200 "ee/custom-viz-plugin/"))]
+          (doseq [identifier ["colon:viz" "colon:dev-viz"]]
+            (is (contains? (warning-types (get plugins identifier)) "invalid-identifier")
+                identifier)))))))
+
+(deftest legacy-identifier-listing-test
+  (mt/with-premium-features #{:custom-viz}
+    (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "My/Heatmap"
+                                             :display_name "My Heatmap"
+                                             :status       :active
+                                             :enabled      true
+                                             :bundle_hash  "slash-hash"}]
+      (testing "legacy identifiers remain available without identifier warnings"
+        (let [identifiers (set (map :identifier (mt/user-http-request :rasta :get 200 "ee/custom-viz-plugin/list")))
+              plugin      (admin-listed-plugin "My/Heatmap")]
+          (is (contains? identifiers "My/Heatmap"))
+          (is (some? plugin))
+          (is (not (contains? (warning-types plugin) "invalid-identifier"))))))))
 
 (deftest admin-listing-error-plugin-has-no-version-warnings-test
   (mt/with-premium-features #{:custom-viz}
-    (testing "GET / gives an error plugin no version warnings, it has no manifest to derive them from"
+    (testing "error plugins have no version warnings"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier    "broken-viz"
                                                :display_name  "broken-viz"
                                                :status        :error
@@ -225,11 +226,7 @@
         (is (re-find #"identifier.*already exists"
                      (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
                                         (cvp.tu/valid-bundle-bytes "dup-viz"))))))
-    (testing "an identifier a repository can't name is refused at upload"
-      (is (re-find #"must be letters, digits"
-                   (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
-                                      (cvp.tu/valid-bundle-bytes "a/b")))))
-    (testing "an identifier that is an existing one in another case is refused, it would share a repository directory"
+    (testing "upload and dev registration reject case-insensitive duplicates"
       (mt/with-temp [:model/CustomVizPlugin _ {:identifier   "Thumbs"
                                                :display_name "Thumbs"
                                                :status       :active}]
@@ -241,6 +238,13 @@
             (is (re-find #"\"THUMBS\" differs only in case from the existing plugin \"Thumbs\""
                          (mt/user-http-request :crowberto :post 400 "ee/custom-viz-plugin/dev"
                                                {:dev_bundle_url "http://localhost:5174"})))))))))
+
+(deftest upload-rejects-invalid-directory-name-test
+  (mt/with-premium-features #{:custom-viz}
+    (testing "an identifier a repository can't name is refused at upload"
+      (is (re-find #"must be letters, digits"
+                   (multipart-upload! :crowberto 400 "ee/custom-viz-plugin/"
+                                      (cvp.tu/valid-bundle-bytes "a/b")))))))
 
 ;;; ------------------------------------------------ CRUD ------------------------------------------------
 
@@ -517,7 +521,7 @@
 
 (deftest replace-bundle-legacy-non-directory-identifier-test
   (mt/with-premium-features #{:custom-viz}
-    (testing "PUT /:id/bundle updates a plugin registered before the directory rule, it is served and stays updatable"
+    (testing "bundle replacement supports legacy identifiers"
       (mt/with-temp [:model/CustomVizPlugin {id :id} {:identifier   "My/Heatmap"
                                                       :display_name "My Heatmap"
                                                       :status       :active
