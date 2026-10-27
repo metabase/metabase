@@ -93,10 +93,7 @@
     (throw (ex-info (format "Invalid resource file path: %s" path) {:path path}))))
 
 (defn read-resources
-  "The ingested `entity` with each of its [[serdes/resource-paths]] read into `:serdes/resources`: by `read-bytes` when
-  the entity's [[serdes/binary-resources?]], otherwise by `read-text`. Both take a path relative to the entity's
-  directory and return nil for a file that isn't there. An entity with resource files owns its directory, so it also
-  gets the directory's name as `:serdes/directory`."
+  "Attach an entity's resource files and directory name for import."
   [entity ^String directory-name read-text read-bytes]
   (if-let [paths (seq (serdes/resource-paths entity read-text))]
     (let [read-fn (if (serdes/binary-resources? entity) read-bytes read-text)]
@@ -118,13 +115,10 @@
   "The [[legal-top-level-paths]] whose directories also hold files serialization does not own, such as a data app's
   source code, to the name of the entity files in them."
   {"data_apps"          "data_app.yaml"
-   ;; the representation format keeps the other files under a plugin's directory, such as its source, out of the import
    "custom_viz_plugins" "custom_viz_plugin.yaml"})
 
 (def unsynced-top-level-paths
-  "The [[legal-top-level-paths]] remote sync leaves alone: it neither imports nor exports their entities, so their
-  files are the repository's own and travel only by serialization export and import. A custom viz plugin is
-  installed on an instance by an admin, not synced."
+  "Paths preserved by remote sync; their entities require explicit serialization import and export."
   #{"custom_viz_plugins"})
 
 (def remote-synced-top-level-paths
