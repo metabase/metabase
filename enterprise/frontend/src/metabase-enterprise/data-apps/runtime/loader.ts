@@ -8,6 +8,7 @@ import { pick } from "underscore";
 import * as sdkExports from "embedding-sdk-package";
 import * as dataAppExports from "embedding-sdk-package/data-app";
 import { DATA_APP_REALM_HOST_URL, getSubpathSafeUrl } from "metabase/urls";
+import { isDataAppBrokerMode } from "metabase-enterprise/data-apps/broker/iframe-broker";
 import { createDataAppSandbox } from "metabase-enterprise/data-apps/sandbox/sandbox";
 import {
   DATA_APP_PROVIDER_PROP_KEYS,
@@ -87,6 +88,7 @@ export const fetchDataAppBundleCode = async (
 
   let res: Response;
   try {
+    // On the isolated origin, the broker carries this request (see `installDataAppFetchBroker`).
     res = await fetch(url, { cache: "no-store" });
   } catch (e) {
     throw new DataAppBundleError(
@@ -126,7 +128,11 @@ export const instantiateDataAppBundle = async (
     label,
     targetWindow,
     allowedHosts,
-    realmHostUrl: getSubpathSafeUrl(DATA_APP_REALM_HOST_URL),
+    // On the isolated origin there is no realm host, so Near-Membrane uses its default
+    // `about:blank` realm; see the data-app `script-src` in `security.clj`.
+    realmHostUrl: isDataAppBrokerMode()
+      ? undefined
+      : getSubpathSafeUrl(DATA_APP_REALM_HOST_URL),
     endowments: {
       React,
       reactDom: ReactDOM,

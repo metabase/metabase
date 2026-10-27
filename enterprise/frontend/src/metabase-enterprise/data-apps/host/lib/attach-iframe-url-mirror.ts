@@ -15,14 +15,34 @@ export interface UrlMirrorWindow {
 }
 
 /**
- * Mirrors the iframe's URL into the parent's URL bar (no page reload).
- *
- * Same-origin frame, so we monkey-patch the iframe's `History` methods
- * directly — no `postMessage` bridge. Wrapping `pushState`/`replaceState`
- * catches programmatic nav; `popstate` catches browser back/forward
- * inside the iframe. Each change is mirrored via the parent's
- * `replaceState` (not `pushState`) so iframe-internal navigations don't
- * clutter the parent's back-history with one entry each.
+ * Puts the route of the app's iframe path (`/embed/apps/<name>/<route>`) into the
+ * parent's URL as `/apps/<name>/<route>`, keeping the parent's own query and hash.
+ * Uses `replaceState` (not `pushState`) so iframe-internal navigations don't clutter
+ * the parent's back-history with one entry each.
+ */
+export function mirrorIframePath(iframePath: string, parentName: string): void {
+  const iframePrefix = Urls.getSubpathSafeUrl(
+    `${Urls.DATA_APP_EMBED_PREFIX}/${encodeURIComponent(parentName)}`,
+  );
+  const parentPrefix = Urls.getSubpathSafeUrl(Urls.dataApp(parentName));
+  const tail = iframePath.startsWith(iframePrefix)
+    ? iframePath.slice(iframePrefix.length)
+    : "";
+  const parentTarget =
+    parentPrefix + tail + window.location.search + window.location.hash;
+  const parentCurrent =
+    window.location.pathname + window.location.search + window.location.hash;
+
+  if (parentCurrent !== parentTarget) {
+    window.history.replaceState(window.history.state, "", parentTarget);
+  }
+}
+
+/**
+ * Mirrors a same-origin iframe's URL into the parent's URL bar (no page reload),
+ * by patching the iframe's `History` methods directly. Wrapping
+ * `pushState`/`replaceState` catches programmatic nav; `popstate` catches browser
+ * back/forward inside the iframe.
  *
  * Returns a cleanup that restores the originals.
  */
@@ -30,24 +50,8 @@ export function attachIframeUrlMirror(
   iframeWindow: UrlMirrorWindow,
   parentName: string,
 ): () => void {
-  const iframePrefix = Urls.getSubpathSafeUrl(
-    `${Urls.DATA_APP_EMBED_PREFIX}/${encodeURIComponent(parentName)}`,
-  );
-  const parentPrefix = Urls.getSubpathSafeUrl(Urls.dataApp(parentName));
-
-  const mirror = () => {
-    const iframePath = iframeWindow.location.pathname;
-    const tail = iframePath.startsWith(iframePrefix)
-      ? iframePath.slice(iframePrefix.length)
-      : "";
-    const parentTarget =
-      parentPrefix + tail + window.location.search + window.location.hash;
-    const parentCurrent =
-      window.location.pathname + window.location.search + window.location.hash;
-    if (parentCurrent !== parentTarget) {
-      window.history.replaceState(window.history.state, "", parentTarget);
-    }
-  };
+  const mirror = () =>
+    mirrorIframePath(iframeWindow.location.pathname, parentName);
 
   const history = iframeWindow.history;
   const origPush = history.pushState;
