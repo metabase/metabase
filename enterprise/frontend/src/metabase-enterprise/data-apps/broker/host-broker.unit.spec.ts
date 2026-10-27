@@ -7,8 +7,9 @@ import fetchMock from "fetch-mock";
 
 import { setBasename } from "metabase/utils/basename";
 import {
-  DATA_APP_BROKER_INIT,
-  DATA_APP_BROKER_READY,
+  DATA_APP_BROKER_INIT_MESSAGE_TYPE,
+  DATA_APP_BROKER_READY_MESSAGE_TYPE,
+  DATA_APP_READY_MESSAGE_TYPE,
 } from "metabase-enterprise/data-apps/constants";
 
 import {
@@ -319,7 +320,7 @@ describe("installHostBroker", () => {
   function sendReady({
     origin = FRAME_ORIGIN,
     source = frameWindow,
-    type = DATA_APP_BROKER_READY,
+    type = DATA_APP_BROKER_READY_MESSAGE_TYPE,
   }: { origin?: string; source?: Window; type?: string } = {}) {
     const event = new MessageEvent("message", { data: { type }, origin });
     Object.defineProperty(event, "source", { value: source });
@@ -328,7 +329,7 @@ describe("installHostBroker", () => {
 
   function handedPort(index = 0): MessagePort {
     const [message, targetOrigin, transfer] = postToFrame.mock.calls[index];
-    expect(message).toEqual({ type: DATA_APP_BROKER_INIT });
+    expect(message).toEqual({ type: DATA_APP_BROKER_INIT_MESSAGE_TYPE });
     expect(targetOrigin).toBe(FRAME_ORIGIN);
     const [port] = transfer;
     if (!(port instanceof MessagePort)) {
@@ -357,7 +358,7 @@ describe("installHostBroker", () => {
   it("ignores a ready message from another origin, from another window, or of another type", () => {
     sendReady({ origin: "https://evil.example.com" });
     sendReady({ source: window });
-    sendReady({ type: "metabase.data-app.ready" });
+    sendReady({ type: DATA_APP_READY_MESSAGE_TYPE });
 
     expect(postToFrame).not.toHaveBeenCalled();
   });

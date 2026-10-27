@@ -4,8 +4,8 @@ import {
 } from "metabase/api/client/csrf";
 import type { EMBEDDING_SDK_CONFIG } from "metabase/embedding-sdk/config";
 import {
-  DATA_APP_BROKER_INIT,
-  DATA_APP_BROKER_READY,
+  DATA_APP_BROKER_INIT_MESSAGE_TYPE,
+  DATA_APP_BROKER_READY_MESSAGE_TYPE,
 } from "metabase-enterprise/data-apps/constants";
 import { isDataAppMessage } from "metabase-enterprise/data-apps/host/lib/is-data-app-message";
 
@@ -148,7 +148,7 @@ export function installHostBroker(
     if (
       event.origin !== frameOrigin ||
       event.source !== iframe.contentWindow ||
-      !isDataAppMessage(event.data, DATA_APP_BROKER_READY)
+      !isDataAppMessage(event.data, DATA_APP_BROKER_READY_MESSAGE_TYPE)
     ) {
       return;
     }
@@ -181,7 +181,7 @@ export function installHostBroker(
     };
 
     iframe.contentWindow?.postMessage(
-      { type: DATA_APP_BROKER_INIT },
+      { type: DATA_APP_BROKER_INIT_MESSAGE_TYPE },
       frameOrigin,
       [channel.port2],
     );
