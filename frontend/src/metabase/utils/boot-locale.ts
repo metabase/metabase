@@ -9,9 +9,15 @@ import { loadLocaleCatalog } from "metabase/utils/localization";
  *
  * The document loads them as plain script tags, so by the time this runs the
  * chunks are already installed and the imports below resolve without a request.
+ * `userLocale` replaces the document's user locale, for a document served without
+ * a signed-in user; its catalogue is then loaded.
  */
-export async function applyDocumentLocales(): Promise<void> {
-  const { user = "en", site = "en" } = window.MetabaseLocales ?? {};
+export async function applyDocumentLocales(
+  userLocale?: string | null,
+): Promise<void> {
+  const documentLocales = window.MetabaseLocales;
+  const user = userLocale ?? documentLocales?.user ?? "en";
+  const site = documentLocales?.site ?? "en";
 
   try {
     const [userCatalog, siteCatalog] = await Promise.all([

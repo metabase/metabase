@@ -18,19 +18,26 @@ import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErr
 import CS from "metabase/css/core/index.css";
 import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { useParams } from "metabase/router";
-import { Box, Flex, Icon } from "metabase/ui";
+import { useSetting } from "metabase/settings";
+import { Box, Button, Flex, Icon } from "metabase/ui";
 import { useGetDataAppQuery } from "metabase-enterprise/api";
 
+import { installHostBroker } from "../../../broker/host-broker";
 import {
   DATA_APP_ERROR_MESSAGE_TYPE,
   DATA_APP_LOAD_TIMEOUT_MS,
   DATA_APP_OUTDATED_ERROR_CODE,
   DATA_APP_READY_MESSAGE_TYPE,
+  DATA_APP_ROUTE_MESSAGE_TYPE,
   type DataAppBundleErrorMessage,
   getOutdatedDataAppMessage,
 } from "../../../constants";
-import { attachIframeUrlMirror } from "../../lib/attach-iframe-url-mirror";
+import {
+  attachIframeUrlMirror,
+  mirrorIframePath,
+} from "../../lib/attach-iframe-url-mirror";
 import { deriveIframeSrc } from "../../lib/derive-iframe-src";
+import { getOriginMismatch } from "../../lib/get-origin-mismatch";
 import { isCrossOriginError } from "../../lib/is-cross-origin-error";
 import { isDataAppMessage } from "../../lib/is-data-app-message";
 
@@ -82,6 +89,28 @@ export function DataAppView({
   const name = nameProp ?? nameParam;
   const validName = name.length > 0;
 
+  // With `MB_ISOLATED_ORIGIN` set, the iframe is served from that origin, and this page
+  // makes its instance requests for it (see `broker/host-broker`).
+  const isolatedOrigin = useSetting("isolated-origin");
+  const siteUrl = useSetting("site-url");
+  const isCrossOrigin = Boolean(isolatedOrigin);
+  const frameOrigin = useMemo(
+    () =>
+      isolatedOrigin ? new URL(isolatedOrigin).origin : window.location.origin,
+    [isolatedOrigin],
+  );
+
+  const originMismatch = useMemo(
+    () => getOriginMismatch(isCrossOrigin, siteUrl, window.location),
+    [isCrossOrigin, siteUrl],
+  );
+
+  useEffect(() => {
+    if (originMismatch?.kind === "redirect") {
+      window.location.replace(originMismatch.url);
+    }
+  }, [originMismatch]);
+
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeEl, setIframeElState] = useState<HTMLIFrameElement | null>(null);
   const setIframeEl = useCallback((el: HTMLIFrameElement | null) => {
@@ -107,7 +136,10 @@ export function DataAppView({
 
   // Read parent path → iframe src ONCE; never re-derive on later renders.
   const src = useMemo(
-    () => (validName ? deriveIframeSrc(name) : ""),
+    () =>
+      validName
+        ? deriveIframeSrc(name, isCrossOrigin ? frameOrigin : null)
+        : "",
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
@@ -119,7 +151,16 @@ export function DataAppView({
   } = useGetDataAppQuery(name, { skip: !validName });
 
   useEffect(() => {
-    if (!iframeEl || !validName || !enableUrlMirroring) {
+    if (!iframeEl || !isCrossOrigin) {
+      return undefined;
+    }
+    return installHostBroker(iframeEl, frameOrigin);
+  }, [iframeEl, isCrossOrigin, frameOrigin]);
+
+  useEffect(() => {
+    // This mirror reaches into the iframe's `history`, which works only same-origin.
+    // A cross-origin iframe reports its route with a message instead (below).
+    if (!iframeEl || !validName || !enableUrlMirroring || isCrossOrigin) {
       return undefined;
     }
 
@@ -160,11 +201,11 @@ export function DataAppView({
       iframeEl.removeEventListener("load", onLoad);
       detach?.();
     };
-  }, [iframeEl, name, validName, enableUrlMirroring]);
+  }, [iframeEl, name, validName, enableUrlMirroring, isCrossOrigin]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) {
+      if (event.origin !== frameOrigin) {
         return;
       }
 
@@ -189,13 +230,23 @@ export function DataAppView({
 
       if (isDataAppMessage(data, DATA_APP_READY_MESSAGE_TYPE)) {
         setAppReady(true);
+        return;
+      }
+
+      if (
+        isCrossOrigin &&
+        enableUrlMirroring &&
+        isDataAppMessage(data, DATA_APP_ROUTE_MESSAGE_TYPE) &&
+        typeof data.path === "string"
+      ) {
+        mirrorIframePath(data.path, name);
       }
     };
 
     window.addEventListener("message", onMessage);
 
     return () => window.removeEventListener("message", onMessage);
-  }, []);
+  }, [frameOrigin, isCrossOrigin, enableUrlMirroring, name]);
 
   // The iframe can fail to load without ever posting back — blocked by a CSP
   // `frame-src` violation, unreachable, or hung — which would otherwise leave the
@@ -211,7 +262,7 @@ export function DataAppView({
     const onViolation = (event: SecurityPolicyViolationEvent) => {
       if (
         event.effectiveDirective.startsWith("frame-src") &&
-        event.blockedURI.startsWith(window.location.origin)
+        event.blockedURI.startsWith(frameOrigin)
       ) {
         setLoadError(
           t`Frame ${event.blockedURI} was blocked by the browser’s content security policy.`,
@@ -233,7 +284,7 @@ export function DataAppView({
       document.removeEventListener("securitypolicyviolation", onViolation);
       window.clearTimeout(timer);
     };
-  }, [validName, appReady, bundleError, loadError]);
+  }, [validName, appReady, bundleError, loadError, frameOrigin]);
 
   if (!validName) {
     return (
@@ -241,6 +292,19 @@ export function DataAppView({
         title={t`Data app not found`}
         message={t`This data app doesn’t exist or has been disabled.`}
       />
+    );
+  }
+
+  if (originMismatch?.kind === "wrong-origin") {
+    return (
+      <CenteredEmptyState
+        title={t`Open this data app at the main address`}
+        message={t`Data apps load only from the main address, which an admin sets as the Site URL.`}
+      >
+        <Button component="a" href={originMismatch.url} variant="filled">
+          {t`Open data app`}
+        </Button>
+      </CenteredEmptyState>
     );
   }
 
@@ -383,6 +447,7 @@ export function DataAppView({
         title={meta.display_name}
         src={src}
         sandbox="allow-scripts allow-same-origin allow-downloads allow-forms allow-modals allow-popups"
+        allow="clipboard-write"
         style={{
           display: "block",
           width: "100%",
