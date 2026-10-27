@@ -1,3 +1,11 @@
 .chat {
   --metabot-chat-messages-padding-top: 2rem;
 }
+
+/* placed before the greeting in the DOM for tab order, so it needs a z-index to paint above it */
+.historyAction {
+  position: absolute;
+  top: var(--mantine-spacing-lg);
+  right: var(--mantine-spacing-lg);
+  z-index: 1;
+}

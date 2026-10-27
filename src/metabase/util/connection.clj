@@ -10,6 +10,15 @@
 
 (set! *warn-on-reflection* true)
 
+(defn register-c3p0-connection-customizer!
+  "Seeds c3p0's customizer cache with an instance of `klass`, since c3p0's `Class/forName` can't see classes defined in
+  Clojure's dynamic class loader (https://github.com/swaldman/c3p0/issues/166)."
+  [^Class klass]
+  (let [field (doto (.getDeclaredField com.mchange.v2.c3p0.C3P0Registry "classNamesToConnectionCustomizers")
+                (.setAccessible true))]
+    (.put ^java.util.HashMap (.get field com.mchange.v2.c3p0.C3P0Registry)
+          (.getName klass) (.newInstance klass))))
+
 (defn- consume-rset [^ResultSet rset cb]
   (into {} (iteration
             (fn [_]

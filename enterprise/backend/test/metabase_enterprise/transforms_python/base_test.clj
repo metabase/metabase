@@ -72,7 +72,7 @@
                           {:source {:type :python :source-tables [] :body "stub"}
                            :target {:type "table" :name "out"}
                            :id     7}
-                          {:engine :h2 :id 1}
+                          {:lib/type :metadata/database :engine :h2 :id 1}
                           42
                           cancel-chan
                           stub-message-log

@@ -33,6 +33,7 @@ import { registerDashboardVisualizations } from "metabase/dashboard/visualizatio
 import { reinitialize } from "metabase/plugins";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
 import { registerVisualizations } from "metabase/visualizations/register";
+import { loadVisualizationComponents } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import {
@@ -133,6 +134,7 @@ function setup({
   dashcard = tableDashcard,
   dashcardData = tableDashcardData,
   isEditing,
+  isEditingParameter = false,
   withMetadata = false,
   databases,
   parameterValues = {},
@@ -142,7 +144,7 @@ function setup({
 }: Partial<DashCardProps> &
   Pick<
     MockDashboardContextProps,
-    "dashcardMenu" | "isEditing" | "withTimelineEvents"
+    "dashcardMenu" | "isEditing" | "isEditingParameter" | "withTimelineEvents"
   > & {
     dashboard?: NonNullable<MockDashboardContextProps["dashboard"]>;
     dashcardData?: DashCardDataMap;
@@ -198,7 +200,7 @@ function setup({
       downloadsEnabled={{ results: true }}
       slowCards={{}}
       isEditing={isEditing}
-      isEditingParameter={false}
+      isEditingParameter={isEditingParameter}
       dashcardMenu={dashcardMenu}
       withTimelineEvents={withTimelineEvents}
       reportAutoScrolledToDashcard={jest.fn()}
@@ -1349,6 +1351,81 @@ describe("DashCard", () => {
       // parameter filter should be hidden — there's no point showing
       // a filter for data the user can't access.
       expect(screen.queryByText("State")).not.toBeInTheDocument();
+    });
+
+    describe("Number cards", () => {
+      // The Number chart loads on demand; load it up front so the render does not suspend mid-test.
+      beforeAll(() => loadVisualizationComponents(["scalar"]));
+
+      const parameter = createMockParameter({
+        id: "param-1",
+        name: "Category",
+        type: "string/=",
+        slug: "category",
+      });
+      const numberCard = createMockCard({
+        name: "Sum of Total",
+        display: "scalar",
+      });
+      // tall enough for the parameter mapper to show the card title header
+      const dashcard = createMockDashboardCard({
+        card: numberCard,
+        inline_parameters: [parameter.id],
+        size_y: 2,
+      });
+      const dashboard = createMockDashboard({
+        parameters: [parameter],
+        dashcards: [dashcard],
+      });
+      const dashcardData: DashCardDataMap = {
+        [dashcard.id]: {
+          [numberCard.id]: createMockDataset({
+            data: createMockDatasetData({
+              rows: [[100]],
+              cols: [createMockNumericColumn({ name: "sum" })],
+            }),
+            database_id: 1,
+            context: "dashboard",
+            status: "completed",
+          }),
+        },
+      };
+
+      beforeEach(() => {
+        jest
+          .spyOn(
+            dashboardSelectors,
+            "getDashCardInlineValuePopulatedParameters",
+          )
+          .mockReturnValue([{ ...parameter, value: ["Gadget"] }]);
+      });
+
+      it("should show the card-level filters as a compact menu instead of the header list", () => {
+        setup({ dashboard, dashcard, dashcardData });
+
+        expect(
+          screen.getByTestId("show-filter-parameter-button"),
+        ).toBeInTheDocument();
+        expect(
+          screen.getByTestId("show-filter-parameter-count"),
+        ).toHaveTextContent("1");
+        expect(screen.queryByText("Category")).not.toBeInTheDocument();
+      });
+
+      it("should hide the card-level filters while a parameter is being edited, when the mapper shows the title", () => {
+        setup({
+          dashboard,
+          dashcard,
+          dashcardData,
+          isEditing: true,
+          isEditingParameter: true,
+        });
+
+        expect(
+          screen.queryByTestId("show-filter-parameter-button"),
+        ).not.toBeInTheDocument();
+        expect(screen.getByText("Sum of Total")).toBeInTheDocument();
+      });
     });
   });
 });

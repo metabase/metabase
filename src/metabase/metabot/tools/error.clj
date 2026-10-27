@@ -346,6 +346,19 @@
        (cons message)
        (str/join "\n")))
 
+(def max-output-length
+  "Maximum number of characters in a rendered failure, including recovery steps.
+
+  Leave room for recovery steps when including excerpts."
+  4000)
+
+(defn output-budget
+  "Return the character budget for an excerpt after `prefix` and every recovery step."
+  [prefix recovery]
+  (let [tool-names (into #{} (mapcat :uses) recovery)]
+    (- max-output-length
+       (count (recoverable-text {:message prefix :recovery recovery} tool-names)))))
+
 (defn authored-text
   "Return `text` with the quoted payload values from `error`'s declaration removed.
 

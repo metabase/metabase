@@ -48,18 +48,19 @@
 (def ^:private underline-end "\u001b[0m")
 
 (defn- caret-line
-  "A line of carets under the token `snippet` underlines, or nil when it underlines none.
+  "A line of carets under the token `line` underlines, or nil when it underlines none.
 
-  The offsets are into the text with the escapes taken out, which is the `snippet` its reader will see."
-  [snippet]
-  (when-let [start (str/index-of snippet underline-start)]
+  The offsets are into the text with the escapes taken out, which is the `line` its reader will see. The pad keeps
+  that text's whitespace, so a tab before the token moves the carets as far as it moves the token."
+  [line]
+  (when-let [start (str/index-of line underline-start)]
     (let [plain (fn [s] (str/replace s ansi-escape ""))
-          after (subs snippet (+ start (count underline-start)))
+          after (subs line (+ start (count underline-start)))
           token (plain (if-let [end (str/index-of after underline-end)]
                          (subs after 0 end)
                          after))]
       (when (seq token)
-        (str (apply str (repeat (count (plain (subs snippet 0 start))) \space))
+        (str (str/replace (plain (subs line 0 start)) #"\S" " ")
              (apply str (repeat (count token) \^)))))))
 
 (defn- without-parser-internals
@@ -71,8 +72,19 @@
       ;; sqlglot >=29 represents end-of-input as a SENTINEL token rather than `None`; the `but got
       ;; None` case below is kept for whichever internal form the caller's sqlglot happens to use.
       (str/replace #"<Token token_type: TokenType\.SENTINEL,[^>]*>" "the end of the query")
-      (str/replace #"<Token [^>]*?text: ([^,>]*),[^>]*>" "'$1'")
+      (str/replace #"<Token token_type: \S+, text: (.*?), line: \d+, col: \d+, start: \d+, end: \d+, comments: \[.*?\]>"
+                   "'$1'")
       (str/replace #"but got None\b" "but got the end of the query")))
+
+(defn- diagnostic
+  "`reported`, the message sqlglot gives for a failure, as the diagnostic [[parse-error-message]] describes."
+  [reported]
+  (let [[detail & snippet] (str/split-lines reported)]
+    (->> snippet
+         (mapcat (fn [line] [(str/replace line ansi-escape "") (caret-line line)]))
+         (cons (without-parser-internals detail))
+         (remove nil?)
+         (str/join "\n"))))
 
 (defn parse-error-message
   "The parse failure `e` reports, as a diagnostic its reader can act on: what the parser could not read, where
@@ -86,12 +98,7 @@
   message of its own."
   [e]
   (when-let [reported (or (some-> (ex-cause e) ex-message) (ex-message e))]
-    (let [[detail snippet] (str/split reported #"\n" 2)]
-      (->> [(without-parser-internals detail)
-            (some-> snippet (str/replace ansi-escape ""))
-            (some-> snippet caret-line)]
-           (remove nil?)
-           (str/join "\n")))))
+    (diagnostic reported)))
 
 ;;; ------------------------------------- Large literal-list stripping -----------------------------------------
 
@@ -629,10 +636,12 @@
   (-> result
       (perf/update-keys (comp keyword u/->kebab-case-en))
       (m/update-existing :status (comp keyword u/->kebab-case-en))
-      (m/update-existing :reason (comp keyword u/->kebab-case-en))))
+      (m/update-existing :reason (comp keyword u/->kebab-case-en))
+      (m/update-existing :error-message diagnostic)))
 
 (defn transpile-sql
-  "Transpiles sql string from one dialect to another."
+  "Transpiles sql string from one dialect to another. An `:error-message` is cleaned of the parser's internals as
+  [[parse-error-message]] cleans a parse failure."
   [sql from-dialect to-dialect]
   (normalize-transpilation-result
    (protocol/transpile-sql (parser) sql from-dialect to-dialect)))

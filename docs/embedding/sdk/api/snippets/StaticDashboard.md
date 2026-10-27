@@ -8,9 +8,9 @@ A lightweight dashboard component.
 
 <!-- [<snippet parameters>] -->
 
-| Parameter | Type                                                    | Description |
-| :-------- | :------------------------------------------------------ | :---------- |
-| `props`   | [`StaticDashboardProps`](./api/StaticDashboardProps.md) |             |
+| Parameter | Type                                                                             | Description |
+| :-------- | :------------------------------------------------------------------------------- | :---------- |
+| `props`   | [`StaticDashboardProps`](/docs/latest/embedding/sdk/api/StaticDashboardProps.md) |             |
 
 <!-- [<endsnippet parameters>] -->
 

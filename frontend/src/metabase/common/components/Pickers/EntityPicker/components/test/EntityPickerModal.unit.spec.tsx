@@ -1,10 +1,14 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import { findRequests } from "__support__/server-mocks";
 import { screen, waitFor, within } from "__support__/ui";
+import { reinitialize } from "metabase/plugins";
 import {
   createMockCollection,
   createMockCollectionItem,
+  createMockDataApp,
+  createMockSearchResult,
 } from "metabase-types/api/mocks";
 
 import type { OmniPickerItem } from "../../types";
@@ -166,6 +170,7 @@ const libraryPickerSetup = {
 describe("EntityPickerModal", () => {
   afterEach(() => {
     jest.restoreAllMocks();
+    reinitialize();
   });
 
   describe("Default Behavior", () => {
@@ -786,6 +791,20 @@ describe("EntityPickerModal", () => {
       expect(within(searchList).getAllByRole("link")).toHaveLength(11);
     });
 
+    it("should show the no objects illustration when the search finds nothing", async () => {
+      await setup({ searchResults: [] });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "This aren't the objects you're looking for",
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("We didn't find anything")).toBeInTheDocument();
+        expect(screen.getByAltText("Nothing found")).toBeInTheDocument();
+      });
+    });
+
     it("should hide search results based on isHiddenItem", async () => {
       await setup({
         isHiddenItem: (item) => item.name.includes("Dash"),
@@ -1076,6 +1095,219 @@ describe("EntityPickerModal", () => {
       expect(screen.queryByText("Recent Question 2")).not.toBeInTheDocument();
       const searchList = await screen.findByTestId("item-picker-level-1");
       expect(within(searchList).getAllByRole("link")).toHaveLength(2);
+    });
+  });
+
+  describe("Data apps", () => {
+    const OWLS = createMockDataApp({
+      id: 8,
+      name: "owls",
+      display_name: "Owls",
+    });
+    const HERONS = createMockDataApp({
+      id: 9,
+      name: "herons",
+      display_name: "Herons",
+    });
+    const options = { hasDataApps: true, hasConfirmButtons: false };
+    const models: OmniPickerItem["model"][] = ["card", "data-app"];
+
+    it("lists the user's data apps in a Data apps folder", async () => {
+      await setup({ options, models, dataApps: [OWLS, HERONS] });
+
+      await userEvent.click(await screen.findByText("Data apps"));
+
+      await expectVisibleItem("Owls");
+      await expectVisibleItem("Herons");
+      const dataAppList = screen.getByTestId("item-picker-level-1");
+      expect(within(dataAppList).getAllByRole("link")).toHaveLength(2);
+    });
+
+    it("picks a data app", async () => {
+      const { onChange } = await setup({ options, models, dataApps: [OWLS] });
+
+      await userEvent.click(await screen.findByText("Data apps"));
+      await userEvent.click(await screen.findByText("Owls"));
+
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith({
+        model: "data-app",
+        id: OWLS.id,
+        name: "Owls",
+      });
+    });
+
+    it("doesn't pick the Data apps folder when the picker also picks collections", async () => {
+      const { onChange } = await setup({
+        options,
+        models: ["collection", "data-app"],
+        dataApps: [OWLS],
+      });
+
+      await userEvent.click(await screen.findByText("Data apps"));
+
+      await expectVisibleItem("Owls");
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("lists the Data apps folder after the other root items", async () => {
+      await setup({ options, models, dataApps: [OWLS] });
+
+      await expectVisibleItem("Data apps");
+      const rootItems = within(
+        screen.getByTestId("item-picker-level-0"),
+      ).getAllByRole("link");
+      expect(rootItems.map((item) => item.textContent?.trim())).toEqual([
+        "Recent items",
+        "Our analytics",
+        "Data apps",
+      ]);
+    });
+
+    it("opens on the data app given as the value", async () => {
+      await setup({
+        options,
+        models,
+        dataApps: [OWLS, HERONS],
+        value: { model: "data-app", id: HERONS.id },
+      });
+
+      await expectActiveItem("Data apps");
+      await expectActiveItem("Herons");
+      await expectInactiveItem("Owls");
+    });
+
+    it("opens on the data app when the app list arrives after the rest of the picker", async () => {
+      await setup({
+        options,
+        models,
+        dataApps: [OWLS, HERONS],
+        dataAppsDelayMs: 300,
+        value: { model: "data-app", id: HERONS.id },
+      });
+
+      await expectActiveItem("Data apps");
+      await expectActiveItem("Herons");
+    });
+
+    it("opens on no data app without the hasDataApps option", async () => {
+      await setup({
+        options: { hasConfirmButtons: false },
+        models,
+        dataApps: [OWLS],
+        value: { model: "data-app", id: OWLS.id },
+      });
+
+      await expectVisibleItem("Our analytics");
+      expect(screen.queryByText("Owls")).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.called("path:/api/ee/apps")).toBe(false);
+    });
+
+    it("finds a data app in search, located in the Data apps folder", async () => {
+      const { onChange } = await setup({
+        options,
+        models,
+        dataApps: [OWLS],
+        searchResults: [
+          createMockSearchResult({
+            model: "data-app",
+            id: OWLS.id,
+            name: "Owls",
+          }),
+        ],
+      });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "Owls",
+        { delay: 50 },
+      );
+      const result = await screen.findByTestId("result-item");
+      expect(
+        within(result).getByTestId("picker-item-location"),
+      ).toHaveTextContent("Data apps");
+      const searches = (await findRequests("GET")).filter((request) =>
+        request.url.includes("/api/search"),
+      );
+      expect(searches.at(-1)?.url).toContain("models=data-app");
+
+      await userEvent.click(within(result).getByText("Owls"));
+      expect(onChange).toHaveBeenCalledTimes(1);
+      expect(onChange).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "data-app", id: OWLS.id }),
+      );
+    });
+
+    it("doesn't search data apps without the hasDataApps option", async () => {
+      await setup({
+        options: { hasConfirmButtons: false },
+        models,
+        dataApps: [OWLS],
+        searchResults: [
+          createMockSearchResult({
+            model: "data-app",
+            id: OWLS.id,
+            name: "Owls",
+          }),
+          createMockSearchResult({
+            model: "card",
+            id: 1,
+            name: "Owl sightings",
+          }),
+        ],
+      });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "Owl",
+        { delay: 50 },
+      );
+      await expectVisibleItem("Owl sightings");
+      expect(screen.queryByText("Owls")).not.toBeInTheDocument();
+      const searches = (await findRequests("GET")).filter((request) =>
+        request.url.includes("/api/search"),
+      );
+      expect(searches.at(-1)?.url).not.toContain("models=data-app");
+    });
+
+    it("has no Data apps folder without the hasDataApps option", async () => {
+      await setup({
+        options: { hasConfirmButtons: false },
+        models,
+        dataApps: [OWLS],
+      });
+
+      await expectVisibleItem("Our analytics");
+      expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
+      expect(fetchMock.callHistory.called("path:/api/ee/apps")).toBe(false);
+    });
+
+    it("has no Data apps folder when the picker doesn't pick data apps", async () => {
+      await setup({ options, models: ["card"], dataApps: [OWLS] });
+
+      await expectVisibleItem("Our analytics");
+      expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
+    });
+
+    it("has no Data apps folder when the picker picks collections but not data apps", async () => {
+      await setup({
+        options,
+        models: ["card", "collection"],
+        dataApps: [OWLS],
+      });
+
+      await expectVisibleItem("Our analytics");
+      expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
+    });
+
+    it("has no Data apps folder when the user has no data apps", async () => {
+      await setup({ options, models, dataApps: [] });
+
+      await expectVisibleItem("Our analytics");
+      await waitFor(() => {
+        expect(fetchMock.callHistory.called("path:/api/ee/apps")).toBe(true);
+      });
+      expect(screen.queryByText("Data apps")).not.toBeInTheDocument();
     });
   });
 });

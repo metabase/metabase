@@ -8,10 +8,10 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn database
-  "The Database with `database-id`, or nil."
+(mu/defn database-exists?
+  "Whether a Database with `database-id` exists."
   [database-id :- ::lib.schema.id/database]
-  (t2/select-one :model/Database database-id))
+  (t2/exists? :model/Database :id database-id))
 
 (mu/defn table-index
   "The TableIndex with `id`, or nil."

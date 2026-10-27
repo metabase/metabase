@@ -507,10 +507,11 @@
   "Return the ID, name, schema, and database ID of each table in `table-ids`.
 
   Rows also include `:is_published` and `:collection_id`, which `can-read?` and `can-query?` need to check access
-  through a collection. Both keys must be present, even when nil."
+  through a collection. Both keys must be present, even when nil.
+  Both are user values, so the rows read through the user-settings overlay."
   [table-ids :- [:sequential ::lib.schema.id/table]]
   (t2/select [:model/Table :id :name :schema :db_id :is_published :collection_id] :id [:in table-ids]
-             {:from [(warehouse-schema-overlay/table-query {:user-settings? false})]}))
+             {:from [(warehouse-schema-overlay/table-query)]}))
 
 (mu/defn table-curation-rows
   "The ID, published flag, data layer, and data authority of the Tables with `table-ids`."
@@ -817,16 +818,16 @@
 (mu/defn card-source-info
   "Return a map of Card IDs to stored metric definitions for `card-ids`.
 
-  Each row contains `:table_id` and `:dataset_query` for [[metabase.metabot.tools.util/metric-required-source]].
+  Each row contains the `:dataset_query` for [[metabase.metabot.tools.util/metric-required-source]].
   Queries are returned with the model's output transform, without running card-schema upgrades."
   ;; The first stage's `:source_card_id` cannot distinguish single-stage and multi-stage card metrics.
   [card-ids :- [:or [:set ::lib.schema.id/card] [:sequential ::lib.schema.id/card]]]
   (let [query-out (:out lib-be/transform-query)]
     (into {}
-          (map (fn [{:keys [id table_id dataset_query]}]
-                 [id {:table_id table_id, :dataset_query (query-out dataset_query)}]))
+          (map (fn [{:keys [id dataset_query]}]
+                 [id {:dataset_query (query-out dataset_query)}]))
           (when (seq card-ids)
-            (t2/select [(t2/table-name :model/Card) :id :table_id :dataset_query] :id [:in card-ids])))))
+            (t2/select [(t2/table-name :model/Card) :id :dataset_query] :id [:in card-ids])))))
 
 (mu/defn card-source-rows
   "Return the source cards in `card-ids`, including the columns needed by `can-read?`."
@@ -847,8 +848,10 @@
              :archived false))
 
 (mu/defn cards-in-collection
-  "The presentable columns of the unarchived Cards in the Collection with `collection-id`, ordered by name."
-  [collection-id :- ::lib.schema.id/collection]
+  "Return unarchived card summaries in a collection, ordered by name.
+
+  A nil `collection-id` selects the root collection."
+  [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select [:model/Card :id :name :type :description :collection_id :database_id :table_id]
              {:where    [:and [:= :collection_id collection-id] [:= :archived false]]
               :order-by [[:%lower.name :asc]]}))
@@ -956,9 +959,10 @@
   (t2/select-one-fn :name :model/Dashboard :id dashboard-id))
 
 (mu/defn dashboards-in-collection
-  "The ID, name, description, and Collection ID of the unarchived Dashboards in the Collection with
-  `collection-id`, ordered by name."
-  [collection-id :- ::lib.schema.id/collection]
+  "Return unarchived dashboard summaries in a collection, ordered by name.
+
+  A nil `collection-id` selects the root collection."
+  [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select [:model/Dashboard :id :name :description :collection_id]
              :collection_id collection-id
              :archived false
@@ -978,9 +982,10 @@
              {:order-by [[:row :asc] [:col :asc]]}))
 
 (mu/defn documents-in-collection
-  "The ID, name, Collection ID, and exploration of the unarchived, non-exploration Documents in the Collection with
-  `collection-id`, ordered by name."
-  [collection-id :- ::lib.schema.id/collection]
+  "Return unarchived document summaries in a collection, ordered by name.
+
+  Excludes exploration summaries. A nil `collection-id` selects the root collection."
+  [collection-id :- [:maybe ::lib.schema.id/collection]]
   (t2/select [:model/Document :id :name :collection_id :exploration_id]
              :collection_id collection-id
              :archived false

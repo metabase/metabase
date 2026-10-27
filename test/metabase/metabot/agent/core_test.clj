@@ -99,14 +99,14 @@
     (testing "a usage part without a finish reason (older adapters) is not truncation"
       (is (= :stop (#'agent/finish-reason 0 20 #{} [{:type :text} {:type :usage}]))))))
 
-(deftest legacy-terminal-tools-test
-  (let [terminal (for [[_profile-id profile] @@#'profiles/*profiles
-                       tool (:tools profile)
-                       :let [tool-name (:name (tools.legacy/declaration-of tool))]
-                       :when (and (contains? (:terminal-tools profile) tool-name)
-                                  (tools.legacy/legacy-tool? tool))]
-                   tool-name)]
-    (is (= (set terminal) @#'agent/legacy-terminal-tool-names))))
+(deftest terminal-tools-are-converted-test
+  (testing "a terminal tool ends the turn on a call without an `:error`, so it can't be a legacy tool, which returns
+           its failures as results"
+    (is (empty? (for [[_profile-id profile] @@#'profiles/*profiles
+                      tool (:tools profile)
+                      :when (and (contains? (:terminal-tools profile) (:name (tools.legacy/declaration-of tool)))
+                                 (tools.legacy/legacy-tool? tool))]
+                  tool)))))
 
 (deftest create-terminal-without-structured-output-test
   (let [parts [{:type :tool-input :id "create" :function "create_sql_query"}
@@ -139,15 +139,9 @@
       (is (not (#'agent/terminal-tool-call? terminal read))))
     (testing "terminality is per-profile: an empty terminal set never ends the turn"
       (is (not (#'agent/terminal-tool-call? #{} success))))
-    (testing "legacy terminal tools require structured output on success"
-      (doseq [tool-name ["document_construct_sql_chart" "document_construct_model_chart"]]
-        (let [parts [{:type :tool-input :id "d" :function tool-name}
-                     {:type :tool-output :id "d" :result {:output "Query construction failed"}}]]
-          (is (not (#'agent/terminal-tool-call? #{tool-name} parts)))
-          (is (#'agent/terminal-tool-call? #{tool-name}
-                                           (assoc-in parts [1 :result :structured-output] {:query-id "q1"}))))))
     (testing "converted terminal tools can answer without structured output"
-      (doseq [tool-name ["edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"]]
+      (doseq [tool-name ["edit_sql_query" "replace_sql_query" "ask_for_sql_clarification"
+                         "document_construct_sql_chart" "document_construct_model_chart"]]
         (let [parts [{:type :tool-input :id "e" :function tool-name}
                      {:type :tool-output :id "e" :result {:output "Done"}}]]
           (is (#'agent/terminal-tool-call? #{tool-name} parts))
@@ -192,16 +186,27 @@
           (is (contains? tools "edit_sql_query"))
           (is (contains? tools "replace_sql_query")))))))
 
+(defn- metabot-row
+  "The Metabot whose entity ID is `entity-id`."
+  [entity-id]
+  (t2/select-one :model/Metabot :entity_id entity-id))
+
+(defn- internal-metabot
+  "The internal Metabot, which offers run_query."
+  []
+  (metabot-row metabot.config/internal-metabot-id))
+
 (defn- run-query-offered-at-turn-start
   "Whether the turn starts with `run_query` among its tools, whether its system message says results can be read, and
    whether it declares `show_chart` on construct_notebook_query. Reads them where the decision is made rather than
    running a turn. The bindings stand in for the ones the agent loop makes."
-  [conversation-id capabilities]
+  [conversation-id capabilities metabot profile-id]
   (let [{:keys [tools system-msg]}
         (binding [scope/*current-user-metabot-permissions* scope/all-yes-permissions
                   scope/*current-user-scope*               (scope/user-metabot-perms->scopes scope/all-yes-permissions)]
           (#'agent/init-agent {:messages        [{:role :user :content "How many orders?"}]
-                               :profile-id      :internal
+                               :metabot         metabot
+                               :profile-id      profile-id
                                :conversation-id conversation-id
                                :context         {:capabilities capabilities}}))]
     {:tool?       (contains? tools "run_query")
@@ -215,17 +220,19 @@
 (deftest client-claimed-feature-capability-cannot-override-settings-test
   ;; In a conversation the user owns, so the setting decides and not the rule for shared conversations.
   (mt/with-temp [:model/MetabotConversation {conversation-id :id} {:user_id (mt/user->id :crowberto)}]
-    (mt/with-current-user (mt/user->id :crowberto)
-      (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
-        (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
-          (is (not (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))
-      (testing "the same request gets run_query once the admin turns it on"
-        (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
-          (is (:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]))))))))
+    (let [offered? #(:tool? (run-query-offered-at-turn-start conversation-id ["feature:query_execution"]
+                                                             (internal-metabot) :internal))]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (testing "a request claiming feature:query_execution gets no run_query while an admin has it turned off"
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? false]
+            (is (not (offered?)))))
+        (testing "the same request gets run_query once the admin turns it on"
+          (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+            (is (offered?))))))))
 
 (deftest run-query-not-offered-where-others-can-read-the-conversation-test
   (let [rasta   (mt/user->id :rasta)
-        offered #(run-query-offered-at-turn-start % [])]
+        offered #(run-query-offered-at-turn-start % [] (internal-metabot) :internal)]
     (mt/with-temp [:model/MetabotConversation {own :id}     {:user_id rasta}
                    :model/MetabotConversation {thread :id}  {:user_id rasta, :slack_thread_ts "1.2"}
                    :model/MetabotConversation {someone :id} {:user_id (mt/user->id :crowberto)}]
@@ -240,6 +247,22 @@
               (is (= {:tool? false, :prompt? false, :show-chart? false} (offered someone)))))
           (testing "no conversation does none of them"
             (is (= {:tool? false, :prompt? false, :show-chart? false} (offered nil)))))))))
+
+(deftest run-query-not-offered-to-embedded-metabot-test
+  ;; The request names the profile, so an embedded Metabot can ask for one that offers run_query.
+  (let [rasta    (mt/user->id :rasta)
+        embedded (metabot-row metabot.config/embedded-metabot-id)
+        internal (internal-metabot)]
+    (mt/with-temp [:model/MetabotConversation {own :id} {:user_id rasta}]
+      (mt/with-temporary-setting-values [metabot-query-execution-enabled? true]
+        (mt/with-current-user rasta
+          (doseq [profile-id [:nlq :internal]]
+            (testing profile-id
+              (testing "the internal Metabot offers run_query"
+                (is (:tool? (run-query-offered-at-turn-start own [] internal profile-id))))
+              (testing "the embedded Metabot does not, and its prompt does not promise results"
+                (is (=? {:tool? false, :prompt? false}
+                        (run-query-offered-at-turn-start own [] embedded profile-id)))))))))))
 
 (deftest document-sql-chart-tool-requires-native-permission-test
   (mt/with-no-data-perms-for-all-users!
@@ -297,9 +320,14 @@
          (-> (#'agent/summarize-tool-ios [(unrecoverable-part "a" nil)])
              :tool-results first :error))))
 
+(def ^:private sql-editor-viewing
+  [{:type    "code_editor"
+    :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}])
+
 (defn- run-sql-denial-turn!
-  "Run one turn whose first LLM response calls `create_sql_query` against `database-id`."
-  [profile-id database-id]
+  "Run one turn whose first LLM response calls `create_sql_query` against `database-id` while the user views
+  `viewing`, by default a SQL editor."
+  [profile-id database-id & {:keys [viewing] :or {viewing sql-editor-viewing}}]
   (let [call-count (atom 0)]
     (mt/with-temporary-setting-values [llm-providers        llm.tu/default-connections
                                        llm-metabot-provider test-provider]
@@ -319,9 +347,19 @@
                                :state      {}
                                :profile-id profile-id
                                :context    {:capabilities    ["permission:write_sql_queries"]
-                                            :user_is_viewing [{:type    "code_editor"
-                                                               :buffers [{:id "buf-1" :source {:language "sql" :database_id nil} :cursor {:line 0 :column 0}}]}]}}))]
+                                            :user_is_viewing viewing}}))]
           {:llm-calls @call-count :parts parts})))))
+
+(deftest missing-sql-editor-ends-a-forced-tool-call-turn-test
+  (testing "the SQL profile ends the turn when no SQL editor is open, and tells the user why"
+    (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
+      (mt/with-current-user (mt/user->id :crowberto)
+        (let [{:keys [llm-calls parts]} (run-sql-denial-turn! :sql db-id :viewing [])]
+          (is (= 1 llm-calls))
+          (is (= :terminal-error (:finish-reason (last parts))))
+          (is (some #(and (= :text (:type %))
+                          (str/includes? (:text %) "No active SQL editor was found"))
+                    parts)))))))
 
 (deftest permission-denial-ends-a-forced-tool-call-turn-test
   (mt/with-temp [:model/Database {native-db :id}     {:engine :h2}

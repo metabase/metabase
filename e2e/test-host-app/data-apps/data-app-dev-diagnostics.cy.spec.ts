@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   DATA_APP_DEV_DIAGNOSTICS_PATH,
   devToolbarPanel,
@@ -19,12 +20,14 @@ const TIMEOUT_MS = 40000;
 const CLIENT_PORT = Cypress.expose("CLIENT_PORT");
 const CLIENT_HOST = `http://localhost:${CLIENT_PORT}`;
 
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
 const DIAGNOSTICS_URL = `${CLIENT_HOST}${DATA_APP_DEV_DIAGNOSTICS_PATH}`;
 
 describe("Embedding SDK: data-app dev diagnostics", () => {
   before(() => {
     signInAsAdminAndEnableEmbeddingSdk();
-    setUpDataAppDevServer(CLIENT_HOST);
+    setUpDataAppDevServer({ clientHost: CLIENT_HOST, tableId: ORDERS_ID });
   });
 
   after(() => {

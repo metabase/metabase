@@ -2,7 +2,6 @@
   "Snowflake Driver."
   (:refer-clojure :exclude [some select-keys not-empty mapv])
   (:require
-   [buddy.core.codecs :as codecs]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
@@ -28,6 +27,7 @@
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
    [metabase.driver.sync :as driver.s]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.util :as u]
@@ -1193,7 +1193,7 @@
          (nil? (:private-key-value details)))
     (assoc :use-password true)
 
-    ;; Skip when nothing implies a mode — overlay maps (:write_data_details / :admin_details)
+    ;; Skip when nothing implies a mode — an overlay map (:write_data_details)
     ;; that only tweak account/warehouse must not gain an :auth-mode, which would override
     ;; :details' :auth-mode during the merge in effective-details.
     (and (not (contains? details :auth-mode))
@@ -1208,8 +1208,7 @@
   [_ database]
   (-> database
       (m/update-existing :details normalize-details)
-      (m/update-existing :write_data_details normalize-details)
-      (m/update-existing :admin_details normalize-details)))
+      (m/update-existing :write_data_details normalize-details)))
 
 ;;; If you try to read a Snowflake `timestamptz` as a String with `.getString` it always comes back in
 ;;; `America/Los_Angeles` for some reason I cannot figure out. Let's just read them out as UTC, which is what they're
@@ -1233,19 +1232,19 @@
   (str sql "\n\n-- " remark))
 
 (defmethod driver-api/query->remark :snowflake
-  [_ {{:keys [context executed-by card-id pulse-id dashboard-id query-hash]} :info,
-      query-type :type,
-      database-id :database}]
-  (json/encode {:client      "Metabase"
-                :context     context
-                :queryType   query-type
-                :userId      executed-by
-                :pulseId     pulse-id
-                :cardId      card-id
-                :dashboardId dashboard-id
-                :databaseId  database-id
-                :queryHash   (when (bytes? query-hash) (codecs/bytes->hex query-hash))
-                :serverId    (driver-api/site-uuid)}))
+  [_ {query-type :type, :as query}]
+  (let [{:keys [context user-id pulse-id card-id dashboard-id database-id query-hash account-id]}
+        (driver-api/query->remark-data query)]
+    (json/encode {:client      "Metabase"
+                  :context     context
+                  :queryType   query-type
+                  :userId      user-id
+                  :pulseId     pulse-id
+                  :cardId      card-id
+                  :dashboardId dashboard-id
+                  :databaseId  database-id
+                  :queryHash   query-hash
+                  :serverId    account-id})))
 
 ;;; ------------------------------------------------- User Impersonation --------------------------------------------------
 
@@ -1299,7 +1298,7 @@
                                 :rename-table (keyword to-table)}
                                :quoted true
                                :dialect (sql.qp/quote-style driver)))]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
       (jdbc/execute! conn sql))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -21,17 +21,10 @@ describe("scenarios > data apps > repo sync", () => {
     H.commitToRepo("Add data apps");
     H.configureGitAndPullChanges("read-write");
 
-    cy.visit("/admin/settings/apps");
-    cy.findByTestId("admin-layout-content").within(() => {
-      cy.findByTestId("data-app-list-item-good")
-        .scrollIntoView()
-        .within(() => {
-          cy.findByRole("link", { name: "Good App" }).should("be.visible");
-          cy.findByText("A well-formed app that syncs cleanly").should(
-            "be.visible",
-          );
-        });
-      cy.findByTestId("data-app-list-item-second-app").should("exist");
+    cy.visit("/data-studio/apps");
+    H.main().within(() => {
+      cy.findByRole("row", { name: /Good App/ }).should("be.visible");
+      cy.findByRole("row", { name: /Second App/ }).should("be.visible");
     });
 
     cy.request("GET", "/api/ee/apps").then(({ body: apps }) => {
