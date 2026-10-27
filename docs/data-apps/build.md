@@ -89,7 +89,7 @@ To commit the source code, ask your agent.
 
 A data app runs with the permissions of the person who opens it. Their [data permissions](../permissions/data.md), including [row and column security](../permissions/row-and-column-security.md), apply to everything the app reads. If row and column security applies to a person on any table in a database, that person can't run the app's actions on that database.
 
-An app's collection can hold only questions, metrics, and data actions. When your agent saves an item to the collection, Metabase refuses it if it breaks one of these rules:
+An app's collection can hold only questions, metrics, and data actions. When your agent saves an item to the collection, Metabase refuses it if it breaks a rule. The main rules are:
 
 - Questions must be built with the query builder, not SQL. They can read only [tables published to the Library](../data-modeling/semantic-layer/published-tables.md) and metrics from the Library, so they can't start from or join another saved question or model.
 - Questions and metrics in the collection can't be archived, public, or embedded, and they can't be in a dashboard or a document.
@@ -99,4 +99,4 @@ Only admins can edit an app's collection. You can't move the app's collection, m
 
 ## Let an app fetch data from other sites
 
-A data app runs in a sandbox. By default, the app can't make network requests to other sites. To let an app fetch data from a site, ask your agent to add the site's origin, like `https://api.example.com`, to the app's `allowed_hosts`. The app can then reach the site only with `fetch`. Other kinds of requests, like `XMLHttpRequest`, stay blocked. An origin that starts with `*.`, like `https://*.example.com`, matches subdomains, but not the domain itself.
+A data app runs in a sandbox. By default, the app can't make network requests to other sites. To let an app fetch data from a site, ask your agent to add the site's origin, like `https://api.example.com`, to the app's `allowed_hosts`. The app can then get data from the site with `fetch`, but not with `XMLHttpRequest`. The app can also show the site's images, embed the site's pages, and submit forms to the site. An origin that starts with `*.`, like `https://*.example.com`, matches subdomains, but not the domain itself.
