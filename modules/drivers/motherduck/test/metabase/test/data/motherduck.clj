@@ -5,7 +5,6 @@
   the driver under test. Inherit the Postgres and SQL-JDBC test extensions, with overrides for DuckDB SQL and
   endpoint behavior."
   (:require
-   [metabase.config.core :as config]
    [metabase.driver :as driver]
    [metabase.driver.motherduck-test.util :as motherduck-test.util]
    [metabase.driver.sql-jdbc.connection-test :as connection-test]
@@ -29,9 +28,7 @@
 ;; Postgres already inherits the SQL-JDBC test extensions. Calling add-test-extensions! again
 ;; for MotherDuck would fail because clojure.core/derive rejects a redundant ancestor.
 
-(doseq [[feature supported?] {:upload-with-auto-pk (not config/is-test?)
-                              :test/time-type false
-                              ::describe-table-test/describe-materialized-view-fields false ; MotherDuck has no materialized views
+(doseq [[feature supported?] {::describe-table-test/describe-materialized-view-fields false ; MotherDuck has no materialized views
                               ;; Field sync reports primary keys through information_schema even
                               ;; though foreign key sync (:metadata/key-constraints) is disabled.
                               ::describe-table-test/describe-pks true

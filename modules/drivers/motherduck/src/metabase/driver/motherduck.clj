@@ -77,6 +77,10 @@
                  :transforms/python
                  :transforms/index-ddl
                  :transforms/testing
+                 ;; The inherited fetch-table-indexes reads pg_index, which is empty on the endpoint, and calls
+                 ;; a pg_get_indexdef arity it doesn't provide. Only transform index management uses these.
+                 :index/fetch
+                 :index/standalone-create
                  ;; DuckDB uses RE2, which does not support lookahead or lookbehind assertions.
                  :regex/lookaheads-and-lookbehinds]]
   (defmethod driver/database-supports? [:motherduck feature]
