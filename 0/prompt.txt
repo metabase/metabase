@@ -1,0 +1,1 @@
+could the artifact created by qa-db be used against a separate postgress DB that is setup separately? What happens if qa-db doesn't run (on the same runner in CI) and then we try to restore from an artifact it created separeately?
