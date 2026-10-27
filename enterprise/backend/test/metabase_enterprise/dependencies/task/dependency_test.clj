@@ -1246,6 +1246,23 @@
              (is (empty? (data-app-deps app-id)))
              (is (not (t2/exists? :model/DependencyStatus :entity_type :data-app :entity_id app-id))))))))))
 
+(deftest ^:synchronized data-app-given-a-collection-depends-on-its-cards-test
+  (testing "an app that lost its collection, given one that already holds a card, depends on that card"
+    (data-apps.tu/with-published-tables! [(mt/id :venues)]
+      (deps.test/run-with-dependencies-setup!
+       (fn [mp]
+         (mt/with-temp [:model/DataApp    app        {}
+                        :model/Collection collection {:namespace "data-apps"}
+                        :model/Card       card       {:dataset_query (lib/query mp (lib.metadata/table mp (mt/id :venues)))
+                                                      :collection_id (:id collection)}]
+           (t2/delete! :model/Collection (:resource_collection_id app))
+           (deps.test/synchronously-run-dependency-job!)
+           (is (empty? (data-app-deps (:id app))))
+           (t2/update! :model/DataApp (:id app) {:resource_collection_id (:id collection)})
+           (assert-pending :data-app (:id app))
+           (deps.test/synchronously-run-dependency-job!)
+           (is (= #{[:card (:id card)]} (data-app-deps (:id app))))))))))
+
 (deftest ^:synchronized data-app-dependency-job-skips-the-bundle-test
   (testing "the dependency job computes an app's dependencies without reading its bundle"
     (deps.test/run-with-dependencies-setup!

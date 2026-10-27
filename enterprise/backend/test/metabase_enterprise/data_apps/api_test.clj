@@ -37,8 +37,8 @@
   ;; a thread-local `binding`).
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp          app {:bundle app-bundle}
-                     :model/PermissionsGroup {group-id :id}           {}]
+      (mt/with-temp [:model/DataApp          app            {:bundle app-bundle}
+                     :model/PermissionsGroup {group-id :id} {}]
         (testing "a user who cannot read the app's collection cannot open the app"
           (mt/user-http-request :rasta :get 403 (data-apps.tu/app-url app)))
         (testing "a member can open a data app"
@@ -140,10 +140,9 @@
 (deftest outdated-apps-are-hidden-from-users-and-badged-for-admins-test
   (mt/test-helpers-set-global-values!
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temp [:model/DataApp          old                                {:bundle app-bundle :version 1}
-                     :model/DataApp          current
-                     {:bundle app-bundle :version 2}
-                     :model/PermissionsGroup {group-id :id}                                          {}]
+      (mt/with-temp [:model/DataApp          old            {:version 1}
+                     :model/DataApp          current        {:bundle app-bundle :version 2}
+                     :model/PermissionsGroup {group-id :id} {}]
         (perms/add-user-to-group! (mt/user->id :rasta) group-id)
         (doseq [app [old current]]
           (group-access/add-groups! app [group-id]))
@@ -270,10 +269,10 @@
 
 (deftest delete-endpoint-requires-a-superuser-test
   (mt/with-premium-features #{:data-apps}
-    (mt/with-temp [:model/DataApp                   app {}
-                   :model/PermissionsGroup          {group-id :id}                      {}
-                   :model/PermissionsGroupMembership _                                   {:user_id  (mt/user->id :rasta)
-                                                                                          :group_id group-id}]
+    (mt/with-temp [:model/DataApp                    app            {}
+                   :model/PermissionsGroup           {group-id :id} {}
+                   :model/PermissionsGroupMembership _              {:user_id  (mt/user->id :rasta)
+                                                                     :group_id group-id}]
       (group-access/add-groups! app [group-id])
       (testing "a user with access can open the app"
         (mt/user-http-request :rasta :get 200 (data-apps.tu/app-url app)))
@@ -289,10 +288,10 @@
 (deftest delete-endpoint-preserves-groups-test
   (mt/with-premium-features #{:data-apps}
     (data-apps.tu/with-published-tables! [(mt/id :venues)]
-      (mt/with-temp [:model/DataApp          app {}
+      (mt/with-temp [:model/DataApp          app            {}
                      :model/PermissionsGroup {group-id :id} {}
-                     :model/Card             {card-id :id} {:collection_id (:resource_collection_id app)
-                                                            :dataset_query (data-apps.tu/venues-query)}]
+                     :model/Card             {card-id :id}  {:collection_id (:resource_collection_id app)
+                                                             :dataset_query (data-apps.tu/venues-query)}]
         (group-access/add-groups! app [group-id])
         (mt/user-http-request :crowberto :delete 204 (data-apps.tu/app-url app))
         (is (not (t2/exists? :model/DataApp :id (:id app))))
