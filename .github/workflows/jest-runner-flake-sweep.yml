@@ -1,0 +1,36 @@
+name: Jest runner flake sweep
+
+on:
+  push:
+    branches:
+      - jest-runner-flake-sweep
+
+jobs:
+  sweep:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+        copy: [1, 2, 3, 4, 5]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Build cljs
+        run: bun run build-pure:cljs
+      - name: Run the shard
+        run: |
+          node_modules/.bin/jest --ignoreProjects ci-scripts --silent --shard=${{ matrix.shard }}/2 --reporters=./frontend/test/harness/jest-agent-reporter.ts --runner ./frontend/test/harness/jest-runner.ts > run.log 2>&1 || true
+          grep -E "^SUMMARY" run.log
+          grep -E "^FAIL" -A1 run.log | sed "s/^/SWEEP shard=${{ matrix.shard }} copy=${{ matrix.copy }} /" || true
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: flake-${{ matrix.shard }}-${{ matrix.copy }}
+          path: |
+            run.log
+            node_modules/.cache/test-harness/last-run
