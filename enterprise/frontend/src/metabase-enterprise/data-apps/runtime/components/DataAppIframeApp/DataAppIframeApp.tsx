@@ -9,6 +9,7 @@ import { t } from "ttag";
 
 import { Center, Loader } from "metabase/ui";
 import { color } from "metabase/ui/colors";
+import { isDataAppBrokerMode } from "metabase-enterprise/data-apps/broker/iframe-broker";
 
 import { type ErrorDetail, describeError } from "../../lib/describe-error";
 import { readNameFromUrl } from "../../lib/read-name-from-url";
@@ -81,7 +82,11 @@ export class BundleErrorBoundary extends Component<
  * as `{ component, theme }`.
  */
 function BundleHost({ name }: { name: string }) {
-  const { data, failed } = useDataAppBundle(name);
+  // The isolated origin serves this document without the app's hosts in its CSP, so the
+  // bundle's policy is installed here, as for an embedded app.
+  const { data, failed } = useDataAppBundle(name, {
+    embedded: isDataAppBrokerMode(),
+  });
 
   useEffect(() => {
     if (data && !failed) {
@@ -138,7 +143,8 @@ function DataAppStandaloneMessage({ message }: { message: string }) {
  * Iframe-top React app. Reads the data-app name from the URL, mounts the
  * bundle, and gets out of the way. Any sub-routes the bundle navigates to
  * (via `history.pushState`, `react-router`, etc.) are mirrored back to the
- * parent URL by `attachIframeUrlMirror` — the bundle doesn't need to know.
+ * parent URL — by `attachIframeUrlMirror` same-origin, by route messages from
+ * the isolated origin — and the bundle doesn't need to know.
  */
 export const DataAppIframeApp = () => {
   const name = useMemo(() => readNameFromUrl(), []);

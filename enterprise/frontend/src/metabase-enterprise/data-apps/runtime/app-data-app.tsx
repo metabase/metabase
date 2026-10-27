@@ -7,7 +7,15 @@ import {
   EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
 } from "metabase/embedding-sdk/config";
 import { setDataApp } from "metabase/embedding/config";
+import { setBasename } from "metabase/utils/basename";
 import { applyDocumentLocales } from "metabase/utils/boot-locale";
+
+import {
+  getDataAppUserLocale,
+  initDataAppBroker,
+  installDataAppFetchBroker,
+  installDataAppRouteReporter,
+} from "../broker/iframe-broker";
 
 import { readNameFromUrl } from "./lib/read-name-from-url";
 
@@ -26,11 +34,20 @@ import { readNameFromUrl } from "./lib/read-name-from-url";
 // implementations the package component facades look up at render time.
 window.METABASE_EMBEDDING_SDK_BUNDLE = sdkBundleExports;
 
+setBasename(window.MetabaseRoot);
+
+if (window.parent !== window) {
+  initDataAppBroker();
+  installDataAppFetchBroker();
+  installDataAppRouteReporter();
+}
+
 const init = async () => {
   document.body.style.margin = "0";
 
-  // This page is served from our own document, which carries the catalogues.
-  await applyDocumentLocales();
+  // The document carries the catalogues. On the isolated origin it is served without a
+  // signed-in user, so the top page passes the user's locale.
+  await applyDocumentLocales(getDataAppUserLocale());
 
   const rootElement = document.getElementById("root");
 
