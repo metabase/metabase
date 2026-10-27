@@ -69,14 +69,12 @@
       (handler request respond raise)
 
       ;; A link into an app page (`DataAppLink`) resolves against the app document's host.
-      (and (= :get request-method) (str/starts-with? uri "/apps/"))
+      (and (= :get request-method) (str/starts-with? uri (str "/" request/data-app-url-segment "/")))
       (respond (redirect (with-query-string (str (system/site-url) uri) request)))
 
       (isolated-origin-allowed-uri? request)
       (handler request
-               (fn [response]
-                 (respond (cond-> response
-                            (map? response) (update :headers merge {"Content-Security-Policy" inert-csp}))))
+               (comp respond #(cond-> % (map? %) (update :headers merge {"Content-Security-Policy" inert-csp})))
                raise)
 
       :else
@@ -91,13 +89,14 @@
        (= "same-site" (get headers "sec-fetch-site"))))
 
 (defn- without-session-cookies [request]
-  (update-in request [:headers "cookie"]
-             (fn [header]
-               (some->> (str/split header #";")
-                        (remove #(#{request/metabase-session-cookie request/metabase-embedded-session-cookie}
-                                  (first (str/split (str/trim %) #"=" 2))))
-                        (map str/trim)
-                        (str/join "; ")))))
+  (if-let [entries (request/cookie-header-entries request)]
+    (assoc-in request [:headers "cookie"]
+              (str/join "; " (for [[cookie-name value] entries
+                                   :when (not (#{request/metabase-session-cookie
+                                                 request/metabase-embedded-session-cookie}
+                                               cookie-name))]
+                               (if (= "" cookie-name) value (str cookie-name "=" value)))))
+    request))
 
 (defn- main-host-response [handler {:keys [headers uri] :as request} respond raise isolated-origin]
   (cond

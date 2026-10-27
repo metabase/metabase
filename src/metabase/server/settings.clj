@@ -47,10 +47,9 @@ x.com")
   :export?    true)
 
 (defn- normalize-origin
-  "The `scheme://host[:port]` origin of `s`: the form browsers report in `Origin` and
-  `MessageEvent.origin`, which every consumer of [[isolated-origin]] compares against or builds
-  URLs from. A path, trailing slash, or default port is dropped. A value without a scheme takes
-  the site URL's scheme (https without a site URL). Nil when no http(s) origin can be read from `s`."
+  "The `scheme://host[:port]` origin of `s`, in the form browsers report in `Origin` and `MessageEvent.origin`: a
+  path, trailing slash, or default port is dropped. A value without a scheme takes the site URL's scheme (https
+  without a site URL). Nil when no http(s) origin can be read from `s`."
   [^String s]
   (let [s (if (re-find #"^[A-Za-z][A-Za-z0-9+.-]*://" s)
             s
@@ -97,9 +96,9 @@ x.com")
 (defonce ^:private last-invalid-isolated-origin (atom nil))
 
 (defn- log-invalid-isolated-origin!
-  "Logs once per bad value, since [[isolated-origin]] is read several times per request."
+  "Logs once per bad value and problem, since [[isolated-origin]] is read several times per request."
   [value problem]
-  (when-not (= value (first (reset-vals! last-invalid-isolated-origin value)))
+  (when-not (= [value problem] (first (reset-vals! last-invalid-isolated-origin [value problem])))
     (log/errorf "MB_ISOLATED_ORIGIN %s can't be used: %s. Data apps are off until it is fixed."
                 (pr-str value) problem))
   nil)

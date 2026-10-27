@@ -5,26 +5,30 @@
    [metabase.initialization-status.core :as init-status]
    [metabase.server.middleware.isolated-origin :as mw.isolated-origin]
    [metabase.server.routes.index :as index]
-   [metabase.server.settings :as server.settings]
-   [metabase.session.core :as session]
    [metabase.test :as mt]
-   [metabase.test.server.handler :as test.server.handler]
-   [toucan2.core :as t2]))
+   [metabase.test.server.handler :as test.server.handler]))
 
 (def ^:private isolated-origin "https://apps.example.com")
 
 (defn- run
-  "Run the middleware over `request`; returns the response it produced, or
-  `:passed-through` if it delegated to the inner handler."
-  [request]
-  (let [inner   (fn [_req respond _raise] (respond :passed-through))
-        handler (mw.isolated-origin/isolated-origin-middleware inner)
-        result  (atom nil)]
-    (handler request #(reset! result %) #(reset! result %))
-    @result))
+  "Run the middleware over `request`; returns the response it produced or, when it delegated, what `inner` answered
+  (`:passed-through` by default)."
+  ([request]
+   (run request (fn [_req respond _raise] (respond :passed-through))))
+  ([request inner]
+   (let [result (atom nil)]
+     ((mw.isolated-origin/isolated-origin-middleware inner) request #(reset! result %) #(reset! result %))
+     @result)))
 
 (defn- req [host uri]
   {:uri uri, :request-method :get, :headers {"host" host}})
+
+(defmacro ^:private with-isolated-origin
+  "Run `body` with `MB_ISOLATED_ORIGIN` set to `https://apps.example.com` and the site URL `https://mb.example.com`."
+  [& body]
+  `(mt/with-temporary-setting-values [~'site-url "https://mb.example.com"]
+     (mt/with-temp-env-var-value! [~'mb-isolated-origin isolated-origin]
+       ~@body)))
 
 (defn- run-through-handler
   "Like [[run]], but through the full Ring handler: every middleware and route."
@@ -38,12 +42,8 @@
 (defn- cookie-seen-by-handler
   "The `Cookie` header the inner handler gets for `request` on the main host while the isolated origin is set."
   [request]
-  (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly isolated-origin)]
-    (let [handler (mw.isolated-origin/isolated-origin-middleware
-                   (fn [req respond _raise] (respond (get-in req [:headers "cookie"]))))
-          result  (atom nil)]
-      (handler request #(reset! result %) #(reset! result %))
-      @result)))
+  (with-isolated-origin
+    (run request (fn [req respond _raise] (respond (get-in req [:headers "cookie"]))))))
 
 (deftest same-site-write-with-a-hidden-origin-runs-without-the-session-test
   (let [cookie  "metabase.SESSION=a; metabase.EMBEDDED_SESSION=b; metabase.DEVICE=c"
@@ -70,14 +70,14 @@
         (is (= :passed-through (run (req "localhost:3000" "/api/session/properties"))))))))
 
 (deftest unset-is-a-no-op-test
-  (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly nil)]
+  (mt/with-temp-env-var-value! [mb-isolated-origin nil]
     (is (= :passed-through (run (req "mb.example.com" "/embed/apps/sales"))))
     (is (= :passed-through (run (req "mb.example.com" "/api/dataset"))))))
 
 (deftest a-forged-forwarded-host-cannot-leave-the-isolated-origin-test
   (testing "a forged X-Forwarded-Host doesn't let an isolated-origin request reach login/SSO, which could set a
             session cookie there"
-    (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly isolated-origin)]
+    (with-isolated-origin
       (let [forged (assoc-in (req "apps.example.com" "/auth/sso")
                              [:headers "x-forwarded-host"] "mb.example.com")]
         (is (= 404 (:status (run forged)))))
@@ -86,7 +86,7 @@
                                            [:headers "x-forwarded-host"] "apps.example.com")))))))))
 
 (deftest main-host-redirects-the-doc-test
-  (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly isolated-origin)]
+  (with-isolated-origin
     (testing "the data-app document is 307-redirected to the isolated origin"
       (let [resp (run (req "mb.example.com" "/embed/apps/sales"))]
         (is (= 307 (:status resp)))
@@ -118,7 +118,7 @@
                        [:headers "Location"])))))))
 
 (deftest isolated-origin-restricts-surface-test
-  (mt/with-dynamic-fn-redefs [server.settings/isolated-origin (constantly isolated-origin)]
+  (with-isolated-origin
     (testing "allowed on the isolated origin: the app document + static assets"
       (is (= :passed-through (run (req "apps.example.com" "/embed/apps/sales"))))
       (is (= :passed-through (run (req "apps.example.com" "/app/dist/app-data-app.js"))))
@@ -138,13 +138,12 @@
 (deftest isolated-origin-is-matched-in-a-forwarded-host-list-test
   (testing "a proxy chain's comma-separated X-Forwarded-Host that names the isolated origin first is the isolated
             origin"
-    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
-      (mt/with-temp-env-var-value! [mb-isolated-origin isolated-origin]
-        (let [forwarded (fn [uri]
-                          (assoc-in (req "metabase:3000" uri)
-                                    [:headers "x-forwarded-host"] "apps.example.com, edge.internal"))]
-          (is (= :passed-through (run (forwarded "/embed/apps/sales"))))
-          (is (=? {:status 404} (run (forwarded "/api/session/properties")))))))))
+    (with-isolated-origin
+      (let [forwarded (fn [uri]
+                        (assoc-in (req "metabase:3000" uri)
+                                  [:headers "x-forwarded-host"] "apps.example.com, edge.internal"))]
+        (is (= :passed-through (run (forwarded "/embed/apps/sales"))))
+        (is (=? {:status 404} (run (forwarded "/api/session/properties"))))))))
 
 (deftest main-app-works-when-the-isolated-origin-shares-its-host-name-test
   (testing "an isolated origin on another port of the main host is refused, and main-host requests pass through"
@@ -161,14 +160,13 @@
   [& body]
   `(mt/when-ee-evailable
     (mt/with-premium-features #{:data-apps}
-      (mt/with-temporary-setting-values [~'site-url "https://mb.example.com"]
-        (mt/with-temp-env-var-value! [~'mb-isolated-origin isolated-origin]
-          (mt/with-temp [:model/DataApp _# {:name         "sales"
-                                            :display_name "Sales"
-                                            :bundle_path  "dist/index.js"
-                                            :enabled      true}]
-            (with-redefs [index/data-app-shell (fn [_req# respond# _raise#] (respond# {:status 200 :body "DATA-APP"}))]
-              ~@body)))))))
+      (with-isolated-origin
+        (mt/with-temp [:model/DataApp _# {:name         "sales"
+                                          :display_name "Sales"
+                                          :bundle_path  "dist/index.js"
+                                          :enabled      true}]
+          (with-redefs [index/data-app-shell (fn [_req# respond# _raise#] (respond# {:status 200 :body "DATA-APP"}))]
+            ~@body))))))
 
 (deftest isolated-origin-fails-closed-on-leaked-session-test
   ;; Until initialization completes, no request resolves to a session, which would hide the refusal.
@@ -177,12 +175,8 @@
     (let [doc-with-cookie (fn [cookie]
                             (run-through-handler (assoc-in (req "apps.example.com" "/embed/apps/sales")
                                                            [:headers "cookie"] cookie)))
-          session-key     (str (random-uuid))
-          session-id      (session/generate-session-id)]
-      (try
-        (t2/insert! :model/Session {:id         session-id
-                                    :key_hashed (session/hash-session-key session-key)
-                                    :user_id    (mt/user->id :rasta)})
+          session-key     (str (random-uuid))]
+      (mt/with-temp [:model/Session _ {:session_key session-key, :user_id (mt/user->id :rasta)}]
         (testing "the app document is refused when a live session reaches the isolated origin"
           (let [response (doc-with-cookie (str "metabase.SESSION=" session-key))]
             (is (=? {:status 403} response))
@@ -194,9 +188,7 @@
         (testing "a session cookie that is no live session does not block the app: app code can plant one"
           (is (=? {:status 200, :body "DATA-APP"} (doc-with-cookie (str "metabase.SESSION=" (random-uuid))))))
         (testing "an unrelated cookie does not block the app"
-          (is (=? {:status 200, :body "DATA-APP"} (doc-with-cookie "metabase.TIMEOUT=alive"))))
-        (finally
-          (t2/delete! :model/Session :id session-id))))))
+          (is (=? {:status 200, :body "DATA-APP"} (doc-with-cookie "metabase.TIMEOUT=alive"))))))))
 
 (deftest isolated-origin-links-go-to-the-main-host-test
   (testing "a link into an app page, opened on the isolated origin, goes to the same page on the site URL"
@@ -207,42 +199,35 @@
                 (run (assoc (req "apps.example.com" "/apps/sales/customers/42") :query-string "tab=1"))))))))
 
 (deftest isolated-origin-assets-are-inert-and-own-answers-uncached-test
-  (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
-    (mt/with-temp-env-var-value! [mb-isolated-origin isolated-origin]
-      (let [run-asset (fn [request]
-                        (let [inner   (fn [_req respond _raise]
-                                        (respond {:status 200 :headers {"Content-Security-Policy" "default-src 'self'"}}))
-                              result  (atom nil)]
-                          ((mw.isolated-origin/isolated-origin-middleware inner)
-                           request #(reset! result %) #(reset! result %))
-                          @result))]
-        (testing "a static asset on the isolated origin can't be scripted or submit a form, if app code opens it as a
-                  page"
-          (is (= "sandbox; form-action 'none'; frame-ancestors 'none'"
-                 (get-in (run-asset (req "apps.example.com" "/app/dist/x.js")) [:headers "Content-Security-Policy"]))))
-        (testing "the app document keeps its own policy"
-          (is (= "default-src 'self'"
-                 (get-in (run-asset (req "apps.example.com" "/embed/apps/sales")) [:headers "Content-Security-Policy"])))))
-      (testing "a shared cache does not keep the middleware's own answers, which depend on X-Forwarded-Host"
-        (doseq [[label request] [["refusal on the isolated origin" (req "apps.example.com" "/api/dataset")]
-                                 ["redirect to the isolated origin" (req "mb.example.com" "/embed/apps/sales")]
-                                 ["forged X-Forwarded-Host on the main host"
-                                  (assoc-in (req "mb.example.com" "/") [:headers "x-forwarded-host"] "apps.example.com")]]]
-          (is (= "no-store" (get-in (run request) [:headers "Cache-Control"])) label))))))
+  (with-isolated-origin
+    (let [policy (fn [request]
+                   (get-in (run request (fn [_req respond _raise]
+                                          (respond {:status 200 :headers {"Content-Security-Policy" "default-src 'self'"}})))
+                           [:headers "Content-Security-Policy"]))]
+      (testing "a static asset on the isolated origin can't be scripted or submit a form, if app code opens it as a page"
+        (is (= "sandbox; form-action 'none'; frame-ancestors 'none'"
+               (policy (req "apps.example.com" "/app/dist/x.js")))))
+      (testing "the app document keeps its own policy"
+        (is (= "default-src 'self'" (policy (req "apps.example.com" "/embed/apps/sales"))))))
+    (testing "a shared cache does not keep the middleware's own answers, which depend on X-Forwarded-Host"
+      (doseq [[label request] [["refusal on the isolated origin" (req "apps.example.com" "/api/dataset")]
+                               ["redirect to the isolated origin" (req "mb.example.com" "/embed/apps/sales")]
+                               ["forged X-Forwarded-Host on the main host"
+                                (assoc-in (req "mb.example.com" "/") [:headers "x-forwarded-host"] "apps.example.com")]]]
+        (is (= "no-store" (get-in (run request) [:headers "Cache-Control"])) label)))))
 
 (deftest main-host-refuses-requests-from-the-isolated-origin-test
   (testing "the app document sends no requests to the main host, so the main host refuses anything from its origin"
-    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
-      (mt/with-temp-env-var-value! [mb-isolated-origin isolated-origin]
-        (doseq [method [:get :post]]
-          (is (=? {:status 403}
-                  (run (-> (req "mb.example.com" "/api/user")
-                           (assoc :request-method method)
-                           (assoc-in [:headers "origin"] isolated-origin))))
-              method))
-        (testing "but not requests from the main host itself"
-          (is (= :passed-through (run (assoc-in (req "mb.example.com" "/api/user") [:headers "origin"]
-                                                "https://mb.example.com")))))))))
+    (with-isolated-origin
+      (doseq [method [:get :post]]
+        (is (=? {:status 403}
+                (run (-> (req "mb.example.com" "/api/user")
+                         (assoc :request-method method)
+                         (assoc-in [:headers "origin"] isolated-origin))))
+            method))
+      (testing "but not requests from the main host itself"
+        (is (= :passed-through (run (assoc-in (req "mb.example.com" "/api/user") [:headers "origin"]
+                                              "https://mb.example.com"))))))))
 
 (deftest unusable-setting-fails-closed-test
   (testing "with MB_ISOLATED_ORIGIN set to a value it can't use, data apps are refused rather than served without it"
@@ -282,9 +267,7 @@
 
 (deftest isolated-origin-refusals-forbid-form-submissions-test
   (testing "the isolated origin's own 404 forbids form submissions"
-    (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
-      (mt/with-temp-env-var-value! [mb-isolated-origin isolated-origin]
-        (let [response (run-through-handler (req "apps.example.com" "/no-such-page"))]
-          (is (= 404 (:status response)))
-          (is (re-find #"form-action 'none'|(?:^|;)\s*sandbox\b"
-                       (str (get-in response [:headers "Content-Security-Policy"])))))))))
+    (with-isolated-origin
+      (is (=? {:status  404
+               :headers {"Content-Security-Policy" "sandbox; form-action 'none'; frame-ancestors 'none'"}}
+              (run-through-handler (req "apps.example.com" "/no-such-page")))))))
