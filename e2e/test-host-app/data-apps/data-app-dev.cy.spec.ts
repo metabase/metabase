@@ -1,3 +1,4 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   setUpDataAppDevServer,
   tearDownDataAppDevServer,
@@ -9,10 +10,12 @@ const TIMEOUT_MS = 40000;
 const CLIENT_PORT = Cypress.expose("CLIENT_PORT");
 const CLIENT_HOST = `http://localhost:${CLIENT_PORT}`;
 
+const { ORDERS_ID } = SAMPLE_DATABASE;
+
 describe("Embedding SDK: data-app dev server", () => {
   before(() => {
     signInAsAdminAndEnableEmbeddingSdk();
-    setUpDataAppDevServer(CLIENT_HOST);
+    setUpDataAppDevServer({ clientHost: CLIENT_HOST, tableId: ORDERS_ID });
   });
 
   after(() => {

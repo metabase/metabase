@@ -1,12 +1,12 @@
 import type { DataAppFactory } from "@metabase/embedding-sdk-react/data-app";
 
 import App from "./App";
-import { getTestEnv } from "./test-env";
 
 const factory: DataAppFactory = () => ({
   component: App,
   providerProps: {
-    allowedCustomVisualizations: getTestEnv().allowedCustomVisualizations,
+    // The SDK loads no custom viz outside this allowlist; data-apps/custom-viz.cy.spec.ts uses demo-viz.
+    allowedCustomVisualizations: ["custom:demo-viz"],
   },
 });
 
