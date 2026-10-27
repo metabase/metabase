@@ -4,6 +4,7 @@ export { archiveCollection } from "./archiveCollection";
 export { archiveDashboard } from "./archiveDashboard";
 export { archiveDocument } from "./archiveDocument";
 export { archiveQuestion } from "./archiveQuestion";
+export { createAction } from "./createAction";
 export { createApiKey } from "./createApiKey";
 export { createCard } from "./createCard";
 export { createCollection } from "./createCollection";
