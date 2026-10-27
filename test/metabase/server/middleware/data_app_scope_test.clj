@@ -108,6 +108,46 @@
       (is (mt/user-http-request :crowberto :get 200
                                 (format "table/%d/query_metadata" (mt/id :venues)) as-data-app)))))
 
+(deftest dashboards-parameters-and-sql-editing-are-outside-data-app-scope-test
+  (let [as-data-app {:request-options {:headers {"x-metabase-client" "data-app"}}}
+        parameter   {:id                   "kind"
+                     :type                 :string/=
+                     :values_source_type   :static-list
+                     :values_source_config {:values ["bar" "cafe"]}}]
+    (mt/with-temp [:model/Card          card     {:dataset_query (lib/query (mt/metadata-provider)
+                                                                            (lib.metadata/table (mt/metadata-provider)
+                                                                                                (mt/id :venues)))}
+                   :model/Dashboard     dashboard {}
+                   :model/DashboardCard dashcard  {:dashboard_id (:id dashboard) :card_id (:id card)}]
+      (testing "a data app reaches no dashboard endpoint"
+        (doseq [[method endpoint] [[:get (format "dashboard/%d" (:id dashboard))]
+                                   [:get (format "dashboard/%d/query_metadata" (:id dashboard))]
+                                   [:post (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                  (:id dashboard) (:id dashcard) (:id card))]]]
+          (is (= "scope_not_permitted"
+                 (:error (mt/user-http-request :crowberto method 403 endpoint as-data-app)))
+              endpoint)))
+      (testing "a data app loads no ad-hoc parameter values"
+        (doseq [endpoint ["dataset/parameter/values" "dataset/parameter/search/caf"]]
+          (is (= "scope_not_permitted"
+                 (:error (mt/user-http-request :crowberto :post 403 endpoint as-data-app {:parameter parameter})))
+              endpoint))
+        (is (= "scope_not_permitted"
+               (:error (mt/user-http-request :crowberto :post 403 "dataset/parameter/remapping" as-data-app
+                                             {:parameter parameter :value "bar"})))))
+      (testing "a data app lists no timelines, native query snippets or SQL autocomplete suggestions"
+        (doseq [endpoint ["timeline"
+                          "native-query-snippet"
+                          (format "database/%d/autocomplete_suggestions?prefix=ven" (mt/id))
+                          (format "database/%d/card_autocomplete_suggestions?query=ven" (mt/id))]]
+          (is (= "scope_not_permitted"
+                 (:error (mt/user-http-request :crowberto :get 403 endpoint as-data-app)))
+              endpoint)))
+      (testing "requests that are not a data app's still reach them"
+        (is (=? {:id (:id dashboard)} (mt/user-http-request :crowberto :get 200 (format "dashboard/%d" (:id dashboard)))))
+        (is (=? {:values [["bar"] ["cafe"]]}
+                (mt/user-http-request :crowberto :post 200 "dataset/parameter/values" {:parameter parameter})))))))
+
 (deftest data-app-marker-reaches-object-detail-action-reads-test
   ;; The SDK's "Detail" visualization renders `ObjectDetailPanel`, which lists a writable model's
   ;; actions, and its `ActionExecuteModal` fetches the one clicked. Both are reads, and both must
