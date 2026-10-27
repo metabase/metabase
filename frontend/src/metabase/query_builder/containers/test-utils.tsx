@@ -27,6 +27,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { createMockState } from "__support__/state";
 import {
+  act,
   renderWithProviders,
   screen,
   waitFor,
@@ -326,6 +327,7 @@ export const setup = async ({
   );
 
   await waitForLoaderToBeRemoved();
+  await waitForQueryToStart();
 
   return {
     container,
@@ -333,6 +335,15 @@ export const setup = async ({
     mockEventListener,
     store,
   };
+};
+
+/**
+ * QueryBuilder starts running a question from a timer, after its loader is gone.
+ * The timer fires here inside act(), so the start of the run cannot update the
+ * page after the test.
+ */
+export const waitForQueryToStart = async () => {
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 };
 
 export const triggerNativeQueryChange = async () => {
