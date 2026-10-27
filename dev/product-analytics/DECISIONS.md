@@ -337,14 +337,19 @@ Status:
 - **keep**. The MBQL planners' `StageList` tracks each stage's columns and writes `:fields` on any stage that doesn't
   state them, at build time. Types come from the clauses (`typeOf`); a clause it can't type throws, so the planner
   states it. A stage that reads a table must state its own, as the query builder does.
-- Why: the query processor's implicit clauses re-derive the same thing on every run. On a 15-stage funnel,
-  `add-implicit-clauses` made 2,532 `returned-columns` calls for 11 stages and took 2.2 s. With fields stated it takes
-  27 ms, and compile drops from 5.2 s to 2.9 s. The general rule: a builder (the UI, or these planners) makes the query
-  say what it means once; the runtime doesn't fill it in each time.
+- Why: a builder (the UI, or these planners) makes the query say what it means once; the runtime doesn't fill it in
+  on every run. Implicit fields are derived state, re-derived per run, and the source of much of the per-stage Lib
+  work below.
 - Rejected: speeding up implicit clauses. They're the wrong place for the work.
-- Still slow: the same funnel takes about 4.4 s through the QP against 0.24 s on ClickHouse. The rest is per-run
-  metadata work in other middleware (`wrap-value-literals`, `remove-inactive-field-refs`, `add-remapped-columns`,
-  compile). Being profiled; a QP problem, not a planner one.
+- Measured (dev JVM, Malli instrumentation on): on a 15-stage funnel, `add-implicit-clauses` made 2,532
+  `returned-columns` calls and took 2.2 s; with fields stated, 27 ms, and compile dropped from 5.2 s to 2.9 s.
+- Correction, from profiling: about 90% of the funnel's 4.4 s in dev is `mu/defn` instrumentation, which prod doesn't
+  run. Each Lib/QP step makes a new query value, and dev checks every one against `::lib.schema/query`, so the cost
+  grows with the square of the query's size. Prod-like (`metabase.util.malli.fn/*enforce*` false), the funnel takes
+  245–430 ms end to end against 127–192 ms for the same SQL run natively: 60–130 ms of QP overhead. A 3–5 stage
+  question pays 10–15 ms. So the seconds are a dev and test speed problem for every multi-stage query, not a prod one;
+  the cheapest dev win is dropping the return checks on `lib.metadata.cache/cache-key` and `lib.walk/query-for-path`
+  (funnel 4.8 s → 3.0 s). Profiles in the session scratchpad (`qp-profile/`).
 
 ## D26: Query-processor annotations belong beside the query, not in it
 
