@@ -331,7 +331,7 @@
                                                          ;; alleges that you can include just the remapped column in
                                                          ;; join `:fields` and it's supposed to work)
                                                          [:dimension :human-readable-field-id]]))
-          join-last-stage-path                  (into (vec path) [:stages (dec (count (:stages join)))])]
+          join-last-stage-path                  (lib.walk/join-source-stage-path updated-query path join)]
       (if-let [last-stage-infos (->> (remap-column-infos updated-query join-last-stage-path)
                                      (filter original-join-fields-includes-source?)
                                      not-empty)]

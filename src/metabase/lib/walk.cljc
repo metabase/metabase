@@ -238,9 +238,11 @@
     (if (empty? more)
       {:query query, :stage-number stage-number}
       (let [[_joins join-number & more] more
-            join                        (nth (lib.join/joins query stage-number) join-number)
-            query'                      (assoc query :stages (:stages join))]
-        (recur query' (if (empty? more) [:stages 0] more))))))
+            join                        (nth (lib.join/joins query stage-number) join-number)]
+        (if (:source-stage join)
+          ;; a join that reads a stage by name has no stages of its own: it is resolved against the query itself
+          {:query query, :stage-number stage-number}
+          (recur (assoc query :stages (:stages join)) (if (empty? more) [:stages 0] more)))))))
 
 (mr/def ::walked-clause
   "An MBQL clause, or a literal or keyword (e.g. a temporal unit) argument of one, as [[walk-clause]] visits it."
