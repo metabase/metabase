@@ -73,8 +73,8 @@ describe("scenarios > data apps > viewing & routing", () => {
     });
 
     it("shows a not-found state for a disabled or missing app", () => {
-      // No app with this slug exists, so the metadata endpoint really 404s and the
-      // host renders a not-found state rather than a broken iframe — no mock needed.
+      // No app with this slug exists, so the metadata endpoint 404s and the host
+      // renders a not-found state rather than a broken iframe.
       H.openDataApp("does-not-exist");
       H.main().findByText("Data app not found").should("be.visible");
     });

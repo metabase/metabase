@@ -126,7 +126,9 @@ describe(
     });
 
     it("lists the questions and actions published data apps run, and narrows the log by entity type and app", () => {
-      cy.log("Publish both apps, then build each against its typed schema");
+      cy.log(
+        "Publish both apps, then upload their bundles, since each pull reloads every app's placeholder bundle",
+      );
       publishQuestionApp().then((questionApp) =>
         publishActionsApp().then((actionsApp) => {
           H.uploadDataAppBundle(questionApp);

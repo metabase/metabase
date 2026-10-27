@@ -1,7 +1,10 @@
 const { H } = cy;
 
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import type { StructuredQuestionDetails } from "e2e/support/helpers/api";
+import type {
+  LibraryCollectionIds,
+  StructuredQuestionDetails,
+} from "e2e/support/helpers/api";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -35,7 +38,9 @@ export function createLibraryWithItems() {
   });
 }
 
-export function createLibraryWithTable() {
-  H.createLibrary();
-  H.publishTables({ table_ids: [ORDERS_ID] });
+export function createLibraryWithTable(): Cypress.Chainable<LibraryCollectionIds> {
+  return H.createLibrary().then((ids) => {
+    H.publishTables({ table_ids: [ORDERS_ID] });
+    return ids;
+  });
 }

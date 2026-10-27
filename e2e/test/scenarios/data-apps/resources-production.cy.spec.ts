@@ -101,7 +101,7 @@ describe("scenarios > data apps > resources from a repository", () => {
 
   it("serves the app to a member of its permission group", () => {
     publishApp().then(({ app }) => {
-      H.assignTestGroupToDataApp(app.name).then((groupId) => {
+      H.assignTestGroupToDataApp(app).then((groupId) => {
         H.addUserToGroup(groupId, USERS.normal.email);
       });
 

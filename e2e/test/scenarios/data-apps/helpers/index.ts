@@ -7,7 +7,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import type {
   Card,
   CollectionId,
-  CreateDataAppRequest,
   DataApp,
   TestStageSpec,
   VisualizationDisplay,
@@ -40,7 +39,7 @@ function createOrdersCard(
 }
 
 /** Creates the questions the kitchen-sink app reads, in `app`'s collection. */
-export function createKitchenSinkQuestions(app: DataApp) {
+function createKitchenSinkQuestions(app: DataApp) {
   createOrdersCard(app.resource_collection_id, "Orders", "table");
   createOrdersCard(app.resource_collection_id, "Orders count", "scalar", {
     aggregations: [COUNT],
@@ -51,12 +50,25 @@ export function createKitchenSinkQuestions(app: DataApp) {
   });
 }
 
+type KitchenSinkDataAppDetails = {
+  display_name?: string;
+  description?: string | null;
+  allowed_hosts?: string[];
+  enabled?: boolean;
+};
+
+type KitchenSinkDataAppOpts = {
+  withAddTeamAction?: boolean;
+};
+
 /**
- * Publishes ORDERS, and creates the kitchen-sink app, readable by All Users,
- * with its questions and its bundle built against them.
+ * Creates the Library, publishes ORDERS to it, and creates the kitchen-sink app,
+ * readable by All Users, with its questions, the "Add team" action when asked,
+ * and its bundle built against them.
  */
 export function createKitchenSinkDataApp(
-  details: Omit<CreateDataAppRequest, "name"> = {},
+  details: KitchenSinkDataAppDetails = {},
+  { withAddTeamAction = false }: KitchenSinkDataAppOpts = {},
 ): Cypress.Chainable<DataApp> {
   H.createLibrary();
   H.publishTables({ table_ids: [ORDERS_ID] });
@@ -68,6 +80,9 @@ export function createKitchenSinkDataApp(
   }).then((app) => {
     H.addDataAppGroups(app, [USER_GROUPS.ALL_USERS_GROUP]);
     createKitchenSinkQuestions(app);
+    if (withAddTeamAction) {
+      createAddTeamAction(app.resource_collection_id);
+    }
     return H.uploadDataAppBundle(app);
   });
 }

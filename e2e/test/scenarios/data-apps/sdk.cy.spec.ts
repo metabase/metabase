@@ -16,11 +16,9 @@ describe("scenarios > data apps > SDK runtime", () => {
   });
 
   describe("query hooks & question components", () => {
-    const setupQueryStatesApp = () => createKitchenSinkDataApp();
-
     it("surfaces the useMetabaseQuery error state, and re-runs the query when the app calls refetch", () => {
       cy.intercept("POST", "/api/dataset").as("datasetQuery");
-      setupQueryStatesApp();
+      createKitchenSinkDataApp();
 
       visitAppRoute("query-states");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {

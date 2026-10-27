@@ -1,13 +1,10 @@
-import { USER_GROUPS, WRITABLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import {
   DATA_APP_DISPLAY_NAME as APP_DISPLAY_NAME,
-  DATA_APP_NAME as APP_NAME,
   visitDataAppRoute as visitAppRoute,
 } from "e2e/support/helpers";
-import type { DataApp } from "metabase-types/api";
 
-import { createAddTeamAction, createKitchenSinkQuestions } from "./helpers";
+import { createKitchenSinkDataApp } from "./helpers";
 
 const { H } = cy;
 
@@ -28,23 +25,6 @@ describe(
       H.setActionsEnabledForDB(WRITABLE_DB_ID);
     });
 
-    const setupActionsApp = ({
-      groupAccess = (app) =>
-        H.addDataAppGroups(app, [USER_GROUPS.ALL_USERS_GROUP]),
-    }: { groupAccess?: (app: DataApp) => void } = {}) => {
-      H.createLibrary();
-      H.publishTables({ table_ids: [SAMPLE_DATABASE.ORDERS_ID] });
-      H.createDataApp({
-        name: APP_NAME,
-        display_name: APP_DISPLAY_NAME,
-      }).then((app) => {
-        groupAccess(app);
-        createKitchenSinkQuestions(app);
-        createAddTeamAction(app.resource_collection_id);
-        H.uploadDataAppBundle(app);
-      });
-    };
-
     it("executes the action, exposing isExecuting and result, and resets", () => {
       cy.intercept("POST", "/api/action/*/execute", (req) => {
         req.on("response", (res) => {
@@ -52,7 +32,7 @@ describe(
         });
       });
 
-      setupActionsApp();
+      createKitchenSinkDataApp({}, { withAddTeamAction: true });
 
       visitAppRoute("actions");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -81,7 +61,7 @@ describe(
     it("surfaces an error when the action fails", () => {
       // `team_name` is unique, so creating a team that already exists fails in the
       // database — a real rejection, not a stubbed one.
-      setupActionsApp();
+      createKitchenSinkDataApp({}, { withAddTeamAction: true });
 
       visitAppRoute("actions-existing-team");
       H.dataAppIframe(APP_DISPLAY_NAME).within(() => {
@@ -103,12 +83,9 @@ describe(
       });
     });
 
-    describe("collection permissions", () => {
-      it("executes the action when the user has view access to the app's collection", () => {
-        setupActionsApp({
-          groupAccess: (app) =>
-            H.setDataAppCollectionAccess(app.resource_collection_id, "read"),
-        });
+    describe("non-admin access", () => {
+      it("executes action for non-admin member of app's group", () => {
+        createKitchenSinkDataApp({}, { withAddTeamAction: true });
         cy.signInAsNormalUser();
 
         visitAppRoute("actions");

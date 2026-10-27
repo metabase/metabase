@@ -63,7 +63,7 @@ describe(
 
     it("executes the action in the app's collection for a member of the app's group", () => {
       publishApp().then(({ app, action }) => {
-        H.assignTestGroupToDataApp(app.name).then((groupId) => {
+        H.assignTestGroupToDataApp(app).then((groupId) => {
           H.addUserToGroup(groupId, USERS.normal.email);
         });
 

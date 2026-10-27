@@ -1,19 +1,14 @@
 import yaml from "js-yaml";
 
 import { USERS, USER_GROUPS } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import * as Urls from "metabase/urls/data-apps";
 import type {
-  Collection,
-  CollectionId,
-  CollectionPermission,
-  CollectionPermissionsGraph,
   CreateDataAppRequest,
   DataApp,
   DataAppGroup,
-  Group,
   GroupId,
   GroupInfo,
+  TableId,
 } from "metabase-types/api";
 
 import { createLibrary, publishTables, updateSetting } from "./api";
@@ -56,8 +51,8 @@ export function addDataAppGroups(
 }
 
 /**
- * Builds the fixture app named like `app` against the app's typed schema, as an
- * author does, and uploads it as the app's bundle.
+ * Writes `app`'s typed schema to `src/metabase.ts` of the fixture directory named
+ * `app.name`, builds that fixture, and uploads the build as the app's bundle.
  */
 export function uploadDataAppBundle(
   app: Pick<DataApp, "name">,
@@ -151,50 +146,6 @@ export function openDataApp(slug: string) {
 
 export function dataAppIframe(displayName: string) {
   return getIframeBody(`iframe[title="${displayName}"]`);
-}
-
-/**
- * Sets every non-admin group's access to a collection through the permission graph of
- * the collection's namespace: an app's own collection lives in `data-apps`, whose graph
- * is separate from the default one. A namespace graph lists only the groups holding a
- * grant in it, so the groups come from the groups API, not from the graph.
- */
-export function setDataAppCollectionAccess(
-  collectionId: CollectionId,
-  access: CollectionPermission,
-) {
-  return cy
-    .request<Collection>("GET", `/api/collection/${collectionId}`)
-    .then(({ body: collection }) => {
-      const namespace = collection.namespace ?? undefined;
-      const graphUrl =
-        namespace === undefined
-          ? "/api/collection/graph"
-          : `/api/collection/graph?namespace=${namespace}`;
-
-      cy.request<Group[]>("GET", "/api/permissions/group").then(
-        ({ body: allGroups }) => {
-          cy.request<CollectionPermissionsGraph>("GET", graphUrl).then(
-            ({ body: graph }) => {
-              const groups = Object.fromEntries(
-                allGroups
-                  .filter((group) => group.id !== USER_GROUPS.ADMIN_GROUP)
-                  .map((group) => [
-                    group.id,
-                    { ...graph.groups[group.id], [collectionId]: access },
-                  ]),
-              );
-
-              cy.request("PUT", "/api/collection/graph", {
-                ...graph,
-                ...(namespace === undefined ? {} : { namespace }),
-                groups,
-              });
-            },
-          );
-        },
-      );
-    });
 }
 
 /**
@@ -361,8 +312,9 @@ const isSyncedDataApp = (app: DataApp): app is SyncedDataApp =>
 /**
  * Writes the app's manifest into the sync repository as `data_apps/<slug>`, makes
  * the repository's `collections/data_apps/` what the host app holds, and
- * commits them, as an author does. The bundle is a placeholder, since specs
- * upload the built one with `uploadDataAppBundle`. Pass `initializeRepo: false` to
+ * commits them, as an author does. The bundle is a placeholder that every pull
+ * loads again, so a spec uploads the built one with `uploadDataAppBundle` after
+ * its last pull. Pass `initializeRepo: false` to
  * write into the repository an earlier call set up.
  */
 function commitDataApp(
@@ -423,19 +375,17 @@ export function publishDataApp(
   });
 }
 
-/** Create a group and assign it to a data app by slug. */
-export function assignTestGroupToDataApp(slug: string) {
-  cy.request<GroupInfo>("POST", "/api/permissions/group", {
-    name: `Data app test group: ${slug}`,
-  })
-    .its("body")
-    .as("dataAppTestGroup");
-
-  cy.get<GroupInfo>("@dataAppTestGroup").then(({ id }) =>
-    cy.request("POST", `/api/ee/apps/${slug}/groups`, { group_ids: [id] }),
-  );
-
-  return cy.get<GroupInfo>("@dataAppTestGroup").its("id");
+/** Creates a group and adds it to `app`'s groups, yielding the group's ID. */
+export function assignTestGroupToDataApp(
+  app: Pick<DataApp, "name">,
+): Cypress.Chainable<GroupId> {
+  return cy
+    .request<GroupInfo>("POST", "/api/permissions/group", {
+      name: `Data app test group: ${app.name}`,
+    })
+    .then(({ body: group }) =>
+      addDataAppGroups(app, [group.id]).then(() => group.id),
+    );
 }
 
 const DATA_APP_DEV_HOST_APP_DIR =
@@ -458,14 +408,22 @@ export function visitDataAppDevApp(clientHost: string) {
 
 const DATA_APP_DEV_SLUG = "vite-6-data-app-host-app";
 
-export function setUpDataAppDevServer(clientHost: string) {
+type DataAppDevServerOpts = {
+  clientHost: string;
+  tableId: TableId;
+};
+
+export function setUpDataAppDevServer({
+  clientHost,
+  tableId,
+}: DataAppDevServerOpts) {
   const mbUrl = Cypress.config("baseUrl");
   if (!mbUrl) {
     throw new Error("baseUrl must be set for the data-app dev-server suite");
   }
 
   createLibrary();
-  publishTables({ table_ids: [SAMPLE_DATABASE.ORDERS_ID] });
+  publishTables({ table_ids: [tableId] });
   createDataApp({
     name: DATA_APP_DEV_SLUG,
     allowed_hosts: ["https://allowed.data-app.test"],

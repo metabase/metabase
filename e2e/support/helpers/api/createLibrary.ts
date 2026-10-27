@@ -17,11 +17,11 @@ export function createLibrary(): Cypress.Chainable<LibraryCollectionIds> {
     .request<Collection>("POST", "/api/ee/library")
     .then(({ body: library }) =>
       cy
-        .request<ListCollectionItemsResponse>(
-          "GET",
-          `/api/collection/${library.id}/items`,
-          { models: "collection" },
-        )
+        .request<ListCollectionItemsResponse>({
+          method: "GET",
+          url: `/api/collection/${library.id}/items`,
+          qs: { models: "collection" },
+        })
         .then(({ body: { data: children } }) => {
           const childId = (type: CollectionType): CollectionId => {
             const child = children.find((item) => item.type === type);
