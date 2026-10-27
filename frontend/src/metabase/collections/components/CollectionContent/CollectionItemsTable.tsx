@@ -53,6 +53,10 @@ import type {
 } from "metabase-types/api";
 
 import { CollectionItemsToolbar } from "./CollectionItemsToolbar";
+import {
+  type CollectionTypeFilterState,
+  useCollectionTypeFilter,
+} from "./use-collection-type-filter";
 
 const shouldDebounceSearchText = (
   _lastSearchText: string,
@@ -106,6 +110,8 @@ export type CollectionItemsTableProps = {
   showFilterBar: boolean;
   toggleItem: (item: CollectionItem) => void;
   visibleColumns?: CollectionContentTableColumn[];
+  /** Pass to control the type filter from outside; otherwise it's internal */
+  typeFilter: CollectionTypeFilterState;
   onClick: (item: CollectionItem) => void;
 }>;
 
@@ -156,17 +162,13 @@ export const CollectionItemsTable = ({
   toggleItem,
   visibleColumns = DEFAULT_VISIBLE_COLUMNS_LIST,
   onClick,
+  typeFilter,
 }: CollectionItemsTableProps) => {
   const [search, setSearch] = useState({ collectionId, value: "" });
   const searchText = search.collectionId === collectionId ? search.value : "";
-  const [filterSelection, setFilterSelection] = useState<{
-    collectionId?: CollectionId;
-    value: CollectionItemModel[] | null;
-  }>({ collectionId, value: null });
-  const selectedFilters =
-    filterSelection.collectionId === collectionId
-      ? filterSelection.value
-      : null;
+  const internalTypeFilter = useCollectionTypeFilter(collectionId);
+  const { selectedFilters, setSelectedFilters } =
+    typeFilter ?? internalTypeFilter;
   const debouncedSearchText = useDebouncedValue(
     searchText,
     SEARCH_DEBOUNCE_DURATION,
@@ -186,8 +188,12 @@ export const CollectionItemsTable = ({
   useEffect(() => {
     resetPage();
     setSearch({ collectionId, value: "" });
-    setFilterSelection({ collectionId, value: null });
   }, [collectionId, resetPage]);
+
+  // The filter can also change from outside, e.g. the collection info panel
+  useEffect(() => {
+    setPage(0);
+  }, [selectedFilters, setPage]);
 
   useEffect(() => {
     if (previousTrimmedSearchText === "" && trimmedSearchText.length > 0) {
@@ -208,10 +214,9 @@ export const CollectionItemsTable = ({
       if (selectedFilters == null && nextFilters != null) {
         trackCollectionItemsFiltered({ collectionId, filter: "type" });
       }
-      setFilterSelection({ collectionId, value: nextFilters });
-      setPage(0);
+      setSelectedFilters(nextFilters);
     },
-    [collectionId, selectedFilters, setPage],
+    [collectionId, selectedFilters, setSelectedFilters],
   );
 
   const handleItemsSortingChange = useCallback(
@@ -240,10 +245,13 @@ export const CollectionItemsTable = ({
   const availableModels = itemsMetadata?.available_models ?? [];
   const totalItems = itemsMetadata?.total_items ?? 0;
 
+  // An applied type filter keeps the toolbar visible in small collections and
+  // after archiving items, so it can always be seen and cleared.
   const showToolbar =
-    Boolean(showFilterBar) && totalItems > FILTERS_VISIBILITY_THRESHOLD;
-  // The toolbar can disappear while a search or type filter is active, e.g. after
-  // archiving items; ignore the leftover selection rather than filtering a bare list.
+    Boolean(showFilterBar) &&
+    (totalItems > FILTERS_VISIBILITY_THRESHOLD || selectedFilters != null);
+  // The toolbar can disappear while a search is active, e.g. after archiving
+  // items; ignore the leftover search rather than filtering a bare list.
   const appliedSearchText = showToolbar ? trimmedSearchText : "";
   const appliedFilters = showToolbar ? selectedFilters : null;
 

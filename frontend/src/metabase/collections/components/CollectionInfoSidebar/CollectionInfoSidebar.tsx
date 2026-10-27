@@ -2,25 +2,29 @@ import { useCallback, useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
 
-import { EntityIdCard } from "metabase/common/components/EntityIdCard";
 import {
-  Sidesheet,
-  SidesheetCard,
-  SidesheetCardTitle,
-} from "metabase/common/components/Sidesheet";
+  SIDEBAR_WIDTH,
+  SidebarSection,
+} from "metabase/common/components/DetailSidebar";
+import { EntityIdFooter } from "metabase/common/components/EntityIdFooter";
+import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
-import { Stack } from "metabase/ui";
-import type { Collection } from "metabase-types/api";
+import { Box, Stack } from "metabase/ui";
+import type { Collection, CollectionItemModel } from "metabase-types/api";
+
+import { CollectionContentsSection } from "./CollectionContentsSection";
 
 export const CollectionInfoSidebar = ({
   onClose,
   collection,
   onUpdateCollection,
+  onFilterByType,
 }: {
   onClose: () => void;
   collection: Collection;
   onUpdateCollection: (entity: Collection, values: Partial<Collection>) => void;
+  onFilterByType?: (model: CollectionItemModel) => void;
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -44,32 +48,43 @@ export const CollectionInfoSidebar = ({
 
   return (
     <Sidesheet
-      title={t`Info`}
+      title={
+        <Box component="span" fz="h3" lh="h3">
+          {t`Info`}
+        </Box>
+      }
       isOpen={isOpen}
       data-testid="collection-sidesheet"
-      size="md"
+      size={SIDEBAR_WIDTH}
       onClose={onClose}
+      footer={
+        collection.entity_id ? (
+          <EntityIdFooter
+            items={[
+              { label: t`This collection`, entityId: collection.entity_id },
+            ]}
+          />
+        ) : undefined
+      }
     >
-      <Stack gap="xl">
-        <SidesheetCard pb="lg">
-          <Stack gap="lg">
-            <Stack gap="xxs">
-              <SidesheetCardTitle>{t`Description`}</SidesheetCardTitle>
-              <SidesheetEditableDescription
-                description={description}
-                onChange={handleChangeDescription}
-                canWrite={canWrite}
-                maxLength={255}
-              />
-            </Stack>
+      <Stack gap="xxl">
+        <SidebarSection title={t`Description`} gap={0}>
+          <Stack gap="sm">
+            <SidesheetEditableDescription
+              description={description}
+              onChange={handleChangeDescription}
+              canWrite={canWrite}
+              maxLength={255}
+            />
             <PLUGIN_COLLECTION_COMPONENTS.CollectionAuthorityLevelDisplay
               collection={collection}
             />
           </Stack>
-        </SidesheetCard>
-        {collection.entity_id && (
-          <EntityIdCard entityId={collection.entity_id} />
-        )}
+        </SidebarSection>
+        <CollectionContentsSection
+          collection={collection}
+          onFilterByType={onFilterByType}
+        />
       </Stack>
     </Sidesheet>
   );

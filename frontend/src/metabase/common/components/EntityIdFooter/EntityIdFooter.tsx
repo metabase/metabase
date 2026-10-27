@@ -6,41 +6,20 @@ import {
   CopyButton,
 } from "metabase/common/components/CopyButton";
 import { Link } from "metabase/common/components/Link";
-import {
-  SIDESHEET_HORIZONTAL_PADDING,
-  SidesheetCard,
-  type SidesheetCardProps,
-  SidesheetCardTitle,
-} from "metabase/common/components/Sidesheet";
+import { SIDESHEET_HORIZONTAL_PADDING } from "metabase/common/components/Sidesheet";
 import { useDocsUrl, useHasTokenFeature } from "metabase/common/hooks";
 import {
   Box,
   Collapse,
   Flex,
   Group,
-  type GroupProps,
   Icon,
-  type MantineSize,
-  Paper,
-  Popover,
   Stack,
   Text,
-  type TitleProps,
   UnstyledButton,
 } from "metabase/ui";
 
-import Styles from "./EntityIdCard.module.css";
-
-const EntityIdTitle = (props?: TitleProps) => {
-  return (
-    <SidesheetCardTitle mb={0} {...props}>
-      <Group gap="sm">
-        {t`Entity ID`}
-        <EntityInfoIcon />
-      </Group>
-    </SidesheetCardTitle>
-  );
-};
+import Styles from "./EntityIdFooter.module.css";
 
 const EntityIdExplanation = () => {
   const { url: docsLink, showMetabaseLinks } = useDocsUrl(
@@ -63,26 +42,7 @@ const EntityIdExplanation = () => {
   );
 };
 
-export const EntityInfoIcon = () => (
-  <Popover position="top-start">
-    <Popover.Target>
-      <Icon tabIndex={0} name="info" className={Styles.InfoIcon} />
-    </Popover.Target>
-    <Popover.Dropdown>
-      <Paper p="lg" maw="13rem">
-        <EntityIdExplanation />
-      </Paper>
-    </Popover.Dropdown>
-  </Popover>
-);
-
-export const EntityCopyButton = ({
-  entityId,
-  size,
-}: {
-  entityId: string;
-  size?: MantineSize;
-}) => (
+const EntityCopyButton = ({ entityId }: { entityId: string }) => (
   <CopyButton
     className={Styles.CopyButton}
     value={entityId}
@@ -93,43 +53,13 @@ export const EntityCopyButton = ({
     target={
       <Flex component="span" gap="sm" wrap="nowrap" align="center">
         <span className={Styles.CopyIcon}>{COPY_BUTTON_ICON}</span>
-        <Text component="span" size={size} lh="1rem">
+        <Text component="span" size="sm" lh="1rem">
           {entityId}
         </Text>
       </Flex>
     }
   />
 );
-
-export const EntityIdDisplay = ({
-  entityId,
-  ...props
-}: { entityId: string } & GroupProps) => {
-  return (
-    <Group justify="space-between" {...props}>
-      <EntityIdTitle />
-      <EntityCopyButton entityId={entityId} />
-    </Group>
-  );
-};
-
-export function EntityIdCard({
-  entityId,
-  ...props
-}: { entityId: string } & Omit<SidesheetCardProps, "children">) {
-  const hasSerialization = useHasTokenFeature("serialization");
-
-  // exposing this is useless without serialization, so, let's not.
-  if (!hasSerialization) {
-    return null;
-  }
-
-  return (
-    <SidesheetCard pb="1.25rem" {...props}>
-      <EntityIdDisplay entityId={entityId} />
-    </SidesheetCard>
-  );
-}
 
 export type EntityIdFooterItem = {
   label: string;
@@ -176,7 +106,7 @@ export function EntityIdFooter({ items }: { items: EntityIdFooterItem[] }) {
                 <Text size="sm" c="text-secondary">
                   {label}
                 </Text>
-                <EntityCopyButton entityId={entityId} size="sm" />
+                <EntityCopyButton entityId={entityId} />
               </Fragment>
             ))}
           </Box>

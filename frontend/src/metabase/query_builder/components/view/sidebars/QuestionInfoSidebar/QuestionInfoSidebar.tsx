@@ -9,7 +9,7 @@ import {
   SIDEBAR_WIDTH,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
-import { EntityIdFooter } from "metabase/common/components/EntityIdCard";
+import { EntityIdFooter } from "metabase/common/components/EntityIdFooter";
 import { Link } from "metabase/common/components/Link";
 import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";

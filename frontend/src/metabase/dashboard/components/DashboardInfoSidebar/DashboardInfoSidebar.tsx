@@ -10,7 +10,7 @@ import {
   SIDEBAR_WIDTH,
   SidebarSection,
 } from "metabase/common/components/DetailSidebar";
-import { EntityIdFooter } from "metabase/common/components/EntityIdCard";
+import { EntityIdFooter } from "metabase/common/components/EntityIdFooter";
 import ErrorBoundary from "metabase/common/components/ErrorBoundary";
 import { RevisionHistoryTimeline } from "metabase/common/components/RevisionHistoryTimeline";
 import { getActivityTimelineEvents } from "metabase/common/components/RevisionHistoryTimeline/utils";
