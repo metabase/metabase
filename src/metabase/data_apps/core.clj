@@ -43,8 +43,8 @@
             (scope/scope-satisfied? (into #{} (filter string?) token-scopes) api-scope/data-app)))))
 
 (defenterprise request-data-app
-  "The enabled data app, readable by the current user, whose slug a data-app `request` names by [[data-app-slug]], or
-  nil without the data-apps feature."
+  "The data app, readable by the current user, whose slug a data-app `request` names by [[data-app-slug]], or nil
+  without the data-apps feature."
   metabase-enterprise.data-apps.checks
   [_request]
   nil)
