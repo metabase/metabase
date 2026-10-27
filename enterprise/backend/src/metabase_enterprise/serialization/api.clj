@@ -224,6 +224,7 @@
     :as                       _query-params}
    :- [:map {:closed true}
        [:dirname           {:optional true} [:maybe
+                                             {:description (deferred-tru "name of directory and archive file (default: `<instance-name>-<YYYY-MM-dd_HH-mm>`): 1-255 characters from A-Z a-z 0-9 _ - . %, not starting with . or -")}
                                              (mu/with-api-error-message
                                               ;; `%`: the default name is a slug, which percent-encodes non-ASCII
                                               [:re #"^[A-Za-z0-9_%][A-Za-z0-9._%-]{0,254}$"]
@@ -256,7 +257,8 @@
                             :full-stacktrace          full-stacktrace?}
         export-dirname (or dirname
                            (format "%s-%s"
-                                   (u/slugify (appearance/site-name))
+                                   ;; + 17 for the timestamp = 255, so the default passes the `dirname` schema
+                                   (u/slugify (appearance/site-name) {:max-length 238})
                                    (u.date/format "YYYY-MM-dd_HH-mm" (t/local-date-time))))
         ;; Eager setup (target resolution, escape analysis) must run before the streaming response opens
         ;; so a failure can still set a non-200 status. extract-entities! captures its logs into log-output

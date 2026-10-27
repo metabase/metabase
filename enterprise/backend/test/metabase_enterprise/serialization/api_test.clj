@@ -203,7 +203,8 @@
 (deftest export-dirname-validation-test
   (mt/with-premium-features #{:serialization}
     (testing "dirname outside the whitelist is a 400"
-      (doseq [dirname ["../backups"
+      (doseq [dirname [""
+                       "../backups"
                        "a/b"
                        "a\\b"
                        "a\"b"
@@ -227,7 +228,25 @@
                                     :dirname "my-export_2" :all_collections false :data_model false :settings false)]
         (is (= "attachment; filename=\"my-export_2.tar.gz\""
                (get headers "Content-Disposition")))
-        (is (every? #(str/starts-with? % "my-export_2/") (entry-names body)))))))
+        (is (every? #(str/starts-with? % "my-export_2/") (entry-names body)))))
+    (testing "a percent-encoded dirname, as the default name has for a non-ASCII site name, is accepted"
+      (is (= "attachment; filename=\"%E4%B8%AD-2026-10-27_12-00.tar.gz\""
+             (-> (mt/user-http-request-full-response
+                  :crowberto :post 200 "ee/serialization/export" {}
+                  :dirname "%E4%B8%AD-2026-10-27_12-00" :all_collections false :data_model false :settings false)
+                 (get-in [:headers "Content-Disposition"])))))
+    (testing "the default dirname for a long non-ASCII site name passes the dirname rule when sent back"
+      (mt/with-temporary-setting-values [site-name (apply str (repeat 40 "中"))]
+        (let [default-dirname (->> (mt/user-http-request-full-response
+                                    :crowberto :post 200 "ee/serialization/export" {}
+                                    :all_collections false :data_model false :settings false)
+                                   :headers
+                                   (#(get % "Content-Disposition"))
+                                   (re-find #"filename=\"(.*)\.tar\.gz\"")
+                                   second)]
+          (is (<= (count default-dirname) 255))
+          (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
+                                :dirname default-dirname :all_collections false :data_model false :settings false))))))
 
 (defn- search-result-count [model search-string]
   (:total
