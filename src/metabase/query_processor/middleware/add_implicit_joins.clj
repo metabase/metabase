@@ -156,9 +156,7 @@
         [joins
          (when-let [previous-path (lib.walk/previous-path path)]
            (let [previous-stage (get-in query previous-path)]
-             ;; joins before a stage with aggregations or breakouts are not visible after it
-             (when-not (or (:aggregation previous-stage) (:breakout previous-stage))
-               (visible-joins query previous-path previous-stage))))]))
+             (visible-joins query previous-path previous-stage)))]))
 
 (mu/defn- construct-fk-field-info->join-alias :- [:map-of
                                                   ::fk-field-info
@@ -213,7 +211,14 @@
             joins)
       (when-let [previous-path (lib.walk/previous-path path)]
         (let [previous-stage (get-in query previous-path)]
-          (when-not (or (:aggregation previous-stage) (:breakout previous-stage))
+          ;; after aggregations or breakouts, join again in this stage if the previous stage returns the FK
+          (when-not (and (or (:aggregation previous-stage) (:breakout previous-stage))
+                         (some #(= (:id %) (:fk-field-id join))
+                               (lib.walk/apply-f-for-stage-at-path
+                                (fn [query stage-number]
+                                  (lib/returned-columns query stage-number previous-stage))
+                                query
+                                previous-path)))
             (recur query previous-path previous-stage join))))))
 
 (mu/defn- add-condition-fields-from-next-stage :- ::lib.schema/stage
