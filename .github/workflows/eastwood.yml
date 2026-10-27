@@ -1,7 +1,9 @@
 name: Eastwood
 
 # Eastwood is too slow for PR CI: linting every test namespace takes about an hour. So it runs weekly, and on
-# master one open Linear issue lists the findings under the commit that most likely caused each one.
+# master one open Linear issue lists the findings under the commit that most likely caused each one. Each run
+# compares with the previous one, so a finding still open from an earlier week keeps its cause and first-seen
+# date, and only the new ones are traced.
 # A manual run on another branch lints that branch and reports nothing.
 
 on:
@@ -64,7 +66,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          # Blame and bisect need the history back to the last passing run.
+          # Blame and bisect need the history back to the previous run.
           fetch-depth: 0
       - uses: actions/download-artifact@v8
         with:
@@ -89,21 +91,35 @@ jobs:
           done
           $ran
 
-      - name: Blame the findings
-        id: blame
+      # The latest earlier run on this branch that saved a report, passing or not. A run that couldn't lint saves
+      # none, so the comparison skips it.
+      - name: Fetch the previous run's report
+        id: previous
         env:
           GH_TOKEN: ${{ github.token }}
           BRANCH: ${{ github.ref_name }}
         run: |
-          last_good=$(gh run list --workflow eastwood.yml --branch "$BRANCH" --status success --limit 1 \
-                        --json headSha --jq '.[0].headSha // ""')
-          echo "last-good=$last_good" >> "$GITHUB_OUTPUT"
-          bun .github/scripts/eastwood-report.ts attribute findings.json "$last_good" \
+          runs=$(gh run list --workflow eastwood.yml --branch "$BRANCH" --status completed --limit 10 \
+                   --json databaseId,headSha --jq '.[] | "\(.databaseId) \(.headSha)"')
+          while read -r id sha; do
+            if [ -n "$id" ] && gh run download "$id" --name eastwood-report --dir previous 2>/dev/null; then
+              echo "Comparing with run $id at $sha"
+              echo "base=$sha" >> "$GITHUB_OUTPUT"
+              break
+            fi
+          done <<< "$runs"
+
+      - name: Blame the new findings
+        id: blame
+        env:
+          BASE_SHA: ${{ steps.previous.outputs.base }}
+        run: |
+          bun .github/scripts/eastwood-report.ts attribute findings.json "$BASE_SHA" previous/findings.json \
             source=eastwood/eastwood-source/warnings.txt tests=eastwood/eastwood-tests/warnings.txt
           bun .github/scripts/eastwood-report.ts bisect-targets findings.json > bisect-targets.txt
           echo "Left for bisecting:"
           cat bisect-targets.txt
-          if [ -n "$last_good" ] && [ -s bisect-targets.txt ]; then
+          if [ -n "$BASE_SHA" ] && [ -s bisect-targets.txt ]; then
             echo "bisect=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -111,10 +127,10 @@ jobs:
         if: steps.blame.outputs.bisect == 'true'
         uses: ./.github/actions/prepare-backend
 
-      - name: Bisect the findings blame left without a cause
+      - name: Bisect the new findings blame left without a cause
         if: steps.blame.outputs.bisect == 'true'
         env:
-          LAST_GOOD: ${{ steps.blame.outputs.last-good }}
+          BASE_SHA: ${{ steps.previous.outputs.base }}
         run: |
           # Older commits may not have the check, so it runs from outside the checkout.
           check=$RUNNER_TEMP/eastwood-bisect-check.sh
@@ -122,8 +138,9 @@ jobs:
           cp .github/scripts/eastwood-bisect-check.sh "$check"
           while read -r target namespace linter <&3; do
             echo "::group::Bisect $linter in $namespace"
-            git bisect start HEAD "$LAST_GOOD"
-            git bisect run "$check" "$target" "$namespace" "$linter" 2>&1 | tee "$log" || true
+            git bisect start HEAD "$BASE_SHA"
+            git bisect run "$check" "$target" "$namespace" "$linter" "$PWD/previous/warnings-$target.txt" 2>&1 \
+              | tee "$log" || true
             # When every candidate was skipped, bisect names no commit.
             if grep -qE "is the first '?bad'? commit" "$log"; then
               echo "$target $namespace $linter $(git rev-parse refs/bisect/bad)" >> bisected.txt
@@ -134,10 +151,20 @@ jobs:
 
       - name: Build the report
         env:
-          LAST_GOOD: ${{ steps.blame.outputs.last-good }}
+          BASE_SHA: ${{ steps.previous.outputs.base }}
         run: |
-          bun .github/scripts/eastwood-report.ts render findings.json bisected.txt > report.md
+          mkdir report
+          bun .github/scripts/eastwood-report.ts report findings.json bisected.txt report/findings.json > report.md
+          cp eastwood/eastwood-source/warnings.txt report/warnings-source.txt
+          cp eastwood/eastwood-tests/warnings.txt report/warnings-tests.txt
           cat report.md >> "$GITHUB_STEP_SUMMARY"
+
+      # The next run compares with this one.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: eastwood-report
+          path: report
+          retention-days: 90
 
       - name: Open, update, or close the Eastwood issue
         if: github.ref == 'refs/heads/master'
@@ -145,7 +172,7 @@ jobs:
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: 2e3af6a2-9b19-4abd-b72c-4b5665054861 # DEV
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
-        run: bun .github/scripts/eastwood-report.ts sync report.md
+        run: bun .github/scripts/eastwood-report.ts sync report.md report/findings.json
 
       - name: Alert when Eastwood can't run
         if: failure() && github.ref == 'refs/heads/master'
@@ -159,4 +186,4 @@ jobs:
               -H "Content-Type: application/json; charset=utf-8" --data @-
 
       - name: Fail the run on findings
-        run: test "$(jq length findings.json)" = 0
+        run: test "$(jq length report/findings.json)" = 0

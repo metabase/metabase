@@ -1,5 +1,6 @@
 // Keeps one open Linear issue per scheduled check, found by its title. A non-empty report opens the issue or
-// replaces its description; an empty one closes it with a comment. Slack hears only when it opens or closes.
+// replaces its description; an empty one closes it with a comment. Slack hears when it opens or closes, and on
+// an update when the caller has something to say.
 //
 // Needs LINEAR_API_KEY, LINEAR_TEAM_ID, SLACK_BOT_TOKEN, SLACK_CHANNEL and RUN_URL in the environment.
 
@@ -11,6 +12,8 @@ export type ReportIssueOptions = {
   report: string;
   /** Slack message when the issue opens. */
   opened: (link: string) => string;
+  /** Slack message when a report replaces the open issue's description, if any. */
+  updated?: (link: string) => string | undefined;
   /** Slack message when the issue closes. */
   closed: (link: string) => string;
   /** Comment left on the issue when it closes. */
@@ -61,6 +64,7 @@ export async function reportIssue({
   title,
   report,
   opened,
+  updated,
   closed,
   closedComment,
 }: ReportIssueOptions) {
@@ -85,6 +89,10 @@ export async function reportIssue({
       }`,
       { id: open.id, description: report },
     );
+    const text = updated?.(link(open));
+    if (text) {
+      await slack(text);
+    }
     console.log(`Updated ${open.identifier}`);
   } else if (report) {
     const { issueCreate } = await linear<{ issueCreate: { issue: Issue } }>(
