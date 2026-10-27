@@ -883,15 +883,23 @@
              (assoc :query/query-canceled? true))
            e))
 
-(defn- error-in-query?
+(defmulti impl-error-in-query?
   "Whether a row-read `SQLException` identifies an error in the query or its data.
-  A cancellation, or a failure of the connection or server, does not.
-  The evidence is the SQLState class: `21` (cardinality), `22` (data), `23` (integrity) or `42` (syntax or access
-  rule)."
+  The default recognizes SQLState classes `21` (cardinality), `22` (data), `23` (integrity) and `42` (syntax or access
+  rule). Drivers can extend or narrow that evidence. Unknown failures return false. Cancellation is checked separately."
+  {:added "0.65.3" :arglists '([driver ^SQLException e])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod impl-error-in-query? :sql-jdbc
+  [_ ^SQLException e]
+  (boolean (re-find #"^(?:21|22|23|42)" (str (.getSQLState e)))))
+
+(defn- error-in-query?
   [driver ^SQLException e]
   (and (not (or (some-> (driver-api/canceled-chan) a/poll!)
                 (driver/query-canceled? driver e)))
-       (boolean (re-find #"^(?:21|22|23|42)" (str (.getSQLState e))))))
+       (impl-error-in-query? driver e)))
 
 (defn execute-reducible-query
   "Default impl of [[metabase.driver/execute-reducible-query]] for sql-jdbc drivers."
