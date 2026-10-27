@@ -107,11 +107,11 @@ export const setup = ({
 };
 
 export const assertIndicatorVisible = async () => {
-  await waitFor(async () =>
+  await waitFor(() =>
     expect(
-      (await screen.findByTestId("menu-indicator-root")).querySelector(
-        "[class*=indicator]",
-      ),
+      screen
+        .getByTestId("menu-indicator-root")
+        .querySelector("[class*=indicator]"),
     ).toBeInTheDocument(),
   );
 };

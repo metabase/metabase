@@ -97,10 +97,10 @@ describe("FormDashboardTabSelect", () => {
 
   it("should be able to select a different tab", async () => {
     const { onSubmit } = await setup({ dashboardId: FOO_DASH.id });
-    await waitFor(async () => {
-      expect(
-        await screen.findByLabelText(/Which tab should this go on/),
-      ).toHaveValue(FOO_TAB_1.name);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Which tab should this go on/)).toHaveValue(
+        FOO_TAB_1.name,
+      );
     });
 
     await userEvent.click(
@@ -158,17 +158,17 @@ describe("FormDashboardTabSelect", () => {
 
   it("should update value to tab in new dashboard if dashboard changes", async () => {
     const { rerender, onSubmit } = await setup({ dashboardId: FOO_DASH.id });
-    await waitFor(async () => {
-      expect(
-        await screen.findByLabelText(/Which tab should this go on/),
-      ).toHaveValue(FOO_TAB_1.name);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Which tab should this go on/)).toHaveValue(
+        FOO_TAB_1.name,
+      );
     });
 
     rerender(BAZ_DASH.id);
-    await waitFor(async () => {
-      expect(
-        await screen.findByLabelText(/Which tab should this go on/),
-      ).toHaveValue(BAZ_TAB_1.name);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Which tab should this go on/)).toHaveValue(
+        BAZ_TAB_1.name,
+      );
     });
 
     await userEvent.click(screen.getByText("Submit"));
