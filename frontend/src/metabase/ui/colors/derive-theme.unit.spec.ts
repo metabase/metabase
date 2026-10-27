@@ -183,6 +183,10 @@ describe("deriveFullMetabaseTheme", () => {
       );
     });
 
+    it("uses the custom brand color as step 60 of the dynamic brand ramp", () => {
+      expect(baseColors.brand[60]).toBe("var(--mb-color-core-brand)");
+    });
+
     it("keeps the dynamic brand ramp when the caller asks for it", () => {
       const derived = deriveFullMetabaseTheme({
         colorScheme: "light",
