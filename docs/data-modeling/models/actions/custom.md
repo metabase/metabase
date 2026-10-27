@@ -79,7 +79,7 @@ If something goes wrong, Metabase will display the error message it received fro
 
 ## Deleting a custom action
 
-Only admins can delete custom actions. Deleting an action also removes any dashboard buttons and public forms that use it. You can't archive a model's action, only delete it.
+Only admins can delete a custom action, and deleting it also removes any dashboard buttons and public forms that use it. Moving the model to the trash also deletes all of its actions, and anyone with Curate access to the model's collection can do that. See [Deleting a model deletes its actions](./introduction.md#deleting-a-model-deletes-its-actions).
 
 1. Visit the model, click the **info** button, and click **Actions**.
 2. Click the **...** next to the action, and select **Delete**.

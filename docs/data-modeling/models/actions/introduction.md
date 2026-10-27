@@ -35,7 +35,7 @@ For actions to work, you'll first need to do the following two things:
 
 ## Who can use actions
 
-- **To create, edit, or delete an action**, you must be an admin. That includes basic actions, custom actions, and [data actions](./data-actions.md#data-action-permissions).
+- **To create, edit, or delete an action**, you must be an admin. But people with Curate access to a model's collection can delete the model's actions by [moving the model to the trash](#deleting-a-model-deletes-its-actions).
 - **To run an action**, all you need is view access to the action's model or [data actions](./data-actions.md) folder (or a link to a public action). To run an action from a [dashboard button](../../../dashboards/actions.md), you also need view access to the dashboard. But people with [row and column security](../../../permissions/row-and-column-security.md#people-with-row-and-column-security-cant-run-actions) on any table in a database can't run actions on that database.
 
 ## Types of actions
@@ -62,9 +62,11 @@ A model's actions don't outlive the model. Metabase deletes all of a model's act
 - Moves the collection that the model is in to the trash.
 - Turns the model back into a saved question.
 
+This includes people who aren't admins: anyone with [Curate access](../../../permissions/collections.md#curate-access) to the model's collection can do these things.
+
 Restoring the model from the trash doesn't bring its actions back.
 
-[Data actions](./data-actions.md) don't belong to a model, so they work differently: they go to the trash with their folder, and come back when you restore the folder.
+[Data actions](./data-actions.md) don't belong to a model, so they work differently: when you archive a data actions folder, Metabase archives its actions too, and unarchiving the folder brings them back. See [Organize and archive data actions](./data-actions.md#organize-and-archive-data-actions).
 
 ## Auditing actions
 

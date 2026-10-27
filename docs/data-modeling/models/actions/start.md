@@ -26,7 +26,7 @@ Write SQL to create new actions.
 
 ## [Data actions](./data-actions.md)
 
-Create actions that don't belong to a model from a SQL query or a table, and manage them in Data Studio.
+Create actions without a model, from a SQL query or a table, and manage them in Data Studio.
 
 ## [Actions on dashboards](../../../dashboards/actions.md)
 

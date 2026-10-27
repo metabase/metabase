@@ -1,6 +1,6 @@
 ---
 title: Data actions
-summary: Create actions that don't belong to a model from a SQL query or a table, organize them in folders, and run them from Data Studio or a public form.
+summary: Create actions without a model, from a SQL query or a table, organize them in folders, and run them from Data Studio or a public form.
 ---
 
 # Data actions
@@ -36,7 +36,7 @@ A table action inserts, updates, or deletes one row, without any SQL. The table 
 Go to **Data Studio** > **Data actions** and click an action. Each action has these tabs:
 
 - **Definition**: For a SQL action, the action's SQL. To change it, click **Edit definition**. For a table action, the table and the operation. To change them, click **Change table** or pick another **Operation**.
-- **Fields**: The fields on the action's form. A SQL action has one field for each {% raw %}{{ variable }}{% endraw %} in the SQL. If you turn off **Show field**, the action uses the field's default value. A table action has one field for each column of the table, and you can only show or hide them.
+- **Fields**: The fields on the action's form. A SQL action has one field for each {% raw %}{{ variable }}{% endraw %} in the SQL. If you turn off **Show field**, the action uses the field's default value. A table action has one field for each column that it writes (for Delete, only the primary key). You can only show or hide these fields.
 - **Run**: Click **Run** and fill out the form.
 - **Settings**: Turn on **Make public** to get a public link to the action's form, and set a **Success message**. Only admins can make an action public, and [public sharing](../../../embedding/public-links.md) must be on.
 - **Dependencies**\*: The action's [dependency graph](../../tools/graph.md).
@@ -45,15 +45,14 @@ Go to **Data Studio** > **Data actions** and click an action. Each action has th
 
 ## Organize and archive data actions
 
-Only admins can create folders, and move, archive, or unarchive data actions.
-
 - **Create a folder**: Click **New** > **Collection**.
 - **Move or archive an action**: Open the action, click the **three-dot** menu next to its name, and select **Move** or **Archive**. Public forms that use an archived action stop working.
-- **Unarchive an action**: Click the **three-dot** menu next to the **New** button, select **View archived actions**, and click the action's **Unarchive action** icon.
+- **Archive a folder**: Click the **three-dot** menu next to the folder, and select **Archive**. Metabase archives the folder's actions with it.
+- **Unarchive an action or folder**: Click the **three-dot** menu next to the **New** button, select **View archived actions**, and click the **Unarchive action** or **Unarchive folder** icon. Unarchiving a folder brings back the actions that Metabase archived with it, but not actions that someone archived on their own.
 
 ## Data action permissions
 
-Anyone who can view a data action's folder can run the action. Only admins can create, edit, move, archive, or unarchive data actions. You can't give other groups [Curate access](../../../permissions/collections.md#collection-permission-levels) to data actions folders.
+Anyone who can view a data action's folder can run the action. Only admins can create, edit, move, archive, or unarchive data actions and their folders. You can't give other groups [Curate access](../../../permissions/collections.md#collection-permission-levels) to data actions folders.
 
 ## Further reading
 
