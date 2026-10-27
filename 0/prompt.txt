@@ -1,0 +1,11 @@
+<task-notification>
+<task-id>aaa1c3996db8c03f6</task-id>
+<tool-use-id>toolu_01LxsiJ2BVyq7adx2UcPYsax</tool-use-id>
+<output-file>/private/tmp/claude-501/-Users-chris-Repos-metabase/43e4888b-b154-4848-8fe2-3a1c694f5ccd/tasks/aaa1c3996db8c03f6.output</output-file>
+<status>completed</status>
+<summary>Agent "Audit public-sharing embed specs" finished</summary>
+<note>A task-notification fires each time this agent stops with no live background children of its own. The user can send it another message and resume it, so the same task-id may notify more than once.</note>
+<result>This agent's report was delivered to you as a message from "aaa1c3996db8c03f6" (its SubagentHandback call). Read it there; it is not repeated here.
+</result>
+<usage><subagent_tokens>138274</subagent_tokens><tool_uses>37</tool_uses><duration_ms>331404</duration_ms></usage>
+</task-notification>
