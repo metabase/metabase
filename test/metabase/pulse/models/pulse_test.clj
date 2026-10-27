@@ -497,6 +497,21 @@
             (is (not (mi/can-read? subscription)))
             (is (not (mi/can-write? subscription)))))))))
 
+(deftest create-dashboard-subscription-collection-permissions-test
+  (with-dashboard-subscription-in-collection! [_ collection dashboard _]
+    (mt/with-current-user (mt/user->id :rasta)
+      (binding [api/*current-user-permissions-set* (delay #{(perms/collection-read-path collection)})]
+        (testing "A user with only read access to the collection can subscribe to a dashboard in it"
+          (is (true? (mi/can-create? :model/Pulse
+                                     {:cards         []
+                                      :dashboard_id  (u/the-id dashboard)
+                                      :collection_id (u/the-id collection)}))))
+        (testing "A pulse that is not a dashboard subscription still needs write access to its collection"
+          (is (false? (mi/can-create? :model/Pulse
+                                      {:cards         []
+                                       :dashboard_id  nil
+                                       :collection_id (u/the-id collection)}))))))))
+
 (deftest create-permissions-test
   (when config/ee-available?
     (testing "A user without download permission should not be able to create a pulse with attachments"
