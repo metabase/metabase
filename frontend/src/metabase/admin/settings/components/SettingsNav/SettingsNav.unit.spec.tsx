@@ -3,7 +3,7 @@ import fetchMock from "fetch-mock";
 
 import { setupSettingEndpoint } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, within } from "__support__/ui";
 import { Route } from "metabase/router";
 import type { TokenFeatures } from "metabase-types/api";
 import {
@@ -190,6 +190,27 @@ describe("SettingsNav", () => {
     expect(screen.getByText("Branding")).toBeInTheDocument();
     expect(screen.getByText("Conceal Metabase")).toBeInTheDocument();
   });
+
+  it.each([
+    { whitelabel: true, hasGem: false },
+    { whitelabel: false, hasGem: true },
+  ])(
+    "should show the upsell gem on the Appearance link only without the whitelabel feature (whitelabel: $whitelabel)",
+    async ({ whitelabel, hasGem }) => {
+      await setup({
+        initialRoute: "/admin/settings/general",
+        tokenFeatures: { whitelabel },
+      });
+
+      const appearanceLink = await screen.findByRole("link", {
+        name: /Appearance/,
+      });
+      expect(appearanceLink).toHaveTextContent(/^Appearance$/);
+      expect(within(appearanceLink).queryByTestId("upsell-gem") !== null).toBe(
+        hasGem,
+      );
+    },
+  );
 
   it("should hide Authentication and Python Runner from settings managers even with related tokens", async () => {
     await setup({

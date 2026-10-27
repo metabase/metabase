@@ -14,7 +14,6 @@ export * from "./e2e-comment-helpers";
 export * from "./e2e-content-diagnostics-helpers";
 export * from "./e2e-custom-column-helpers";
 export * from "./e2e-custom-viz-helpers";
-export * from "./data-app-test-env";
 export * from "./e2e-data-app-helpers";
 export * from "./e2e-dashboard-helpers";
 export * from "./e2e-dashboard-visualizer-helpers";
