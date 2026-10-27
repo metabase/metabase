@@ -297,6 +297,36 @@
               :perms/create-queries {(mt/id :venues) :query-builder}}
              (query-perms/required-perms-for-query query))))))
 
+(deftest ^:parallel mbql5-named-stages-query-test
+  (testing "Permissions come from the tables every stage reads, whatever functions the query calls"
+    (let [uuid  #(str (random-uuid))
+          join  (fn [join-alias table-id lhs rhs]
+                  {:lib/type   :mbql/join
+                   :alias      join-alias
+                   :stages     [{:lib/type :mbql.stage/mbql, :source-table table-id}]
+                   :conditions [[:= {:lib/uuid (uuid)}
+                                 [:field {:lib/uuid (uuid), :base-type :type/Integer} lhs]
+                                 [:field {:lib/uuid (uuid), :base-type :type/Integer, :join-alias join-alias} rhs]]]})
+          query (lib/query
+                 (mt/metadata-provider)
+                 {:lib/type :mbql/query
+                  :database (mt/id)
+                  :stages   [{:lib/type :mbql.stage/mbql, :name "venues", :source-table (mt/id :venues)}
+                             ;; read by no later stage, but the compiler still emits it
+                             {:lib/type :mbql.stage/mbql
+                              :name     "with_users"
+                              :joins    [(join "u" (mt/id :users) "ID" "ID")]}
+                             {:lib/type     :mbql.stage/mbql
+                              :source-stage "venues"
+                              :expressions  [[:dialect-fn {:lib/uuid (uuid), :base-type :type/Text
+                                                           :lib/expression-name "upper_name"}
+                                              "upper" [:field {:lib/uuid (uuid), :base-type :type/Text} "NAME"]]]
+                              :joins        [(join "c" (mt/id :categories) "CATEGORY_ID" "ID")]}]})
+          table-ids (map mt/id [:venues :users :categories])]
+      (is (= {:perms/view-data      (zipmap table-ids (repeat :unrestricted))
+              :perms/create-queries (zipmap table-ids (repeat :query-builder))}
+             (query-perms/required-perms-for-query query :already-preprocessed? true))))))
+
 (deftest ^:parallel mbql5-native-query-test
   (testing "Should be able to calculate permissions for a MBQL 5 native query (#39024)"
     (let [metadata-provider (mt/metadata-provider)

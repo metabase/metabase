@@ -44,7 +44,7 @@
       - native queries
       - queries that include tables that are not audit views"
   :feature :audit-app
-  [{query-type :type, database-id :database, query :query :as outer-query}]
+  [{query-type :type, database-id :database :as outer-query}]
   ;; Check if the user has access to the analytics collection, since this should be coupled with access to the
   ;; audit database in general.
   (when-not (mi/can-read? (audit/default-audit-collection))
@@ -53,7 +53,8 @@
   (when (= query-type :native)
     (throw (ex-info (tru "Native queries are not allowed on the audit database")
                     outer-query)))
-  (let [{:keys [table-ids native?]} (query-perms/query->source-ids query)]
+  ;; the whole query, legacy or MBQL 5: an MBQL 5 query has no `:type` or `:query`
+  (let [{:keys [table-ids native?]} (query-perms/query->source-ids outer-query)]
     (when native?
       (throw (ex-info (tru "Native queries are not allowed on the audit database")
                       outer-query)))

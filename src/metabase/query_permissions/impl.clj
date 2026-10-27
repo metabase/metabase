@@ -89,39 +89,34 @@
                           {:val1 val1 :val2 val2}))))
 
 (defn- source-ids*
-  "Recursive walk backing [[query->source-ids]], over legacy or MBQL 5 queries and the nested-query maps it dissocs its way into."
+  "Recursive walk backing [[query->source-ids]], over the nested maps it dissocs its way into."
   [query parent-source-card-id in-sandbox?]
-  (if (:lib/type query)
-    ;; convert MBQL 5 to legacy
-    ;;
-    ;; legacy usage -- don't do things like this going forward
-    #_{:clj-kondo/ignore [:discouraged-var]}
-    (recur (lib/->legacy-MBQL query) parent-source-card-id in-sandbox?)
-    ;; already legacy MBQL
-    (apply merge-with merge-source-ids
-           (match/match-many query
-             (:and m {:qp/stage-is-from-source-card (id :guard identity)})
-             (merge-with merge-source-ids
-                         {:card-ids #{id}}
-                         (source-ids* (dissoc m :qp/stage-is-from-source-card) id in-sandbox?))
+  ;; The four keys mean the same in legacy and MBQL 5, so this reads both as they are. A legacy stage nests the stages
+  ;; it reads; an MBQL 5 query lists them, and preprocessing marks each stage that came from a Card or a sandbox.
+  (apply merge-with merge-source-ids
+         (match/match-many query
+           (:and m {:qp/stage-is-from-source-card (id :guard identity)})
+           (merge-with merge-source-ids
+                       {:card-ids #{id}}
+                       (source-ids* (dissoc m :qp/stage-is-from-source-card) id in-sandbox?))
 
-             (:and m {:query-permissions/sandboxed-table (id :guard identity)})
-             (merge-with merge-source-ids
-                         {:table-ids #{id}}
-                         (when-not (or parent-source-card-id in-sandbox?)
-                           {:table-query-ids #{id}})
-                         (source-ids* (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
+           (:and m {:query-permissions/sandboxed-table (id :guard identity)})
+           (merge-with merge-source-ids
+                       {:table-ids #{id}}
+                       (when-not (or parent-source-card-id in-sandbox?)
+                         {:table-query-ids #{id}})
+                       (source-ids* (dissoc m :query-permissions/sandboxed-table :native) parent-source-card-id true))
 
-             {:native &truthy}
-             (when-not parent-source-card-id
-               {:native? true})
+           {:native &truthy}
+           (when-not parent-source-card-id
+             {:native? true})
 
-             (:and m {:source-table (id :guard pos-int?)})
-             (merge-with merge-source-ids
-                         {:table-ids #{id}}
-                         (when-not (or parent-source-card-id in-sandbox?)
-                           {:table-query-ids #{id}})
-                         (source-ids* (dissoc m :source-table) parent-source-card-id in-sandbox?))))))
+           (:and m {:source-table (id :guard pos-int?)})
+           (merge-with merge-source-ids
+                       {:table-ids #{id}}
+                       (when-not (or parent-source-card-id in-sandbox?)
+                         {:table-query-ids #{id}})
+                       (source-ids* (dissoc m :source-table) parent-source-card-id in-sandbox?)))))
 
 (mu/defn query->source-ids :- [:maybe
                                [:map
@@ -137,7 +132,7 @@
   * table-query-ids - tables that a user will create-queries permissions to run an ad hoc query
   * native? - a flag that will be set if the query requires native permissions.
 
-  The process for assembling this resources matches stages in a legacy-MBQL query:
+  The process for assembling this resources matches stages in a legacy or MBQL 5 query:
 
   1. Does the stage have a :qp/stage-is-from-source-card key?
 
@@ -159,7 +154,8 @@
      Add the table to the table-ids set. If there's no parent-source-card-id, also add it
      to the table-query-ids set, then continue the match."
   [query :- ::query]
-  (source-ids* query nil false))
+  ;; the metadata provider is not part of the query
+  (source-ids* (dissoc query :lib/metadata) nil false))
 
 (mu/defn query->source-table-ids
   "Returns a sequence of all :source-table IDs referenced by a query. Convenience wrapper around `query->source-ids` if
@@ -261,59 +257,55 @@
                                 (mi/perms-objects-set (card-instance card-id) :read)))
                       card-ids)})))
 
-(defn- legacy-mbql-required-perms
-  ([query options]
-   (legacy-mbql-required-perms nil query options))
+(defn- source-ids-required-perms
+  "The permissions to run a preprocessed `query`, from the Tables, Cards and native SQL it reads."
+  [query]
+  (let [{:keys [table-ids table-query-ids card-ids native?]} (query->source-ids query)]
+    (merge
+     (when-let [card-ids (not-empty (into (set card-ids) (referenced-card-ids query)))]
+       {:card-ids card-ids})
+     (when (seq table-ids)
+       {:perms/view-data (zipmap table-ids (repeat :unrestricted))})
+     (when (seq table-query-ids)
+       {:perms/create-queries (zipmap table-query-ids (repeat :query-builder))})
+     (when native?
+       (native-query-perms query)))))
 
-  ([metadata-provider
-    query
-    {:keys [throw-exceptions? already-preprocessed?]}]
-   (try
-     (let [metadata-provider (or metadata-provider
-                                 (when (qp.store/initialized?)
-                                   (qp.store/metadata-provider)))
-           query (mbql.normalize/normalize query)]
-       ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
-       (if-let [source-card-id (some-> query
-                                       not-empty
-                                       (->> (lib-be/normalize-query metadata-provider))
-                                       lib/primary-source-card-id)]
-         {:paths (source-card-read-perms source-card-id)}
-         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
-         (let [query                                                (cond-> query
-                                                                      (not already-preprocessed?) preprocess-query)
-               {:keys [table-ids table-query-ids card-ids native?]} (query->source-ids query)]
-           (merge
-            (when-let [card-ids (not-empty (into (set card-ids) (referenced-card-ids query)))]
-              {:card-ids card-ids})
-            (when (seq table-ids)
-              {:perms/view-data (zipmap table-ids (repeat :unrestricted))})
-            (when (seq table-query-ids)
-              {:perms/create-queries (zipmap table-query-ids (repeat :query-builder))})
-            (when native?
-              (native-query-perms query))))))
-     ;; if for some reason we can't expand the Card (i.e. it's an invalid legacy card) just return a set of permissions
-     ;; that means no one will ever get to see it
-     (catch Throwable e
-       (let [e (ex-info (format "Error calculating permissions for query: %s" (ex-message e))
-                        {:query (or (u/ignore-exceptions (mbql.normalize/normalize query))
-                                    query)}
-                        e)]
-         (if throw-exceptions? (throw e) (log/error (ex-message e))))
-       {:perms/create-queries {0 :query-builder}})))) ; table 0 will never exist
+(defn- unknowable-perms
+  "Permissions no one has, for a query whose permissions can't be calculated, e.g. an invalid legacy Card. Throws `e`
+  instead with `throw-exceptions?`."
+  [query throw-exceptions? e]
+  (let [e (ex-info (format "Error calculating permissions for query: %s" (ex-message e)) {:query query} e)]
+    (if throw-exceptions? (throw e) (log/error (ex-message e))))
+  {:perms/create-queries {0 :query-builder}}) ; table 0 will never exist
+
+(defn- legacy-mbql-required-perms
+  [query {:keys [throw-exceptions? already-preprocessed?]}]
+  (try
+    (let [metadata-provider (when (qp.store/initialized?)
+                              (qp.store/metadata-provider))
+          query (mbql.normalize/normalize query)]
+      ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
+      (if-let [source-card-id (some-> query
+                                      not-empty
+                                      (->> (lib-be/normalize-query metadata-provider))
+                                      lib/primary-source-card-id)]
+        {:paths (source-card-read-perms source-card-id)}
+        ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
+        (source-ids-required-perms (cond-> query (not already-preprocessed?) preprocess-query))))
+    (catch Throwable e
+      (unknowable-perms (or (u/ignore-exceptions (mbql.normalize/normalize query)) query) throw-exceptions? e))))
 
 (defn- mbql5-required-perms
-  "For MBQL 5 queries: for now, just convert it to legacy then hand off to the
-  legacy implementation(s) of [[required-perms]]."
-  [query perms-opts]
-  (let [mp (when (lib/metadata-provider? (:lib/metadata query))
-             (:lib/metadata query))]
-    (-> query
-        lib/normalize
-        ;; allowing for now until we convert this namespace to be MBQL-5-only
-        #_{:clj-kondo/ignore [:discouraged-var]}
-        lib/->legacy-MBQL
-        (as-> $query (legacy-mbql-required-perms mp $query perms-opts)))))
+  [query {:keys [throw-exceptions? already-preprocessed?]}]
+  (try
+    (let [query (lib/normalize query)]
+      ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
+      (if-let [source-card-id (lib/primary-source-card-id query)]
+        {:paths (source-card-read-perms source-card-id)}
+        (source-ids-required-perms (cond-> query (not already-preprocessed?) preprocess-query))))
+    (catch Throwable e
+      (unknowable-perms query throw-exceptions? e))))
 
 (defn required-perms-for-query
   "Returns a map representing the permissions required to run `query`. The map has the optional keys
