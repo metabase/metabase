@@ -88,7 +88,8 @@ MetricFlow references around SQL. Both go through sqlglot (`metabase.sql-parsing
 `dev.dbt-import.sql`), which parses an expression on its own in the dialect of the config's `:driver`, and a small
 subset of SQL maps onto MBQL: column references, literals, `+ - * /`, comparisons, `AND`/`OR`/`NOT`,
 `IN`, `BETWEEN`, `IS [NOT] NULL`, `LIKE` with a `%x%`, `x%` or `%x` pattern, and `CASE WHEN ... THEN ... ELSE ... END`.
-Functions, casts and anything else are reported as unsupported, naming the construct.
+`x / NULLIF(y, 0)` is plain division, since Metabase's `/` already returns NULL for a zero divisor. Other functions,
+casts and anything else are reported as unsupported, naming the construct.
 
 In a filter, `Dimension('<entity>__<dimension>')` resolves to one of the metric's own columns when the entity is the
 semantic model's primary entity, and `TimeDimension(..., '<grain>')` additionally buckets it by the matching Metabase

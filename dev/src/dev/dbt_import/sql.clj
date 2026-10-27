@@ -5,7 +5,8 @@
   dbt leaves both as the warehouse's own SQL. [[metabase.sql-parsing.core/parse-expression]] (sqlglot) parses an
   expression on its own, without a surrounding SELECT, in the warehouse's dialect, and a small subset of its tree is
   built with Lib's clause constructors: column references, literals, arithmetic, comparisons, AND/OR/NOT, IN, BETWEEN,
-  IS NULL, simple LIKE patterns and searched CASE. Anything else is reported as unsupported, naming the construct.
+  IS NULL, simple LIKE patterns and searched CASE. The one function understood is `NULLIF(x, 0)` as a divisor, which
+  is plain division in Metabase (see [[safe-divisor]]). Anything else is reported as unsupported, naming the construct.
 
   Column references are resolved through a callback, so this namespace knows nothing about semantic models or
   Metabase metadata. Unsupported constructs are signalled with [[unsupported]], an exception the resolve stage turns
@@ -141,7 +142,23 @@
 (defmethod ->value "Add" [node resolve-column] (binary lib/+ node resolve-column ->value))
 (defmethod ->value "Sub" [node resolve-column] (binary lib/- node resolve-column ->value))
 (defmethod ->value "Mul" [node resolve-column] (binary lib/* node resolve-column ->value))
-(defmethod ->value "Div" [node resolve-column] (binary lib// node resolve-column ->value))
+(defn- safe-divisor
+  "The divisor of `x / NULLIF(y, 0)` is just `y`: Metabase's `/` already turns a zero divisor into NULL (see
+  `safe-denominator` in [[metabase.driver.sql.query-processor]]), so the idiom adds nothing. Any other divisor is
+  returned as it is."
+  [divisor]
+  (let [compared-to (arg divisor :expression)]
+    (if (and (= "Nullif" (:class divisor))
+             (= "Literal" (:class compared-to))
+             (not (arg compared-to :is_string))
+             (zero? (parse-number (arg compared-to :this))))
+      (arg divisor :this)
+      divisor)))
+
+(defmethod ->value "Div"
+  [node resolve-column]
+  (lib// (->value (arg node :this) resolve-column)
+         (->value (safe-divisor (arg node :expression)) resolve-column)))
 
 (defmethod ->value "Cast"
   [node _]

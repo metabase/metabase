@@ -248,6 +248,12 @@
   [overrides]
   (merge {:name "m", :filter nil, :alias nil, :join_to_timespine false, :fill_nulls_with nil} overrides))
 
+(defn metric-input
+  "A `type_params.numerator` / `denominator` / `metrics[]` entry pointing at metric `metric-name`, with `overrides`
+  merged in: `:alias`, `:filter`, `:offset_window`, `:offset_to_grain`."
+  [metric-name & {:as overrides}]
+  (merge {:name metric-name, :filter nil, :alias nil} overrides))
+
 (defn- base-type-params [im]
   {:measure                   im
    :input_measures            (if im [im] [])
