@@ -32,6 +32,8 @@ export interface BrokerRequestMessage {
   headers: Record<string, string>;
   /** Raw bytes rather than text, so binary uploads arrive intact. */
   body: ArrayBuffer | null;
+  /** The app's `redirect` mode. The top page follows redirects only within the instance API. */
+  redirect: RequestRedirect;
 }
 
 /** iframe to top page: the app aborted request `id`. */
@@ -57,8 +59,20 @@ export interface BrokerNetworkError {
   networkError: string;
 }
 
+/** The app asked for `redirect: "manual"`, and the API answered with a redirect. */
+export interface BrokerOpaqueRedirect {
+  id: number;
+  opaqueRedirect: true;
+}
+
 /** top page to iframe. */
-export type BrokerResponseMessage = BrokerHttpResponse | BrokerNetworkError;
+export type BrokerResponseMessage =
+  | BrokerHttpResponse
+  | BrokerNetworkError
+  | BrokerOpaqueRedirect;
+
+const isRedirectMode = (value: unknown): value is RequestRedirect =>
+  value === "follow" || value === "error" || value === "manual";
 
 const isStringRecord = (value: unknown): value is Record<string, string> =>
   typeof value === "object" &&
@@ -93,7 +107,9 @@ export function isBrokerPortMessage(
     "headers" in value &&
     isStringRecord(value.headers) &&
     "body" in value &&
-    (value.body === null || value.body instanceof ArrayBuffer)
+    (value.body === null || value.body instanceof ArrayBuffer) &&
+    "redirect" in value &&
+    isRedirectMode(value.redirect)
   );
 }
 
@@ -111,6 +127,10 @@ export function isBrokerResponseMessage(
 
   if ("networkError" in value) {
     return typeof value.networkError === "string";
+  }
+
+  if ("opaqueRedirect" in value) {
+    return value.opaqueRedirect === true;
   }
 
   return (
@@ -148,4 +168,11 @@ export function getBrokerableApiPath(url: URL): string | null {
   const path = url.pathname.slice(basePath.length);
 
   return isBrokerableApiPath(path) ? path : null;
+}
+
+/** True when `url` is an instance API URL on this window's origin. */
+export function isInstanceApiUrl(url: URL): boolean {
+  return (
+    url.origin === window.location.origin && getBrokerableApiPath(url) !== null
+  );
 }

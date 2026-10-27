@@ -39,7 +39,7 @@ const bytes = (body: ArrayBuffer | null) =>
 
 type HostPort = {
   onmessage: ((event: { data: BrokerResponseMessage }) => void) | null;
-  postMessage: jest.Mock<void, [BrokerPortMessage]>;
+  postMessage: jest.Mock<void, [BrokerPortMessage, Transferable[]?]>;
 };
 
 const createHostPort = (): HostPort => ({
@@ -141,6 +141,40 @@ describe("iframe broker, served from a separate isolated origin", () => {
 
     const response = await pendingResponse;
     expect(bytes(await response.arrayBuffer())).toEqual(DOWNLOAD);
+  });
+
+  it("hands the request body to the host instead of copying it", async () => {
+    void window.fetch("/api/upload", { method: "POST", body: UPLOAD });
+
+    await waitFor(() => expect(hostPort.postMessage).toHaveBeenCalledTimes(1));
+    const [, transfer] = hostPort.postMessage.mock.calls[0];
+
+    expect(transfer).toEqual([sentRequest().body]);
+    expect(transfer?.[0]).toBe(sentRequest().body);
+  });
+
+  it("forwards the redirect mode the app asked for", async () => {
+    void window.fetch("/api/user/current", { redirect: "error" });
+
+    await waitFor(() => expect(hostPort.postMessage).toHaveBeenCalledTimes(1));
+    expect(sentRequest().redirect).toBe("error");
+  });
+
+  it("answers an opaque redirect, as fetch does for redirect: manual", async () => {
+    const pendingResponse = window.fetch("/api/user/current", {
+      redirect: "manual",
+    });
+
+    await waitFor(() => expect(hostPort.postMessage).toHaveBeenCalledTimes(1));
+    hostPort.onmessage?.({
+      data: { id: sentRequest().id, opaqueRedirect: true },
+    });
+    const response = await pendingResponse;
+
+    expect(response.type).toBe("opaqueredirect");
+    expect(response.status).toBe(0);
+    expect(response.ok).toBe(false);
+    expect(response.url).toMatch(/\/api\/user\/current$/);
   });
 
   it("sends the telemetry relay through the host, like every other instance API call", async () => {
