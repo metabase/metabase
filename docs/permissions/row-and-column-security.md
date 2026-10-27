@@ -325,7 +325,7 @@ People in groups with row and column security can't create Slack [alerts](../que
 
 ### People with row and column security can't run actions
 
-If row and column security applies to a person on any table in a database, that person can't run [actions](../data-modeling/models/actions/introduction.md) on that database, from a model's actions page or from a [dashboard button](../dashboards/actions.md). Actions write to tables directly, so they would get around the row and column security. For basic actions, Metabase shows the error **You can't run actions on this database because row and column security applies to your data access.** For custom actions, Metabase shows a generic permissions error. Admins aren't affected.
+If row and column security applies to a person on any table in a database, that person can't run [actions](../data-modeling/models/actions/introduction.md) on that database. Actions write to tables directly, so they would get around the row and column security. For basic actions and data actions made from a table, Metabase shows the error **You can't run actions on this database because row and column security applies to your data access.** For actions written in SQL, Metabase shows a generic permissions error. Admins aren't affected.
 
 [Public action forms](../data-modeling/models/actions/custom.md#make-public) don't check row and column security: anyone with the link can use the form.
 
