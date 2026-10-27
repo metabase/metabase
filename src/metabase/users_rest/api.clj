@@ -13,7 +13,7 @@
    [metabase.events.core :as events]
    [metabase.models.interface :as mi]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
    [metabase.request.core :as request]
    [metabase.session.core :as session]
    [metabase.sso.core :as sso]
@@ -291,15 +291,11 @@
             :can_create_queries        can-create-queries
             :can_create_native_queries can-create-native-queries)))
 
-(defn- maybe-add-advanced-permissions
+(defenterprise maybe-add-advanced-permissions
   "If `advanced-permissions` is enabled, add to `user` a permissions map."
+  metabase-enterprise.advanced-permissions.oss-hooks
   [user]
-  (if-let [with-advanced-permissions
-           (and (premium-features/enable-advanced-permissions?)
-                config/ee-available?
-                (requiring-resolve 'metabase-enterprise.advanced-permissions.common/with-advanced-permissions))]
-    (with-advanced-permissions user)
-    user))
+  user)
 
 (defn- maybe-add-sso-source
   "Adds `sso_source` key to the `User`, so FE could determine if the user is logged in via SSO."
