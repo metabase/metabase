@@ -1420,6 +1420,8 @@
                 ;; same read check the REST writer applies runs here too.
                 _       (queries/check-newly-exposed-dashcards-timeline-permissions!
                          dashboard current [{:card_id card_id}])
+                _       (queries/check-newly-exposed-dashcards-goal-permissions!
+                         dashboard current [{:card_id card_id}])
                 ;; A card internal to a different dashboard (a dashboard question) can't be added
                 ;; here — mirrors the REST dashcard-creation gate.
                 _       (api/check (or (nil? (:dashboard_id card))

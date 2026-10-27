@@ -2188,6 +2188,7 @@
            util
            util.config
            util.graph
+           visualization-settings
            warehouse-schema-overlay
            warehouses.schema}
    :model-exports #{:model/Card
@@ -2206,6 +2207,7 @@
                     :model/Database
                     :model/Document
                     :model/Field
+                    :model/Measure
                     :model/ModerationReview
                     :model/NativeQuerySnippet
                     :model/Notification

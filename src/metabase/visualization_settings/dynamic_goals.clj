@@ -2,7 +2,9 @@
   "Dynamic goals: goal values in viz settings that reference another entity's value
   (`{:id 1, :type \"card\", :column \"total\"}`) instead of holding a literal number. Single source of
   truth for which settings carry goal values, so deriving the queries to run and substituting their
-  results can never disagree. Mirrors `frontend/src/metabase/viz-core/lib/dynamic-goal-settings.ts`.")
+  results can never disagree. Mirrors `frontend/src/metabase/viz-core/lib/dynamic-goal-settings.ts`."
+  (:require
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -31,7 +33,9 @@
   "The `{:id N, :type \"card\", :column \"name\"}` reference inside `goal-value`, or nil if it isn't one."
   [goal-value]
   (when (and (map? goal-value) (:id goal-value) (:type goal-value) (:column goal-value))
-    (select-keys goal-value [:id :type :column])))
+    ;; saving writes a keyword type as its string, so read it that way before the stored copy exists
+    (cond-> (select-keys goal-value [:id :type :column])
+      (keyword? (:type goal-value)) (update :type u/qualified-name))))
 
 (defn- values-in
   [viz-settings settings]
@@ -90,6 +94,11 @@
   [viz-settings]
   (concat (goal-values viz-settings)
           (goal-values (get-in viz-settings visualizer-settings-path))))
+
+(defn goal-references
+  "The `[type id column]` of each entity column the goals in `viz-settings` reference, from [[dashcard-goal-values]]."
+  [viz-settings]
+  (into #{} (comp (keep goal-source) (map (juxt :type :id :column))) (dashcard-goal-values viz-settings)))
 
 (defn update-dashcard-goal-values
   "Like [[update-goal-values]], also rewriting the goals a visualizer dashcard nests under `:visualization`."
