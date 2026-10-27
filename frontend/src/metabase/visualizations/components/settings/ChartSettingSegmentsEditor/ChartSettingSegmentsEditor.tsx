@@ -3,14 +3,14 @@ import { c, t } from "ttag";
 import _ from "underscore";
 
 import { ColorSelector } from "metabase/common/components/ColorSelector";
-import CS from "metabase/css/core/index.css";
-import { ActionIcon, Box, Button, Icon, NumberInput, Text } from "metabase/ui";
+import { ActionIcon, Box, Button, Icon, Text } from "metabase/ui";
 import { color } from "metabase/ui/colors";
 import { getAccentColors } from "metabase/ui/colors/groups";
 import type { ChartSettingSegmentsEditorProps } from "metabase/viz-core";
 import type { ScalarSegment } from "metabase-types/api";
 
 import { ChartSettingInput } from "../ChartSettingInput";
+import { ChartSettingInputNumeric } from "../ChartSettingInputNumeric";
 
 import S from "./ChartSettingSegmentsEditor.module.css";
 
@@ -38,8 +38,8 @@ export const ChartSettingSegmentsEditor = ({
             <tr>
               <th />
               <th>{t`Label`}</th>
-              <th>{t`Min`}</th>
-              <th>{t`Max`}</th>
+              <th className={S.MinMax}>{t`Min`}</th>
+              <th className={S.MinMax}>{t`Max`}</th>
             </tr>
           </thead>
           <tbody>
@@ -67,35 +67,27 @@ export const ChartSettingSegmentsEditor = ({
                   />
                 </td>
                 <td>
-                  <NumberInput
-                    className={CS.full}
-                    value={segment.min ?? ""}
-                    onBlur={(e) => {
-                      const rawValue = e.target.value;
-                      const newValue =
-                        rawValue === "" ? null : parseFloat(rawValue);
+                  <ChartSettingInputNumeric
+                    value={segment.min ?? undefined}
+                    onChange={(rawValue) => {
+                      const newValue = rawValue ?? null;
                       if (newValue !== segment.min) {
                         onChangeProperty(index, "min", newValue);
                       }
                     }}
                     placeholder={t`Min`}
-                    w="4rem"
                   />
                 </td>
                 <td>
-                  <NumberInput
-                    className={CS.full}
-                    value={segment.max ?? ""}
-                    onBlur={(e) => {
-                      const rawValue = e.target.value;
-                      const newValue =
-                        rawValue === "" ? null : parseFloat(rawValue);
+                  <ChartSettingInputNumeric
+                    value={segment.max ?? undefined}
+                    onChange={(rawValue) => {
+                      const newValue = rawValue ?? null;
                       if (newValue !== segment.max) {
                         onChangeProperty(index, "max", newValue);
                       }
                     }}
                     placeholder={t`Max`}
-                    w="4rem"
                   />
                 </td>
                 <td>
