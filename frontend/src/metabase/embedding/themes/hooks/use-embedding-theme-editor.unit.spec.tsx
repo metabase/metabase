@@ -59,11 +59,13 @@ describe("useEmbeddingThemeEditor", () => {
 
     expect(result.current.isLoading).toBe(true);
 
+    // The theme is copied into the editor state in an effect, after the
+    // request has stopped loading.
     await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+      expect(result.current.currentTheme?.name).toBe("My theme");
     });
 
-    expect(result.current.currentTheme?.name).toBe("My theme");
+    expect(result.current.isLoading).toBe(false);
     expect(result.current.currentTheme?.settings.colors?.brand).toBe("#509EE3");
     expect(result.current.isDirty).toBe(false);
   });
