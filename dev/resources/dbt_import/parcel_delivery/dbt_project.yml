@@ -1,0 +1,5 @@
+name: parcel_delivery
+version: '1.0.0'
+config-version: 2
+profile: parcel_delivery
+model-paths: ["models"]

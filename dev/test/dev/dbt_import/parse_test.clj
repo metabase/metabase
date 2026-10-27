@@ -313,33 +313,39 @@
       {:cumulative_type_params {:window nil, :grain_to_date nil, :period_agg "average"}})))
 
 (defn- inline
-  "Tweaks for a 1.12 inline-spec simple metric that carries `params` in `metric_aggregation_params` instead of pointing
-  at a measure. `more` are further tweaks."
-  [params & {:as more}]
+  "Tweaks for a 1.12 inline-spec simple metric that carries `params` in `metric_aggregation_params` and `expr` in
+  `type_params`, the way dbt 1.12 writes one (see the `parcel_delivery` fixture), instead of pointing at a measure.
+  `more` are further tweaks."
+  [{:keys [expr] :as params} & {:as more}]
   (merge {:type-params {:measure                   nil
                         :input_measures            []
-                        :metric_aggregation_params (merge {:semantic_model "fact_sales"} params)}}
+                        :expr                      expr
+                        :metric_aggregation_params (merge {:semantic_model "fact_sales", :agg_params nil, :agg_time_dimension nil
+                                                           :non_additive_dimension nil}
+                                                          (dissoc params :expr))}}
          more))
 
 (deftest ^:parallel inline-spec-test
-  (testing "the inline spec shares the converter's unverified assumption about the metric_aggregation_params shape (QRES-6)"
-    (is (= sum-sales (tu/aggregation (inline {:agg "sum", :expr "sales"}))))
-    (is (= [:distinct {} (fld "customer_key" :type/Text)]
-           (tu/aggregation (inline {:agg "count_distinct", :expr "customer_key"}))))
-    (is (= [:percentile {} (fld "sales" :type/Float) 0.9]
-           (tu/aggregation (inline {:agg "percentile", :expr "sales", :agg_params {:percentile 0.9}}))))
-    (is (= [:count {}] (tu/aggregation (inline {:agg "count", :expr "1"}))))
-    (testing "no expr defaults to the metric name, documented column or not"
-      (is (= sum-sales (tu/aggregation (inline {:agg "sum"} :metric {:name "sales", :unique_id "metric.p.sales"}))))
-      (is (= [:sum {} (fld "m" nil)] (tu/aggregation (inline {:agg "sum"})))))
-    (testing "agg_time_dimension override is accepted"
-      (is (= sum-sales (tu/aggregation (inline {:agg "sum", :expr "sales", :agg_time_dimension "nope"})))))
-    (testing "fill_nulls_with on the metric"
-      (is (= [:coalesce {} sum-sales 0]
-             (tu/aggregation (update (inline {:agg "sum", :expr "sales"}) :type-params assoc :fill_nulls_with 0)))))
-    (is (re-find #"neither a measure nor metric_aggregation_params" (tu/unsupported (inline {}))))
-    (is (re-find #"non-additive"
-                 (tu/unsupported (inline {:agg "sum", :expr "sales"
-                                          :non_additive_dimension {:name "date_day", :window_choice "max"}}))))
-    (testing "a measure and inline params both present: the measure wins"
-      (is (= sum-sales (tu/aggregation {:type-params {:metric_aggregation_params {:semantic_model "fact_sales", :agg "max", :expr "sales"}}}))))))
+  (is (= sum-sales (tu/aggregation (inline {:agg "sum", :expr "sales"}))))
+  (is (= [:distinct {} (fld "customer_key" :type/Text)]
+         (tu/aggregation (inline {:agg "count_distinct", :expr "customer_key"}))))
+  (is (= [:percentile {} (fld "sales" :type/Float) 0.9]
+         (tu/aggregation (inline {:agg "percentile", :expr "sales", :agg_params {:percentile 0.9}}))))
+  (is (= [:count {}] (tu/aggregation (inline {:agg "count", :expr "1"}))))
+  (testing "no expr defaults to the metric name, documented column or not"
+    (is (= sum-sales (tu/aggregation (inline {:agg "sum"} :metric {:name "sales", :unique_id "metric.p.sales"}))))
+    (is (= [:sum {} (fld "m" nil)] (tu/aggregation (inline {:agg "sum"})))))
+  (testing "agg_time_dimension override is accepted"
+    (is (= sum-sales (tu/aggregation (inline {:agg "sum", :expr "sales", :agg_time_dimension "nope"})))))
+  (testing "fill_nulls_with on the metric"
+    (is (= [:coalesce {} sum-sales 0]
+           (tu/aggregation (update (inline {:agg "sum", :expr "sales"}) :type-params assoc :fill_nulls_with 0)))))
+  (is (re-find #"neither a measure nor metric_aggregation_params"
+               (tu/unsupported {:type-params {:measure nil, :input_measures [], :metric_aggregation_params nil}})))
+  (is (re-find #"non-additive"
+               (tu/unsupported (inline {:agg "sum", :expr "sales"
+                                        :non_additive_dimension {:name "date_day", :window_choice "max"}}))))
+  (testing "a measure and inline params both present: the measure wins"
+    (is (= sum-sales (tu/aggregation {:type-params {:expr "sales"
+                                                    :metric_aggregation_params {:semantic_model "fact_sales", :agg "max", :agg_params nil
+                                                                                :agg_time_dimension nil, :non_additive_dimension nil}}})))))

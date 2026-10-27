@@ -8,7 +8,8 @@ git clone https://github.com/flexanalytics/dbt-business-intelligence
 
 ## Create dbt config (so it uses the correct SQL dialect plugin for macros):
 
-Save this in `~/.dbt/profiles.yml`:
+This is only needed to run `dbt` by hand; the fixture generator below writes its own. Save this in
+`~/.dbt/profiles.yml`:
 
 ```yaml
 dbt_business_intelligence:
@@ -112,25 +113,68 @@ to exist):
 It copies the clone to a scratch directory like `dev.dbt-import.fixture/regenerate!` does, runs `dbt seed` and
 `dbt run` there against that Postgres, and dumps the tables.
 
-## The test fixture
+## The test fixtures
 
-`dev/resources/dbt_import/flexanalytics_manifest.json` is the project's manifest trimmed to the sections the converter
-reads, plus the metrics in `flexanalytics_extra_metrics.yml`: the project only defines simple metrics, so that file
-adds one of each type that composes other metrics (ratio, derived, cumulative) and a conversion metric, in the shape
-dbt itself writes. `sales_to_target_ratio_2` is the correct ratio form of the project's `sales_to_target`, which
-averages a per-row `sales / target`; both are kept. Regenerate the fixture after changing either file or the clone,
-from a REPL at the repo root:
+Two manifests under `dev/resources/dbt_import/`, one per way of writing a dbt semantic layer, both trimmed to the
+sections the converter reads and both written by `dbt parse` under dbt 1.12.6 (manifest schema v12). The converter
+has been tested against no other manifest version; the schema accepts v10 and v11 because the sections it reads are
+the same there, but nothing has checked that.
+
+`flexanalytics_manifest.json` is the flexanalytics project's manifest, on the **legacy spec** (top-level
+`semantic_models:` with `measures:`, and `metrics:` pointing at a measure), plus the metrics in
+`flexanalytics_extra_metrics.yml`: the project only defines simple metrics, so that file adds one of each type that
+composes other metrics (ratio, derived, cumulative) and a conversion metric, in the shape dbt itself writes.
+`sales_to_target_ratio_2` is the correct ratio form of the project's `sales_to_target`, which averages a per-row
+`sales / target`; both are kept. To run the extra metrics in a dev instance (QRES-2), paste them into the clone's
+`semantic_models.yml` under `metrics:` and `dbt parse` it the same way.
+
+`parcel_delivery_manifest.json` is the manifest of the small project checked in under `parcel_delivery/`, on the
+**dbt 1.12 inline spec**, see the next section. It is the shape of four redacted models from a customer's project,
+renamed onto a parcel-delivery domain with the BigQuery types turned into Postgres ones: four semantic models, nineteen
+metrics covering every aggregation the inline spec allows except `sum_boolean`, `median` and `min`/`max`, a ratio, a
+derived metric, two cumulative ones, filters, a SQL `expr`, and `derived_semantics` SQL dimensions.
+`dev/test/dev/dbt_import/inline_spec_test.clj` pins down what the parser makes of it and what the pipeline converts.
+
+Regenerate a fixture after changing its project (or the clone, or the extra metrics), from a REPL at the repo root:
 
 ```clojure
-(dev.dbt-import.fixture/regenerate!)                                                   ; ~/dbt-business-intelligence
-(dev.dbt-import.fixture/regenerate! {:project "/path/to/dbt-business-intelligence"})
+(dev.dbt-import.fixture/regenerate! :parcel-delivery)
+(dev.dbt-import.fixture/regenerate! :flexanalytics)                                                   ; ~/dbt-business-intelligence
+(dev.dbt-import.fixture/regenerate! :flexanalytics {:project "/path/to/dbt-business-intelligence"})
 ```
 
-It copies the clone to a scratch directory, splices the extra metrics into `models/semantic_models.yml`, runs
-`dbt parse` there (through `uvx` unless `dbt` is on PATH, with the `profiles.yml` above) and writes the trimmed result
-in the format dbt writes, so a regeneration's diff is only what changed. The clone is not modified. To run the extra
-metrics in a dev instance (QRES-2), paste them into the clone's `semantic_models.yml` under `metrics:` and `dbt parse`
-it the same way.
+It copies the project to a scratch directory, writes a `profiles.yml` there (`dbt parse` needs a profile for the
+adapter and the warehouse database name, which the manifest records, but never connects), splices the extra metrics
+in for flexanalytics, runs `dbt parse` (through `uvx` unless `dbt` is on PATH) and writes the trimmed result in the
+format dbt writes, so a regeneration's diff is only what changed, plus dbt's `created_at` and `generated_at`
+timestamps. The project is not modified.
+
+## The dbt 1.12 inline spec
+
+dbt 1.12 lets a project declare its semantic layer on the models themselves instead of in separate top-level blocks:
+`semantic_model:` nested under the entry in `models:`, `entity:` and `dimension:` on the entries under `columns:`,
+`agg_time_dimension` on the model, further SQL dimensions under `derived_semantics:`, and `metrics:` on the model
+with their own `agg` and `expr` and no `measures:` list anywhere. Composed metrics use new keywords too: a ratio's
+`numerator` and `denominator` stand alone, a derived metric lists `input_metrics`, and a cumulative one names its
+`input_metric` and a `period_agg`. (dbt also insists on a time spine model before it will parse any metric;
+`parcel_delivery/models/time_spine.sql` is the smallest one that satisfies it, and the converter never reads it.)
+
+The bet behind reading `manifest.json` rather than the YAML was that dbt normalizes both specs into the same
+`semantic_models` plus `metrics` structure. It does, with three differences the parser handles (QRES-6):
+
+- A semantic model's `measures` is empty. Every aggregation is on a metric.
+- A simple metric carries `type_params.metric_aggregation_params` (`semantic_model`, `agg`, `agg_params`,
+  `agg_time_dimension` already defaulted from the model, `non_additive_dimension`) with the expression next to it in
+  `type_params.expr`, nil when the column is the metric's name. `agg_params` is written for every aggregation, and
+  `percentile_type: continuous` comes out as `use_approximate_percentile: true`, not as a discrete percentile.
+- A cumulative metric depends on the simple metric it runs over (`cumulative_type_params.metric` and `depends_on`),
+  not on a semantic model. The parser takes that metric's aggregation, semantic model and filters; a window or
+  `grain_to_date` is reported as on the legacy spec.
+
+Entities and dimensions come out exactly as on the legacy spec, including a primary entity declared without a name,
+which dbt names after its column, and the `derived_semantics` dimensions, which arrive with their SQL as `expr`.
+Everything after the parser is none the wiser: the inline-spec fixture converts to the same clauses the legacy one
+does.
 
 ## Filters and SQL expressions
 

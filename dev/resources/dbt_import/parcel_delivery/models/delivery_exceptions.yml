@@ -1,0 +1,131 @@
+version: 2
+models:
+- name: delivery_exceptions
+  description: One row per delivery exception, such as a lost, damaged or refused parcel.
+  semantic_model:
+    enabled: true
+    name: delivery_exceptions
+  agg_time_dimension: opened_at
+  columns:
+  - name: exception_id
+    data_type: text
+    description: Unique identifier of the exception.
+    entity:
+      type: primary
+      name: delivery_exception
+  - name: case_number
+    data_type: text
+    description: The case number shown to the customer.
+  - name: opened_at
+    data_type: timestamp
+    description: When the exception was opened.
+    granularity: day
+    dimension:
+      type: time
+  - name: updated_at
+    data_type: timestamp
+    description: When the exception was last updated.
+  - name: exception_type
+    data_type: text
+    description: The kind of exception, such as lost, damaged or refused.
+    dimension:
+      type: categorical
+  - name: status
+    data_type: text
+    description: The current status of the exception.
+    dimension:
+      type: categorical
+  - name: status_description
+    data_type: text
+    description: A longer description of the current status.
+  - name: reason_code
+    data_type: text
+    description: The reason code the handler assigned.
+  - name: priority
+    data_type: text
+    description: The priority of the exception.
+    dimension:
+      type: categorical
+  - name: channel
+    data_type: text
+    description: How the exception was reported, such as phone, email or app.
+    dimension:
+      type: categorical
+  - name: resolution
+    data_type: text
+    description: How the exception was resolved.
+    dimension:
+      type: categorical
+  - name: is_escalated
+    data_type: boolean
+    description: Whether the exception was escalated to a supervisor.
+  - name: is_refunded
+    data_type: boolean
+    description: Whether the customer was refunded.
+  - name: handler_id
+    data_type: text
+    description: The agent handling the exception.
+  - name: reviewer_id
+    data_type: text
+    description: The supervisor reviewing the exception, if any.
+  - name: depot_id
+    data_type: text
+    description: The depot responsible for the parcel.
+    entity:
+      type: foreign
+      name: depot
+  - name: carrier_id
+    data_type: text
+    description: The carrier that handled the parcel.
+  - name: carrier_name
+    data_type: text
+    description: The name of the carrier.
+  - name: origin_country
+    data_type: text
+    description: The country the parcel was sent from.
+    dimension:
+      type: categorical
+  - name: destination_country
+    data_type: text
+    description: The country the parcel was sent to.
+    dimension:
+      type: categorical
+  - name: parcel_size
+    data_type: text
+    description: The size class of the parcel.
+    dimension:
+      type: categorical
+  - name: notes_summary
+    data_type: text
+    description: A summary of the handler's notes.
+  - name: tracking_number
+    data_type: text
+    description: The tracking number of the parcel.
+  metrics:
+  - name: exception_count
+    label: Exception Count
+    type: simple
+    agg: count
+    expr: '1'
+    description: The number of exceptions.
+  - name: open_exceptions
+    label: Open Exceptions
+    type: simple
+    agg: count
+    expr: '1'
+    filter: "{{ Dimension('delivery_exception__status') }} != 'resolved'"
+    description: The number of exceptions not yet resolved.
+  - name: resolved_exceptions
+    label: Resolved Exceptions
+    type: simple
+    agg: count
+    expr: '1'
+    filter: "{{ Dimension('delivery_exception__status') }} = 'resolved'"
+    description: The number of resolved exceptions.
+  - name: disputed_exceptions
+    label: Disputed Exceptions
+    type: simple
+    agg: count
+    expr: '1'
+    filter: "{{ Dimension('delivery_exception__status') }} = 'disputed'"
+    description: The number of exceptions the customer disputed.

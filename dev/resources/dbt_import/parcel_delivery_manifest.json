@@ -1,0 +1,2313 @@
+{
+ "metadata": {
+  "dbt_schema_version": "https://schemas.getdbt.com/dbt/manifest/v12.json",
+  "dbt_version": "1.12.6",
+  "project_name": "parcel_delivery",
+  "adapter_type": "postgres",
+  "generated_at": "2026-10-27T22:37:48.065348Z"
+ },
+ "nodes": {
+  "model.parcel_delivery.delivery_exceptions": {
+   "unique_id": "model.parcel_delivery.delivery_exceptions",
+   "resource_type": "model",
+   "name": "delivery_exceptions",
+   "database": "parcels",
+   "schema": "public",
+   "alias": "delivery_exceptions",
+   "relation_name": "\"parcels\".\"public\".\"delivery_exceptions\"",
+   "description": "One row per delivery exception, such as a lost, damaged or refused parcel.",
+   "columns": {
+    "exception_id": {
+     "name": "exception_id",
+     "description": "Unique identifier of the exception.",
+     "data_type": "text"
+    },
+    "case_number": {
+     "name": "case_number",
+     "description": "The case number shown to the customer.",
+     "data_type": "text"
+    },
+    "opened_at": {
+     "name": "opened_at",
+     "description": "When the exception was opened.",
+     "data_type": "timestamp"
+    },
+    "updated_at": {
+     "name": "updated_at",
+     "description": "When the exception was last updated.",
+     "data_type": "timestamp"
+    },
+    "exception_type": {
+     "name": "exception_type",
+     "description": "The kind of exception, such as lost, damaged or refused.",
+     "data_type": "text"
+    },
+    "status": {
+     "name": "status",
+     "description": "The current status of the exception.",
+     "data_type": "text"
+    },
+    "status_description": {
+     "name": "status_description",
+     "description": "A longer description of the current status.",
+     "data_type": "text"
+    },
+    "reason_code": {
+     "name": "reason_code",
+     "description": "The reason code the handler assigned.",
+     "data_type": "text"
+    },
+    "priority": {
+     "name": "priority",
+     "description": "The priority of the exception.",
+     "data_type": "text"
+    },
+    "channel": {
+     "name": "channel",
+     "description": "How the exception was reported, such as phone, email or app.",
+     "data_type": "text"
+    },
+    "resolution": {
+     "name": "resolution",
+     "description": "How the exception was resolved.",
+     "data_type": "text"
+    },
+    "is_escalated": {
+     "name": "is_escalated",
+     "description": "Whether the exception was escalated to a supervisor.",
+     "data_type": "boolean"
+    },
+    "is_refunded": {
+     "name": "is_refunded",
+     "description": "Whether the customer was refunded.",
+     "data_type": "boolean"
+    },
+    "handler_id": {
+     "name": "handler_id",
+     "description": "The agent handling the exception.",
+     "data_type": "text"
+    },
+    "reviewer_id": {
+     "name": "reviewer_id",
+     "description": "The supervisor reviewing the exception, if any.",
+     "data_type": "text"
+    },
+    "depot_id": {
+     "name": "depot_id",
+     "description": "The depot responsible for the parcel.",
+     "data_type": "text"
+    },
+    "carrier_id": {
+     "name": "carrier_id",
+     "description": "The carrier that handled the parcel.",
+     "data_type": "text"
+    },
+    "carrier_name": {
+     "name": "carrier_name",
+     "description": "The name of the carrier.",
+     "data_type": "text"
+    },
+    "origin_country": {
+     "name": "origin_country",
+     "description": "The country the parcel was sent from.",
+     "data_type": "text"
+    },
+    "destination_country": {
+     "name": "destination_country",
+     "description": "The country the parcel was sent to.",
+     "data_type": "text"
+    },
+    "parcel_size": {
+     "name": "parcel_size",
+     "description": "The size class of the parcel.",
+     "data_type": "text"
+    },
+    "notes_summary": {
+     "name": "notes_summary",
+     "description": "A summary of the handler's notes.",
+     "data_type": "text"
+    },
+    "tracking_number": {
+     "name": "tracking_number",
+     "description": "The tracking number of the parcel.",
+     "data_type": "text"
+    }
+   }
+  },
+  "model.parcel_delivery.daily_depot_volume": {
+   "unique_id": "model.parcel_delivery.daily_depot_volume",
+   "resource_type": "model",
+   "name": "daily_depot_volume",
+   "database": "parcels",
+   "schema": "public",
+   "alias": "daily_depot_volume",
+   "relation_name": "\"parcels\".\"public\".\"daily_depot_volume\"",
+   "description": "One row per depot per day, with the parcel counts that moved through the depot that day.",
+   "columns": {
+    "depot_day_id": {
+     "name": "depot_day_id",
+     "description": "Surrogate key of the depot and day.",
+     "data_type": "text"
+    },
+    "volume_date": {
+     "name": "volume_date",
+     "description": "The day the counts are for.",
+     "data_type": "date"
+    },
+    "carrier": {
+     "name": "carrier",
+     "description": "The carrier that handled the parcels.",
+     "data_type": "text"
+    },
+    "is_weekend": {
+     "name": "is_weekend",
+     "description": "Whether the day fell on a weekend.",
+     "data_type": "boolean"
+    },
+    "is_holiday": {
+     "name": "is_holiday",
+     "description": "Whether the day was a public holiday.",
+     "data_type": "boolean"
+    },
+    "zone_number": {
+     "name": "zone_number",
+     "description": "The delivery zone the depot serves.",
+     "data_type": "integer"
+    },
+    "region": {
+     "name": "region",
+     "description": "The region the depot is in.",
+     "data_type": "text"
+    },
+    "depot_type": {
+     "name": "depot_type",
+     "description": "Whether the depot is a hub, a regional depot or a local depot.",
+     "data_type": "text"
+    },
+    "service_level": {
+     "name": "service_level",
+     "description": "The service level of the parcels, such as standard or express.",
+     "data_type": "text"
+    },
+    "parcels_received": {
+     "name": "parcels_received",
+     "description": "The number of parcels that arrived at the depot.",
+     "data_type": "integer"
+    },
+    "parcels_delayed": {
+     "name": "parcels_delayed",
+     "description": "The number of parcels that missed their scheduled departure.",
+     "data_type": "integer"
+    },
+    "parcels_damaged": {
+     "name": "parcels_damaged",
+     "description": "The number of parcels reported damaged at the depot.",
+     "data_type": "integer"
+    }
+   }
+  },
+  "model.parcel_delivery.delivery_runs": {
+   "unique_id": "model.parcel_delivery.delivery_runs",
+   "resource_type": "model",
+   "name": "delivery_runs",
+   "database": "parcels",
+   "schema": "public",
+   "alias": "delivery_runs",
+   "relation_name": "\"parcels\".\"public\".\"delivery_runs\"",
+   "description": "One row per delivery run a driver made from a depot.",
+   "columns": {
+    "run_id": {
+     "name": "run_id",
+     "description": "Unique identifier of the run.",
+     "data_type": "text"
+    },
+    "depot_id": {
+     "name": "depot_id",
+     "description": "The depot the run left from.",
+     "data_type": "text"
+    },
+    "driver_id": {
+     "name": "driver_id",
+     "description": "The driver assigned to the run, if any.",
+     "data_type": "text"
+    },
+    "vehicle_plate": {
+     "name": "vehicle_plate",
+     "description": "The licence plate of the vehicle used.",
+     "data_type": "text"
+    },
+    "departed_at": {
+     "name": "departed_at",
+     "description": "When the vehicle left the depot.",
+     "data_type": "timestamp"
+    },
+    "returned_at": {
+     "name": "returned_at",
+     "description": "When the vehicle returned to the depot.",
+     "data_type": "timestamp"
+    },
+    "shift_started_at": {
+     "name": "shift_started_at",
+     "description": "When the driver's shift started, including loading time.",
+     "data_type": "timestamp"
+    },
+    "shift_ended_at": {
+     "name": "shift_ended_at",
+     "description": "When the driver's shift ended, including unloading time.",
+     "data_type": "timestamp"
+    },
+    "scheduled_at": {
+     "name": "scheduled_at",
+     "description": "When the run was scheduled to start.",
+     "data_type": "timestamp"
+    },
+    "route_hours": {
+     "name": "route_hours",
+     "description": "Hours spent on the route.",
+     "data_type": "double precision"
+    },
+    "route_type": {
+     "name": "route_type",
+     "description": "Whether the route was urban, suburban or rural.",
+     "data_type": "text"
+    }
+   }
+  },
+  "model.parcel_delivery.parcels": {
+   "unique_id": "model.parcel_delivery.parcels",
+   "resource_type": "model",
+   "name": "parcels",
+   "database": "parcels",
+   "schema": "public",
+   "alias": "parcels",
+   "relation_name": "\"parcels\".\"public\".\"parcels\"",
+   "description": "One row per revision of a parcel record.",
+   "columns": {
+    "depot_id": {
+     "name": "depot_id",
+     "description": "The depot that currently holds the parcel.",
+     "data_type": "text"
+    },
+    "parcel_id": {
+     "name": "parcel_id",
+     "description": "Unique identifier of the parcel.",
+     "data_type": "text"
+    },
+    "revision": {
+     "name": "revision",
+     "description": "The revision number of the record, starting at zero.",
+     "data_type": "integer"
+    },
+    "scan_events": {
+     "name": "scan_events",
+     "description": "The scan events recorded for the parcel so far.",
+     "data_type": "jsonb"
+    },
+    "is_fragile": {
+     "name": "is_fragile",
+     "description": "Whether the parcel is marked fragile.",
+     "data_type": "boolean"
+    },
+    "is_oversized": {
+     "name": "is_oversized",
+     "description": "Whether the parcel exceeds the standard size.",
+     "data_type": "boolean"
+    },
+    "requires_signature": {
+     "name": "requires_signature",
+     "description": "Whether delivery needs a signature.",
+     "data_type": "boolean"
+    },
+    "is_returned": {
+     "name": "is_returned",
+     "description": "Whether the parcel was returned to sender.",
+     "data_type": "boolean"
+    },
+    "is_insured": {
+     "name": "is_insured",
+     "description": "Whether the parcel is insured.",
+     "data_type": "boolean"
+    },
+    "created_at": {
+     "name": "created_at",
+     "description": "When the parcel record was created.",
+     "data_type": "timestamp"
+    },
+    "last_scanned_at": {
+     "name": "last_scanned_at",
+     "description": "When the parcel was last scanned.",
+     "data_type": "timestamp"
+    },
+    "next_scan_due_at": {
+     "name": "next_scan_due_at",
+     "description": "When the parcel's next scan is expected.",
+     "data_type": "timestamp"
+    },
+    "is_delivered": {
+     "name": "is_delivered",
+     "description": "Whether the parcel has been delivered.",
+     "data_type": "boolean"
+    }
+   }
+  },
+  "model.parcel_delivery.time_spine": {
+   "unique_id": "model.parcel_delivery.time_spine",
+   "resource_type": "model",
+   "name": "time_spine",
+   "database": "parcels",
+   "schema": "public",
+   "alias": "time_spine",
+   "relation_name": "\"parcels\".\"public\".\"time_spine\"",
+   "description": "The daily time spine the dbt semantic layer requires. Not a semantic model.",
+   "columns": {
+    "date_day": {
+     "name": "date_day",
+     "description": "One row per day.",
+     "data_type": "date"
+    }
+   }
+  }
+ },
+ "semantic_models": {
+  "semantic_model.parcel_delivery.delivery_exceptions": {
+   "name": "delivery_exceptions",
+   "resource_type": "semantic_model",
+   "package_name": "parcel_delivery",
+   "path": "delivery_exceptions.yml",
+   "original_file_path": "models/delivery_exceptions.yml",
+   "unique_id": "semantic_model.parcel_delivery.delivery_exceptions",
+   "fqn": [
+    "parcel_delivery",
+    "delivery_exceptions"
+   ],
+   "model": "ref('delivery_exceptions')",
+   "node_relation": {
+    "alias": "delivery_exceptions",
+    "schema_name": "public",
+    "database": "parcels",
+    "relation_name": "\"parcels\".\"public\".\"delivery_exceptions\""
+   },
+   "description": "One row per delivery exception, such as a lost, damaged or refused parcel.",
+   "label": null,
+   "defaults": {
+    "agg_time_dimension": "opened_at"
+   },
+   "entities": [
+    {
+     "name": "delivery_exception",
+     "type": "primary",
+     "description": "Unique identifier of the exception.",
+     "label": null,
+     "role": null,
+     "expr": "exception_id",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "depot",
+     "type": "foreign",
+     "description": "The depot responsible for the parcel.",
+     "label": null,
+     "role": null,
+     "expr": "depot_id",
+     "config": {
+      "meta": {}
+     }
+    }
+   ],
+   "measures": [],
+   "dimensions": [
+    {
+     "name": "opened_at",
+     "type": "time",
+     "description": "When the exception was opened.",
+     "label": null,
+     "is_partition": false,
+     "type_params": {
+      "time_granularity": "day",
+      "validity_params": null
+     },
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "exception_type",
+     "type": "categorical",
+     "description": "The kind of exception, such as lost, damaged or refused.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "status",
+     "type": "categorical",
+     "description": "The current status of the exception.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "priority",
+     "type": "categorical",
+     "description": "The priority of the exception.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "channel",
+     "type": "categorical",
+     "description": "How the exception was reported, such as phone, email or app.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "resolution",
+     "type": "categorical",
+     "description": "How the exception was resolved.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "origin_country",
+     "type": "categorical",
+     "description": "The country the parcel was sent from.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "destination_country",
+     "type": "categorical",
+     "description": "The country the parcel was sent to.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "parcel_size",
+     "type": "categorical",
+     "description": "The size class of the parcel.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    }
+   ],
+   "metadata": null,
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "model.parcel_delivery.delivery_exceptions"
+    ]
+   },
+   "refs": [
+    {
+     "name": "delivery_exceptions",
+     "package": null,
+     "version": null
+    }
+   ],
+   "created_at": 1793140668.8129377,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "primary_entity": null,
+   "group": null
+  },
+  "semantic_model.parcel_delivery.daily_depot_volume": {
+   "name": "daily_depot_volume",
+   "resource_type": "semantic_model",
+   "package_name": "parcel_delivery",
+   "path": "daily_depot_volume.yml",
+   "original_file_path": "models/daily_depot_volume.yml",
+   "unique_id": "semantic_model.parcel_delivery.daily_depot_volume",
+   "fqn": [
+    "parcel_delivery",
+    "daily_depot_volume"
+   ],
+   "model": "ref('daily_depot_volume')",
+   "node_relation": {
+    "alias": "daily_depot_volume",
+    "schema_name": "public",
+    "database": "parcels",
+    "relation_name": "\"parcels\".\"public\".\"daily_depot_volume\""
+   },
+   "description": "One row per depot per day, with the parcel counts that moved through the depot that day.",
+   "label": null,
+   "defaults": {
+    "agg_time_dimension": "volume_date"
+   },
+   "entities": [
+    {
+     "name": "depot_day_id",
+     "type": "primary",
+     "description": "Surrogate key of the depot and day.",
+     "label": null,
+     "role": null,
+     "expr": null,
+     "config": {
+      "meta": {}
+     }
+    }
+   ],
+   "measures": [],
+   "dimensions": [
+    {
+     "name": "volume_date",
+     "type": "time",
+     "description": "The day the counts are for.",
+     "label": null,
+     "is_partition": false,
+     "type_params": {
+      "time_granularity": "day",
+      "validity_params": null
+     },
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "carrier",
+     "type": "categorical",
+     "description": "The carrier that handled the parcels.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "is_weekend",
+     "type": "categorical",
+     "description": "Whether the day fell on a weekend.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "is_holiday",
+     "type": "categorical",
+     "description": "Whether the day was a public holiday.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "zone_number",
+     "type": "categorical",
+     "description": "The delivery zone the depot serves.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "region",
+     "type": "categorical",
+     "description": "The region the depot is in.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "depot_type",
+     "type": "categorical",
+     "description": "Whether the depot is a hub, a regional depot or a local depot.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "service_level",
+     "type": "categorical",
+     "description": "The service level of the parcels, such as standard or express.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    }
+   ],
+   "metadata": null,
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "model.parcel_delivery.daily_depot_volume"
+    ]
+   },
+   "refs": [
+    {
+     "name": "daily_depot_volume",
+     "package": null,
+     "version": null
+    }
+   ],
+   "created_at": 1793140668.826333,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "primary_entity": null,
+   "group": null
+  },
+  "semantic_model.parcel_delivery.delivery_runs": {
+   "name": "delivery_runs",
+   "resource_type": "semantic_model",
+   "package_name": "parcel_delivery",
+   "path": "delivery_runs.yml",
+   "original_file_path": "models/delivery_runs.yml",
+   "unique_id": "semantic_model.parcel_delivery.delivery_runs",
+   "fqn": [
+    "parcel_delivery",
+    "delivery_runs"
+   ],
+   "model": "ref('delivery_runs')",
+   "node_relation": {
+    "alias": "delivery_runs",
+    "schema_name": "public",
+    "database": "parcels",
+    "relation_name": "\"parcels\".\"public\".\"delivery_runs\""
+   },
+   "description": "One row per delivery run a driver made from a depot.",
+   "label": null,
+   "defaults": {
+    "agg_time_dimension": "scheduled_at"
+   },
+   "entities": [
+    {
+     "name": "delivery_run",
+     "type": "primary",
+     "description": "Unique identifier of the run.",
+     "label": null,
+     "role": null,
+     "expr": "run_id",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "depot",
+     "type": "foreign",
+     "description": "The depot the run left from.",
+     "label": null,
+     "role": null,
+     "expr": "depot_id",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "driver",
+     "type": "foreign",
+     "description": "The driver assigned to the run, if any.",
+     "label": null,
+     "role": null,
+     "expr": "driver_id",
+     "config": {
+      "meta": {}
+     }
+    }
+   ],
+   "measures": [],
+   "dimensions": [
+    {
+     "name": "vehicle_plate",
+     "type": "categorical",
+     "description": "The licence plate of the vehicle used.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "departed_at",
+     "type": "time",
+     "description": "When the vehicle left the depot.",
+     "label": null,
+     "is_partition": false,
+     "type_params": {
+      "time_granularity": "day",
+      "validity_params": null
+     },
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "returned_at",
+     "type": "time",
+     "description": "When the vehicle returned to the depot.",
+     "label": null,
+     "is_partition": false,
+     "type_params": {
+      "time_granularity": "day",
+      "validity_params": null
+     },
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "shift_started_at",
+     "type": "time",
+     "description": "When the driver's shift started, including loading time.",
+     "label": null,
+     "is_partition": false,
+     "type_params": {
+      "time_granularity": "day",
+      "validity_params": null
+     },
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "shift_ended_at",
+     "type": "time",
+     "description": "When the driver's shift ended, including unloading time.",
+     "label": null,
+     "is_partition": false,
+     "type_params": {
+      "time_granularity": "day",
+      "validity_params": null
+     },
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "scheduled_at",
+     "type": "time",
+     "description": "When the run was scheduled to start.",
+     "label": null,
+     "is_partition": false,
+     "type_params": {
+      "time_granularity": "day",
+      "validity_params": null
+     },
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "route_hours",
+     "type": "categorical",
+     "description": "Hours spent on the route.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "route_type",
+     "type": "categorical",
+     "description": "Whether the route was urban, suburban or rural.",
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "has_driver",
+     "type": "categorical",
+     "description": null,
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": "CASE WHEN driver_id IS NOT NULL THEN TRUE ELSE FALSE END",
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    },
+    {
+     "name": "is_unassigned",
+     "type": "categorical",
+     "description": null,
+     "label": null,
+     "is_partition": false,
+     "type_params": null,
+     "expr": "CASE WHEN driver_id IS NULL THEN TRUE ELSE FALSE END",
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    }
+   ],
+   "metadata": null,
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "model.parcel_delivery.delivery_runs"
+    ]
+   },
+   "refs": [
+    {
+     "name": "delivery_runs",
+     "package": null,
+     "version": null
+    }
+   ],
+   "created_at": 1793140668.8371,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "primary_entity": null,
+   "group": null
+  },
+  "semantic_model.parcel_delivery.parcels": {
+   "name": "parcels",
+   "resource_type": "semantic_model",
+   "package_name": "parcel_delivery",
+   "path": "parcels.yml",
+   "original_file_path": "models/parcels.yml",
+   "unique_id": "semantic_model.parcel_delivery.parcels",
+   "fqn": [
+    "parcel_delivery",
+    "parcels"
+   ],
+   "model": "ref('parcels')",
+   "node_relation": {
+    "alias": "parcels",
+    "schema_name": "public",
+    "database": "parcels",
+    "relation_name": "\"parcels\".\"public\".\"parcels\""
+   },
+   "description": "One row per revision of a parcel record.",
+   "label": null,
+   "defaults": {
+    "agg_time_dimension": "created_at"
+   },
+   "entities": [
+    {
+     "name": "depot",
+     "type": "foreign",
+     "description": "The depot that currently holds the parcel.",
+     "label": null,
+     "role": null,
+     "expr": "depot_id",
+     "config": {
+      "meta": {}
+     }
+    },
+    {
+     "name": "parcel",
+     "type": "primary",
+     "description": "Unique identifier of the parcel.",
+     "label": null,
+     "role": null,
+     "expr": "parcel_id",
+     "config": {
+      "meta": {}
+     }
+    }
+   ],
+   "measures": [],
+   "dimensions": [
+    {
+     "name": "created_at",
+     "type": "time",
+     "description": "When the parcel record was created.",
+     "label": null,
+     "is_partition": false,
+     "type_params": {
+      "time_granularity": "day",
+      "validity_params": null
+     },
+     "expr": null,
+     "metadata": null,
+     "config": {
+      "meta": {}
+     },
+     "datatype": null
+    }
+   ],
+   "metadata": null,
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "model.parcel_delivery.parcels"
+    ]
+   },
+   "refs": [
+    {
+     "name": "parcels",
+     "package": null,
+     "version": null
+    }
+   ],
+   "created_at": 1793140668.844343,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "primary_entity": null,
+   "group": null
+  }
+ },
+ "metrics": {
+  "metric.parcel_delivery.exception_count": {
+   "name": "exception_count",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "delivery_exceptions.yml",
+   "original_file_path": "models/delivery_exceptions.yml",
+   "unique_id": "metric.parcel_delivery.exception_count",
+   "fqn": [
+    "parcel_delivery",
+    "exception_count"
+   ],
+   "description": "The number of exceptions.",
+   "label": "Exception Count",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "1",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "delivery_exceptions",
+     "agg": "count",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "opened_at",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.delivery_exceptions"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8173351,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.open_exceptions": {
+   "name": "open_exceptions",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "delivery_exceptions.yml",
+   "original_file_path": "models/delivery_exceptions.yml",
+   "unique_id": "metric.parcel_delivery.open_exceptions",
+   "fqn": [
+    "parcel_delivery",
+    "open_exceptions"
+   ],
+   "description": "The number of exceptions not yet resolved.",
+   "label": "Open Exceptions",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "1",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "delivery_exceptions",
+     "agg": "count",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "opened_at",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": {
+    "where_filters": [
+     {
+      "where_sql_template": "{{ Dimension('delivery_exception__status') }} != 'resolved'"
+     }
+    ]
+   },
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.delivery_exceptions"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8174472,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.resolved_exceptions": {
+   "name": "resolved_exceptions",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "delivery_exceptions.yml",
+   "original_file_path": "models/delivery_exceptions.yml",
+   "unique_id": "metric.parcel_delivery.resolved_exceptions",
+   "fqn": [
+    "parcel_delivery",
+    "resolved_exceptions"
+   ],
+   "description": "The number of resolved exceptions.",
+   "label": "Resolved Exceptions",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "1",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "delivery_exceptions",
+     "agg": "count",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "opened_at",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": {
+    "where_filters": [
+     {
+      "where_sql_template": "{{ Dimension('delivery_exception__status') }} = 'resolved'"
+     }
+    ]
+   },
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.delivery_exceptions"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.817518,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.disputed_exceptions": {
+   "name": "disputed_exceptions",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "delivery_exceptions.yml",
+   "original_file_path": "models/delivery_exceptions.yml",
+   "unique_id": "metric.parcel_delivery.disputed_exceptions",
+   "fqn": [
+    "parcel_delivery",
+    "disputed_exceptions"
+   ],
+   "description": "The number of exceptions the customer disputed.",
+   "label": "Disputed Exceptions",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "1",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "delivery_exceptions",
+     "agg": "count",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "opened_at",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": {
+    "where_filters": [
+     {
+      "where_sql_template": "{{ Dimension('delivery_exception__status') }} = 'disputed'"
+     }
+    ]
+   },
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.delivery_exceptions"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.817579,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.parcels_received": {
+   "name": "parcels_received",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "daily_depot_volume.yml",
+   "original_file_path": "models/daily_depot_volume.yml",
+   "unique_id": "metric.parcel_delivery.parcels_received",
+   "fqn": [
+    "parcel_delivery",
+    "parcels_received"
+   ],
+   "description": "Total parcels that arrived at depots.",
+   "label": "Parcels Received",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "parcels_received",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "daily_depot_volume",
+     "agg": "sum",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "volume_date",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.daily_depot_volume"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8269026,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.parcels_delayed": {
+   "name": "parcels_delayed",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "daily_depot_volume.yml",
+   "original_file_path": "models/daily_depot_volume.yml",
+   "unique_id": "metric.parcel_delivery.parcels_delayed",
+   "fqn": [
+    "parcel_delivery",
+    "parcels_delayed"
+   ],
+   "description": "Total parcels that missed their scheduled departure.",
+   "label": "Parcels Delayed",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "parcels_delayed",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "daily_depot_volume",
+     "agg": "sum",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "volume_date",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.daily_depot_volume"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8269763,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.delay_rate": {
+   "name": "delay_rate",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "daily_depot_volume.yml",
+   "original_file_path": "models/daily_depot_volume.yml",
+   "unique_id": "metric.parcel_delivery.delay_rate",
+   "fqn": [
+    "parcel_delivery",
+    "delay_rate"
+   ],
+   "description": "The share of received parcels that were delayed.",
+   "label": "Delay Rate",
+   "type": "ratio",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": {
+     "name": "parcels_delayed",
+     "filter": null,
+     "alias": null,
+     "offset_window": null,
+     "offset_to_grain": null
+    },
+    "denominator": {
+     "name": "parcels_received",
+     "filter": null,
+     "alias": null,
+     "offset_window": null,
+     "offset_to_grain": null
+    },
+    "expr": null,
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "metric.parcel_delivery.parcels_delayed",
+     "metric.parcel_delivery.parcels_received"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8270404,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.parcels_damaged": {
+   "name": "parcels_damaged",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "daily_depot_volume.yml",
+   "original_file_path": "models/daily_depot_volume.yml",
+   "unique_id": "metric.parcel_delivery.parcels_damaged",
+   "fqn": [
+    "parcel_delivery",
+    "parcels_damaged"
+   ],
+   "description": "Total parcels reported damaged.",
+   "label": "Parcels Damaged",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "parcels_damaged",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "daily_depot_volume",
+     "agg": "sum",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "volume_date",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.daily_depot_volume"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8270981,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.damage_index": {
+   "name": "damage_index",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "daily_depot_volume.yml",
+   "original_file_path": "models/daily_depot_volume.yml",
+   "unique_id": "metric.parcel_delivery.damage_index",
+   "fqn": [
+    "parcel_delivery",
+    "damage_index"
+   ],
+   "description": "One plus the share of received parcels that were damaged.",
+   "label": "Damage Index",
+   "type": "derived",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "damaged / NULLIF(received, 0) + 1",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [
+     {
+      "name": "parcels_damaged",
+      "filter": null,
+      "alias": "damaged",
+      "offset_window": null,
+      "offset_to_grain": null
+     },
+     {
+      "name": "parcels_received",
+      "filter": null,
+      "alias": "received",
+      "offset_window": null,
+      "offset_to_grain": null
+     }
+    ],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "metric.parcel_delivery.parcels_damaged",
+     "metric.parcel_delivery.parcels_received"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8271542,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.run_count": {
+   "name": "run_count",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "delivery_runs.yml",
+   "original_file_path": "models/delivery_runs.yml",
+   "unique_id": "metric.parcel_delivery.run_count",
+   "fqn": [
+    "parcel_delivery",
+    "run_count"
+   ],
+   "description": "The number of delivery runs.",
+   "label": "Run Count",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "run_id",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "delivery_runs",
+     "agg": "count",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "scheduled_at",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.delivery_runs"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8376632,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.avg_route_hours": {
+   "name": "avg_route_hours",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "delivery_runs.yml",
+   "original_file_path": "models/delivery_runs.yml",
+   "unique_id": "metric.parcel_delivery.avg_route_hours",
+   "fqn": [
+    "parcel_delivery",
+    "avg_route_hours"
+   ],
+   "description": "The average hours spent on a route.",
+   "label": "Average Route Hours",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "route_hours",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "delivery_runs",
+     "agg": "average",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "scheduled_at",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.delivery_runs"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8377738,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.total_route_hours": {
+   "name": "total_route_hours",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "delivery_runs.yml",
+   "original_file_path": "models/delivery_runs.yml",
+   "unique_id": "metric.parcel_delivery.total_route_hours",
+   "fqn": [
+    "parcel_delivery",
+    "total_route_hours"
+   ],
+   "description": "The total hours spent on routes.",
+   "label": "Total Route Hours",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "route_hours",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "delivery_runs",
+     "agg": "sum",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "scheduled_at",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.delivery_runs"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8378556,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.median_route_hours": {
+   "name": "median_route_hours",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "delivery_runs.yml",
+   "original_file_path": "models/delivery_runs.yml",
+   "unique_id": "metric.parcel_delivery.median_route_hours",
+   "fqn": [
+    "parcel_delivery",
+    "median_route_hours"
+   ],
+   "description": "The median hours spent on a route.",
+   "label": "Median Route Hours",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "route_hours",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "delivery_runs",
+     "agg": "percentile",
+     "agg_params": {
+      "percentile": 0.5,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": true
+     },
+     "agg_time_dimension": "scheduled_at",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.delivery_runs"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8379223,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.p90_route_hours": {
+   "name": "p90_route_hours",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "delivery_runs.yml",
+   "original_file_path": "models/delivery_runs.yml",
+   "unique_id": "metric.parcel_delivery.p90_route_hours",
+   "fqn": [
+    "parcel_delivery",
+    "p90_route_hours"
+   ],
+   "description": "The 90th percentile of hours spent on a route.",
+   "label": "90th Percentile Route Hours",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "route_hours",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "delivery_runs",
+     "agg": "percentile",
+     "agg_params": {
+      "percentile": 0.9,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": true
+     },
+     "agg_time_dimension": "scheduled_at",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.delivery_runs"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8379846,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.parcel_count": {
+   "name": "parcel_count",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "parcels.yml",
+   "original_file_path": "models/parcels.yml",
+   "unique_id": "metric.parcel_delivery.parcel_count",
+   "fqn": [
+    "parcel_delivery",
+    "parcel_count"
+   ],
+   "description": "The number of distinct parcels.",
+   "label": "Parcel Count",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "parcel_id",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "parcels",
+     "agg": "count_distinct",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "created_at",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.parcels"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8448446,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.depots_with_parcels": {
+   "name": "depots_with_parcels",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "parcels.yml",
+   "original_file_path": "models/parcels.yml",
+   "unique_id": "metric.parcel_delivery.depots_with_parcels",
+   "fqn": [
+    "parcel_delivery",
+    "depots_with_parcels"
+   ],
+   "description": "The number of distinct depots holding parcels.",
+   "label": "Depots With Parcels",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "depot_id",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "parcels",
+     "agg": "count_distinct",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "created_at",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.parcels"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8449132,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.new_parcels": {
+   "name": "new_parcels",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "parcels.yml",
+   "original_file_path": "models/parcels.yml",
+   "unique_id": "metric.parcel_delivery.new_parcels",
+   "fqn": [
+    "parcel_delivery",
+    "new_parcels"
+   ],
+   "description": "The number of parcel records at their first revision.",
+   "label": "New Parcels",
+   "type": "simple",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": "CASE WHEN revision = 0 THEN 1 ELSE 0 END",
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": null,
+    "metric_aggregation_params": {
+     "semantic_model": "parcels",
+     "agg": "sum",
+     "agg_params": {
+      "percentile": null,
+      "use_discrete_percentile": false,
+      "use_approximate_percentile": false
+     },
+     "agg_time_dimension": "created_at",
+     "non_additive_dimension": null
+    },
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "semantic_model.parcel_delivery.parcels"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8449714,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.parcels_to_date": {
+   "name": "parcels_to_date",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "parcels.yml",
+   "original_file_path": "models/parcels.yml",
+   "unique_id": "metric.parcel_delivery.parcels_to_date",
+   "fqn": [
+    "parcel_delivery",
+    "parcels_to_date"
+   ],
+   "description": "The running total of distinct parcels.",
+   "label": "Parcels To Date",
+   "type": "cumulative",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": null,
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": {
+     "window": null,
+     "grain_to_date": null,
+     "period_agg": "last",
+     "metric": {
+      "name": "parcel_count",
+      "filter": null,
+      "alias": null,
+      "offset_window": null,
+      "offset_to_grain": null
+     }
+    },
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "metric.parcel_delivery.parcel_count"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8450356,
+   "group": null,
+   "meta": {},
+   "tags": []
+  },
+  "metric.parcel_delivery.depots_to_date": {
+   "name": "depots_to_date",
+   "resource_type": "metric",
+   "package_name": "parcel_delivery",
+   "path": "parcels.yml",
+   "original_file_path": "models/parcels.yml",
+   "unique_id": "metric.parcel_delivery.depots_to_date",
+   "fqn": [
+    "parcel_delivery",
+    "depots_to_date"
+   ],
+   "description": "The running total of distinct depots holding parcels.",
+   "label": "Depots To Date",
+   "type": "cumulative",
+   "type_params": {
+    "measure": null,
+    "input_measures": [],
+    "numerator": null,
+    "denominator": null,
+    "expr": null,
+    "window": null,
+    "grain_to_date": null,
+    "metrics": [],
+    "conversion_type_params": null,
+    "cumulative_type_params": {
+     "window": null,
+     "grain_to_date": null,
+     "period_agg": "last",
+     "metric": {
+      "name": "depots_with_parcels",
+      "filter": null,
+      "alias": null,
+      "offset_window": null,
+      "offset_to_grain": null
+     }
+    },
+    "metric_aggregation_params": null,
+    "fill_nulls_with": null,
+    "join_to_timespine": false,
+    "is_private": false
+   },
+   "filter": null,
+   "metadata": null,
+   "time_granularity": null,
+   "config": {
+    "enabled": true,
+    "group": null,
+    "meta": {}
+   },
+   "unrendered_config": {},
+   "sources": [],
+   "depends_on": {
+    "macros": [],
+    "nodes": [
+     "metric.parcel_delivery.depots_with_parcels"
+    ]
+   },
+   "refs": [],
+   "metrics": [],
+   "created_at": 1793140668.8450925,
+   "group": null,
+   "meta": {},
+   "tags": []
+  }
+ }
+}

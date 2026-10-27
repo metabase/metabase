@@ -1,0 +1,99 @@
+version: 2
+models:
+- name: daily_depot_volume
+  description: One row per depot per day, with the parcel counts that moved through the depot that day.
+  semantic_model:
+    enabled: true
+    name: daily_depot_volume
+  agg_time_dimension: volume_date
+  columns:
+  - name: depot_day_id
+    data_type: text
+    description: Surrogate key of the depot and day.
+    entity:
+      type: primary
+  - name: volume_date
+    data_type: date
+    description: The day the counts are for.
+    granularity: day
+    dimension:
+      type: time
+  - name: carrier
+    data_type: text
+    description: The carrier that handled the parcels.
+    dimension:
+      type: categorical
+  - name: is_weekend
+    data_type: boolean
+    description: Whether the day fell on a weekend.
+    dimension:
+      type: categorical
+  - name: is_holiday
+    data_type: boolean
+    description: Whether the day was a public holiday.
+    dimension:
+      type: categorical
+  - name: zone_number
+    data_type: integer
+    description: The delivery zone the depot serves.
+    dimension:
+      type: categorical
+  - name: region
+    data_type: text
+    description: The region the depot is in.
+    dimension:
+      type: categorical
+  - name: depot_type
+    data_type: text
+    description: Whether the depot is a hub, a regional depot or a local depot.
+    dimension:
+      type: categorical
+  - name: service_level
+    data_type: text
+    description: The service level of the parcels, such as standard or express.
+    dimension:
+      type: categorical
+  - name: parcels_received
+    data_type: integer
+    description: The number of parcels that arrived at the depot.
+  - name: parcels_delayed
+    data_type: integer
+    description: The number of parcels that missed their scheduled departure.
+  - name: parcels_damaged
+    data_type: integer
+    description: The number of parcels reported damaged at the depot.
+  metrics:
+  - name: parcels_received
+    label: Parcels Received
+    type: simple
+    agg: sum
+    expr: parcels_received
+    description: Total parcels that arrived at depots.
+  - name: parcels_delayed
+    label: Parcels Delayed
+    type: simple
+    agg: sum
+    expr: parcels_delayed
+    description: Total parcels that missed their scheduled departure.
+  - name: delay_rate
+    label: Delay Rate
+    type: ratio
+    numerator: parcels_delayed
+    denominator: parcels_received
+    description: The share of received parcels that were delayed.
+  - name: parcels_damaged
+    label: Parcels Damaged
+    type: simple
+    agg: sum
+    expr: parcels_damaged
+    description: Total parcels reported damaged.
+  - name: damage_index
+    label: Damage Index
+    type: derived
+    expr: damaged / NULLIF(received, 0) + 1
+    input_metrics:
+    - name: parcels_damaged
+      alias: damaged
+    - name: parcels_received
+      alias: received
+    description: One plus the share of received parcels that were damaged.
