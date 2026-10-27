@@ -40,7 +40,7 @@
    :metabase.measures.schema/measure
    ::actions.schema/action
    [:merge
-    :metabase-enterprise.data-apps.schema/data-app
+    :metabase.data-apps.schema/data-app
     [:map
      [:card_ids   [:set ::lib.schema.id/card]]
      [:action_ids [:set ::lib.schema.id/action]]]]])

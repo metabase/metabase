@@ -21,18 +21,18 @@
   "Request options that mark a request as the data app's of [[do-with-app-collection]]."
   (as-app "birds"))
 
-(def ^:private refusal-formats
-  "The format of the message refusing each kind of entity a data app may not use."
+(def ^:private error-formats
+  "The format of the error message for each kind of entity a data app may not use."
   {:cards    "A data app can use only the cards of its own app, not the cards %s."
    :metrics  "A data app can use only metrics from the Library, not the metrics %s."
    :tables   "A data app can read only tables published to the Library, not the tables %s."
    :segments "A data app can use only segments of tables published to the Library, not the segments %s."
    :measures "A data app can use only measures of tables published to the Library, not the measures %s."})
 
-(defn- refusal
-  "The message refusing a data app the entities of `kind` with `ids`."
+(defn- error-message
+  "The error message for a data app's use of the entities of `kind` with `ids`."
   [kind & ids]
-  (format (refusal-formats kind) (str/join ", " (sort ids))))
+  (format (error-formats kind) (str/join ", " (sort ids))))
 
 (defn- run-query
   "The response to a data app's request to run `query` through `POST /api/dataset`, expecting `status`."
@@ -92,23 +92,23 @@
    (fn [card-id _collection-id]
      (testing "a data app's request that names no app, or an app that doesn't exist, is refused"
        (doseq [options [(as-app nil) (as-app "no-such-app")]]
-         (is (re-find #"must name a data app" (run-query 403 (card-query card-id) options))))))))
+         (is (re-find #"must name a data app" (run-query 400 (card-query card-id) options))))))))
 
 (deftest unpublished-tables-are-refused-test
   (do-with-app-card!
    (fn [card-id _collection-id]
      (testing "every endpoint refuses a query on an unpublished table"
-       (is (= (refusal :tables (mt/id :categories)) (run-query 403 (table-query :categories))))
+       (is (= (error-message :tables (mt/id :categories)) (run-query 400 (table-query :categories))))
        (doseq [endpoint ["dataset/pivot" "dataset/native" "dataset/query_metadata"]]
-         (is (= (refusal :tables (mt/id :categories)) (mt/user-http-request :crowberto :post 403 endpoint as-data-app
-                                                                            (table-query :categories)))
+         (is (= (error-message :tables (mt/id :categories)) (mt/user-http-request :crowberto :post 400 endpoint as-data-app
+                                                                                  (table-query :categories)))
              endpoint))
-       (is (= (refusal :tables (mt/id :categories)) (mt/user-http-request :crowberto :post 403 "dataset/csv" as-data-app
-                                                                          {:query (table-query :categories)}))))
+       (is (= (error-message :tables (mt/id :categories)) (mt/user-http-request :crowberto :post 400 "dataset/csv" as-data-app
+                                                                                {:query (table-query :categories)}))))
      (testing "a join of an unpublished table is refused, from a published table or the app's card"
        (doseq [query [(table-query :venues) (card-query card-id)]]
-         (is (= (refusal :tables (mt/id :categories))
-                (run-query 403 (join query (lib.metadata/table (mt/metadata-provider) (mt/id :categories))))))))
+         (is (= (error-message :tables (mt/id :categories))
+                (run-query 400 (join query (lib.metadata/table (mt/metadata-provider) (mt/id :categories))))))))
      (testing "the join runs once its table is published"
        (data-apps.tu/with-published-tables! [(mt/id :categories)]
          (is (= "completed" (:status (run-query 202 (-> (table-query :venues)
@@ -129,11 +129,11 @@
                                                     :dataset_query (data-apps.tu/venues-query)}]
        (testing "a card outside the app's collection, or of another app, is refused"
          (doseq [other-id [elsewhere-id other-app-id]]
-           (is (= (refusal :cards other-id)
-                  (run-query 403 (card-query other-id))))))
+           (is (= (error-message :cards other-id)
+                  (run-query 400 (card-query other-id))))))
        (testing "a join of a card outside the app's collection is refused"
-         (is (= (refusal :cards categories-id)
-                (run-query 403 (join (card-query card-id)
+         (is (= (error-message :cards categories-id)
+                (run-query 400 (join (card-query card-id)
                                      (lib.metadata/card (mt/metadata-provider) categories-id))))))
        (testing "the other app runs its own card"
          (is (= "completed" (:status (run-query 202 (lib/limit (card-query other-app-id) 1) (as-app "bees"))))))))))
@@ -150,7 +150,7 @@
                                                                                 :filter       [:segment 999999999]}}]
                              [:measures {:database (mt/id) :type :query :query {:source-table (mt/id :venues)
                                                                                 :aggregation  [[:measure 999999999]]}}]]]
-         (is (= (refusal kind 999999999) (run-query 403 query)) (name kind)))))))
+         (is (= (error-message kind 999999999) (run-query 400 query)) (name kind)))))))
 
 (deftest native-query-is-refused-test
   (do-with-app-card!
@@ -161,16 +161,17 @@
                       {:database (mt/id)
                        :type     :query
                        :query    {:source-query {:native "SELECT * FROM VENUES"}}}]]
-         (is (re-find #"not SQL" (run-query 403 query)))))
+         (is (re-find #"cannot run native queries" (run-query 400 query)))))
      (testing "a request that is not a data app's still runs native SQL"
        (is (= "completed" (:status (mt/user-http-request :crowberto :post 202 "dataset"
                                                          (lib/native-query (mt/metadata-provider) "SELECT 1")))))))))
 
-(deftest query-on-no-database-is-refused-test
+(deftest internal-query-is-refused-test
   (do-with-app-collection
    (fn [_collection-id]
-     (testing "a query on a database that doesn't exist is refused"
-       (is (re-find #"on a database" (run-query 403 (assoc (data-apps.tu/venues-query) :database 999999999))))))))
+     (is (re-find #"cannot run internal queries"
+                  (run-query 400 {:type :internal
+                                  :fn   "metabase-enterprise.audit-app.pages.dashboards/most-popular-with-avg-speed"}))))))
 
 (deftest metrics-test
   (do-with-app-card!
@@ -186,8 +187,8 @@
                                                      :database_id   (mt/id)
                                                      :dataset_query (lib/aggregate (table-query :venues) (lib/count))}]
           (testing "a metric outside the Library is refused"
-            (is (= (refusal :metrics outside-id)
-                   (run-query 403 (lib/aggregate (card-query card-id)
+            (is (= (error-message :metrics outside-id)
+                   (run-query 400 (lib/aggregate (card-query card-id)
                                                  (lib.metadata/metric (mt/metadata-provider) outside-id)))))))
         (testing "a metric in the app's collection is not a Library metric either"
           (mt/with-temp [:model/Card {app-metric-id :id} {:name          "Venue count of the app"
@@ -196,8 +197,8 @@
                                                           :database_id   (mt/id)
                                                           :dataset_query (lib/aggregate (table-query :venues)
                                                                                         (lib/count))}]
-            (is (= (refusal :metrics app-metric-id)
-                   (run-query 403 (lib/aggregate (table-query :venues)
+            (is (= (error-message :metrics app-metric-id)
+                   (run-query 400 (lib/aggregate (table-query :venues)
                                                  (lib.metadata/metric (mt/metadata-provider)
                                                                       app-metric-id))))))))))))
 
@@ -216,8 +217,8 @@
                with-segment #(lib/filter % (lib.metadata/segment mp segment-id))
                with-measure #(lib/aggregate % (lib.metadata/measure mp measure-id))]
            (testing "a segment or measure of an unpublished table is refused, even from a published table"
-             (is (= (refusal :segments segment-id) (run-query 403 (with-segment (table-query :venues)))))
-             (is (= (refusal :measures measure-id) (run-query 403 (with-measure (table-query :venues))))))
+             (is (= (error-message :segments segment-id) (run-query 400 (with-segment (table-query :venues)))))
+             (is (= (error-message :measures measure-id) (run-query 400 (with-measure (table-query :venues))))))
            (testing "a segment or measure of a published table runs"
              (data-apps.tu/with-published-tables! [(mt/id :categories)]
                (doseq [query [(with-segment categories) (with-measure categories)]]

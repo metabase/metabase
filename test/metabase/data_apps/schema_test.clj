@@ -1,8 +1,8 @@
-(ns metabase-enterprise.data-apps.schema-test
+(ns metabase.data-apps.schema-test
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.data-apps.config :as data-app.config]
-   [metabase-enterprise.data-apps.schema :as data-apps.schema]
+   [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.core :as lib]
    [metabase.util.malli.registry :as mr]))
 

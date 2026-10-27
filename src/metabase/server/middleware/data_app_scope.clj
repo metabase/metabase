@@ -25,7 +25,7 @@
   (:require
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.macros.scope :as scope]
-   [metabase.embedding.util :as embedding.util]))
+   [metabase.data-apps.core :as data-apps]))
 
 (set! *warn-on-reflection* true)
 
@@ -57,7 +57,7 @@
   rather than the scope set. Narrowing one would cost it the `/api/embed-mcp` routes, which
   carry no `data-app` tag, and it is already confined by that allowlist either way."
   [request]
-  (and (embedding.util/has-data-app-header? request)
+  (and (data-apps/data-app-header? request)
        (not (:mcp-ui-credential request))
        (full-access? (:token-scopes request))))
 

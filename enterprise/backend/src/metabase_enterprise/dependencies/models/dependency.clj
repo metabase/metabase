@@ -263,7 +263,7 @@
                           :metabase.segments.schema/segment
                           :metabase.measures.schema/measure
                           ::actions.schema/action
-                          :metabase-enterprise.data-apps.schema/data-app]]]]
+                          :metabase.data-apps.schema/data-app]]]]
   (boolean
    (case entity-type
      :card (some-> entity
