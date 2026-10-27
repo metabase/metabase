@@ -18,6 +18,10 @@ Site name, report timezone, and more settings.
 
 Allowlist sites for iframe cards, and restrict which domains images can load from.
 
+## [Serve data apps from a separate address](./isolated-origin.md)
+
+Keep the code data apps run away from people's Metabase sessions.
+
 ## [Email](./email.md)
 
 Set up email for [Alerts](../questions/alerts.md) and [Dashboard subscriptions](../dashboards/subscriptions.md).

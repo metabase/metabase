@@ -960,6 +960,28 @@ Maximum number of fields per database to score for dimension interestingness in 
   `scan-max-fields-per-table` and `fingerprint-max-fields-per-table` the skipped fields are not abandoned -- they stay
   NULL and so are picked up by the following sync, which is why this can be set far higher than those two.
 
+### `MB_ISOLATED_ORIGIN`
+
+- Type: string
+- Default: `null`
+- Environment variable only: you can't set this in the Admin settings or in a [configuration file](./config-file.md).
+
+A second address for this Metabase, such as https://example-isolated.com, that the browser keeps apart from the session: it never sends the session cookie there. Metabase serves data apps from it, so a data app reaches Metabase only through the page that shows it.
+
+Point this address at the same Metabase. The browser never sends the session cookie to it, so Metabase
+  serves content there that must stay apart from the session. Data apps run on it, and every request they make to
+  Metabase goes through the page that shows them. The address must meet these requirements:
+
+  - A site URL is set. Only pages at the site URL can show content from this address.
+  - Its host name differs from the site URL's host name. A different port isn't enough.
+  - It uses https when the site URL does.
+  - A reverse proxy in front of Metabase passes the original host name (`Host` or `X-Forwarded-Host`).
+  - If Metabase runs under a path, both addresses serve it under that path.
+
+  If the value breaks one of the first three requirements, Metabase turns data apps off until you fix it. A separate
+  domain (such as `example-isolated.com` rather than `isolated.example.com`) isolates best while the session cookie's
+  `SameSite` is `lax` or `strict`.
+
 ### `MB_JDBC_DATA_WAREHOUSE_CONNECTION_POOL_CHECKOUT_TIMEOUT_MS`
 
 - Type: integer
