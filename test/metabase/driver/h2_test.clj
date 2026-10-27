@@ -41,6 +41,18 @@
           (is (= "INFORMATION_SCHEMA"
                  (driver.sql/default-schema :h2 (driver.u/lib-database (:id database))))))))))
 
+(deftest database-error-while-reading-rows-is-invalid-query-test
+  (mt/test-driver :h2
+    (testing "An error that lazy execution raises while rows are read is :invalid-query, like one raised at the start"
+      (let [details (update (:details (mt/db)) :db str ";LAZY_QUERY_EXECUTION=TRUE")
+            sql     "SELECT X, 10 / (X - 4) AS Y FROM SYSTEM_RANGE(1, 10)"]
+        (mt/with-temp [:model/Database database {:engine :h2, :details details}]
+          (mt/with-db database
+            (is (=? {:status     :failed
+                     :error_type :invalid-query
+                     :error      #"(?s)Division by zero.*"}
+                    (qp/process-query (qp/userland-query (lib/native-query (mt/metadata-provider) sql)))))))))))
+
 (deftest ^:parallel connection-hosts-test
   (testing "local H2 databases have no network host"
     (is (= [] (driver/connection-hosts :h2 {:db "file:./sample.db"})))

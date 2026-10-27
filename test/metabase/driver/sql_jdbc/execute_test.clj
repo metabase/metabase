@@ -15,7 +15,7 @@
    [metabase.test.data.interface :as tx]
    [metabase.util.malli.registry :as mr])
   (:import
-   (java.sql Connection DatabaseMetaData)
+   (java.sql Connection DatabaseMetaData SQLException SQLNonTransientConnectionException SQLTransientConnectionException)
    (javax.sql DataSource)))
 
 (deftest ^:parallel ConnectionOptions-test
@@ -354,3 +354,29 @@
             (reset! cancels 0)
             (is (= 4 (count (venues-rows 4))))
             (is (pos? @cancels))))))))
+
+(deftest error-while-reading-rows-test
+  (mt/test-driver :h2
+    (let [mp         (mt/metadata-provider)
+          query      (qp/userland-query (lib/query mp (lib.metadata/table mp (mt/id :venues))))
+          error-type (fn [e]
+                       (mt/with-dynamic-fn-redefs [sql-jdbc.execute/row-thunk (fn [& _] #(throw e))]
+                         (:error_type (qp/process-query query))))]
+      (testing "A database error raised while rows are read is an invalid query, whatever its exception class"
+        (doseq [e [(SQLException. "More than one row" "21000")
+                   (SQLException. "Unique constraint violation" "23505")
+                   (SQLNonTransientConnectionException. "Unknown column 'a' in 'field list'" "42S22")]]
+          (testing (ex-message e)
+            (is (= :invalid-query (error-type e))))))
+      (testing "A failed connection, a transient failure or a server-side failure is not an invalid query"
+        (doseq [e [(SQLException. "Unknown row-read failure")
+                   (SQLTransientConnectionException. "Unknown connection failure")
+                   (SQLException. "Out of memory" "53200")
+                   (SQLException. "An I/O error occurred while sending to the backend" "08006")
+                   (SQLException. "Internal error" "XX000")]]
+          (testing (ex-message e)
+            (is (not= :invalid-query (error-type e))))))
+      (testing "A statement canceled by the driver is not an invalid query"
+        ;; `driver/query-canceled?` is a multimethod, which `mt/with-dynamic-fn-redefs` refuses
+        (with-redefs [driver/query-canceled? (constantly true)]
+          (is (not= :invalid-query (error-type (SQLException. "Query execution was interrupted" "22012")))))))))

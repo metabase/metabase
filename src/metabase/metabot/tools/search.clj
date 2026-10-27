@@ -361,7 +361,7 @@
         use-verified?   (if metabot-id
                           (:use_verified_content metabot)
                           false)
-        embedded-metabot?  (= metabot-id metabot.config/embedded-metabot-id)
+        embedded-metabot?  (metabot.config/embedded-metabot-id? metabot-id)
         ;; A confined metabot (embedded, or the nlq profile) may only search inside its own
         ;; collection. That is a containment boundary, not a default, so a caller-supplied
         ;; collection-id — which the v2 search tool fills from a request filter — can never
