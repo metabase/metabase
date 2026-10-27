@@ -1,6 +1,7 @@
+import { defer } from "metabase/utils/promise";
 import {
-  DATA_APP_BROKER_INIT,
-  DATA_APP_BROKER_READY,
+  DATA_APP_BROKER_INIT_MESSAGE_TYPE,
+  DATA_APP_BROKER_READY_MESSAGE_TYPE,
   DATA_APP_IFRAME_BROKER_HASH_KEY,
   DATA_APP_IFRAME_LOCALE_HASH_KEY,
   DATA_APP_ROUTE_MESSAGE_TYPE,
@@ -19,15 +20,12 @@ const HOST_ORIGIN_STORAGE_KEY = "metabase.data-app.broker-host-origin";
 const USER_LOCALE_STORAGE_KEY = "metabase.data-app.user-locale";
 const LOCALE_PATTERN = /^[a-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$/;
 
+let started = false;
 let hostOrigin: string | null = null;
 let userLocale: string | null = null;
 let nextId = 1;
 const pending = new Map<number, (message: BrokerResponseMessage) => void>();
-
-let resolveReady: (port: MessagePort) => void = () => {};
-const ready = new Promise<MessagePort>((resolve) => {
-  resolveReady = resolve;
-});
+const hostPort = defer<MessagePort>();
 
 function parseOrigin(value: string | null): string | null {
   if (!value) {
@@ -125,10 +123,16 @@ export function getDataAppParentOrigin(): string {
 }
 
 /**
- * Install the iframe side of the broker. A no-op in same-origin mode. Otherwise it
- * completes the `MessagePort` handshake with the host.
+ * Install the iframe side of the broker. A no-op in same-origin mode, and when called
+ * again. Otherwise it completes the `MessagePort` handshake with the host.
  */
 export function initDataAppBroker(): void {
+  // A second handshake would make the host close the port the first one resolved.
+  if (started) {
+    return;
+  }
+  started = true;
+
   ({ hostOrigin, userLocale } = readLaunchParams());
 
   if (!hostOrigin) {
@@ -141,7 +145,7 @@ export function initDataAppBroker(): void {
     }
 
     if (
-      !isDataAppMessage(event.data, DATA_APP_BROKER_INIT) ||
+      !isDataAppMessage(event.data, DATA_APP_BROKER_INIT_MESSAGE_TYPE) ||
       !event.ports[0]
     ) {
       return;
@@ -154,32 +158,45 @@ export function initDataAppBroker(): void {
       }
     };
 
-    resolveReady(port);
+    hostPort.resolve(port);
   });
 
-  window.parent.postMessage({ type: DATA_APP_BROKER_READY }, hostOrigin);
+  window.parent.postMessage(
+    { type: DATA_APP_BROKER_READY_MESSAGE_TYPE },
+    hostOrigin,
+  );
 }
 
 const abortReason = (signal: AbortSignal): unknown =>
   signal.reason ?? new DOMException("The operation was aborted.", "AbortError");
 
-function waitForPort(signal: AbortSignal | null): Promise<MessagePort> {
+/**
+ * `promise`, or a rejection with the abort reason as soon as `signal` aborts; `onAbort`
+ * runs then.
+ */
+function untilAborted<T>(
+  promise: Promise<T>,
+  signal: AbortSignal | null,
+  onAbort?: () => void,
+): Promise<T> {
   if (!signal) {
-    return ready;
+    return promise;
   }
 
-  return new Promise((resolve, reject) => {
-    const onAbort = () => reject(abortReason(signal));
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => {
+      onAbort?.();
+      reject(abortReason(signal));
+    };
 
     if (signal.aborted) {
-      onAbort();
+      abort();
       return;
     }
 
-    signal.addEventListener("abort", onAbort, { once: true });
-    void ready.then((port) => {
-      signal.removeEventListener("abort", onAbort);
-      resolve(port);
+    signal.addEventListener("abort", abort, { once: true });
+    promise.then(resolve, reject).finally(() => {
+      signal.removeEventListener("abort", abort);
     });
   });
 }
@@ -189,11 +206,7 @@ async function brokeredFetch(
   signal: AbortSignal | null,
 ): Promise<Response> {
   const body = request.body ? await request.arrayBuffer() : null;
-  const port = await waitForPort(signal);
-
-  if (signal?.aborted) {
-    throw abortReason(signal);
-  }
+  const port = await untilAborted(hostPort.promise, signal);
 
   const id = nextId++;
   const message: BrokerRequestMessage = {
@@ -204,27 +217,14 @@ async function brokeredFetch(
     headers: Object.fromEntries(request.headers.entries()),
     body,
   };
+  const answer = defer<BrokerResponseMessage>();
+  pending.set(id, answer.resolve);
+  port.postMessage(message);
 
-  const response = await new Promise<BrokerResponseMessage>(
-    (resolve, reject) => {
-      const onAbort = () => {
-        pending.delete(id);
-        const cancel: BrokerCancelMessage = { type: "cancel", id };
-        port.postMessage(cancel);
-        if (signal) {
-          reject(abortReason(signal));
-        }
-      };
-
-      pending.set(id, (answer) => {
-        pending.delete(id);
-        signal?.removeEventListener("abort", onAbort);
-        resolve(answer);
-      });
-      signal?.addEventListener("abort", onAbort, { once: true });
-      port.postMessage(message);
-    },
-  );
+  const response = await untilAborted(answer.promise, signal, () => {
+    const cancel: BrokerCancelMessage = { type: "cancel", id };
+    port.postMessage(cancel);
+  }).finally(() => pending.delete(id));
 
   if ("networkError" in response) {
     throw new TypeError(response.networkError);
