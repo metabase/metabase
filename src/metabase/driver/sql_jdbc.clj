@@ -21,6 +21,7 @@
    [metabase.driver.sync :as driver.s]
    [metabase.driver.util :as driver.u]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.performance :refer [mapv not-empty select-keys]]
@@ -113,7 +114,7 @@
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
-  (sql-jdbc.conn/invalidate-pool-for-db! database)
+  (sql-jdbc.conn/invalidate-pool-for-db! (u/the-id database))
   (memoize/memo-clear! driver-api/secret-value-as-file!))
 
 (defmethod driver/dbms-version :sql-jdbc
@@ -186,7 +187,7 @@
 (defmethod driver/create-table! :sql-jdbc
   [driver database-id table-name column-definitions & {:keys [primary-key]}]
   (let [sql (create-table!-sql driver table-name column-definitions :primary-key primary-key)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database database-id))]
       (jdbc/execute! conn sql))))
 
 (defn- drop-table-sql [driver table-name]
@@ -197,7 +198,7 @@
 (defmethod driver/drop-table! :sql-jdbc
   [driver db-id table-name]
   (let [sql (drop-table-sql driver table-name)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
       (jdbc/execute! conn sql))))
 
 (defmulti create-index-sql
@@ -225,7 +226,7 @@
 (defmethod driver/create-index! :sql-jdbc
   [driver database-id schema table-name index-name column-names & {:as opts}]
   (let [sql (create-index-sql driver schema table-name index-name column-names opts)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database database-id))]
       (jdbc/execute! conn sql))
     nil))
 
@@ -244,7 +245,7 @@
 (defmethod driver/drop-index! :sql-jdbc
   [driver database-id schema table-name index-name & _]
   (let [sql (drop-index-sql driver schema table-name index-name)]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec database-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database database-id))]
       (jdbc/execute! conn sql))
     nil))
 
@@ -254,7 +255,7 @@
         sql        (sql/format {:truncate table-name}
                                :quoted true
                                :dialect (sql.qp/quote-style driver))]
-    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+    (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
       (jdbc/execute! conn sql))))
 
 (defn- lift-boolean [v] (if (boolean? v) [:lift v] v))
@@ -290,7 +291,7 @@
 
 (defmethod driver/insert-into! :sql-jdbc
   [driver db-id table-name column-names values]
-  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+  (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
     (doseq [sql (insert-into!-sqls driver table-name column-names values false)]
       (jdbc/execute! conn sql))))
 
@@ -314,7 +315,7 @@
                                                                    column-definitions)}
                                                 :quoted true
                                                 :dialect (sql.qp/quote-style driver)))]
-      (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec db-id)]
+      (jdbc/with-db-transaction [conn (sql-jdbc.conn/db->pooled-connection-spec (driver.u/lib-database db-id))]
         (jdbc/execute! conn sql)))))
 
 ;; kept for get-method driver compatibility

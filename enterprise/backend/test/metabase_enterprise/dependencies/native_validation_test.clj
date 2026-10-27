@@ -618,8 +618,6 @@
         (mt/with-temp [:model/DatabaseRouter _ {:database_id    (mt/id)
                                                 :user_attribute "db_name"}]
           (testing "validate-native-query doesn't throw"
-            ;; Without the fix, this would throw:
-            ;; "Anonymous users cannot access a database with routing enabled."
             (is (set? (deps.native-validation/validate-native-query
                        driver
                        (lib/native-query mp "SELECT * FROM ORDERS")))))

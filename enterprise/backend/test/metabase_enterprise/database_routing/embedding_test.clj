@@ -151,3 +151,29 @@
                         response (mt/user-http-request :crowberto :get 202 (str "preview_embed/card/" token "/query"))]
                     (is (= [["router-data"]] (mt/rows response))
                         "Preview should show router-database data even though the admin's attribute routes to a destination")))))))))))
+
+(deftest guest-and-public-access-ignore-session-test
+  (testing "guest embeds and public links behave the same with or without a routed user's session"
+    (mt/with-premium-features #{:database-routing}
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (met/with-user-attributes! :crowberto {"db_name" "destination-db"}
+          (with-routing-setup! [router-db [[destination-db "destination-db"]]]
+            (let [uuid (str (random-uuid))]
+              (mt/with-temporary-setting-values [enable-public-sharing true]
+                (mt/with-temp [:model/DatabaseRouter _ {:database_id    (u/the-id router-db)
+                                                        :user_attribute "db_name"}
+                               :model/Card card {:enable_embedding true
+                                                 :public_uuid      uuid
+                                                 :dataset_query    {:database (u/the-id router-db)
+                                                                    :type     :query
+                                                                    :query    {:source-table (t2/select-one-pk :model/Table :db_id (u/the-id router-db))}}}]
+                  (execute-statement! router-db "INSERT INTO \"my_database_name\" (str) VALUES ('router-data')")
+                  (execute-statement! destination-db "INSERT INTO \"my_database_name\" (str) VALUES ('destination-data')")
+                  (with-embedding-enabled-and-new-secret-key!
+                    (testing "a guest embed shows the router even with a routed user's session"
+                      (is (= [["router-data"]]
+                             (mt/rows (mt/user-http-request :crowberto :get 202 (str "embed/card/" (card-token card) "/query")))))))
+                  (testing "a public link on a router is refused"
+                    (doseq [response [(client/client :get (str "public/card/" uuid "/query"))
+                                      (mt/user-http-request :crowberto :get (str "public/card/" uuid "/query"))]]
+                      (is (=? {:status "failed"} response)))))))))))))

@@ -55,7 +55,6 @@
 (t2/deftransforms :model/Database
   {:details                        (mi/transform-encrypted-json "metabase_database.details")
    :write_data_details             (mi/transform-encrypted-json "metabase_database.write_data_details")
-   :admin_details                  (mi/transform-encrypted-json "metabase_database.admin_details")
    :engine                         mi/transform-keyword
    :metadata_sync_schedule         mi/transform-cron-string
    :cache_field_values_schedule    mi/transform-cron-string
@@ -212,26 +211,26 @@
                                 (select-keys database [:let-user-control-scheduling :is_full_sync :is_on_demand]))))))
 
 (defn should-sync?
-  "Should this database be synced at all? Destination (router-child) databases are never synced.
+  "Should the Database with `database-id` be synced at all? Destination (router-child) databases are never synced.
   This is the gate for *explicit*, user-requested syncs (e.g. the Sync-now button), which run
   regardless of the `disable-auto-sync` setting. For automatically-triggered syncs use
   [[should-auto-sync?]]."
-  [db]
-  (not (is-destination? db)))
+  [database-id]
+  (nil? (warehouses.db/router-database-id database-id)))
 
 (defn should-auto-sync?
   "Should this database be synced *automatically* — scheduled sync/analyze, the post-add initial
   sync, and Quartz trigger registration? False when the database isn't syncable at all, or when
   auto-sync is globally suppressed via the `disable-auto-sync` setting."
-  [db]
-  (and (should-sync? db)
+  [database-id]
+  (and (should-sync? database-id)
        (not (warehouses.settings/disable-auto-sync))))
 
 (defn- check-and-schedule-tasks-for-db!
   "(Re)schedule sync operation tasks for `database`. (Existing scheduled tasks will be deleted first.)"
   [database]
   (try
-    (when (should-auto-sync? database)
+    (when (should-auto-sync? (u/the-id database))
       (sync-databases-trigger/check-and-schedule-tasks-for-db! database))
     (catch Throwable e
       (log/errorf "Error scheduling tasks for DB: %s" (ex-message e)))))
@@ -288,7 +287,6 @@
   "Checks database health off-thread.
    - checks connectivity for the default connection
    - checks connectivity for the write connection (if configured)
-   - checks connectivity for the admin connection (if configured)
    - cleans-up ambiguous legacy db-details"
   [{:keys [engine] :as database}]
   (when-not (or (:is_audit database) (:is_sample database))
@@ -312,15 +310,8 @@
                  (catch Throwable provider-e
                    (log/warnf "Error during provider detection for database {:id %d}: %s" (:id database) (ex-message provider-e)))))))
          (when (driver.conn/database-write-data-details lib-db)
-           (let [write-details (driver.conn/without-resolution-telemetry
-                                (driver.conn/with-write-connection
-                                  (driver.conn/effective-details database)))]
-             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data")))
-         (when (driver.conn/database-admin-details lib-db)
-           (let [admin-details (driver.conn/without-resolution-telemetry
-                                (driver.conn/with-admin-connection
-                                  (driver.conn/effective-details database)))]
-             (check-connection! database driver engine-str (assoc admin-details :engine engine-str) "admin"))))))))
+           (let [write-details (merge details (driver.conn/details-for-exact-type lib-db :write-data))]
+             (check-connection! database driver engine-str (assoc write-details :engine engine-str) "write-data"))))))))
 
 (defn- health-check-candidates
   "The databases to health check at startup: one representative per unique engine — the lowest-id regular database of
@@ -393,8 +384,7 @@
                driver
                (-> db
                    (m/update-existing-in [:details :auth-provider] keyword)
-                   (m/update-existing-in [:write_data_details :auth-provider] keyword)
-                   (m/update-existing-in [:admin_details :auth-provider] keyword)))))]
+                   (m/update-existing-in [:write_data_details :auth-provider] keyword)))))]
     (cond-> database
       ;; TODO - this is only really needed for API responses. This should be a `hydrate` thing instead!
       (and driver
@@ -441,7 +431,7 @@
   (when (not= :postgres (mdb/db-type))
     (warehouses.db/delete-cards-for-database! id))
   (try
-    (driver/notify-database-updated driver database)
+    (driver/notify-database-updated driver (driver.u/ensure-lib-database database))
     (catch Throwable e
       (log/errorf "Error sending database deletion notification: %s" (ex-message e)))))
 
@@ -462,7 +452,7 @@
 
 (def ^:private details-keys
   "Every place a Database stores a set of connection details."
-  [:details :write_data_details :admin_details])
+  [:details :write_data_details])
 
 (defn- validate-connection-details!
   "Refuse to store details pointing at a private/internal network address, or setting a connection parameter the driver
@@ -526,8 +516,7 @@
                infer-db-schedules
 
                (or (some? (:details changes))
-                   (some? (:write_data_details changes))
-                   (some? (:admin_details changes)))
+                   (some? (:write_data_details changes)))
                secret/handle-incoming-client-secrets!
 
                (:uploads_enabled changes)
@@ -618,7 +607,7 @@
     driver.u/default-sensitive-fields))
 
 (methodical/defmethod mi/to-json :model/Database
-  "When encoding a Database as JSON remove the `details`, `write_data_details`, `admin_details`, and
+  "When encoding a Database as JSON remove the `details`, `write_data_details`, and
   `initial_sync_error` for any User without write perms for the DB. Users with write perms can see the details but remove anything resembling a
   password. No one gets to see this in an API response!
 
@@ -632,13 +621,12 @@
     (next-method
      (let [db (if (not (mi/can-write? db))
                 (do (log/debug "Fully redacting database details during json encoding.")
-                    (dissoc db :details :write_data_details :admin_details :initial_sync_error))
+                    (dissoc db :details :write_data_details :initial_sync_error))
                 (do (log/debug "Redacting sensitive fields within database details during json encoding.")
                     (-> db
                         (secret/to-json-hydrate-redacted-secrets)
                         (update :details redact-sensitive-fields)
-                        (m/update-existing :write_data_details redact-sensitive-fields)
-                        (m/update-existing :admin_details redact-sensitive-fields))))]
+                        (m/update-existing :write_data_details redact-sensitive-fields))))]
        (update db :settings
                (fn [settings]
                  (when (map? settings)
@@ -686,7 +674,6 @@
                  :metadata_sync_schedule      schedule-transform
                  :details             details-transform
                  :write_data_details  details-transform
-                 :admin_details       details-transform
                  :creator_id          (serdes/fk :model/User)
                  :router_database_id  (serdes/fk :model/Database)
                  :initial_sync_status {:export-with-context (fn [_current _ _status] ::serdes/skip)
@@ -758,8 +745,7 @@
   (assert-sqlite-not-hosted! ingested)
   (serdes/default-load-one! (cond-> ingested
                               (:details ingested)            (update :details driver/sanitize-db-details)
-                              (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details)
-                              (:admin_details ingested)      (update :admin_details driver/sanitize-db-details))
+                              (:write_data_details ingested) (update :write_data_details driver/sanitize-db-details))
                             maybe-local))
 
 (def ^{:arglists '([table-id])} table-id->database-id

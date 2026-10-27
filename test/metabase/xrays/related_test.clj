@@ -174,7 +174,7 @@
         (is (= 1
                (count-related-fields))))
       (exec! "ALTER TABLE blueberries_consumed DROP COLUMN weight")
-      (sync/sync-database! (mt/db))
+      (sync/sync-database! (mt/id))
       (testing "after"
         (is (= 0
                (count-related-fields)))))))

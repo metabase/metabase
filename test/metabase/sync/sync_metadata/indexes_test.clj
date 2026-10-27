@@ -5,6 +5,8 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.driver.util :as driver.u]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.sync.core :as sync]
    [metabase.sync.sync-metadata.indexes :as sync.indexes]
    [metabase.test :as mt]
@@ -29,9 +31,9 @@
                 {:field-name "second" :indexed? false :base-type :type/Integer}]
                [[1 2]]]]]
       (mt/with-temp-test-data ds
-        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+        (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider)))
                        (sql.tx/create-index-sql driver/*driver* "table" ["first" "second"]))
-        (sync/sync-database! (mt/db))
+        (sync/sync-database! (mt/id))
         (is (true? (t2/select-one-fn :database_indexed :model/Field (mt/id :table :first))))
         (is (not= true (t2/select-one-fn :database_indexed :model/Field (mt/id :table :second))))))))
 
@@ -41,13 +43,13 @@
   (testing "do nothing if the driver doesn't support indexing"
     (mt/with-temp [:model/Database db    {:engine ::not-support-index-test}
                    :model/Table    table {:db_id (:id db)}]
-      (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes! db)))
-      (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes-for-table! db table))))))
+      (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes! (driver.u/lib-database (:id db)))))
+      (is (= @#'sync.indexes/empty-stats (sync.indexes/maybe-sync-indexes-for-table! (driver.u/lib-database (:id db)) table))))))
 
 (deftest all-indexes->fields-ids-many-indexes-test
   (testing "no exception is thrown when there are very many indexes"
     (mt/test-drivers (mt/normal-drivers-with-feature :describe-indexes :index-info)
-      (let [indexes (into [] (driver/describe-indexes driver/*driver* (mt/db)))
+      (let [indexes (into [] (driver/describe-indexes driver/*driver* (lib.metadata/database (mt/metadata-provider))))
             many-indexes (into indexes (repeat 100000 {:table-schema "public",
                                                        :table-name "fake_table",
                                                        :field-name "id"}))
@@ -82,9 +84,9 @@
         (testing "All indexed fields picked up by sync (first, second, third)"
           (doseq [field ["first" "second" "third"]
                   :let [sql (sql.tx/create-index-sql driver/*driver* "first_table" [field])]]
-            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) sql))
+            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider))) sql))
           (binding [sync.indexes/*update-partition-size* 2]
-            (#'sync.indexes/sync-all-indexes! (mt/db)))
+            (#'sync.indexes/sync-all-indexes! (lib.metadata/database (mt/metadata-provider))))
           (is (every? :database_indexed
                       (t2/select :model/Field
                                  {:where [:in :table_id (t2/select-fn-vec :id :model/Table :db_id (mt/id))]}))))
@@ -92,9 +94,9 @@
           (doseq [field ["first" "second" "third"]
                   :let [sql (format "DROP INDEX %s;" (sql.u/quote-name
                                                       driver/*driver* :index (str "idx_first_table_" field)))]]
-            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db)) sql))
+            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (lib.metadata/database (mt/metadata-provider))) sql))
           (binding [sync.indexes/*update-partition-size* 2]
-            (#'sync.indexes/sync-all-indexes! (mt/db)))
+            (#'sync.indexes/sync-all-indexes! (lib.metadata/database (mt/metadata-provider))))
           (is (every? (complement :database_indexed)
                       (t2/select :model/Field
                                  {:where [:and
