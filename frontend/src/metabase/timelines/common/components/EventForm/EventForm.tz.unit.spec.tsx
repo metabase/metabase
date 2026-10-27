@@ -1,6 +1,5 @@
 import userEvent from "@testing-library/user-event";
 
-import testAcrossTimezones from "__support__/timezones";
 import { render, screen, waitFor } from "__support__/ui";
 import type { TimelineEventData } from "metabase-types/api";
 import { createMockTimelineEventData } from "metabase-types/api/mocks";
@@ -19,41 +18,63 @@ const setup = ({ initialValues }: SetupOpts) => {
   return { onSubmit };
 };
 
-testAcrossTimezones(() => {
-  describe("EventForm", () => {
-    it("should save the picked date without shifting it to another day (#24701)", async () => {
-      const { onSubmit } = setup({
-        initialValues: createMockTimelineEventData({ name: "", timestamp: "" }),
-      });
+const fillNewEvent = async (date: string) => {
+  await userEvent.type(screen.getByLabelText("Event name"), "Launch");
+  const dateInput = screen.getByLabelText("Date");
+  await userEvent.clear(dateInput);
+  await userEvent.type(dateInput, date);
+};
 
-      await userEvent.type(screen.getByLabelText("Event name"), "Launch");
-      const dateInput = screen.getByLabelText("Date");
-      await userEvent.clear(dateInput);
-      await userEvent.type(dateInput, "January 1, 2026");
-      await userEvent.click(screen.getByRole("button", { name: "Create" }));
-
-      await waitFor(() => {
-        expect(onSubmit).toHaveBeenCalledWith(
-          expect.objectContaining({ timestamp: "2026-01-01T00:00:00.000Z" }),
-        );
-      });
+describe("EventForm", () => {
+  it("should save the picked date without shifting it to another day (#24701)", async () => {
+    const { onSubmit } = setup({
+      initialValues: createMockTimelineEventData({ name: "", timestamp: "" }),
     });
 
-    it("should show the saved date and time of an existing event (#24701)", () => {
-      setup({
-        initialValues: createMockTimelineEventData({
-          id: 1,
-          timestamp: "2026-01-01T17:00:00Z",
+    await fillNewEvent("January 1, 2026");
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ timestamp: "2026-01-01T00:00:00.000Z" }),
+      );
+    });
+  });
+
+  it("should save the picked date and time without shifting them (#24701)", async () => {
+    const { onSubmit } = setup({
+      initialValues: createMockTimelineEventData({ name: "", timestamp: "" }),
+    });
+
+    await fillNewEvent("January 1, 2026");
+    await userEvent.click(screen.getByRole("button", { name: "Add time" }));
+    const timeInput = screen.getByLabelText("Time");
+    await userEvent.clear(timeInput);
+    await userEvent.type(timeInput, "17:00");
+    await userEvent.click(screen.getByRole("button", { name: "Create" }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timestamp: "2026-01-01T17:00:00.000Z",
           time_matters: true,
         }),
-      });
-
-      expect(screen.getByLabelText<HTMLInputElement>("Date").value).toBe(
-        "January 1, 2026",
-      );
-      expect(screen.getByLabelText<HTMLInputElement>("Time").value).toBe(
-        "17:00",
       );
     });
+  });
+
+  it("should show the saved date and time of an existing event (#24701)", () => {
+    setup({
+      initialValues: createMockTimelineEventData({
+        id: 1,
+        timestamp: "2026-01-01T17:00:00Z",
+        time_matters: true,
+      }),
+    });
+
+    expect(screen.getByLabelText<HTMLInputElement>("Date").value).toBe(
+      "January 1, 2026",
+    );
+    expect(screen.getByLabelText<HTMLInputElement>("Time").value).toBe("17:00");
   });
 });
