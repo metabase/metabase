@@ -57,7 +57,8 @@
                  :right-join
                  :standard-deviation-aggregations
                  :window-functions/cumulative
-                 :window-functions/offset]]
+                 :window-functions/offset
+                 :union-all-stages]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
 
 ;; True when the driver's `run-transform!` `:rows-affected` reflects rows actually written.

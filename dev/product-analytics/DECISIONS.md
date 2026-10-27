@@ -173,3 +173,33 @@ Status:
 - Local columnar options are thin; BigQuery, Redshift and Snowflake are cloud only. Postgres runs locally in
   `pg-product-analytics`, and Map columns load as jsonb.
 - Why: a second dialect shows what is ClickHouse-specific. So far that is week start, timezone and map access.
+
+## D19: A stage can append other stages' rows with `:union-all`
+
+- **keep**, shape; **budget**, the legacy round trip.
+- Shape: `{:source-stage "active" :union-all ["dormant" …]}` on an ordinary MBQL stage. Its source is the
+  `:source-stage` rows with each listed stage's rows appended, matched by column position. Its own filters, fields,
+  breakouts, aggregations and order-by apply on top. Columns and types come from the source stage.
+- `:union-all` requires an explicit `:source-stage`; the implicit previous stage is not a first branch. A union names
+  every branch it reads, and the schema checks every name points backwards, as `:source-stage` does.
+- Lib: `lib.util/stage-reads` lists every name a stage reads (source, branches, joins), and the schema, legacy
+  expansion and compiler use it. `union-all-stage-numbers` gives the branches. `returned-columns` of the union stage
+  throws when a branch returns a different number of columns than the source stage.
+- Compile: `FROM (SELECT a AS a, b AS b FROM __mb_stage_1 UNION ALL SELECT c AS a, d AS b FROM __mb_stage_2) AS
+  __mb_source`. Each branch projects the names its own compiled `SELECT` produced, renamed to the first branch's names,
+  so escaping and order are what the CTE really returns. A branch without a `SELECT` (native) is refused.
+- Gate: driver feature `:union-all-stages`, true for `:sql`; drivers that nest stages as subselects still refuse
+  named reads (D9).
+- Why: PA funnels and retention append cohorts (`active` + `dormant`). A key on a stage keeps the stage's own clauses
+  and metadata; nothing new has to learn a second kind of source.
+- Rejected:
+  - A `:mbql.stage/union` stage kind. Every walker, `returned-columns` and the CTE compiler would need a new branch, for
+    a stage that can be written as "source plus appended rows".
+  - Implicit previous stage as the first branch. Appending is the one place a hidden source reads ambiguously.
+  - `SELECT *` per branch. Positional matching then depends on each CTE's column order, which the compiler, not the
+    query, decides.
+- Budget: legacy MBQL (D18) holds `:union-all` as a vector of source-query trees, so the form drivers get is honest.
+  Converting it back to MBQL 5 (the driver's `lib/query` for the row limit) drops the branches: the tree has no names
+  to rebuild them with. Pays back with D18.
+- Evidence: event counts by name over `pageview` rows plus other rows with `session_id` standing in for `person_id`
+  match hand-written `UNION ALL` SQL on ClickHouse (DB 2) and Postgres (DB 81).

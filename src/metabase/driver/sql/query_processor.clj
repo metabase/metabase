@@ -2329,10 +2329,7 @@
       (apply-top-level-clauses driver prev-from stage))))
 
 (defn- reads-named-stage? [stages]
-  (some (fn [stage]
-          (or (:source-stage stage)
-              (some :source-stage (:joins stage))))
-        stages))
+  (some (comp seq lib.util/stage-reads) stages))
 
 (defn- stages->honeysql-subselects
   "Compile `stages` to HoneySQL with each stage nested as a subselect in the `FROM` of the next one."
@@ -2379,14 +2376,63 @@
       [[cte-name {:columns (mapv desired-col-alias-ident columns-metadata)}] hsql]
       [cte-name hsql])))
 
+(defn- stage-idx-named
+  [stages stage-name]
+  (or (some (fn [[i stage]] (when (= (:name stage) stage-name) i))
+            (map-indexed vector stages))
+      (throw (ex-info (format "No stage named %s" (pr-str stage-name)) {:stage-name stage-name}))))
+
 (defn- source-stage-idx
   "The index of the stage that stage `idx` reads: the one its `:source-stage` names, or else the stage before it."
   [stages idx]
   (if-let [source-stage (:source-stage (stages idx))]
-    (or (some (fn [[i stage]] (when (= (:name stage) source-stage) i))
-              (map-indexed vector stages))
-        (throw (ex-info (format "No stage named %s" (pr-str source-stage)) {:stage-name source-stage})))
+    (stage-idx-named stages source-stage)
     (dec idx)))
+
+(defn- select-column-names
+  "The names of the columns compiled stage `hsql` returns, in order, from the aliases of its `:select`."
+  [hsql]
+  (when-let [select (and (map? hsql) (:select hsql))]
+    (mapv (fn [selected]
+            (let [alias (when (sequential? selected) (second selected))
+                  alias (if (sequential? alias) (first alias) alias)]
+              (cond
+                (h2x/identifier? alias) (last (nth alias 2))
+                (string? alias)         alias
+                (keyword? alias)        (name alias)
+                :else (throw (ex-info "Cannot append the rows of a stage whose columns have no alias"
+                                      {:select select})))))
+          select)))
+
+(defn- union-all-source-form
+  "The `FROM` of a stage with `:union-all`: its source stage's rows with each branch's rows appended,
+
+    FROM (SELECT a AS a, b AS b FROM __mb_stage_0 UNION ALL SELECT c AS a, d AS b FROM __mb_stage_1) AS __mb_source
+
+  Each branch's columns are matched by position and take the source stage's names, which are the names the stage's
+  refs use."
+  [driver level stages compiled-stages idx]
+  (let [branch-idxs   (into [(source-stage-idx stages idx)]
+                            (map #(stage-idx-named stages %))
+                            (:union-all (stages idx)))
+        branch-cols   (mapv #(or (select-column-names (compiled-stages %))
+                                 (throw (ex-info (tru "Only stages that select named columns can be appended with :union-all")
+                                                 {:type driver-api/qp.error-type.invalid-query, :stage-idx %})))
+                            branch-idxs)
+        column-names  (first branch-cols)]
+    (doseq [[branch-idx cols] (map vector branch-idxs branch-cols)
+            :when (not= (count cols) (count column-names))]
+      (throw (ex-info (tru "Stage {0} appends stage {1}, which returns {2} columns, to a stage that returns {3}"
+                           idx branch-idx (count cols) (count column-names))
+                      {:type driver-api/qp.error-type.invalid-query, :stage-idx idx, :branch-idx branch-idx})))
+    {:from [[{:union-all (mapv (fn [branch-idx cols]
+                                 {:select (mapv (fn [col column-name]
+                                                  [(->honeysql driver (h2x/identifier :field col))
+                                                   [(->honeysql driver (h2x/identifier :field-alias column-name))]])
+                                                cols column-names)
+                                  :from   [[(->honeysql driver (h2x/identifier :table-alias (stage-cte-name level branch-idx)))]]})
+                               branch-idxs branch-cols)}
+             [(->honeysql driver (h2x/identifier :table-alias source-query-alias))]]]}))
 
 (defn- stages->honeysql-ctes
   "Compile `stages` to a HoneySQL CTE, putting each stage in a CTE that the stages reading it select from.
@@ -2399,13 +2445,23 @@
                         stages)
         stages   (mapv #(assoc % ::stage-name->cte name->cte) stages)
         last-idx (dec (count stages))
-        cte-body (fn [idx]
-                   (let [prev-from (if (and (zero? idx) (not (:source-stage (stages idx))))
-                                     {}
-                                     (cte-stage-source-form driver level (source-stage-idx stages idx)))]
-                     (stage->honeysql driver prev-from (stages idx))))
-        ctes     (mapv #(stage-cte level % (cte-body %) (stages %)) (range last-idx))]
-    (update (cte-body last-idx) :with #(into ctes %))))
+        ;; each stage compiles after the stages it reads, which come before it
+        compiled (reduce (fn [compiled idx]
+                           (let [stage     (stages idx)
+                                 prev-from (cond
+                                             (seq (:union-all stage))
+                                             (union-all-source-form driver level stages compiled idx)
+
+                                             (and (zero? idx) (not (:source-stage stage)))
+                                             {}
+
+                                             :else
+                                             (cte-stage-source-form driver level (source-stage-idx stages idx)))]
+                             (conj compiled (stage->honeysql driver prev-from stage))))
+                         []
+                         (range (count stages)))
+        ctes     (mapv #(stage-cte level % (compiled %) (stages %)) (range last-idx))]
+    (update (compiled last-idx) :with #(into ctes %))))
 
 (defn- stages->honeysql [driver stages level]
   (let [stages (mapv #(assoc % ::cte-level level) stages)]

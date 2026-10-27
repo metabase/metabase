@@ -2247,6 +2247,9 @@
      [:order-by     {:optional true} [:ref ::OrderBys]]
      [:page         {:optional true} [:ref :metabase.lib.schema/page]]
      [:joins        {:optional true} [:ref ::Joins]]
+     ;; MBQL 5 `:union-all`, as [[metabase.lib.util/expand-named-stages]] writes it out: one source query per appended
+     ;; branch. Here only because drivers still run the legacy form of a query.
+     [:union-all    {:optional true} [:sequential [:ref ::SourceQuery]]]
      [:source-metadata
       {:optional    true
        :description "Info about the columns of the source query. Added in automatically by middleware. This metadata is

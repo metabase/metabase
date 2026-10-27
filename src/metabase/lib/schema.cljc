@@ -91,6 +91,9 @@
    [:name               {:optional true} [:ref ::stage-name]]
    ;; the stage this one reads, when it isn't the stage before it
    [:source-stage       {:optional true} [:ref ::stage-name]]
+   ;; stages whose rows are appended, by column position, to the rows of `:source-stage` before this stage's own
+   ;; clauses apply
+   [:union-all          {:optional true} [:sequential {:min 1} [:ref ::stage-name]]]
    [:parameters         {:optional true} [:ref ::lib.schema.parameter/parameters]]
    [:lib/stage-metadata {:optional true} [:ref ::lib.schema.metadata/stage]]
    [:qp/stage-is-from-source-card {:optional true} [:ref ::id/card]]
@@ -512,14 +515,17 @@
    (complement #'join-ref-error-for-stages)])
 
 (defn- stage-name-error
-  "An error message if a stage name is used twice, or a stage or join reads a stage that isn't an earlier one."
+  "An error message if a stage name is used twice, a stage or join reads a stage that isn't an earlier one, or a stage
+  has `:union-all` without naming its first branch in `:source-stage`."
   [stages]
   (when (sequential? stages)
     (loop [earlier #{}, i 0, [stage & more] stages]
       (when (map? stage)
-        (let [reads (cons (:source-stage stage) (map :source-stage (:joins stage)))]
+        (let [reads (concat [(:source-stage stage)] (:union-all stage) (map :source-stage (:joins stage)))]
           (or (when-let [unknown (some #(when (and % (not (earlier %))) %) reads)]
                 (str "Stage " i " reads stage " (pr-str unknown) ", which isn't an earlier stage"))
+              (when (and (seq (:union-all stage)) (not (:source-stage stage)))
+                (str "Stage " i " has :union-all, so it must name its first branch with :source-stage"))
               (when (and (:name stage) (earlier (:name stage)))
                 (str "Two stages are named " (pr-str (:name stage))))
               (when (seq more)

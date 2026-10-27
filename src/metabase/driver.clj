@@ -940,6 +940,9 @@
     ;; functions)
     :window-functions/offset
     ;;
+    ;; Can a query stage append the rows of other stages to its source with `:union-all`? (SQL `UNION ALL`)
+    :union-all-stages
+    ;;
     ;; Does this driver support parameterized sql, eg. in prepared statements?
     :parameterized-sql
     ;;

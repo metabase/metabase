@@ -118,6 +118,20 @@
     (breakouts-columns query stage-number options)
     (aggregations-columns query stage-number))))
 
+(defn- check-union-all-branches
+  "A stage with `:union-all` appends rows by column position, and takes its columns from its source stage. Throw if a
+  branch returns a different number of columns than the source stage."
+  [query stage-number options]
+  (when-let [[source-stage-number & branch-numbers] (lib.util/union-all-stage-numbers query stage-number)]
+    (let [column-count #(count (lib.metadata.calculation/returned-columns query % (lib.util/query-stage query %) options))
+          expected     (column-count source-stage-number)]
+      (doseq [branch-number branch-numbers
+              :let [actual (column-count branch-number)]
+              :when (not= actual expected)]
+        (throw (ex-info (i18n/tru "Stage {0} appends stage {1}, which returns {2} columns, to stage {3}, which returns {4}"
+                                  stage-number branch-number actual source-stage-number expected)
+                        {:stage-number stage-number, :branch-stage-number branch-number}))))))
+
 (mu/defn- visible-columns-from-previous-stage-returned-columns :- [:maybe ::lib.metadata.calculation/visible-columns]
   "Columns that are visible in the current stage because they were returned by the previous stage, if there is one.
   These are updated to use correct aliases and other info for the current stage
@@ -302,6 +316,7 @@
   ;; Not including the stage itself in the cache key, since it's not used(!)
   (lib.computed/with-cache-ephemeral* query [::returned-columns stage-number (lib.metadata.calculation/cacheable-options options)]
     (fn []
+      (check-union-all-branches query stage-number options)
       (or
        (existing-stage-metadata query stage-number)
        (let [summary-cols (summary-columns query stage-number options)

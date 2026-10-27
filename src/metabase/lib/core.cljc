@@ -1723,6 +1723,8 @@
   previous-stage-number
   source-stage-number
   stage-number-named
+  stage-reads
+  union-all-stage-numbers
   query-stage
   update-query-stage]
  [metabase.lib.util.unique-name-generator

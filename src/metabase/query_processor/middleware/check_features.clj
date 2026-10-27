@@ -34,9 +34,11 @@
        nil))
     (lib.walk/walk
      query
-     (fn [_query path-type _path join]
+     (fn [_query path-type _path stage-or-join]
        (when (= path-type :lib.walk/join)
-         (vswap! required-features conj! (:strategy join)))
+         (vswap! required-features conj! (:strategy stage-or-join)))
+       (when (and (= path-type :lib.walk/stage) (seq (:union-all stage-or-join)))
+         (vswap! required-features conj! :union-all-stages))
        nil))
     (persistent! @required-features)))
 

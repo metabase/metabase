@@ -745,6 +745,9 @@
                 (m/update-existing :aggregation #(mapv aggregation->legacy-MBQL %))
                 (m/update-existing :breakout #(mapv ->legacy-MBQL %))
                 (m/update-existing :expressions stage-expressions->legacy-MBQL)
+                ;; [[lib.util/expand-named-stages]] turned each branch into its own chain of stages
+                (m/update-existing :union-all (fn [branches]
+                                                (mapv #(chain-stages % {:top-level? false}) branches)))
                 (update-list->legacy-boolean-expression :filters :filter))
             (disj stage-keys :aggregation :breakout :filters :expressions))))
 

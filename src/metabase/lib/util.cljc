@@ -274,10 +274,14 @@
         stage-type      (if (:native inner-query)
                           :mbql.stage/native
                           :mbql.stage/mbql)
+        ;; `:union-all` in legacy MBQL holds the appended branches as trees (see [[expand-named-stages]]). MBQL 5 can
+        ;; only append named stages, and only stage 0 reads a table, so the branches are dropped here. Only drivers see
+        ;; the legacy form, and they only read its compiled SQL; the round trip is lossy on purpose.
+        ;;
         ;; we're using `merge` here instead of threading stuff so the `:lib/` keys are the first part of the map for
         ;; readability in the REPL.
         this-stage      (merge {:lib/type stage-type}
-                               (dissoc inner-query :source-query :source-metadata))
+                               (dissoc inner-query :source-query :source-metadata :union-all))
         this-stage      (cond-> this-stage
                           (seq (:joins this-stage)) (update :joins joins->pipeline)
                           :always (update-legacy-boolean-expression->list :filter :filters))]
@@ -365,16 +369,36 @@
     (update query :stages #(subvec (vec %) 0 (inc (stage-number-named query source-stage))))
     (assoc query :stages (:stages join))))
 
+(defn stage-reads
+  "The names of the stages that `stage` reads: its `:source-stage`, its `:union-all` branches, and the `:source-stage`
+  of each of its joins."
+  [stage]
+  (into []
+        (comp cat (remove nil?))
+        [[(:source-stage stage)]
+         (:union-all stage)
+         (map :source-stage (:joins stage))]))
+
+(mu/defn union-all-stage-numbers :- [:maybe [:sequential [:int {:min 0}]]]
+  "The indexes of the stages whose rows stage `stage-number` reads: its source stage, then its `:union-all` branches.
+  `nil` for a stage without `:union-all`."
+  [query        :- ::legacy-or-mbql5-query
+   stage-number :- :int]
+  (when-let [branches (seq (:union-all (nth (:stages (pipeline query)) (canonical-stage-index query stage-number))))]
+    (into [(source-stage-number query stage-number)]
+          (map #(stage-number-named query %))
+          branches)))
+
 (defn- reads-named-stage? [stages]
   (some (fn [stage]
-          (or (:source-stage stage)
-              (some #(or (:source-stage %) (reads-named-stage? (:stages %))) (:joins stage))))
+          (or (seq (stage-reads stage))
+              (some #(reads-named-stage? (:stages %)) (:joins stage))))
         stages))
 
 (defn expand-named-stages
   "`query` as a tree: every stage read by name is copied to where it is read, so each stage reads the stage before it
-  and each join reads its own stages. Stages the last stage doesn't read are dropped. For consumers of a query that
-  only understand trees, such as legacy MBQL."
+  and each join reads its own stages. A stage's `:union-all` becomes a vector of such chains, one per branch. Stages
+  the last stage doesn't read are dropped. For consumers of a query that only understand trees, such as legacy MBQL."
   [query]
   (if-not (reads-named-stage? (:stages query))
     ;; already a chain; only the names have to go
@@ -402,6 +426,9 @@
               (expand-stage [stage]
                 (-> stage
                     (dissoc :name :source-stage)
+                    ;; each branch becomes its own chain of stages
+                    (m/update-existing :union-all (fn [branches]
+                                                    (mapv #(expand-chain (name->idx %)) branches)))
                     (m/update-existing :joins #(mapv expand-join %))))
               (expand-chain [i]
                 (mapv (comp expand-stage stages) (chain i)))]
