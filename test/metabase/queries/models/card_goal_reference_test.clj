@@ -18,8 +18,10 @@
    [toucan2.core :as t2]))
 
 (defn- card-goal
-  [card-id]
-  {:id card-id :type "card" :column "count"})
+  ([card-id]
+   (card-goal card-id "count"))
+  ([card-id column]
+   {:id card-id :type "card" :column column}))
 
 (defn- gauge-viz
   "Viz settings whose gauge segment reads `goal`."
@@ -73,6 +75,9 @@
            (is (= 404 (save-card-status {:visualization_settings (gauge-viz (card-goal Integer/MAX_VALUE))}))))
          (testing "a goal id that isn't a positive integer is refused, not skipped"
            (is (= 400 (save-card-status {:visualization_settings (gauge-viz (card-goal (str goal-id)))}))))
+         (testing "a keyword type is checked like the string it is saved as"
+           (is (= 403 (save-card-status {:visualization_settings
+                                         (gauge-viz (assoc (card-goal goal-id) :type :card))}))))
          (testing "a goal reading a readable card saves"
            (is (= :no-error (save-card-status {:visualization_settings (gauge-viz (card-goal readable-id))}))))
          (testing "a goal of a type nothing resolves is left alone"
@@ -94,7 +99,13 @@
          (mt/with-test-user :rasta
            (is (= :no-error (status-of #(t2/update! :model/Card card-id
                                                     {:visualization_settings (assoc (gauge-viz (card-goal goal-id))
-                                                                                    :card.title "renamed")}))))))))))
+                                                                                    :card.title "renamed")})))))))
+     (testing "switching a saved goal to another column of the same card is refused"
+       (mt/with-temp [:model/Card {card-id :id} {:dataset_query          (count-query)
+                                                 :visualization_settings (gauge-viz (card-goal goal-id))}]
+         (mt/with-test-user :rasta
+           (is (= 403 (status-of #(t2/update! :model/Card card-id
+                                              {:visualization_settings (gauge-viz (card-goal goal-id "sum"))}))))))))))
 
 (deftest measure-goal-reference-permissions-test
   (mt/with-temp [:model/Measure {measure-id :id} {:name       "Venue count"
@@ -146,7 +157,8 @@
                               (merge layout {:dashboard_id dash-id :card_id card-id :visualization_settings viz}))
              goal-viz       (gauge-viz (card-goal goal-id))
              visualizer-viz {:visualization {:display "gauge" :settings goal-viz}}
-             renamed-viz    (assoc goal-viz :card.title "renamed")]
+             renamed-viz    (assoc goal-viz :card.title "renamed")
+             sum-viz        (gauge-viz (card-goal goal-id "sum"))]
          (mt/with-test-user :rasta
            (testing "a dashcard goal the user can't read is refused"
              (is (= 403 (status-of #(t2/insert! :model/DashboardCard (dashcard goal-viz))))))
@@ -156,7 +168,10 @@
            (mt/with-temp [:model/DashboardCard {dashcard-id :id} (dashcard goal-viz)]
              (mt/with-test-user :rasta
                (is (= :no-error (status-of #(t2/update! :model/DashboardCard dashcard-id
-                                                        {:visualization_settings renamed-viz}))))))))))))
+                                                        {:visualization_settings renamed-viz}))))
+               (testing "but switching it to another column of the same card is refused"
+                 (is (= 403 (status-of #(t2/update! :model/DashboardCard dashcard-id
+                                                    {:visualization_settings sum-viz})))))))))))))
 
 (deftest copied-dashboard-goal-reference-test
   (testing "copying a dashboard keeps dashcard goals the user can't read: the copy isn't public"
@@ -187,6 +202,10 @@
               (testing "a new dashcard carrying a goal already on the dashboard saves, as an editor duplicate does"
                 (mt/user-http-request :rasta :put 200 (format "dashboard/%d" dash-id)
                                       {:dashcards [existing (new-dashcard goal-viz)]
+                                       :tabs      []}))
+              (testing "a new dashcard reading another column of a card already on the dashboard is refused"
+                (mt/user-http-request :rasta :put 403 (format "dashboard/%d" dash-id)
+                                      {:dashcards [existing (new-dashcard (gauge-viz (card-goal goal-id "sum")))]
                                        :tabs      []}))
               (testing "a new dashcard carrying a goal not on the dashboard yet is refused"
                 (mt/user-http-request :rasta :put 403 (format "dashboard/%d" dash-id)

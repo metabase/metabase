@@ -1003,9 +1003,9 @@
                  [403 (tru "You must have data permissions to use this measure as a goal.")]))))
 
 (defn check-new-goal-references!
-  "Throws if a goal in `viz-settings` references a card or measure, not referenced in any `previous-viz-settings`,
-  that is malformed, missing, or unreadable by the current user. A measure also needs query access to its table.
-  Does nothing when no user is bound."
+  "Throws if a goal in `viz-settings` reads a column no `previous-viz-settings` reads, and the card or measure that
+  column belongs to is malformed, missing, or unreadable by the current user. A measure also needs query access to its
+  table. Does nothing when no user is bound."
   [viz-settings & previous-viz-settings]
   ;; Public and embedded pages resolve goals as admin, so this is their only check. A missing entity is refused
   ;; because a not-yet-issued id would point at whatever gets created next. No bound user means an internal write
@@ -1013,8 +1013,10 @@
   (when-let [refs (and api/*current-user-id*
                        (not-empty (resolvable-goal-references viz-settings)))]
     ;; most settings carry no goals, so skip scanning every previous setting (a whole dashboard's, for a new dashcard)
-    (run! check-goal-reference!
-          (set/difference refs (into #{} (mapcat resolvable-goal-references) previous-viz-settings)))))
+    ;; public pages return only the columns goals name, so a new column of an already-referenced entity is new
+    ;; exposure; the read check itself is per entity
+    (let [previous-refs (into #{} (mapcat resolvable-goal-references) previous-viz-settings)]
+      (run! check-goal-reference! (into #{} (map pop) (set/difference refs previous-refs))))))
 
 (defn check-shared-dashboard-goal-permissions!
   "Placing `cards` on `dashboard` resolves their goals for anyone who opens it when the dashboard is publicly shared or

@@ -9,6 +9,8 @@
 (deftest ^:parallel goal-source-test
   (is (= ref-a (dynamic-goals/goal-source ref-a)))
   (is (= ref-a (dynamic-goals/goal-source (assoc ref-a :extra "ignored"))))
+  (testing "a keyword type reads as the string it is saved as"
+    (is (= ref-a (dynamic-goals/goal-source (assoc ref-a :type :card)))))
   (are [goal] (nil? (dynamic-goals/goal-source goal))
     5
     "column-name"
@@ -237,8 +239,8 @@
       (is (= [ref] (dynamic-goals/shown-goal-values {:gauge.segments [{:max ref}]}))))))
 
 (deftest ^:parallel goal-references-test
-  (testing "every referenced entity, hidden and visualizer-nested goals included, once each"
-    (is (= #{["card" 1] ["measure" 2] ["card" 3]}
+  (testing "every referenced entity column, hidden and visualizer-nested goals included, once each"
+    (is (= #{["card" 1 "a"] ["measure" 2 "b"] ["card" 1 "c"] ["card" 3 "d"]}
            (dynamic-goals/goal-references
             {:graph.show_goal  false
              :graph.goal_value {:id 1 :type "card" :column "a"}
