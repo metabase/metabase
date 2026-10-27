@@ -19,12 +19,7 @@ export function NotebookStepHeader({
       {title}
       {canRevert && (
         <IconButtonWrapper
-          className={cx(
-            CS.mlAuto,
-            CS.textSecondary,
-            CS.textDarkHover,
-            S.StepHeader,
-          )}
+          className={cx(CS.mlAuto, CS.textSecondaryHoverPrimary, S.StepHeader)}
           onClick={onRevert}
         >
           <Icon name="close" tooltip={t`Remove`} aria-label={t`Remove step`} />

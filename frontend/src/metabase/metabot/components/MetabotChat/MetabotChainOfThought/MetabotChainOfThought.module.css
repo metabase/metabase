@@ -3,15 +3,11 @@
 }
 
 .trigger {
+  composes: textSecondaryHoverPrimary from "style";
   display: flex;
   align-items: center;
   gap: 0.375rem;
   width: 100%;
-  color: var(--mb-color-text-secondary);
-}
-
-.trigger:hover {
-  color: var(--mb-color-text-primary);
 }
 
 .headerLabel {

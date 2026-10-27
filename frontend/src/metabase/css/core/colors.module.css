@@ -66,6 +66,14 @@
   color: var(--mb-color-text-secondary);
 }
 
+.textSecondaryHoverPrimary {
+  color: var(--mb-color-text-secondary);
+}
+
+.textSecondaryHoverPrimary:hover {
+  color: var(--mb-color-text-primary);
+}
+
 .bgBrandHover:hover {
   background-color: var(--mb-color-background_surface-hover);
 }

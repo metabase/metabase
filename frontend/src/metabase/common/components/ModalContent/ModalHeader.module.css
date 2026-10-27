@@ -25,12 +25,8 @@
 }
 
 .actionIcon {
-  color: var(--mb-color-text-secondary);
+  composes: textSecondaryHoverPrimary from "style";
   cursor: pointer;
-
-  &:hover {
-    color: var(--mb-color-text-primary);
-  }
 }
 
 .backButton {

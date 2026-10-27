@@ -1,7 +1,3 @@
 .descriptionIcon {
-  color: var(--mb-color-text-secondary);
-
-  &:hover {
-    color: var(--mb-color-text-primary);
-  }
+  composes: textSecondaryHoverPrimary from "style";
 }

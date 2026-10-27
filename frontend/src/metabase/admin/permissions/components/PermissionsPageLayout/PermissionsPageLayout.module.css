@@ -1,8 +1,4 @@
 .closeButton {
-  color: var(--mb-color-text-secondary);
+  composes: textSecondaryHoverPrimary from "style";
   transition: color 200ms;
-
-  &:hover {
-    color: var(--mb-color-text-primary);
-  }
 }
