@@ -190,6 +190,16 @@
           (is (= "GeoJSON URL failed to load"
                  (mt/user-http-request :rasta :get 400 "geojson/middle-earth"))))))))
 
+(deftest data-app-key-proxy-endpoint-test
+  (testing "a data app's custom region map, whose GeoJSON request reaches the server with the data-app marker, gets
+            the file"
+    (with-geojson-mocks
+      (mt/with-temporary-setting-values [custom-geojson test-custom-geojson]
+        (is (= {:type        "Point"
+                :coordinates [37.77986 -122.429]}
+               (mt/user-http-request :rasta :get 200 "geojson/middle-earth"
+                                     {:request-options {:headers {"x-metabase-client" "data-app"}}})))))))
+
 (deftest region-geojson-test
   (testing "built-in regions resolve from the classpath without a network fetch"
     (let [us (api.geojson/region-geojson "us_states")]

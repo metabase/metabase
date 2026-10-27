@@ -9,6 +9,7 @@
    [metabase.llm.settings :as llm.settings]
    [metabase.search.appdb.index :as search.index]
    [metabase.search.core :as search]
+   [metabase.server.settings :as server.settings]
    [metabase.session.api :as session.api]
    [metabase.test :as mt]
    [metabase.testing-api.api :as testing]
@@ -154,3 +155,12 @@
                                 :model-reasoning "true"}}]]
             (is (nil? (mt/user-http-request :rasta :put 204 "testing/llm-providers" {:value vllm})))
             (is (= vllm (vec (llm.settings/llm-providers))))))))))
+
+(deftest set-isolated-origin-test
+  (mt/with-temporary-setting-values [site-url        "http://localhost:4000"
+                                     isolated-origin nil]
+    (is (nil? (mt/user-http-request :rasta :put 204 "testing/isolated-origin" {:value "http://127.0.0.1:4000"})))
+    (is (= "http://127.0.0.1:4000" (server.settings/isolated-origin)))
+    (testing "a nil value unsets it"
+      (is (nil? (mt/user-http-request :rasta :put 204 "testing/isolated-origin" {:value nil})))
+      (is (nil? (server.settings/isolated-origin))))))

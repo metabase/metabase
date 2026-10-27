@@ -226,3 +226,14 @@
       (mt/with-dynamic-fn-redefs [http/get (fn [_ _] (throw (Exception. "Network error")))]
         (req.util/geocode-ip-addresses ["8.8.8.8"])
         (is (= 1.0 (mt/metric-value system :metabase-geocoding/errors)))))))
+
+(deftest ^:parallel cookie-header-entries-test
+  (testing "the entries of the `Cookie` header in order, split on `;` only"
+    (is (= [["a" "1"] ["b" "x,y=2"] ["a" "3"]]
+           (req.util/cookie-header-entries {:headers {"cookie" "a=1; b=x,y=2;a=3"}}))))
+  (testing "an entry without `=` is a cookie with no name"
+    (is (= [["a" "1"] ["" "metabase.SESSION"]]
+           (req.util/cookie-header-entries {:headers {"cookie" "a=1; metabase.SESSION"}}))))
+  (testing "nil without a header, empty without entries"
+    (is (nil? (req.util/cookie-header-entries {:headers {}})))
+    (is (= [] (req.util/cookie-header-entries {:headers {"cookie" " ; "}})))))

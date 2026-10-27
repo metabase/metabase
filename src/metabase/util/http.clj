@@ -241,6 +241,11 @@
                 :else s)]
         (not-empty (str/trim s))))))
 
+(defn host-name
+  "The lower-case host name in `s`, as [[->hostname]] reads it, for comparing host names."
+  [s]
+  (some-> (->hostname s) lower-case-en))
+
 (defn ip-literal?
   "Whether `host` is an IP address written out rather than a name that would have to be resolved. Deciding this takes
   no DNS lookup, which is what makes it safe to ask of a value that may not be a host at all."
