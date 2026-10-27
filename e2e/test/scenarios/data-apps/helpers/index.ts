@@ -2,7 +2,7 @@ import {
   ORDERS_COUNT_QUESTION_ENTITY_ID,
   ORDERS_QUESTION_ENTITY_ID,
 } from "e2e/support/cypress_sample_instance_data";
-import type { DataAppTestEnv } from "e2e/support/helpers";
+import { type DataAppTestEnv, updateSetting } from "e2e/support/helpers";
 
 /** The `testEnv` the fixture's Overview page reads (Orders count + question). */
 export const DATA_APP_TEST_ENV: DataAppTestEnv = {
@@ -13,3 +13,36 @@ export const DATA_APP_TEST_ENV: DataAppTestEnv = {
     source: { type: "card", entityId: ORDERS_QUESTION_ENTITY_ID },
   },
 };
+
+/**
+ * The address a spec serves data apps from: the backend under its other loopback
+ * name. The session cookie is host-only, so it doesn't reach this address.
+ */
+export function getIsolatedOrigin(): string {
+  const url = new URL(getSiteUrl());
+  url.hostname = url.hostname === "127.0.0.1" ? "localhost" : "127.0.0.1";
+  return url.origin;
+}
+
+/** The instance's own address, which `enableIsolatedOrigin` makes the site URL. */
+export function getSiteUrl(): string {
+  const baseUrl = Cypress.config("baseUrl");
+  if (!baseUrl) {
+    throw new Error(
+      "baseUrl must be set to serve data apps from an isolated origin",
+    );
+  }
+  return new URL(baseUrl).origin;
+}
+
+/**
+ * Serves data apps from `getIsolatedOrigin()` until the next snapshot restore.
+ * `MB_ISOLATED_ORIGIN` is environment-only, and every spec shares one backend, so a
+ * testing endpoint sets it.
+ */
+export function enableIsolatedOrigin() {
+  updateSetting("site-url", getSiteUrl());
+  return cy.request("PUT", "/api/testing/isolated-origin", {
+    value: getIsolatedOrigin(),
+  });
+}
