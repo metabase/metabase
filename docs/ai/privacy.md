@@ -21,11 +21,15 @@ When using the Metabase AI service, the data we send includes:
 
 How Metabase the company processes this data is covered by your agreement with Metabase. Only Metabase Cloud customers have access to the Metabase AI Service.
 
-## Metabot sends query results to the AI provider when it runs queries
+## When query execution is on, Metabot sends query results to the AI provider
 
 When query execution is on, Metabot can run queries and read their results, so it can answer with actual values from your data. Metabase sends those results to the AI provider.
 
-Metabot can run queries on your behalf, like the queries it builds or the question you're looking at. These can include SQL queries.
+Metabot can run queries on your behalf, including ones it wrote itself, the one you're looking at, and saved questions you can access.
+
+These can be query builder or SQL queries, but admins can disable SQL for Metabot.
+
+Query execution is on by default. Admins can turn it off in [AI settings](./settings.md#allow-metabot-to-read-query-results).
 
 For each query Metabot runs, Metabase sends part of the result to the AI provider, like the column names and a limited number of rows. Metabot can run many queries in one conversation.
 
@@ -42,14 +46,6 @@ Metabase stores the query results that Metabot reads as part of the conversation
 On Pro and Enterprise plans, admins can review stored conversations, including query results, in [AI usage auditing](./usage-auditing.md).
 
 By default, your Metabase instance keeps stored conversations for a limited time. On self-hosted Metabase, you can change how long with [`MB_AI_USAGE_MAX_RETENTION_DAYS`](../configuring-metabase/environment-variables.md#mb_ai_usage_max_retention_days).
-
-### Turn query execution on or off
-
-Query execution is on by default. Admins can turn it off in [AI settings](./settings.md#query-execution).
-
-When query execution is off, Metabot doesn't run queries to read their results, but it can still build queries and charts for you. Other features on this page, like chart analysis, can still send values from your data.
-
-Metabot in Slack doesn't read query results, regardless of this setting.
 
 ## Data sent to your own AI provider
 
