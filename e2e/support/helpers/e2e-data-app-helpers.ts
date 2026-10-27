@@ -314,8 +314,8 @@ const isSyncedDataApp = (app: DataApp): app is SyncedDataApp =>
  * the repository's `collections/data_apps/` what the host app holds, and
  * commits them, as an author does. The bundle is a placeholder that every pull
  * loads again, so a spec uploads the built one with `uploadDataAppBundle` after
- * its last pull. Pass `initializeRepo: false` to
- * write into the repository an earlier call set up.
+ * its last pull. Pass `initializeRepo: false` to write into the repository an
+ * earlier call set up.
  */
 function commitDataApp(
   appRoot: string,

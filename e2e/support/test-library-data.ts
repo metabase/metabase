@@ -39,8 +39,10 @@ export function createLibraryWithItems() {
 }
 
 export function createLibraryWithTable(): Cypress.Chainable<LibraryCollectionIds> {
-  return H.createLibrary().then((ids) => {
-    H.publishTables({ table_ids: [ORDERS_ID] });
-    return ids;
-  });
+  return H.createLibrary().then((ids) =>
+    H.publishTables({
+      table_ids: [ORDERS_ID],
+      collection_id: ids.dataCollectionId,
+    }).then(() => ids),
+  );
 }
