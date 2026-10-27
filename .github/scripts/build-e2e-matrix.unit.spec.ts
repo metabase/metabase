@@ -1,24 +1,31 @@
-const { buildMatrix } = require("./build-e2e-matrix");
+import { type Timings, buildMatrix } from "./build-e2e-matrix";
 
 const MINUTE_MS = 60_000;
 
-const specs = (count) =>
+const specs = (count: number) =>
   Array.from({ length: count }, (_, i) => `e2e/test/scenarios/${i}.cy.spec.ts`);
 
 // Gives every spec from specs(count) the same duration, in the timings.json path format.
-const timingsFor = (count, minutesPerSpec) => ({
+const timingsFor = (count: number, minutesPerSpec: number): Timings => ({
   durations: Array.from({ length: count }, (_, i) => ({
     spec: `../test/scenarios/${i}.cy.spec.ts`,
     duration: minutesPerSpec * MINUTE_MS,
   })),
 });
 
+type SetupOpts = {
+  specFiles?: string[] | null;
+  maxJobs?: number;
+  timings?: Timings;
+  targetRunnerMinutes?: number;
+};
+
 const setup = ({
   specFiles = null,
   maxJobs = 50,
   timings = timingsFor(500, 1),
   targetRunnerMinutes = 8,
-} = {}) =>
+}: SetupOpts = {}) =>
   buildMatrix({
     java: 25,
     defaultRunner: "runner",
@@ -89,18 +96,32 @@ describe("buildMatrix", () => {
     expect(result.regularChunks).toBe(6);
   });
 
-  it("should ignore selected specs without recorded timings", () => {
+  it("should count selected specs without recorded timings as the average duration", () => {
+    // Recorded durations of 1 and 3 minutes average to 2 minutes.
+    const timings: Timings = {
+      durations: [
+        { spec: "../test/scenarios/short.cy.spec.ts", duration: MINUTE_MS },
+        { spec: "../test/scenarios/long.cy.spec.ts", duration: 3 * MINUTE_MS },
+      ],
+    };
+    const newSpecs = Array.from(
+      { length: 5 },
+      (_, i) => `e2e/test/scenarios/new-${i}.cy.spec.ts`,
+    );
+
     const result = setup({
-      specFiles: [...specs(16), "e2e/test/scenarios/new.cy.spec.ts"],
-      timings: timingsFor(16, 1),
+      specFiles: ["e2e/test/scenarios/short.cy.spec.ts", ...newSpecs],
+      timings,
+      targetRunnerMinutes: 1,
     });
 
-    expect(result.regularChunks).toBe(2);
+    expect(result.regularChunks).toBe(11);
   });
 
-  it("should keep one regular job when no selected spec has recorded timings", () => {
+  it("should keep one regular job when there are no recorded timings", () => {
     const result = setup({
       specFiles: ["e2e/test/scenarios/new.cy.spec.ts"],
+      timings: { durations: [] },
     });
 
     expect(result.regularChunks).toBe(1);

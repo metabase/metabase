@@ -43,7 +43,6 @@ jobs:
             e2e/support/timings.json
           sparse-checkout-cone-mode: false
       - name: Prepare Node + Bun environment
-        if: ${{ inputs.test-plan-artifact-id != '' }}
         uses: ./.github/actions/prepare-node-bun
       - name: Prepare E2E spec selection
         id: selection
@@ -53,29 +52,11 @@ jobs:
           suite: e2e
           test-plan-artifact-id: ${{ inputs.test-plan-artifact-id }}
       - name: Build e2e matrix
-        uses: actions/github-script@v9
         id: matrix
         env:
-          chunks: ${{ inputs.chunks }}
+          JAVA_VERSION: 25
+          DEFAULT_RUNNER: ${{ vars.DEFAULT_RUNNER_KEY }}
+          E2E_MAX_JOBS: ${{ inputs.chunks }}
           E2E_SPEC_PATHS_FILE: ${{ steps.selection.outputs.paths-file }}
           E2E_TARGET_RUNNER_MINUTES: ${{ vars.E2E_TARGET_RUNNER_MINUTES || 8 }}
-        with:
-          script: | # js
-            const { buildMatrix } = require('${{ github.workspace }}/.github/scripts/build-e2e-matrix.js');
-            const { readSpecPaths } = require('${{ github.workspace }}/e2e/runner/read-spec-paths.js');
-            const timings = require('${{ github.workspace }}/e2e/support/timings.json');
-            const { config, regularChunks } = buildMatrix({
-              java: 25,
-              defaultRunner: "${{ vars.DEFAULT_RUNNER_KEY }}",
-              specFiles: readSpecPaths(process.env.E2E_SPEC_PATHS_FILE),
-              maxJobs: Number(process.env.chunks),
-              timings,
-              targetRunnerMinutes: Number(process.env.E2E_TARGET_RUNNER_MINUTES),
-            });
-
-            core.setOutput("regularChunks", JSON.stringify(regularChunks));
-            core.setOutput("config", JSON.stringify({ include: config }));
-            core.setOutput("hasTests", config.length > 0);
-
-            console.log({ regularChunks });
-            console.log("matrix config", config);
+        run: bun .github/scripts/build-e2e-matrix.ts
