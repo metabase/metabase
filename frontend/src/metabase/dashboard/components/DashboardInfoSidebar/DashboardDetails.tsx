@@ -4,15 +4,18 @@ import { c, t } from "ttag";
 
 import { skipToken, useGetUserQuery } from "metabase/api";
 import { DateTime } from "metabase/common/components/DateTime";
+import {
+  DetailsRow,
+  DetailsTable,
+  SidebarSection,
+} from "metabase/common/components/DetailSidebar";
 import { Link } from "metabase/common/components/Link";
-import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import Styles from "metabase/css/core/index.css";
-import { Box, FixedSizeIcon, Flex, Text } from "metabase/ui";
+import { FixedSizeIcon, Group, Stack, Text } from "metabase/ui";
 import { collection as collectionUrl } from "metabase/urls";
 import { getUserName } from "metabase/utils/user";
 import type { Dashboard } from "metabase-types/api";
 
-import SidebarStyles from "./DashboardInfoSidebar.module.css";
 import { DashboardPublicLinkPopover } from "./DashboardPublicLinkPopover/DashboardPublicLinkPopover";
 
 export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
@@ -23,66 +26,59 @@ export const DashboardDetails = ({ dashboard }: { dashboard: Dashboard }) => {
   const { data: creator } = useGetUserQuery(dashboard.creator_id ?? skipToken);
 
   return (
-    <>
-      <SidesheetCardSection title={t`Creator and last editor`}>
+    <SidebarSection title={t`Details`}>
+      <DetailsTable>
         {creator && (
-          <Flex gap="sm" align="top">
-            <FixedSizeIcon name="ai" className={SidebarStyles.IconMargin} />
-            <Text>
-              {c(
-                "Describes when a dashboard was created. {0} is a date/time and {1} is a person's name",
-              ).jt`${(
-                <DateTime unit="day" value={createdAt} key="date" />
-              )} by ${getUserName(creator)}`}
-            </Text>
-          </Flex>
-        )}
-
-        {lastEditInfo && (
-          <Flex gap="sm" align="top">
-            <FixedSizeIcon name="pencil" className={SidebarStyles.IconMargin} />
-            <Text>
-              {c(
-                "Describes when a dashboard was last edited. {0} is a date/time and {1} is a person's name",
-              ).jt`${(
-                <DateTime
-                  unit="day"
-                  value={lastEditInfo.timestamp}
-                  key="date"
-                />
-              )} by ${getUserName(lastEditInfo)}`}
-            </Text>
-          </Flex>
-        )}
-      </SidesheetCardSection>
-      {dashboard.collection && (
-        <SidesheetCardSection
-          title={c(
-            "This is a heading that appears above the name of a collection - a collection that a dashboard is saved in. Feel free to translate this heading as though it said 'Saved in collection', if you think that would make more sense in your language.",
-          ).t`Saved in`}
-        >
-          <Flex gap="sm" align="top">
-            <FixedSizeIcon
-              name="folder"
-              className={SidebarStyles.IconMargin}
-              c="core-brand"
-            />
-            <div>
-              <Text>
-                <Link to={collectionUrl(dashboard.collection)} variant="brand">
-                  {dashboard.collection?.name}
-                </Link>
+          <DetailsRow
+            label={t`Created`}
+            value={
+              <Text c="text-primary">
+                {c(
+                  "Describes when a dashboard was created. {0} is a date/time and {1} is a person's name",
+                ).jt`${(
+                  <DateTime unit="day" value={createdAt} key="date" />
+                )} by ${getUserName(creator)}`}
               </Text>
-            </div>
-          </Flex>
-        </SidesheetCardSection>
-      )}
-      <SharingDisplay dashboard={dashboard} />
-    </>
+            }
+          />
+        )}
+        {lastEditInfo && (
+          <DetailsRow
+            label={t`Last edited`}
+            value={
+              <Text c="text-primary">
+                {c(
+                  "Describes when a dashboard was last edited. {0} is a date/time and {1} is a person's name",
+                ).jt`${(
+                  <DateTime
+                    unit="day"
+                    value={lastEditInfo.timestamp}
+                    key="date"
+                  />
+                )} by ${getUserName(lastEditInfo)}`}
+              </Text>
+            }
+          />
+        )}
+        {dashboard.collection && (
+          <DetailsRow
+            label={c(
+              "This is a heading that appears above the name of a collection - a collection that a dashboard is saved in. Feel free to translate this heading as though it said 'Saved in collection', if you think that would make more sense in your language.",
+            ).t`Saved in`}
+            value={
+              <Link to={collectionUrl(dashboard.collection)} variant="brand">
+                {dashboard.collection.name}
+              </Link>
+            }
+          />
+        )}
+        <VisibilityRow dashboard={dashboard} />
+      </DetailsTable>
+    </SidebarSection>
   );
 };
 
-function SharingDisplay({ dashboard }: { dashboard: Dashboard }) {
+function VisibilityRow({ dashboard }: { dashboard: Dashboard }) {
   const publicUUID = dashboard.public_uuid;
   const embeddingEnabled = dashboard.enable_embedding;
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -92,38 +88,30 @@ function SharingDisplay({ dashboard }: { dashboard: Dashboard }) {
   }
 
   return (
-    <SidesheetCardSection title={t`Visibility`}>
-      {publicUUID && (
-        <Flex gap="sm" align="center">
-          <FixedSizeIcon name="globe" c="core-brand" />
-          <Text>{t`Shared publicly`}</Text>
-
-          <DashboardPublicLinkPopover
-            target={
-              <FixedSizeIcon
-                name="link"
-                onClick={() => setIsPopoverOpen((prev) => !prev)}
-                className={cx(
-                  Styles.cursorPointer,
-                  Styles.textBrandHover,
-                  SidebarStyles.IconMargin,
-                )}
+    <DetailsRow
+      label={t`Visibility`}
+      value={
+        <Stack gap="xs">
+          {publicUUID && (
+            <Group gap="sm" wrap="nowrap">
+              <Text c="text-primary">{t`Shared publicly`}</Text>
+              <DashboardPublicLinkPopover
+                target={
+                  <FixedSizeIcon
+                    name="link"
+                    onClick={() => setIsPopoverOpen((prev) => !prev)}
+                    className={cx(Styles.cursorPointer, Styles.textBrandHover)}
+                  />
+                }
+                isOpen={isPopoverOpen}
+                onClose={() => setIsPopoverOpen(false)}
+                dashboard={dashboard}
               />
-            }
-            isOpen={isPopoverOpen}
-            onClose={() => setIsPopoverOpen(false)}
-            dashboard={dashboard}
-          />
-        </Flex>
-      )}
-      {embeddingEnabled && (
-        <Flex gap="sm" align="center">
-          <Box className={SidebarStyles.BrandCircle}>
-            <FixedSizeIcon name="embed" size="14px" />
-          </Box>
-          <Text>{t`Embedded`}</Text>
-        </Flex>
-      )}
-    </SidesheetCardSection>
+            </Group>
+          )}
+          {embeddingEnabled && <Text c="text-primary">{t`Embedded`}</Text>}
+        </Stack>
+      }
+    />
   );
 }

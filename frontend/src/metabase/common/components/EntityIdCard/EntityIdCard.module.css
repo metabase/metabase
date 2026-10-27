@@ -32,3 +32,17 @@
     outline: 2px solid var(--mb-color-input-focus);
   }
 }
+
+.Footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--mb-color-border-neutral);
+}
+
+/* Labels in one column, IDs left-aligned in the next */
+.EntityIdGrid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  gap: var(--mantine-spacing-sm) var(--mantine-spacing-xl);
+  justify-items: start;
+}

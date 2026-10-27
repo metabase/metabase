@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { DetailsTable } from "metabase/common/components/DetailSidebar";
 import { Link } from "metabase/common/components/Link";
 import { useSelector } from "metabase/redux";
-import { Flex, Icon, Stack, Text } from "metabase/ui";
+import { Flex, Icon, Text } from "metabase/ui";
 
 import { getQuestionWithoutComposing } from "../../../../../store/selectors";
 
@@ -29,21 +30,25 @@ export const TablesLinkedToQuestion = () => {
   }
 
   return (
-    <Stack gap="sm">
+    <DetailsTable>
       {!filtered.length && (
-        <Text lh={1} color="text-secondary">
+        <Text px="lg" py="sm" c="text-secondary">
           {question.type() === "model"
             ? t`This model is not linked to any tables.`
             : t`This question is not linked to any tables.`}
         </Text>
       )}
       {filtered.map(({ href, name, iconProps }) => (
-        <Link to={href} key={href} variant="brand">
-          <Flex gap="sm" lh="1.25rem">
-            {iconProps ? <Icon mt={2} c="text-primary" {...iconProps} /> : null}
-            {name}
-          </Flex>
-        </Link>
+        <Flex key={href} px="lg" py="sm">
+          <Link to={href} variant="brand">
+            <Flex gap="sm" lh="1.25rem">
+              {iconProps ? (
+                <Icon mt={2} c="text-primary" {...iconProps} />
+              ) : null}
+              {name}
+            </Flex>
+          </Link>
+        </Flex>
       ))}
       <ToggleFullList
         isExpanded={isExpanded}
@@ -51,6 +56,6 @@ export const TablesLinkedToQuestion = () => {
         sliceLength={filtered.length}
         fullLength={joinedTablesWithIcons.length}
       />
-    </Stack>
+    </DetailsTable>
   );
 };

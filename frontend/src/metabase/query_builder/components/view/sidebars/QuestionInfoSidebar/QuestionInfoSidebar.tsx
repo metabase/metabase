@@ -1,25 +1,22 @@
 import { useHotkeys } from "@mantine/hooks";
 import { useMemo, useState } from "react";
 import { useMount } from "react-use";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/common/collections/utils";
-import { EntityIdCard } from "metabase/common/components/EntityIdCard";
-import { Link } from "metabase/common/components/Link";
 import {
-  SIDESHEET_HORIZONTAL_PADDING,
-  Sidesheet,
-  SidesheetCard,
-  SidesheetCardTitle,
-  SidesheetTabPanelContainer,
-} from "metabase/common/components/Sidesheet";
+  SIDEBAR_WIDTH,
+  SidebarSection,
+} from "metabase/common/components/DetailSidebar";
+import { EntityIdFooter } from "metabase/common/components/EntityIdCard";
+import { Link } from "metabase/common/components/Link";
+import { Sidesheet } from "metabase/common/components/Sidesheet";
 import { SidesheetEditableDescription } from "metabase/common/components/Sidesheet/components/SidesheetEditableDescription";
-import SidesheetStyles from "metabase/common/components/Sidesheet/sidesheet.module.css";
-import { InsightsUpsellTab } from "metabase/common/components/upsells/InsightsUpsellTab";
-import { InsightsTabOrLink } from "metabase/common/components/upsells/components/InsightsTabOrLink";
+import { InsightsAction } from "metabase/common/components/upsells/components/InsightsAction";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { useDispatch } from "metabase/redux";
-import { Flex, Icon, Stack, Tabs } from "metabase/ui";
+import { ActionIcon, Box, Icon, Stack, Tooltip } from "metabase/ui";
 import * as Urls from "metabase/urls";
 import type Question from "metabase-lib/v1/Question";
 
@@ -27,8 +24,8 @@ import { onCloseQuestionInfo } from "../../../../store/actions";
 import { QuestionActivityTimeline } from "../../../QuestionActivityTimeline";
 
 import { QuestionDetails } from "./QuestionDetails";
-import { QuestionRelationshipsTab } from "./components/QuestionRelationshipsTab";
-import { SidesheetCardWithFields } from "./components/SidesheetCardWithFields";
+import { QuestionFieldsSection } from "./components/QuestionFieldsSection";
+import { QuestionRelationships } from "./components/QuestionRelationships";
 
 interface QuestionInfoSidebarProps {
   question: Question;
@@ -69,71 +66,75 @@ export const QuestionInfoSidebar = ({
 
   return (
     <Sidesheet
-      title={t`Info`}
+      title={
+        <Box component="span" fz="h3" lh="h3">
+          {t`Info`}
+        </Box>
+      }
       onClose={handleClose}
       isOpen={isOpen}
-      removeBodyPadding
       data-testid="question-info-sidebar"
-      size="md"
-    >
-      <Tabs
-        defaultValue="overview"
-        className={SidesheetStyles.FlexScrollContainer}
-      >
-        <Tabs.List mx={SIDESHEET_HORIZONTAL_PADDING}>
-          <Tabs.Tab value="overview">{t`Overview`}</Tabs.Tab>
-          {!isIAQuestion && <Tabs.Tab value="history">{t`History`}</Tabs.Tab>}
-          <Tabs.Tab value="relationships">{t`Relationships`}</Tabs.Tab>
+      size={SIDEBAR_WIDTH}
+      actions={
+        <>
           {question.type() === "model" && !question.isArchived() && (
-            <Link to={Urls.modelDetail(question.card())}>
-              <Flex gap="xxs" className={SidesheetStyles.TabSibling}>
-                <Icon name="external" />
-                {t`Actions`}
-              </Flex>
-            </Link>
+            <Tooltip label={t`Actions`}>
+              <ActionIcon
+                component={Link}
+                to={Urls.modelDetail(question.card())}
+                variant="subtle"
+                size="md"
+                c="text-primary"
+                aria-label={t`Actions`}
+              >
+                <Icon name="bolt" />
+              </ActionIcon>
+            </Tooltip>
           )}
-          <InsightsTabOrLink question={question} />
-        </Tabs.List>
-
-        <SidesheetTabPanelContainer>
-          <Tabs.Panel value="overview">
-            <Stack gap="xl">
-              <SidesheetCard pb="lg">
-                <Stack gap={0}>
-                  <SidesheetCardTitle>{t`Description`}</SidesheetCardTitle>
-
-                  <Stack gap="sm">
-                    <SidesheetEditableDescription
-                      description={description}
-                      onChange={handleSave}
-                      canWrite={canWrite}
-                    />
-                    <PLUGIN_MODERATION.ModerationReviewTextForQuestion
-                      question={question}
-                    />
-                  </Stack>
-                </Stack>
-              </SidesheetCard>
-              <SidesheetCard>
-                <QuestionDetails question={question} />
-              </SidesheetCard>
-              <SidesheetCardWithFields question={question} />
-              <EntityIdCard entityId={question._card.entity_id} />
-            </Stack>
-          </Tabs.Panel>
-          <Tabs.Panel value="relationships">
-            <QuestionRelationshipsTab question={question} />
-          </Tabs.Panel>
-          <Tabs.Panel value="history">
-            <SidesheetCard>
+          <InsightsAction question={question} model={question.type()} />
+        </>
+      }
+      footer={
+        <EntityIdFooter
+          items={[
+            {
+              label: getEntityLabel(question),
+              entityId: question._card.entity_id,
+            },
+          ]}
+        />
+      }
+    >
+      <Stack gap="xxl">
+        <SidebarSection title={t`Description`} gap={0}>
+          <Stack gap="sm">
+            <SidesheetEditableDescription
+              description={description}
+              onChange={handleSave}
+              canWrite={canWrite}
+            />
+            <PLUGIN_MODERATION.ModerationReviewTextForQuestion
+              question={question}
+            />
+          </Stack>
+        </SidebarSection>
+        <QuestionDetails question={question} />
+        <QuestionFieldsSection question={question} />
+        <QuestionRelationships question={question} />
+        {!isIAQuestion && (
+          <SidebarSection title={t`History`}>
+            <Box bd="1px solid var(--mb-color-border-neutral)" bdrs="lg" p="sm">
               <QuestionActivityTimeline question={question} />
-            </SidesheetCard>
-          </Tabs.Panel>
-          <Tabs.Panel value="insights">
-            <InsightsUpsellTab model={question.type()} />
-          </Tabs.Panel>
-        </SidesheetTabPanelContainer>
-      </Tabs>
+            </Box>
+          </SidebarSection>
+        )}
+      </Stack>
     </Sidesheet>
   );
 };
+
+const getEntityLabel = (question: Question) =>
+  match(question.type())
+    .with("model", () => t`This model`)
+    .with("metric", () => t`This metric`)
+    .otherwise(() => t`This question`);

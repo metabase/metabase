@@ -2,8 +2,8 @@ import { Fragment, useMemo } from "react";
 import { c } from "ttag";
 
 import { skipToken, useListDatabaseSchemasQuery } from "metabase/api";
+import { DetailsRow } from "metabase/common/components/DetailSidebar";
 import { Link } from "metabase/common/components/Link";
-import { SidesheetCardSection } from "metabase/common/components/Sidesheet";
 import { useGetIcon } from "metabase/hooks/use-icon";
 import { useSelector } from "metabase/redux";
 import { Flex, FixedSizeIcon as Icon } from "metabase/ui";
@@ -51,22 +51,25 @@ export const QuestionSources = () => {
   ).t`Based on`;
 
   return (
-    <SidesheetCardSection title={title}>
-      <Flex gap="sm" align="flex-start">
-        {sourcesWithIcons.map(({ href, name, iconProps }, index) => (
-          <Fragment key={`${href}-${name}`}>
-            <Link to={href} variant="brand">
-              <Flex gap="sm" lh="1.25rem" maw="20rem" align="center">
-                {iconProps ? <Icon {...iconProps} /> : null}
-                {name}
-              </Flex>
-            </Link>
-            {index < sourcesWithIcons.length - 1 && (
-              <Flex lh="1.25rem">{"/"}</Flex>
-            )}
-          </Fragment>
-        ))}
-      </Flex>
-    </SidesheetCardSection>
+    <DetailsRow
+      label={title}
+      value={
+        <Flex gap="sm" align="flex-start" wrap="wrap">
+          {sourcesWithIcons.map(({ href, name, iconProps }, index) => (
+            <Fragment key={`${href}-${name}`}>
+              <Link to={href} variant="brand">
+                <Flex gap="sm" lh="1.25rem" maw="20rem" align="center">
+                  {iconProps ? <Icon {...iconProps} /> : null}
+                  {name}
+                </Flex>
+              </Link>
+              {index < sourcesWithIcons.length - 1 && (
+                <Flex lh="1.25rem">{"/"}</Flex>
+              )}
+            </Fragment>
+          ))}
+        </Flex>
+      }
+    />
   );
 };

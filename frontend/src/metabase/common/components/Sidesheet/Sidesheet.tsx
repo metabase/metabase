@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 import { uniqueId } from "underscore";
 
-import { Modal, type ModalOverlayProps, Stack } from "metabase/ui";
+import { Group, Modal, type ModalOverlayProps, Stack } from "metabase/ui";
 
 import Styles from "./sidesheet.module.css";
 
@@ -15,7 +15,8 @@ interface SidesheetProps {
   title?: React.ReactNode;
   isOpen: boolean;
   onClose: () => void;
-  size?: SidesheetSize;
+  /** a preset, or a width in pixels */
+  size?: SidesheetSize | number;
   children: React.ReactNode;
   /** use this if you want to enable interior scrolling of tab panels */
   removeBodyPadding?: boolean;
@@ -23,6 +24,10 @@ interface SidesheetProps {
   overlayProps?: ModalOverlayProps;
   closeOnEscape?: boolean;
   offset?: boolean;
+  /** pinned below the scrolling body */
+  footer?: React.ReactNode;
+  /** icon actions shown before the close button */
+  actions?: React.ReactNode;
 }
 
 const sizes: Record<SidesheetSize, string> = {
@@ -57,6 +62,8 @@ export function Sidesheet({
   overlayProps,
   closeOnEscape = true,
   offset,
+  footer,
+  actions,
 }: SidesheetProps) {
   const titleId = useMemo(() => uniqueId("sidesheet-title"), []);
 
@@ -101,7 +108,7 @@ export function Sidesheet({
       )}
       <Modal.Content
         px={0}
-        w={sizes[size]}
+        w={typeof size === "number" ? size : sizes[size]}
         pos="fixed"
         bd={0}
         display="flex"
@@ -124,13 +131,16 @@ export function Sidesheet({
               {title}
             </Modal.Title>
           )}
-          <Modal.CloseButton
-            aria-label={t`Close`}
-            w="2rem"
-            h="2rem"
-            bdrs="xs"
-            className={Styles.SidesheetCloseButton}
-          />
+          <Group gap="xs" ml="auto" wrap="nowrap">
+            {actions}
+            <Modal.CloseButton
+              aria-label={t`Close`}
+              w="2rem"
+              h="2rem"
+              bdrs="xs"
+              className={Styles.SidesheetCloseButton}
+            />
+          </Group>
         </Modal.Header>
         <Modal.Body
           p={0}
@@ -146,11 +156,13 @@ export function Sidesheet({
             px={removeBodyPadding ? 0 : SIDESHEET_HORIZONTAL_PADDING}
             pb={removeBodyPadding ? 0 : "xl"}
             mt={title ? 0 : "lg"}
-            h="100%"
+            flex="1 1 0"
+            mih={0}
             className={Styles.OverflowAuto}
           >
             {children}
           </Stack>
+          {footer}
         </Modal.Body>
       </Modal.Content>
     </Modal.Root>

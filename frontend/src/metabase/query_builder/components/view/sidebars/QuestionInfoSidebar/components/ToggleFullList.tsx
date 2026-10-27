@@ -20,7 +20,7 @@ export const ToggleFullList = ({
   }
 
   return (
-    <Group gap="sm" mt="sm" lh={1}>
+    <Group gap="sm" px="lg" py="sm" lh={1}>
       {
         <Text c="text-disabled" lh={1}>
           {isExpanded
