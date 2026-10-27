@@ -39,7 +39,7 @@ Your repository can't change users, groups, or permissions, because those [don't
 ### Remote Sync has two modes for different roles
 
 - **Read-write mode**: Create and edit content. You can [push](#pushing-changes-to-git) and [pull](#pulling-changes-from-git) changes to and from your repository. Multiple Metabase instances can connect in Read-write mode, each working on [different branches](#branch-management).
-- **Read-only mode**: Read-only instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. In Read-only mode, you also can't edit transforms (transforms are always read-only in this mode—see [Configure transforms syncing](#8-configure-transforms-syncing-optional)), can't edit Library content, can't create segments or measures on published tables, and can't create, edit, or delete [data apps](../data-apps/manage.md#what-you-can-change-in-read-only-mode). You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes.
+- **Read-only mode**: Read-only instances only [pull](#pulling-changes-from-git) changes (typically from your main branch) and don't allow direct editing of synced content. In Read-only mode, you also can't edit transforms (transforms are always read-only in this mode—see [Configure transforms syncing](#8-configure-transforms-syncing-optional)), can't edit Library content, can't create segments or measures on published tables, and can't create, edit, or delete [data apps](../data-apps/build.md#ship-the-app-to-production-with-remote-sync). You can set up [auto-sync](#pulling-changes-automatically) to automatically pull approved changes every five minutes.
 
 ### You choose what to sync
 
