@@ -9,6 +9,8 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
+
+   [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
    [toucan2.core :as t2]))
@@ -670,6 +672,24 @@
        (testing "and is refused by its ID"
          (is (= (format "A data app can read only databases with tables published to the Library, not the database %d." (:id db))
                 (mt/user-http-request :crowberto :get 400 (format "database/%d" (:id db)) as-data-app))))))))
+
+(deftest search-finds-only-published-tables-test
+  (search.tu/with-appdb-search-and-legacy-search
+    (search.tu/with-sync-search-indexing
+      (do-with-app-collection
+       (fn [_collection-id]
+         (mt/with-premium-features #{:data-apps :library}
+           (data-apps.tu/with-published-tables! [(mt/id :venues)]
+             (testing "a data app finds only published tables, whatever it asks for"
+               (doseq [params [[] [:models "card"] [:models "table"] [:models "table" :ids (mt/id :checkins)]]]
+                 (let [results (:data (apply mt/user-http-request :crowberto :get 200 "search" as-data-app params))]
+                   (is (every? #(and (= "table" (:model %)) (= (mt/id :venues) (:id %))) results) (pr-str params)))))
+             (testing "it finds the published table"
+               (is (= [(mt/id :venues)]
+                      (map :id (:data (mt/user-http-request :crowberto :get 200 "search" as-data-app :q "venues"))))))
+             (testing "a request that is not a data app's finds unpublished tables too"
+               (is (some #(= (mt/id :checkins) (:id %))
+                         (:data (mt/user-http-request :crowberto :get 200 "search" :models "table" :q "checkins"))))))))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"

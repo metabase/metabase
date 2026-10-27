@@ -31,6 +31,7 @@
   ineligible-dependencies
   instance-analytics-collection-type
   library-collection
+  library-data-collection
   library-collection-type
   library-collection-types
   library-dashboards-collection-type

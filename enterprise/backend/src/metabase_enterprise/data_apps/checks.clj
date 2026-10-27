@@ -198,3 +198,9 @@
     (throw (data-app-error (tru "A data app can read only databases with tables published to the Library, not the database {0}."
                                 (str database-id)))))
   nil)
+
+(defenterprise-schema searchable-collection-id :- [:maybe ::lib.schema.id/collection]
+  "The Library's Data collection, or `data-app`'s own collection, which holds no tables, when there is no Library."
+  :feature :data-apps
+  [data-app :- ::data-apps.schema/data-app]
+  (or (:id (collections/library-data-collection)) (:resource_collection_id data-app)))
