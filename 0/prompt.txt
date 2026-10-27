@@ -1,0 +1,1 @@
+How are default.cy.snap.js and qa-db.cy.snap.js run before e2e specs?
