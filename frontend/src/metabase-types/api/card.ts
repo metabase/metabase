@@ -697,7 +697,6 @@ export interface UpdateCardRequest {
   collection_position?: number | null;
   result_metadata?: Field[] | null;
   cache_ttl?: number;
-  collection_preview?: boolean;
   delete_old_dashcards?: boolean;
 }
 
@@ -723,7 +722,6 @@ export type InvalidCard = Pick<
   | "creator"
 > & {
   collection: CollectionEssentials;
-  collection_preview: boolean;
   entity_id: string;
   errors: CardError[];
   display: CardDisplayType;
@@ -748,7 +746,6 @@ export type StoredResultSort =
 export type CardQueryRequest = {
   cardId: CardId;
   dashboardId?: DashboardId;
-  collection_preview?: boolean;
   ignore_cache?: boolean;
   parameters?: unknown[];
   stored_result_id?: number;
