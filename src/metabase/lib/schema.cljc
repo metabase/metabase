@@ -17,6 +17,7 @@
    [metabase.lib.schema.expression :as expression]
    [metabase.lib.schema.expression.arithmetic]
    [metabase.lib.schema.expression.conditional]
+   [metabase.lib.schema.expression.dialect]
    [metabase.lib.schema.expression.string]
    [metabase.lib.schema.expression.temporal]
    [metabase.lib.schema.expression.window]
@@ -38,6 +39,7 @@
    [metabase.util.performance :refer [every? select-keys some empty? get-in]]))
 
 (comment metabase.lib.schema.expression.arithmetic/keep-me
+         metabase.lib.schema.expression.dialect/keep-me
          metabase.lib.schema.expression.conditional/keep-me
          metabase.lib.schema.expression.string/keep-me
          metabase.lib.schema.expression.temporal/keep-me
