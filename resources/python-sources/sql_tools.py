@@ -1982,12 +1982,10 @@ def _sql_executing_function(stmt: exp.Expression):
 
 
 def _dynamic_function_call(stmt: exp.Expression) -> bool:
-    """Whether `stmt` calls a function named by Snowflake's `IDENTIFIER(...)`, as in `IDENTIFIER('f')(1)`.
-
-    The function checks above never see the name, which is a string or a variable here, so the call is refused
-    whatever it names. sqlglot sets the call's arguments, possibly none, as `expressions` only on the call form:
-    `IDENTIFIER('t')` used as a table or column name has no such arg.
-    """
+    """Whether `stmt` calls a function named by Snowflake's `IDENTIFIER(...)`, as in `IDENTIFIER('f')(1)`."""
+    # Name checks never see this name, a string or a variable, so the call is refused whatever it names.
+    # Only the call form has an `expressions` arg, which holds the call's arguments, possibly none.
+    # A table or column name such as `IDENTIFIER('t')` has no such arg.
     return any("expressions" in node.args for node in stmt.find_all(exp.DynamicIdentifier))
 
 
