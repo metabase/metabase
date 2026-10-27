@@ -1,5 +1,9 @@
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+
 import {
   setupDatabaseEndpoints,
+  setupUpdateTransformEndpoint,
   setupUsersEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen } from "__support__/ui";
@@ -63,9 +67,17 @@ function setup({
     />,
     {
       withRouter: true,
+      withUndos: true,
       initialRoute: Urls.transform(transform.id),
     },
   );
+}
+
+function getLastOwnerUpdateBody() {
+  const call = fetchMock.callHistory.lastCall("path:/api/transform/1", {
+    method: "PUT",
+  });
+  return JSON.parse(String(call?.options.body));
 }
 
 describe("TransformSettingsSection", () => {
@@ -144,5 +156,84 @@ describe("OwnerSection", () => {
       }),
     });
     expect(screen.getByText("Ownership")).toBeInTheDocument();
+  });
+
+  it("should change the owner to another user", async () => {
+    const transform = createMockTransform();
+    setupUpdateTransformEndpoint(transform.id, transform);
+    setup({ transform });
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Another User/ }),
+    );
+
+    expect(
+      await screen.findByText("Transform owner updated"),
+    ).toBeInTheDocument();
+    expect(getLastOwnerUpdateBody()).toEqual({
+      owner_email: null,
+      owner_user_id: 2,
+    });
+  });
+
+  it("should change the owner to an external email", async () => {
+    const transform = createMockTransform();
+    setupUpdateTransformEndpoint(transform.id, transform);
+    setup({ transform });
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Owner" }),
+      "external@example.com",
+    );
+    await userEvent.click(await screen.findByText("external@example.com"));
+
+    expect(
+      await screen.findByText("Transform owner updated"),
+    ).toBeInTheDocument();
+    expect(getLastOwnerUpdateBody()).toEqual({
+      owner_email: "external@example.com",
+      owner_user_id: null,
+    });
+  });
+
+  it("should clear the owner", async () => {
+    const transform = createMockTransform({
+      owner_user_id: 1,
+      owner: createMockTransformOwner({ id: 1 }),
+    });
+    setupUpdateTransformEndpoint(transform.id, transform);
+    setup({ transform });
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: /No owner/ }),
+    );
+
+    expect(
+      await screen.findByText("Transform owner updated"),
+    ).toBeInTheDocument();
+    expect(getLastOwnerUpdateBody()).toEqual({
+      owner_email: null,
+      owner_user_id: null,
+    });
+  });
+
+  it("should show an error toast when the owner update fails", async () => {
+    const transform = createMockTransform();
+    setupUpdateTransformEndpoint(transform.id, { status: 500 });
+    setup({ transform });
+
+    await userEvent.click(screen.getByRole("textbox", { name: "Owner" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Another User/ }),
+    );
+
+    expect(
+      await screen.findByText("Failed to update transform owner"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Transform owner updated"),
+    ).not.toBeInTheDocument();
   });
 });
