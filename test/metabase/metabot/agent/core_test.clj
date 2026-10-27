@@ -406,7 +406,8 @@
             (is (= :terminal-tool (:finish-reason (last parts))))))))))
 
 (deftest blank-replacement-after-edit-test
-  (mt/as-admin
+  ;; A real user, not `mt/as-admin`: the SQL tools refuse a caller without a user id.
+  (mt/with-current-user (mt/user->id :crowberto)
     (mt/with-temp [:model/Database {db-id :id} {:engine :h2}]
       (mt/with-temporary-setting-values [llm-providers llm.tu/default-connections
                                          llm-metabot-provider test-provider]
