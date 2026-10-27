@@ -26,3 +26,21 @@ export const DATA_APP_OUTDATED_ERROR_CODE = "data-app-outdated";
 
 export const getOutdatedDataAppMessage = (version: number) =>
   t`This app was built for version ${version} of data apps. Migrate it to the current version, then rebuild and sync it again.`;
+
+/**
+ * The host writes its own origin into the iframe URL hash so the iframe knows,
+ * synchronously at boot, that it runs cross-origin and which origin to trust for
+ * the handshake. The hash never reaches the server, and the iframe removes it.
+ */
+export const DATA_APP_IFRAME_BROKER_HASH_KEY = "__mb_broker";
+
+/**
+ * Next to the broker origin, the host writes the user's locale: the isolated origin serves
+ * the iframe document without a signed-in user, so the server can't pick it.
+ */
+export const DATA_APP_IFRAME_LOCALE_HASH_KEY = "__mb_locale";
+
+/** iframe to host: "my listener is installed, send me a port". */
+export const DATA_APP_BROKER_READY = "metabase.data-app.broker-ready";
+/** host to iframe: carries the `MessagePort` (in `event.ports[0]`). */
+export const DATA_APP_BROKER_INIT = "metabase.data-app.broker-init";
