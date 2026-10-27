@@ -102,7 +102,6 @@
       "include_csv": false,
       "display": "waterfall",
       "entity_id": "QRXpTscKiDPmS2Gn_TB1r",
-      "collection_preview": true,
       "visualization_settings": {
         "table.column_widths": [null, 226],
         "graph.show_values": false,

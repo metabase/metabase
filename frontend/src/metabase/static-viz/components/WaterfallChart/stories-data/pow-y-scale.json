@@ -79,7 +79,6 @@
       "include_csv": false,
       "display": "waterfall",
       "entity_id": "OGObnhVgNcuoS2BptRMdX",
-      "collection_preview": true,
       "visualization_settings": {
         "waterfall.show_total": true,
         "graph.dimensions": ["stage"],

@@ -319,7 +319,6 @@
         "graph.dimensions": ["date", "subchannel"],
         "graph.metrics": ["sum"]
       },
-      "collection_preview": true,
       "entity_id": "-x8PIhzHabtKQL-rvbbuL",
       "archived_directly": false,
       "display": "bar",

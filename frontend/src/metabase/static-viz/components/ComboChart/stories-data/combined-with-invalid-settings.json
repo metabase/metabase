@@ -379,7 +379,6 @@
       "display": "line",
       "archived_directly": false,
       "entity_id": "NnzqtOaEKRjol6vh145FA",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.dimensions": ["CREATED_AT"],
         "graph.metrics": ["count-where"]

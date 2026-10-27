@@ -25,7 +25,6 @@
         "graph.y_axis.max": 50,
         "graph.metrics": ["Y"]
       },
-      "collection_preview": true,
       "entity_id": "1gvd3f5DS1VMg5BOlBZrq",
       "archived_directly": false,
       "display": "bar",

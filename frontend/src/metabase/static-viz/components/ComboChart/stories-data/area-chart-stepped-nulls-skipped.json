@@ -100,7 +100,6 @@
       "display": "area",
       "archived_directly": false,
       "entity_id": "fQUCA_K7HdwBoxNwU4srv",
-      "collection_preview": true,
       "visualization_settings": {
         "stackable.stack_type": null,
         "graph.y_axis.auto_split": false,

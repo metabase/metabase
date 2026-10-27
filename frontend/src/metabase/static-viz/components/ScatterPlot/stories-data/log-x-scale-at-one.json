@@ -159,7 +159,6 @@
       "include_csv": false,
       "display": "scatter",
       "entity_id": "Gn3W94a7NfH7FXuUISfEa",
-      "collection_preview": true,
       "visualization_settings": {
         "graph.series_order": null,
         "graph.series_order_dimension": null,

@@ -21,7 +21,6 @@
         "graph.dimensions": ["X"],
         "graph.metrics": ["Y"]
       },
-      "collection_preview": true,
       "entity_id": "DBg238cK-X-ASFlSLei5K",
       "display": "waterfall",
       "parameter_mappings": [],
