@@ -1072,7 +1072,12 @@
     ;;   and that native SQL may itself start with `WITH`
     ;; * inside a subquery, e.g. a card referenced from a native query via `{{#123}}` or a metadata probe
     ;; * after `CREATE TABLE ... AS` and `INSERT INTO ...`, for transforms and persisted models
-    :stage-ctes})
+    :stage-ctes
+    ;;
+    ;; Does this database accept a `WITH` clause anywhere inside another query, e.g. in the body of a CTE or in a
+    ;; subquery? If not, and the query has a native stage with a `WITH` or is a card referenced from a native query,
+    ;; then the stages compile to nested subselects.
+    :stage-ctes/nested})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?

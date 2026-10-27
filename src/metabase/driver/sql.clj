@@ -55,6 +55,7 @@
                  :percentile-aggregations
                  :regex
                  :right-join
+                 :stage-ctes/nested
                  :standard-deviation-aggregations
                  :window-functions/cumulative
                  :window-functions/offset]]

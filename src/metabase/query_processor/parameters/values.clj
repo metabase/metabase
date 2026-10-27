@@ -254,7 +254,9 @@
             {:keys [query params]} (or (when (and (qp.persistence/can-substitute? card persisted-info)
                                                   (persisted-cache-allowed-for-current-user? database-id))
                                          {:query (qp.persistence/persisted-info-native-query database-id persisted-info)})
-                                       (qp.compile/compile (qp/disable-max-results query)))]
+                                       (qp.compile/compile (-> query
+                                                               qp/disable-max-results
+                                                               (assoc-in [:middleware :card-reference?] true))))]
         (lib/parsed-referenced-card-query-param card-id query params))
       (catch ExceptionInfo e
         (throw (ex-info

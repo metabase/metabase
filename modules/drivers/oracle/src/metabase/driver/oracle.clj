@@ -89,8 +89,14 @@
                               ;; these don't seem to ERROR on Oracle but they don't work as expected either, see
                               ;; https://github.com/metabase/metabase/pull/66982#issuecomment-3667113995
                               :regex/lookaheads-and-lookbehinds false
+                              :stage-ctes                       true
                               :table-privileges                true}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
+
+(defmethod driver/database-supports? [:oracle :stage-ctes/nested]
+  [_driver _feature db]
+  ;; Oracle before 23 does not allow a WITH clause inside a CTE body.
+  (boolean (some-> db :dbms-version :semantic-version first (>= 23))))
 
 (mr/def ::details
   "Oracle database details map."

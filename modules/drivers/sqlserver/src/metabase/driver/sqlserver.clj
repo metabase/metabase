@@ -73,6 +73,8 @@
                               :index/standalone-create                true
                               :now                                    true
                               :regex                                  false
+                              :stage-ctes                             false
+                              :stage-ctes/nested                      false
                               :test/jvm-timezone-setting              false
                               :metadata/table-existence-check         true
                               :native-pivot-tables                    true

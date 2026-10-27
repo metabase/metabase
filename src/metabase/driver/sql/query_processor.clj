@@ -2317,8 +2317,7 @@
        (driver/database-supports? driver :stage-ctes (driver-api/database (driver-api/metadata-provider)))))
 
 (defn- stages->honeysql [driver stages]
-  (if (and (> (count stages) 1)
-           (stage-ctes? driver))
+  (if (::cte-name (first stages))
     (stages->honeysql-ctes driver stages)
     (stages->honeysql-subselects driver stages)))
 
@@ -2342,6 +2341,22 @@
       (when-let [numbers (seq (for [[_ n] (re-seq (re-pattern (str stage-cte-prefix #"(\d+)")) sql)]
                                 (parse-long n)))]
         (apply max numbers)))))
+
+(defn- native-with-stage?
+  "Whether `stage` is native SQL that contains `WITH`. A false positive only makes the query use subselects."
+  [stage]
+  (and (= (:lib/type stage) :mbql.stage/native)
+       (string? (:native stage))
+       (boolean (re-find #"(?i)\bwith\b" (:native stage)))))
+
+(defn- use-stage-ctes?
+  "Whether to compile the stages of this query to CTEs. If the database does not support `:stage-ctes/nested`, we use
+  subselects for a query that has a native stage with a `WITH`, and for a card that a native query references."
+  [driver query stages]
+  (and (stage-ctes? driver)
+       (or (driver/database-supports? driver :stage-ctes/nested (driver-api/database (driver-api/metadata-provider)))
+           (and (not (get-in query [:middleware :card-reference?]))
+                (not-any? native-with-stage? (all-stages stages))))))
 
 (defn- first-cte-number
   "The number of the first stage CTE. Normally 0, but if the native SQL of any stage already has stage CTEs, we start
@@ -2391,10 +2406,12 @@
   (if (:lib/type query)
     (binding [driver/*driver* driver]
       (let [stages     (preprocess driver query)
-            [stages _] (assign-cte-names stages (first-cte-number stages))]
+            ctes?      (use-stage-ctes? driver query stages)
+            stages     (cond-> stages
+                         ctes? (-> (assign-cte-names (first-cte-number stages)) first))]
         (log/trace "Compiling MBQL query")
         (u/prog1 (cond-> (stages->honeysql driver stages)
-                   (stage-ctes? driver) hoist-ctes)
+                   ctes? hoist-ctes)
           (log/debug "Compiled HoneySQL form")
           (driver-api/debug> (list '🍯 <>)))))
     (let [metadata-provider (driver-api/metadata-provider)

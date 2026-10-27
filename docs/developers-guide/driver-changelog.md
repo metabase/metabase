@@ -26,7 +26,8 @@ title: Driver interface changelog
 
 - New driver feature `:stage-ctes`. Drivers can opt in to compiling multi-stage queries with CTEs instead of nested
   subselects. Drivers should only do this if they satisfy all of the criteria in the comment for this feature in
-  `metabase.driver/features`.
+  `metabase.driver/features`. Drivers that do not support a `WITH` clause inside another query (in a CTE body or a
+  subquery) should also set `:stage-ctes/nested` to false, which is true by default for `:sql` drivers.
 
 - `driver/native-query-table-refs` has been removed. Nothing calls it anymore, so drivers that implement it should
   delete their `defmethod`, which no longer compiles.
