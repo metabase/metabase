@@ -1,5 +1,6 @@
 (ns metabase.system.settings
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.appearance.core :as appearance]
@@ -79,7 +80,9 @@
   "The path of [[site-url]] without a trailing slash, such as `/metabase` when Metabase is served under a path, or an
   empty string."
   []
-  (or (some-> (site-url) java.net.URI. .getPath (str/replace #"/$" "") not-empty)
+  ;; `java.net.URL` keeps the path encoded, as request URIs and cookie paths are.
+  (or (when-let [^java.net.URL url (some-> (site-url) io/as-url)]
+        (not-empty (str/replace (.getPath url) #"/$" "")))
       ""))
 
 ;;; TODO -- we might want to move this into a separate `metabase.i18n` module
