@@ -63,6 +63,7 @@
   embed?
   embedded?
   geocode-ip-addresses
+  host-names
   https-state
   public?
   referer])

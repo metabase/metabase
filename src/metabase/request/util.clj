@@ -10,6 +10,7 @@
    [metabase.request.current :as request.current]
    [metabase.request.schema :as request.schema]
    [metabase.util :as u]
+   [metabase.util.http :as u.http]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.json :as json]
    [metabase.util.log :as log]
@@ -103,6 +104,13 @@
   `Referrer-Policy: no-referrer` or cross-origin restrictions."
   [request]
   (get-in request [:headers "referer"]))
+
+(defn host-names
+  "The host names `request` may have reached Metabase under: the first `X-Forwarded-Host` entry, which a proxy sets
+  and a client can forge, then `Host`."
+  [{:keys [headers]}]
+  (keep u.http/host-name [(some-> (get headers "x-forwarded-host") (str/split #",") first)
+                          (get headers "host")]))
 
 (def DeviceInfo
   "Schema for the device info returned by `device-info`."

@@ -11,6 +11,8 @@
    [metabase.util.i18n :as i18n :refer [available-locales-with-names deferred-tru tru]]
    [metabase.util.log :as log]))
 
+(set! *warn-on-reflection* true)
+
 (defsetting site-uuid
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of {0}. This is set once and only once the first time it is fetched via
@@ -72,6 +74,13 @@
         admin, so an operator who completes setup in a browser doesn't have to configure it. Deployments
         that provision headlessly, run multi-tenant, or otherwise never sign in as an admin should set
         `MB_SITE_URL` explicitly.")
+
+(defn site-path
+  "The path of [[site-url]] without a trailing slash, such as `/metabase` when Metabase is served under a path, or an
+  empty string."
+  []
+  (or (some-> (site-url) java.net.URI. .getPath (str/replace #"/$" "") not-empty)
+      ""))
 
 ;;; TODO -- we might want to move this into a separate `metabase.i18n` module
 (defsetting site-locale
