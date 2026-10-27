@@ -1,7 +1,7 @@
 (ns metabase.analytics.api.proxy-test
   "Integration tests for the public Snowplow telemetry proxy (`POST /api/analytics-proxy`).
 
-  Mirrors `metabase.geojson.api-test`: a public endpoint that forwards an outbound HTTP call, exercised with
+  Mirrors `metabase.geojson.rest.api-test`: a public endpoint that forwards an outbound HTTP call, exercised with
   `clj-http.fake/with-fake-routes` to mock the collector and `metabase.test.http-client/client` for anonymous
   requests."
   (:require
