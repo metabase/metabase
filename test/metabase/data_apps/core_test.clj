@@ -14,3 +14,15 @@
   (testing "a full-access request, or one whose token scopes don't grant the data-app scope, isn't"
     (doseq [scopes [nil #{:metabase.api.macros.scope/unrestricted} #{"*"} #{"agent:search"}]]
       (is (not (data-apps/data-app-request? {:token-scopes scopes})) (pr-str scopes)))))
+
+(deftest ^:parallel data-app-header?-test
+  (testing "only a published data app's client header confines a request"
+    (is (data-apps/data-app-header? {:headers {"x-metabase-client" "data-app"}}))
+    (doseq [client [nil "embedding-sdk-react" "data-app-dev"]]
+      (is (not (data-apps/data-app-header? {:headers {"x-metabase-client" client}})) (pr-str client)))))
+
+(deftest ^:parallel data-app-slug-test
+  (testing "a request names its data app by its identifier header"
+    (is (= "birds" (data-apps/data-app-slug {:headers {"x-metabase-client-identifier" "birds"}})))
+    (doseq [headers [{} {"x-metabase-client-identifier" ""}]]
+      (is (nil? (data-apps/data-app-slug {:headers headers})) (pr-str headers)))))

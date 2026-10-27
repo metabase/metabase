@@ -3,8 +3,8 @@
   additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
   (:require
    [clojure.set :as set]
-   [metabase-enterprise.data-apps.schema :as data-apps.schema]
    [metabase.collections.models.collection :as collection]
+   [metabase.data-apps.schema :as data-apps.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -168,11 +168,6 @@
   [collection-id :- ::lib.schema.id/collection]
   (t2/select-pks-vec :model/Action {:where    [:and [:= :collection_id collection-id] [:= :archived false]]
                                     :order-by [[:name :asc] [:id :asc]]}))
-
-(mu/defn database-exists? :- :boolean
-  "Whether there is a Database with `database-id`."
-  [database-id :- ::lib.schema.id/database]
-  (t2/exists? :model/Database :id database-id))
 
 (mu/defn external-card-ids :- [:set ::lib.schema.id/card]
   "Among `card-ids`, those of no Card in the collection with `collection-id`."

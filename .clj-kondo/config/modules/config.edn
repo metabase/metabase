@@ -866,8 +866,10 @@
   data-apps
   {:team "Embedding"
    :api #{metabase.data-apps.core}
-   :uses #{api
+   :uses #{analytics
+           api
            api-scope
+           lib.be
            premium-features
            util}}
 
@@ -1534,6 +1536,7 @@
               audit-app
               channel
               collections
+              data-apps
               documents
               driver
               embedding
@@ -2636,6 +2639,7 @@
            app-db
            appearance
            core.initialization-status
+           data-apps
            driver
            embedding
            lib.be
@@ -3841,6 +3845,7 @@
            api
            api-scope
            collections
+           data-apps
            events
            lib
            lib.be
@@ -3860,7 +3865,6 @@
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
-                    :model/Database
                     :model/Measure
                     :model/Segment
                     :model/Table}

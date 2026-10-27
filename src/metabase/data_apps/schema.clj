@@ -1,4 +1,4 @@
-(ns metabase-enterprise.data-apps.schema
+(ns metabase.data-apps.schema
   "Malli schemas for the data-apps module."
   (:require
    [clojure.string :as str]

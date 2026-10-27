@@ -1,8 +1,11 @@
 (ns metabase.data-apps.core
   (:require
+   [metabase.analytics.core :as analytics]
    [metabase.api-scope.data-app :as api-scope]
    [metabase.api.macros.scope :as scope]
-   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.data-apps.schema :as data-apps.schema]
+   [metabase.lib-be.schema :as lib-be.schema]
+   [metabase.premium-features.core :refer [defenterprise defenterprise-schema]]
    [metabase.util.i18n :refer [tru]]))
 
 (defenterprise visible-data-app-filter-select
@@ -11,6 +14,17 @@
   metabase-enterprise.data-apps.core
   [_user-info]
   nil)
+
+(defn data-app-header?
+  "Whether `request` carries the `X-Metabase-Client` header of a published data app, which confines it to the data-app
+  scope."
+  [request]
+  (analytics/data-app-client? (get-in request [:headers "x-metabase-client"])))
+
+(defn data-app-slug
+  "The slug of the data app that `request` names in its `X-Metabase-Client-Identifier` header, or nil."
+  [request]
+  (not-empty (get-in request [:headers "x-metabase-client-identifier"])))
 
 (defn data-app-request?
   "Whether `request` is confined to the data-app scope: marked by the data-app scope middleware, or authorized by a token
@@ -29,14 +43,14 @@
   (ex-info (tru "Data apps aren''t available on this instance.") {:status-code 403}))
 
 (defenterprise request-data-app
-  "The data app that a data-app `request` names in its `X-Metabase-Client-Identifier` header; throws a 403 when it names
-  none."
+  "The data app whose slug a data-app `request` names, by [[data-app-slug]]; throws a 400 when it names none."
   metabase-enterprise.data-apps.checks
   [_request]
   (throw (unavailable)))
 
-(defenterprise check-query
-  "Throws a 403 unless `data-app` may run `query`, a legacy or MBQL 5 query map."
+(defenterprise-schema check-query :- :nil
+  "Throws a 400 unless `data-app` may run `query`, an MBQL or internal query as the `/api/dataset` endpoints take it."
   metabase-enterprise.data-apps.checks
-  [_data-app _query]
+  [_data-app :- ::data-apps.schema/data-app
+   _query    :- ::lib-be.schema/maybe-legacy-or-internal-query]
   (throw (unavailable)))

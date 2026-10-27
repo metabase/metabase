@@ -240,7 +240,7 @@
    :metabase.segments.schema/segment
    :metabase.measures.schema/measure
    ::actions.schema/action
-   :metabase-enterprise.data-apps.schema/data-app])
+   :metabase.data-apps.schema/data-app])
 
 (mu/defn- entity-value :- ::entity
   [entity-type :- ::deps.dependency-types/dependency-types
