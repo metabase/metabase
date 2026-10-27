@@ -336,6 +336,21 @@
                      (mt/user-http-request :crowberto :post 200 (format "action/%d/execute" elsewhere-id)
                                            {:parameters {}})))))))))))
 
+(deftest dashboard-endpoints-are-outside-data-app-scope-test
+  (do-with-app-card!
+   (fn [card-id _collection-id]
+     (mt/with-temp [:model/Dashboard     {dashboard-id :id} {}
+                    :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id :card_id card-id}]
+       (testing "a data app cannot read a dashboard or run its cards"
+         (mt/user-http-request :crowberto :get 403 (format "dashboard/%d" dashboard-id) as-data-app)
+         (mt/user-http-request :crowberto :post 403
+                               (format "dashboard/%d/dashcard/%d/card/%d/query" dashboard-id dashcard-id card-id)
+                               as-data-app))
+       (testing "a request that is not a data app's still runs the dashboard's card"
+         (is (= "completed" (:status (mt/user-http-request :crowberto :post 202
+                                                           (format "dashboard/%d/dashcard/%d/card/%d/query"
+                                                                   dashboard-id dashcard-id card-id))))))))))
+
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"
     (mt/with-premium-features #{}
