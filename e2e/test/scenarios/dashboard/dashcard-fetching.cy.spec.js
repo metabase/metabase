@@ -273,7 +273,7 @@ describe("issue 13736", () => {
           },
           {
             card_id: successfulQuestionId,
-            col: 11,
+            col: 12,
           },
         ],
       });

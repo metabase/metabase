@@ -1502,11 +1502,11 @@ describe("scenarios > metrics > explorer", () => {
       });
 
       cy.log("should split the chart into separate panels");
-      H.splitPanelAxisLines().should("have.length", 2);
+      H.splitPanelSeparators().should("have.length", 1);
 
       cy.log("toggling off should return to unified view");
       cy.findByLabelText("Default layout").click();
-      H.splitPanelAxisLines().should("have.length", 0);
+      H.splitPanelSeparators().should("have.length", 0);
 
       cy.log("button should not be visible for non-line/area/bar charts");
       selectDimensionBreakout("State", { seeAll: true });
@@ -1967,7 +1967,7 @@ describe("scenarios > metrics > explorer", () => {
         .findByRole("button", { name: /All time/i })
         .should("be.visible");
       H.ensureChartIsActive();
-      H.applyBrush(100, 250);
+      H.applyBrushToPoints(2, 7);
       H.MetricsViewer.getMetricControls()
         .findByRole("button", { name: /All time/i })
         .should("not.exist");
