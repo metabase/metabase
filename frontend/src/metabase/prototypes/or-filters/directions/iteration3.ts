@@ -88,6 +88,7 @@ export const ITERATION_3_DIRECTIONS: FilterDirection[] = [
     Component: ExpressionBarUnifiedPrototype,
     NotebookCanvas: UnifiedExpressionBarNotebook,
     canHideFilters: true,
+    draft: true,
   },
   {
     id: "expression-bar-split",
