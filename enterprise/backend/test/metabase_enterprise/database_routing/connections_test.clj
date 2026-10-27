@@ -13,9 +13,14 @@
    [metabase.driver.sql-jdbc.actions :as sql-jdbc.actions]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.util :as driver.u]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
    [metabase.sync.core :as sync]
    [metabase.sync.field-values :as sync.field-values]
    [metabase.test :as mt]
+   [metabase.transforms.execute :as transforms.execute]
+   [metabase.upload.core :as upload]
+   [metabase.upload.impl-test :as upload-test]
    [metabase.util :as u]
    [metabase.warehouse-schema.models.field-values :as field-values]
    [toucan2.core :as t2]))
@@ -213,3 +218,41 @@
                                               :table-prefix  "admin_"}))
                 (is (seq (query-h2 router-db "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) LIKE 'admin_%'")))
                 (is (empty? (query-h2 dest-1 "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) LIKE 'admin_%'")))))))))))
+
+(deftest routed-users-cannot-upload-to-router-test
+  (testing "a routed user's upload to a router is refused, since an upload only ever targets the router itself"
+    (mt/with-premium-features #{:database-routing}
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (met/with-user-attributes! :crowberto {"db_name" "destination-db-1"}
+          (e2e/with-routing-setup! [router-db [[dest-1 "destination-db-1"]]]
+            (let [router-id (u/the-id router-db)]
+              (t2/update! :model/Database router-id {:uploads_enabled true :uploads_schema_name "PUBLIC"})
+              (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"routes your queries"
+                                      (mt/with-current-user (mt/user->id :crowberto)
+                                        (upload/create-csv-upload! {:collection-id nil
+                                                                    :filename      "tenant.csv"
+                                                                    :file          (upload-test/csv-file-with ["tenant_col" "row"] "tenant")
+                                                                    :db-id         router-id
+                                                                    :schema-name   "PUBLIC"
+                                                                    :table-prefix  "tenant_"}))))
+                (is (empty? (query-h2 router-db "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) LIKE 'tenant_%'")))
+                (is (empty? (query-h2 dest-1 "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) LIKE 'tenant_%'")))))))))))
+
+(deftest routed-users-cannot-run-router-transforms-test
+  (testing "a routed user's transform run on a router is refused, since a transform only ever targets the router itself"
+    (mt/with-premium-features #{:database-routing :transforms-basic}
+      (binding [driver.settings/*allow-testing-h2-connections* true]
+        (met/with-user-attributes! :crowberto {"db_name" "destination-db-1"}
+          (e2e/with-routing-setup! [router-db [[_dest-1 "destination-db-1"]]]
+            (let [router-id (u/the-id router-db)
+                  mp        (lib-be/application-database-metadata-provider router-id)]
+              (mt/with-temp [:model/DatabaseRouter _ {:database_id router-id :user_attribute "db_name"}
+                             :model/Transform transform {:name   "routed transform"
+                                                         :source {:type  :query
+                                                                  :query (lib/native-query mp "SELECT * FROM \"PUBLIC\".\"my_database_name\"")}
+                                                         :target {:type "table" :schema "PUBLIC" :name "routed_out"}}]
+                (is (thrown-with-msg? clojure.lang.ExceptionInfo #"routes your queries"
+                                      (mt/with-current-user (mt/user->id :crowberto)
+                                        (transforms.execute/execute! transform {:run-method :manual}))))
+                (is (empty? (query-h2 router-db "SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE LOWER(TABLE_NAME) = 'routed_out'")))))))))))

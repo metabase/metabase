@@ -3,8 +3,9 @@
    [metabase-enterprise.database-routing.db :as database-routing.db]
    [metabase.api.common :as api]
    [metabase.driver.util :as driver.u]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.permissions.core :as perms]
-   [metabase.premium-features.core :as premium-features :refer [defenterprise]]
+   [metabase.premium-features.core :as premium-features :refer [defenterprise defenterprise-schema]]
    [metabase.util.i18n :refer [tru]]))
 
 #_{:clj-kondo/ignore [:metabase/discourage-dynamic-vars]}
@@ -85,6 +86,15 @@
     (when-let [destination-id (router-db->destination-db-id database)]
       (premium-features/assert-has-feature :database-routing (tru "Database Routing"))
       (driver.u/lib-database destination-id))))
+
+(defenterprise-schema check-user-not-routed :- :nil
+  "Enterprise version. Throws a 403 when the current user's connections to the Lib metadata `database` of a Database
+  go to a routing destination, even while the `:database-routing` feature is unavailable."
+  :feature :none
+  [database :- ::lib.schema.metadata/database]
+  (when (routed-database database)
+    (throw (ex-info (tru "You can''t do this on a database that routes your queries to a destination database.")
+                    {:status-code 403}))))
 
 (defenterprise routed-user?
   "Whether the current user's queries against ANY router database they can view data from resolve to a destination

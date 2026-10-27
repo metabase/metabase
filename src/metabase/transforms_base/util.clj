@@ -7,7 +7,6 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.app-db.cluster-lock :as cluster-lock]
-   [metabase.database-routing.core :as database-routing]
    [metabase.dependencies.hooks :as dependencies.hooks]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]

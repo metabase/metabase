@@ -11,6 +11,14 @@
   [_database :- ::lib.schema.metadata/database]
   nil)
 
+(defenterprise-schema check-user-not-routed :- :nil
+  "Throws a 403 when the current user's connections to the Lib metadata `database` of a Database go to a routing
+  destination, for work that only ever targets the router itself, such as transforms and uploads; OSS has no database
+  routing, so it does nothing."
+  metabase-enterprise.database-routing.common
+  [_database :- ::lib.schema.metadata/database]
+  nil)
+
 (defenterprise do-with-anonymous-router-access
   "Calls `thunk` with no current user, letting it reach a router itself; outside it, work with no user is refused on a
   router. OSS has no routers, so there is nothing to allow."
