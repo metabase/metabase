@@ -1,6 +1,6 @@
 (ns metabase-enterprise.data-apps.db
-  "Application database queries for the data-apps module. Every function here is a direct Toucan 2 call with no
-  additional logic, so the rest of the module only touches `toucan2.core` for model definitions and hydration methods."
+  "Application database queries for the data-apps module, so the rest of the module only touches `toucan2.core` for
+  model definitions and hydration methods."
   (:require
    [clojure.set :as set]
    [metabase.collections.models.collection :as collection]
@@ -28,6 +28,11 @@
   "The DataApp named `slug` without its bundle, or nil."
   [slug :- :string]
   (t2/select-one non-blob-model :name slug))
+
+(mu/defn enabled-data-app-by-slug
+  "The enabled DataApp named `slug` without its bundle, or nil."
+  [slug :- :string]
+  (t2/select-one non-blob-model :name slug :enabled true))
 
 (mu/defn data-app-bundle
   "The bundle bytes of the DataApp with `data-app-id`."
@@ -177,7 +182,7 @@
                              (t2/select-pks-set :model/Card :id [:in card-ids] :collection_id collection-id))))
 
 (mu/defn external-metric-ids :- [:set ::lib.schema.id/card]
-  "Among `card-ids`, those of no metric in the Library's Metrics collection."
+  "Among `card-ids`, those of no metric in the Library's Metrics collection or one of its subcollections."
   [card-ids :- [:set {:min 1} ::lib.schema.id/card]]
   (set/difference card-ids (t2/select-fn-set :id [:model/Card :report_card.id]
                                              {:join  [:collection [:= :collection.id :report_card.collection_id]]

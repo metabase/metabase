@@ -24,7 +24,6 @@
   decision made here from an absent one and refuse to widen it back out."
   (:require
    [metabase.api-scope.data-app :as api-scope]
-   [metabase.api.macros.scope :as scope]
    [metabase.data-apps.core :as data-apps]))
 
 (set! *warn-on-reflection* true)
@@ -34,19 +33,6 @@
   [[metabase.api-scope.data-app]] and carried by the `{:scope api-scope/data-app}` endpoint
   tags."
   #{api-scope/data-app})
-
-(defn- full-access?
-  "True when `token-scopes` represents an unrestricted credential — a normal session, or a
-  bearer token granted access to the whole REST API. Only such requests may be narrowed by
-  the marker; an already-scoped credential (an OAuth or agent token) must not be broadened,
-  so it stays untouched.
-
-  `\"*\"` counts as full access because [[metabase.api-scope.core/scope-matches?]] treats a
-  granted `\"*\"` as satisfying every required scope."
-  [token-scopes]
-  (or (nil? token-scopes)
-      (contains? token-scopes ::scope/unrestricted)
-      (contains? token-scopes "*")))
 
 (defn- narrow-to-data-app?
   "True when `request` carries the data-app client marker on a credential this may confine.
@@ -59,7 +45,7 @@
   [request]
   (and (data-apps/data-app-header? request)
        (not (:mcp-ui-credential request))
-       (full-access? (:token-scopes request))))
+       (data-apps/full-access? (:token-scopes request))))
 
 (defn wrap-data-app-scope
   "When a request comes from a sandboxed data app (`X-Metabase-Client: data-app`) AND is

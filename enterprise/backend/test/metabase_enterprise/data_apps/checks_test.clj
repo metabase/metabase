@@ -18,12 +18,12 @@
                                 app-name (assoc "x-metabase-client-identifier" app-name))}})
 
 (def ^:private as-data-app
-  "Request options that mark a request as the data app's of [[do-with-app-collection]]."
+  "Request options that mark a request as from the data app of [[do-with-app-collection]]."
   (as-app "birds"))
 
 (def ^:private error-formats
   "The format of the error message for each kind of entity a data app may not use."
-  {:cards    "A data app can use only the cards of its own app, not the cards %s."
+  {:cards    "A data app can use only the cards in its own collection, not the cards %s."
    :metrics  "A data app can use only metrics from the Library, not the metrics %s."
    :tables   "A data app can read only tables published to the Library, not the tables %s."
    :segments "A data app can use only segments of tables published to the Library, not the segments %s."
@@ -87,12 +87,18 @@
                                              "application/x-www-form-urlencoded")
                                    {:query (json/encode (lib/->legacy-MBQL query))})))))))
 
-(deftest app-must-be-named-test
+(deftest request-must-name-enabled-readable-app-test
   (do-with-app-card!
    (fn [card-id _collection-id]
-     (testing "a data app's request that names no app, or an app that doesn't exist, is refused"
-       (doseq [options [(as-app nil) (as-app "no-such-app")]]
-         (is (re-find #"must name a data app" (run-query 400 (card-query card-id) options))))))))
+     (testing "a data app's request that names no app is refused"
+       (is (re-find #"must name a data app" (run-query 400 (card-query card-id) (as-app nil)))))
+     (mt/with-temp [:model/DataApp _ {:name "bees" :enabled false}]
+       (testing "an app that doesn't exist or is disabled is not found"
+         (doseq [options [(as-app "no-such-app") (as-app "bees")]]
+           (is (= "Not found." (run-query 404 (card-query card-id) options))))))
+     (testing "an app the user can't read is refused"
+       (is (= "You don't have permissions to do that."
+              (mt/user-http-request :rasta :post 403 "dataset" as-data-app (card-query card-id))))))))
 
 (deftest unpublished-tables-are-refused-test
   (do-with-app-card!
@@ -225,6 +231,6 @@
                  (is (= "completed" (:status (run-query 202 query)))))))))))))
 
 (deftest without-data-apps-feature-test
-  (testing "without the data-apps feature a data app runs nothing"
+  (testing "without the data-apps feature a data app's queries are not checked"
     (mt/with-premium-features #{}
-      (is (re-find #"aren't available" (run-query 403 (data-apps.tu/venues-query)))))))
+      (is (= "completed" (:status (run-query 202 (lib/limit (data-apps.tu/venues-query) 1))))))))

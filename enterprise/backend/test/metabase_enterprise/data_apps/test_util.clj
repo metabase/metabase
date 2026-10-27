@@ -156,8 +156,8 @@
     (into (sorted-map) (map (juxt (partial file-path collection-name) serialization.dump/yaml-content)) entities)))
 
 (defn do-with-app-collection
-  "Call `f` with the id of a data app's resource collection, with the data-apps feature on; deleting the app afterwards
-  deletes what it holds."
+  "Call `f` with the id of the resource collection of a data app named `birds`, with the data-apps feature on; deleting
+  the app afterwards deletes what it holds."
   [f]
   (mt/with-premium-features #{:data-apps}
     (mt/with-temp [:model/DataApp {collection-id :resource_collection_id} {:name "birds"}]
