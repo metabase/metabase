@@ -4,6 +4,7 @@ import type {
   CollectionId,
   ListTransformJobRunsResponse,
   PythonTransformTableAliases,
+  RunTransformJobResponse,
   RunTransformResponse,
   SchemaName,
   TemplateTags,
@@ -193,10 +194,6 @@ export function runTransformJobFromUiAndWaitForStatus(
   );
   assertRunStatusShown(status);
 }
-
-type RunTransformJobResponse = {
-  job_run_id: TransformJobRunId | null;
-};
 
 function getJobIdFromRunUrl(url: string): TransformJobId {
   const [, jobId] =

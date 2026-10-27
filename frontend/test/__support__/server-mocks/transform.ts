@@ -8,6 +8,8 @@ import type {
   ListTransformJobRunsResponse,
   ListTransformRunsResponse,
   RunTransformDagResponse,
+  RunTransformJobResponse,
+  RunTransformResponse,
   Transform,
   TransformDagRunId,
   TransformId,
@@ -17,6 +19,8 @@ import type {
   TransformRunForJobRun,
   TransformTag,
 } from "metabase-types/api";
+
+import type { MockResponse } from "./types";
 
 export function setupListTransformRunsEndpoint(
   response: ListTransformRunsResponse,
@@ -76,8 +80,11 @@ export function setupListTransformJobTransformsEndpointWithError(
   });
 }
 
-export function setupGetTransformJobEndpoint(job: TransformJob) {
-  fetchMock.get(`path:/api/transform-job/${job.id}`, job);
+export function setupGetTransformJobEndpoint(
+  job: TransformJob,
+  response: MockResponse<TransformJob> = job,
+) {
+  fetchMock.get(`path:/api/transform-job/${job.id}`, response);
 }
 
 export function setupListTransformJobRunsEndpoint(
@@ -106,6 +113,20 @@ export function setupListDagTransformsEndpoint(
     `path:/api/transform/${transformId}/dag-transforms`,
     transforms,
   );
+}
+
+export function setupRunTransformEndpoint(
+  transformId: TransformId,
+  response: MockResponse<RunTransformResponse>,
+) {
+  fetchMock.post(`path:/api/transform/${transformId}/run`, response);
+}
+
+export function setupCancelCurrentTransformRunEndpoint(
+  transformId: TransformId,
+  response: MockResponse<number> = 204,
+) {
+  fetchMock.post(`path:/api/transform/${transformId}/cancel`, response);
 }
 
 export function setupRunTransformDagEndpoint(
@@ -144,8 +165,14 @@ export function setupBulkUpdateTransformJobsActiveEndpoint(updated: number) {
   fetchMock.put("path:/api/transform-job/active", { updated });
 }
 
-export function setupRunTransformJobEndpoint(jobId: TransformJobId) {
-  fetchMock.post(`path:/api/transform-job/${jobId}/run`, 200);
+export function setupRunTransformJobEndpoint(
+  jobId: TransformJobId,
+  response: MockResponse<RunTransformJobResponse> = {
+    message: "Job run started",
+    job_run_id: 1,
+  },
+) {
+  fetchMock.post(`path:/api/transform-job/${jobId}/run`, response);
 }
 
 export function setupDeleteTransformJobEndpoint(jobId: TransformJobId) {

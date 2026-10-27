@@ -329,6 +329,11 @@ export type RunTransformResponse = {
   message?: string;
 };
 
+export type RunTransformJobResponse = {
+  job_run_id: TransformJobRunId | null;
+  message?: string;
+};
+
 export type ListTransformsRequest = {
   "last-run-start-time"?: string;
   "last-run-statuses"?: TransformRunStatus[];
