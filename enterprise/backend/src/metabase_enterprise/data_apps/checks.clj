@@ -186,3 +186,15 @@
    field-id  :- ::lib.schema.id/field]
   (check-published-field field-id)
   nil)
+
+(defenterprise-schema check-database :- :nil
+  "Throws a 400 unless the database with `database-id` has a table published to the Library, after a read check of the
+  database."
+  :feature :data-apps
+  [_data-app   :- ::data-apps.schema/data-app
+   database-id :- ::lib.schema.id/database]
+  (api/read-check :model/Database database-id)
+  (when-not (some #(= database-id (:db_id %)) (data-apps.db/published-tables))
+    (throw (data-app-error (tru "A data app can read only databases with tables published to the Library, not the database {0}."
+                                database-id))))
+  nil)

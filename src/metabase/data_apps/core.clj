@@ -117,3 +117,11 @@
   [_data-app :- ::data-apps.schema/data-app
    _field-id :- ::lib.schema.id/field]
   nil)
+
+(defenterprise-schema check-database :- :nil
+  "Throws a 400 unless `data-app` may read the database with `database-id`, after a read check of the database; does
+  nothing without the data-apps feature."
+  metabase-enterprise.data-apps.checks
+  [_data-app    :- ::data-apps.schema/data-app
+   _database-id :- ::lib.schema.id/database]
+  nil)

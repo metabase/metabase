@@ -3367,6 +3367,7 @@
            api-scope
            app-db
            collections
+           data-apps
            database-routing
            driver
            events
@@ -3873,6 +3874,7 @@
                     :model/Card
                     :model/Collection
                     :model/DataPermissions
+                    :model/Database
                     :model/Field
                     :model/Measure
                     :model/Segment

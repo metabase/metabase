@@ -192,6 +192,13 @@
   (set/difference table-ids (t2/select-pks-set :model/Table {:from  [(warehouse-schema-overlay/table-query)]
                                                              :where [:and [:in :id table-ids] [:= :is_published true]]})))
 
+(mu/defn published-tables :- [:sequential :metabase.warehouse-schema.schema/table]
+  "The Tables published to the Library, with their databases and schemas."
+  []
+  (t2/select [:model/Table :id :db_id :schema]
+             {:from  [(warehouse-schema-overlay/table-query)]
+              :where [:= :is_published true]}))
+
 (mu/defn external-segment-ids :- [:set ::lib.schema.id/segment]
   "Among `segment-ids`, those of no Segment of a Table published to the Library."
   [segment-ids :- [:set {:min 1} ::lib.schema.id/segment]]
