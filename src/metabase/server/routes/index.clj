@@ -172,11 +172,13 @@
    to everyone; a request that resolves to a user is refused, because a session must never reach
    the isolated origin."
   [request respond raise]
-  (cond
-    (not (premium-features/enable-data-apps?)) (respond nil)
+  (let [isolated? (mw.isolated-origin/isolated-origin-request? request)
+        user-id   (:metabase-user-id request)]
+    (cond
+      (not (premium-features/enable-data-apps?))
+      (respond nil)
 
-    (mw.isolated-origin/isolated-origin-request? request)
-    (if (:metabase-user-id request)
+      (and isolated? user-id)
       (do
         (log/error (str "Refusing to serve a data app: a Metabase session reached the isolated origin "
                         "(MB_ISOLATED_ORIGIN). The session cookie must be host-only; check that no cookie Domain or "
@@ -186,7 +188,9 @@
         (respond (request/clear-session-cookie
                   {:status 403
                    :body   "Data apps are misconfigured: a Metabase session reached the isolated origin."})))
-      (data-app-shell request respond raise))
 
-    (nil? (:metabase-user-id request))         (respond (login-redirect request))
-    :else                                      (data-app-shell request respond raise)))
+      (or isolated? user-id)
+      (data-app-shell request respond raise)
+
+      :else
+      (respond (login-redirect request)))))

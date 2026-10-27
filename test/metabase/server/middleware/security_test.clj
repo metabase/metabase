@@ -170,6 +170,16 @@
        (filter #(str/starts-with? % "frame-ancestors "))
        first))
 
+(defn- isolated-origin-headers-for-uri
+  "Like [[headers-for-uri]], for a request the isolated-origin middleware marked as reaching the isolated origin."
+  [uri]
+  (headers-for-request {:uri uri :metabase.server.middleware.isolated-origin/isolated-origin? true}))
+
+(defn- isolated-origin-frame-ancestors-for [uri]
+  (->> (str/split (get (isolated-origin-headers-for-uri uri) "Content-Security-Policy") #"; *")
+       (filter #(str/starts-with? % "frame-ancestors "))
+       first))
+
 (deftest data-app-frame-ancestors-test
   (testing "the internal data-app iframe is framable only by the same-origin host"
     (is (= "frame-ancestors 'self'" (frame-ancestors-for "/embed/apps/sales")))
@@ -195,9 +205,9 @@
       (mt/with-temporary-setting-values [site-url "https://mb.example.com"]
         (testing "the isolated-origin document may be framed only by the site URL"
           (is (= "frame-ancestors https://mb.example.com"
-                 (frame-ancestors-for "/embed/apps/sales")))
+                 (isolated-origin-frame-ancestors-for "/embed/apps/sales")))
           (testing "and omits X-Frame-Options, which can't express cross-origin framing"
-            (is (nil? (get (headers-for-uri "/embed/apps/sales") "X-Frame-Options")))))
+            (is (nil? (get (isolated-origin-headers-for-uri "/embed/apps/sales") "X-Frame-Options")))))
         (testing "the main app document may frame the isolated origin"
           (is (str/includes? (csp-directive-for "/somepage" "frame-src")
                              "https://apps.example.com")))
@@ -213,7 +223,7 @@
     (mt/with-temp-env-var-value! [mb-isolated-origin "https://apps.example.com"]
       (mt/with-temporary-setting-values [site-url "https://mb.example.com/metabase"]
         (is (= "frame-ancestors https://mb.example.com"
-               (frame-ancestors-for "/embed/apps/sales")))))))
+               (isolated-origin-frame-ancestors-for "/embed/apps/sales")))))))
 
 (deftest isolated-origin-request-cannot-act-with-main-host-session-test
   (testing "a cookie-authenticated form POST from the isolated origin cannot create a user on the main host"
