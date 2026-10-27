@@ -1,5 +1,27 @@
-/* The option row around it carries the padding and the hover, selected and disabled colors */
+/* Inside a dropdown, the option row around it carries the padding and the
+   hover, selected and disabled colors */
 .item {
   cursor: pointer;
   overflow-wrap: break-word;
+}
+
+/* Outside a dropdown (e.g. TemporalUnitPicker in a popover) nothing around the
+   row styles it, so it draws the same look as a dropdown option itself */
+.item:not([data-combobox-option] *) {
+  min-height: rem(32px);
+  padding: var(--mantine-spacing-xxs) var(--mantine-spacing-sm);
+  border-radius: var(--mantine-radius-xs);
+
+  & + & {
+    margin-top: 1px;
+  }
+
+  &[aria-selected="true"] {
+    background-color: var(--mb-color-background_surface-selected);
+  }
+
+  &:hover {
+    color: var(--mb-color-text-primary-inverse);
+    background-color: var(--mb-color-background_surface-brand-strong-hover);
+  }
 }
