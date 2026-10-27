@@ -71,11 +71,11 @@ describe("scenarios > binning", () => {
   it("should bin a breakout, change its bucket and keep it after a save", () => {
     H.openOrdersTable();
     H.summarize();
-    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset").as("breakoutQuery");
 
     cy.log("temporal bucket");
     H.getDimensionByName({ name: "Created At" }).click();
-    cy.wait("@dataset")
+    cy.wait("@breakoutQuery")
       .its("request.body.stages.0.breakout.0.1.temporal-unit")
       .should("eq", "month");
     H.changeBinningForDimension({
@@ -84,7 +84,7 @@ describe("scenarios > binning", () => {
       toBinning: "Year",
       isSelected: true,
     });
-    cy.wait("@dataset").then((interception) => {
+    cy.wait("@breakoutQuery").then((interception) => {
       cy.wrap(interception)
         .its("request.body.stages.0.breakout.0.1.temporal-unit")
         .should("eq", "year");
@@ -95,7 +95,7 @@ describe("scenarios > binning", () => {
 
     cy.log("default binning");
     H.getDimensionByName({ name: "Total" }).click();
-    cy.wait("@dataset")
+    cy.wait("@breakoutQuery")
       .its("request.body.stages.0.breakout.0.1.binning")
       .should("include", { strategy: "default" });
     H.queryBuilderHeader()
@@ -110,7 +110,7 @@ describe("scenarios > binning", () => {
       toBinning: "10 bins",
       isSelected: true,
     });
-    cy.wait("@dataset")
+    cy.wait("@breakoutQuery")
       .its("request.body.stages.0.breakout.0.1.binning")
       .should("include", { strategy: "num-bins", "num-bins": 10 });
     H.queryBuilderHeader()
