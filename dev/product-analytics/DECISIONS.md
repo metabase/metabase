@@ -24,7 +24,7 @@ Status:
 | D16 | Saved PA cards store compiled SQL                    | Save the MBQL query (project A, saved queries)          |
 | D18 | Drivers run the legacy form; new clauses need legacy schema | Drivers take MBQL 5 at execution                |
 | D22 | MBQL planners: no drills, chart order, or app wiring yet | Port drills; switch `use-analysis-query` to MBQL   |
-| D23 | Cohort offsets come from periods that have events    | A date-axis source, if an empty period ever matters     |
+| D23 | Cohort offsets come from periods that have events    | A `:values` axis (D24)                                  |
 
 ## D1: Compile structured queries on the backend
 
@@ -275,7 +275,8 @@ Status:
 
 ## D22: MBQL planners are not wired into the app yet
 
-- **budget**. Ported: habit (all measures), cohorts, lifecycle, each with breakouts. Not yet: funnel, paths.
+- **budget**. Ported: habit (all measures), cohorts, lifecycle, each with breakouts, and the funnel's run query (checked
+  through the broken-out over-time view in every ordering). Not yet: the funnel's other views, paths.
 - Not ported in any analysis: drill-through members, breakout chart ordering (the oracle compares rows as bags), and
   `use-analysis-query` still runs the string planners' SQL.
 - Pays back: port the rest, then drills, then switch the app.
@@ -330,3 +331,27 @@ Status:
 - Evidence: a per-person max funnel level joined to three literal steps with `level >= step` counts 22123 / 5077 /
   1598 on ClickHouse (DB 2) and Postgres (DB 81), matching hand-written SQL. A values-only query returns its rows on
   both.
+
+## D25: Queries are explicit: the builder states every stage's `:fields`
+
+- **keep**. The MBQL planners' `StageList` tracks each stage's columns and writes `:fields` on any stage that doesn't
+  state them, at build time. Types come from the clauses (`typeOf`); a clause it can't type throws, so the planner
+  states it. A stage that reads a table must state its own, as the query builder does.
+- Why: the query processor's implicit clauses re-derive the same thing on every run. On a 15-stage funnel,
+  `add-implicit-clauses` made 2,532 `returned-columns` calls for 11 stages and took 2.2 s. With fields stated it takes
+  27 ms, and compile drops from 5.2 s to 2.9 s. The general rule: a builder (the UI, or these planners) makes the query
+  say what it means once; the runtime doesn't fill it in each time.
+- Rejected: speeding up implicit clauses. They're the wrong place for the work.
+- Still slow: the same funnel takes about 4.4 s through the QP against 0.24 s on ClickHouse. The rest is per-run
+  metadata work in other middleware (`wrap-value-literals`, `remove-inactive-field-refs`, `add-remapped-columns`,
+  compile). Being profiled; a QP problem, not a planner one.
+
+## D26: Query-processor annotations belong beside the query, not in it
+
+- **open**, a direction for the query processor.
+- The permission walk trusts derived facts kept inside the query: `:qp/stage-is-from-source-card` (check the card,
+  not its tables) and `:query-permissions/sandboxed-table`. A strip step at the front of preprocessing keeps users
+  from supplying them. Probed: forged on a stage and inside a join, against a table the user can't query, all five
+  are refused. So it holds today, by convention: every entry path, and every new key, has to remember to strip.
+- Direction: keep derived state (source-card provenance, sandbox origin, stage metadata) beside the query, keyed by
+  stage, so the query holds only what its author wrote and there is nothing to forge.

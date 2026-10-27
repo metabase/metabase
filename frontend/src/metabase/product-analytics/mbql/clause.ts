@@ -5,14 +5,20 @@
  */
 import { uuid } from "metabase/utils/uuid";
 
-export type BaseType =
-  | "type/Text"
-  | "type/Integer"
-  | "type/Float"
-  | "type/Number"
-  | "type/Boolean"
-  | "type/DateTime"
-  | "type/UUID";
+const BASE_TYPES = [
+  "type/Text",
+  "type/Integer",
+  "type/Float",
+  "type/Number",
+  "type/Boolean",
+  "type/DateTime",
+  "type/UUID",
+] as const;
+
+export type BaseType = (typeof BASE_TYPES)[number];
+
+const isBaseType = (value: unknown): value is BaseType =>
+  BASE_TYPES.some((baseType) => baseType === value);
 
 export type TemporalUnit = "minute" | "hour" | "day" | "week" | "month";
 
@@ -143,3 +149,116 @@ export const window = (
 /** `x` rounded to 4 decimal places, as the string planners round shares. */
 export const round4 = (x: Clause): Clause =>
   clause("/", clause("round", clause("*", x, 10000)), 10000);
+
+const isClause = (arg: Arg): arg is Clause =>
+  Array.isArray(arg) && typeof arg[0] === "string";
+
+const literalType = (literal: Literal): BaseType | undefined => {
+  switch (typeof literal) {
+    case "string":
+      return "type/Text";
+    case "number":
+      return Number.isInteger(literal) ? "type/Integer" : "type/Float";
+    case "boolean":
+      return "type/Boolean";
+    default:
+      return undefined;
+  }
+};
+
+const INTEGER_TAGS = new Set([
+  "count",
+  "count-where",
+  "distinct",
+  "distinct-where",
+  "row-number",
+  "datetime-diff",
+  "round",
+]);
+const BOOLEAN_TAGS = new Set([
+  "=",
+  "!=",
+  "<",
+  "<=",
+  ">",
+  ">=",
+  "and",
+  "or",
+  "not",
+  "is-null",
+  "not-null",
+  "between",
+]);
+const FIRST_ARGUMENT_TAGS = new Set([
+  "min",
+  "max",
+  "sum",
+  "sum-where",
+  "lag",
+  "lead",
+  "coalesce",
+  "window",
+]);
+
+/**
+ * The type of the column an expression or aggregation makes, for the clauses
+ * the planners use. `undefined` when it can't tell: state the type instead.
+ */
+export const typeOf = (arg: Arg): BaseType | undefined => {
+  if (arg === null || typeof arg !== "object") {
+    return literalType(arg);
+  }
+  if (!isClause(arg)) {
+    return undefined;
+  }
+  const [tag, opts, ...args] = arg;
+  const stated = opts["base-type"];
+  if (isBaseType(stated)) {
+    return args.length > 0 &&
+      tag !== "field" &&
+      tag !== "expression" &&
+      tag !== "value"
+      ? undefined
+      : stated;
+  }
+  if (INTEGER_TAGS.has(tag)) {
+    return "type/Integer";
+  }
+  if (BOOLEAN_TAGS.has(tag)) {
+    return "type/Boolean";
+  }
+  if (FIRST_ARGUMENT_TAGS.has(tag)) {
+    return args[0] !== undefined ? typeOf(args[0]) : undefined;
+  }
+  switch (tag) {
+    case "/":
+    case "median":
+    case "avg":
+      return "type/Float";
+    case "+":
+    case "-":
+    case "*": {
+      const types = args.map(typeOf);
+      return types.includes("type/Float") ? "type/Float" : types.find(Boolean);
+    }
+    case "datetime-add":
+    case "datetime-subtract":
+      return "type/DateTime";
+    case "text":
+    case "concat":
+      return "type/Text";
+    case "case": {
+      const [branches, fallback] = args;
+      const firstValue =
+        branches !== undefined && Array.isArray(branches) && !isClause(branches)
+          ? branches[0]?.[1]
+          : undefined;
+      return (
+        (firstValue !== undefined ? typeOf(firstValue) : undefined) ??
+        (fallback !== undefined ? typeOf(fallback) : undefined)
+      );
+    }
+    default:
+      return undefined;
+  }
+};

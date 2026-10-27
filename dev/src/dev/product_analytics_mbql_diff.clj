@@ -1,7 +1,8 @@
 (ns dev.product-analytics-mbql-diff
   "Checks the product analytics MBQL planners against the string planners: for each variant
   `dev/product-analytics/mbql-variants.ts` wrote, runs the string planner's SQL and the MBQL query through the query
-  processor and compares their rows, ignoring order. Weeks start on Monday, as the string planners' do.
+  processor and compares their rows, ignoring order, and how long each took (one run, through the whole QP).
+  Weeks start on Monday, as the string planners' do.
 
     bun run dev/product-analytics/mbql-variants.ts
     (dev.product-analytics-mbql-diff/diff)              ; every variant with an MBQL query
@@ -23,9 +24,11 @@
           query  (if (string? query)
                    (lib/native-query mp query)
                    (lib-be/normalize-query mp query))
-          result (request/as-admin (qp/process-query query))]
+          start  (System/nanoTime)
+          result (request/as-admin (qp/process-query query))
+          ms     (quot (- (System/nanoTime) start) 1000000)]
       (if (= :completed (:status result))
-        {:cols (mapv :name (-> result :data :cols)), :rows (-> result :data :rows)}
+        {:cols (mapv :name (-> result :data :cols)), :rows (-> result :data :rows), :ms ms}
         {:error (:error result)}))
     (catch Throwable e
       {:error (ex-message e)})))
@@ -51,7 +54,7 @@
         expected (run database sql)
         actual   (run database mbql)]
     (merge
-     {:name variant-name}
+     {:name variant-name, :sql-ms (:ms expected), :mbql-ms (:ms actual)}
      (cond
        (:error actual)                               {:status :mbql-error, :error (:error actual)}
        (:error expected)                             {:status :sql-error, :error (:error expected)}

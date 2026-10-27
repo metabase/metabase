@@ -181,6 +181,36 @@ export const VARIANTS: Record<string, AnalysisSpec> = {
   "funnel/segments/steps": funnel({}, { breakout: PAID_BREAKOUT }),
   "funnel/property/steps": funnel({}, { breakout: { type: "property" } }),
 
+  // The broken-out over-time view needs no unpivot, so it checks the run
+  // query in each ordering.
+  ...Object.fromEntries(
+    (
+      [
+        ["loose", {}],
+        ["strict", { ordering: "strict" }],
+        ["any", { ordering: "any" }],
+        [
+          "disqualifier",
+          { exclusions: [{ flag: FLAG.error, fromStep: 0, toStep: 2 }] },
+        ],
+        [
+          "disqualifier-one-hop",
+          { exclusions: [{ flag: FLAG.error, fromStep: 1, toStep: 2 }] },
+        ],
+        ["window-1-day", { window: { value: 1, unit: "day" } }],
+      ] as const
+    ).map(([name, over]) => [
+      `funnel/runs/${name}`,
+      view(funnel(over, { breakout: PAID_BREAKOUT }), {
+        funnelView: "overTime",
+      }),
+    ]),
+  ),
+  "funnel/runs/grain-session": view(
+    funnel({}, { grain: "session", breakout: PAID_BREAKOUT }),
+    { funnelView: "overTime" },
+  ),
+
   "paths/from": P,
   "paths/to": paths({ direction: "to" }),
   "paths/between": paths({ direction: "between", end: { flag: FLAG.report } }),
