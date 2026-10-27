@@ -1,26 +1,34 @@
 import { waitFor } from "@testing-library/react";
 import fetchMock from "fetch-mock";
 
+import { mockSettings } from "__support__/settings";
 import {
   DATA_APP_BROKER_INIT_MESSAGE_TYPE,
-  DATA_APP_IFRAME_BROKER_HASH_KEY,
-  DATA_APP_IFRAME_LOCALE_HASH_KEY,
   DATA_APP_ROUTE_MESSAGE_TYPE,
 } from "metabase-enterprise/data-apps/constants";
+import type { EnterpriseSettings } from "metabase-types/api";
 
 import { handleBrokerRequest } from "./host-broker";
 import {
+  getDataAppUserLocale,
   initDataAppBroker,
   installDataAppFetchBroker,
   installDataAppRouteReporter,
 } from "./iframe-broker";
 import type {
+  BrokerInitMessage,
   BrokerPortMessage,
   BrokerRequestMessage,
   BrokerResponseMessage,
 } from "./protocol";
 
 const HOST_ORIGIN = "https://mb.example.com";
+
+/** What the bootstrap of an app document served from the isolated origin carries. */
+const ON_ISOLATED_ORIGIN: Partial<EnterpriseSettings> = {
+  "isolated-origin": window.location.origin,
+  "site-url": `${HOST_ORIGIN}/metabase`,
+};
 
 // Not valid UTF-8, so a text round trip would replace bytes with U+FFFD.
 const UPLOAD = new Uint8Array([0xff, 0xfe, 0x00, 0x80]);
@@ -34,8 +42,13 @@ type HostPort = {
   postMessage: jest.Mock<void, [BrokerPortMessage]>;
 };
 
+const createHostPort = (): HostPort => ({
+  onmessage: null,
+  postMessage: jest.fn(),
+});
+
 /** The host's end of the broker port: records the iframe's messages, answers on demand. */
-const hostPort: HostPort = { onmessage: null, postMessage: jest.fn() };
+const hostPort = createHostPort();
 
 function sentRequest(index = 0): BrokerRequestMessage {
   const [message] = hostPort.postMessage.mock.calls[index];
@@ -45,27 +58,48 @@ function sentRequest(index = 0): BrokerRequestMessage {
   return message;
 }
 
+/** The host's answer to the iframe's broker-ready message: its port, and the user's locale. */
+function offerPort(
+  port: HostPort,
+  {
+    origin = HOST_ORIGIN,
+    source = window.parent,
+    locale = null,
+  }: { origin?: string; source?: Window | null; locale?: string | null } = {},
+) {
+  const data: BrokerInitMessage = {
+    type: DATA_APP_BROKER_INIT_MESSAGE_TYPE,
+    locale,
+  };
+  const init = new MessageEvent("message", { data, origin });
+  Object.defineProperties(init, {
+    source: { value: source },
+    ports: { value: [port] },
+  });
+  window.dispatchEvent(init);
+}
+
+/**
+ * The broker as a newly loaded app document gets it, reading `settings` from its
+ * bootstrap. Call inside `jest.isolateModulesAsync`.
+ */
+async function importFreshBroker(
+  settings: Partial<EnterpriseSettings> = ON_ISOLATED_ORIGIN,
+) {
+  const { mockSettings: mockFreshSettings } =
+    await import("__support__/settings");
+  mockFreshSettings(settings);
+  return import("./iframe-broker");
+}
+
 describe("iframe broker, served from a separate isolated origin", () => {
   let fetchBeforeInstall: typeof window.fetch;
 
   beforeAll(() => {
-    window.history.replaceState(
-      {},
-      "",
-      `/embed/apps/sales#${DATA_APP_IFRAME_BROKER_HASH_KEY}=${encodeURIComponent(HOST_ORIGIN)}`,
-    );
+    window.history.replaceState({}, "", "/embed/apps/sales");
+    mockSettings(ON_ISOLATED_ORIGIN);
     initDataAppBroker();
-
-    // The host answers the iframe's broker-ready message by handing over its port.
-    const init = new MessageEvent("message", {
-      data: { type: DATA_APP_BROKER_INIT_MESSAGE_TYPE },
-      origin: HOST_ORIGIN,
-    });
-    Object.defineProperties(init, {
-      source: { value: window.parent },
-      ports: { value: [hostPort] },
-    });
-    window.dispatchEvent(init);
+    offerPort(hostPort);
   });
 
   // Installed per test, after the shared setup mocks the global fetch, so that
@@ -80,10 +114,9 @@ describe("iframe broker, served from a separate isolated origin", () => {
     hostPort.postMessage.mockClear();
   });
 
-  afterAll(() => window.history.replaceState({}, "", "/"));
-
-  it("removes the broker entry from the URL hash, so an app's own router never sees it", () => {
-    expect(window.location.hash).not.toContain(DATA_APP_IFRAME_BROKER_HASH_KEY);
+  afterAll(() => {
+    mockSettings();
+    window.history.replaceState({}, "", "/");
   });
 
   it("round-trips binary bodies through the host byte for byte", async () => {
@@ -183,7 +216,7 @@ describe("iframe broker, served from a separate isolated origin", () => {
     window.history.pushState(null, "", "/embed/apps/sales/page");
 
     await jest.isolateModulesAsync(async () => {
-      const reloaded = await import("./iframe-broker");
+      const reloaded = await importFreshBroker();
       reloaded.initDataAppBroker();
 
       expect(reloaded.isDataAppBrokerMode()).toBe(true);
@@ -212,20 +245,50 @@ describe("iframe broker, served from a separate isolated origin", () => {
       window.history.replaceState = replaceState;
     }
   });
+
+  it("leaves the user's locale to the document when the host passes none", async () => {
+    expect(await getDataAppUserLocale()).toBeNull();
+  });
+});
+
+describe("iframe broker, in a document that isn't on the isolated origin", () => {
+  it.each<[string, Partial<EnterpriseSettings>]>([
+    ["MB_ISOLATED_ORIGIN is unset", { "isolated-origin": null }],
+    [
+      "the document is on another origin",
+      { "isolated-origin": "https://apps.example.com" },
+    ],
+  ])("stays out of the way when %s", async (_, settings) => {
+    const postToParent = jest
+      .spyOn(window.parent, "postMessage")
+      .mockImplementation(() => undefined);
+
+    try {
+      await jest.isolateModulesAsync(async () => {
+        const broker = await importFreshBroker({
+          ...ON_ISOLATED_ORIGIN,
+          ...settings,
+        });
+        broker.initDataAppBroker();
+
+        expect(broker.isDataAppBrokerMode()).toBe(false);
+        expect(broker.getDataAppParentOrigin()).toBe(window.location.origin);
+        expect(await broker.getDataAppUserLocale()).toBeNull();
+        expect(postToParent).not.toHaveBeenCalled();
+      });
+    } finally {
+      postToParent.mockRestore();
+    }
+  });
 });
 
 describe("iframe broker, before the host hands over its port", () => {
   it("rejects a request aborted before the handshake with an AbortError, as fetch does", async () => {
-    window.history.replaceState(
-      {},
-      "",
-      `/embed/apps/sales#${DATA_APP_IFRAME_BROKER_HASH_KEY}=${encodeURIComponent(HOST_ORIGIN)}`,
-    );
     const fetchBeforeInstall = window.fetch;
 
     try {
       await jest.isolateModulesAsync(async () => {
-        const broker = await import("./iframe-broker");
+        const broker = await importFreshBroker();
         broker.initDataAppBroker();
         broker.installDataAppFetchBroker();
 
@@ -246,78 +309,53 @@ describe("iframe broker, before the host hands over its port", () => {
       });
     } finally {
       window.fetch = fetchBeforeInstall;
-      window.history.replaceState({}, "", "/");
     }
   });
 });
 
 describe("iframe broker, started twice", () => {
   it("asks the host for a port once, so the host doesn't close the port the first handshake got", async () => {
-    window.history.replaceState(
-      {},
-      "",
-      `/embed/apps/sales#${DATA_APP_IFRAME_BROKER_HASH_KEY}=${encodeURIComponent(HOST_ORIGIN)}`,
-    );
     const postToParent = jest
       .spyOn(window.parent, "postMessage")
       .mockImplementation(() => undefined);
 
     try {
       await jest.isolateModulesAsync(async () => {
-        const broker = await import("./iframe-broker");
+        const broker = await importFreshBroker();
         broker.initDataAppBroker();
         broker.initDataAppBroker();
 
         expect(postToParent).toHaveBeenCalledTimes(1);
+        expect(postToParent).toHaveBeenCalledWith(
+          expect.anything(),
+          HOST_ORIGIN,
+        );
       });
     } finally {
       postToParent.mockRestore();
-      window.history.replaceState({}, "", "/");
     }
   });
 });
 
 describe("iframe broker, offered a port by someone other than its host", () => {
   it("takes the port only from its parent window at the host's origin", async () => {
-    window.history.replaceState(
-      {},
-      "",
-      `/embed/apps/sales#${DATA_APP_IFRAME_BROKER_HASH_KEY}=${encodeURIComponent(HOST_ORIGIN)}`,
-    );
     const fetchBeforeInstall = window.fetch;
     const otherFrame = document.createElement("iframe");
     document.body.append(otherFrame);
 
     try {
       await jest.isolateModulesAsync(async () => {
-        const broker = await import("./iframe-broker");
+        const broker = await importFreshBroker();
         broker.initDataAppBroker();
         broker.installDataAppFetchBroker();
 
-        const offer = (port: HostPort, origin: string, source: unknown) => {
-          const init = new MessageEvent("message", {
-            data: { type: DATA_APP_BROKER_INIT_MESSAGE_TYPE },
-            origin,
-          });
-          Object.defineProperties(init, {
-            source: { value: source },
-            ports: { value: [port] },
-          });
-          window.dispatchEvent(init);
-        };
-        const strangerPort: HostPort = {
-          onmessage: null,
-          postMessage: jest.fn(),
-        };
-        const parentPort: HostPort = {
-          onmessage: null,
-          postMessage: jest.fn(),
-        };
+        const strangerPort = createHostPort();
+        const parentPort = createHostPort();
 
-        offer(strangerPort, "https://evil.example.com", window.parent);
-        offer(strangerPort, HOST_ORIGIN, otherFrame.contentWindow);
+        offerPort(strangerPort, { origin: "https://evil.example.com" });
+        offerPort(strangerPort, { source: otherFrame.contentWindow });
         void window.fetch("/api/user/current");
-        offer(parentPort, HOST_ORIGIN, window.parent);
+        offerPort(parentPort);
 
         await waitFor(() => expect(parentPort.postMessage).toHaveBeenCalled());
         expect(strangerPort.postMessage).not.toHaveBeenCalled();
@@ -325,52 +363,29 @@ describe("iframe broker, offered a port by someone other than its host", () => {
     } finally {
       window.fetch = fetchBeforeInstall;
       otherFrame.remove();
-      window.history.replaceState({}, "", "/");
     }
   });
 });
 
 describe("iframe broker, with the user's locale from the top page", () => {
-  const launch = (locale: string) =>
-    window.history.replaceState(
-      {},
-      "",
-      `/embed/apps/sales#${DATA_APP_IFRAME_BROKER_HASH_KEY}=${encodeURIComponent(HOST_ORIGIN)}&${DATA_APP_IFRAME_LOCALE_HASH_KEY}=${encodeURIComponent(locale)}`,
-    );
-
-  beforeEach(() => window.sessionStorage.clear());
-
-  afterEach(() => window.history.replaceState({}, "", "/"));
-
-  it("keeps the locale, removes it from the hash, and finds it again when the frame reloads", async () => {
-    launch("pt_BR");
-
+  it("takes the user's locale from the host's handshake", async () => {
     await jest.isolateModulesAsync(async () => {
-      const broker = await import("./iframe-broker");
+      const broker = await importFreshBroker();
       broker.initDataAppBroker();
+      const userLocale = broker.getDataAppUserLocale();
+      offerPort(createHostPort(), { locale: "pt_BR" });
 
-      expect(broker.getDataAppUserLocale()).toBe("pt_BR");
-      expect(window.location.hash).toBe("");
-    });
-
-    window.history.pushState(null, "", "/embed/apps/sales/page");
-
-    await jest.isolateModulesAsync(async () => {
-      const reloaded = await import("./iframe-broker");
-      reloaded.initDataAppBroker();
-
-      expect(reloaded.getDataAppUserLocale()).toBe("pt_BR");
+      expect(await userLocale).toBe("pt_BR");
     });
   });
 
   it("ignores a value that is not a locale code", async () => {
-    launch("../../evil");
-
     await jest.isolateModulesAsync(async () => {
-      const broker = await import("./iframe-broker");
+      const broker = await importFreshBroker();
       broker.initDataAppBroker();
+      offerPort(createHostPort(), { locale: "../../evil" });
 
-      expect(broker.getDataAppUserLocale()).toBeNull();
+      expect(await broker.getDataAppUserLocale()).toBeNull();
     });
   });
 });
