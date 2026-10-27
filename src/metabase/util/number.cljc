@@ -1,5 +1,5 @@
 (ns metabase.util.number
-  "Number helper functions that abstract differences between CLJ and CLJS."
+  "Number helper functions which abstract differences between CLJ and CLJS."
   (:refer-clojure :exclude [bigint integer?])
   (:require
    [clojure.core :as core]))
