@@ -65,12 +65,19 @@ const COMBOBOX_PROPS = {
 const ROWS = [
   { id: "states", label: "Option states", height: "17.5rem" },
   { id: "groups", label: "Group labels", height: "17.5rem" },
+  { id: "dividers", label: "Groups without labels", height: "13rem" },
   { id: "empty", label: "Empty", height: "11rem" },
 ] as const;
 
 type RowId = (typeof ROWS)[number]["id"];
 
+// Only a raw Combobox can leave out group labels (e.g. GroupsMultiSelect)
+const NotApplicable = () => <StoryLabel>n/a</StoryLabel>;
+
 const SelectCell = ({ row }: { row: RowId }) => {
+  if (row === "dividers") {
+    return <NotApplicable />;
+  }
   if (row === "states") {
     return (
       <Select
@@ -104,6 +111,9 @@ const SelectCell = ({ row }: { row: RowId }) => {
 };
 
 const MultiSelectCell = ({ row }: { row: RowId }) => {
+  if (row === "dividers") {
+    return <NotApplicable />;
+  }
   if (row === "states") {
     return (
       <MultiSelect
@@ -171,6 +181,12 @@ const ComboboxCell = ({ row }: { row: RowId }) => {
                 <ComboboxOptions items={items} />
               </Combobox.Group>
             ))}
+          {row === "dividers" &&
+            GROUP_OPTIONS.map(({ group, items }) => (
+              <Combobox.Group key={group}>
+                <ComboboxOptions items={items} />
+              </Combobox.Group>
+            ))}
           {row === "empty" && <Combobox.Empty>{EMPTY_MESSAGE}</Combobox.Empty>}
         </Combobox.Options>
       </Combobox.Dropdown>
@@ -179,6 +195,9 @@ const ComboboxCell = ({ row }: { row: RowId }) => {
 };
 
 const TagsInputCell = ({ row }: { row: RowId }) => {
+  if (row === "dividers") {
+    return <NotApplicable />;
+  }
   if (row === "empty") {
     // TagsInput has no empty message
     return <StoryLabel>n/a</StoryLabel>;

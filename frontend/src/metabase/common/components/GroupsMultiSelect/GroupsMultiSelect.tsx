@@ -227,9 +227,7 @@ export const GroupsMultiSelect = ({
         {pinnedGroups.length > 0 && (
           <Combobox.Group>{pinnedGroups.map(renderOption)}</Combobox.Group>
         )}
-        {pinnedGroups.length > 0 && customGroups.length > 0 && (
-          <Divider my="sm" />
-        )}
+        {pinnedGroups.length > 0 && customGroups.length > 0 && <Divider />}
         {customGroups.length > 0 && (
           <Combobox.Group>{customGroups.map(renderOption)}</Combobox.Group>
         )}
