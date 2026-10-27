@@ -50,6 +50,7 @@
   shared-tenant-collection?
   slugify
   transforms-ns
+  trash-collection-id
   data-apps-ns
   data-actions-ns
   default-allowed-namespaces]

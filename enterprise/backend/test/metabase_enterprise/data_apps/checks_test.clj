@@ -9,7 +9,6 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.id :as lib.schema.id]
-
    [metabase.search.test-util :as search.tu]
    [metabase.test :as mt]
    [metabase.util.json :as json]
@@ -673,23 +672,56 @@
          (is (= (format "A data app can read only databases with tables published to the Library, not the database %d." (:id db))
                 (mt/user-http-request :crowberto :get 400 (format "database/%d" (:id db)) as-data-app))))))))
 
+(defn- search-ids
+  "The IDs of what a search for `q` finds, as the request with `options` does."
+  [options q & params]
+  (set (map :id (:data (apply mt/user-http-request :crowberto :get 200 "search" options :q q params)))))
+
 (deftest search-finds-only-published-tables-test
   (search.tu/with-appdb-search-and-legacy-search
     (search.tu/with-sync-search-indexing
       (do-with-app-collection
        (fn [_collection-id]
          (mt/with-premium-features #{:data-apps :library}
-           (data-apps.tu/with-published-tables! [(mt/id :venues)]
-             (testing "a data app finds only published tables, whatever it asks for"
-               (doseq [params [[] [:models "card"] [:models "table"] [:models "table" :ids (mt/id :checkins)]]]
-                 (let [results (:data (apply mt/user-http-request :crowberto :get 200 "search" as-data-app params))]
-                   (is (every? #(and (= "table" (:model %)) (= (mt/id :venues) (:id %))) results) (pr-str params)))))
-             (testing "it finds the published table"
-               (is (= [(mt/id :venues)]
-                      (map :id (:data (mt/user-http-request :crowberto :get 200 "search" as-data-app :q "venues"))))))
-             (testing "a request that is not a data app's finds unpublished tables too"
-               (is (some #(= (mt/id :checkins) (:id %))
-                         (:data (mt/user-http-request :crowberto :get 200 "search" :models "table" :q "checkins"))))))))))))
+           (mt/with-temp [:model/Database db          {:engine :h2 :details {}}
+                          :model/Table    published   {:db_id (:id db) :name "ZEBRA_PUBLISHED" :display_name "Zebra published"}
+                          :model/Table    unpublished {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}]
+             (data-apps.tu/with-published-tables! [(:id published)]
+               (testing "a data app finds a published table but not an unpublished one, whatever it asks for"
+                 (doseq [params [[] [:models "card"] [:models "table"] [:models "table" :ids (:id unpublished)]]]
+                   (let [found (apply search-ids as-data-app "zebra" params)]
+                     (is (contains? found (:id published)) (pr-str params))
+                     (is (not (contains? found (:id unpublished))) (pr-str params)))))
+               (testing "a request that is not a data app's finds the unpublished table too"
+                 (is (contains? (search-ids {} "zebra" :models "table") (:id unpublished))))))))))))
+
+(deftest search-without-library-finds-nothing-test
+  (search.tu/with-appdb-search-and-legacy-search
+    (search.tu/with-sync-search-indexing
+      (do-with-app-collection
+       (fn [_collection-id]
+         (mt/with-premium-features #{:data-apps :library}
+           (mt/with-temp [:model/Database db        {:engine :h2 :details {}}
+                          :model/Table    published {:db_id (:id db) :name "ZEBRA_PUBLISHED" :display_name "Zebra published"}
+                          :model/DataApp  app       {:name "wasps"}]
+             (data-apps.tu/with-published-tables! [(:id published)]
+               (t2/delete! :model/Collection (:resource_collection_id app))
+               (mt/with-dynamic-fn-redefs [collections/library-data-collection (constantly nil)]
+                 (testing "without a Library Data collection, an app without a collection finds not even a published table"
+                   (is (not (contains? (search-ids (as-app "wasps") "zebra") (:id published))))))))))))))
+
+(deftest search-without-published-tables-finds-nothing-test
+  (search.tu/with-appdb-search-and-legacy-search
+    (search.tu/with-sync-search-indexing
+      (do-with-app-collection
+       (fn [_collection-id]
+         (mt/with-premium-features #{:data-apps :library}
+           (mt/with-temp [:model/Database db          {:engine :h2 :details {}}
+                          :model/Table    unpublished {:db_id (:id db) :name "ZEBRA_UNPUBLISHED" :display_name "Zebra unpublished"}]
+             (data-apps.tu/do-with-library!
+              (fn [_library]
+                (testing "with a Library that does not publish the table, a data app does not find it"
+                  (is (not (contains? (search-ids as-data-app "zebra") (:id unpublished))))))))))))))
 
 (deftest without-data-apps-feature-test
   (testing "without the data-apps feature a data app's queries are not checked"

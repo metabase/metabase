@@ -125,9 +125,3 @@
   [_data-app    :- ::data-apps.schema/data-app
    _database-id :- ::lib.schema.id/database]
   nil)
-
-(defenterprise-schema searchable-collection-id :- [:maybe ::lib.schema.id/collection]
-  "The collection whose published tables a search by `data-app` is narrowed to; nil without the data-apps feature."
-  metabase-enterprise.data-apps.checks
-  [_data-app :- ::data-apps.schema/data-app]
-  nil)

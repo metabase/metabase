@@ -7,6 +7,7 @@
    [metabase.api.common :as api]
    [metabase.api.macros :as api.macros]
    [metabase.api.open-api :as open-api]
+   [metabase.collections.core :as collections]
    [metabase.config.core :as config]
    [metabase.data-apps.core :as data-apps]
    [metabase.permissions.core :as perms]
@@ -300,14 +301,14 @@
     :display-type                        (set display-type)}))
 
 (defn- data-app-search-params
-  "`query-params` narrowed, for a data-app `request`, to the tables the app may read: the published tables of the
-  Library, and no other model."
+  "`query-params` narrowed, for a data-app `request`, to the published tables of the Library's Data collection, or of
+  the Trash, which holds no tables, when there is no Library."
   [request query-params]
-  (if-let [data-app (data-apps/request-data-app request)]
+  (if (data-apps/request-data-app request)
     (-> query-params
         (dissoc :ids)
         (assoc :models     ["table"]
-               :collection (data-apps/searchable-collection-id data-app)))
+               :collection (or (:id (collections/library-data-collection)) (collections/trash-collection-id))))
     query-params))
 
 #_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
