@@ -57,6 +57,14 @@ describe("Admin Settings Routing - Enterprise with all features", () => {
     );
   });
 
+  it("should offer the Custom URL homepage option with the whitelabel feature", async () => {
+    await setup({ isAdmin: true, initialRoute: "/general" });
+
+    expect(
+      await screen.findByRole("radio", { name: "Custom URL" }),
+    ).toBeInTheDocument();
+  });
+
   it("should show an upsell on the cloud route without hosting", async () => {
     await setup({
       initialRoute: "/cloud",

@@ -1,13 +1,20 @@
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
 
 import {
   findRequests,
   setupPropertiesEndpoints,
   setupSettingsEndpoints,
+  setupStatefulSettingsEndpoints,
   setupUpdateSettingEndpoint,
 } from "__support__/server-mocks";
 import { createMockSettingsState } from "__support__/state";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import {
+  fireEvent,
+  renderWithProviders,
+  screen,
+  waitFor,
+} from "__support__/ui";
 import type { EnterpriseSettings } from "metabase-types/api";
 import { createMockSettings } from "metabase-types/api/mocks";
 
@@ -45,6 +52,15 @@ describe("HelpLinkSettings", () => {
     expect(
       screen.getByText("Go to a custom destination..."),
     ).toBeInTheDocument();
+  });
+
+  it("should check the option the setting is on", async () => {
+    await setup({ settings: { "help-link": "metabase" } });
+
+    expect(
+      screen.getByRole("radio", { name: "Link to Metabase help" }),
+    ).toBeChecked();
+    expect(screen.getByRole("radio", { name: "Hide it" })).not.toBeChecked();
   });
 
   it("should not show text input when Metabase is selected", async () => {
@@ -87,6 +103,39 @@ describe("HelpLinkSettings", () => {
     });
   });
 
+  describe("custom destination focus", () => {
+    it("should not focus the url field on page load", async () => {
+      await setup({
+        settings: {
+          "help-link": "custom",
+          "help-link-custom-destination": "https://example.com/help",
+        },
+      });
+
+      expect(
+        await screen.findByDisplayValue("https://example.com/help"),
+      ).not.toHaveFocus();
+    });
+
+    it("should focus the url field after picking the custom destination option", async () => {
+      setupStatefulSettingsEndpoints({
+        "help-link": "metabase",
+        "help-link-custom-destination": "https://example.com/help",
+      });
+      setupSettingsEndpoints([]);
+      renderWithProviders(<HelpLinkSettings />);
+      await screen.findByText("Help link");
+
+      await userEvent.click(screen.getByText("Go to a custom destination..."));
+
+      await waitFor(() =>
+        expect(
+          screen.getByPlaceholderText("Enter a URL it should go to"),
+        ).toHaveFocus(),
+      );
+    });
+  });
+
   it("should validate a custom url", async () => {
     await setup({
       settings: {
@@ -116,6 +165,44 @@ describe("HelpLinkSettings", () => {
     // shouldn't fire any PUT request
     const puts = await findRequests("PUT");
     expect(puts).toHaveLength(0);
+  });
+
+  it("should show the error the server returns and clear it on the next valid save", async () => {
+    await setup({
+      settings: {
+        "help-link": "custom",
+        "help-link-custom-destination": "https://example.com/help",
+      },
+    });
+    // The prefix check passes for a bare scheme, so only the backend can reject it.
+    fetchMock.removeRoute("update-setting");
+    fetchMock.put(
+      new RegExp("/api/setting/"),
+      {
+        status: 400,
+        body: { message: "Please make sure this is a valid URL" },
+      },
+      { name: "update-setting" },
+    );
+
+    const input = await screen.findByDisplayValue("https://example.com/help");
+    await userEvent.clear(input);
+    await userEvent.type(input, "https://");
+    fireEvent.blur(input);
+
+    expect(
+      await screen.findByText("Please make sure this is a valid URL"),
+    ).toBeInTheDocument();
+
+    setupUpdateSettingEndpoint();
+    await userEvent.type(input, "example");
+    fireEvent.blur(input);
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText("Please make sure this is a valid URL"),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it("should submit a custom url", async () => {

@@ -15,6 +15,8 @@ import { createMockSettings } from "metabase-types/api/mocks";
 
 import { IllustrationWidget } from "./IllustrationWidget";
 
+const MB = 1024 * 1024;
+
 type IllustrationSetting = Extract<
   EnterpriseSettingKey,
   | "login-page-illustration"
@@ -69,6 +71,14 @@ describe("IllustrationWidget", () => {
       expect(screen.getByText("Login page illustration")).toBeInTheDocument();
     });
 
+    it("should render the sailboat default for icon illustrations", async () => {
+      await setup({
+        name: "no-data-illustration",
+        title: "When calculations return no results",
+      });
+      expect(await screen.findByDisplayValue("Sailboat")).toBeInTheDocument();
+    });
+
     it("should render options", async () => {
       await setup({
         name: "login-page-illustration",
@@ -106,12 +116,6 @@ describe("IllustrationWidget", () => {
       const puts = await findRequests("PUT");
       expect(puts).toHaveLength(0);
     });
-
-    /**
-     * We couldn't test uploading an image because it relies on image.onerror and image.onload
-     * which don't seem to be supported by jsdom. However the file upload test cases has already
-     * been covered in E2E tests.
-     */
 
     it("should not remove the custom uploaded image after changing the option away from custom", async () => {
       const fakeImage = new Blob(["fake-image"], {
@@ -174,6 +178,39 @@ describe("IllustrationWidget", () => {
       expect(put2.body).toEqual({
         value: null,
       });
+    });
+  });
+
+  describe("file upload", () => {
+    /**
+     * Decoding an uploaded image relies on image.onload and image.onerror, which
+     * jsdom never fires, so the corrupted-file case stays in the E2E spec.
+     */
+
+    it("should reject a file larger than 2MB", async () => {
+      await setup({
+        name: "login-page-illustration",
+        title: "Login page illustration",
+        settings: {
+          "login-page-illustration": "custom",
+          "login-page-illustration-custom": "data:image/png;base64,abc123",
+        },
+      });
+
+      const tooLarge = new File([new Uint8Array(2 * MB + 1)], "big-file.jpg", {
+        type: "image/jpeg",
+      });
+      await userEvent.upload(await screen.findByTestId("file-input"), tooLarge);
+
+      expect(
+        await screen.findByText(
+          "The image you chose is larger than 2MB. Please choose another one.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("big-file.jpg")).not.toBeInTheDocument();
+
+      const puts = await findRequests("PUT");
+      expect(puts).toHaveLength(0);
     });
   });
 

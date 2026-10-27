@@ -49,6 +49,24 @@ describe("Admin Settings Routing - OSS", () => {
         ).toBeInTheDocument();
       },
     );
+
+    it("should link the whitelabel upsell to the docs and the upgrade page", async () => {
+      await setup({ isAdmin: true, initialRoute: "/appearance" });
+
+      const learnMore = await screen.findByRole("link", {
+        name: "Learn more",
+      });
+      expect(learnMore).toHaveAttribute(
+        "href",
+        expect.stringContaining("configuring-metabase/appearance"),
+      );
+      expect(learnMore).toHaveAttribute(
+        "href",
+        expect.stringContaining("utm_campaign=whitelabel"),
+      );
+
+      expect(await screen.findByText("Try for free")).toBeInTheDocument();
+    });
   });
 
   describe("does not render the premium routes", () => {
