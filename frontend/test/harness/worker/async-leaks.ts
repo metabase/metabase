@@ -36,6 +36,9 @@ type Act = (callback: ActCallback) => unknown;
 type AsyncWrapper = (callback: () => Promise<unknown>) => Promise<unknown>;
 type LateLeak = { test: TestScope; error: Error };
 
+const ACT = "act()";
+const TESTING_LIBRARY_CALL = "waitFor, findBy or user-event call";
+
 const scopes = new AsyncLocalStorage<Scope>();
 const runningWork = new Set<AsyncWork>();
 const lateLeaks: LateLeak[] = [];
@@ -87,7 +90,7 @@ export function trackAsyncActs(): void {
       isAsync = isThenable(callbackResult);
       return callbackResult;
     });
-    const work = isAsync && isThenable(result) ? startWork("act()") : null;
+    const work = isAsync && isThenable(result) ? startWork(ACT) : null;
     return work && isThenable(result) ? settleThrough(result, work) : result;
   };
 }
@@ -135,7 +138,7 @@ export function trackAsyncWrapper(): void {
   // The acts that a waitFor starts run in a scope that names it, so that a
   // failure can point at the waitFor in the spec.
   const tracked: AsyncWrapper = (callback) => {
-    const work = startWork("waitFor, findBy or user-event call");
+    const work = startWork(TESTING_LIBRARY_CALL);
     if (!work) {
       return asyncWrapper(callback);
     }
@@ -195,13 +198,35 @@ function startWork(kind: string): AsyncWork | null {
 
 function leakError(work: AsyncWork, what: string): Error {
   const { waitFor } = work.scope;
-  const error = new Error(
-    waitFor
-      ? `An act() that a waitFor started ${what} after this test ended. Under fake timers, a waitFor with an async callback resolves before its last act() ends. Give it a synchronous callback.`
-      : `An async ${work.kind} ${what} after this test ended. Await it, or the async function that calls it, such as setup(). In jest it keeps running into the next tests.`,
-  );
-  error.stack = [error.message, ...specFramesFirst(waitFor ?? work)].join("\n");
+  const error = new Error(leakMessage(work, what));
+  const startedBy = waitFor && work.kind === ACT ? waitFor : work;
+  error.stack = [error.message, ...specFramesFirst(startedBy)].join("\n");
   return error;
+}
+
+function leakMessage(work: AsyncWork, what: string): string {
+  if (work.scope.waitFor && work.kind === ACT) {
+    return `An act() that a waitFor started ${what} after this test ended. Under fake timers, a waitFor with an async callback resolves before its last act() ends. Give it a synchronous callback.`;
+  }
+  if (isInsideWaitForCallback(work)) {
+    return `A findBy or waitFor inside a waitFor callback ${what} after this test ended. The outer waitFor starts a new one each time it checks again. Use a getBy query in a synchronous callback.`;
+  }
+  return `An async ${work.kind} ${what} after this test ended. Await it, or the async function that calls it, such as setup(). In jest it keeps running into the next tests.`;
+}
+
+// The outer waitFor runs its callback from a MutationObserver as well, which
+// does not carry the waitFor's scope. Its checkCallback frame is on the stack
+// either way.
+function isInsideWaitForCallback(work: AsyncWork): boolean {
+  return (
+    work.kind === TESTING_LIBRARY_CALL &&
+    (work.startedAt.stack ?? "")
+      .split("\n")
+      .some(
+        (frame) =>
+          frame.includes("at checkCallback (") && frame.includes("wait-for.js"),
+      )
+  );
 }
 
 // The call in the spec file that started the work comes first, so that the
