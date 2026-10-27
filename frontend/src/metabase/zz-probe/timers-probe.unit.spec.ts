@@ -24,5 +24,5 @@ it("records the timer globals", async () => {
   await Promise.resolve();
   state.queueMicrotaskRuns = microtaskRan;
   // eslint-disable-next-line no-console
-  process.stdout.write(`PROBE ${JSON.stringify(state)}\n`);
+  process.stderr.write(`PROBE ${JSON.stringify(state)}\n`);
 });
