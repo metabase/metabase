@@ -188,7 +188,7 @@ export const hasRecentMinorReleaseIn = (
     throw new Error(`Invalid window in days: ${windowDays}`);
   }
 
-  const windowStart = subtractDays(today, windowDays);
+  const windowStart = subtractDays(today, windowDays - 1);
 
   return [versionInfo.latest, ...(versionInfo.older ?? [])].some(
     (info) =>

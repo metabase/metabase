@@ -466,7 +466,7 @@ describe("version-info", () => {
     it("includes the first and last day of the window", () => {
       expect(
         hasRecentMinorReleaseIn(
-          fileWith(release("v0.65.2", "2026-10-31")),
+          fileWith(release("v0.65.2", "2026-11-01")),
           65,
           3,
           "2026-11-03",
@@ -483,7 +483,7 @@ describe("version-info", () => {
     });
 
     it("ignores releases before the window", () => {
-      const versionInfo = fileWith(release("v0.65.2", "2026-10-30"));
+      const versionInfo = fileWith(release("v0.65.2", "2026-10-31"));
 
       expect(hasRecentMinorReleaseIn(versionInfo, 65, 3, "2026-11-03")).toBe(
         false,
@@ -491,7 +491,7 @@ describe("version-info", () => {
     });
 
     it("uses the window size it is given", () => {
-      const versionInfo = fileWith(release("v0.65.2", "2026-10-27"));
+      const versionInfo = fileWith(release("v0.65.2", "2026-10-28"));
 
       expect(hasRecentMinorReleaseIn(versionInfo, 65, 3, "2026-11-03")).toBe(
         false,
