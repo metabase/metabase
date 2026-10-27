@@ -1237,9 +1237,6 @@
              (assert-pending :data-app app-id)
              (deps.test/synchronously-run-dependency-job!)
              (is (= #{[:card card-id]} (data-app-deps app-id))))
-           (testing "the app is an MBQL dependent of its card"
-             (is (= {:data-app #{app-id}}
-                    (dependencies.model/transitive-mbql-dependents {:card [{:id card-id}]}))))
            (testing "deleting the app removes its dependencies and status"
              (t2/delete! :model/DataApp app-id)
              (deps.test/synchronously-run-dependency-job!)

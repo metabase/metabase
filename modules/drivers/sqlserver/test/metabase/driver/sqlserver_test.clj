@@ -44,7 +44,7 @@
 (deftest default-schema-test
   (mt/test-driver :sqlserver
     (is (= "dbo"
-           (driver.sql/default-schema :sqlserver (mt/db))))))
+           (driver.sql/default-schema :sqlserver (lib.metadata/database (mt/metadata-provider)))))))
 
 (deftest ^:parallel hour-bucketing-time-without-database-type-test
   (testing (str "Hour bucketing on a TIME-typed expression without `:database-type` (as happens for "
@@ -491,7 +491,7 @@
       ;; are working we need to add to in from of the query we're trying to check
       (sql-jdbc.execute/do-with-connection-with-options
        :sqlserver
-       (mt/db)
+       (mt/id)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
          (.setAutoCommit conn false)
@@ -521,7 +521,7 @@
       ;; persist otherwise
       (sql-jdbc.execute/do-with-connection-with-options
        :sqlserver
-       (mt/db)
+       (mt/id)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
          (doseq [datefirst (range 1 8)]
@@ -546,7 +546,7 @@
       ;; persist otherwise
       (sql-jdbc.execute/do-with-connection-with-options
        :sqlserver
-       (mt/db)
+       (mt/id)
        {:session-timezone (qp.timezone/report-timezone-id-if-supported :sqlserver (mt/db))}
        (fn [^java.sql.Connection conn]
          (doseq [datefirst (range 1 8)]
@@ -587,7 +587,7 @@
             (let [sql (format "SELECT %s AS t;" (sql.qp/inline-value :sqlserver t))]
               (sql-jdbc.execute/do-with-connection-with-options
                :sqlserver
-               (mt/db)
+               (mt/id)
                nil
                (fn [^java.sql.Connection conn]
                  (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)
@@ -1075,7 +1075,7 @@
 
 (deftest ^:parallel db-default-timezone-test
   (mt/test-driver :sqlserver
-    (is (= "Z" (str (driver/db-default-timezone :sqlserver (mt/db)))))))
+    (is (= "Z" (str (driver/db-default-timezone :sqlserver (lib.metadata/database (mt/metadata-provider))))))))
 
 (deftest ^:parallel default-database-role-test
   (testing "SQL Server default database role handling"
@@ -1172,7 +1172,7 @@
     (mt/test-driver :sqlserver
       (create-udt-alias-db!)
       (mt/with-temp [:model/Database database {:engine :sqlserver, :details @udt-alias-db-details}]
-        (sync/sync-database! database)
+        (sync/sync-database! (:id database))
         (let [table-id (t2/select-one-pk :model/Table :db_id (:id database) :name "udt_alias_test")
               fields   (into {} (map (juxt :name identity))
                              (t2/select :model/Field :table_id table-id))]
@@ -1310,7 +1310,7 @@
   (mt/test-driver :sqlserver
     (testing "`current-user-table-privileges` returns correct structure and privileges"
       (sql-jdbc.execute/do-with-connection-with-options
-       :sqlserver (mt/db) nil
+       :sqlserver (mt/id) nil
        (fn [conn]
          (let [privileges (sql-jdbc.sync/current-user-table-privileges :sqlserver {:connection conn})]
            (is (seq privileges) "Should return at least one table")
@@ -1432,12 +1432,12 @@
     (testing "a transform test's temp table is visible to its own session only"
       (let [table (driver/temp-table-name :sqlserver)]
         (driver/do-with-test-connection
-         :sqlserver (mt/db)
+         :sqlserver (lib.metadata/database (mt/metadata-provider))
          (fn [conn]
            (create-temp-table! conn table "SELECT 1 AS id" [])
            (is (= [[1]] (:rows (temp-table-rows conn table))))
            (driver/do-with-test-connection
-            :sqlserver (mt/db)
+            :sqlserver (lib.metadata/database (mt/metadata-provider))
             (fn [other-conn]
               (is (thrown-with-msg? Exception #"Invalid object name"
                                     (temp-table-rows other-conn table)))))))))))
@@ -1447,7 +1447,7 @@
     (testing "a temp table created by a query with bound parameters outlives the statement that created it"
       (let [table (driver/temp-table-name :sqlserver)]
         (driver/do-with-test-connection
-         :sqlserver (mt/db)
+         :sqlserver (lib.metadata/database (mt/metadata-provider))
          (fn [conn]
            (create-temp-table! conn table "SELECT CAST(? AS nvarchar(50)) AS name, CAST(? AS decimal(10,2)) AS price"
                                ["abc" 1.5M])
@@ -1455,7 +1455,7 @@
     (testing "the test connection runs temp table statements as batches, and gets its prepare method back afterwards"
       (let [physical (atom nil)]
         (driver/do-with-test-connection
-         :sqlserver (mt/db)
+         :sqlserver (lib.metadata/database (mt/metadata-provider))
          (fn [^java.sql.Connection conn]
            (let [sqlserver-conn (.unwrap conn com.microsoft.sqlserver.jdbc.ISQLServerConnection)]
              (reset! physical sqlserver-conn)

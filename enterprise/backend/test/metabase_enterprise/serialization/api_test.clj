@@ -601,7 +601,8 @@
           (let [db (t2/select-one :model/Database :name db-name)]
             (is (some? db))
             (is (=? {:host "localhost" :port 5432 :dbname "mydb"} (:details db)))
-            (doseq [k [:details :write_data_details :admin_details]]
+            (is (not (contains? db :admin_details)) "an older archive's admin_details is ignored")
+            (doseq [k [:details :write_data_details]]
               (is (= #{} (set (keys (select-keys (get db k) [:subname :classname :connection-uri :INIT]))))
                   (str k " should keep none of the low-level keys"))))
           (finally
