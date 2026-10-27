@@ -115,6 +115,7 @@ export function VisualizationResult(props: QueryVisualizationProps) {
       onOpenChartSettings={props.onOpenChartSettings}
       onUpdateQuestion={props.onUpdateQuestion}
       onUpdateWarnings={props.onUpdateWarnings}
+      onUpdateGoalWarning={props.onUpdateGoalWarning}
       onHeaderColumnReorder={props.onHeaderColumnReorder}
       onUpdateVisualizationSettings={props.onUpdateVisualizationSettings}
       onVisualizationRendered={props.onVisualizationRendered}

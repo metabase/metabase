@@ -10,10 +10,15 @@ type GoalWarningSource = "goal" | "color-ranges";
 
 type GoalWarningIconProps = {
   source: GoalWarningSource;
+  size?: number;
   onClick: () => void;
 };
 
-export function GoalWarningIcon({ source, onClick }: GoalWarningIconProps) {
+export function GoalWarningIcon({
+  source,
+  size = GOAL_WARNING_ICON_SIZE,
+  onClick,
+}: GoalWarningIconProps) {
   const messageId = useId();
 
   return (
@@ -31,7 +36,7 @@ export function GoalWarningIcon({ source, onClick }: GoalWarningIconProps) {
           c="feedback-negative"
           display="block"
           name="warning"
-          size={GOAL_WARNING_ICON_SIZE}
+          size={size}
         />
       </UnstyledButton>
     </Tooltip>

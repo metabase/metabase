@@ -9,6 +9,7 @@ import QueryBuilderS from "metabase/css/query_builder.module.css";
 import { Box, Flex, Stack, Text } from "metabase/ui";
 import { isMac } from "metabase/utils/browser";
 import { SERVER_ERROR_TYPES } from "metabase/utils/errors";
+import { GoalWarningIcon } from "metabase/visualizations/components/GoalWarning";
 import { VisualizationRunningState } from "metabase/visualizations/components/Visualization/VisualizationRunningState";
 import { prefetchVisualizationComponent } from "metabase/viz-core";
 import * as Lib from "metabase-lib";
@@ -19,6 +20,8 @@ import { RunButtonWithTooltip } from "./RunButtonWithTooltip";
 import { VisualizationError } from "./VisualizationError";
 import { VisualizationResult } from "./VisualizationResult";
 import type { QueryVisualizationProps } from "./types";
+
+const WARNING_ICON_SIZE = 18;
 
 export function QueryVisualization(props: QueryVisualizationProps) {
   const {
@@ -33,10 +36,12 @@ export function QueryVisualization(props: QueryVisualizationProps) {
     result,
     errorAction,
     maxTableRows = HARD_ROW_LIMIT,
+    onOpenChartSettings,
   } = props;
 
   const canRun = Lib.canRun(question.query(), question.type());
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [hasGoalWarning, setHasGoalWarning] = useState(false);
 
   // The result is not rendered until the query returns, so the chart chunk
   // would only start downloading then. Start it from the display alone, so it
@@ -64,7 +69,20 @@ export function QueryVisualization(props: QueryVisualizationProps) {
         className={S.overlay}
       />
       {!isObjectDetail && (
-        <Warnings warnings={warnings} className={S.warnings} size={18} />
+        <Flex className={S.warnings} align="center" gap="sm">
+          {hasGoalWarning && onOpenChartSettings && (
+            <GoalWarningIcon
+              source="goal"
+              size={WARNING_ICON_SIZE}
+              onClick={() =>
+                onOpenChartSettings({
+                  initialChartSettings: { section: t`Display` },
+                })
+              }
+            />
+          )}
+          <Warnings warnings={warnings} size={WARNING_ICON_SIZE} />
+        </Flex>
       )}
       <Box
         className={cx(S.visualization, QueryBuilderS.Visualization, {
@@ -88,6 +106,7 @@ export function QueryVisualization(props: QueryVisualizationProps) {
             maxTableRows={maxTableRows}
             className={S.spread}
             onUpdateWarnings={setWarnings}
+            onUpdateGoalWarning={setHasGoalWarning}
           />
         ) : !isRunning && !isDirtyStateShown ? (
           <VisualizationEmptyState>
